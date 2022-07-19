@@ -137,12 +137,12 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
    EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
    EBM_ASSERT(0 < cSetSamples);
 
-   ptrdiff_t runtimeLearningTypeOrCountTargetClasses;
-   const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &runtimeLearningTypeOrCountTargetClasses);
-   EBM_ASSERT(1 <= runtimeLearningTypeOrCountTargetClasses); // this should be classification, and 0 < cSetSamples
+   ptrdiff_t cClasses;
+   const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
+   EBM_ASSERT(1 <= cClasses); // this should be classification, and 0 < cSetSamples
    EBM_ASSERT(nullptr != aTargets);
 
-   const size_t countTargetClasses = static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses);
+   const size_t countClasses = static_cast<size_t>(cClasses);
 
    StorageDataType * const aTargetData = EbmMalloc<StorageDataType>(cSetSamples);
    if(nullptr == aTargetData) {
@@ -174,7 +174,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
                return nullptr;
             }
             const StorageDataType iData = static_cast<StorageDataType>(data);
-            if(countTargetClasses <= static_cast<size_t>(iData)) {
+            if(countClasses <= static_cast<size_t>(iData)) {
                LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData target value larger than number of classes");
                free(aTargetData);
                return nullptr;
@@ -403,7 +403,7 @@ free_all:
 }
 
 ErrorEbmType DataSetBoosting::Initialize(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const ptrdiff_t cClasses,
    const bool bAllocateGradients,
    const bool bAllocateHessians,
    const bool bAllocateSampleScores,
@@ -425,7 +425,7 @@ ErrorEbmType DataSetBoosting::Initialize(
    EBM_ASSERT(nullptr == m_aaInputData);
 
    LOG_0(TraceLevelInfo, "Entered DataSetBoosting::Initialize");
-   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(cClasses);
 
    if(0 != cSetSamples) {
       if(bAllocateGradients) {

@@ -138,7 +138,7 @@ const double * TestApi::GetTermScores(
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   const size_t cScores = GetCountScores(m_learningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(m_cClasses);
 
    if(m_termBinCounts.size() <= iTerm) {
       exit(1);
@@ -165,43 +165,43 @@ double TestApi::GetTermScore(
    const size_t iTerm,
    const double * const aTermScores,
    const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures,
-   const size_t iTargetClassOrZero
+   const size_t iClassOrZero
 ) const {
    const double * const aScores = GetTermScores(
       iTerm, 
       aTermScores,
       perDimensionIndexArrayForBinnedFeatures
    );
-   if(!IsClassification(m_learningTypeOrCountTargetClasses)) {
-      if(0 != iTargetClassOrZero) {
+   if(!IsClassification(m_cClasses)) {
+      if(0 != iClassOrZero) {
          exit(1);
       }
       return aScores[0];
    }
-   if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) <= iTargetClassOrZero) {
+   if(static_cast<size_t>(m_cClasses) <= iClassOrZero) {
       exit(1);
    }
-   if(2 == m_learningTypeOrCountTargetClasses) {
+   if(2 == m_cClasses) {
       // binary classification
 #ifdef EXPAND_BINARY_LOGITS
       if(m_iZeroClassificationLogit < 0) {
-         return aScores[iTargetClassOrZero];
+         return aScores[iClassOrZero];
       } else {
-         if(static_cast<size_t>(m_iZeroClassificationLogit) == iTargetClassOrZero) {
+         if(static_cast<size_t>(m_iZeroClassificationLogit) == iClassOrZero) {
             return double { 0 };
          } else {
-            return aScores[iTargetClassOrZero] - aScores[m_iZeroClassificationLogit];
+            return aScores[iClassOrZero] - aScores[m_iZeroClassificationLogit];
          }
       }
 #else // EXPAND_BINARY_LOGITS
       if(m_iZeroClassificationLogit < 0) {
-         if(0 == iTargetClassOrZero) {
+         if(0 == iClassOrZero) {
             return double { 0 };
          } else {
             return aScores[0];
          }
       } else {
-         if(static_cast<size_t>(m_iZeroClassificationLogit) == iTargetClassOrZero) {
+         if(static_cast<size_t>(m_iZeroClassificationLogit) == iClassOrZero) {
             return double { 0 };
          } else {
             return aScores[0];
@@ -212,33 +212,33 @@ double TestApi::GetTermScore(
       // multiclass
 #ifdef REDUCE_MULTICLASS_LOGITS
       if(m_iZeroClassificationLogit < 0) {
-         if(0 == iTargetClassOrZero) {
+         if(0 == iClassOrZero) {
             return double { 0 };
          } else {
-            return aScores[iTargetClassOrZero - 1];
+            return aScores[iClassOrZero - 1];
          }
       } else {
-         if(staitc_cast<size_t>(m_iZeroClassificationLogit) == iTargetClassOrZero) {
+         if(staitc_cast<size_t>(m_iZeroClassificationLogit) == iClassOrZero) {
             return double { 0 };
-         } else if(staitc_cast<size_t>(m_iZeroClassificationLogit) < iTargetClassOrZero) {
-            return aScores[iTargetClassOrZero - 1];
+         } else if(staitc_cast<size_t>(m_iZeroClassificationLogit) < iClassOrZero) {
+            return aScores[iClassOrZero - 1];
          } else {
-            return aScores[iTargetClassOrZero];
+            return aScores[iClassOrZero];
          }
       }
 #else // REDUCE_MULTICLASS_LOGITS
       if(m_iZeroClassificationLogit < 0) {
-         return aScores[iTargetClassOrZero];
+         return aScores[iClassOrZero];
       } else {
-         return aScores[iTargetClassOrZero] - aScores[m_iZeroClassificationLogit];
+         return aScores[iClassOrZero] - aScores[m_iZeroClassificationLogit];
       }
 #endif // REDUCE_MULTICLASS_LOGITS
    }
 }
 
-TestApi::TestApi(const ptrdiff_t learningTypeOrCountTargetClasses, const ptrdiff_t iZeroClassificationLogit) :
+TestApi::TestApi(const ptrdiff_t cClasses, const ptrdiff_t iZeroClassificationLogit) :
    m_stage(Stage::Beginning),
-   m_learningTypeOrCountTargetClasses(learningTypeOrCountTargetClasses),
+   m_cClasses(cClasses),
    m_iZeroClassificationLogit(iZeroClassificationLogit),
    m_bNullTrainingWeights(true),
    m_bNullTrainingInitScores(true),
@@ -249,8 +249,8 @@ TestApi::TestApi(const ptrdiff_t learningTypeOrCountTargetClasses, const ptrdiff
    m_bNullInteractionInitScores(true),
    m_interactionHandle(nullptr) 
 {
-   if(IsClassification(learningTypeOrCountTargetClasses)) {
-      if(learningTypeOrCountTargetClasses <= iZeroClassificationLogit) {
+   if(IsClassification(cClasses)) {
+      if(cClasses <= iZeroClassificationLogit) {
          exit(1);
       }
    } else {
@@ -334,17 +334,17 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
          if(std::isinf(target)) {
             exit(1);
          }
-         if(IsClassification(m_learningTypeOrCountTargetClasses)) {
+         if(IsClassification(m_cClasses)) {
             const IntEbmType targetInt = static_cast<IntEbmType>(target);
             if(targetInt < IntEbmType { 0 }) {
                exit(1);
             }
-            if(static_cast<IntEbmType>(m_learningTypeOrCountTargetClasses) <= targetInt) {
+            if(static_cast<IntEbmType>(m_cClasses) <= targetInt) {
                exit(1);
             }
             m_trainingClassificationTargets.push_back(targetInt);
             if(!bNullInitScores) {
-               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneSample.m_initScores.size()) {
+               if(static_cast<size_t>(m_cClasses) != oneSample.m_initScores.size()) {
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
@@ -355,7 +355,7 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
                   if(std::isinf(oneLogit)) {
                      exit(1);
                   }
-                  if(2 == m_learningTypeOrCountTargetClasses) {
+                  if(2 == m_cClasses) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
@@ -472,17 +472,17 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
          if(std::isinf(target)) {
             exit(1);
          }
-         if(IsClassification(m_learningTypeOrCountTargetClasses)) {
+         if(IsClassification(m_cClasses)) {
             const IntEbmType targetInt = static_cast<IntEbmType>(target);
             if(targetInt < IntEbmType { 0 }) {
                exit(1);
             }
-            if(static_cast<IntEbmType>(m_learningTypeOrCountTargetClasses) <= targetInt) {
+            if(static_cast<IntEbmType>(m_cClasses) <= targetInt) {
                exit(1);
             }
             m_validationClassificationTargets.push_back(targetInt);
             if(!bNullInitScores) {
-               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneSample.m_initScores.size()) {
+               if(static_cast<size_t>(m_cClasses) != oneSample.m_initScores.size()) {
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
@@ -493,7 +493,7 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
                   if(std::isinf(oneLogit)) {
                      exit(1);
                   }
-                  if(2 == m_learningTypeOrCountTargetClasses) {
+                  if(2 == m_cClasses) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
@@ -590,10 +590,10 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       exit(1);
    }
 
-   const size_t cScores = GetCountScores(m_learningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(m_cClasses);
    const size_t cFeatures = m_featureBinCounts.size();
-   const size_t cTrainingSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_trainingClassificationTargets.size() : m_trainingRegressionTargets.size();
-   const size_t cValidationSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_validationClassificationTargets.size() : m_validationRegressionTargets.size();
+   const size_t cTrainingSamples = IsClassification(m_cClasses) ? m_trainingClassificationTargets.size() : m_trainingRegressionTargets.size();
+   const size_t cValidationSamples = IsClassification(m_cClasses) ? m_validationClassificationTargets.size() : m_validationRegressionTargets.size();
 
    if(m_bNullTrainingInitScores) {
       m_trainingInitScores.resize(cScores * cTrainingSamples);
@@ -623,10 +623,10 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    allWeights.insert(allWeights.end(), m_validationWeights.begin(), m_validationWeights.end());
    size += SizeWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0]);
 
-   if(IsClassification(m_learningTypeOrCountTargetClasses)) {
+   if(IsClassification(m_cClasses)) {
       std::vector<IntEbmType> allTargets(m_trainingClassificationTargets);
       allTargets.insert(allTargets.end(), m_validationClassificationTargets.begin(), m_validationClassificationTargets.end());
-      size += SizeClassificationTarget(m_learningTypeOrCountTargetClasses, allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0]);
+      size += SizeClassificationTarget(m_cClasses, allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0]);
    } else {
       std::vector<double> allTargets(m_trainingRegressionTargets);
       allTargets.insert(allTargets.end(), m_validationRegressionTargets.begin(), m_validationRegressionTargets.end());
@@ -649,10 +649,10 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
 
    error = FillWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0], size, pDataSet);
 
-   if(IsClassification(m_learningTypeOrCountTargetClasses)) {
+   if(IsClassification(m_cClasses)) {
       std::vector<IntEbmType> allTargets(m_trainingClassificationTargets);
       allTargets.insert(allTargets.end(), m_validationClassificationTargets.begin(), m_validationClassificationTargets.end());
-      error = FillClassificationTarget(m_learningTypeOrCountTargetClasses, allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0], size, pDataSet);
+      error = FillClassificationTarget(m_cClasses, allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0], size, pDataSet);
    } else {
       std::vector<double> allTargets(m_trainingRegressionTargets);
       allTargets.insert(allTargets.end(), m_validationRegressionTargets.begin(), m_validationRegressionTargets.end());
@@ -738,7 +738,7 @@ BoostRet TestApi::Boost(
    if(0 != (GenerateUpdateOptions_GradientSums & options)) {
       // if sums are on, then we MUST change the term update
 
-      size_t cUpdateScores = GetCountScores(m_learningTypeOrCountTargetClasses);
+      size_t cUpdateScores = GetCountScores(m_cClasses);
       std::vector<size_t> & dimensionBinCounts = m_termBinCounts[static_cast<size_t>(indexTerm)];
 
       for(size_t iDimension = 0; iDimension < dimensionBinCounts.size(); ++iDimension) {
@@ -789,7 +789,7 @@ double TestApi::GetBestTermScore(
    const std::vector<size_t> dimensionBinCounts = m_termBinCounts[iTerm];
 
    const size_t cDimensions = dimensionBinCounts.size();
-   size_t multiple = GetCountScores(m_learningTypeOrCountTargetClasses);
+   size_t multiple = GetCountScores(m_cClasses);
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
       multiple *= dimensionBinCounts[iDimension];
    }
@@ -838,7 +838,7 @@ double TestApi::GetCurrentTermScore(
    const std::vector<size_t> dimensionBinCounts = m_termBinCounts[iTerm];
 
    const size_t cDimensions = dimensionBinCounts.size();
-   size_t multiple = GetCountScores(m_learningTypeOrCountTargetClasses);
+   size_t multiple = GetCountScores(m_cClasses);
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
       multiple *= dimensionBinCounts[iDimension];
    }
@@ -900,17 +900,17 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
          if(std::isinf(target)) {
             exit(1);
          }
-         if(IsClassification(m_learningTypeOrCountTargetClasses)) {
+         if(IsClassification(m_cClasses)) {
             const IntEbmType targetInt = static_cast<IntEbmType>(target);
             if(targetInt < IntEbmType { 0 }) {
                exit(1);
             }
-            if(static_cast<IntEbmType>(m_learningTypeOrCountTargetClasses) <= targetInt) {
+            if(static_cast<IntEbmType>(m_cClasses) <= targetInt) {
                exit(1);
             }
             m_interactionClassificationTargets.push_back(targetInt);
             if(!bNullInitScores) {
-               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) !=
+               if(static_cast<size_t>(m_cClasses) !=
                   oneSample.m_initScores.size()) {
                   exit(1);
                }
@@ -922,7 +922,7 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
                   if(std::isinf(oneLogit)) {
                      exit(1);
                   }
-                  if(2 == m_learningTypeOrCountTargetClasses) {
+                  if(2 == m_cClasses) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
@@ -1017,9 +1017,9 @@ void TestApi::InitializeInteraction() {
       exit(1);
    }
 
-   const size_t cScores = GetCountScores(m_learningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(m_cClasses);
    const size_t cFeatures = m_featureBinCounts.size();
-   const size_t cSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_interactionClassificationTargets.size() : m_interactionRegressionTargets.size();
+   const size_t cSamples = IsClassification(m_cClasses) ? m_interactionClassificationTargets.size() : m_interactionRegressionTargets.size();
 
    if(m_bNullInteractionInitScores) {
       m_interactionInitScores.resize(cScores * cSamples);
@@ -1036,8 +1036,8 @@ void TestApi::InitializeInteraction() {
 
    size += SizeWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0]);
 
-   if(IsClassification(m_learningTypeOrCountTargetClasses)) {
-      size += SizeClassificationTarget(m_learningTypeOrCountTargetClasses, cSamples, 0 == cSamples ? nullptr : &m_interactionClassificationTargets[0]);
+   if(IsClassification(m_cClasses)) {
+      size += SizeClassificationTarget(m_cClasses, cSamples, 0 == cSamples ? nullptr : &m_interactionClassificationTargets[0]);
    } else {
       size += SizeRegressionTarget(cSamples, 0 == cSamples ? nullptr : &m_interactionRegressionTargets[0]);
    }
@@ -1053,8 +1053,8 @@ void TestApi::InitializeInteraction() {
 
    error = FillWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0], size, pDataSet);
 
-   if(IsClassification(m_learningTypeOrCountTargetClasses)) {
-      error = FillClassificationTarget(m_learningTypeOrCountTargetClasses, cSamples, 0 == cSamples ? nullptr : &m_interactionClassificationTargets[0], size, pDataSet);
+   if(IsClassification(m_cClasses)) {
+      error = FillClassificationTarget(m_cClasses, cSamples, 0 == cSamples ? nullptr : &m_interactionClassificationTargets[0], size, pDataSet);
    } else {
       error = FillRegressionTarget(cSamples, 0 == cSamples ? nullptr : &m_interactionRegressionTargets[0], size, pDataSet);
    }

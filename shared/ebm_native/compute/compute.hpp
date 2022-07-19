@@ -31,7 +31,7 @@ namespace DEFINED_ZONE_NAME {
 #define GPU_BOTH
 #endif
 
-// there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetClassesMax value.  The bottleneck seems to be 
+// there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerClassesMax value.  The bottleneck seems to be 
 // that setting it too high increases compile time and module size
 // this is how much the runtime speeds up if you compile it with hard coded vector sizes
 // 200 => 2.65%
@@ -42,11 +42,11 @@ namespace DEFINED_ZONE_NAME {
 // TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the 
 //   runtime looped version of our code
 
-constexpr static ptrdiff_t k_cCompilerOptimizedTargetClassesMax2 = 8;
-constexpr static ptrdiff_t k_cCompilerOptimizedTargetClassesStart2 = 3;
+constexpr static ptrdiff_t k_cCompilerClassesMax2 = 8;
+constexpr static ptrdiff_t k_cCompilerClassesStart2 = 3;
 
 static_assert(
-   2 <= k_cCompilerOptimizedTargetClassesMax2,
+   2 <= k_cCompilerClassesMax2,
    "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would "
    "output model files with two values instead of our special case 1");
 

@@ -310,12 +310,12 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION FillWeight(
 );
 
 EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION SizeClassificationTarget(
-   IntEbmType countTargetClasses,
+   IntEbmType countClasses,
    IntEbmType countSamples,
    const IntEbmType * targets
 );
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION FillClassificationTarget(
-   IntEbmType countTargetClasses,
+   IntEbmType countClasses,
    IntEbmType countSamples,
    const IntEbmType * targets,
    IntEbmType countBytesAllocated,
@@ -364,7 +364,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
 
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
    SeedEbmType randomSeed,
-   IntEbmType countTargetClasses,
+   IntEbmType countClasses,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
    IntEbmType * targets,

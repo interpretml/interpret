@@ -37,7 +37,7 @@ class InteractionCore final {
    // https://stackoverflow.com/questions/41308372/stdatomic-for-built-in-types-non-lock-free-vs-trivial-destructor
    std::atomic_size_t m_REFERENCE_COUNT;
 
-   ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
+   ptrdiff_t m_cClasses;
 
    size_t m_cFeatures;
    Feature * m_aFeatures;
@@ -53,7 +53,7 @@ class InteractionCore final {
 
    INLINE_ALWAYS InteractionCore() noexcept :
       m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
-      m_runtimeLearningTypeOrCountTargetClasses(0),
+      m_cClasses(0),
       m_cFeatures(0),
       m_aFeatures(nullptr)
    {
@@ -69,8 +69,8 @@ public:
       m_REFERENCE_COUNT.fetch_add(1, std::memory_order_relaxed);
    };
 
-   INLINE_ALWAYS ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() {
-      return m_runtimeLearningTypeOrCountTargetClasses;
+   INLINE_ALWAYS ptrdiff_t GetCountClasses() {
+      return m_cClasses;
    }
 
    INLINE_ALWAYS const DataSetInteraction * GetDataSetInteraction() const {

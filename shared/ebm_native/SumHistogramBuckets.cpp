@@ -26,7 +26,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
+template<ptrdiff_t cCompilerClasses>
 class SumAllBinsInternal final {
 public:
 
@@ -40,10 +40,10 @@ public:
       , const FloatBig weightTotal
 #endif // NDEBUG
    ) {
-      constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+      constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
       GradientPairBase * const aSumAllGradientPairsBase = pBoosterShell->GetSumAllGradientPairs();
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
@@ -58,11 +58,11 @@ public:
       FloatBig weightTotalDebug = 0;
 #endif // NDEBUG
 
-      const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-         compilerLearningTypeOrCountTargetClasses,
-         runtimeLearningTypeOrCountTargetClasses
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+         cCompilerClasses,
+         cRuntimeClasses
       );
-      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(cClasses);
       EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
@@ -116,10 +116,10 @@ extern void SumAllBins(
    LOG_0(TraceLevelVerbose, "Entered SumAllBins");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
-   if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-      if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
+   if(IsClassification(cRuntimeClasses)) {
+      if(IsBinaryClassification(cRuntimeClasses)) {
          SumAllBinsInternal<2>::Func(
             pBoosterShell,
             cBins
@@ -139,7 +139,7 @@ extern void SumAllBins(
          );
       }
    } else {
-      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(cRuntimeClasses));
       SumAllBinsInternal<k_regression>::Func(
          pBoosterShell,
          cBins

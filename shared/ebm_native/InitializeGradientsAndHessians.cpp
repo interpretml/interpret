@@ -21,14 +21,14 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
+template<ptrdiff_t cCompilerClasses>
 class InitializeGradientsAndHessiansInternal final {
 public:
 
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
    static ErrorEbmType Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      const ptrdiff_t cRuntimeClasses,
       const BagEbmType direction,
       const BagEbmType * const aBag,
       const void * const aTargets,
@@ -36,8 +36,8 @@ public:
       const size_t cSetSamples,
       FloatFast * const aGradientAndHessian
    ) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
-      static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
+      static_assert(IsClassification(cCompilerClasses), "must be classification");
+      static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
 
       LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
 
@@ -46,11 +46,11 @@ public:
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != aGradientAndHessian);
 
-      const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-         compilerLearningTypeOrCountTargetClasses,
-         runtimeLearningTypeOrCountTargetClasses
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+         cCompilerClasses,
+         cRuntimeClasses
       );
-      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(cClasses);
 
       // TODO: we could eliminate this memory by doing the calculation twice below and then this code could return on error value (or would that work with the loss function stuff?)
       FloatFast * const aExps = EbmMalloc<FloatFast>(cScores);
@@ -78,7 +78,7 @@ public:
                // if we can't fit it, then we should increase our StorageDataType size!
                EBM_ASSERT(!IsConvertError<size_t>(targetOriginal));
                const size_t target = static_cast<size_t>(targetOriginal);
-               EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
+               EBM_ASSERT(target < static_cast<size_t>(cClasses));
                FloatFast * pExp = aExps;
 
                FloatFast sumExp = 0;
@@ -95,7 +95,7 @@ public:
                      ++pInitScore;
                   }
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                  if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                  if(IsMulticlass(cCompilerClasses)) {
                      if(size_t { 0 } == iScore) {
                         zeroLogit = initScore;
                      }
@@ -155,7 +155,7 @@ public:
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
    static ErrorEbmType Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      const ptrdiff_t cRuntimeClasses,
       const BagEbmType direction,
       const BagEbmType * const aBag,
       const void * const aTargets,
@@ -163,12 +163,12 @@ public:
       const size_t cSetSamples,
       FloatFast * const aGradientAndHessian
    ) {
-      UNUSED(runtimeLearningTypeOrCountTargetClasses);
+      UNUSED(cRuntimeClasses);
       LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
 
       // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pInitScore (I assume so), 
       //   and does it affect any calculations below like sumExp += std::exp(initScore) and the equivalent.  Should we use cScores or 
-      //   runtimeLearningTypeOrCountTargetClasses for some of the addition
+      //   cRuntimeClasses for some of the addition
       // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
 
       EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
@@ -200,7 +200,7 @@ public:
                // if we can't fit it, then we should increase our StorageDataType size!
                EBM_ASSERT(!IsConvertError<size_t>(targetOriginal));
                const size_t target = static_cast<size_t>(targetOriginal);
-               EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
+               EBM_ASSERT(target < static_cast<size_t>(cRuntimeClasses));
 
                const FloatFast gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(initScore, target);
                const FloatFast hessian = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
@@ -231,7 +231,7 @@ public:
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
    static ErrorEbmType Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      const ptrdiff_t cRuntimeClasses,
       const BagEbmType direction,
       const BagEbmType * const aBag,
       const void * const aTargets,
@@ -239,12 +239,12 @@ public:
       const size_t cSetSamples,
       FloatFast * const aGradientAndHessian
    ) {
-      UNUSED(runtimeLearningTypeOrCountTargetClasses);
+      UNUSED(cRuntimeClasses);
       LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
 
       // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pInitScore (I assume so), 
       //   and does it affect any calculations below like sumExp += std::exp(initScore) and the equivalent.  Should we use cScores or 
-      //   runtimeLearningTypeOrCountTargetClasses for some of the addition
+      //   cRuntimeClasses for some of the addition
       // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
 
       EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
@@ -307,18 +307,18 @@ extern ErrorEbmType InitializeGradientsAndHessians(
    const size_t cSetSamples,
    FloatFast * const aGradientAndHessian
 ) {
-   ptrdiff_t runtimeLearningTypeOrCountTargetClasses;
+   ptrdiff_t cRuntimeClasses;
    const void * const aTargets = GetDataSetSharedTarget(
       pDataSetShared,
       0,
-      &runtimeLearningTypeOrCountTargetClasses
+      &cRuntimeClasses
    );
    EBM_ASSERT(nullptr != aTargets);
 
-   if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-      if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
+   if(IsClassification(cRuntimeClasses)) {
+      if(IsBinaryClassification(cRuntimeClasses)) {
          return InitializeGradientsAndHessiansInternal<2>::Func(
-            runtimeLearningTypeOrCountTargetClasses,
+            cRuntimeClasses,
             direction,
             aBag,
             aTargets,
@@ -328,7 +328,7 @@ extern ErrorEbmType InitializeGradientsAndHessians(
          );
       } else {
          return InitializeGradientsAndHessiansInternal<k_dynamicClassification>::Func(
-            runtimeLearningTypeOrCountTargetClasses,
+            cRuntimeClasses,
             direction,
             aBag,
             aTargets,
@@ -338,9 +338,9 @@ extern ErrorEbmType InitializeGradientsAndHessians(
          );
       }
    } else {
-      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(cRuntimeClasses));
       return InitializeGradientsAndHessiansInternal<k_regression>::Func(
-         runtimeLearningTypeOrCountTargetClasses,
+         cRuntimeClasses,
          direction,
          aBag,
          aTargets,

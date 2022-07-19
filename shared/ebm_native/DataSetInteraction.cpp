@@ -45,7 +45,7 @@ extern ErrorEbmType ExtractWeights(
 );
 
 INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const ptrdiff_t cClasses,
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
    const BagEbmType * const aBag,
@@ -55,8 +55,8 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
 ) {
    LOG_0(TraceLevelInfo, "Entered ConstructGradientsAndHessians");
 
-   // runtimeLearningTypeOrCountTargetClasses can only be zero if there are zero samples and we shouldn't get here
-   EBM_ASSERT(0 != runtimeLearningTypeOrCountTargetClasses);
+   // cClasses can only be zero if there are zero samples and we shouldn't get here
+   EBM_ASSERT(0 != cClasses);
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(1 <= cSetSamples);
    EBM_ASSERT(nullptr != paGradientsAndHessiansOut);
@@ -64,7 +64,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
 
    ErrorEbmType error;
 
-   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(cClasses);
    EBM_ASSERT(1 <= cScores);
 
    const size_t cStorageItems = bAllocateHessians ? 2 : 1;
@@ -243,13 +243,13 @@ ErrorEbmType DataSetInteraction::Initialize(
 
    ErrorEbmType error;
 
-   ptrdiff_t runtimeLearningTypeOrCountTargetClasses;
-   GetDataSetSharedTarget(pDataSetShared, 0, &runtimeLearningTypeOrCountTargetClasses);
+   ptrdiff_t cClasses;
+   GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
 
    if(0 != cSetSamples) {
-      // runtimeLearningTypeOrCountTargetClasses can only be zero if 
+      // cClasses can only be zero if 
       // there are zero samples and we shouldn't get past this point
-      EBM_ASSERT(0 != runtimeLearningTypeOrCountTargetClasses);
+      EBM_ASSERT(0 != cClasses);
 
       // if cSamples is zero, then we don't need to allocate anything since we won't use them anyways
 
@@ -282,7 +282,7 @@ ErrorEbmType DataSetInteraction::Initialize(
       }
 
       error = ConstructGradientsAndHessians(
-         runtimeLearningTypeOrCountTargetClasses,
+         cClasses,
          bAllocateHessians,
          pDataSetShared,
          aBag,

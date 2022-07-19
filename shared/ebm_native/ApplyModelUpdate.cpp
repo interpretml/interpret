@@ -187,7 +187,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
       "Entered ApplyTermUpdate"
    );
 
-   if(ptrdiff_t { 0 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
+   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The term scores are a tensor with zero 
       // length array logits, which means for our representation that we have zero items in the array total.
       // since we can predit the output with 100% accuracy, our log loss is 0.
@@ -199,7 +199,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
          pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitApplyTermUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyTermUpdate. runtimeLearningTypeOrCountTargetClasses <= 1"
+         "Exited ApplyTermUpdate. cClasses <= 1"
       );
       return Error_None;
    }
@@ -381,7 +381,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateExpanded(
    EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
    EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
-   if(ptrdiff_t { 0 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
+   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
       return Error_None;
    }
 
@@ -392,7 +392,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateExpanded(
    }
 
    const size_t cDimensions = pTerm->GetCountDimensions();
-   size_t cTensorScores = GetCountScores(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cTensorScores = GetCountScores(pBoosterCore->GetCountClasses());
    if(0 != cDimensions) {
       const TermEntry * pTermEntry = pTerm->GetTermEntries();
       const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
@@ -469,7 +469,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdateExpanded(
    // pBoosterCore->GetTerms() can be null if 0 == pBoosterCore->m_cTerms, but we checked that condition above
    EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
-   if(ptrdiff_t { 0 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
+   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
       pBoosterShell->SetTermIndex(iTerm);
       return Error_None;
    }
@@ -483,7 +483,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdateExpanded(
    }
 
    const size_t cDimensions = pTerm->GetCountDimensions();
-   const size_t cScores = GetCountScores(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
    size_t cTensorScores = cScores;
    if(0 != cDimensions) {
       const TermEntry * pTermEntry = pTerm->GetTermEntries();

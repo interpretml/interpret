@@ -21,30 +21,30 @@ namespace DEFINED_ZONE_NAME {
 constexpr static ptrdiff_t k_regression = -1;
 constexpr static ptrdiff_t k_dynamicClassification = 0;
 constexpr static ptrdiff_t k_oneScore = 1;
-INLINE_ALWAYS constexpr static bool IsRegression(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
-   return k_regression == learningTypeOrCountTargetClasses;
+INLINE_ALWAYS constexpr static bool IsRegression(const ptrdiff_t cClasses) noexcept {
+   return k_regression == cClasses;
 }
-INLINE_ALWAYS constexpr static bool IsClassification(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
-   return 0 <= learningTypeOrCountTargetClasses;
+INLINE_ALWAYS constexpr static bool IsClassification(const ptrdiff_t cClasses) noexcept {
+   return 0 <= cClasses;
 }
-INLINE_ALWAYS constexpr static bool IsBinaryClassification(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
+INLINE_ALWAYS constexpr static bool IsBinaryClassification(const ptrdiff_t cClasses) noexcept {
 #ifdef EXPAND_BINARY_LOGITS
-   return UNUSED(learningTypeOrCountTargetClasses), false;
+   return UNUSED(cClasses), false;
 #else // EXPAND_BINARY_LOGITS
-   return 2 == learningTypeOrCountTargetClasses;
+   return 2 == cClasses;
 #endif // EXPAND_BINARY_LOGITS
 }
-INLINE_ALWAYS constexpr static bool IsMulticlass(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
-   return IsClassification(learningTypeOrCountTargetClasses) && !IsBinaryClassification(learningTypeOrCountTargetClasses);
+INLINE_ALWAYS constexpr static bool IsMulticlass(const ptrdiff_t cClasses) noexcept {
+   return IsClassification(cClasses) && !IsBinaryClassification(cClasses);
 }
 
-INLINE_ALWAYS constexpr static size_t GetCountScores(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
-   // this will work for anything except if learningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the 
+INLINE_ALWAYS constexpr static size_t GetCountScores(const ptrdiff_t cClasses) noexcept {
+   // this will work for anything except if cClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the 
    // dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
-   return learningTypeOrCountTargetClasses <= ptrdiff_t { 1 } ? size_t { 1 } : static_cast<size_t>(learningTypeOrCountTargetClasses);
+   return cClasses <= ptrdiff_t { 1 } ? size_t { 1 } : static_cast<size_t>(cClasses);
 #else // EXPAND_BINARY_LOGITS
-   return learningTypeOrCountTargetClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(learningTypeOrCountTargetClasses);
+   return cClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
 #endif // EXPAND_BINARY_LOGITS
 }
 
@@ -54,9 +54,9 @@ INLINE_ALWAYS constexpr static size_t GetCountScores(const ptrdiff_t learningTyp
 // The caller can put pTargetFeature->m_cBins inside the macro call and it will be optimize away if it isn't necessary
 // having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in
 // places where you couldn't do so with variable loop iterations
-#define GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(MACRO_compilerLearningTypeOrCountTargetClasses, MACRO_runtimeLearningTypeOrCountTargetClasses) \
-   (k_dynamicClassification == (MACRO_compilerLearningTypeOrCountTargetClasses) ? (MACRO_runtimeLearningTypeOrCountTargetClasses) : \
-   (MACRO_compilerLearningTypeOrCountTargetClasses))
+#define GET_COUNT_CLASSES(MACRO_cCompilerClasses, MACRO_cRuntimeClasses) \
+   (k_dynamicClassification == (MACRO_cCompilerClasses) ? (MACRO_cRuntimeClasses) : \
+   (MACRO_cCompilerClasses))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed

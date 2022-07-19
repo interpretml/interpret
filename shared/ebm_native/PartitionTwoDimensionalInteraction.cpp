@@ -29,7 +29,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
+template<ptrdiff_t cCompilerClasses>
 class PartitionTwoDimensionalInteractionInternal final {
 public:
 
@@ -47,7 +47,7 @@ public:
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+      constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification>();
 
@@ -57,12 +57,12 @@ public:
       auto * const aBinsDebugCopy = aBinsBaseDebugCopy->Specialize<FloatBig, bClassification>();
 #endif // NDEBUG
 
-      const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-         compilerLearningTypeOrCountTargetClasses,
-         pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses()
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+         cCompilerClasses,
+         pInteractionCore->GetCountClasses()
       );
 
-      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(cClasses);
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
       auto * const pTotals00 = IndexBin(cBytesPerBin, aAuxiliaryBins, 0);
@@ -104,8 +104,8 @@ public:
             aiStart[1] = iBin2;
 
             EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
-               learningTypeOrCountTargetClasses,
+            TensorTotalsSum<cCompilerClasses, 2>(
+               cClasses,
                pTerm,
                aBins,
                aiStart,
@@ -118,8 +118,8 @@ public:
                );
             if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals00->GetCountSamples())) {
                EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-               TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
-                  learningTypeOrCountTargetClasses,
+               TensorTotalsSum<cCompilerClasses, 2>(
+                  cClasses,
                   pTerm,
                   aBins,
                   aiStart,
@@ -132,8 +132,8 @@ public:
                   );
                if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals01->GetCountSamples())) {
                   EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-                  TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
-                     learningTypeOrCountTargetClasses,
+                  TensorTotalsSum<cCompilerClasses, 2>(
+                     cClasses,
                      pTerm,
                      aBins,
                      aiStart,
@@ -146,8 +146,8 @@ public:
                      );
                   if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals10->GetCountSamples())) {
                      EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-                     TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
-                        learningTypeOrCountTargetClasses,
+                     TensorTotalsSum<cCompilerClasses, 2>(
+                        cClasses,
                         pTerm,
                         aBins,
                         aiStart,
@@ -384,7 +384,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+template<ptrdiff_t cPossibleClasses>
 class PartitionTwoDimensionalInteractionTarget final {
 public:
 
@@ -402,15 +402,15 @@ public:
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
-      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
+      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
-      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+      const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
-      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return PartitionTwoDimensionalInteractionInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
+      if(cPossibleClasses == cRuntimeClasses) {
+         return PartitionTwoDimensionalInteractionInternal<cPossibleClasses>::Func(
             pInteractionCore,
             pTerm,
             options,
@@ -423,7 +423,7 @@ public:
 #endif // NDEBUG
          );
       } else {
-         return PartitionTwoDimensionalInteractionTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
+         return PartitionTwoDimensionalInteractionTarget<cPossibleClasses + 1>::Func(
             pInteractionCore,
             pTerm,
             options,
@@ -440,7 +440,7 @@ public:
 };
 
 template<>
-class PartitionTwoDimensionalInteractionTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class PartitionTwoDimensionalInteractionTarget<k_cCompilerClassesMax + 1> final {
 public:
 
    PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
@@ -457,10 +457,10 @@ public:
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pInteractionCore->GetCountClasses()));
+      EBM_ASSERT(k_cCompilerClassesMax < pInteractionCore->GetCountClasses());
 
       return PartitionTwoDimensionalInteractionInternal<k_dynamicClassification>::Func(
          pInteractionCore,
@@ -489,9 +489,9 @@ extern double PartitionTwoDimensionalInteraction(
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
 
-   if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+   if(IsClassification(cRuntimeClasses)) {
       return PartitionTwoDimensionalInteractionTarget<2>::Func(
          pInteractionCore,
          pTerm,
@@ -505,7 +505,7 @@ extern double PartitionTwoDimensionalInteraction(
 #endif // NDEBUG
       );
    } else {
-      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(cRuntimeClasses));
       return PartitionTwoDimensionalInteractionInternal<k_regression>::Func(
          pInteractionCore,
          pTerm,

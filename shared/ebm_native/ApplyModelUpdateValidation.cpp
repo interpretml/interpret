@@ -29,32 +29,32 @@ namespace DEFINED_ZONE_NAME {
 
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
+template<ptrdiff_t cCompilerClasses>
 class ApplyTermUpdateValidationZeroFeatures final {
 public:
 
    ApplyTermUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
 
    static double Func(BoosterShell * const pBoosterShell) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
-      static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
+      static_assert(IsClassification(cCompilerClasses), "must be classification");
+      static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
       DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
       const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
 #ifndef NDEBUG
       FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
-      const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-         compilerLearningTypeOrCountTargetClasses,
-         runtimeLearningTypeOrCountTargetClasses
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+         cCompilerClasses,
+         cRuntimeClasses
       );
-      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(cClasses);
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
@@ -79,7 +79,7 @@ public:
             const FloatFast sampleScore = *pSampleScore + updateScore;
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+            if(IsMulticlass(cCompilerClasses)) {
                if(size_t { 0 } == iScore) {
                   EBM_ASSERT(0 == updateScore);
                   EBM_ASSERT(0 == sampleScore);
@@ -237,28 +237,28 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+template<ptrdiff_t cPossibleClasses>
 class ApplyTermUpdateValidationZeroFeaturesTarget final {
 public:
 
    ApplyTermUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static double Func(BoosterShell * const pBoosterShell) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
-      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
+      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
-      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return ApplyTermUpdateValidationZeroFeatures<compilerLearningTypeOrCountTargetClassesPossible>::Func(
+      if(cPossibleClasses == cRuntimeClasses) {
+         return ApplyTermUpdateValidationZeroFeatures<cPossibleClasses>::Func(
             pBoosterShell
          );
       } else {
          return ApplyTermUpdateValidationZeroFeaturesTarget<
-            compilerLearningTypeOrCountTargetClassesPossible + 1
+            cPossibleClasses + 1
          >::Func(
             pBoosterShell
          );
@@ -267,22 +267,22 @@ public:
 };
 
 template<>
-class ApplyTermUpdateValidationZeroFeaturesTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class ApplyTermUpdateValidationZeroFeaturesTarget<k_cCompilerClassesMax + 1> final {
 public:
 
    ApplyTermUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static double Func(BoosterShell * const pBoosterShell) {
-      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
+      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
 
       return ApplyTermUpdateValidationZeroFeatures<k_dynamicClassification>::Func(pBoosterShell);
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerBitPack>
+template<ptrdiff_t cCompilerClasses, size_t compilerBitPack>
 class ApplyTermUpdateValidationInternal final {
 public:
 
@@ -292,14 +292,14 @@ public:
       BoosterShell * const pBoosterShell,
       const Term * const pTerm
    ) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
-      static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
+      static_assert(IsClassification(cCompilerClasses), "must be classification");
+      static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
       const size_t runtimeBitPack = pTerm->GetBitPack();
       DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
       const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
@@ -307,11 +307,11 @@ public:
       FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
-      const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-         compilerLearningTypeOrCountTargetClasses,
-         runtimeLearningTypeOrCountTargetClasses
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+         cCompilerClasses,
+         cRuntimeClasses
       );
-      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(cClasses);
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
       EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
@@ -364,7 +364,7 @@ public:
                const FloatFast sampleScore = *pSampleScore + updateScore;
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-               if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+               if(IsMulticlass(cCompilerClasses)) {
                   if(size_t { 0 } == iScore) {
                      EBM_ASSERT(0 == updateScore);
                      EBM_ASSERT(0 == sampleScore);
@@ -623,7 +623,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+template<ptrdiff_t cPossibleClasses>
 class ApplyTermUpdateValidationNormalTarget final {
 public:
 
@@ -633,22 +633,22 @@ public:
       BoosterShell * const pBoosterShell,
       const Term * const pTerm
    ) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
-      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
+      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
-      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return ApplyTermUpdateValidationInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackDynamic>::Func(
+      if(cPossibleClasses == cRuntimeClasses) {
+         return ApplyTermUpdateValidationInternal<cPossibleClasses, k_cItemsPerBitPackDynamic>::Func(
             pBoosterShell,
             pTerm
          );
       } else {
          return ApplyTermUpdateValidationNormalTarget<
-            compilerLearningTypeOrCountTargetClassesPossible + 1
+            cPossibleClasses + 1
          >::Func(
             pBoosterShell,
             pTerm
@@ -658,7 +658,7 @@ public:
 };
 
 template<>
-class ApplyTermUpdateValidationNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class ApplyTermUpdateValidationNormalTarget<k_cCompilerClassesMax + 1> final {
 public:
 
    ApplyTermUpdateValidationNormalTarget() = delete; // this is a static class.  Do not construct
@@ -667,10 +667,10 @@ public:
       BoosterShell * const pBoosterShell,
       const Term * const pTerm
    ) {
-      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
+      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
 
       return ApplyTermUpdateValidationInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
@@ -679,7 +679,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerBitPack>
+template<ptrdiff_t cCompilerClasses, size_t compilerBitPack>
 class ApplyTermUpdateValidationSIMDPacking final {
 public:
 
@@ -695,13 +695,13 @@ public:
       EBM_ASSERT(runtimeBitPack <= k_cBitsForStorageType);
       static_assert(compilerBitPack <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
       if(compilerBitPack == runtimeBitPack) {
-         return ApplyTermUpdateValidationInternal<compilerLearningTypeOrCountTargetClasses, compilerBitPack>::Func(
+         return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack>::Func(
             pBoosterShell,
             pTerm
          );
       } else {
          return ApplyTermUpdateValidationSIMDPacking<
-            compilerLearningTypeOrCountTargetClasses,
+            cCompilerClasses,
             GetNextCountItemsBitPacked(compilerBitPack)
          >::Func(
             pBoosterShell,
@@ -711,8 +711,8 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyTermUpdateValidationSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic> final {
+template<ptrdiff_t cCompilerClasses>
+class ApplyTermUpdateValidationSIMDPacking<cCompilerClasses, k_cItemsPerBitPackDynamic> final {
 public:
 
    ApplyTermUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
@@ -724,7 +724,7 @@ public:
       EBM_ASSERT(1 <= pTerm->GetBitPack());
       EBM_ASSERT(pTerm->GetBitPack() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
       return ApplyTermUpdateValidationInternal<
-         compilerLearningTypeOrCountTargetClasses, 
+         cCompilerClasses, 
          k_cItemsPerBitPackDynamic
       >::Func(
          pBoosterShell,
@@ -733,7 +733,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+template<ptrdiff_t cPossibleClasses>
 class ApplyTermUpdateValidationSIMDTarget final {
 public:
 
@@ -743,17 +743,17 @@ public:
       BoosterShell * const pBoosterShell,
       const Term * const pTerm
    ) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
-      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
+      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
-      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
+      if(cPossibleClasses == cRuntimeClasses) {
          return ApplyTermUpdateValidationSIMDPacking<
-            compilerLearningTypeOrCountTargetClassesPossible,
+            cPossibleClasses,
             k_cItemsPerBitPackMax
          >::Func(
             pBoosterShell,
@@ -761,7 +761,7 @@ public:
          );
       } else {
          return ApplyTermUpdateValidationSIMDTarget<
-            compilerLearningTypeOrCountTargetClassesPossible + 1
+            cPossibleClasses + 1
          >::Func(
             pBoosterShell,
             pTerm
@@ -771,7 +771,7 @@ public:
 };
 
 template<>
-class ApplyTermUpdateValidationSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class ApplyTermUpdateValidationSIMDTarget<k_cCompilerClassesMax + 1> final {
 public:
 
    ApplyTermUpdateValidationSIMDTarget() = delete; // this is a static class.  Do not construct
@@ -780,10 +780,10 @@ public:
       BoosterShell * const pBoosterShell,
       const Term * const pTerm
    ) {
-      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
+      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
 
       return ApplyTermUpdateValidationSIMDPacking<
          k_dynamicClassification,
@@ -802,14 +802,14 @@ extern double ApplyTermUpdateValidation(
    LOG_0(TraceLevelVerbose, "Entered ApplyTermUpdateValidation");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
    double ret;
    if(0 == pTerm->GetCountSignificantDimensions()) {
-      if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+      if(IsClassification(cRuntimeClasses)) {
          ret = ApplyTermUpdateValidationZeroFeaturesTarget<2>::Func(pBoosterShell);
       } else {
-         EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+         EBM_ASSERT(IsRegression(cRuntimeClasses));
          ret = ApplyTermUpdateValidationZeroFeatures<k_regression>::Func(pBoosterShell);
       }
    } else {
@@ -826,13 +826,13 @@ extern double ApplyTermUpdateValidation(
          // 8 - do all 8 at a time without an inner loop.  This is one of the most common values.  256 binned values
          // 7,6,5,4,3,2,1 - use a mask to exclude the non-used conditions and process them like the 8.  These are rare since they require more than 256 values
 
-         if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+         if(IsClassification(cRuntimeClasses)) {
             ret = ApplyTermUpdateValidationSIMDTarget<2>::Func(
                pBoosterShell,
                pTerm
             );
          } else {
-            EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+            EBM_ASSERT(IsRegression(cRuntimeClasses));
             ret = ApplyTermUpdateValidationSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
                pBoosterShell,
                pTerm
@@ -845,13 +845,13 @@ extern double ApplyTermUpdateValidation(
          // 4 class, etc, but by the time we get to 8 loops with exp inside and a lot of other instructures we should worry that our code expansion
          // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
 
-         if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+         if(IsClassification(cRuntimeClasses)) {
             ret = ApplyTermUpdateValidationNormalTarget<2>::Func(
                pBoosterShell,
                pTerm
             );
          } else {
-            EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+            EBM_ASSERT(IsRegression(cRuntimeClasses));
             ret = ApplyTermUpdateValidationInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
                pBoosterShell,
                pTerm
@@ -869,7 +869,7 @@ extern double ApplyTermUpdateValidation(
       // Set it to that so that this round of boosting won't be accepted if our caller is using early stopping
       ret = std::numeric_limits<double>::max();
    } else {
-      if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+      if(IsClassification(cRuntimeClasses)) {
          if(UNLIKELY(ret < 0)) {
             // regression can't be negative since squares are pretty well insulated from ever doing that
 
@@ -879,7 +879,7 @@ extern double ApplyTermUpdateValidation(
             // doesn't ever return a negative number for numbers exactly equal to 1 or higher
             // BUT we're going to be using or trying approximate log functions, and those might not
             // be guaranteed to return a positive or zero number, so let's just always check for numbers less than zero and round up
-            EBM_ASSERT(IsMulticlass(runtimeLearningTypeOrCountTargetClasses));
+            EBM_ASSERT(IsMulticlass(cRuntimeClasses));
 
             // because of floating point inexact reasons, ComputeSingleSampleLogLossMulticlass can return a negative number
             // so correct this before we return.  Any negative numbers were really meant to be zero

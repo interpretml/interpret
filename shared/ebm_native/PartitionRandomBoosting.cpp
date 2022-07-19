@@ -30,7 +30,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
+template<ptrdiff_t cCompilerClasses>
 class PartitionRandomBoostingInternal final {
 public:
 
@@ -45,7 +45,7 @@ public:
    ) {
       // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
-      constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+      constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       // TODO: add a new random_rety option that will retry random splitting for N times and select the one with the best gain
       // TODO: accept the minimum number of items in a split and then refuse to allow the split if we violate it, or
@@ -58,12 +58,12 @@ public:
       ErrorEbmType error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-      const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-         compilerLearningTypeOrCountTargetClasses,
-         pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+         cCompilerClasses,
+         pBoosterCore->GetCountClasses()
       );
 
-      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(cClasses);
       EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
@@ -575,7 +575,7 @@ public:
                         pGradientPair[iScore].GetSumHessians()
                      );
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                     if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                     if(IsMulticlass(cCompilerClasses)) {
                         if(size_t { 0 } == iScore) {
                            zeroLogit = updateScore;
                         }
@@ -583,7 +583,7 @@ public:
                      }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
                   } else {
-                     EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+                     EBM_ASSERT(IsRegression(cCompilerClasses));
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
                         pGradientPair[iScore].m_sumGradients,
                         pCollapsedBin2->GetWeight()
@@ -604,7 +604,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+template<ptrdiff_t cPossibleClasses>
 class PartitionRandomBoostingTarget final {
 public:
 
@@ -617,16 +617,16 @@ public:
       const IntEbmType * const aLeavesMax,
       double * const pTotalGain
    ) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
-      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
+      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
-      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return PartitionRandomBoostingInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
+      if(cPossibleClasses == cRuntimeClasses) {
+         return PartitionRandomBoostingInternal<cPossibleClasses>::Func(
             pBoosterShell,
             pTerm,
             options,
@@ -634,7 +634,7 @@ public:
             pTotalGain
          );
       } else {
-         return PartitionRandomBoostingTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
+         return PartitionRandomBoostingTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
             pTerm,
             options,
@@ -646,7 +646,7 @@ public:
 };
 
 template<>
-class PartitionRandomBoostingTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class PartitionRandomBoostingTarget<k_cCompilerClassesMax + 1> final {
 public:
 
    PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
@@ -658,10 +658,10 @@ public:
       const IntEbmType * const aLeavesMax,
       double * const pTotalGain
    ) {
-      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
+      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
 
       return PartitionRandomBoostingInternal<k_dynamicClassification>::Func(
          pBoosterShell,
@@ -681,9 +681,9 @@ extern ErrorEbmType PartitionRandomBoosting(
    double * const pTotalGain
 ) {
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
-   if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+   if(IsClassification(cRuntimeClasses)) {
       return PartitionRandomBoostingTarget<2>::Func(
          pBoosterShell,
          pTerm,
@@ -692,7 +692,7 @@ extern ErrorEbmType PartitionRandomBoosting(
          pTotalGain
       );
    } else {
-      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(cRuntimeClasses));
       return PartitionRandomBoostingInternal<k_regression>::Func(
          pBoosterShell,
          pTerm,

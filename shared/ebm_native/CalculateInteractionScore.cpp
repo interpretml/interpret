@@ -33,7 +33,7 @@ namespace DEFINED_ZONE_NAME {
 extern void BinInteraction(InteractionShell * const pInteractionShell, const Term * const pTerm);
 
 extern void TensorTotalsBuild(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const ptrdiff_t cClasses,
    const Term * const pTerm,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
@@ -68,8 +68,8 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    // it, and it's taking up precious memory.  We should eliminate the hessian term HERE in our datastructures OR we should think whether we can 
    // use the hessian as part of the gain function!!!
 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
-   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
+   const bool bClassification = IsClassification(cClasses);
 
    LOG_0(TraceLevelVerbose, "Entered CalcInteractionStrengthInternal");
 
@@ -109,7 +109,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       ++pTermEntry;
    } while(pTermEntriesEnd != pTermEntry);
 
-   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(cClasses);
 
    if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || 
       IsOverflowBinSize<FloatBig>(bClassification, cScores)) 
@@ -193,7 +193,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       IndexBin(cBytesPerBinBig, aBinsBig, cTotalBinsMainSpace);
 
    TensorTotalsBuild(
-      runtimeLearningTypeOrCountTargetClasses,
+      cClasses,
       pTerm,
       aAuxiliaryBins,
       aBinsBig
@@ -412,10 +412,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       }
       return Error_None;
    }
-   // GetRuntimeLearningTypeOrCountTargetClasses cannot be zero if there is 1 or more samples
-   EBM_ASSERT(ptrdiff_t { 0 } != pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   // GetCountClasses cannot be zero if there is 1 or more samples
+   EBM_ASSERT(ptrdiff_t { 0 } != pInteractionCore->GetCountClasses());
 
-   if(ptrdiff_t { 1 } == pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
+   if(ptrdiff_t { 1 } == pInteractionCore->GetCountClasses()) {
       LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength target with 1 class perfectly predicts the target");
       if(nullptr != avgInteractionStrengthOut) {
          *avgInteractionStrengthOut = double { 0 };

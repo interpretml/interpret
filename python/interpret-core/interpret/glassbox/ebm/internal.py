@@ -230,7 +230,7 @@ class Native:
     def stratified_sampling_without_replacement(
         self, 
         random_seed, 
-        count_target_classes,
+        n_classes,
         count_training_samples,
         count_validation_samples,
         targets
@@ -245,7 +245,7 @@ class Native:
             # to generate non-deterministic outputs since it doesn't need to be cryptographically secure
             random_seed = self.generate_nondeterministic_seed()
 
-        count_target_classes = ct.c_int64(count_target_classes)
+        n_classes = ct.c_int64(n_classes)
         count_training_samples = ct.c_int64(count_training_samples)
         count_validation_samples = ct.c_int64(count_validation_samples)
 
@@ -253,7 +253,7 @@ class Native:
 
         return_code = self._unsafe.StratifiedSamplingWithoutReplacement(
             random_seed,
-            count_target_classes,
+            n_classes,
             count_training_samples,
             count_validation_samples,
             Native._make_pointer(targets, np.int64),
@@ -624,7 +624,7 @@ class Native:
         self._unsafe.StratifiedSamplingWithoutReplacement.argtypes = [
             # int32_t randomSeed
             ct.c_int32,
-            # int64_t countTargetClasses
+            # int64_t countClasses
             ct.c_int64,
             # int64_t countTrainingSamples
             ct.c_int64,
@@ -803,7 +803,7 @@ class Native:
         self._unsafe.FillWeight.restype = ct.c_int32
 
         self._unsafe.SizeClassificationTarget.argtypes = [
-            # int64_t countTargetClasses
+            # int64_t countClasses
             ct.c_int64,
             # int64_t countSamples
             ct.c_int64,
@@ -813,7 +813,7 @@ class Native:
         self._unsafe.SizeClassificationTarget.restype = ct.c_int64
 
         self._unsafe.FillClassificationTarget.argtypes = [
-            # int64_t countTargetClasses
+            # int64_t countClasses
             ct.c_int64,
             # int64_t countSamples
             ct.c_int64,

@@ -48,7 +48,7 @@ public:
    void Destruct();
 
    ErrorEbmType Initialize(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      const ptrdiff_t cClasses,
       const bool bAllocateGradients,
       const bool bAllocateHessians,
       const bool bAllocateSampleScores,

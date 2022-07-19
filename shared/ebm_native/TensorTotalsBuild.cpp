@@ -146,14 +146,14 @@ namespace DEFINED_ZONE_NAME {
 // TODO: build a pair and triple specific version of this function.  For pairs we can get ride of the pPrevious and just use the actual cell at (-1,-1) from our current cell, and we can use two loops with everything in memory [look at code above from before we incoporated the previous totals].  Triples would also benefit from pulling things out since we have low iterations of the inner loop and we can access indicies directly without additional add/subtract/bit operations.  Beyond triples, the combinatorial choices start to explode, so we should probably use this general N-dimensional code.
 // TODO: after we build pair and triple specific versions of this function, we don't need to have a compiler cCompilerDimensions, since the compiler won't really be able to simpify the loops that are exploding in dimensionality
 // TODO: sort our N-dimensional groups at initialization so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!  After we determine the splits, we can undo the re-ordering for splitting the tensor, which has just a few cells, so will be efficient
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
+template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
 class TensorTotalsBuildInternal final {
 public:
 
    TensorTotalsBuildInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      const ptrdiff_t cRuntimeClasses,
       const Term * const pTerm,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
@@ -162,7 +162,7 @@ public:
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+      constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       struct FastTotalState {
          Bin<FloatBig, bClassification> * m_pDimensionalCur;
@@ -188,11 +188,11 @@ public:
       EBM_ASSERT(1 <= cSignificantDimensions);
       EBM_ASSERT(cSignificantDimensions <= pTerm->GetCountDimensions());
 
-      const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-         compilerLearningTypeOrCountTargetClasses,
-         runtimeLearningTypeOrCountTargetClasses
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+         cCompilerClasses,
+         cRuntimeClasses
       );
-      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(cClasses);
       EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
@@ -292,7 +292,7 @@ public:
                aiLast[iDebugDimension] = fastTotalState[iDebugDimension].m_iCur;
             }
             TensorTotalsSumDebugSlow<bClassification>(
-               runtimeLearningTypeOrCountTargetClasses,
+               cClasses,
                pTerm,
                aBinsDebugCopy,
                aiStart,
@@ -336,14 +336,14 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensionsPossible>
+template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensionsPossible>
 class TensorTotalsBuildDimensions final {
 public:
 
    TensorTotalsBuildDimensions() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      const ptrdiff_t cRuntimeClasses,
       const Term * const pTerm,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
@@ -360,8 +360,8 @@ public:
       EBM_ASSERT(1 <= cRuntimeDimensions);
       EBM_ASSERT(cRuntimeDimensions <= k_cDimensionsMax);
       if(cCompilerDimensionsPossible == cRuntimeDimensions) {
-         TensorTotalsBuildInternal<compilerLearningTypeOrCountTargetClasses, cCompilerDimensionsPossible>::Func(
-            runtimeLearningTypeOrCountTargetClasses,
+         TensorTotalsBuildInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(
+            cRuntimeClasses,
             pTerm,
             aAuxiliaryBinsBase,
             aBinsBase
@@ -371,8 +371,8 @@ public:
 #endif // NDEBUG
          );
       } else {
-         TensorTotalsBuildDimensions<compilerLearningTypeOrCountTargetClasses, cCompilerDimensionsPossible + 1>::Func(
-            runtimeLearningTypeOrCountTargetClasses,
+         TensorTotalsBuildDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(
+            cRuntimeClasses,
             pTerm,
             aAuxiliaryBinsBase,
             aBinsBase
@@ -385,14 +385,14 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class TensorTotalsBuildDimensions<compilerLearningTypeOrCountTargetClasses, k_cCompilerOptimizedCountDimensionsMax + 1> final {
+template<ptrdiff_t cCompilerClasses>
+class TensorTotalsBuildDimensions<cCompilerClasses, k_cCompilerOptimizedCountDimensionsMax + 1> final {
 public:
 
    TensorTotalsBuildDimensions() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      const ptrdiff_t cRuntimeClasses,
       const Term * const pTerm,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
@@ -403,8 +403,8 @@ public:
    ) {
       EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
       EBM_ASSERT(pTerm->GetCountSignificantDimensions() <= k_cDimensionsMax);
-      TensorTotalsBuildInternal<compilerLearningTypeOrCountTargetClasses, k_dynamicDimensions>::Func(
-         runtimeLearningTypeOrCountTargetClasses,
+      TensorTotalsBuildInternal<cCompilerClasses, k_dynamicDimensions>::Func(
+         cRuntimeClasses,
          pTerm,
          aAuxiliaryBinsBase,
          aBinsBase
@@ -416,14 +416,14 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+template<ptrdiff_t cPossibleClasses>
 class TensorTotalsBuildTarget final {
 public:
 
    TensorTotalsBuildTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      const ptrdiff_t cRuntimeClasses,
       const Term * const pTerm,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
@@ -432,15 +432,15 @@ public:
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
-      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
+      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
-      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
-      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         TensorTotalsBuildDimensions<compilerLearningTypeOrCountTargetClassesPossible, 2>::Func(
-            runtimeLearningTypeOrCountTargetClasses,
+      if(cPossibleClasses == cRuntimeClasses) {
+         TensorTotalsBuildDimensions<cPossibleClasses, 2>::Func(
+            cRuntimeClasses,
             pTerm,
             aAuxiliaryBinsBase,
             aBinsBase
@@ -450,8 +450,8 @@ public:
 #endif // NDEBUG
          );
       } else {
-         TensorTotalsBuildTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            runtimeLearningTypeOrCountTargetClasses,
+         TensorTotalsBuildTarget<cPossibleClasses + 1>::Func(
+            cRuntimeClasses,
             pTerm,
             aAuxiliaryBinsBase,
             aBinsBase
@@ -465,13 +465,13 @@ public:
 };
 
 template<>
-class TensorTotalsBuildTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class TensorTotalsBuildTarget<k_cCompilerClassesMax + 1> final {
 public:
 
    TensorTotalsBuildTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      const ptrdiff_t cRuntimeClasses,
       const Term * const pTerm,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
@@ -480,13 +480,13 @@ public:
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < runtimeLearningTypeOrCountTargetClasses);
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(k_cCompilerClassesMax < cRuntimeClasses);
 
       TensorTotalsBuildDimensions<k_dynamicClassification, 2>::Func(
-         runtimeLearningTypeOrCountTargetClasses,
+         cRuntimeClasses,
          pTerm,
          aAuxiliaryBinsBase,
          aBinsBase
@@ -499,7 +499,7 @@ public:
 };
 
 extern void TensorTotalsBuild(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const ptrdiff_t cClasses,
    const Term * const pTerm,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
@@ -508,9 +508,9 @@ extern void TensorTotalsBuild(
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
-   if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+   if(IsClassification(cClasses)) {
       TensorTotalsBuildTarget<2>::Func(
-         runtimeLearningTypeOrCountTargetClasses,
+         cClasses,
          pTerm,
          aAuxiliaryBinsBase,
          aBinsBase
@@ -520,9 +520,9 @@ extern void TensorTotalsBuild(
 #endif // NDEBUG
       );
    } else {
-      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(cClasses));
       TensorTotalsBuildDimensions<k_regression, 2>::Func(
-         runtimeLearningTypeOrCountTargetClasses,
+         cClasses,
          pTerm,
          aAuxiliaryBinsBase,
          aBinsBase
@@ -542,13 +542,13 @@ extern void TensorTotalsBuild(
 //   size_t m_cBins;
 //};
 //
-//template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
-//void BuildFastTotals(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const Term * const pTerm, Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aBins) {
+//template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
+//void BuildFastTotals(const ptrdiff_t cRuntimeClasses, const Term * const pTerm, Bin<IsClassification(cCompilerClasses)> * const aBins) {
 //   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
-//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cScores)); // we're accessing allocated memory
-//   const size_t cBytesPerBin = GetBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses));
+//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(cCompilerClasses)>(cScores)); // we're accessing allocated memory
+//   const size_t cBytesPerBin = GetBinSize<IsClassification(cCompilerClasses)>(GET_VECTOR_LENGTH(cCompilerClasses, cRuntimeClasses));
 //
 //#ifndef NDEBUG
 //   // make a copy of the original bins for debugging purposes
@@ -562,8 +562,8 @@ extern void TensorTotalsBuild(
 //   const size_t cBytesBufferDebug = cTotalBinsDebug * cBytesPerBin;
 //   DO : ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> technically, adding cBytesPerBin could overflow so we should handle that instead of asserting
 //   EBM_ASSERT(IsAddError(cBytesBufferDebug, cBytesPerBin)); // we're just allocating one extra bin.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
-//   Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aBinsDebugCopy = static_cast<Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesBufferDebug + cBytesPerBin));
-//   Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pDebugBin = nullptr;
+//   Bin<IsClassification(cCompilerClasses)> * const aBinsDebugCopy = static_cast<Bin<IsClassification(cCompilerClasses)> *>(malloc(cBytesBufferDebug + cBytesPerBin));
+//   Bin<IsClassification(cCompilerClasses)> * const pDebugBin = nullptr;
 //   if(nullptr != aBinsDebugCopy) {
 //      // if we can't obtain the memory, then don't do the comparison and exit
 //      memcpy(aBinsDebugCopy, aBins, cBytesBufferDebug);
@@ -585,7 +585,7 @@ extern void TensorTotalsBuild(
 //   static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 //   EBM_ASSERT(cDimensions < k_cBitsForSizeT);
 //   const size_t permuteVectorEnd = size_t { 1 } << cDimensions;
-//   Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pBin = aBins;
+//   Bin<IsClassification(cCompilerClasses)> * pBin = aBins;
 //
 //   goto skip_intro;
 //
@@ -602,7 +602,7 @@ extern void TensorTotalsBuild(
 //
 //      size_t permuteVector = 1;
 //      do {
-//         Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTargetBin = pBin;
+//         Bin<IsClassification(cCompilerClasses)> * pTargetBin = pBin;
 //         bool bPositive = false;
 //         size_t permuteVectorDestroy = permuteVector;
 //         ptrdiff_t multiplyDimension = -1;
@@ -621,9 +621,9 @@ extern void TensorTotalsBuild(
 //            permuteVectorDestroy >>= 1;
 //         } while(0 != permuteVectorDestroy);
 //         if(bPositive) {
-//            pBin->Add(*pTargetBin, runtimeLearningTypeOrCountTargetClasses);
+//            pBin->Add(*pTargetBin, cRuntimeClasses);
 //         } else {
-//            pBin->Subtract(*pTargetBin, runtimeLearningTypeOrCountTargetClasses);
+//            pBin->Subtract(*pTargetBin, cRuntimeClasses);
 //         }
 //      skip_group:
 //         ++permuteVector;
@@ -638,7 +638,7 @@ extern void TensorTotalsBuild(
 //            aiStart[iDebugDimension] = 0;
 //            aiLast[iDebugDimension] = currentIndexAndCountBins[iDebugDimension].m_iCur;
 //         }
-//         TensorTotalsSumDebugSlow<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aBinsDebugCopy, aiStart, aiLast, pDebugBin);
+//         TensorTotalsSumDebugSlow<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBinsDebugCopy, aiStart, aiLast, pDebugBin);
 //         EBM_ASSERT(pDebugBin->GetCountSamples() == pBin->GetCountSamples());
 //
 //         free(aBinsDebugCopy);
@@ -671,13 +671,13 @@ extern void TensorTotalsBuild(
 //   ptrdiff_t m_multipleTotal;
 //};
 //
-//template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
-//void BuildFastTotals(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const Term * const pTerm, Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aBins) {
+//template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
+//void BuildFastTotals(const ptrdiff_t cRuntimeClasses, const Term * const pTerm, Bin<IsClassification(cCompilerClasses)> * const aBins) {
 //   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
-//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cScores)); // we're accessing allocated memory
-//   const size_t cBytesPerBin = GetBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses));
+//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(cCompilerClasses)>(cScores)); // we're accessing allocated memory
+//   const size_t cBytesPerBin = GetBinSize<IsClassification(cCompilerClasses)>(GET_VECTOR_LENGTH(cCompilerClasses, cRuntimeClasses));
 //
 //#ifndef NDEBUG
 //   // make a copy of the original bins for debugging purposes
@@ -691,8 +691,8 @@ extern void TensorTotalsBuild(
 //   const size_t cBytesBufferDebug = cTotalBinsDebug * cBytesPerBin;
 //   DO : ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> technically, adding cBytesPerBin could overflow so we should handle that instead of asserting
 //   EBM_ASSERT(IsAddError(cBytesBufferDebug, cBytesPerBin)); // we're just allocating one extra bin.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
-//   Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aBinsDebugCopy = static_cast<Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesBufferDebug + cBytesPerBin));
-//   Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pDebugBin = nullptr;
+//   Bin<IsClassification(cCompilerClasses)> * const aBinsDebugCopy = static_cast<Bin<IsClassification(cCompilerClasses)> *>(malloc(cBytesBufferDebug + cBytesPerBin));
+//   Bin<IsClassification(cCompilerClasses)> * const pDebugBin = nullptr;
 //   if(nullptr != aBinsDebugCopy) {
 //      // if we can't obtain the memory, then don't do the comparison and exit
 //      memcpy(aBinsDebugCopy, aBins, cBytesBufferDebug);
@@ -716,7 +716,7 @@ extern void TensorTotalsBuild(
 //   static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 //   EBM_ASSERT(cDimensions < k_cBitsForSizeT);
 //   const size_t permuteVectorEnd = size_t { 1 } << cDimensions;
-//   Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pBin = aBins;
+//   Bin<IsClassification(cCompilerClasses)> * pBin = aBins;
 //
 //   goto skip_intro;
 //
@@ -733,7 +733,7 @@ extern void TensorTotalsBuild(
 //
 //      size_t permuteVector = 1;
 //      do {
-//         Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTargetBin = pBin;
+//         Bin<IsClassification(cCompilerClasses)> * pTargetBin = pBin;
 //         bool bPositive = false;
 //         size_t permuteVectorDestroy = permuteVector;
 //         ptrdiff_t multipleTotal = -1;
@@ -752,9 +752,9 @@ extern void TensorTotalsBuild(
 //            permuteVectorDestroy >>= 1;
 //         } while(0 != permuteVectorDestroy);
 //         if(bPositive) {
-//            pBin->Add(*pTargetBin, runtimeLearningTypeOrCountTargetClasses);
+//            pBin->Add(*pTargetBin, cRuntimeClasses);
 //         } else {
-//            pBin->Subtract(*pTargetBin, runtimeLearningTypeOrCountTargetClasses);
+//            pBin->Subtract(*pTargetBin, cRuntimeClasses);
 //         }
 //      skip_group:
 //         ++permuteVector;
@@ -771,7 +771,7 @@ extern void TensorTotalsBuild(
 //            aiLast[iDebugDimension] = static_cast<size_t>(currentIndexAndCountBins[iDebugDimension].multipliedIndexCur / multipleTotalDebug);
 //            multipleTotalDebug = currentIndexAndCountBins[iDebugDimension].multipleTotal;
 //         }
-//         TensorTotalsSumDebugSlow<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aBinsDebugCopy, aiStart, aiLast, pDebugBin);
+//         TensorTotalsSumDebugSlow<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBinsDebugCopy, aiStart, aiLast, pDebugBin);
 //         EBM_ASSERT(pDebugBin->GetCountSamples() == pBin->GetCountSamples());
 //         free(aBinsDebugCopy);
 //      }
@@ -807,10 +807,10 @@ extern void TensorTotalsBuild(
 //   ptrdiff_t m_multipliedIndexCur;
 //   ptrdiff_t m_multipleTotal;
 //};
-//template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
-//void BuildFastTotalsZeroMemoryIncrease(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const Term * const pTerm, Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aBins
+//template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
+//void BuildFastTotalsZeroMemoryIncrease(const ptrdiff_t cRuntimeClasses, const Term * const pTerm, Bin<IsClassification(cCompilerClasses)> * const aBins
 //#ifndef NDEBUG
-//   , const Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aBinsDebugCopy, const unsigned char * const pBinsEndDebug
+//   , const Bin<IsClassification(cCompilerClasses)> * const aBinsDebugCopy, const unsigned char * const pBinsEndDebug
 //#endif // NDEBUG
 //) {
 //   LOG_0(TraceLevelVerbose, "Entered BuildFastTotalsZeroMemoryIncrease");
@@ -820,9 +820,9 @@ extern void TensorTotalsBuild(
 //   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
 //   EBM_ASSERT(1 <= cDimensions);
 //
-//   const size_t cScores = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
-//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cScores)); // we're accessing allocated memory
-//   const size_t cBytesPerBin = GetBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cScores);
+//   const size_t cScores = GET_VECTOR_LENGTH(cCompilerClasses, cRuntimeClasses);
+//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(cCompilerClasses)>(cScores)); // we're accessing allocated memory
+//   const size_t cBytesPerBin = GetBinSize<IsClassification(cCompilerClasses)>(cScores);
 //
 //   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
 //   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
@@ -844,11 +844,11 @@ extern void TensorTotalsBuild(
 //   // TODO: If we have a compiler cScores, we could put the pPrevious object into our stack since it would have a defined size.  We could then eliminate having to access it through a pointer and we'd just access through the stack pointer
 //   // TODO: can we put Bin object onto the stack in other places too?
 //   // we reserved 1 extra space for these when we binned our data
-//   Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pPrevious = IndexBin(cBytesPerBin, aBins, -multipleTotalInitialize);
+//   Bin<IsClassification(cCompilerClasses)> * const pPrevious = IndexBin(cBytesPerBin, aBins, -multipleTotalInitialize);
 //   ASSERT_BIN_OK(cBytesPerBin, pPrevious, pBinsEndDebug);
 //
 //#ifndef NDEBUG
-//   Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pDebugBin = static_cast<Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesPerBin));
+//   Bin<IsClassification(cCompilerClasses)> * const pDebugBin = static_cast<Bin<IsClassification(cCompilerClasses)> *>(malloc(cBytesPerBin));
 //   pPrevious->AssertZero();
 //#endif //NDEBUG
 //
@@ -856,7 +856,7 @@ extern void TensorTotalsBuild(
 //   EBM_ASSERT(cDimensions < k_cBitsForSizeT);
 //   EBM_ASSERT(2 <= cDimensions);
 //   const size_t permuteVectorEnd = size_t { 1 } << (cDimensions - 1);
-//   Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pBin = aBins;
+//   Bin<IsClassification(cCompilerClasses)> * pBin = aBins;
 //   
 //   ptrdiff_t multipliedIndexCur0 = 0;
 //   const ptrdiff_t multipleTotal0 = currentIndexAndCountBins[0].multipleTotal;
@@ -886,7 +886,7 @@ extern void TensorTotalsBuild(
 //         pBin->GetGradientPairs()[iScore].m_sumGradients = sumGradients;
 //         pPrevious->GetGradientPairs()[iScore].m_sumGradients = sumGradients;
 //
-//         if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+//         if(IsClassification(cCompilerClasses)) {
 //            const FloatBig sumHessians = pBin->GetGradientPairs()[iScore].GetSumHessians() + pPrevious->GetGradientPairs()[iScore].GetSumHessians();
 //            pBin->GetGradientPairs()[iScore].SetSumHessians(sumHessians);
 //            pPrevious->GetGradientPairs()[iScore].SetSumHessians(sumHessians);
@@ -918,9 +918,9 @@ extern void TensorTotalsBuild(
 //         } while(LIKELY(0 != permuteVectorDestroy));
 //         ASSERT_BIN_OK(cBytesPerBin, IndexBin(cBytesPerBin, pBin, offsetPointer), pBinsEndDebug);
 //         if(UNPREDICTABLE(0 != (1 & evenOdd))) {
-//            pBin->Add(*IndexBin(cBytesPerBin, pBin, offsetPointer), runtimeLearningTypeOrCountTargetClasses);
+//            pBin->Add(*IndexBin(cBytesPerBin, pBin, offsetPointer), cRuntimeClasses);
 //         } else {
-//            pBin->Subtract(*IndexBin(cBytesPerBin, pBin, offsetPointer), runtimeLearningTypeOrCountTargetClasses);
+//            pBin->Subtract(*IndexBin(cBytesPerBin, pBin, offsetPointer), cRuntimeClasses);
 //         }
 //      skip_group:
 //         ++permuteVector;
@@ -935,7 +935,7 @@ extern void TensorTotalsBuild(
 //         aiLast[iDebugDimension] = static_cast<size_t>((0 == iDebugDimension ? multipliedIndexCur0 : currentIndexAndCountBins[iDebugDimension].multipliedIndexCur) / multipleTotalDebug);
 //         multipleTotalDebug = currentIndexAndCountBins[iDebugDimension].multipleTotal;
 //      }
-//      TensorTotalsSumDebugSlow<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aBinsDebugCopy, aiStart, aiLast, pDebugBin);
+//      TensorTotalsSumDebugSlow<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBinsDebugCopy, aiStart, aiLast, pDebugBin);
 //      EBM_ASSERT(pDebugBin->GetCountSamples() == pBin->GetCountSamples());
 //#endif // NDEBUG
 //
@@ -949,7 +949,7 @@ extern void TensorTotalsBuild(
 //         goto skip_intro;
 //      }
 //
-//      pPrevious->Zero(runtimeLearningTypeOrCountTargetClasses);
+//      pPrevious->Zero(cRuntimeClasses);
 //      multipliedIndexCur0 = 0;
 //      pCurrentIndexAndCountBins = &currentIndexAndCountBins[1];
 //      ptrdiff_t multipleTotal = multipleTotal0;
@@ -977,9 +977,9 @@ extern void TensorTotalsBuild(
 
 
 
-//template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
-//bool BoostMultiDimensionalPaulAlgorithm(BoosterShell<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pThreadState, const FeatureInternal * const pTargetFeature, SamplingSet const * const pTrainingSet, const Term * const pTerm, SegmentedRegion<ActiveDataType, FloatBig> * const pInnerTermUpdate) {
-//   Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aBins = BinDataSet<compilerLearningTypeOrCountTargetClasses>(pThreadState, pTerm, pTrainingSet, pTargetFeature);
+//template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
+//bool BoostMultiDimensionalPaulAlgorithm(BoosterShell<IsClassification(cCompilerClasses)> * const pThreadState, const FeatureInternal * const pTargetFeature, SamplingSet const * const pTrainingSet, const Term * const pTerm, SegmentedRegion<ActiveDataType, FloatBig> * const pInnerTermUpdate) {
+//   Bin<IsClassification(cCompilerClasses)> * const aBins = BinDataSet<cCompilerClasses>(pThreadState, pTerm, pTrainingSet, pTargetFeature);
 //   if(UNLIKELY(nullptr == aBins)) {
 //      return true;
 //   }
@@ -987,16 +987,16 @@ extern void TensorTotalsBuild(
 //   BuildFastTotals(pTargetFeature, pTerm, aBins);
 //
 //   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
-//   const size_t cScores = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
-//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cScores)); // we're accessing allocated memory
-//   const size_t cBytesPerBin = GetBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cScores);
+//   const size_t cScores = GET_VECTOR_LENGTH(cCompilerClasses, cRuntimeClasses);
+//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(cCompilerClasses)>(cScores)); // we're accessing allocated memory
+//   const size_t cBytesPerBin = GetBinSize<IsClassification(cCompilerClasses)>(cScores);
 //
 //   size_t aiStart[k_cDimensionsMax];
 //   size_t aiLast[k_cDimensionsMax];
 //
 //   if(2 == cDimensions) {
 //      DO: somehow avoid having a malloc here, either by allocating these when we allocate our big chunck of memory, or as part of pThreadState
-//      Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * aDynamicBins = static_cast<Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesPerBin * ));
+//      Bin<IsClassification(cCompilerClasses)> * aDynamicBins = static_cast<Bin<IsClassification(cCompilerClasses)> *>(malloc(cBytesPerBin * ));
 //
 //      const size_t cBinsDimension1 = pTerm->GetTermEntries()[0].m_pFeature->m_cBins;
 //      const size_t cBinsDimension2 = pTerm->GetTermEntries()[1].m_pFeature->m_cBins;
@@ -1029,49 +1029,49 @@ extern void TensorTotalsBuild(
 //         for(size_t iBin2 = 0; iBin2 < cBinsDimension2 - 1; ++iBin2) {
 //            FloatBig splittingScore;
 //
-//            Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowLow = IndexBin(cBytesPerBin, aDynamicBins, 0);
-//            Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighLow = IndexBin(cBytesPerBin, aDynamicBins, 1);
-//            Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowHigh = IndexBin(cBytesPerBin, aDynamicBins, 2);
-//            Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighHigh = IndexBin(cBytesPerBin, aDynamicBins, 3);
+//            Bin<IsClassification(cCompilerClasses)> * pTotalsLowLow = IndexBin(cBytesPerBin, aDynamicBins, 0);
+//            Bin<IsClassification(cCompilerClasses)> * pTotalsHighLow = IndexBin(cBytesPerBin, aDynamicBins, 1);
+//            Bin<IsClassification(cCompilerClasses)> * pTotalsLowHigh = IndexBin(cBytesPerBin, aDynamicBins, 2);
+//            Bin<IsClassification(cCompilerClasses)> * pTotalsHighHigh = IndexBin(cBytesPerBin, aDynamicBins, 3);
 //
-//            Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsTarget = IndexBin(cBytesPerBin, aDynamicBins, 4);
-//            Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsOther = IndexBin(cBytesPerBin, aDynamicBins, 5);
+//            Bin<IsClassification(cCompilerClasses)> * pTotalsTarget = IndexBin(cBytesPerBin, aDynamicBins, 4);
+//            Bin<IsClassification(cCompilerClasses)> * pTotalsOther = IndexBin(cBytesPerBin, aDynamicBins, 5);
 //
 //            aiStart[0] = 0;
 //            aiStart[1] = 0;
 //            aiLast[0] = iBin1;
 //            aiLast[1] = iBin2;
-//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aBins, aiStart, aiLast, pTotalsLowLow);
+//            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBins, aiStart, aiLast, pTotalsLowLow);
 //
 //            aiStart[0] = iBin1 + 1;
 //            aiStart[1] = 0;
 //            aiLast[0] = cBinsDimension1 - 1;
 //            aiLast[1] = iBin2;
-//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aBins, aiStart, aiLast, pTotalsHighLow);
+//            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBins, aiStart, aiLast, pTotalsHighLow);
 //
 //            aiStart[0] = 0;
 //            aiStart[1] = iBin2 + 1;
 //            aiLast[0] = iBin1;
 //            aiLast[1] = cBinsDimension2 - 1;
-//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aBins, aiStart, aiLast, pTotalsLowHigh);
+//            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBins, aiStart, aiLast, pTotalsLowHigh);
 //
 //            aiStart[0] = iBin1 + 1;
 //            aiStart[1] = iBin2 + 1;
 //            aiLast[0] = cBinsDimension1 - 1;
 //            aiLast[1] = cBinsDimension2 - 1;
-//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aBins, aiStart, aiLast, pTotalsHighHigh);
+//            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBins, aiStart, aiLast, pTotalsHighHigh);
 //
 //            // LOW LOW
-//            pTotalsTarget->Zero(runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsOther->Zero(runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsTarget->Zero(cRuntimeClasses);
+//            pTotalsOther->Zero(cRuntimeClasses);
 //
 //            // MODIFY HERE
-//            pTotalsTarget->Add(*pTotalsLowLow, runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsOther->Add(*pTotalsHighLow, runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsOther->Add(*pTotalsLowHigh, runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsOther->Add(*pTotalsHighHigh, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsTarget->Add(*pTotalsLowLow, cRuntimeClasses);
+//            pTotalsOther->Add(*pTotalsHighLow, cRuntimeClasses);
+//            pTotalsOther->Add(*pTotalsLowHigh, cRuntimeClasses);
+//            pTotalsOther->Add(*pTotalsHighHigh, cRuntimeClasses);
 //            
-//            splittingScore = CalculateRegionSplittingScore<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(pTotalsTarget, pTotalsOther, runtimeLearningTypeOrCountTargetClasses);
+//            splittingScore = CalculateRegionSplittingScore<cCompilerClasses, cCompilerDimensions>(pTotalsTarget, pTotalsOther, cRuntimeClasses);
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
@@ -1082,12 +1082,12 @@ extern void TensorTotalsBuild(
 //                  FloatBig predictionTarget;
 //                  FloatBig predictionOther;
 //
-//                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
+//                  if(IS_REGRESSION(cCompilerClasses)) {
 //                     // regression
 //                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients, pTotalsTarget->GetCountSamples());
 //                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients, pTotalsOther->GetCountSamples());
 //                  } else {
-//                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
+//                     EBM_ASSERT(IS_CLASSIFICATION(cCompilerClasses));
 //                     // classification
 //                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients, pTotalsTarget->GetGradientPairs()[iScore].GetSumHessians());
 //                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients, pTotalsOther->GetGradientPairs()[iScore].GetSumHessians());
@@ -1105,16 +1105,16 @@ extern void TensorTotalsBuild(
 //
 //
 //            // HIGH LOW
-//            pTotalsTarget->Zero(runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsOther->Zero(runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsTarget->Zero(cRuntimeClasses);
+//            pTotalsOther->Zero(cRuntimeClasses);
 //
 //            // MODIFY HERE
-//            pTotalsOther->Add(*pTotalsLowLow, runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsTarget->Add(*pTotalsHighLow, runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsOther->Add(*pTotalsLowHigh, runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsOther->Add(*pTotalsHighHigh, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Add(*pTotalsLowLow, cRuntimeClasses);
+//            pTotalsTarget->Add(*pTotalsHighLow, cRuntimeClasses);
+//            pTotalsOther->Add(*pTotalsLowHigh, cRuntimeClasses);
+//            pTotalsOther->Add(*pTotalsHighHigh, cRuntimeClasses);
 //
-//            splittingScore = CalculateRegionSplittingScore<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(pTotalsTarget, pTotalsOther, runtimeLearningTypeOrCountTargetClasses);
+//            splittingScore = CalculateRegionSplittingScore<cCompilerClasses, cCompilerDimensions>(pTotalsTarget, pTotalsOther, cRuntimeClasses);
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
@@ -1125,12 +1125,12 @@ extern void TensorTotalsBuild(
 //                  FloatBig predictionTarget;
 //                  FloatBig predictionOther;
 //
-//                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
+//                  if(IS_REGRESSION(cCompilerClasses)) {
 //                     // regression
 //                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients, pTotalsTarget->GetCountSamples());
 //                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients, pTotalsOther->GetCountSamples());
 //                  } else {
-//                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
+//                     EBM_ASSERT(IS_CLASSIFICATION(cCompilerClasses));
 //                     // classification
 //                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients, pTotalsTarget->GetGradientPairs()[iScore].GetSumHessians());
 //                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients, pTotalsOther->GetGradientPairs()[iScore].GetSumHessians());
@@ -1148,16 +1148,16 @@ extern void TensorTotalsBuild(
 //
 //
 //            // LOW HIGH
-//            pTotalsTarget->Zero(runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsOther->Zero(runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsTarget->Zero(cRuntimeClasses);
+//            pTotalsOther->Zero(cRuntimeClasses);
 //
 //            // MODIFY HERE
-//            pTotalsOther->Add(*pTotalsLowLow, runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsOther->Add(*pTotalsHighLow, runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsTarget->Add(*pTotalsLowHigh, runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsOther->Add(*pTotalsHighHigh, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Add(*pTotalsLowLow, cRuntimeClasses);
+//            pTotalsOther->Add(*pTotalsHighLow, cRuntimeClasses);
+//            pTotalsTarget->Add(*pTotalsLowHigh, cRuntimeClasses);
+//            pTotalsOther->Add(*pTotalsHighHigh, cRuntimeClasses);
 //
-//            splittingScore = CalculateRegionSplittingScore<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(pTotalsTarget, pTotalsOther, runtimeLearningTypeOrCountTargetClasses);
+//            splittingScore = CalculateRegionSplittingScore<cCompilerClasses, cCompilerDimensions>(pTotalsTarget, pTotalsOther, cRuntimeClasses);
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
@@ -1168,12 +1168,12 @@ extern void TensorTotalsBuild(
 //                  FloatBig predictionTarget;
 //                  FloatBig predictionOther;
 //
-//                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
+//                  if(IS_REGRESSION(cCompilerClasses)) {
 //                     // regression
 //                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients, pTotalsTarget->GetCountSamples());
 //                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients, pTotalsOther->GetCountSamples());
 //                  } else {
-//                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
+//                     EBM_ASSERT(IS_CLASSIFICATION(cCompilerClasses));
 //                     // classification
 //                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients, pTotalsTarget->GetGradientPairs()[iScore].GetSumHessians());
 //                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients, pTotalsOther->GetGradientPairs()[iScore].GetSumHessians());
@@ -1190,16 +1190,16 @@ extern void TensorTotalsBuild(
 //
 //
 //            // HIGH HIGH
-//            pTotalsTarget->Zero(runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsOther->Zero(runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsTarget->Zero(cRuntimeClasses);
+//            pTotalsOther->Zero(cRuntimeClasses);
 //
 //            // MODIFY HERE
-//            pTotalsOther->Add(*pTotalsLowLow, runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsOther->Add(*pTotalsHighLow, runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsOther->Add(*pTotalsLowHigh, runtimeLearningTypeOrCountTargetClasses);
-//            pTotalsTarget->Add(*pTotalsHighHigh, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Add(*pTotalsLowLow, cRuntimeClasses);
+//            pTotalsOther->Add(*pTotalsHighLow, cRuntimeClasses);
+//            pTotalsOther->Add(*pTotalsLowHigh, cRuntimeClasses);
+//            pTotalsTarget->Add(*pTotalsHighHigh, cRuntimeClasses);
 //
-//            splittingScore = CalculateRegionSplittingScore<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(pTotalsTarget, pTotalsOther, runtimeLearningTypeOrCountTargetClasses);
+//            splittingScore = CalculateRegionSplittingScore<cCompilerClasses, cCompilerDimensions>(pTotalsTarget, pTotalsOther, cRuntimeClasses);
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
@@ -1210,12 +1210,12 @@ extern void TensorTotalsBuild(
 //                  FloatBig predictionTarget;
 //                  FloatBig predictionOther;
 //
-//                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
+//                  if(IS_REGRESSION(cCompilerClasses)) {
 //                     // regression
 //                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients, pTotalsTarget->GetCountSamples());
 //                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients, pTotalsOther->GetCountSamples());
 //                  } else {
-//                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
+//                     EBM_ASSERT(IS_CLASSIFICATION(cCompilerClasses));
 //                     // classification
 //                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients, pTotalsTarget->GetGradientPairs()[iScore].GetSumHessians());
 //                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients, pTotalsOther->GetGradientPairs()[iScore].GetSumHessians());

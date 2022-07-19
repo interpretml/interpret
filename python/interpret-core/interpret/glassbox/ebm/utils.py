@@ -1054,17 +1054,17 @@ class EBMUtils:
 
             # Adapt test size if too small relative to number of classes
             if is_stratified:
-                y_uniq = len(set(y))
-                if n_test_samples < y_uniq:  # pragma: no cover
+                n_classes = len(set(y))
+                if n_test_samples < n_classes:  # pragma: no cover
                     warnings.warn(
                         "Too few samples per class, adapting test size to guarantee 1 sample per class."
                     )
-                    n_test_samples = y_uniq
+                    n_test_samples = n_classes
                     n_train_samples = n_samples - n_test_samples
 
                 return native.stratified_sampling_without_replacement(
                     random_state,
-                    y_uniq,
+                    n_classes,
                     n_train_samples,
                     n_test_samples,
                     y

@@ -97,14 +97,14 @@ static void Flatten(
 //   again on that side, then re-examine the second split again.  For mains this would be very quick we have found that 2-3 splits are optimimum.  
 //   Probably 1 split isn't very good since with 2 splits we can localize a region of high gain in the center somewhere
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
+template<ptrdiff_t cCompilerClasses>
 static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    BoosterShell * const pBoosterShell,
-   TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode,
-   TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur,
+   TreeNode<IsClassification(cCompilerClasses)> * pTreeNode,
+   TreeNode<IsClassification(cCompilerClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur,
    const size_t cSamplesRequiredForChildSplitMin
 ) {
-   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+   constexpr bool bClassification = IsClassification(cCompilerClasses);
 
    LOG_N(
       TraceLevelVerbose,
@@ -118,13 +118,13 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
-   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-      compilerLearningTypeOrCountTargetClasses,
-      runtimeLearningTypeOrCountTargetClasses
+   const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+      cCompilerClasses,
+      cRuntimeClasses
    );
-   const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(cClasses);
 
    // it's tempting to want to use GetSumAllGradientPairs here instead of 
    // GetLeftGradientPairs, but the problem with that is that we sometimes re-do our work
@@ -445,7 +445,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
+template<ptrdiff_t cCompilerClasses>
 class PartitionOneDimensionalBoostingInternal final {
 public:
 
@@ -461,7 +461,7 @@ public:
       const size_t cLeavesMax,
       double * const pTotalGain
    ) {
-      constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+      constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       ErrorEbmType error;
 
@@ -473,13 +473,13 @@ public:
       const auto * const aSumAllGradientPairs = aSumAllGradientPairsBase->Specialize<FloatBig, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
-      const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-         compilerLearningTypeOrCountTargetClasses,
-         runtimeLearningTypeOrCountTargetClasses
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+         cCompilerClasses,
+         cRuntimeClasses
       );
-      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(cClasses);
 
       EBM_ASSERT(nullptr != pTotalGain);
       EBM_ASSERT(1 <= cSamplesTotal); // filter these out at the start where we can handle this case easily
@@ -539,7 +539,7 @@ public:
          pBoosterShell->GetInnerTermUpdate();
 
       size_t cLeaves;
-      const int retExamine = ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
+      const int retExamine = ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<cCompilerClasses>(
          pBoosterShell,
          pRootTreeNode,
          AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
@@ -571,7 +571,7 @@ public:
                );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-               if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+               if(IsMulticlass(cCompilerClasses)) {
                   if(size_t { 0 } == iScore) {
                      zeroLogit = updateScore;
                   }
@@ -582,7 +582,7 @@ public:
                aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(updateScore);
             }
          } else {
-            EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+            EBM_ASSERT(IsRegression(cCompilerClasses));
             const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
                pRootTreeNode->GetGradientPairs()[0].m_sumGradients, weightTotal
             );
@@ -653,7 +653,7 @@ public:
                );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-               if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+               if(IsMulticlass(cCompilerClasses)) {
                   if(size_t { 0 } == iScore) {
                      zeroLogit0 = updateScore0;
                      zeroLogit1 = updateScore1;
@@ -667,7 +667,7 @@ public:
                aUpdateScores[cScores + iScore] = SafeConvertFloat<FloatFast>(updateScore1);
             }
          } else {
-            EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+            EBM_ASSERT(IsRegression(cCompilerClasses));
             FloatBig updateScore0 = EbmStats::ComputeSinglePartitionUpdate(
                pLeftChildGradientPair[0].m_sumGradients,
                pLeftChild->GetWeight()
@@ -765,7 +765,7 @@ public:
                }
                // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED
                // because splitting sets splitGain to a non-illegalGain value
-               if(0 == ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
+               if(0 == ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<cCompilerClasses>(
                   pBoosterShell,
                   pLeftChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
@@ -819,7 +819,7 @@ public:
                }
                // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED 
                // because splitting sets splitGain to a non-NaN value
-               if(0 == ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
+               if(0 == ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<cCompilerClasses>(
                   pBoosterShell,
                   pRightChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
@@ -922,10 +922,10 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
    ErrorEbmType error;
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
-   if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-      if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
+   if(IsClassification(cRuntimeClasses)) {
+      if(IsBinaryClassification(cRuntimeClasses)) {
          error = PartitionOneDimensionalBoostingInternal<2>::Func(
             pBoosterShell,
             cBins,
@@ -949,7 +949,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
          );
       }
    } else {
-      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(cRuntimeClasses));
       error = PartitionOneDimensionalBoostingInternal<k_regression>::Func(
          pBoosterShell,
          cBins,

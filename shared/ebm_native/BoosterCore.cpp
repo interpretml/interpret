@@ -241,8 +241,8 @@ ErrorEbmType BoosterCore::Create(
       return Error_IllegalParamValue;
    }
 
-   ptrdiff_t runtimeLearningTypeOrCountTargetClasses;
-   GetDataSetSharedTarget(pDataSetShared, 0, &runtimeLearningTypeOrCountTargetClasses);
+   ptrdiff_t cClasses;
+   GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
 
    size_t cTrainingSamples;
    size_t cValidationSamples;
@@ -252,7 +252,7 @@ ErrorEbmType BoosterCore::Create(
       return error;
    }
 
-   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(cClasses);
 
    LOG_0(TraceLevelInfo, "BoosterCore::Create starting feature processing");
    if(0 != cFeatures) {
@@ -304,7 +304,7 @@ ErrorEbmType BoosterCore::Create(
    }
    LOG_0(TraceLevelInfo, "BoosterCore::Create done feature processing");
 
-   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
+   const bool bClassification = IsClassification(cClasses);
    size_t cBytesArrayEquivalentSplitMax = 0;
 
    EBM_ASSERT(nullptr == pBoosterCore->m_apCurrentTermTensors);
@@ -433,7 +433,7 @@ ErrorEbmType BoosterCore::Create(
          ++iTerm;
       } while(iTerm < cTerms);
 
-      if(!bClassification || ptrdiff_t { 2 } <= runtimeLearningTypeOrCountTargetClasses) {
+      if(!bClassification || ptrdiff_t { 2 } <= cClasses) {
          error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apCurrentTermTensors);
          if(Error_None != error) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apCurrentTermTensors");
@@ -451,7 +451,7 @@ ErrorEbmType BoosterCore::Create(
    pBoosterCore->m_cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplitMax;
 
    error = pBoosterCore->m_trainingSet.Initialize(
-      runtimeLearningTypeOrCountTargetClasses,
+      cClasses,
       true,
       bClassification,
       bClassification,
@@ -470,7 +470,7 @@ ErrorEbmType BoosterCore::Create(
    }
 
    error = pBoosterCore->m_validationSet.Initialize(
-      runtimeLearningTypeOrCountTargetClasses,
+      cClasses,
       !bClassification,
       false,
       bClassification,
@@ -564,7 +564,7 @@ ErrorEbmType BoosterCore::Create(
          }
       }
    } else {
-      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(cClasses));
       if(0 != cTrainingSamples) {
 #ifndef NDEBUG
          const ErrorEbmType errorDebug =
@@ -595,7 +595,7 @@ ErrorEbmType BoosterCore::Create(
       }
    }
 
-   pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses = runtimeLearningTypeOrCountTargetClasses;
+   pBoosterCore->m_cClasses = cClasses;
    pBoosterCore->m_bestModelMetric = std::numeric_limits<double>::max();
 
    LOG_0(TraceLevelInfo, "Exited BoosterCore::Create");

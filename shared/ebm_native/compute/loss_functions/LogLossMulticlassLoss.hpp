@@ -29,15 +29,15 @@ struct LogLossMulticlassLoss : public MulticlassLoss {
       return 1.0;
    }
 
-   GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunctionPass1(size_t countTargetClasses, TFloat * pointerScores, TFloat * pointerTempStorage, const TFloat & tempValue) const {
+   GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunctionPass1(size_t countClasses, TFloat * pointerScores, TFloat * pointerTempStorage, const TFloat & tempValue) const {
       //TODO implement
-      // use the countTargetClasses since it can be a templated constant, unlike m_countTargetClasses
+      // use the countClasses since it can be a templated constant, unlike m_countClasses
       return 999;
    }
 
-   GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunctionPass2(size_t countTargetClasses, TFloat * pointerScores, TFloat * pointerTempStorage, const TFloat & tempValue) const {
+   GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunctionPass2(size_t countClasses, TFloat * pointerScores, TFloat * pointerTempStorage, const TFloat & tempValue) const {
       //TODO implement
-      // use the countTargetClasses since it can be a templated constant, unlike m_countTargetClasses
+      // use the countClasses since it can be a templated constant, unlike m_countClasses
       return 999;
    }
 

@@ -29,7 +29,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
+template<ptrdiff_t cCompilerClasses>
 class BinBoostingZeroDimensions final {
 public:
 
@@ -39,7 +39,7 @@ public:
       BoosterShell * const pBoosterShell,
       const SamplingSet * const pTrainingSet
    ) {
-      constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+      constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       LOG_0(TraceLevelVerbose, "Entered BinBoostingZeroDimensions");
 
@@ -47,13 +47,13 @@ public:
       auto * const pBin = pBinBase->Specialize<FloatFast, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
-      const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-         compilerLearningTypeOrCountTargetClasses,
-         runtimeLearningTypeOrCountTargetClasses
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+         cCompilerClasses,
+         cRuntimeClasses
       );
-      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(cClasses);
       EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
 
       const size_t cSamples = pTrainingSet->GetDataSetBoosting()->GetCountSamples();
@@ -130,7 +130,7 @@ public:
 
          EBM_ASSERT(
             !bClassification ||
-            ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits ||
+            ptrdiff_t { 2 } == cRuntimeClasses && !bExpandBinaryLogits ||
             std::isnan(sumGradientsDebug) ||
             -k_epsilonGradient < sumGradientsDebug && sumGradientsDebug < k_epsilonGradient
          );
@@ -144,7 +144,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+template<ptrdiff_t cPossibleClasses>
 class BinBoostingZeroDimensionsTarget final {
 public:
 
@@ -154,21 +154,21 @@ public:
       BoosterShell * const pBoosterShell,
       const SamplingSet * const pTrainingSet
    ) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
-      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
+      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
-      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         BinBoostingZeroDimensions<compilerLearningTypeOrCountTargetClassesPossible>::Func(
+      if(cPossibleClasses == cRuntimeClasses) {
+         BinBoostingZeroDimensions<cPossibleClasses>::Func(
             pBoosterShell,
             pTrainingSet
          );
       } else {
-         BinBoostingZeroDimensionsTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
+         BinBoostingZeroDimensionsTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
             pTrainingSet
          );
@@ -177,7 +177,7 @@ public:
 };
 
 template<>
-class BinBoostingZeroDimensionsTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class BinBoostingZeroDimensionsTarget<k_cCompilerClassesMax + 1> final {
 public:
 
    BinBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
@@ -186,10 +186,10 @@ public:
       BoosterShell * const pBoosterShell,
       const SamplingSet * const pTrainingSet
    ) {
-      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
+      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
 
       BinBoostingZeroDimensions<k_dynamicClassification>::Func(
          pBoosterShell,
@@ -198,7 +198,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, ptrdiff_t compilerBitPack>
+template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
 class BinBoostingInternal final {
 public:
 
@@ -209,7 +209,7 @@ public:
       const Term * const pTerm,
       const SamplingSet * const pTrainingSet
    ) {
-      constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+      constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       LOG_0(TraceLevelVerbose, "Entered BinBoostingInternal");
 
@@ -217,13 +217,13 @@ public:
       auto * const aBins = aBinsBase->Specialize<FloatFast, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
-      const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-         compilerLearningTypeOrCountTargetClasses,
-         runtimeLearningTypeOrCountTargetClasses
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+         cCompilerClasses,
+         cRuntimeClasses
       );
-      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(cClasses);
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pTerm->GetBitPack());
       EBM_ASSERT(size_t { 1 } <= cItemsPerBitPack);
@@ -336,7 +336,7 @@ public:
 
             EBM_ASSERT(
                !bClassification ||
-               ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits ||
+               ptrdiff_t { 2 } == cRuntimeClasses && !bExpandBinaryLogits ||
                -k_epsilonGradient < gradientTotalDebug && gradientTotalDebug < k_epsilonGradient
             );
 
@@ -369,7 +369,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+template<ptrdiff_t cPossibleClasses>
 class BinBoostingNormalTarget final {
 public:
 
@@ -380,22 +380,22 @@ public:
       const Term * const pTerm,
       const SamplingSet * const pTrainingSet
    ) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
-      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
+      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
-      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         BinBoostingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackDynamic>::Func(
+      if(cPossibleClasses == cRuntimeClasses) {
+         BinBoostingInternal<cPossibleClasses, k_cItemsPerBitPackDynamic>::Func(
             pBoosterShell,
             pTerm,
             pTrainingSet
          );
       } else {
-         BinBoostingNormalTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
+         BinBoostingNormalTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
             pTerm,
             pTrainingSet
@@ -405,7 +405,7 @@ public:
 };
 
 template<>
-class BinBoostingNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class BinBoostingNormalTarget<k_cCompilerClassesMax + 1> final {
 public:
 
    BinBoostingNormalTarget() = delete; // this is a static class.  Do not construct
@@ -415,10 +415,10 @@ public:
       const Term * const pTerm,
       const SamplingSet * const pTrainingSet
    ) {
-      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
+      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
 
       BinBoostingInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
@@ -428,7 +428,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, ptrdiff_t compilerBitPack>
+template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
 class BinBoostingSIMDPacking final {
 public:
 
@@ -445,14 +445,14 @@ public:
       EBM_ASSERT(runtimeBitPack <= ptrdiff_t { k_cBitsForStorageType });
       static_assert(compilerBitPack <= ptrdiff_t { k_cBitsForStorageType }, "We can't have this many items in a data pack.");
       if(compilerBitPack == runtimeBitPack) {
-         BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, compilerBitPack>::Func(
+         BinBoostingInternal<cCompilerClasses, compilerBitPack>::Func(
             pBoosterShell,
             pTerm,
             pTrainingSet
          );
       } else {
          BinBoostingSIMDPacking<
-            compilerLearningTypeOrCountTargetClasses,
+            cCompilerClasses,
             GetNextCountItemsBitPacked(compilerBitPack)
          >::Func(
             pBoosterShell,
@@ -463,8 +463,8 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class BinBoostingSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic> final {
+template<ptrdiff_t cCompilerClasses>
+class BinBoostingSIMDPacking<cCompilerClasses, k_cItemsPerBitPackDynamic> final {
 public:
 
    BinBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
@@ -476,7 +476,7 @@ public:
    ) {
       EBM_ASSERT(ptrdiff_t { 1 } <= pTerm->GetBitPack());
       EBM_ASSERT(pTerm->GetBitPack() <= ptrdiff_t { k_cBitsForStorageType });
-      BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic>::Func(
+      BinBoostingInternal<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
          pTerm,
          pTrainingSet
@@ -484,7 +484,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+template<ptrdiff_t cPossibleClasses>
 class BinBoostingSIMDTarget final {
 public:
 
@@ -495,17 +495,17 @@ public:
       const Term * const pTerm,
       const SamplingSet * const pTrainingSet
    ) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
-      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
+      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
-      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
+      if(cPossibleClasses == cRuntimeClasses) {
          BinBoostingSIMDPacking<
-            compilerLearningTypeOrCountTargetClassesPossible,
+            cPossibleClasses,
             k_cItemsPerBitPackMax
          >::Func(
             pBoosterShell,
@@ -513,7 +513,7 @@ public:
             pTrainingSet
          );
       } else {
-         BinBoostingSIMDTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
+         BinBoostingSIMDTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
             pTerm,
             pTrainingSet
@@ -523,7 +523,7 @@ public:
 };
 
 template<>
-class BinBoostingSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class BinBoostingSIMDTarget<k_cCompilerClassesMax + 1> final {
 public:
 
    BinBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
@@ -533,10 +533,10 @@ public:
       const Term * const pTerm,
       const SamplingSet * const pTrainingSet
    ) {
-      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
+      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
 
       BinBoostingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackMax>::Func(
          pBoosterShell,
@@ -554,16 +554,16 @@ extern void BinBoosting(
    LOG_0(TraceLevelVerbose, "Entered BinBoosting");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
    if(nullptr == pTerm) {
-      if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+      if(IsClassification(cRuntimeClasses)) {
          BinBoostingZeroDimensionsTarget<2>::Func(
             pBoosterShell,
             pTrainingSet
          );
       } else {
-         EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+         EBM_ASSERT(IsRegression(cRuntimeClasses));
          BinBoostingZeroDimensions<k_regression>::Func(
             pBoosterShell,
             pTrainingSet
@@ -584,14 +584,14 @@ extern void BinBoosting(
          // 8 - do all 8 at a time without an inner loop.  This is one of the most common values.  256 binned values
          // 7,6,5,4,3,2,1 - use a mask to exclude the non-used conditions and process them like the 8.  These are rare since they require more than 256 values
 
-         if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+         if(IsClassification(cRuntimeClasses)) {
             BinBoostingSIMDTarget<2>::Func(
                pBoosterShell,
                pTerm,
                pTrainingSet
             );
          } else {
-            EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+            EBM_ASSERT(IsRegression(cRuntimeClasses));
             BinBoostingSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
                pBoosterShell,
                pTerm,
@@ -605,14 +605,14 @@ extern void BinBoosting(
          // 4 class, etc, but by the time we get to 8 loops with exp inside and a lot of other instructures we should worry that our code expansion
          // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
 
-         if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+         if(IsClassification(cRuntimeClasses)) {
             BinBoostingNormalTarget<2>::Func(
                pBoosterShell,
                pTerm,
                pTrainingSet
             );
          } else {
-            EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+            EBM_ASSERT(IsRegression(cRuntimeClasses));
             BinBoostingInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
                pBoosterShell,
                pTerm,

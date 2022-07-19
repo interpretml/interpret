@@ -521,7 +521,7 @@ SEXP SampleWithoutReplacement_R(
 
 SEXP CreateClassificationBooster_R(
    SEXP randomSeed,
-   SEXP countTargetClasses,
+   SEXP countClasses,
    SEXP featuresCategorical,
    SEXP featuresBinCount,
    SEXP dimensionCounts,
@@ -537,7 +537,7 @@ SEXP CreateClassificationBooster_R(
    SEXP countInnerBags
 ) {
    EBM_ASSERT(nullptr != randomSeed);
-   EBM_ASSERT(nullptr != countTargetClasses);
+   EBM_ASSERT(nullptr != countClasses);
    EBM_ASSERT(nullptr != featuresCategorical);
    EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != dimensionCounts);
@@ -560,22 +560,22 @@ SEXP CreateClassificationBooster_R(
    }
    const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
-   if(!IsSingleDoubleVector(countTargetClasses)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsSingleDoubleVector(countTargetClasses)");
+   if(!IsSingleDoubleVector(countClasses)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsSingleDoubleVector(countClasses)");
       return R_NilValue;
    }
-   double countTargetClassesDouble = REAL(countTargetClasses)[0];
-   if(!IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)");
+   double countClassesDouble = REAL(countClasses)[0];
+   if(!IsDoubleToIntEbmTypeIndexValid(countClassesDouble)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsDoubleToIntEbmTypeIndexValid(countClassesDouble)");
       return R_NilValue;
    }
-   EBM_ASSERT(!IsConvertError<size_t>(countTargetClassesDouble)); // IsDoubleToIntEbmTypeIndexValid checks this
-   const size_t cTargetClasses = static_cast<size_t>(countTargetClassesDouble);
-   if(IsConvertError<ptrdiff_t>(cTargetClasses)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsConvertError<ptrdiff_t>(cTargetClasses)");
+   EBM_ASSERT(!IsConvertError<size_t>(countClassesDouble)); // IsDoubleToIntEbmTypeIndexValid checks this
+   const size_t cClasses = static_cast<size_t>(countClassesDouble);
+   if(IsConvertError<ptrdiff_t>(cClasses)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsConvertError<ptrdiff_t>(cClasses)");
       return R_NilValue;
    }
-   const size_t cScores = GetCountScores(static_cast<ptrdiff_t>(cTargetClasses));
+   const size_t cScores = GetCountScores(static_cast<ptrdiff_t>(cClasses));
 
    size_t cFeatures;
    const BoolEbmType * aFeaturesCategorical;
@@ -752,7 +752,7 @@ SEXP CreateClassificationBooster_R(
    BoosterHandle boosterHandle;
    error = CreateClassificationBooster(
       randomSeedLocal,
-      static_cast<IntEbmType>(cTargetClasses),
+      static_cast<IntEbmType>(cClasses),
       countFeatures, 
       aFeaturesCategorical,
       aFeaturesBinCount,
@@ -1188,7 +1188,7 @@ SEXP GetBestTermScores_R(
       return R_NilValue;
    }
 
-   size_t cTensorScores = GetCountScores(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cTensorScores = GetCountScores(pBoosterCore->GetCountClasses());
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
    const size_t cDimensions = pTerm->GetCountDimensions();
    if(0 != cDimensions) {
@@ -1255,7 +1255,7 @@ SEXP GetCurrentTermScores_R(
       return R_NilValue;
    }
 
-   size_t cTensorScores = GetCountScores(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cTensorScores = GetCountScores(pBoosterCore->GetCountClasses());
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
    const size_t cDimensions = pTerm->GetCountDimensions();
    if(0 != cDimensions) {
@@ -1294,7 +1294,7 @@ SEXP FreeBooster_R(
 
 
 SEXP CreateClassificationInteractionDetector_R(
-   SEXP countTargetClasses,
+   SEXP countClasses,
    SEXP featuresCategorical,
    SEXP featuresBinCount,
    SEXP binnedData,
@@ -1302,7 +1302,7 @@ SEXP CreateClassificationInteractionDetector_R(
    SEXP weights,
    SEXP initScores
 ) {
-   EBM_ASSERT(nullptr != countTargetClasses);
+   EBM_ASSERT(nullptr != countClasses);
    EBM_ASSERT(nullptr != featuresCategorical);
    EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != binnedData);
@@ -1312,21 +1312,21 @@ SEXP CreateClassificationInteractionDetector_R(
 
    ErrorEbmType error;
 
-   if(!IsSingleDoubleVector(countTargetClasses)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R !IsSingleDoubleVector(countTargetClasses)");
+   if(!IsSingleDoubleVector(countClasses)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R !IsSingleDoubleVector(countClasses)");
       return R_NilValue;
    }
-   double countTargetClassesDouble = REAL(countTargetClasses)[0];
-   if(!IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R !IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)");
+   double countClassesDouble = REAL(countClasses)[0];
+   if(!IsDoubleToIntEbmTypeIndexValid(countClassesDouble)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R !IsDoubleToIntEbmTypeIndexValid(countClassesDouble)");
       return R_NilValue;
    }
-   const size_t cTargetClasses = static_cast<size_t>(countTargetClassesDouble);
-   if(IsConvertError<ptrdiff_t>(cTargetClasses)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R IsConvertError<ptrdiff_t>(cTargetClasses)");
+   const size_t cClasses = static_cast<size_t>(countClassesDouble);
+   if(IsConvertError<ptrdiff_t>(cClasses)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R IsConvertError<ptrdiff_t>(cClasses)");
       return R_NilValue;
    }
-   const size_t cScores = GetCountScores(static_cast<ptrdiff_t>(cTargetClasses));
+   const size_t cScores = GetCountScores(static_cast<ptrdiff_t>(cClasses));
 
    size_t cFeatures;
    const BoolEbmType * aFeaturesCategorical;
@@ -1409,7 +1409,7 @@ SEXP CreateClassificationInteractionDetector_R(
 
    InteractionHandle interactionHandle;
    error = CreateClassificationInteractionDetector(
-      static_cast<IntEbmType>(cTargetClasses),
+      static_cast<IntEbmType>(cClasses),
       countFeatures,
       aFeaturesCategorical,
       aFeaturesBinCount,

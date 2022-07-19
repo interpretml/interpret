@@ -3,7 +3,7 @@
 # Author: Paul Koch <code@koch.ninja>
 
 create_classification_interaction_detector <- function(
-   count_target_classes, 
+   count_classes, 
    features_categorical,
    features_bin_count,
    binned_data, 
@@ -11,7 +11,7 @@ create_classification_interaction_detector <- function(
    weights, 
    predictor_scores
 ) {
-   count_target_classes <- as.double(count_target_classes)
+   count_classes <- as.double(count_classes)
    features_categorical <- as.logical(features_categorical)
    features_bin_count <- as.double(features_bin_count)
    binned_data <- as.double(binned_data)
@@ -25,7 +25,7 @@ create_classification_interaction_detector <- function(
 
    interaction_handle <- .Call(
       CreateClassificationInteractionDetector_R, 
-      count_target_classes, 
+      count_classes, 
       features_categorical,
       features_bin_count,
       binned_data, 

@@ -28,7 +28,7 @@ namespace DEFINED_ZONE_NAME {
 
 template<bool bClassification>
 void TensorTotalsSumDebugSlow(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const ptrdiff_t cClasses,
    const Term * const pTerm,
    const Bin<FloatBig, bClassification> * const aBins,
    const size_t * const aiStart,
@@ -64,7 +64,7 @@ void TensorTotalsSumDebugSlow(
       ++pTermEntryInit;
    } while(pTermEntriesEnd != pTermEntryInit);
 
-   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(cClasses);
    // we've allocated this, so it should fit
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores));
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
@@ -116,10 +116,10 @@ void TensorTotalsCompareDebug(
    const Term * const pTerm,
    const size_t * const aiPoint,
    const size_t directionVector,
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const ptrdiff_t cClasses,
    const Bin<FloatBig, bClassification> * const pComparison
 ) {
-   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(cClasses);
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
@@ -154,7 +154,7 @@ void TensorTotalsCompareDebug(
    if(nullptr != pComparison2) {
       // if we can't obtain the memory, then don't do the comparison and exit
       TensorTotalsSumDebugSlow<bClassification>(
-         runtimeLearningTypeOrCountTargetClasses,
+         cClasses,
          pTerm,
          aBins,
          aiStart,
@@ -169,16 +169,16 @@ void TensorTotalsCompareDebug(
 #endif // NDEBUG
 
 // TODO : we're not currently using cCompilerDimensions, so either use it or get rid of it
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
+template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
 void TensorTotalsSum(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const ptrdiff_t cRuntimeClasses,
    const Term * const pTerm,
-   const Bin<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aBins,
+   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
    const size_t * const aiPoint,
    const size_t directionVector,
-   Bin<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRet
+   Bin<FloatBig, IsClassification(cCompilerClasses)> * const pRet
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aBinsDebugCopy
+   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBinsDebugCopy
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -187,7 +187,7 @@ void TensorTotalsSum(
       size_t m_cLast;
    };
 
-   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+   constexpr bool bClassification = IsClassification(cCompilerClasses);
 
    // don't LOG this!  It would create way too much chatter!
 
@@ -197,11 +197,11 @@ void TensorTotalsSum(
    //       in an if statement), and tripples (only 8 options in an if statement) and then keep this more general one 
    //       for higher dimensions
 
-   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-      compilerLearningTypeOrCountTargetClasses,
-      runtimeLearningTypeOrCountTargetClasses
+   const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+      cCompilerClasses,
+      cRuntimeClasses
    );
-   const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(cClasses);
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
@@ -328,7 +328,7 @@ void TensorTotalsSum(
          pTerm,
          aiPoint,
          directionVector,
-         runtimeLearningTypeOrCountTargetClasses,
+         cClasses,
          pRet
          );
    }

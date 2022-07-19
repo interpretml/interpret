@@ -128,11 +128,11 @@ bool IsApproxEqual(const double value, const double expected, const double perce
 // EBM/interpret specific stuff below here!!
 
 constexpr ptrdiff_t k_learningTypeRegression = ptrdiff_t { -1 };
-inline constexpr static bool IsClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
-   return 0 <= learningTypeOrCountTargetClasses;
+inline constexpr static bool IsClassification(const ptrdiff_t cClasses) {
+   return 0 <= cClasses;
 }
 
-inline constexpr static size_t GetCountScores(const ptrdiff_t learningTypeOrCountTargetClasses) {
+inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) {
 #ifdef EXPAND_BINARY_LOGITS
 #ifdef REDUCE_MULTICLASS_LOGITS
 
@@ -142,25 +142,25 @@ inline constexpr static size_t GetCountScores(const ptrdiff_t learningTypeOrCoun
 #else // REDUCE_MULTICLASS_LOGITS
 
    // EXPAND_BINARY_LOGITS && !REDUCE_MULTICLASS_LOGITS
-   return learningTypeOrCountTargetClasses <= ptrdiff_t { 1 } ? 
+   return cClasses <= ptrdiff_t { 1 } ? 
       size_t { 1 } : 
-      static_cast<size_t>(learningTypeOrCountTargetClasses);
+      static_cast<size_t>(cClasses);
 
 #endif // REDUCE_MULTICLASS_LOGITS
 #else // EXPAND_BINARY_LOGITS
 #ifdef REDUCE_MULTICLASS_LOGITS
 
    // !EXPAND_BINARY_LOGITS && REDUCE_MULTICLASS_LOGITS
-   return learningTypeOrCountTargetClasses <= ptrdiff_t { 2 } ? 
+   return cClasses <= ptrdiff_t { 2 } ? 
       size_t { 1 } : 
-      static_cast<size_t>(learningTypeOrCountTargetClasses) - size_t { 1 };
+      static_cast<size_t>(cClasses) - size_t { 1 };
 
 #else // REDUCE_MULTICLASS_LOGITS
 
    // !EXPAND_BINARY_LOGITS && !REDUCE_MULTICLASS_LOGITS
-   return learningTypeOrCountTargetClasses <= ptrdiff_t { 2 } ? 
+   return cClasses <= ptrdiff_t { 2 } ? 
       size_t { 1 } : 
-      static_cast<size_t>(learningTypeOrCountTargetClasses);
+      static_cast<size_t>(cClasses);
 
 #endif // REDUCE_MULTICLASS_LOGITS
 #endif // EXPAND_BINARY_LOGITS
@@ -307,7 +307,7 @@ class TestApi {
    };
 
    Stage m_stage;
-   const ptrdiff_t m_learningTypeOrCountTargetClasses;
+   const ptrdiff_t m_cClasses;
    const ptrdiff_t m_iZeroClassificationLogit;
 
    std::vector<BoolEbmType> m_featureNominals;
@@ -355,13 +355,13 @@ class TestApi {
       const size_t iTerm,
       const double * const aTermScores,
       const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures,
-      const size_t iTargetClassOrZero)
+      const size_t iClassOrZero)
       const;
 
 public:
 
    TestApi(
-      const ptrdiff_t learningTypeOrCountTargetClasses, 
+      const ptrdiff_t cClasses, 
       const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault
    );
    ~TestApi();

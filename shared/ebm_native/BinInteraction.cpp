@@ -29,14 +29,14 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
+template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
 class BinInteractionInternal final {
 public:
 
    BinInteractionInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
-      constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+      constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       LOG_0(TraceLevelVerbose, "Entered BinInteractionInternal");
 
@@ -44,13 +44,13 @@ public:
       auto * const aBins = aBinsBase->Specialize<FloatFast, bClassification>();
 
       InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
 
-      const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-         compilerLearningTypeOrCountTargetClasses,
-         runtimeLearningTypeOrCountTargetClasses
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+         cCompilerClasses,
+         cRuntimeClasses
       );
-      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(cClasses);
       EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
 
@@ -167,7 +167,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensionsPossible>
+template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensionsPossible>
 class BinInteractionDimensions final {
 public:
 
@@ -182,15 +182,15 @@ public:
       EBM_ASSERT(1 <= cRuntimeDimensions);
       EBM_ASSERT(cRuntimeDimensions <= k_cDimensionsMax);
       if(cCompilerDimensionsPossible == cRuntimeDimensions) {
-         BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, cCompilerDimensionsPossible>::Func(pInteractionShell, pTerm);
+         BinInteractionInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(pInteractionShell, pTerm);
       } else {
-         BinInteractionDimensions<compilerLearningTypeOrCountTargetClasses, cCompilerDimensionsPossible + 1>::Func(pInteractionShell, pTerm);
+         BinInteractionDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pInteractionShell, pTerm);
       }
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class BinInteractionDimensions<compilerLearningTypeOrCountTargetClasses, k_cCompilerOptimizedCountDimensionsMax + 1> final {
+template<ptrdiff_t cCompilerClasses>
+class BinInteractionDimensions<cCompilerClasses, k_cCompilerOptimizedCountDimensionsMax + 1> final {
 public:
 
    BinInteractionDimensions() = delete; // this is a static class.  Do not construct
@@ -198,44 +198,44 @@ public:
    INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
       EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
       EBM_ASSERT(pTerm->GetCountSignificantDimensions() <= k_cDimensionsMax);
-      BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, k_dynamicDimensions>::Func(pInteractionShell, pTerm);
+      BinInteractionInternal<cCompilerClasses, k_dynamicDimensions>::Func(pInteractionShell, pTerm);
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+template<ptrdiff_t cPossibleClasses>
 class BinInteractionTarget final {
 public:
 
    BinInteractionTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
-      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
+      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
       InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
-      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+      const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
-      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         BinInteractionDimensions<compilerLearningTypeOrCountTargetClassesPossible, 2>::Func(pInteractionShell, pTerm);
+      if(cPossibleClasses == cRuntimeClasses) {
+         BinInteractionDimensions<cPossibleClasses, 2>::Func(pInteractionShell, pTerm);
       } else {
-         BinInteractionTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(pInteractionShell, pTerm);
+         BinInteractionTarget<cPossibleClasses + 1>::Func(pInteractionShell, pTerm);
       }
    }
 };
 
 template<>
-class BinInteractionTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class BinInteractionTarget<k_cCompilerClassesMax + 1> final {
 public:
 
    BinInteractionTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
-      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pInteractionShell->GetInteractionCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pInteractionShell->GetInteractionCore()->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pInteractionShell->GetInteractionCore()->GetCountClasses()));
+      EBM_ASSERT(k_cCompilerClassesMax < pInteractionShell->GetInteractionCore()->GetCountClasses());
 
       BinInteractionDimensions<k_dynamicClassification, 2>::Func(pInteractionShell, pTerm);
    }
@@ -243,12 +243,12 @@ public:
 
 extern void BinInteraction(InteractionShell * const pInteractionShell, const Term * const pTerm) {
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
 
-   if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+   if(IsClassification(cRuntimeClasses)) {
       BinInteractionTarget<2>::Func(pInteractionShell, pTerm);
    } else {
-      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(cRuntimeClasses));
       BinInteractionDimensions<k_regression, 2>::Func(pInteractionShell, pTerm);
    }
 }

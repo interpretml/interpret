@@ -52,11 +52,11 @@ namespace DEFINED_ZONE_NAME {
 //                  and then template the combination <number_of_dimensions, number_of_bits> which has 16 * 64 possible combinations, most of which are not 
 //                  used. You can get this down to maybe 16 * 4 combinations templated with loops on the others, but then you still can't easily do
 //                  sparse features, so you're stuck with dense features if you go this route.
-//   - OBSERVATION: For interaction detection, we'll want our template to be: <compilerLearningTypeOrCountTargetClasses, cDimensions, cDataItemsPerPack>
+//   - OBSERVATION: For interaction detection, we'll want our template to be: <cCompilerClasses, cDimensions, cDataItemsPerPack>
 //                  The main reason is that we want to load data via SIMD, and we can't have branches in order to do that, so we can't bitpack each feature
 //                  differently, so they all need to use the same number of bits per pack.
-//   - OBSERVATION: For histogram creation and updating, we'll want our template to be: <compilerLearningTypeOrCountTargetClasses, cDataItemsPerPack>
-//   - OBSERVATION: For partitioning, we'll want our template to be: <compilerLearningTypeOrCountTargetClasses, cDimensions>
+//   - OBSERVATION: For histogram creation and updating, we'll want our template to be: <cCompilerClasses, cDataItemsPerPack>
+//   - OBSERVATION: For partitioning, we'll want our template to be: <cCompilerClasses, cDimensions>
 //   - OBSERVATION: THIS SECTION IS WRONG -> Branch misprediction is on the order of 12-20 cycles.  When doing interactions, we can template JUST the # of features
 //                  since if we didn't then the # of features loop would branch mis-predict per loop, and that's bad
 //                  BUT we can keep the compressed 64 bit number for each feature(which can now be in a regsiter since the # of features is templated)
@@ -216,7 +216,7 @@ static_assert(std::is_trivial<TargetDataSetShared>::value,
    "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 
 struct ClassificationTargetDataSetShared {
-   SharedStorageDataType m_cTargetClasses;
+   SharedStorageDataType m_cClasses;
 };
 static_assert(std::is_standard_layout<ClassificationTargetDataSetShared>::value,
    "These structs are shared between processes, so they definetly need to be standard layout and trivial");
@@ -891,7 +891,7 @@ return_bad:;
 
 static IntEbmType AppendTarget(
    const bool bClassification,
-   const IntEbmType countTargetClasses,
+   const IntEbmType countClasses,
    const IntEbmType countSamples,
    const void * aTargets,
    const size_t cBytesAllocated,
@@ -904,14 +904,14 @@ static IntEbmType AppendTarget(
       TraceLevelInfo,
       "Entered AppendTarget: "
       "bClassification=%" BoolEbmTypePrintf ", "
-      "countTargetClasses=%" IntEbmTypePrintf ", "
+      "countClasses=%" IntEbmTypePrintf ", "
       "countSamples=%" IntEbmTypePrintf ", "
       "aTargets=%p, "
       "cBytesAllocated=%zu, "
       "pFillMem=%p"
       ,
       bClassification ? EBM_TRUE : EBM_FALSE,
-      countTargetClasses,
+      countClasses,
       countSamples,
       static_cast<const void *>(aTargets),
       cBytesAllocated,
@@ -919,8 +919,8 @@ static IntEbmType AppendTarget(
    );
 
    {
-      if(IsConvertErrorDual<size_t, SharedStorageDataType>(countTargetClasses)) {
-         LOG_0(TraceLevelError, "ERROR AppendTarget countTargetClasses is outside the range of a valid index");
+      if(IsConvertErrorDual<size_t, SharedStorageDataType>(countClasses)) {
+         LOG_0(TraceLevelError, "ERROR AppendTarget countClasses is outside the range of a valid index");
          goto return_bad;
       }
       if(IsConvertErrorDual<size_t, SharedStorageDataType>(countSamples)) {
@@ -975,7 +975,7 @@ static IntEbmType AppendTarget(
 
          if(bClassification) {
             ClassificationTargetDataSetShared * pClassificationTargetDataSetShared = reinterpret_cast<ClassificationTargetDataSetShared *>(pFillMemTemp + sizeof(TargetDataSetShared));
-            pClassificationTargetDataSetShared->m_cTargetClasses = static_cast<SharedStorageDataType>(countTargetClasses);
+            pClassificationTargetDataSetShared->m_cClasses = static_cast<SharedStorageDataType>(countClasses);
          }
       }
 
@@ -1023,11 +1023,11 @@ static IntEbmType AppendTarget(
                      LOG_0(TraceLevelError, "ERROR AppendTarget classification target can't be negative");
                      goto return_bad;
                   }
-                  if(countTargetClasses <= target) {
-                     LOG_0(TraceLevelError, "ERROR AppendTarget countTargetClasses <= target");
+                  if(countClasses <= target) {
+                     LOG_0(TraceLevelError, "ERROR AppendTarget countClasses <= target");
                      goto return_bad;
                   }
-                  // since countTargetClasses can be converted to these, so now can target
+                  // since countClasses can be converted to these, so now can target
                   EBM_ASSERT(!IsConvertError<size_t>(target));
                   EBM_ASSERT(!IsConvertError<SharedStorageDataType>(target));
                
@@ -1259,13 +1259,13 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillWeight(
 }
 
 EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeClassificationTarget(
-   IntEbmType countTargetClasses,
+   IntEbmType countClasses,
    IntEbmType countSamples,
    const IntEbmType * targets
 ) {
    return AppendTarget(
       true,
-      countTargetClasses,
+      countClasses,
       countSamples,
       targets,
       0,
@@ -1274,7 +1274,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeClassificationTarget(
 }
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillClassificationTarget(
-   IntEbmType countTargetClasses,
+   IntEbmType countClasses,
    IntEbmType countSamples,
    const IntEbmType * targets,
    IntEbmType countBytesAllocated,
@@ -1307,7 +1307,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillClassificationTarget(
 
    const IntEbmType ret = AppendTarget(
       true,
-      countTargetClasses,
+      countClasses,
       countSamples,
       targets,
       cBytesAllocated,
@@ -1762,7 +1762,7 @@ extern const FloatFast * GetDataSetSharedWeight(
 extern const void * GetDataSetSharedTarget(
    const unsigned char * const pDataSetShared,
    const size_t iTarget,
-   ptrdiff_t * const pRuntimeLearningTypeOrCountTargetClassesOut
+   ptrdiff_t * const pcClassesOut
 ) {
    const HeaderDataSetShared * const pHeaderDataSetShared =
       reinterpret_cast<const HeaderDataSetShared *>(pDataSetShared);
@@ -1793,19 +1793,19 @@ extern const void * GetDataSetSharedTarget(
    const SharedStorageDataType id = pTargetDataSetShared->m_id;
    EBM_ASSERT(IsTarget(id));
 
-   ptrdiff_t runtimeLearningTypeOrCountTargetClasses = k_regression;
+   ptrdiff_t cClasses = k_regression;
    const void * pRet = reinterpret_cast<const void *>(pTargetDataSetShared + 1);
    if(IsClassificationTarget(id)) {
       const ClassificationTargetDataSetShared * const pClassificationTargetDataSetShared =
          reinterpret_cast<const ClassificationTargetDataSetShared *>(pRet);
 
-      const SharedStorageDataType countTargetClasses = pClassificationTargetDataSetShared->m_cTargetClasses;
-      EBM_ASSERT(!IsConvertError<ptrdiff_t>(countTargetClasses));
-      runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
-      EBM_ASSERT(0 <= runtimeLearningTypeOrCountTargetClasses); // 0 is possible with 0 samples
+      const SharedStorageDataType countClasses = pClassificationTargetDataSetShared->m_cClasses;
+      EBM_ASSERT(!IsConvertError<ptrdiff_t>(countClasses));
+      cClasses = static_cast<ptrdiff_t>(countClasses);
+      EBM_ASSERT(0 <= cClasses); // 0 is possible with 0 samples
       pRet = reinterpret_cast<const void *>(pClassificationTargetDataSetShared + 1);
    }
-   *pRuntimeLearningTypeOrCountTargetClassesOut = runtimeLearningTypeOrCountTargetClasses;
+   *pcClassesOut = cClasses;
    return pRet;
 }
 
@@ -1892,14 +1892,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractTargetClasses(
             const ClassificationTargetDataSetShared * const pClassificationTargetDataSetShared =
                reinterpret_cast<const ClassificationTargetDataSetShared *>(pTargetDataSetShared + 1);
 
-            const SharedStorageDataType countTargetClasses = pClassificationTargetDataSetShared->m_cTargetClasses;
+            const SharedStorageDataType cClasses = pClassificationTargetDataSetShared->m_cClasses;
 
-            if(IsConvertError<IntEbmType>(countTargetClasses)) {
-               LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<IntEbmType>(countTargetClasses)");
+            if(IsConvertError<IntEbmType>(cClasses)) {
+               LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<IntEbmType>(cClasses)");
                return Error_IllegalParamValue;
             }
 
-            countClasses = static_cast<IntEbmType>(countTargetClasses);
+            countClasses = static_cast<IntEbmType>(cClasses);
             if(countClasses < IntEbmType { 0 }) {
                LOG_0(TraceLevelError, "ERROR ExtractTargetClasses countClasses < IntEbmType { 0 }");
                return Error_IllegalParamValue;

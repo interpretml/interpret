@@ -59,7 +59,7 @@ extern const FloatFast * GetDataSetSharedWeight(
 extern const void * GetDataSetSharedTarget(
    const unsigned char * const pDataSetShared,
    const size_t iTarget,
-   ptrdiff_t * const pRuntimeLearningTypeOrCountTargetClassesOut
+   ptrdiff_t * const pcClassesOut
 );
 
 } // DEFINED_ZONE_NAME

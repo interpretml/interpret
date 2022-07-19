@@ -118,8 +118,8 @@ ErrorEbmType InteractionCore::Create(
       return Error_IllegalParamValue;
    }
 
-   ptrdiff_t runtimeLearningTypeOrCountTargetClasses;
-   GetDataSetSharedTarget(pDataSetShared, 0, &runtimeLearningTypeOrCountTargetClasses);
+   ptrdiff_t cClasses;
+   GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
 
    size_t cTrainingSamples;
    size_t cValidationSamples;
@@ -180,10 +180,10 @@ ErrorEbmType InteractionCore::Create(
    }
    LOG_0(TraceLevelInfo, "InteractionCore::Allocate done feature processing");
 
-   pRet->m_runtimeLearningTypeOrCountTargetClasses = runtimeLearningTypeOrCountTargetClasses;
+   pRet->m_cClasses = cClasses;
 
    error = pRet->m_dataFrame.Initialize(
-      IsClassification(runtimeLearningTypeOrCountTargetClasses),
+      IsClassification(cClasses),
       pDataSetShared,
       cSamples,
       aBag,

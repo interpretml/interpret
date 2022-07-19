@@ -71,9 +71,9 @@ ErrorEbmType BoosterShell::FillAllocations() {
 
    LOG_0(TraceLevelInfo, "Entered BoosterShell::FillAllocations");
 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = m_pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
-   const size_t cBytesPerGradientPair = GetGradientPairSize<FloatBig>(IsClassification(runtimeLearningTypeOrCountTargetClasses));
+   const ptrdiff_t cClasses = m_pBoosterCore->GetCountClasses();
+   const size_t cScores = GetCountScores(cClasses);
+   const size_t cBytesPerGradientPair = GetGradientPairSize<FloatBig>(IsClassification(cClasses));
       
    m_pTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
    if(nullptr == m_pTermUpdate) {
@@ -390,8 +390,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
       return Error_IllegalParamValue;
    }
 
-   if(ptrdiff_t { 0 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses() ||
-      ptrdiff_t { 1 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
+   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
@@ -410,7 +409,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
 
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
    const size_t cDimensions = pTerm->GetCountDimensions();
-   size_t cTensorScores = GetCountScores(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cTensorScores = GetCountScores(pBoosterCore->GetCountClasses());
    if(0 != cDimensions) {
       const TermEntry * pTermEntry = pTerm->GetTermEntries();
       const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
@@ -425,7 +424,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
 
    // if pBoosterCore->GetBestModel() is nullptr, then either:
    //    1) m_cTerms was 0, but we checked above that iTerm was less than cTerms
-   //    2) If m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0, but we checked for this above too
+   //    2) If m_cClasses was either 1 or 0, but we checked for this above too
    EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
 
    Tensor * const pBestTermTensor = pBoosterCore->GetBestModel()[iTerm];
@@ -483,8 +482,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
       return Error_IllegalParamValue;
    }
 
-   if(ptrdiff_t { 0 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses() ||
-      ptrdiff_t { 1 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses())    {
+   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
@@ -503,7 +501,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
 
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
    const size_t cDimensions = pTerm->GetCountDimensions();
-   size_t cTensorScores = GetCountScores(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cTensorScores = GetCountScores(pBoosterCore->GetCountClasses());
    if(0 != cDimensions) {
       const TermEntry * pTermEntry = pTerm->GetTermEntries();
       const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
@@ -518,7 +516,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
 
    // if pBoosterCore->GetCurrentModel() is nullptr, then either:
    //    1) m_cTerms was 0, but we checked above that iTerm was less than cTerms
-   //    2) If m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0, but we checked for this above too
+   //    2) If m_cClasses was either 1 or 0, but we checked for this above too
    EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel());
 
    Tensor * const pCurrentTermTensor = pBoosterCore->GetCurrentModel()[iTerm];

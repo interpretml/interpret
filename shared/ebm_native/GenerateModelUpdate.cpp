@@ -52,7 +52,7 @@ extern void SumAllBins(
 );
 
 extern void TensorTotalsBuild(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const ptrdiff_t cClasses,
    const Term * const pTerm,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
@@ -100,14 +100,12 @@ static ErrorEbmType BoostZeroDimensional(
    LOG_0(TraceLevelVerbose, "Entered BoostZeroDimensional");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
+   const bool bClassification = IsClassification(cClasses);
 
-   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(cClasses);
 
-   if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || 
-      IsOverflowBinSize<FloatBig>(bClassification, cScores)) 
-   {
+   if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "WARNING BoostZeroDimensional IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)");
       return Error_OutOfMemory;
@@ -181,7 +179,7 @@ static ErrorEbmType BoostZeroDimensional(
             );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            if(IsMulticlass(runtimeLearningTypeOrCountTargetClasses)) {
+            if(IsMulticlass(cClasses)) {
                if(size_t { 0 } == iScore) {
                   zeroLogit = updateScore;
                }
@@ -193,7 +191,7 @@ static ErrorEbmType BoostZeroDimensional(
          }
       }
    } else {
-      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(cClasses));
       const auto * const pBin = pBinBig->Specialize<FloatBig, false>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
@@ -237,9 +235,9 @@ static ErrorEbmType BoostSingleDimensional(
    }
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
-   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
+   const bool bClassification = IsClassification(cClasses);
+   const size_t cScores = GetCountScores(cClasses);
 
    if(IsOverflowBinSize<FloatFast>(bClassification, cScores) ||
       IsOverflowBinSize<FloatBig>(bClassification, cScores)) 
@@ -375,9 +373,9 @@ static ErrorEbmType BoostMultiDimensional(
    } while(pTermEntriesEnd != pTermEntry);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
-   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
+   const bool bClassification = IsClassification(cClasses);
+   const size_t cScores = GetCountScores(cClasses);
 
    if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || 
       IsOverflowBinSize<FloatBig>(bClassification, cScores)) 
@@ -473,7 +471,7 @@ static ErrorEbmType BoostMultiDimensional(
    );
 
    TensorTotalsBuild(
-      runtimeLearningTypeOrCountTargetClasses,
+      cClasses,
       pTerm,
       aAuxiliaryBins,
       aBinsBig
@@ -649,9 +647,9 @@ static ErrorEbmType BoostRandom(
    }
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
-   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
+   const bool bClassification = IsClassification(cClasses);
+   const size_t cScores = GetCountScores(cClasses);
 
    if(IsOverflowBinSize<FloatFast>(bClassification, cScores) ||
       IsOverflowBinSize<FloatBig>(bClassification, cScores))
@@ -745,8 +743,8 @@ static ErrorEbmType GenerateTermUpdateInternal(
    ErrorEbmType error;
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
+   const bool bClassification = IsClassification(cClasses);
 
    LOG_0(TraceLevelVerbose, "Entered GenerateTermUpdateInternal");
 
@@ -955,20 +953,20 @@ static ErrorEbmType GenerateTermUpdateInternal(
          constexpr bool bExpandBinaryLogits = false;
 #endif // EXPAND_BINARY_LOGITS
 
-         //if(0 <= k_iZeroLogit || ptrdiff_t { 2 } == pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses && bExpandBinaryLogits) {
-         //   EBM_ASSERT(ptrdiff_t { 2 } <= pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses);
+         //if(0 <= k_iZeroLogit || ptrdiff_t { 2 } == pBoosterCore->m_cClasses && bExpandBinaryLogits) {
+         //   EBM_ASSERT(ptrdiff_t { 2 } <= pBoosterCore->m_cClasses);
          //   // TODO : for classification with logit zeroing, is our learning rate essentially being inflated as 
-         //       pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses goes up?  If so, maybe we should divide by 
-         //       pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses here to keep learning rates as equivalent as possible..  
+         //       pBoosterCore->m_cClasses goes up?  If so, maybe we should divide by 
+         //       pBoosterCore->m_cClasses here to keep learning rates as equivalent as possible..  
          //       Actually, I think the real solution here is that 
          //   pBoosterCore->m_pTermUpdate->Multiply(
-         //      learningRateFloat * invertedSampleCount * (pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses - 1) / 
-         //      pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses
+         //      learningRateFloat * invertedSampleCount * (pBoosterCore->m_cClasses - 1) / 
+         //      pBoosterCore->m_cClasses
          //   );
          //} else {
          //   // TODO : for classification, is our learning rate essentially being inflated as 
-         //        pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses goes up?  If so, maybe we should divide by 
-         //        pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses here to keep learning rates equivalent as possible
+         //        pBoosterCore->m_cClasses goes up?  If so, maybe we should divide by 
+         //        pBoosterCore->m_cClasses here to keep learning rates equivalent as possible
          //   pBoosterCore->m_pTermUpdate->Multiply(learningRateFloat * invertedSampleCount);
          //}
 
@@ -977,7 +975,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
          // Ping Li paper (algorithm #1, line 5, (K - 1) / K )
          // https://arxiv.org/pdf/1006.5051.pdf
 
-         const bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses;
+         const bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == cClasses;
          if(bDividing) {
             bBad = pBoosterShell->GetTermUpdate()->MultiplyAndCheckForIssues(multiple * 0.5);
          } else {
@@ -1127,7 +1125,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
 
    // avgGainOut can be nullptr
 
-   if(ptrdiff_t { 0 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
+   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The term scores are a tensor with zero 
       // length array logits, which means for our representation that we have zero items in the array total.
       // since we can predit the output with 100% accuracy, our gain will be 0.
@@ -1138,7 +1136,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
 
       LOG_0(
          TraceLevelWarning,
-         "WARNING GenerateTermUpdate pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }"
+         "WARNING GenerateTermUpdate pBoosterCore->m_cClasses <= ptrdiff_t { 1 }"
       );
       return Error_None;
    }

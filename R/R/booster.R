@@ -27,7 +27,7 @@ convert_terms_to_c <- function(terms) {
 
 create_classification_booster <- function(
    random_seed,
-   count_target_classes, 
+   count_classes, 
    features_categorical,
    features_bin_count,
    feature_counts, 
@@ -43,7 +43,7 @@ create_classification_booster <- function(
    count_inner_bags
 ) {
    random_seed <- as.integer(random_seed)
-   count_target_classes <- as.double(count_target_classes)
+   count_classes <- as.double(count_classes)
    features_categorical <- as.logical(features_categorical)
    features_bin_count <- as.double(features_bin_count)
    feature_counts <- as.double(feature_counts)
@@ -69,7 +69,7 @@ create_classification_booster <- function(
    booster_handle <- .Call(
       CreateClassificationBooster_R, 
       random_seed,
-      count_target_classes, 
+      count_classes, 
       features_categorical,
       features_bin_count,
       feature_counts, 

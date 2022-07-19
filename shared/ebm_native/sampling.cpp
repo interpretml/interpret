@@ -191,7 +191,7 @@ WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
    SeedEbmType randomSeed,
-   IntEbmType countTargetClasses,
+   IntEbmType countClasses,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
    IntEbmType * targets,
@@ -208,14 +208,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
       TraceLevelVerbose,
       "Entered StratifiedSamplingWithoutReplacement: "
       "randomSeed=%" SeedEbmTypePrintf ", "
-      "countTargetClasses=%" IntEbmTypePrintf ", "
+      "countClasses=%" IntEbmTypePrintf ", "
       "countTrainingSamples=%" IntEbmTypePrintf ", "
       "countValidationSamples=%" IntEbmTypePrintf ", "
       "targets=%p, "
       "sampleCountsOut=%p"
       ,
       randomSeed,
-      countTargetClasses,
+      countClasses,
       countTrainingSamples,
       countValidationSamples,
       static_cast<void*>(targets),
@@ -263,35 +263,35 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
       return Error_None;
    }
 
-   if (countTargetClasses <= 0) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement countTargetClasses can't be negative or zero");
+   if (countClasses <= 0) {
+      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement countClasses can't be negative or zero");
       return Error_IllegalParamValue;
    }
-   if (IsConvertError<size_t>(countTargetClasses)) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsConvertError<size_t>(countTargetClasses)");
+   if (IsConvertError<size_t>(countClasses)) {
+      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsConvertError<size_t>(countClasses)");
       return Error_IllegalParamValue;
    }
-   const size_t cTargetClasses = static_cast<size_t>(countTargetClasses);
+   const size_t cClasses = static_cast<size_t>(countClasses);
 
    if (UNLIKELY(IsMultiplyError(sizeof(*sampleCountsOut), cSamples))) {
       LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsMultiplyError(sizeof(*sampleCountsOut), cSamples)");
       return Error_IllegalParamValue;
    }
 
-   if (UNLIKELY(IsMultiplyError(sizeof(TargetSamplingCounts), cTargetClasses))) {
-      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement IsMultiplyError(sizeof(TargetSamplingCounts), cTargetClasses)");
+   if (UNLIKELY(IsMultiplyError(sizeof(TargetSamplingCounts), cClasses))) {
+      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement IsMultiplyError(sizeof(TargetSamplingCounts), cClasses)");
       return Error_OutOfMemory;
    }
 
-   if (UNLIKELY(cTrainingSamples < cTargetClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement cTrainingSamples < cTargetClasses");
+   if (UNLIKELY(cTrainingSamples < cClasses)) {
+      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement cTrainingSamples < cClasses");
    }
 
-   if (UNLIKELY(cValidationSamples < cTargetClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement cValidationSamples < cTargetClasses");
+   if (UNLIKELY(cValidationSamples < cClasses)) {
+      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement cValidationSamples < cClasses");
    }
 
-   const size_t targetSamplingCountsSize = sizeof(TargetSamplingCounts) * cTargetClasses;
+   const size_t targetSamplingCountsSize = sizeof(TargetSamplingCounts) * cClasses;
    TargetSamplingCounts* pTargetSamplingCounts = static_cast<TargetSamplingCounts*>(malloc(targetSamplingCountsSize));
 
    if (UNLIKELY(nullptr == pTargetSamplingCounts)) {
@@ -305,8 +305,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
    for (size_t i = 0; i < cSamples; i++) {
       IntEbmType label = targets[i];
 
-      if (UNLIKELY(label < 0 || label >= countTargetClasses)) {
-         LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement label >= cTargetClasses");
+      if (UNLIKELY(label < 0 || label >= countClasses)) {
+         LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement label >= cClasses");
          free(pTargetSamplingCounts);
          return Error_IllegalParamValue;
       }
@@ -353,18 +353,18 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
 
    size_t globalLeftover = cTrainingSamples;
 
-   if (cTrainingSamples > cTargetClasses) {
+   if (cTrainingSamples > cClasses) {
       size_t cClassesWithSamples = 0;
 
-      for (size_t iTargetClass = 0; iTargetClass < cTargetClasses; iTargetClass++) {
-         size_t cClassTotalRemaining = (pTargetSamplingCounts + iTargetClass)->m_cTotalRemaining;
+      for (size_t iClass = 0; iClass < cClasses; iClass++) {
+         size_t cClassTotalRemaining = (pTargetSamplingCounts + iClass)->m_cTotalRemaining;
          double fTrainingPerClass = std::floor(idealTrainingProportion * cClassTotalRemaining);
          size_t cTrainingPerClass = static_cast<size_t>(fTrainingPerClass);
          if (0 < cTrainingPerClass) {
             --cTrainingPerClass;
          }
          cClassesWithSamples = (cClassTotalRemaining > 0) ? cClassesWithSamples + 1 : cClassesWithSamples;
-         (pTargetSamplingCounts + iTargetClass)->m_cTraining = cTrainingPerClass;
+         (pTargetSamplingCounts + iClass)->m_cTraining = cTrainingPerClass;
          EBM_ASSERT(cTrainingPerClass <= globalLeftover);
          globalLeftover -= cTrainingPerClass;
       }
@@ -374,7 +374,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
 
    EBM_ASSERT(globalLeftover <= cSamples);
 
-   const size_t mostImprovedClassesCapacity = sizeof(size_t) * cTargetClasses;
+   const size_t mostImprovedClassesCapacity = sizeof(size_t) * cClasses;
    size_t* pMostImprovedClasses = static_cast<size_t*>(malloc(mostImprovedClassesCapacity));
 
    if (UNLIKELY(nullptr == pMostImprovedClasses)) {
@@ -391,9 +391,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
       size_t mostImprovedClassesSize = 0;
       memset(pMostImprovedClasses, 0, mostImprovedClassesCapacity);
 
-      for (size_t iTargetClass = 0; iTargetClass < cTargetClasses; iTargetClass++) {
-         const size_t cClassTraining = (pTargetSamplingCounts + iTargetClass)->m_cTraining;
-         const size_t cClassRemaining = (pTargetSamplingCounts + iTargetClass)->m_cTotalRemaining;
+      for (size_t iClass = 0; iClass < cClasses; iClass++) {
+         const size_t cClassTraining = (pTargetSamplingCounts + iClass)->m_cTraining;
+         const size_t cClassRemaining = (pTargetSamplingCounts + iClass)->m_cTotalRemaining;
 
          if (cClassTraining == cClassRemaining) {
             continue;
@@ -420,7 +420,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
          }
          
          if (improvement == maxImprovement) {
-            *(pMostImprovedClasses + mostImprovedClassesSize) = iTargetClass;
+            *(pMostImprovedClasses + mostImprovedClassesSize) = iClass;
             ++mostImprovedClassesSize;
          }
       }
@@ -434,10 +434,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
    }
 
 #ifndef NDEBUG
-   const TargetSamplingCounts* pTargetSamplingCountsEnd = pTargetSamplingCounts + cTargetClasses;
+   const TargetSamplingCounts * pTargetSamplingCountsEnd = pTargetSamplingCounts + cClasses;
    size_t assignedTrainingCount = 0;
 
-   for (TargetSamplingCounts* pTargetSamplingCountsCur = pTargetSamplingCounts;
+   for (TargetSamplingCounts * pTargetSamplingCountsCur = pTargetSamplingCounts;
       pTargetSamplingCountsEnd != pTargetSamplingCountsCur;
       ++pTargetSamplingCountsCur) {
       assignedTrainingCount += pTargetSamplingCountsCur->m_cTraining;

@@ -32,24 +32,24 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
+template<ptrdiff_t cCompilerClasses>
 static FloatBig SweepMultiDimensional(
-   const Bin<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aBins,
+   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
    const Term * const pTerm,
    size_t * const aiPoint,
    const size_t directionVectorLow,
    const unsigned int iDimensionSweep,
    const size_t cSweepBins,
    const size_t cSamplesRequiredForChildSplitMin,
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   Bin<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pBinBestAndTemp,
+   const ptrdiff_t cRuntimeClasses,
+   Bin<FloatBig, IsClassification(cCompilerClasses)> * const pBinBestAndTemp,
    size_t * const piBestSplit
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aBinsDebugCopy
+   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBinsDebugCopy
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
-   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+   constexpr bool bClassification = IsClassification(cCompilerClasses);
 
    // don't LOG this!  It would create way too much chatter!
 
@@ -59,11 +59,11 @@ static FloatBig SweepMultiDimensional(
    EBM_ASSERT(iDimensionSweep < pTerm->GetCountSignificantDimensions());
    EBM_ASSERT(0 == (directionVectorLow & (size_t { 1 } << iDimensionSweep)));
 
-   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-      compilerLearningTypeOrCountTargetClasses,
-      runtimeLearningTypeOrCountTargetClasses
+   const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+      cCompilerClasses,
+      cRuntimeClasses
    );
-   const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(cClasses);
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
    EBM_ASSERT(!IsMultiplyError(size_t { 2 }, cBytesPerBin)); // we're accessing allocated memory
@@ -91,8 +91,8 @@ static FloatBig SweepMultiDimensional(
       *piBin = iBin;
 
       EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-      TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
-         runtimeLearningTypeOrCountTargetClasses,
+      TensorTotalsSum<cCompilerClasses, 2>(
+         cRuntimeClasses,
          pTerm,
          aBins,
          aiPoint,
@@ -105,8 +105,8 @@ static FloatBig SweepMultiDimensional(
          );
       if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsLow->GetCountSamples())) {
          EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-         TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
-            runtimeLearningTypeOrCountTargetClasses,
+         TensorTotalsSum<cCompilerClasses, 2>(
+            cRuntimeClasses,
             pTerm,
             aBins,
             aiPoint,
@@ -175,7 +175,7 @@ static FloatBig SweepMultiDimensional(
    return bestGain;
 }
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
+template<ptrdiff_t cCompilerClasses>
 class PartitionTwoDimensionalBoostingInternal final {
 public:
 
@@ -194,7 +194,7 @@ public:
       , const BinBase * const aBinsBaseDebugCopy
 #endif // NDEBUG
    ) {
-      constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+      constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       ErrorEbmType error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -203,14 +203,14 @@ public:
       Tensor * const pInnerTermUpdate =
          pBoosterShell->GetInnerTermUpdate();
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
-      const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-         compilerLearningTypeOrCountTargetClasses,
-         pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
+         cCompilerClasses,
+         cRuntimeClasses
       );
 
-      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(cClasses);
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
       auto * aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification>();
@@ -270,7 +270,7 @@ public:
          size_t splitSecond1LowBest;
          auto * pTotals2LowLowBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 4);
          auto * pTotals2LowHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 5);
-         const FloatBig gain1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
+         const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses>(
             aBins,
             pTerm,
             aiStart,
@@ -278,7 +278,7 @@ public:
             1,
             cBinsDimension2,
             cSamplesRequiredForChildSplitMin,
-            runtimeLearningTypeOrCountTargetClasses,
+            cRuntimeClasses,
             pTotals2LowLowBest,
             &splitSecond1LowBest
 #ifndef NDEBUG
@@ -293,7 +293,7 @@ public:
             size_t splitSecond1HighBest;
             auto * pTotals2HighLowBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 8);
             auto * pTotals2HighHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 9);
-            const FloatBig gain2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
+            const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses>(
                aBins,
                pTerm,
                aiStart,
@@ -301,7 +301,7 @@ public:
                1,
                cBinsDimension2,
                cSamplesRequiredForChildSplitMin,
-               runtimeLearningTypeOrCountTargetClasses,
+               cRuntimeClasses,
                pTotals2HighLowBest,
                &splitSecond1HighBest
 #ifndef NDEBUG
@@ -361,7 +361,7 @@ public:
          size_t splitSecond2LowBest;
          auto * pTotals1LowLowBestInner = IndexBin(cBytesPerBin, aAuxiliaryBins, 16);
          auto * pTotals1LowHighBestInner = IndexBin(cBytesPerBin, aAuxiliaryBins, 17);
-         const FloatBig gain1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
+         const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses>(
             aBins,
             pTerm,
             aiStart,
@@ -369,7 +369,7 @@ public:
             0,
             cBinsDimension1,
             cSamplesRequiredForChildSplitMin,
-            runtimeLearningTypeOrCountTargetClasses,
+            cRuntimeClasses,
             pTotals1LowLowBestInner,
             &splitSecond2LowBest
 #ifndef NDEBUG
@@ -384,7 +384,7 @@ public:
             size_t splitSecond2HighBest;
             auto * pTotals1HighLowBestInner = IndexBin(cBytesPerBin, aAuxiliaryBins, 20);
             auto * pTotals1HighHighBestInner = IndexBin(cBytesPerBin, aAuxiliaryBins, 21);
-            const FloatBig gain2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
+            const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses>(
                aBins,
                pTerm,
                aiStart,
@@ -392,7 +392,7 @@ public:
                0,
                cBinsDimension1,
                cSamplesRequiredForChildSplitMin,
-               runtimeLearningTypeOrCountTargetClasses,
+               cRuntimeClasses,
                pTotals1HighLowBestInner,
                &splitSecond2HighBest
 #ifndef NDEBUG
@@ -576,7 +576,7 @@ public:
                            );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                           if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                           if(IsMulticlass(cCompilerClasses)) {
                               if(size_t { 0 } == iScore) {
                                  zeroLogit0 = predictionLowLow;
                                  zeroLogit1 = predictionLowHigh;
@@ -591,7 +591,7 @@ public:
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
                         } else {
-                           EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+                           EBM_ASSERT(IsRegression(cCompilerClasses));
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals2LowLowBest[iScore].m_sumGradients,
                               pTotals2LowLowBest->GetWeight()
@@ -719,7 +719,7 @@ public:
                            );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                           if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                           if(IsMulticlass(cCompilerClasses)) {
                               if(size_t { 0 } == iScore) {
                                  zeroLogit0 = predictionLowLow;
                                  zeroLogit1 = predictionLowHigh;
@@ -733,7 +733,7 @@ public:
                            }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
                         } else {
-                           EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+                           EBM_ASSERT(IsRegression(cCompilerClasses));
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals1LowLowBest[iScore].m_sumGradients,
                               pTotals1LowLowBest->GetWeight()
@@ -817,7 +817,7 @@ public:
             );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+            if(IsMulticlass(cCompilerClasses)) {
                if(size_t { 0 } == iScore) {
                   zeroLogit = update;
                }
@@ -826,7 +826,7 @@ public:
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
          } else {
-            EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+            EBM_ASSERT(IsRegression(cCompilerClasses));
             update = EbmStats::ComputeSinglePartitionUpdate(
                pGradientPairTotal[iScore].m_sumGradients,
                weightAll
@@ -841,7 +841,7 @@ public:
    WARNING_POP
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+template<ptrdiff_t cPossibleClasses>
 class PartitionTwoDimensionalBoostingTarget final {
 public:
 
@@ -857,16 +857,16 @@ public:
       , const BinBase * const aBinsBaseDebugCopy
 #endif // NDEBUG
    ) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
-      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
+      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
-      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return PartitionTwoDimensionalBoostingInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
+      if(cPossibleClasses == cRuntimeClasses) {
+         return PartitionTwoDimensionalBoostingInternal<cPossibleClasses>::Func(
             pBoosterShell,
             pTerm,
             cSamplesRequiredForChildSplitMin,
@@ -877,7 +877,7 @@ public:
 #endif // NDEBUG
          );
       } else {
-         return PartitionTwoDimensionalBoostingTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
+         return PartitionTwoDimensionalBoostingTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
             pTerm,
             cSamplesRequiredForChildSplitMin,
@@ -892,7 +892,7 @@ public:
 };
 
 template<>
-class PartitionTwoDimensionalBoostingTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class PartitionTwoDimensionalBoostingTarget<k_cCompilerClassesMax + 1> final {
 public:
 
    PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
@@ -907,10 +907,10 @@ public:
       , const BinBase * const aBinsBaseDebugCopy
 #endif // NDEBUG
    ) {
-      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
+      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
 
       return PartitionTwoDimensionalBoostingInternal<k_dynamicClassification>::Func(
          pBoosterShell,
@@ -936,9 +936,9 @@ extern ErrorEbmType PartitionTwoDimensionalBoosting(
 #endif // NDEBUG
 ) {
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
-   if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+   if(IsClassification(cRuntimeClasses)) {
       return PartitionTwoDimensionalBoostingTarget<2>::Func(
          pBoosterShell,
          pTerm,
@@ -950,7 +950,7 @@ extern ErrorEbmType PartitionTwoDimensionalBoosting(
 #endif // NDEBUG
       );
    } else {
-      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(cRuntimeClasses));
       return PartitionTwoDimensionalBoostingInternal<k_regression>::Func(
          pBoosterShell,
          pTerm,
