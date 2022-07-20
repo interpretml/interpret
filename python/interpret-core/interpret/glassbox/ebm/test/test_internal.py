@@ -15,7 +15,7 @@ import pytest
 def test_hist():
     np.random.seed(0)
     X_col = np.random.random_sample((1000,))
-    counts, values = np.histogram(X_col, bins="doane")
+    counts, vals = np.histogram(X_col, bins="doane")
 
     X_col = np.concatenate(([np.nan], X_col))
     
@@ -32,7 +32,7 @@ def test_hist():
     bin_counts = bin_counts[1:]
 
     assert np.array_equal(counts, bin_counts)
-    assert np.allclose(values, edges)
+    assert np.allclose(vals, edges)
 
 def test_cut_winsorized():
     np.random.seed(0)

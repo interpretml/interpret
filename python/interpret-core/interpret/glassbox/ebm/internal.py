@@ -322,35 +322,35 @@ class Native:
 
         return cuts[:count_cuts.value]
 
-    def suggest_graph_bounds(self, cuts, min_val=np.nan, max_val=np.nan):
-        # This function will never return NaN values for min_graph or max_graph
-        # It can however return -inf values for min_graph and +inf for max_graph
-        # if the min_val or max_val are +-inf or if there's an overflow when
+    def suggest_graph_bounds(self, cuts, min_feature_val=np.nan, max_feature_val=np.nan):
+        # This function will never return NaN values for low_graph_bound or high_graph_bound
+        # It can however return -inf values for low_graph_bound and +inf for high_graph_bound
+        # if the min_feature_val or max_feature_val are +-inf or if there's an overflow when
         # extending the bounds.
-        # A possible dangerous return value of -inf or +inf for both min_graph and max_graph
+        # A possible dangerous return value of -inf or +inf for both low_graph_bound and high_graph_bound
         # can occur if one of the min/max values is missing (NaN), or if the dataset consists
-        # entirely of +inf or -inf values which makes both min_val and max_val the same
-        # extreme value.  In this case the caller should probably check if min_graph == max_graph
+        # entirely of +inf or -inf values which makes both min_feature_val and max_feature_val the same
+        # extreme value.  In this case the caller should probably check if low_graph_bound == high_graph_bound
         # to avoid subtracting them, which would lead to a NaN value for the difference.
-        # Also max_graph - min_graph can be +inf even if both min_graph and max_graph are 
+        # Also high_graph_bound - low_graph_bound can be +inf even if both low_graph_bound and high_graph_bound are 
         # normal numbers.  An example of this occuring would be if min was the lowest float
         # and max was the highest float.
 
-        min_graph = ct.c_double(np.nan)
-        max_graph = ct.c_double(np.nan)
+        low_graph_bound = ct.c_double(np.nan)
+        high_graph_bound = ct.c_double(np.nan)
         return_code = self._unsafe.SuggestGraphBounds(
             len(cuts),
             cuts[0] if 0 < len(cuts) else np.nan,
             cuts[-1] if 0 < len(cuts) else np.nan,
-            min_val,
-            max_val,
-            ct.byref(min_graph),
-            ct.byref(max_graph),
+            min_feature_val,
+            max_feature_val,
+            ct.byref(low_graph_bound),
+            ct.byref(high_graph_bound),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "SuggestGraphBounds")
 
-        return min_graph.value, max_graph.value
+        return low_graph_bound.value, high_graph_bound.value
 
     def bin_feature(self, X_col, cuts):
         # TODO: for speed and efficiency, we should instead accept in the bin_indexes array
@@ -641,7 +641,7 @@ class Native:
         self._unsafe.GetHistogramCutCount.argtypes = [
             # int64_t countSamples
             ct.c_int64,
-            # double * featureValues
+            # double * featureVals
             ct.c_void_p,
             # int64_t strategy
             ct.c_int64,
@@ -651,7 +651,7 @@ class Native:
         self._unsafe.CutQuantile.argtypes = [
             # int64_t countSamples
             ct.c_int64,
-            # double * featureValues
+            # double * featureVals
             ct.c_void_p,
             # int64_t countSamplesPerBinMin
             ct.c_int64,
@@ -667,7 +667,7 @@ class Native:
         self._unsafe.CutUniform.argtypes = [
             # int64_t countSamples
             ct.c_int64,
-            # double * featureValues
+            # double * featureVals
             ct.c_void_p,
             # int64_t countDesiredCuts
             ct.c_int64,
@@ -679,7 +679,7 @@ class Native:
         self._unsafe.CutWinsorized.argtypes = [
             # int64_t countSamples
             ct.c_int64,
-            # double * featureValues
+            # double * featureVals
             ct.c_void_p,
             # int64_t * countCutsInOut
             ct.POINTER(ct.c_int64),
@@ -696,9 +696,9 @@ class Native:
             ct.c_double,
             # double highestCut
             ct.c_double,
-            # double minValue
+            # double minFeatureVal
             ct.c_double,
-            # double maxValue
+            # double maxFeatureVal
             ct.c_double,
             # double * lowGraphBoundOut
             ct.POINTER(ct.c_double),
@@ -711,7 +711,7 @@ class Native:
         self._unsafe.BinFeature.argtypes = [
             # int64_t countSamples
             ct.c_int64,
-            # double * featureValues
+            # double * featureVals
             ct.c_void_p,
             # int64_t countCuts
             ct.c_int64,

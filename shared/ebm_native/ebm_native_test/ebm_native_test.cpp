@@ -78,38 +78,38 @@ extern int RegisterTestHidden(const TestCaseHidden & testCaseHidden) {
    return 0;
 }
 
-extern bool IsApproxEqual(const double value, const double expected, const double percentage) {
+extern bool IsApproxEqual(const double val, const double expected, const double percentage) {
    bool isEqual = false;
-   if(!std::isnan(value)) {
+   if(!std::isnan(val)) {
       if(!std::isnan(expected)) {
-         if(!std::isinf(value)) {
+         if(!std::isinf(val)) {
             if(!std::isinf(expected)) {
                const double smaller = double { 1 } - percentage;
                const double bigger = double { 1 } + percentage;
-               if(0 < value) {
+               if(0 < val) {
                   if(0 < expected) {
-                     if(value <= expected) {
+                     if(val <= expected) {
                         // expected is the bigger number in absolute terms
-                        if(expected * smaller <= value && value <= expected * bigger) {
+                        if(expected * smaller <= val && val <= expected * bigger) {
                            isEqual = true;
                         }
                      } else {
-                        // value is the bigger number in absolute terms
-                        if(value * smaller <= expected && expected <= value * bigger) {
+                        // val is the bigger number in absolute terms
+                        if(val * smaller <= expected && expected <= val * bigger) {
                            isEqual = true;
                         }
                      }
                   }
-               } else if(value < 0) {
+               } else if(val < 0) {
                   if(expected < 0) {
-                     if(expected <= value) {
+                     if(expected <= val) {
                         // expected is the bigger number in absolute terms (the biggest negative number)
-                        if(expected * bigger <= value && value <= expected * smaller) {
+                        if(expected * bigger <= val && val <= expected * smaller) {
                            isEqual = true;
                         }
                      } else {
-                        // value is the bigger number in absolute terms (the biggest negative number)
-                        if(value * bigger <= expected && expected <= value * smaller) {
+                        // val is the bigger number in absolute terms (the biggest negative number)
+                        if(val * bigger <= expected && expected <= val * smaller) {
                            isEqual = true;
                         }
                      }
@@ -149,16 +149,16 @@ const double * TestApi::GetTermScores(
    if(cDimensions != countBins.size()) {
       exit(1);
    }
-   size_t iValue = 0;
+   size_t iVal = 0;
    size_t multiple = cScores;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
       if(countBins[iDimension] <= perDimensionIndexArrayForBinnedFeatures[iDimension]) {
          exit(1);
       }
-      iValue += perDimensionIndexArrayForBinnedFeatures[iDimension] * multiple;
+      iVal += perDimensionIndexArrayForBinnedFeatures[iDimension] * multiple;
       multiple *= countBins[iDimension];
    }
-   return &aTermScores[iValue];
+   return &aTermScores[iVal];
 }
 
 double TestApi::GetTermScore(
@@ -1119,25 +1119,25 @@ double TestApi::TestCalcInteractionStrength(
 
 extern void DisplayCuts(
    IntEbmType countSamples,
-   double * featureValues,
+   double * featureVals,
    IntEbmType countBinsMax,
    IntEbmType countSamplesPerBinMin,
    IntEbmType countCuts,
    double * cutsLowerBoundInclusive,
    IntEbmType isMissingPresent,
-   double minValue,
-   double maxValue
+   double minFeatureVal,
+   double maxFeatureVal
 ) {
    UNUSED(isMissingPresent);
-   UNUSED(minValue);
-   UNUSED(maxValue);
+   UNUSED(minFeatureVal);
+   UNUSED(maxFeatureVal);
 
    size_t cBinsMax = static_cast<size_t>(countBinsMax);
    size_t cCuts = static_cast<size_t>(countCuts);
 
-   std::vector<double> samples(featureValues, featureValues + countSamples);
+   std::vector<double> samples(featureVals, featureVals + countSamples);
    samples.erase(std::remove_if(samples.begin(), samples.end(),
-      [](const double & value) { return std::isnan(value); }), samples.end());
+      [](const double & val) { return std::isnan(val); }), samples.end());
    std::sort(samples.begin(), samples.end());
 
    std::cout << std::endl << std::endl;
@@ -1147,7 +1147,7 @@ extern void DisplayCuts(
 
    size_t iCut = 0;
    size_t cInBin = 0;
-   for(auto val: samples) {
+   for(double val: samples) {
       while(iCut < cCuts && cutsLowerBoundInclusive[iCut] <= val) {
          std::cout << "| " << cInBin << std::endl;
          cInBin = 0;

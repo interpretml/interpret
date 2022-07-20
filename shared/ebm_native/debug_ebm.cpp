@@ -112,9 +112,9 @@ static double TestLogSumErrors() {
                }
             }
 
-            double exactValue = std::log(val);
-            double approxValue = LogApproxSchraudolph(val, addTerm);
-            double error = approxValue - exactValue;
+            double exactVal = std::log(val);
+            double approxVal = LogApproxSchraudolph(val, addTerm);
+            double error = approxVal - exactVal;
             avgError += error;
             avgAbsError += std::abs(error);
             avgSquareError += error * error;
@@ -224,10 +224,10 @@ static double TestExpSumErrors() {
                }
             }
 
-            double exactValue = std::exp(val);
-            double approxValue = ExpApproxSchraudolph<false, false, false, false>(val, addTerm);
-            double error = approxValue - exactValue;
-            double relativeError = error / exactValue;
+            double exactVal = std::exp(val);
+            double approxVal = ExpApproxSchraudolph<false, false, false, false>(val, addTerm);
+            double error = approxVal - exactVal;
+            double relativeError = error / exactVal;
             avgRelativeError += relativeError;
             avgAbsRelativeError += std::abs(relativeError);
             avgSquareRelativeError += relativeError * relativeError;
@@ -366,7 +366,7 @@ static double TestSoftmaxSumErrors() {
                const double oneTermAdd = iTerm == iEliminateOneTerm ? double { 1 } : std::exp(softmaxTerms[iTerm]);
                exactDenominator += oneTermAdd;
             }
-            const double exactValue = exactNumerator / exactDenominator;
+            const double exactVal = exactNumerator / exactDenominator;
 
 
             const double approxNumerator = 0 == iEliminateOneTerm ? double { 1 } : ExpApproxBest<false, false, false, false>(softmaxTerms[0]);
@@ -375,10 +375,10 @@ static double TestSoftmaxSumErrors() {
                const double oneTermAdd = iTerm == iEliminateOneTerm ? double { 1 } : ExpApproxBest<false, false, false, false>(softmaxTerms[iTerm]);
                approxDenominator += oneTermAdd;
             }
-            const double approxValue = approxNumerator / approxDenominator;
+            const double approxVal = approxNumerator / approxDenominator;
 
-            const double error = approxValue - exactValue;
-            const double relativeError = error / exactValue;
+            const double error = approxVal - exactVal;
+            const double relativeError = error / exactVal;
             avgRelativeError[iStat] += relativeError;
             avgAbsRelativeError[iStat] += std::abs(relativeError);
             avgSquareRelativeError[iStat] += relativeError * relativeError;

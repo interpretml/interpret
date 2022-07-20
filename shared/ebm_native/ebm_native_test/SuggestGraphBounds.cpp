@@ -17,17 +17,17 @@ TEST_CASE("SuggestGraphBounds, 0 cuts, min -inf, max nan") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 0;
-   constexpr double minValue = -std::numeric_limits<double>::infinity();
+   constexpr double minFeatureVal = -std::numeric_limits<double>::infinity();
    constexpr double lowestCut = -1;
    constexpr double highestCut = -1;
-   constexpr double maxValue = std::numeric_limits<double>::quiet_NaN();
+   constexpr double maxFeatureVal = std::numeric_limits<double>::quiet_NaN();
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
@@ -41,17 +41,17 @@ TEST_CASE("SuggestGraphBounds, 0 cuts, min nan, max inf") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 0;
-   constexpr double minValue = std::numeric_limits<double>::quiet_NaN();
+   constexpr double minFeatureVal = std::numeric_limits<double>::quiet_NaN();
    constexpr double lowestCut = -1;
    constexpr double highestCut = -1;
-   constexpr double maxValue = std::numeric_limits<double>::infinity();
+   constexpr double maxFeatureVal = std::numeric_limits<double>::infinity();
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
@@ -65,17 +65,17 @@ TEST_CASE("SuggestGraphBounds, 0 cuts, min 7, max 99") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 0;
-   constexpr double minValue = 7;
+   constexpr double minFeatureVal = 7;
    constexpr double lowestCut = -1;
    constexpr double highestCut = -1;
-   constexpr double maxValue = 99;
+   constexpr double maxFeatureVal = 99;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
@@ -89,17 +89,17 @@ TEST_CASE("SuggestGraphBounds, all 6") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 1;
-   constexpr double minValue = 6;
+   constexpr double minFeatureVal = 6;
    constexpr double lowestCut = 6;
    constexpr double highestCut = 6;
-   constexpr double maxValue = 6;
+   constexpr double maxFeatureVal = 6;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
@@ -113,17 +113,17 @@ TEST_CASE("SuggestGraphBounds, progression") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 1;
-   constexpr double minValue = 6;
+   constexpr double minFeatureVal = 6;
    constexpr double lowestCut = 7;
    constexpr double highestCut = 7;
-   constexpr double maxValue = 8;
+   constexpr double maxFeatureVal = 8;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
@@ -137,17 +137,17 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, mismatched low high") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 1;
-   constexpr double minValue = -1;
+   constexpr double minFeatureVal = -1;
    constexpr double lowestCut = -2;
    constexpr double highestCut = -2;
-   constexpr double maxValue = 1;
+   constexpr double maxFeatureVal = 1;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
@@ -161,17 +161,17 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, mismatched low high") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 1;
-   constexpr double minValue = -2;
+   constexpr double minFeatureVal = -2;
    constexpr double lowestCut = 0;
    constexpr double highestCut = 0;
-   constexpr double maxValue = -1;
+   constexpr double maxFeatureVal = -1;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
@@ -185,17 +185,17 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, out of range high") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 1;
-   constexpr double minValue = 1;
+   constexpr double minFeatureVal = 1;
    constexpr double lowestCut = 0;
    constexpr double highestCut = 0;
-   constexpr double maxValue = 2;
+   constexpr double maxFeatureVal = 2;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
@@ -209,23 +209,23 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, min -inf") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 1;
-   constexpr double minValue = -std::numeric_limits<double>::infinity();
+   constexpr double minFeatureVal = -std::numeric_limits<double>::infinity();
    constexpr double lowestCut = std::numeric_limits<double>::lowest() + double { 1e300 };
    constexpr double highestCut = std::numeric_limits<double>::lowest() + double { 1e300 };
-   constexpr double maxValue = std::numeric_limits<double>::lowest() + double { 1.5e300 };
+   constexpr double maxFeatureVal = std::numeric_limits<double>::lowest() + double { 1.5e300 };
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
 
-   CHECK(minValue == lowGraphBound);
-   CHECK(maxValue == highGraphBound);
+   CHECK(minFeatureVal == lowGraphBound);
+   CHECK(maxFeatureVal == highGraphBound);
 }
 
 TEST_CASE("SuggestGraphBounds, 1 cuts, max +inf") {
@@ -233,23 +233,23 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, max +inf") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 1;
-   constexpr double minValue = std::numeric_limits<double>::max() - 1.5e300;
+   constexpr double minFeatureVal = std::numeric_limits<double>::max() - 1.5e300;
    constexpr double lowestCut = std::numeric_limits<double>::max() - 1e300;
    constexpr double highestCut = std::numeric_limits<double>::max() - 1e300;
-   constexpr double maxValue = std::numeric_limits<double>::infinity();
+   constexpr double maxFeatureVal = std::numeric_limits<double>::infinity();
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
 
-   CHECK(minValue == lowGraphBound);
-   CHECK(maxValue == highGraphBound);
+   CHECK(minFeatureVal == lowGraphBound);
+   CHECK(maxFeatureVal == highGraphBound);
 }
 
 TEST_CASE("SuggestGraphBounds, 1 cuts, overflow diff") {
@@ -257,23 +257,23 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, overflow diff") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 1;
-   constexpr double minValue = 0;
+   constexpr double minFeatureVal = 0;
    constexpr double lowestCut = std::numeric_limits<double>::lowest() + 1e300;
    constexpr double highestCut = lowestCut;
-   constexpr double maxValue = std::numeric_limits<double>::max() - 1e300;
+   constexpr double maxFeatureVal = std::numeric_limits<double>::max() - 1e300;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
 
    CHECK(-std::numeric_limits<double>::infinity() == lowGraphBound);
-   CHECK(maxValue == highGraphBound);
+   CHECK(maxFeatureVal == highGraphBound);
 }
 
 TEST_CASE("SuggestGraphBounds, 1 cuts, min longest") {
@@ -281,17 +281,17 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, min longest") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 1;
-   constexpr double minValue = 98;
+   constexpr double minFeatureVal = 98;
    constexpr double lowestCut = 100;
    constexpr double highestCut = 100;
-   constexpr double maxValue = 101;
+   constexpr double maxFeatureVal = 101;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
@@ -305,17 +305,17 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, max longest") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 1;
-   constexpr double minValue = 99;
+   constexpr double minFeatureVal = 99;
    constexpr double lowestCut = 100;
    constexpr double highestCut = 100;
-   constexpr double maxValue = 102;
+   constexpr double maxFeatureVal = 102;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
@@ -329,22 +329,22 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, overflow high") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 1;
-   constexpr double minValue = std::numeric_limits<double>::max() - 1e307;
+   constexpr double minFeatureVal = std::numeric_limits<double>::max() - 1e307;
    constexpr double lowestCut = std::numeric_limits<double>::max() - 1e306;
    constexpr double highestCut = std::numeric_limits<double>::max() - 1e306;
-   constexpr double maxValue = std::numeric_limits<double>::max() - 1e307;
+   constexpr double maxFeatureVal = std::numeric_limits<double>::max() - 1e307;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
 
-   CHECK(minValue == lowGraphBound);
+   CHECK(minFeatureVal == lowGraphBound);
    CHECK(std::numeric_limits<double>::infinity() == highGraphBound);
 }
 
@@ -353,23 +353,23 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, overflow low") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 1;
-   constexpr double minValue = std::numeric_limits<double>::lowest() + 1e307;
+   constexpr double minFeatureVal = std::numeric_limits<double>::lowest() + 1e307;
    constexpr double lowestCut = std::numeric_limits<double>::lowest() + 1e306;
    constexpr double highestCut = std::numeric_limits<double>::lowest() + 1e306;
-   constexpr double maxValue = std::numeric_limits<double>::lowest() + 1e307;
+   constexpr double maxFeatureVal = std::numeric_limits<double>::lowest() + 1e307;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
 
    CHECK(-std::numeric_limits<double>::infinity() == lowGraphBound);
-   CHECK(maxValue == highGraphBound);
+   CHECK(maxFeatureVal == highGraphBound);
 }
 
 TEST_CASE("SuggestGraphBounds, 2 cuts") {
@@ -377,17 +377,17 @@ TEST_CASE("SuggestGraphBounds, 2 cuts") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 2;
-   constexpr double minValue = 5;
+   constexpr double minFeatureVal = 5;
    constexpr double lowestCut = 6;
    constexpr double highestCut = 7;
-   constexpr double maxValue = 8;
+   constexpr double maxFeatureVal = 8;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
@@ -401,17 +401,17 @@ TEST_CASE("SuggestGraphBounds, 4 cuts") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 4;
-   constexpr double minValue = 5;
+   constexpr double minFeatureVal = 5;
    constexpr double lowestCut = 6;
    constexpr double highestCut = 7;
-   constexpr double maxValue = 8;
+   constexpr double maxFeatureVal = 8;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );
@@ -425,17 +425,17 @@ TEST_CASE("SuggestGraphBounds, 2 cuts, overflow diff") {
    double highGraphBound;
 
    constexpr IntEbmType countCuts = 2;
-   constexpr double minValue = -1;
+   constexpr double minFeatureVal = -1;
    constexpr double lowestCut = std::numeric_limits<double>::lowest();
    constexpr double highestCut = std::numeric_limits<double>::max();
-   constexpr double maxValue = 1;
+   constexpr double maxFeatureVal = 1;
 
    SuggestGraphBounds(
       countCuts,
       lowestCut,
       highestCut,
-      minValue,
-      maxValue,
+      minFeatureVal,
+      maxFeatureVal,
       &lowGraphBound,
       &highGraphBound
    );

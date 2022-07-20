@@ -56,11 +56,11 @@ public:
       // C++ exceptions are suposed to be thrown by value and caught by reference, so it shouldn't be a pointer, and we shouldn't leak memory
    }
 
-   inline size_t Next(const size_t maxValueExclusive) {
+   inline size_t Next(const size_t maxValExclusive) {
       // std::uniform_int_distribution doesn't give cross platform identical results, so roll our own (it's more efficient too I think, or at least not worse)
       static_assert(std::numeric_limits<size_t>::max() <= k_max - k_min, "k_max - k_min isn't large enough to encompass size_t");
       static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<uint_fast64_t>::max(), "uint_fast64_t isn't large enough to encompass size_t");
-      const uint_fast64_t maxValueExclusiveConverted = static_cast<uint_fast64_t>(maxValueExclusive);
+      const uint_fast64_t maxValExclusiveConverted = static_cast<uint_fast64_t>(maxValExclusive);
 
       // let's say our user requests a value of 6 exclusive, so we have 6 possible random values (0,1,2,3,4,5)
       // let's say our randomRemainingMax is 6 or 7.  If randomRemaining is 6 or 7, we don't want to use 6%6 or 7%6 and re-use 0 or 1, since then 0 and 1 
@@ -69,14 +69,14 @@ public:
       // balanced anyways if randomRemainingMax == 4, then we want to re-generate it since we can't express 5
       //
       // per above, we could instead use randomRemainingMax + 1, but then we'd overflow if randomRemainingMax was std::numeric_limits<uint_fast64_t>::max()
-      // when randomRemainingMax + 1 == maxValueExclusiveConverted,or in fact whenever (randomRemainingMax + 1) % maxValueExclusiveConverted == 0 then we 
-      // have a special case where no random value is bad since our random value is perfectly divisible by maxValueExclusiveConverted.  We can re-generate 
+      // when randomRemainingMax + 1 == maxValExclusiveConverted,or in fact whenever (randomRemainingMax + 1) % maxValExclusiveConverted == 0 then we 
+      // have a special case where no random value is bad since our random value is perfectly divisible by maxValExclusiveConverted.  We can re-generate 
       // it though, and that's the easiest thing to do in that case, so avoid an additional check by regenerating
       uint_fast64_t randomRemainingTempMax = randomRemainingMax;
       uint_fast64_t randomRemainingTemp = randomRemaining;
       while(true) {
-         randomRemainingTempMax /= maxValueExclusiveConverted;
-         const uint_fast64_t randomRemainingIllegal = randomRemainingTempMax * maxValueExclusiveConverted;
+         randomRemainingTempMax /= maxValExclusiveConverted;
+         const uint_fast64_t randomRemainingIllegal = randomRemainingTempMax * maxValExclusiveConverted;
          if(randomRemainingTemp < randomRemainingIllegal) {
             break;
          }
@@ -90,8 +90,8 @@ public:
       // if 0 == randomRemainingMax then we would have stayed in the loop since randomRemaining could not be less than zero
       assert(0 < randomRemainingTempMax);
       randomRemainingMax = randomRemainingTempMax - 1; // the top range can no longer be fairly represented
-      const uint_fast64_t ret = randomRemainingTemp % maxValueExclusiveConverted;
-      randomRemaining = randomRemainingTemp / maxValueExclusiveConverted;
+      const uint_fast64_t ret = randomRemainingTemp % maxValExclusiveConverted;
+      randomRemaining = randomRemainingTemp / maxValExclusiveConverted;
 
       return static_cast<size_t>(ret);
    }

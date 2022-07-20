@@ -300,22 +300,22 @@ def _deduplicate_bins(bins):
                 highest_idx = level_idx
         del bin_levels[highest_idx + 1:]
 
-def make_histogram_edges(min_val, max_val, histogram_counts):
+def make_histogram_edges(min_feature_val, max_feature_val, histogram_counts):
     native = Native.get_native_singleton()
 
     # the EBM model spec disallows subnormal values since they can be problems in computation 
-    # and serialization. We only use the min_value and max_value in the histogram edges as information 
+    # and serialization. We only use the min_feature_value and max_feature_value in the histogram edges as information 
     # so this won't affect binning or reporting other than potentially visualization where subnormals can be ignored
 
-    min_val = native.clean_float(min_val)
-    max_val = native.clean_float(max_val)
+    min_feature_val = native.clean_float(min_feature_val)
+    max_feature_val = native.clean_float(max_feature_val)
 
     n_cuts = len(histogram_counts) - 3
-    cuts = native.cut_uniform(np.array([min_val, max_val], np.float64), n_cuts)
+    cuts = native.cut_uniform(np.array([min_feature_val, max_feature_val], np.float64), n_cuts)
     if len(cuts) != n_cuts:
-        raise Exception(f'There are insufficient floating point values between min_val={min_val} to max_val={max_val} to make {n_cuts} cuts')
+        raise Exception(f'There are insufficient floating point values between min_feature_val={min_feature_val} to max_feature_val={max_feature_val} to make {n_cuts} cuts')
 
-    return np.concatenate(([min_val], cuts, [max_val]))
+    return np.concatenate(([min_feature_val], cuts, [max_feature_val]))
 
 def _harmonize_tensor(
     new_feature_idxs, 
@@ -743,16 +743,16 @@ def merge_ebms(models):
     if any(feature_name is not None for feature_name in feature_names_merged):
         ebm.feature_names_in_ = feature_names_merged
     
-    min_vals = [bounds[:, 0] for bounds in old_bounds if bounds is not None]
-    max_vals = [bounds[:, 1] for bounds in old_bounds if bounds is not None]
-    if 0 < len(min_vals): # max_vals has the same len
+    min_feature_vals = [bounds[:, 0] for bounds in old_bounds if bounds is not None]
+    max_feature_vals = [bounds[:, 1] for bounds in old_bounds if bounds is not None]
+    if 0 < len(min_feature_vals): # max_feature_vals has the same len
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
 
-            min_vals = np.nanmin(min_vals, axis=0)
-            max_vals = np.nanmax(max_vals, axis=0)
-            if any(not isnan(val) for val in min_vals) or any(not isnan(val) for val in max_vals):
-                ebm.feature_bounds_ = np.array(list(zip(min_vals, max_vals)), np.float64)
+            min_feature_vals = np.nanmin(min_feature_vals, axis=0)
+            max_feature_vals = np.nanmax(max_feature_vals, axis=0)
+            if any(not isnan(val) for val in min_feature_vals) or any(not isnan(val) for val in max_feature_vals):
+                ebm.feature_bounds_ = np.array(list(zip(min_feature_vals, max_feature_vals)), np.float64)
 
     if not is_private:
         if all(hasattr(model, 'n_samples_') for model in models):
@@ -1255,9 +1255,9 @@ class DPUtils:
         return root_scalar(f, bracket=[0, 500], method='brentq').root
 
     @staticmethod
-    def private_numeric_binning(X_col, sample_weight, noise_scale, max_bins, min_val, max_val, random_state=None):
+    def private_numeric_binning(X_col, sample_weight, noise_scale, max_bins, min_feature_val, max_feature_val, random_state=None):
         native = Native.get_native_singleton()
-        uniform_weights, uniform_edges = np.histogram(X_col, bins=max_bins*2, range=(min_val, max_val), weights=sample_weight)
+        uniform_weights, uniform_edges = np.histogram(X_col, bins=max_bins*2, range=(min_feature_val, max_feature_val), weights=sample_weight)
         noisy_weights = uniform_weights + native.generate_gaussian_random(random_seed=random_state, stddev=noise_scale, count=uniform_weights.shape[0])
         
         # Postprocess to ensure realistic bin values (min=0)

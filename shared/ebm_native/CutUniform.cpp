@@ -342,7 +342,7 @@ EBM_API_BODY void EBM_CALLING_CONVENTION CleanFloats(IntEbmType count, double * 
 
 EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
    IntEbmType countSamples,
-   const double * featureValues,
+   const double * featureVals,
    IntEbmType countDesiredCuts,
    double * cutsLowerBoundInclusiveOut
 ) {
@@ -426,11 +426,11 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
    // in the range of 10^-308.  Numbers that small are really skirting close to being zero anyways.
 
 
-   double minValue;
-   double maxValue;
+   double valMin;
+   double valMax;
    size_t iSample;
    double val;
-   double walkValue;
+   double walkVal;
    size_t iCut;
    double multiple;
    double halfDiff;
@@ -446,7 +446,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
 
    if(0 == countDesiredCuts) {
       // we need this check because otherwise we could overflow to +inf when we calculate halfDiff below
-      // if both minValue and maxValue are both very big (close to infinity) and opposite in sign
+      // if both valMin and valMax are both very big (close to infinity) and opposite in sign
       return 0;
    }
    if(IsConvertError<size_t>(countDesiredCuts)) {
@@ -464,80 +464,80 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
       return 0;
    }
    const size_t cSamples = static_cast<size_t>(countSamples);
-   if(IsMultiplyError(sizeof(*featureValues), cSamples)) {
+   if(IsMultiplyError(sizeof(*featureVals), cSamples)) {
       LOG_0(TraceLevelError, "ERROR CutUniform countSamples value too large to index into memory");
       return 0;
    }
 
-   if(nullptr == featureValues) {
-      LOG_0(TraceLevelError, "ERROR CutUniform featureValues cannot be NULL");
+   if(nullptr == featureVals) {
+      LOG_0(TraceLevelError, "ERROR CutUniform featureVals cannot be NULL");
       return 0;
    }
 
-   minValue = k_maxNonInf;
-   maxValue = -k_maxNonInf;
+   valMin = k_maxNonInf;
+   valMax = -k_maxNonInf;
 
    for(iSample = 0; iSample < cSamples; ++iSample) {
-      val = featureValues[iSample];
+      val = featureVals[iSample];
       // Use this check for NaN for cross-language portability.  It is not technically needed 
       // if IEEE-754 is followed, since "NaN < anything" and "anything < NaN" are false
       if(!std::isnan(val)) {
-         if(maxValue < val) {
+         if(valMax < val) {
             // this works for NaN values which evals to false
-            maxValue = val;
+            valMax = val;
          }
-         if(val < minValue) {
+         if(val < valMin) {
             // this works for NaN values which evals to false
-            minValue = val;
+            valMin = val;
          }
       }
    }
 
-   EBM_ASSERT(!std::isnan(minValue));
-   EBM_ASSERT(!std::isnan(maxValue));
+   EBM_ASSERT(!std::isnan(valMin));
+   EBM_ASSERT(!std::isnan(valMax));
 
-   EBM_ASSERT(-std::numeric_limits<double>::infinity() != maxValue);
-   EBM_ASSERT(std::numeric_limits<double>::infinity() != minValue);
+   EBM_ASSERT(-std::numeric_limits<double>::infinity() != valMax);
+   EBM_ASSERT(std::numeric_limits<double>::infinity() != valMin);
 
-   if(k_maxNonInf == minValue && -k_maxNonInf == maxValue) {
+   if(k_maxNonInf == valMin && -k_maxNonInf == valMax) {
       // all features are the missing value
       return 0;
    }
 
-   if(minValue <= -k_maxNonInf) {
+   if(valMin <= -k_maxNonInf) {
       // this is a way to check for -inf without using an -inf value which might be less portable
-      minValue = -k_maxNonInf;
+      valMin = -k_maxNonInf;
    }
 
-   if(k_maxNonInf <= maxValue) {
+   if(k_maxNonInf <= valMax) {
       // this is a way to check for +inf without using an +inf value which might be less portable
-      maxValue = k_maxNonInf;
+      valMax = k_maxNonInf;
    }
 
    // make it zero if our caller gave us a subnormal
-   minValue = CleanFloat(minValue);
-   maxValue = CleanFloat(maxValue);
+   valMin = CleanFloat(valMin);
+   valMax = CleanFloat(valMax);
 
-   if(minValue == maxValue) {
+   if(valMin == valMax) {
       return 0;
    }
-   EBM_ASSERT(minValue < maxValue);
+   EBM_ASSERT(valMin < valMax);
 
    if(nullptr == cutsLowerBoundInclusiveOut) {
       LOG_0(TraceLevelError, "ERROR CutUniform cutsLowerBoundInclusiveOut cannot be NULL");
       return 0;
    }
 
-   walkValue = minValue;
+   walkVal = valMin;
    for(iCut = 0; cCuts != iCut; ++iCut) {
-      EBM_ASSERT(walkValue < maxValue);
-      walkValue = FloatTickIncrement(walkValue);
-      cutsLowerBoundInclusiveOut[iCut] = walkValue;
-      if(walkValue == maxValue) {
+      EBM_ASSERT(walkVal < valMax);
+      walkVal = FloatTickIncrement(walkVal);
+      cutsLowerBoundInclusiveOut[iCut] = walkVal;
+      if(walkVal == valMax) {
          return static_cast<IntEbmType>(iCut + 1);
       }
    }
-   EBM_ASSERT(walkValue < maxValue);
+   EBM_ASSERT(walkVal < valMax);
 
    // at this point we can guarantee that we can return countDesiredCuts items since we were able to 
    // fill that many cuts into the buffer.  We could return at any time now with a legal representation
@@ -548,23 +548,23 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
    // shifting upwards.  A simple way to do this is to keep shifting until right before the numbers will overflow
 
    multiple = 1.0;
-   while(maxValue < k_nonDoubleable && -k_nonDoubleable < minValue && multiple < k_nonDoubleable) {
-      // doubling the maxValue and minValue just shifts the exponent without changing the mantissa, which
-      // is a lossless float operation that we can do and undo. The difference of maxValue - minValue doubles
+   while(valMax < k_nonDoubleable && -k_nonDoubleable < valMin && multiple < k_nonDoubleable) {
+      // doubling the valMax and valMin just shifts the exponent without changing the mantissa, which
+      // is a lossless float operation that we can do and undo. The difference of valMax - valMin doubles
       // each time we double the operands too, so this is also a lossless operation that only changes the mantissa.
       // The only thing we're affecting by shifting exponents this way would be subnormal numbers which are spaced 
       // differently than normal numbers. This effect on subnormals is desired, and in fact is why we are 
       // performing this loop to achieve more resolution.
 
-      maxValue *= 2.0;
-      EBM_ASSERT(!std::isinf(maxValue));
-      minValue *= 2.0;
-      EBM_ASSERT(!std::isinf(minValue));
+      valMax *= 2.0;
+      EBM_ASSERT(!std::isinf(valMax));
+      valMin *= 2.0;
+      EBM_ASSERT(!std::isinf(valMin));
       multiple *= 2.0;
       EBM_ASSERT(!std::isinf(multiple));
    }
 
-   // If maxValue had the highest value possible and minValue had the lowest (big negative) value possible,
+   // If valMax had the highest value possible and valMin had the lowest (big negative) value possible,
    // dividing by 2.0 would change the exponent but not change the mantissa of an IEEE-754 value.  Then subtracting 
    // these two negatively identical values would be equivalent to multiplying by 2.0, yielding the highest 
    // possible value again. Since the mantissas will not be changed in these operations, there will be no rounding, 
@@ -572,7 +572,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
    // extreme ends, then there could be rounding, but under correct rounding rules the end result could not be 
    // bigger than our result with larger numbers.  Therefore, this operation cannot overflow to +infinity.
 
-   halfDiff = CleanFloat(maxValue / 2.0 - minValue / 2.0);
+   halfDiff = CleanFloat(valMax / 2.0 - valMin / 2.0);
    EBM_ASSERT(!std::isinf(halfDiff));
 
    // Don't take the reciprocal here because dividing below will be more accurate when rounding
@@ -583,7 +583,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
    // so avoid having 2^53 cuts.
    cBinsFloat = CleanFloat(static_cast<double>(cCuts + 1));
 
-   // make the first cut subtract from maxValue so that we do not need to check for forward progress on the first loop
+   // make the first cut subtract from valMax so that we do not need to check for forward progress on the first loop
    cHalfCuts = cCuts / 2;
    cutPrev = 0.0;
 
@@ -594,12 +594,12 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
       fraction = CleanFloat(numerator / cBinsFloat); // clear extended precision bits
       EBM_ASSERT(fraction <= 1.0);
       shift = CleanFloat(fraction * halfDiff); // clear extended precision bits
-      cutExpanded = CleanFloat(maxValue - shift); // stop from using fused CPU instructions
+      cutExpanded = CleanFloat(valMax - shift); // stop from using fused CPU instructions
       cut = CleanFloat(cutExpanded / multiple); // zero subnormals
 
       if(cutPrev <= cut && cCuts != iCut + 1) {
-         // Do not tick down from our first cut value. We subtract from maxValue, so even if 
-         // the subtraction is zero we succeed in having a cut at maxValue, which is legal.
+         // Do not tick down from our first cut value. We subtract from valMax, so even if 
+         // the subtraction is zero we succeed in having a cut at valMax, which is legal.
 
          // if we didn't advance, then don't put the same cut into the result, advance by one tick
          cut = FloatTickDecrement(cutPrev);
@@ -616,7 +616,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
       fraction = CleanFloat(numerator / cBinsFloat); // clear extended precision bits
       EBM_ASSERT(fraction <= 1.0);
       shift = CleanFloat(fraction * halfDiff); // clear extended precision bits
-      cutExpanded = CleanFloat(minValue + shift); // stop from using fused CPU instructions
+      cutExpanded = CleanFloat(valMin + shift); // stop from using fused CPU instructions
       cut = CleanFloat(cutExpanded / multiple); // zero subnormals
 
       --iCut;

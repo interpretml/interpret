@@ -22,7 +22,7 @@ typedef UIntEbmType SharedStorageDataType;
 
 struct SparseFeatureDataSetSharedEntry {
    SharedStorageDataType m_iSample;
-   SharedStorageDataType m_nonDefaultValue;
+   SharedStorageDataType m_nonDefaultVal;
 };
 static_assert(std::is_standard_layout<SparseFeatureDataSetSharedEntry>::value,
    "These structs are shared between processes, so they definetly need to be standard layout and trivial");
@@ -46,7 +46,7 @@ extern const void * GetDataSetSharedFeature(
    bool * const pbUnknownOut,
    bool * const pbNominalOut,
    bool * const pbSparseOut,
-   SharedStorageDataType * const pDefaultValueSparseOut,
+   SharedStorageDataType * const pDefaultValSparseOut,
    size_t * const pcNonDefaultsSparseOut
 );
 

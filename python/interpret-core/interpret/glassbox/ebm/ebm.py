@@ -1097,15 +1097,15 @@ class EBMModel(BaseEstimator):
                     densities = list(mod_counts[term_idx])
                 else:
                     # continuous
-                    min_val = np.nan
-                    max_val = np.nan
+                    min_feature_val = np.nan
+                    max_feature_val = np.nan
                     feature_bounds = getattr(self, 'feature_bounds_', None)
                     if feature_bounds is not None:
-                        min_val = feature_bounds[feature_index0, 0]
-                        max_val = feature_bounds[feature_index0, 1]
+                        min_feature_val = feature_bounds[feature_index0, 0]
+                        max_feature_val = feature_bounds[feature_index0, 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_val, max_val)
+                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_feature_val, max_feature_val)
                     bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
 
                     histogram_edges = self.get_histogram_edges(feature_index0)
@@ -1165,15 +1165,15 @@ class EBMModel(BaseEstimator):
                         bin_labels.append('DPOther')
                 else:
                     # continuous
-                    min_val = np.nan
-                    max_val = np.nan
+                    min_feature_val = np.nan
+                    max_feature_val = np.nan
                     feature_bounds = getattr(self, 'feature_bounds_', None)
                     if feature_bounds is not None:
-                        min_val = feature_bounds[feature_idxs[0], 0]
-                        max_val = feature_bounds[feature_idxs[0], 1]
+                        min_feature_val = feature_bounds[feature_idxs[0], 0]
+                        max_feature_val = feature_bounds[feature_idxs[0], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_val, max_val)
+                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_feature_val, max_feature_val)
                     bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
 
                 bin_labels_left = bin_labels
@@ -1187,15 +1187,15 @@ class EBMModel(BaseEstimator):
                         bin_labels.append('DPOther')
                 else:
                     # continuous
-                    min_val = np.nan
-                    max_val = np.nan
+                    min_feature_val = np.nan
+                    max_feature_val = np.nan
                     feature_bounds = getattr(self, 'feature_bounds_', None)
                     if feature_bounds is not None:
-                        min_val = feature_bounds[feature_idxs[1], 0]
-                        max_val = feature_bounds[feature_idxs[1], 1]
+                        min_feature_val = feature_bounds[feature_idxs[1], 0]
+                        max_feature_val = feature_bounds[feature_idxs[1], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_val, max_val)
+                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_feature_val, max_feature_val)
                     bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
 
                 bin_labels_right = bin_labels
@@ -1395,14 +1395,14 @@ class EBMModel(BaseEstimator):
 
         feature_bounds = getattr(self, 'feature_bounds_', None)
         if feature_bounds is not None:
-            min_val = feature_bounds[feature_idx, 0]
-            max_val = feature_bounds[feature_idx, 1]
-            if not isnan(min_val) and not isnan(max_val):
+            min_feature_val = feature_bounds[feature_idx, 0]
+            max_feature_val = feature_bounds[feature_idx, 1]
+            if not isnan(min_feature_val) and not isnan(max_feature_val):
                 histogram_counts = getattr(self, 'histogram_counts_', None)
                 if histogram_counts is not None:
                     histogram_bin_counts = histogram_counts[feature_idx]
                     if histogram_bin_counts is not None:
-                        return make_histogram_edges(min_val, max_val, histogram_bin_counts)
+                        return make_histogram_edges(min_feature_val, max_feature_val, histogram_bin_counts)
         return None
 
     def get_importances(self, importance_type='avg_weight'):

@@ -63,7 +63,7 @@ extern double GetInterpretableEndpoint(
    const double movementFromEnds
 ) noexcept;
 
-extern size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, double * const aValues) noexcept;
+extern size_t RemoveMissingValsAndReplaceInfinities(const size_t cSamples, double * const aVals) noexcept;
 
 INLINE_ALWAYS constexpr static double GetTweakingMultiplePositive(const size_t iTweak) noexcept {
    return double { 1 } + tweakIncrement * static_cast<double>(iTweak);
@@ -156,15 +156,15 @@ struct CuttingRange final {
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   // TODO: m_cUncuttableHighValues is redundant in that the next higher cutting range has the same value.
-   //       we can eliminate it here and allocate an extra "offset(m_cUncuttableHighValues) + sizeof(size_t)"
+   // TODO: m_cUncuttableHighVals is redundant in that the next higher cutting range has the same value.
+   //       we can eliminate it here and allocate an extra "offset(m_cUncuttableHighVals) + sizeof(size_t)"
    // in the array for the extra one at the top
-   size_t         m_cUncuttableHighValues;
-   size_t         m_cUncuttableLowValues;
+   size_t         m_cUncuttableHighVals;
+   size_t         m_cUncuttableLowVals;
 
    // this can be zero if we're sandwitched between two uncuttable ranges, eg: 0, 0, 0, <CuttingRange here> 1, 1, 1
-   size_t         m_cCuttableValues;
-   double * m_pCuttableValuesFirst;
+   size_t         m_cCuttableVals;
+   double * m_pCuttableValsFirst;
 
    size_t         m_uniqueTiebreaker;
 
@@ -399,7 +399,7 @@ static void BuildNeighbourhoodPlan(
    const size_t cSamples,
    const bool bSymmetryReversal,
    const size_t cSamplesPerBinMin,
-   const size_t iValuesStart,
+   const size_t iValStart,
    const size_t cCuttableItems,
    const NeighbourJump * const aNeighbourJumps,
 
@@ -551,14 +551,14 @@ static void BuildNeighbourhoodPlan(
       iValAspirationalCur = cCuttableItems - 1;
    }
 
-   const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iValuesStart + iValAspirationalCur];
+   const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iValStart + iValAspirationalCur];
 
    const size_t iStartCur = pNeighbourJump->m_iStartCur;
    const size_t iStartNext = pNeighbourJump->m_iStartNext;
 
    EBM_ASSERT(iStartCur < iStartNext);
-   EBM_ASSERT(iValuesStart <= iStartCur); // since iValAspirationalCur can't be negative
-   EBM_ASSERT(iValuesStart <= iStartNext); // since iValAspirationalCur can't be negative
+   EBM_ASSERT(iValStart <= iStartCur); // since iValAspirationalCur can't be negative
+   EBM_ASSERT(iValStart <= iStartNext); // since iValAspirationalCur can't be negative
 
    // it shouldn't be possible to have iValAspirationalCur even close to zero, since normally the lowest value
    // would be 1, and we have a lot of resultion in floating point numbers near zero, and we always calculate
@@ -568,9 +568,9 @@ static void BuildNeighbourhoodPlan(
    // up.  We check for this condition below though
 
    const ptrdiff_t iValLowChoice = 
-      static_cast<ptrdiff_t>(iStartCur) - static_cast<ptrdiff_t>(iValuesStart);
+      static_cast<ptrdiff_t>(iStartCur) - static_cast<ptrdiff_t>(iValStart);
    const ptrdiff_t iValHighChoice = 
-      static_cast<ptrdiff_t>(iStartNext) - static_cast<ptrdiff_t>(iValuesStart);
+      static_cast<ptrdiff_t>(iStartNext) - static_cast<ptrdiff_t>(iValStart);
 
    double totalDistance;
    double distanceLowLowFloat;
@@ -813,7 +813,7 @@ static ErrorEbmType CutCuttingRange(
    const bool bSymmetryReversal,
    const size_t cSamplesPerBinMin,
 
-   const size_t iValuesStart,
+   const size_t iValStart,
    const size_t cCuttableItems,
    const NeighbourJump * const aNeighbourJumps
 ) noexcept {
@@ -1215,7 +1215,7 @@ static ErrorEbmType CutCuttingRange(
                bSymmetryReversal,
 
                cSamplesPerBinMin,
-               iValuesStart,
+               iValStart,
                cCuttableItems,
                aNeighbourJumps,
 
@@ -1280,7 +1280,7 @@ static ErrorEbmType CutCuttingRange(
                bSymmetryReversal,
 
                cSamplesPerBinMin,
-               iValuesStart,
+               iValStart,
                cCuttableItems,
                aNeighbourJumps,
 
@@ -1499,7 +1499,7 @@ static ErrorEbmType TreeSearchCutSegment(
    const bool bSymmetryReversal,
    const size_t cSamplesPerBinMin,
 
-   const size_t iValuesStart,
+   const size_t iValStart,
    const size_t cCuttableItems,
    const NeighbourJump * const aNeighbourJumps,
 
@@ -1599,7 +1599,7 @@ static ErrorEbmType TreeSearchCutSegment(
             cSamples,
             bSymmetryReversal,
             cSamplesPerBinMin,
-            iValuesStart,
+            iValStart,
             cCuttableItems,
             aNeighbourJumps,
             cRangesLow,
@@ -1682,7 +1682,7 @@ static ErrorEbmType TreeSearchCutSegment(
       cSamples,
       bSymmetryReversal,
       cSamplesPerBinMin,
-      iValuesStart,
+      iValStart,
       cCuttableItems,
       aNeighbourJumps
    );
@@ -1695,7 +1695,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType TradeCutSegment(
    const bool bSymmetryReversal,
    const size_t cSamplesPerBinMin,
 
-   const size_t iValuesStart,
+   const size_t iValStart,
    const size_t cCuttableItems,
    const NeighbourJump * const aNeighbourJumps,
 
@@ -1721,7 +1721,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType TradeCutSegment(
       cSamples,
       bSymmetryReversal,
       cSamplesPerBinMin,
-      iValuesStart, 
+      iValStart, 
       cCuttableItems, 
       aNeighbourJumps,
       cRanges, 
@@ -1731,11 +1731,11 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType TradeCutSegment(
 
 INLINE_RELEASE_UNTEMPLATED static size_t DetermineRangesMax(
    const size_t cSamplesInSubset,
-   const double * const pValues,
+   const double * const aVals,
    const size_t cSamplesPerBinMin
 ) noexcept {
    EBM_ASSERT(1 <= cSamplesInSubset);
-   EBM_ASSERT(nullptr != pValues);
+   EBM_ASSERT(nullptr != aVals);
    EBM_ASSERT(1 <= cSamplesPerBinMin);
    EBM_ASSERT(cSamplesPerBinMin <= cSamplesInSubset);
 
@@ -1744,27 +1744,27 @@ INLINE_RELEASE_UNTEMPLATED static size_t DetermineRangesMax(
       return size_t { 1 };
    }
 
-   double valPrev = pValues[0];
-   const double * pValueStartRange = pValues;
-   const double * pValue = pValues + 1;
-   const double * const pValueEnd = pValues + cSamplesInSubset;
+   double valPrev = aVals[0];
+   const double * pValStartRange = aVals;
+   const double * pVal = aVals + 1;
+   const double * const pValsEnd = aVals + cSamplesInSubset;
 
    size_t cRanges = 0;
    size_t cItems;
    do {
-      EBM_ASSERT(pValue < pValueEnd);
-      double valCur = *pValue;
+      EBM_ASSERT(pVal < pValsEnd);
+      double valCur = *pVal;
       if(valCur != valPrev) {
-         cItems = pValue - pValueStartRange;
+         cItems = pVal - pValStartRange;
          if(cSamplesPerBinMin <= cItems) {
             ++cRanges;
-            pValueStartRange = pValue;
+            pValStartRange = pVal;
          }
          valPrev = valCur;
       }
-      ++pValue;
-   } while(pValueEnd != pValue);
-   cItems = pValue - pValueStartRange;
+      ++pVal;
+   } while(pValsEnd != pVal);
+   cItems = pVal - pValStartRange;
    if(cSamplesPerBinMin <= cItems) {
       ++cRanges;
    }
@@ -1778,7 +1778,7 @@ INLINE_RELEASE_UNTEMPLATED static size_t DetermineRangesMax(
    size_t cDebugRanges = 0;
    while(0 != iDebugCur) {
       --iDebugCur;
-      if(pValues[iDebugCur] != pValues[iDebugStartEqual]) {
+      if(aVals[iDebugCur] != aVals[iDebugStartEqual]) {
          if(cSamplesPerBinMin <= iDebugStartRange - iDebugCur) {
             ++cDebugRanges;
             iDebugStartRange = iDebugCur;
@@ -1821,7 +1821,7 @@ static bool AddCutToRanges(
       // we need to re-add our CuttingRange back into the priority queue.  If we were assigned a new range
       // again, this is how many we'd be at
       const size_t cRangesNext = cRangesCur + size_t { 1 };
-      const size_t cCuttableItems = pCuttingRangeAdd->m_cCuttableValues;
+      const size_t cCuttableItems = pCuttingRangeAdd->m_cCuttableVals;
 
       avgRangeWidthAfterAddingOneCut =
          static_cast<double>(cCuttableItems) / static_cast<double>(cRangesNext);
@@ -1890,9 +1890,9 @@ static void StuffCutsIntoCuttingRanges(
 
       // we want to add any cutting range into the priority queue with what the result would be if we added one
       // cut, but since all of our ranges currently have one cut (zero ranges), adding one cut will get us a full
-      // range, and we don't need to divide our m_cCuttableValues by 1 for the 1 range.  We just need to check
+      // range, and we don't need to divide our m_cCuttableVals by 1 for the 1 range.  We just need to check
       // that it has enough samples per bin
-      const size_t cCuttableItems = pCuttingRangeInit->m_cCuttableValues;
+      const size_t cCuttableItems = pCuttingRangeInit->m_cCuttableVals;
       size_t cRangesMax = 0;
       double avgRangeWidthAfterAddingOneCut = k_illegalAvgCuttableRangeWidthAfterAddingOneCut;
       if(LIKELY(cSamplesPerBinMin <= cCuttableItems)) {
@@ -1906,7 +1906,7 @@ static void StuffCutsIntoCuttingRanges(
 
          cRangesMax = DetermineRangesMax(
             cCuttableItems, 
-            pCuttingRangeInit->m_pCuttableValuesFirst, 
+            pCuttingRangeInit->m_pCuttableValsFirst, 
             cSamplesPerBinMin
          );
 
@@ -1920,7 +1920,7 @@ static void StuffCutsIntoCuttingRanges(
    } while(LIKELY(pCuttingRangeEnd != pCuttingRangeInit));
 
    size_t cRemainingCuts = cCutsAssignable;
-   if(UNLIKELY(0 == aCuttingRange[0].m_cUncuttableLowValues)) {
+   if(UNLIKELY(0 == aCuttingRange[0].m_cUncuttableLowVals)) {
       // if our tail end is a pure tail with no uncuttable range on it's side, then we can get a range with just
       // one cut since the end of the values provides us an implicit cut.  If our tail end is an uncutable range,
       // then we need to put cuts on both ends to get a single range, so we don't get an implicit cut
@@ -1928,7 +1928,7 @@ static void StuffCutsIntoCuttingRanges(
       ++cRemainingCuts;
    }
 
-   if(UNLIKELY(0 == (pCuttingRangeEnd - 1)->m_cUncuttableHighValues)) {
+   if(UNLIKELY(0 == (pCuttingRangeEnd - 1)->m_cUncuttableHighVals)) {
       // if our tail end is a pure tail with no uncuttable range on it's side, then we can get a range with just
       // one cut since the end of the values provides us an implicit cut.  If our tail end is an uncutable range,
       // then we need to put cuts on both ends to get a single range, so we don't get an implicit cut
@@ -1949,96 +1949,96 @@ static void StuffCutsIntoCuttingRanges(
 
 INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeNeighbours(
    const size_t cSamples,
-   double * const aSingleFeatureValues,
+   double * const aFeatureVals,
    const size_t cCuttingRanges,
    CuttingRange * const aCuttingRange
 ) noexcept {
    EBM_ASSERT(2 <= cSamples); // if there wern't 2 samples we couldn't have any bins and we'd exit earliers
-   EBM_ASSERT(nullptr != aSingleFeatureValues);
+   EBM_ASSERT(nullptr != aFeatureVals);
    EBM_ASSERT(1 <= cCuttingRanges);
    EBM_ASSERT(nullptr != aCuttingRange);
 
    CuttingRange * pCuttingRange = aCuttingRange;
-   size_t cUncuttablePriorItems = pCuttingRange->m_pCuttableValuesFirst - aSingleFeatureValues;
-   const double * const aSingleFeatureValuesEnd = aSingleFeatureValues + cSamples;
+   size_t cUncuttablePriorItems = pCuttingRange->m_pCuttableValsFirst - aFeatureVals;
+   const double * const aFeatureValsEnd = aFeatureVals + cSamples;
    const size_t cCuttingRangesMinusOne = cCuttingRanges - 1;
    if(PREDICTABLE(0 != cCuttingRangesMinusOne)) {
       // exit without doing the last one
       const CuttingRange * const pCuttingRangeLast = pCuttingRange + cCuttingRangesMinusOne;
       do {
-         const size_t cUncuttableSubsequentItems = (pCuttingRange + 1)->m_pCuttableValuesFirst - 
-            pCuttingRange->m_pCuttableValuesFirst - pCuttingRange->m_cCuttableValues;
+         const size_t cUncuttableSubsequentItems = (pCuttingRange + 1)->m_pCuttableValsFirst - 
+            pCuttingRange->m_pCuttableValsFirst - pCuttingRange->m_cCuttableVals;
 
-         // TODO : eliminate this function after we've eliminated m_cUncuttableHighValues and wrap this functionality
+         // TODO : eliminate this function after we've eliminated m_cUncuttableHighVals and wrap this functionality
          // into FillCuttingRangeBasics?
 
-         pCuttingRange->m_cUncuttableLowValues = cUncuttablePriorItems;
-         pCuttingRange->m_cUncuttableHighValues = cUncuttableSubsequentItems;
+         pCuttingRange->m_cUncuttableLowVals = cUncuttablePriorItems;
+         pCuttingRange->m_cUncuttableHighVals = cUncuttableSubsequentItems;
 
          cUncuttablePriorItems = cUncuttableSubsequentItems;
          ++pCuttingRange;
       } while(LIKELY(pCuttingRangeLast != pCuttingRange));
    }
    const size_t cUncuttableSubsequentItems =
-      aSingleFeatureValuesEnd - pCuttingRange->m_pCuttableValuesFirst - pCuttingRange->m_cCuttableValues;
+      aFeatureValsEnd - pCuttingRange->m_pCuttableValsFirst - pCuttingRange->m_cCuttableVals;
 
-   pCuttingRange->m_cUncuttableLowValues = cUncuttablePriorItems;
-   pCuttingRange->m_cUncuttableHighValues = cUncuttableSubsequentItems;
+   pCuttingRange->m_cUncuttableLowVals = cUncuttablePriorItems;
+   pCuttingRange->m_cUncuttableHighVals = cUncuttableSubsequentItems;
 }
 
 INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeBasics(
    const size_t cSamples,
-   double * const aSingleFeatureValues,
+   double * const aFeatureVals,
    const size_t cUncuttableRangeLengthMin,
    const size_t cSamplesPerBinMin,
    const size_t cCuttingRanges,
    CuttingRange * const aCuttingRange
 ) noexcept {
    EBM_ASSERT(2 <= cSamples); // we would have exited earlier unless there were 2 bins
-   EBM_ASSERT(nullptr != aSingleFeatureValues);
+   EBM_ASSERT(nullptr != aFeatureVals);
    EBM_ASSERT(1 <= cUncuttableRangeLengthMin);
    EBM_ASSERT(1 <= cSamplesPerBinMin);
    EBM_ASSERT(1 <= cCuttingRanges);
    EBM_ASSERT(nullptr != aCuttingRange);
 
-   double rangeValue = *aSingleFeatureValues;
-   double * pCuttableValuesStart = aSingleFeatureValues;
-   const double * pStartEqualRange = aSingleFeatureValues;
-   double * pScan = aSingleFeatureValues + 1;
-   const double * const pValuesEnd = aSingleFeatureValues + cSamples;
+   double rangeVal = *aFeatureVals;
+   double * pCuttableValsStart = aFeatureVals;
+   const double * pStartEqualRange = aFeatureVals;
+   double * pScan = aFeatureVals + 1;
+   const double * const pValsEnd = aFeatureVals + cSamples;
 
    CuttingRange * pCuttingRange = aCuttingRange;
    do {
       const double val = *pScan;
-      if(PREDICTABLE(val != rangeValue)) {
+      if(PREDICTABLE(val != rangeVal)) {
          size_t cEqualRangeItems = pScan - pStartEqualRange;
          if(PREDICTABLE(cUncuttableRangeLengthMin <= cEqualRangeItems)) {
             if(PREDICTABLE(
-               PREDICTABLE(cSamplesPerBinMin <= static_cast<size_t>(pStartEqualRange - pCuttableValuesStart)) ||
-               UNLIKELY(aSingleFeatureValues != pCuttableValuesStart))) 
+               PREDICTABLE(cSamplesPerBinMin <= static_cast<size_t>(pStartEqualRange - pCuttableValsStart)) ||
+               UNLIKELY(aFeatureVals != pCuttableValsStart))) 
             {
                EBM_ASSERT(pCuttingRange < aCuttingRange + cCuttingRanges);
-               pCuttingRange->m_pCuttableValuesFirst = pCuttableValuesStart;
-               pCuttingRange->m_cCuttableValues = pStartEqualRange - pCuttableValuesStart;
+               pCuttingRange->m_pCuttableValsFirst = pCuttableValsStart;
+               pCuttingRange->m_cCuttableVals = pStartEqualRange - pCuttableValsStart;
                ++pCuttingRange;
             }
-            pCuttableValuesStart = pScan;
+            pCuttableValsStart = pScan;
          }
-         rangeValue = val;
+         rangeVal = val;
          pStartEqualRange = pScan;
       }
       ++pScan;
-   } while(LIKELY(pValuesEnd != pScan));
+   } while(LIKELY(pValsEnd != pScan));
    if(LIKELY(pCuttingRange != aCuttingRange + cCuttingRanges)) {
       // we're not done, so we have one more to go.. this last one
       EBM_ASSERT(pCuttingRange == aCuttingRange + cCuttingRanges - 1);
-      EBM_ASSERT(pCuttableValuesStart < pValuesEnd);
-      pCuttingRange->m_pCuttableValuesFirst = pCuttableValuesStart;
-      EBM_ASSERT(pStartEqualRange < pValuesEnd);
-      const size_t cEqualRangeItems = pValuesEnd - pStartEqualRange;
+      EBM_ASSERT(pCuttableValsStart < pValsEnd);
+      pCuttingRange->m_pCuttableValsFirst = pCuttableValsStart;
+      EBM_ASSERT(pStartEqualRange < pValsEnd);
+      const size_t cEqualRangeItems = pValsEnd - pStartEqualRange;
       const double * const pCuttableRangeEnd = cUncuttableRangeLengthMin <= cEqualRangeItems ? 
-         pStartEqualRange : pValuesEnd;
-      pCuttingRange->m_cCuttableValues = pCuttableRangeEnd - pCuttableValuesStart;
+         pStartEqualRange : pValsEnd;
+      pCuttingRange->m_cCuttableVals = pCuttableRangeEnd - pCuttableValsStart;
    }
 }
 
@@ -2153,14 +2153,14 @@ static void FillTiebreakers(
 
 INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
    const size_t cSamples,
-   const double * const aSingleFeatureValues
+   const double * const aFeatureVals
 ) noexcept {
    EBM_ASSERT(size_t { 2 } <= cSamples); // if we don't have enough samples to generate 2 bins we exit earlier
-   EBM_ASSERT(nullptr != aSingleFeatureValues);
+   EBM_ASSERT(nullptr != aFeatureVals);
 
-   const double * const pTop = aSingleFeatureValues + cSamples - size_t { 1 };
+   const double * const pTop = aFeatureVals + cSamples - size_t { 1 };
 
-   const double * pLow = aSingleFeatureValues;
+   const double * pLow = aFeatureVals;
    const double * pHigh = pTop;
    double lowPrev = *pLow;
    double highPrev = *pHigh;
@@ -2218,7 +2218,7 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
    // other diverges from the center by more than a noise like amount.
 
    if(size_t { 2 } < cSamples) {
-      pHigh = aSingleFeatureValues + (cSamples >> 1);
+      pHigh = aFeatureVals + (cSamples >> 1);
       pLow = pHigh - (size_t { 1 } & (cSamples - size_t { 1 }));
 
       // pHigh and pLow might be aliased pointers.  If we have an odd number of values then there is one center
@@ -2243,9 +2243,9 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
          if(distanceHigh < distanceLow * double { 0.9999248297572194127975024574325 }) {
             return false;
          }
-      } while(aSingleFeatureValues != pLow);
+      } while(aFeatureVals != pLow);
    }
-   pLow = aSingleFeatureValues;
+   pLow = aFeatureVals;
    pHigh = pTop;
    do {
       EBM_ASSERT(pLow < pHigh);
@@ -2263,7 +2263,7 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
    } while(LIKELY(pLow < pHigh));
 
    // if all our values are identical, then we shouldn't have gotten any cuts, so we shouldn't have gotten here
-   EBM_ASSERT(*aSingleFeatureValues < *pTop);
+   EBM_ASSERT(*aFeatureVals < *pTop);
 
    // the data is perfectly symmetric centered arround zero.  Something like "-2 -1 0 1 2" would do this.  There is
    // no way for us to tell when it's been reversed even in theory.  Let's return a consistent value of false.  
@@ -2274,25 +2274,25 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
 
 INLINE_RELEASE_UNTEMPLATED static void ConstructJumps(
    const size_t cSamples, 
-   const double * const aValues, 
+   const double * const aVals, 
    NeighbourJump * const aNeighbourJump
 ) noexcept {
    EBM_ASSERT(1 <= cSamples);
-   EBM_ASSERT(nullptr != aValues);
+   EBM_ASSERT(nullptr != aVals);
    EBM_ASSERT(nullptr != aNeighbourJump);
 
-   double valNext = aValues[0];
-   const double * pValue = aValues;
-   const double * const pValueEnd = aValues + cSamples;
+   double valNext = aVals[0];
+   const double * pVal = aVals;
+   const double * const pValsEnd = aVals + cSamples;
 
    size_t iStartCur = 0;
    NeighbourJump * pNeighbourJump = aNeighbourJump;
    while(true) {
       const double valCur = valNext;
       do {
-         ++pValue;
-         if(UNLIKELY(pValueEnd == pValue)) {
-            const size_t iStartNext = pValue - aValues;
+         ++pVal;
+         if(UNLIKELY(pValsEnd == pVal)) {
+            const size_t iStartNext = pVal - aVals;
             const NeighbourJump * const pNeighbourJumpEnd = aNeighbourJump + iStartNext;
             do {
                pNeighbourJump->m_iStartCur = iStartCur;
@@ -2302,10 +2302,10 @@ INLINE_RELEASE_UNTEMPLATED static void ConstructJumps(
 
             return;
          }
-         valNext = *pValue;
+         valNext = *pVal;
       } while(PREDICTABLE(valNext == valCur));
 
-      const size_t iStartNext = pValue - aValues;
+      const size_t iStartNext = pVal - aVals;
       const NeighbourJump * const pNeighbourJumpEnd = aNeighbourJump + iStartNext;
       do {
          pNeighbourJump->m_iStartCur = iStartCur;
@@ -2319,55 +2319,55 @@ INLINE_RELEASE_UNTEMPLATED static void ConstructJumps(
 
 INLINE_RELEASE_UNTEMPLATED static size_t CountCuttingRanges(
    const size_t cSamples,
-   const double * const aSingleFeatureValues,
+   const double * const aFeatureVals,
    const size_t cUncuttableRangeLengthMin,
    const size_t cSamplesPerBinMin
 ) noexcept {
    EBM_ASSERT(size_t { 2 } <= cSamples); // if we don't have enough samples to generate 2 bins we exit earlier
-   EBM_ASSERT(nullptr != aSingleFeatureValues);
+   EBM_ASSERT(nullptr != aFeatureVals);
    EBM_ASSERT(size_t { 1 } <= cUncuttableRangeLengthMin);
    EBM_ASSERT(size_t { 1 } <= cSamplesPerBinMin);
    EBM_ASSERT(cSamplesPerBinMin <= cSamples / size_t { 2 }); // we exit earlier if we don't have enough samples for 2 bins
 
-   double rangeValue = *aSingleFeatureValues;
-   const double * pCuttableValuesStart = aSingleFeatureValues;
-   const double * pStartEqualRange = aSingleFeatureValues;
-   const double * pScan = aSingleFeatureValues + 1;
-   const double * const pValuesEnd = aSingleFeatureValues + cSamples;
+   double rangeVal = *aFeatureVals;
+   const double * pCuttableValsStart = aFeatureVals;
+   const double * pStartEqualRange = aFeatureVals;
+   const double * pScan = aFeatureVals + 1;
+   const double * const pValsEnd = aFeatureVals + cSamples;
    size_t cCuttingRanges = 0;
-   EBM_ASSERT(pValuesEnd != pScan); // because 2 <= cSamples
+   EBM_ASSERT(pValsEnd != pScan); // because 2 <= cSamples
    do {
       const double val = *pScan;
-      if(PREDICTABLE(val != rangeValue)) {
+      if(PREDICTABLE(val != rangeVal)) {
          const size_t cEqualRangeItems = pScan - pStartEqualRange;
          if(cUncuttableRangeLengthMin <= cEqualRangeItems) {
-            if(aSingleFeatureValues != pCuttableValuesStart || cSamplesPerBinMin <= static_cast<size_t>(pStartEqualRange - pCuttableValuesStart)) {
+            if(aFeatureVals != pCuttableValsStart || cSamplesPerBinMin <= static_cast<size_t>(pStartEqualRange - pCuttableValsStart)) {
                ++cCuttingRanges;
             }
-            pCuttableValuesStart = pScan;
+            pCuttableValsStart = pScan;
          }
-         rangeValue = val;
+         rangeVal = val;
          pStartEqualRange = pScan;
       }
       ++pScan;
-   } while(LIKELY(pValuesEnd != pScan));
-   if(aSingleFeatureValues == pCuttableValuesStart) {
+   } while(LIKELY(pValsEnd != pScan));
+   if(aFeatureVals == pCuttableValsStart) {
       EBM_ASSERT(0 == cCuttingRanges);
 
       // we're still on the first cutting range.  We need to make sure that there is at least one possible cut
       // if we require 3 items for a cut, a problematic range like 0 1 3 3 4 5 could look ok, but we can't cut it in the middle!
 
-      const double * pLow = aSingleFeatureValues + cSamplesPerBinMin - 1;
-      EBM_ASSERT(pLow < pValuesEnd);
-      const double * pHigh = pValuesEnd - cSamplesPerBinMin;
-      EBM_ASSERT(aSingleFeatureValues <= pHigh);
+      const double * pLow = aFeatureVals + cSamplesPerBinMin - 1;
+      EBM_ASSERT(pLow < pValsEnd);
+      const double * pHigh = pValsEnd - cSamplesPerBinMin;
+      EBM_ASSERT(aFeatureVals <= pHigh);
       EBM_ASSERT(pLow < pHigh);
 
       // if they are equal, then there are no values between them where we could cut.  
       // If unequal, there's a cut somewhere
       return UNPREDICTABLE(*pLow == *pHigh) ? size_t { 0 } : size_t { 1 };
    } else {
-      const size_t cItemsLast = static_cast<size_t>(pValuesEnd - pCuttableValuesStart);
+      const size_t cItemsLast = static_cast<size_t>(pValsEnd - pCuttableValsStart);
       if(cSamplesPerBinMin <= cItemsLast) {
          ++cCuttingRanges;
       }
@@ -2453,7 +2453,7 @@ static int g_cLogExitCutQuantileParametersMessages = 25;
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
    IntEbmType countSamples,
-   const double * featureValues,
+   const double * featureVals,
    IntEbmType countSamplesPerBinMin,
    BoolEbmType isRounded,
    IntEbmType * countCutsInOut,
@@ -2471,14 +2471,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
       TraceLevelVerbose,
       "Entered CutQuantile: "
       "countSamples=%" IntEbmTypePrintf ", "
-      "featureValues=%p, "
+      "featureVals=%p, "
       "countSamplesPerBinMin=%" IntEbmTypePrintf ", "
       "isRounded=%s, "
       "countCutsInOut=%p, "
       "cutsLowerBoundInclusiveOut=%p"
       ,
       countSamples,
-      static_cast<const void *>(featureValues),
+      static_cast<const void *>(featureVals),
       countSamplesPerBinMin,
       ObtainTruth(isRounded),
       static_cast<void *>(countCutsInOut),
@@ -2503,8 +2503,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
             error = Error_IllegalParamValue;
          }
       } else {
-         if(UNLIKELY(nullptr == featureValues)) {
-            LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == featureValues");
+         if(UNLIKELY(nullptr == featureVals)) {
+            LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == featureVals");
 
             countCutsRet = IntEbmType { 0 };
             error = Error_IllegalParamValue;
@@ -2519,29 +2519,29 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
             goto exit_with_log;
          }
 
-         const size_t cSamplesIncludingMissingValues = static_cast<size_t>(countSamples);
+         const size_t cSamplesIncludingMissingVals = static_cast<size_t>(countSamples);
 
-         double * const aFeatureValues = EbmMalloc<double>(cSamplesIncludingMissingValues);
-         if(UNLIKELY(nullptr == aFeatureValues)) {
-            LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == aFeatureValues");
+         double * const aFeatureVals = EbmMalloc<double>(cSamplesIncludingMissingVals);
+         if(UNLIKELY(nullptr == aFeatureVals)) {
+            LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == aFeatureVals");
 
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
-         const size_t cBytesFeatureValues = sizeof(*featureValues) * cSamplesIncludingMissingValues;
-         memcpy(aFeatureValues, featureValues, cBytesFeatureValues);
+         const size_t cBytesFeatureVals = sizeof(*featureVals) * cSamplesIncludingMissingVals;
+         memcpy(aFeatureVals, featureVals, cBytesFeatureVals);
 
          // if there are +infinity values in the data we won't be able to separate them
          // from max_float values without having a cut at infinity since we use lower bound inclusivity
          // so we disallow +infinity values by turning them into max_float.  For symmetry we do the same on
          // the -infinity side turning those into lowest_float.  
-         const size_t cSamples = RemoveMissingValuesAndReplaceInfinities(cSamplesIncludingMissingValues, aFeatureValues);
+         const size_t cSamples = RemoveMissingValsAndReplaceInfinities(cSamplesIncludingMissingVals, aFeatureVals);
 
-         EBM_ASSERT(cSamples <= cSamplesIncludingMissingValues);
+         EBM_ASSERT(cSamples <= cSamplesIncludingMissingVals);
 
          if(UNLIKELY(cSamples <= size_t { 1 })) {
-            free(aFeatureValues);
+            free(aFeatureVals);
             // we can't really cut 0 or 1 samples.  Now that we know our min, max, etc values, we can exit
             // or if there was only 1 non-missing value
             countCutsRet = IntEbmType { 0 };
@@ -2553,7 +2553,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          const IntEbmType countCuts = *countCutsInOut;
 
          if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
-            free(aFeatureValues);
+            free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_None;
             if(UNLIKELY(countCuts < IntEbmType { 0 })) {
@@ -2567,7 +2567,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
             // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
             LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == cutsLowerBoundInclusiveOut");
 
-            free(aFeatureValues);
+            free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_IllegalParamValue;
 
@@ -2587,7 +2587,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
             // in order to make any cuts.  Anything less and we should just return now.
             // We also use this as a comparison to ensure that countSamplesPerBinMin is convertible to a size_t
 
-            free(aFeatureValues);
+            free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_None;
             goto exit_with_log;
@@ -2620,16 +2620,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          EBM_ASSERT(size_t { 1 } <= cCutsMax); // we won't eliminate to less than 1, and we had at least 1 before
 
          // we need to be able to index both the cutsLowerBoundInclusiveOut AND we also allocate an array
-         // of pointers below of double * to index into aFeatureValues 
+         // of pointers below of double * to index into aFeatureVals 
          if(UNLIKELY(IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(double *)), cCutsMax))) {
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(double *)), cCutsMax)");
-            free(aFeatureValues);
+            free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
 
-         std::sort(aFeatureValues, aFeatureValues + cSamples);
+         std::sort(aFeatureVals, aFeatureVals + cSamples);
 
          EBM_ASSERT(cCutsMax < cSamples); // so we can add 1 to cCutsMax safely
          const size_t cUncuttableRangeLengthMin = 
@@ -2638,7 +2638,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
 
          const size_t cCuttingRanges = CountCuttingRanges(
             cSamples, 
-            aFeatureValues,
+            aFeatureVals,
             cUncuttableRangeLengthMin, 
             cSamplesPerBinMin
          );
@@ -2650,7 +2650,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          // cSamples is a size_t
          EBM_ASSERT(cCuttingRanges <= cCutsMax + size_t { 1 });
          if(UNLIKELY(size_t { 0 } == cCuttingRanges)) {
-            free(aFeatureValues);
+            free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_None;
             goto exit_with_log;
@@ -2658,7 +2658,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
 
          if(UNLIKELY(IsMultiplyError(sizeof(NeighbourJump), cSamples))) {
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(sizeof(NeighbourJump), cSamples)");
-            free(aFeatureValues);
+            free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
@@ -2667,10 +2667,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
 
          // we checked that this multiplication wouldn't overflow above
          EBM_ASSERT(!IsMultiplyError(sizeof(double *), cCutsMax));
-         const size_t cBytesValueCutPointers = sizeof(double *) * cCutsMax;
+         const size_t cBytesValCutPointers = sizeof(double *) * cCutsMax;
 
          // we limit the cCutsMax to no more than cSamples - 1.  cSamples can't be anywhere close to
-         // the maximum size_t though since the caller must have allocated cSamples floats in aFeatureValues, and
+         // the maximum size_t though since the caller must have allocated cSamples floats in aFeatureVals, and
          // there are no float types that are 1 byte, and we checked that this didn't overflow, so we should be good
          // to add 2 to the cCutsMax value
          EBM_ASSERT(cCutsMax <= std::numeric_limits<size_t>::max() - size_t { 2 });
@@ -2678,7 +2678,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          const size_t cCutsWithEndpointsMax = cCutsMax + size_t { 2 };
          if(UNLIKELY(IsMultiplyError(sizeof(CutPoint), cCutsWithEndpointsMax))) {
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(sizeof(CutPoint), cCutsWithEndpointsMax)");
-            free(aFeatureValues);
+            free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
@@ -2687,7 +2687,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
 
          if(UNLIKELY(IsMultiplyError(sizeof(CuttingRange), cCuttingRanges))) {
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(sizeof(CuttingRange), cCuttingRanges)");
-            free(aFeatureValues);
+            free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
@@ -2696,20 +2696,20 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
 
 
          const size_t cBytesToNeighbourJump = size_t { 0 };
-         const size_t cBytesToValueCutPointers = cBytesToNeighbourJump + cBytesNeighbourJumps;
+         const size_t cBytesToValCutPointers = cBytesToNeighbourJump + cBytesNeighbourJumps;
 
-         if(UNLIKELY(IsAddError(cBytesToValueCutPointers, cBytesValueCutPointers))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsAddError(cBytesToValueCutPointers, cBytesValueCutPointers))");
-            free(aFeatureValues);
+         if(UNLIKELY(IsAddError(cBytesToValCutPointers, cBytesValCutPointers))) {
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsAddError(cBytesToValCutPointers, cBytesValCutPointers))");
+            free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
-         const size_t cBytesToCuts = cBytesToValueCutPointers + cBytesValueCutPointers;
+         const size_t cBytesToCuts = cBytesToValCutPointers + cBytesValCutPointers;
 
          if(UNLIKELY(IsAddError(cBytesToCuts, cBytesCuts))) {
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsAddError(cBytesToCuts, cBytesCuts))");
-            free(aFeatureValues);
+            free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
@@ -2718,7 +2718,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
 
          if(UNLIKELY(IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))) {
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))");
-            free(aFeatureValues);
+            free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
@@ -2728,32 +2728,32 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          char * const pMem = static_cast<char *>(malloc(cBytesToEnd));
          if(UNLIKELY(nullptr == pMem)) {
             LOG_0(TraceLevelWarning, "WARNING CutQuantile nullptr == pMem");
-            free(aFeatureValues);
+            free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
 
          NeighbourJump * const aNeighbourJumps = reinterpret_cast<NeighbourJump *>(pMem + cBytesToNeighbourJump);
-         const double ** const apValueCutTops = reinterpret_cast<const double **>(pMem + cBytesToValueCutPointers);
+         const double ** const apValCutTops = reinterpret_cast<const double **>(pMem + cBytesToValCutPointers);
          CutPoint * const aCuts = reinterpret_cast<CutPoint *>(pMem + cBytesToCuts);
          CuttingRange * const aCuttingRange = reinterpret_cast<CuttingRange *>(pMem + cBytesToCuttingRange);
 
-         ConstructJumps(cSamples, aFeatureValues, aNeighbourJumps);
+         ConstructJumps(cSamples, aFeatureVals, aNeighbourJumps);
 
          // we always XOR (with != for bools) a random number with bSymmetryReversal, so there is no need to
          // XOR bSymmetryReversal with a random number here
-         const bool bSymmetryReversal = DetermineSymmetricDirection(cSamples, aFeatureValues);
+         const bool bSymmetryReversal = DetermineSymmetricDirection(cSamples, aFeatureVals);
 
          RandomDeterministic randomDeterministic;
          randomDeterministic.InitializeUnsigned(randomSeed, k_quantileRandomizationMix);
 
          FillTiebreakers(bSymmetryReversal, &randomDeterministic, cCuttingRanges, aCuttingRange);
 
-         FillCuttingRangeBasics(cSamples, aFeatureValues, cUncuttableRangeLengthMin, cSamplesPerBinMin, cCuttingRanges, aCuttingRange);
-         FillCuttingRangeNeighbours(cSamples, aFeatureValues, cCuttingRanges, aCuttingRange);
+         FillCuttingRangeBasics(cSamples, aFeatureVals, cUncuttableRangeLengthMin, cSamplesPerBinMin, cCuttingRanges, aCuttingRange);
+         FillCuttingRangeNeighbours(cSamples, aFeatureVals, cCuttingRanges, aCuttingRange);
 
-         const double ** ppValueCutTop = apValueCutTops;
+         const double ** ppValCutTop = apValCutTops;
          try {
             std::set<CuttingRange *, CompareCuttingRange> priorityQueue;
             StuffCutsIntoCuttingRanges(
@@ -2778,10 +2778,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
                LOG_N(TraceLevelVerbose, "Dequque CuttingRange: %zu, %zu, %zu, %zu, %zu, %zu, %zu, %le",
                   pCuttingRange->m_uniqueTiebreaker,
                   pCuttingRange->m_cRangesAssigned,
-                  pCuttingRange->m_cCuttableValues,
-                  static_cast<size_t>(pCuttingRange->m_pCuttableValuesFirst - aFeatureValues),
-                  pCuttingRange->m_cUncuttableHighValues,
-                  pCuttingRange->m_cUncuttableLowValues,
+                  pCuttingRange->m_cCuttableVals,
+                  static_cast<size_t>(pCuttingRange->m_pCuttableValsFirst - aFeatureVals),
+                  pCuttingRange->m_cUncuttableHighVals,
+                  pCuttingRange->m_cUncuttableLowVals,
                   pCuttingRange->m_cRangesMax,
                   pCuttingRange->m_avgCuttableRangeWidthAfterAddingOneCut
                );
@@ -2829,8 +2829,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
                      cSamples,
                      bSymmetryReversal,
                      cSamplesPerBinMin,
-                     pCuttingRange->m_pCuttableValuesFirst - aFeatureValues,
-                     pCuttingRange->m_cCuttableValues,
+                     pCuttingRange->m_pCuttableValsFirst - aFeatureVals,
+                     pCuttingRange->m_cCuttableVals,
                      aNeighbourJumps,
                      cRanges,
                      // for efficiency we include space for the end point cuts even if they don't exist
@@ -2840,22 +2840,22 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
                      // any error messages should have been written to the log inside TradeCutSegment
 
                      free(pMem);
-                     free(aFeatureValues);
+                     free(aFeatureVals);
 
                      countCutsRet = IntEbmType { 0 };
                      goto exit_with_log;
                   }
 
-                  const double * const pCuttableValuesStart = pCuttingRange->m_pCuttableValuesFirst;
+                  const double * const pCuttableValsStart = pCuttingRange->m_pCuttableValsFirst;
 
-                  if(0 != pCuttingRange->m_cUncuttableLowValues) {
+                  if(0 != pCuttingRange->m_cUncuttableLowVals) {
                      // if it's zero then it's an implicit cut and we shouldn't put one there, 
                      // otherwise put in the cut
-                     const double * const pCut = pCuttableValuesStart;
-                     EBM_ASSERT(aFeatureValues < pCut);
-                     EBM_ASSERT(pCut < aFeatureValues + countSamples);
-                     *ppValueCutTop = pCut;
-                     ++ppValueCutTop;
+                     const double * const pCut = pCuttableValsStart;
+                     EBM_ASSERT(aFeatureVals < pCut);
+                     EBM_ASSERT(pCut < aFeatureVals + countSamples);
+                     *ppValCutTop = pCut;
+                     ++ppValCutTop;
                   }
 
                   const CutPoint * pCutPoint = aCuts->m_pNext;
@@ -2863,51 +2863,51 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
                   while(LIKELY(nullptr != pNext)) {
                      const size_t iVal = pCutPoint->m_iVal;
                      if(LIKELY(k_valNotLegal != iVal)) {
-                        const double * const pCut = pCuttableValuesStart + iVal;
-                        EBM_ASSERT(aFeatureValues < pCut);
-                        EBM_ASSERT(pCut < aFeatureValues + countSamples);
-                        EBM_ASSERT(pCuttingRange->m_pCuttableValuesFirst < pCut);
-                        EBM_ASSERT(pCut < pCuttingRange->m_pCuttableValuesFirst + pCuttingRange->m_cCuttableValues);
-                        *ppValueCutTop = pCut;
-                        ++ppValueCutTop;
+                        const double * const pCut = pCuttableValsStart + iVal;
+                        EBM_ASSERT(aFeatureVals < pCut);
+                        EBM_ASSERT(pCut < aFeatureVals + countSamples);
+                        EBM_ASSERT(pCuttingRange->m_pCuttableValsFirst < pCut);
+                        EBM_ASSERT(pCut < pCuttingRange->m_pCuttableValsFirst + pCuttingRange->m_cCuttableVals);
+                        *ppValCutTop = pCut;
+                        ++ppValCutTop;
                      }
                      pCutPoint = pNext;
                      pNext = pCutPoint->m_pNext;
                   }
 
-                  if(0 != pCuttingRange->m_cUncuttableHighValues) {
+                  if(0 != pCuttingRange->m_cUncuttableHighVals) {
                      // if it's zero then it's an implicit cut and we shouldn't put one there, 
                      // otherwise put in the cut
                      const double * const pCut =
-                        pCuttableValuesStart + pCuttingRange->m_cCuttableValues;
-                     EBM_ASSERT(aFeatureValues < pCut);
-                     EBM_ASSERT(pCut < aFeatureValues + countSamples);
-                     *ppValueCutTop = pCut;
-                     ++ppValueCutTop;
+                        pCuttableValsStart + pCuttingRange->m_cCuttableVals;
+                     EBM_ASSERT(aFeatureVals < pCut);
+                     EBM_ASSERT(pCut < aFeatureVals + countSamples);
+                     *ppValCutTop = pCut;
+                     ++ppValCutTop;
                   }
                } else if(PREDICTABLE(size_t { 1 } == cRanges)) {
                   // we have cuts on both our ends (either explicit or implicit), so
                   // we don't have to make any hard decisions, but we do have to be careful of the scenarios
                   // where some of our cuts are implicit
 
-                  if(0 != pCuttingRange->m_cUncuttableLowValues) {
+                  if(0 != pCuttingRange->m_cUncuttableLowVals) {
                      // if it's zero then it's an implicit cut and we shouldn't put one there, 
                      // otherwise put in the cut
-                     const double * const pCut = pCuttingRange->m_pCuttableValuesFirst;
-                     EBM_ASSERT(aFeatureValues < pCut);
-                     EBM_ASSERT(pCut < aFeatureValues + countSamples);
-                     *ppValueCutTop = pCut;
-                     ++ppValueCutTop;
+                     const double * const pCut = pCuttingRange->m_pCuttableValsFirst;
+                     EBM_ASSERT(aFeatureVals < pCut);
+                     EBM_ASSERT(pCut < aFeatureVals + countSamples);
+                     *ppValCutTop = pCut;
+                     ++ppValCutTop;
                   }
-                  if(0 != pCuttingRange->m_cUncuttableHighValues) {
+                  if(0 != pCuttingRange->m_cUncuttableHighVals) {
                      // if it's zero then it's an implicit cut and we shouldn't put one there, 
                      // otherwise put in the cut
                      const double * const pCut =
-                        pCuttingRange->m_pCuttableValuesFirst + pCuttingRange->m_cCuttableValues;
-                     EBM_ASSERT(aFeatureValues < pCut);
-                     EBM_ASSERT(pCut < aFeatureValues + countSamples);
-                     *ppValueCutTop = pCut;
-                     ++ppValueCutTop;
+                        pCuttingRange->m_pCuttableValsFirst + pCuttingRange->m_cCuttableVals;
+                     EBM_ASSERT(aFeatureVals < pCut);
+                     EBM_ASSERT(pCut < aFeatureVals + countSamples);
+                     *ppValCutTop = pCut;
+                     ++ppValCutTop;
                   }
                } else {
                   EBM_ASSERT(0 == cRanges);
@@ -2917,20 +2917,20 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
 
                   // if we had implicit cuts on both ends and zero assigned cuts, we'd have 1 range and would
                   // be handled above
-                  EBM_ASSERT(0 != pCuttingRange->m_cUncuttableLowValues || 0 != pCuttingRange->m_cUncuttableHighValues);
+                  EBM_ASSERT(0 != pCuttingRange->m_cUncuttableLowVals || 0 != pCuttingRange->m_cUncuttableHighVals);
 
                   // if one side or the other was an implicit cut, then we have zero cuts left after
                   // the implicit cut is accounted for, so do nothing
-                  if(LIKELY(LIKELY(0 != pCuttingRange->m_cUncuttableLowValues) && 
-                     LIKELY(0 != pCuttingRange->m_cUncuttableHighValues))) {
+                  if(LIKELY(LIKELY(0 != pCuttingRange->m_cUncuttableLowVals) && 
+                     LIKELY(0 != pCuttingRange->m_cUncuttableHighVals))) {
                      // even though we could reduce our squared error length more, it probably makes sense to 
                      // include a little bit of our available numbers on one long range and the other, so let's put
                      // the cut in the middle and only make the low/high decision to settle long-ish ranges
                      // in the center
 
-                     const size_t cCuttableItems = pCuttingRange->m_cCuttableValues;
+                     const size_t cCuttableItems = pCuttingRange->m_cCuttableVals;
                         
-                     const size_t iRangeFirst = pCuttingRange->m_pCuttableValuesFirst - aFeatureValues;
+                     const size_t iRangeFirst = pCuttingRange->m_pCuttableValsFirst - aFeatureVals;
                      const size_t iCenterOfRange = iRangeFirst + (cCuttableItems >> 1);
 
                      // unlike in BuildNeighbourhoodPlan, we don't need to worry about the scenario that
@@ -2966,8 +2966,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
 
                         // we're equidistant to both edges.  Next try to see which is closer to the outer
                         // edge if we include the uncuttable ranges beyond
-                        const size_t cDistanceLow2 = pCuttingRange->m_cUncuttableLowValues;
-                        const size_t cDistanceHigh2 = pCuttingRange->m_cUncuttableHighValues;
+                        const size_t cDistanceLow2 = pCuttingRange->m_cUncuttableLowVals;
+                        const size_t cDistanceHigh2 = pCuttingRange->m_cUncuttableHighVals;
                         iResult = UNPREDICTABLE(cDistanceHigh2 < cDistanceLow2) ? iStartCur : iStartNext;
                         if(UNLIKELY(cDistanceHigh2 == cDistanceLow2)) {
                            // next, let's try to the edges of our full array
@@ -2984,10 +2984,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
                            }
                         }
                      }
-                     const double * pCut = aFeatureValues + iResult;
-                     EBM_ASSERT(aFeatureValues < pCut);
-                     *ppValueCutTop = pCut;
-                     ++ppValueCutTop;
+                     const double * pCut = aFeatureVals + iResult;
+                     EBM_ASSERT(aFeatureVals < pCut);
+                     *ppValCutTop = pCut;
+                     ++ppValCutTop;
                   }
                }
             } while(!priorityQueue.empty());
@@ -2995,7 +2995,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
             LOG_0(TraceLevelWarning, "WARNING CutQuantile out of memory");
 
             free(pMem);
-            free(aFeatureValues);
+            free(aFeatureVals);
 
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
@@ -3004,30 +3004,30 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
             LOG_0(TraceLevelWarning, "WARNING CutQuantile exception");
 
             free(pMem);
-            free(aFeatureValues);
+            free(aFeatureVals);
 
             countCutsRet = IntEbmType { 0 };
             error = Error_UnexpectedInternal;
             goto exit_with_log;
          }
 
-         EBM_ASSERT(apValueCutTops <= ppValueCutTop);
-         const size_t cCutsRet = ppValueCutTop - apValueCutTops;
+         EBM_ASSERT(apValCutTops <= ppValCutTop);
+         const size_t cCutsRet = ppValCutTop - apValCutTops;
 
          // it's possible, although extremely unlikely, that due to floating point issues that should only
          // occur with huge double indexes, we were not able to find the legal cut point, so check for zero
          if(LIKELY(size_t { 0 } != cCutsRet)) {
             // the pointers are guaranteed to be in same order as the cut values
-            std::sort(apValueCutTops, ppValueCutTop);
+            std::sort(apValCutTops, ppValCutTop);
 
             double * pCutsLowerBoundInclusive = cutsLowerBoundInclusiveOut;
-            const double * const * ppValueCutTop2 = apValueCutTops;
+            const double * const * ppValCutTop2 = apValCutTops;
 
             if(EBM_FALSE == isRounded) {
                do {
-                  const double * const pCut = *ppValueCutTop2;
-                  EBM_ASSERT(aFeatureValues < pCut);
-                  EBM_ASSERT(pCut < aFeatureValues + cSamples);
+                  const double * const pCut = *ppValCutTop2;
+                  EBM_ASSERT(aFeatureVals < pCut);
+                  EBM_ASSERT(pCut < aFeatureVals + cSamples);
                   const double valHigh = *pCut;
                   EBM_ASSERT(!std::isnan(valHigh));
                   EBM_ASSERT(!std::isinf(valHigh));
@@ -3038,13 +3038,13 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
                   EBM_ASSERT(cutsLowerBoundInclusiveOut == pCutsLowerBoundInclusive || *(pCutsLowerBoundInclusive - size_t { 1 }) < cut);
                   *pCutsLowerBoundInclusive = cut;
                   ++pCutsLowerBoundInclusive;
-                  ++ppValueCutTop2;
-               } while(ppValueCutTop != ppValueCutTop2);
+                  ++ppValCutTop2;
+               } while(ppValCutTop != ppValCutTop2);
             } else {
                do {
-                  const double * const pCut = *ppValueCutTop2;
-                  EBM_ASSERT(aFeatureValues < pCut);
-                  EBM_ASSERT(pCut < aFeatureValues + cSamples);
+                  const double * const pCut = *ppValCutTop2;
+                  EBM_ASSERT(aFeatureVals < pCut);
+                  EBM_ASSERT(pCut < aFeatureVals + cSamples);
                   const double valHigh = *pCut;
                   EBM_ASSERT(!std::isnan(valHigh));
                   EBM_ASSERT(!std::isinf(valHigh));
@@ -3055,8 +3055,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
                   EBM_ASSERT(cutsLowerBoundInclusiveOut == pCutsLowerBoundInclusive || *(pCutsLowerBoundInclusive - size_t { 1 }) < cut);
                   *pCutsLowerBoundInclusive = cut;
                   ++pCutsLowerBoundInclusive;
-                  ++ppValueCutTop2;
-               } while(ppValueCutTop != ppValueCutTop2);
+                  ++ppValCutTop2;
+               } while(ppValCutTop != ppValCutTop2);
 
                // if you have 1 cut point, then you get a graph with some mass on the left, some mass on the right
                // and the cut point, and that's great.  We don't need to improve on that.  Our one cut points provides
@@ -3125,18 +3125,18 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
                // and we extend by half a bin upwards from the 4, which gives (4 + 1 / 2) = 4.5
 
                if(LIKELY(size_t { 3 } <= cCutsRet)) {
-                  const double * const pScaleHighHigh = *(ppValueCutTop - size_t { 1 });
-                  EBM_ASSERT(aFeatureValues + size_t { 2 } < pScaleHighHigh);
-                  EBM_ASSERT(pScaleHighHigh < aFeatureValues + cSamples);
+                  const double * const pScaleHighHigh = *(ppValCutTop - size_t { 1 });
+                  EBM_ASSERT(aFeatureVals + size_t { 2 } < pScaleHighHigh);
+                  EBM_ASSERT(pScaleHighHigh < aFeatureVals + cSamples);
                   const double * const pScaleHighLow = pScaleHighHigh - size_t { 1 };
-                  EBM_ASSERT(aFeatureValues + size_t { 1 } < pScaleHighLow);
-                  EBM_ASSERT(pScaleHighLow < aFeatureValues + cSamples - size_t { 1 });
+                  EBM_ASSERT(aFeatureVals + size_t { 1 } < pScaleHighLow);
+                  EBM_ASSERT(pScaleHighLow < aFeatureVals + cSamples - size_t { 1 });
                   const double scaleHighLow = *pScaleHighLow;
                   EBM_ASSERT(!std::isnan(scaleHighLow));
                   EBM_ASSERT(!std::isinf(scaleHighLow));
-                  const double * pScaleLowHigh = *apValueCutTops;
-                  EBM_ASSERT(aFeatureValues < pScaleLowHigh);
-                  EBM_ASSERT(pScaleLowHigh < aFeatureValues + cSamples - size_t { 2 });
+                  const double * pScaleLowHigh = *apValCutTops;
+                  EBM_ASSERT(aFeatureVals < pScaleLowHigh);
+                  EBM_ASSERT(pScaleLowHigh < aFeatureVals + cSamples - size_t { 2 });
                   const double scaleLowHigh = *pScaleLowHigh;
                   EBM_ASSERT(!std::isnan(scaleLowHigh));
                   EBM_ASSERT(!std::isinf(scaleLowHigh));
@@ -3218,7 +3218,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          EBM_ASSERT(countCutsRet <= countCuts);
 
          free(pMem);
-         free(aFeatureValues);
+         free(aFeatureVals);
 
          error = Error_None;
       }

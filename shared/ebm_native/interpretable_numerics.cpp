@@ -309,14 +309,14 @@ extern IntEbmType GetCountCharactersPerFloat() {
    return k_cCharsFloatPrint;
 }
 
-extern ErrorEbmType FloatsToString(IntEbmType count, const double * values, char * str) {
+extern ErrorEbmType FloatsToString(IntEbmType count, const double * vals, char * str) {
    // TODO: implement this:
    // 
    // This code takes an array of floats and converts them to a single string separated by spaces and a null-terminator
    // at the end
 }
 
-extern ErrorEbmType StringToFloats(const char * str, double * values) {
+extern ErrorEbmType StringToFloats(const char * str, double * vals) {
    // TODO: implement this:
    //
    // This code takes a single string with the floats separated by spaces and a null-terminator at the end
@@ -802,9 +802,9 @@ extern double GetInterpretableEndpoint(
    return ret;
 }
 
-extern size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, double * const aValues) noexcept {
+extern size_t RemoveMissingValsAndReplaceInfinities(const size_t cSamples, double * const aVals) noexcept {
    EBM_ASSERT(size_t { 1 } <= cSamples);
-   EBM_ASSERT(nullptr != aValues);
+   EBM_ASSERT(nullptr != aVals);
 
    // In most cases we believe that for graphing the caller should only need the bin cuts that we'll eventually
    // return, and they'll want to position the graph to include the first and last cuts, and have a little bit of 
@@ -842,9 +842,9 @@ extern size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, dou
    // +-infinity values in either the cut points, or the min/max values, which is good since serialization of
    // +-infinity isn't very standardized accross languages.  It's a problem in JSON especially.
 
-   double * pCopyFrom = aValues;
-   double * pCopyTo = aValues;
-   const double * const pValuesEnd = aValues + cSamples;
+   double * pCopyFrom = aVals;
+   double * pCopyTo = aVals;
+   const double * const pValsEnd = aVals + cSamples;
    do {
       double val = *pCopyFrom;
       if(PREDICTABLE(!std::isnan(val))) {
@@ -856,8 +856,8 @@ extern size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, dou
          ++pCopyTo;
       }
       ++pCopyFrom;
-   } while(LIKELY(pValuesEnd != pCopyFrom));
-   const size_t cSamplesWithoutMissing = pCopyTo - aValues;
+   } while(LIKELY(pValsEnd != pCopyFrom));
+   const size_t cSamplesWithoutMissing = pCopyTo - aVals;
    EBM_ASSERT(cSamplesWithoutMissing <= cSamples);
    return cSamplesWithoutMissing;
 }
@@ -866,14 +866,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
    IntEbmType countCuts,
    double lowestCut,
    double highestCut,
-   double minValue,
-   double maxValue,
+   double minFeatureVal,
+   double maxFeatureVal,
    double * lowGraphBoundOut,
    double * highGraphBoundOut
 ) {
    // lowGraphBoundOut and highGraphBoundOut will never legally return NaN
-   // lowGraphBoundOut can be -inf if minValue was -inf, or if our bounds get pushed into -inf
-   // lowGraphBoundOut can be +inf if there are no cuts, and both minValue and maxValue are +inf (if all data is +inf)
+   // lowGraphBoundOut can be -inf if minFeatureVal was -inf, or if our bounds get pushed into -inf
+   // lowGraphBoundOut can be +inf if there are no cuts, and both minFeatureVal and maxFeatureVal are +inf (if all data is +inf)
    // highGraphBoundOut can also be any of these values
 
    // TODO: review these comments below now that things have changed:
@@ -1034,7 +1034,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
    //     - probably using 10 is the right max here.. what else makes sense?
    //   - you have values between -5 and +10 and 1/100 of the data is +inf
    //     - if we set the max to +inf then we can't really make a graph and we can't write to JSON
-   //     - if we set the maxValue to max_float then people won't really undrestand why the graph goes unitl 
+   //     - if we set the maxFeatureVal to max_float then people won't really undrestand why the graph goes unitl 
    //       3.402823466e+38
    //     - if we set the upper cut below 10, then we get to keep it less than the max, but then +10 will be bunched
    //       with +inf and that seems like a bad clusting
@@ -1074,9 +1074,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
       LOG_0(TraceLevelError, "ERROR SuggestGraphBounds nullptr == highGraphBoundOut");
       return Error_IllegalParamValue;
    }
-   if(maxValue < minValue) {
+   if(maxFeatureVal < minFeatureVal) {
       // silly caller, these should be reversed.  If either or both are NaN this won't execute, which is good
-      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds maxValue < minValue");
+      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds maxFeatureVal < minFeatureVal");
       *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
       *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
       return Error_IllegalParamValue;
@@ -1090,9 +1090,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
          return Error_IllegalParamValue;
       }
 
-      // countCuts was zero, so the only information we have to go on are the minValue and maxValue..
-      if(std::isnan(minValue)) {
-         if(std::isnan(maxValue)) {
+      // countCuts was zero, so the only information we have to go on are the minFeatureVal and maxFeatureVal..
+      if(std::isnan(minFeatureVal)) {
+         if(std::isnan(maxFeatureVal)) {
             // we can't avoid the scenario where min = float.lowest() and max = float.max.  In that case
             // the range of max - min would overflow to +inf, so the graphing code needs to handle this.
             // So, we might as well allow +inf and -inf as legal min/max returns.  If we have no
@@ -1106,21 +1106,21 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
             return Error_None;
          } else {
             // no min, but we do have a max?!  Ok..
-            *lowGraphBoundOut = maxValue;
-            *highGraphBoundOut = maxValue;
+            *lowGraphBoundOut = maxFeatureVal;
+            *highGraphBoundOut = maxFeatureVal;
             return Error_None;
          }
       } else {
-         if(std::isnan(maxValue)) {
+         if(std::isnan(maxFeatureVal)) {
             // no max, but we do have a min?!  Ok..
-            *lowGraphBoundOut = minValue;
-            *highGraphBoundOut = minValue;
+            *lowGraphBoundOut = minFeatureVal;
+            *highGraphBoundOut = minFeatureVal;
             return Error_None;
          } else {
             // the danger here is that this allows both low & high to be either +-infinity, which makes sense
             // if all the data is +inf or -inf, but then when we go to subtract it to get a range you'd get NaN
-            *lowGraphBoundOut = minValue;
-            *highGraphBoundOut = maxValue;
+            *lowGraphBoundOut = minFeatureVal;
+            *highGraphBoundOut = maxFeatureVal;
             return Error_None;
          }
       }
@@ -1153,42 +1153,42 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
    }
 
    bool bExpandLower = false;
-   if(std::isnan(minValue)) {
+   if(std::isnan(minFeatureVal)) {
       // the user removed the min value from the model so we need to use the available info, which is the lowestCut
-      minValue = lowestCut;
+      minFeatureVal = lowestCut;
       bExpandLower = true;
-   } else if(lowestCut < minValue) {
-      // the model has been edited or supplied with non-data derived cut points OR lowestCut == minValue which is legal
+   } else if(lowestCut < minFeatureVal) {
+      // the model has been edited or supplied with non-data derived cut points OR lowestCut == minFeatureVal which is legal
       // our automatic binning code will never put a cut on the exact min value even if the two lowest cuts
       // are separated by a floating point epsilon, but we'll accept it here since then we're symetric
       // with the upper bound handling which can have a max on the highest cut
-      minValue = lowestCut;
+      minFeatureVal = lowestCut;
       bExpandLower = true;
    }
 
    bool bExpandHigher = false;
-   if(std::isnan(maxValue)) {
+   if(std::isnan(maxFeatureVal)) {
       // the user removed the max value from the model so we need to use the available info, which is the highestCut
-      maxValue = highestCut;
+      maxFeatureVal = highestCut;
       bExpandHigher = true;
-   } else if(maxValue < highestCut) {
+   } else if(maxFeatureVal < highestCut) {
       // the model has been edited or supplied with non-data derived cut points
-      maxValue = highestCut;
+      maxFeatureVal = highestCut;
       bExpandHigher = true;
    }
 
-   if(minValue == maxValue) {
+   if(minFeatureVal == maxFeatureVal) {
       // we handled zero cuts above, and if there were two cuts they'd have to have unique increasing values
       // so the only way we can have the low and high graph bounds the same is if we have one cut and both the
-      // minValue and maxValue are the same as that cut, or they are illegal, or they are missing (NaN)
+      // minFeatureVal and maxFeatureVal are the same as that cut, or they are illegal, or they are missing (NaN)
       EBM_ASSERT(IntEbmType { 1 } == countCuts);
 
       // if the regular binning code was kept and the min/max value wasn't removed from the model, then we should
-      // not be able to get here, since minValue == maxValue can only happen if there is only one value, and if there
+      // not be able to get here, since minFeatureVal == maxFeatureVal can only happen if there is only one value, and if there
       // is only one value we would never create cut points, so the cut points or min/max have been user edited
 
-      *lowGraphBoundOut = minValue;
-      *highGraphBoundOut = maxValue;
+      *lowGraphBoundOut = minFeatureVal;
+      *highGraphBoundOut = maxFeatureVal;
       return Error_None;
    }
 
@@ -1201,15 +1201,15 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
    EBM_ASSERT(size_t { 2 } <= denominator);
    const double denominatorFloat = static_cast<double>(denominator);
 
-   EBM_ASSERT(minValue < maxValue);
-   double movementFromEnds = maxValue - minValue;
-   EBM_ASSERT(!std::isnan(movementFromEnds)); // since maxValue != minValue, they can't be both be +inf or both be -inf
+   EBM_ASSERT(minFeatureVal < maxFeatureVal);
+   double movementFromEnds = maxFeatureVal - minFeatureVal;
+   EBM_ASSERT(!std::isnan(movementFromEnds)); // since maxFeatureVal != minFeatureVal, they can't be both be +inf or both be -inf
    // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
    EBM_ASSERT(double { 0 } < movementFromEnds);
    if(std::isinf(movementFromEnds)) {
       // movementFromEnds can be +infinity if highestCut is max and lowestCut is lowest or either is +-inf.  Try again
       // but divide first since we might find that we're in the legal range by dividing first
-      movementFromEnds = maxValue / denominatorFloat - minValue / denominatorFloat;
+      movementFromEnds = maxFeatureVal / denominatorFloat - minFeatureVal / denominatorFloat;
    } else { 
       movementFromEnds /= denominatorFloat;
    }
@@ -1219,51 +1219,51 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
    EBM_ASSERT(double { 0 } <= movementFromEnds);
 
    if(bExpandLower) {
-      // minValue must be lower than maxValue so it can't be +inf
-      EBM_ASSERT(minValue <= std::numeric_limits<double>::max());
+      // minFeatureVal must be lower than maxFeatureVal so it can't be +inf
+      EBM_ASSERT(minFeatureVal <= std::numeric_limits<double>::max());
 
-      minValue -= movementFromEnds;
-      EBM_ASSERT(!std::isnan(minValue));
-      EBM_ASSERT(minValue <= std::numeric_limits<double>::max());
-      // minValue can be -inf
+      minFeatureVal -= movementFromEnds;
+      EBM_ASSERT(!std::isnan(minFeatureVal));
+      EBM_ASSERT(minFeatureVal <= std::numeric_limits<double>::max());
+      // minFeatureVal can be -inf
    }
 
    if(bExpandHigher) {
-      // maxValue must be higher than minValue so it can't be -inf
-      EBM_ASSERT(std::numeric_limits<double>::lowest() <= maxValue);
+      // maxFeatureVal must be higher than minFeatureVal so it can't be -inf
+      EBM_ASSERT(std::numeric_limits<double>::lowest() <= maxFeatureVal);
 
-      maxValue += movementFromEnds;
-      EBM_ASSERT(!std::isnan(maxValue));
-      EBM_ASSERT(std::numeric_limits<double>::lowest() <= maxValue);
-      // maxValue can be +inf
+      maxFeatureVal += movementFromEnds;
+      EBM_ASSERT(!std::isnan(maxFeatureVal));
+      EBM_ASSERT(std::numeric_limits<double>::lowest() <= maxFeatureVal);
+      // maxFeatureVal can be +inf
    }
 
-   *lowGraphBoundOut = minValue;
-   *highGraphBoundOut = maxValue;
+   *lowGraphBoundOut = minFeatureVal;
+   *highGraphBoundOut = maxFeatureVal;
    return Error_None;
 }
 
-static size_t CountNormal(const size_t cSamples, const double * const aFeatureValues) {
+static size_t CountNormal(const size_t cSamples, const double * const aFeatureVals) {
    EBM_ASSERT(1 <= cSamples);
-   EBM_ASSERT(nullptr != aFeatureValues);
+   EBM_ASSERT(nullptr != aFeatureVals);
 
    size_t cNormal = 0;
-   const double * pFeatureValue = aFeatureValues;
-   const double * const featureValuesEnd = aFeatureValues + cSamples;
+   const double * pFeatureVal = aFeatureVals;
+   const double * const pFeatureValsEnd = aFeatureVals + cSamples;
    do {
-      const double val = *pFeatureValue;
+      const double val = *pFeatureVal;
       if(!std::isnan(val) && !std::isinf(val)) {
          ++cNormal;
       }
-      ++pFeatureValue;
-   } while(featureValuesEnd != pFeatureValue);
+      ++pFeatureVal;
+   } while(pFeatureValsEnd != pFeatureVal);
    return cNormal;
 }
 
-static double Stddev(const size_t cSamples, const double * const aFeatureValues, const size_t cNormal) {
+static double Stddev(const size_t cSamples, const double * const aFeatureVals, const size_t cNormal) {
    EBM_ASSERT(2 <= cSamples);
    EBM_ASSERT(2 <= cNormal);
-   EBM_ASSERT(nullptr != aFeatureValues);
+   EBM_ASSERT(nullptr != aFeatureVals);
 
    // use Welford's method to calculate stddev
    // https://stackoverflow.com/questions/895929/how-do-i-determine-the-standard-deviation-stddev-of-a-set-of-values
@@ -1273,38 +1273,38 @@ static double Stddev(const size_t cSamples, const double * const aFeatureValues,
    double s = 0;
    size_t k = 0;
    const double multFactor = double { 1 } / static_cast<double>(cNormal);
-   const double * pFeatureValue = aFeatureValues;
-   const double * const featureValuesEnd = aFeatureValues + cSamples;
+   const double * pFeatureVal = aFeatureVals;
+   const double * const pFeatureValsEnd = aFeatureVals + cSamples;
    do {
-      const double val = *pFeatureValue;
+      const double val = *pFeatureVal;
       if(!std::isnan(val) && !std::isinf(val)) {
          ++k;
          const double numerator = val - m;
          m += numerator / static_cast<double>(k);
          s += multFactor * numerator * (val - m);
       }
-      ++pFeatureValue;
-   } while(featureValuesEnd != pFeatureValue);
+      ++pFeatureVal;
+   } while(pFeatureValsEnd != pFeatureVal);
    EBM_ASSERT(k == cNormal);
    s = std::sqrt(s);
    return s;
 }
 
-static double Mean(const size_t cSamples, const double * const aFeatureValues, const size_t cNormal) {
+static double Mean(const size_t cSamples, const double * const aFeatureVals, const size_t cNormal) {
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(1 <= cNormal);
-   EBM_ASSERT(nullptr != aFeatureValues);
+   EBM_ASSERT(nullptr != aFeatureVals);
 
    double sum = 0;
-   const double * pFeatureValue = aFeatureValues;
-   const double * const featureValuesEnd = aFeatureValues + cSamples;
+   const double * pFeatureVal = aFeatureVals;
+   const double * const pFeatureValsEnd = aFeatureVals + cSamples;
    do {
-      const double val = *pFeatureValue;
+      const double val = *pFeatureVal;
       if(!std::isnan(val) && !std::isinf(val)) {
          sum += val;
       }
-      ++pFeatureValue;
-   } while(featureValuesEnd != pFeatureValue);
+      ++pFeatureVal;
+   } while(pFeatureValsEnd != pFeatureVal);
 
    EBM_ASSERT(!std::isnan(sum));
 
@@ -1316,14 +1316,14 @@ static double Mean(const size_t cSamples, const double * const aFeatureValues, c
    // ok, maybe we overflowed. Try again but this time divide as we go. This is less accurate and slower, but whatever
    const double cNormalDoubleInv = double { 1 } / cNormalDouble;
    double mean = 0;
-   pFeatureValue = aFeatureValues;
+   pFeatureVal = aFeatureVals;
    do {
-      const double val = *pFeatureValue;
+      const double val = *pFeatureVal;
       if(!std::isnan(val) && !std::isinf(val)) {
          mean += val * cNormalDoubleInv;
       }
-      ++pFeatureValue;
-   } while(featureValuesEnd != pFeatureValue);
+      ++pFeatureVal;
+   } while(pFeatureValsEnd != pFeatureVal);
    return mean;
 }
 
@@ -1333,7 +1333,7 @@ static int g_cLogExitGetHistogramCutCountParametersMessages = 25;
 
 EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
    IntEbmType countSamples,
-   const double * featureValues,
+   const double * featureVals,
    IntEbmType strategy
 ) {
    UNUSED(strategy);
@@ -1344,11 +1344,11 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
       TraceLevelVerbose,
       "Entered GetHistogramCutCount: "
       "countSamples=%" IntEbmTypePrintf ", "
-      "featureValues=%p, "
+      "featureVals=%p, "
       "strategy=%" IntEbmTypePrintf
       ,
       countSamples,
-      static_cast<const void *>(featureValues),
+      static_cast<const void *>(featureVals),
       strategy
    );
 
@@ -1363,28 +1363,28 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
       return 0;
    }
    const size_t cSamples = static_cast<size_t>(countSamples);
-   const size_t cNormal = CountNormal(cSamples, featureValues);
+   const size_t cNormal = CountNormal(cSamples, featureVals);
 
    IntEbmType ret = 0;
    if(size_t { 3 } <= cNormal) {
-      const double stddev = Stddev(cSamples, featureValues, cNormal);
+      const double stddev = Stddev(cSamples, featureVals, cNormal);
       if(double { 0 } < stddev) {
-         const double mean = Mean(cSamples, featureValues, cNormal);
+         const double mean = Mean(cSamples, featureVals, cNormal);
          const double cNormalDouble = static_cast<double>(cNormal);
          const double cNormalCubicRootDouble = std::cbrt(cNormalDouble);
          const double multFactor = double { 1 } / cNormalCubicRootDouble / stddev;
 
          double g1 = 0;
-         const double * pFeatureValue = featureValues;
-         const double * const featureValuesEnd = featureValues + cSamples;
+         const double * pFeatureVal = featureVals;
+         const double * const pFeatureValsEnd = featureVals + cSamples;
          do {
-            const double val = *pFeatureValue;
+            const double val = *pFeatureVal;
             if(!std::isnan(val) && !std::isinf(val)) {
                const double interior = (val - mean) * multFactor;
                g1 += interior * interior * interior;
             }
-            ++pFeatureValue;
-         } while(featureValuesEnd != pFeatureValue);
+            ++pFeatureVal;
+         } while(pFeatureValsEnd != pFeatureVal);
          g1 = std::abs(g1);
 
          const double denom = std::sqrt(double { 6 } * (cNormalDouble - double { 2 }) / ((cNormalDouble + double { 1 }) * (cNormalDouble + double { 3 })));

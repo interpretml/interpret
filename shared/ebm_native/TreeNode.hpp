@@ -64,7 +64,7 @@ struct TreeNodeData<true> {
       // put this at the top so that our priority queue can access it directly without adding anything to the pointer 
       // (this is slightly more efficient on intel systems at least)
       FloatBig m_splitGain;
-      ActiveDataType m_splitValue;
+      ActiveDataType m_splitVal;
    };
    static_assert(std::is_standard_layout<AfterExaminationForPossibleSplitting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -159,13 +159,13 @@ struct TreeNodeData<true> {
       m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = splitGain;
    }
 
-   INLINE_ALWAYS ActiveDataType AFTER_GetSplitValue() const {
+   INLINE_ALWAYS ActiveDataType AFTER_GetSplitVal() const {
       EBM_ASSERT(IsExaminedForPossibleSplitting());
-      return m_UNION.m_afterExaminationForPossibleSplitting.m_splitValue;
+      return m_UNION.m_afterExaminationForPossibleSplitting.m_splitVal;
    }
-   INLINE_ALWAYS void AFTER_SetSplitValue(const ActiveDataType splitValue) {
+   INLINE_ALWAYS void AFTER_SetSplitVal(const ActiveDataType splitVal) {
       EBM_ASSERT(IsExaminedForPossibleSplitting());
-      m_UNION.m_afterExaminationForPossibleSplitting.m_splitValue = splitValue;
+      m_UNION.m_afterExaminationForPossibleSplitting.m_splitVal = splitVal;
    }
 
    INLINE_ALWAYS const GradientPair<FloatBig, true> * GetGradientPairs() const {
@@ -247,7 +247,7 @@ struct TreeNodeData<false> {
       // put this at the top so that our priority queue can access it directly without adding anything to the pointer 
       // (this is slightly more efficient on intel systems at least)
       FloatBig m_splitGain;
-      ActiveDataType m_splitValue;
+      ActiveDataType m_splitVal;
    };
    static_assert(std::is_standard_layout<AfterExaminationForPossibleSplitting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -340,13 +340,13 @@ struct TreeNodeData<false> {
       m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = splitGain;
    }
 
-   INLINE_ALWAYS ActiveDataType AFTER_GetSplitValue() const {
+   INLINE_ALWAYS ActiveDataType AFTER_GetSplitVal() const {
       EBM_ASSERT(IsExaminedForPossibleSplitting());
-      return m_UNION.m_afterExaminationForPossibleSplitting.m_splitValue;
+      return m_UNION.m_afterExaminationForPossibleSplitting.m_splitVal;
    }
-   INLINE_ALWAYS void AFTER_SetSplitValue(const ActiveDataType splitValue) {
+   INLINE_ALWAYS void AFTER_SetSplitVal(const ActiveDataType splitVal) {
       EBM_ASSERT(IsExaminedForPossibleSplitting());
-      m_UNION.m_afterExaminationForPossibleSplitting.m_splitValue = splitValue;
+      m_UNION.m_afterExaminationForPossibleSplitting.m_splitVal = splitVal;
    }
 
    INLINE_ALWAYS const GradientPair<FloatBig, false> * GetGradientPairs() const {

@@ -29,26 +29,26 @@ struct LogLossMulticlassLoss : public MulticlassLoss {
       return 1.0;
    }
 
-   GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunctionPass1(size_t countClasses, TFloat * pointerScores, TFloat * pointerTempStorage, const TFloat & tempValue) const {
+   GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunctionPass1(size_t countClasses, TFloat * pointerScores, TFloat * pointerTempStorage, const TFloat & tempVal) const {
       //TODO implement
       // use the countClasses since it can be a templated constant, unlike m_countClasses
       return 999;
    }
 
-   GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunctionPass2(size_t countClasses, TFloat * pointerScores, TFloat * pointerTempStorage, const TFloat & tempValue) const {
+   GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunctionPass2(size_t countClasses, TFloat * pointerScores, TFloat * pointerTempStorage, const TFloat & tempVal) const {
       //TODO implement
       // use the countClasses since it can be a templated constant, unlike m_countClasses
       return 999;
    }
 
-   //TODO USE THIS FORMAT FOR MULTICLASS: GPU_DEVICE INLINE_ALWAYS TFloat CalculateGradient(TFloat target, TFloat prediction, TFloat tempStorage, TFloat tempValue) const {
+   //TODO USE THIS FORMAT FOR MULTICLASS: GPU_DEVICE INLINE_ALWAYS TFloat CalculateGradient(TFloat target, TFloat prediction, TFloat tempStorage, TFloat tempVal) const {
    GPU_DEVICE INLINE_ALWAYS TFloat CalculateGradient(TFloat target, TFloat prediction) const {
       //TODO implement
       return 999.9999;
    }
 
    // if the loss function doesn't have a second derivative, then delete the CalculateHessian function.
-   GPU_DEVICE INLINE_ALWAYS TFloat CalculateHessian(TFloat target, TFloat prediction, TFloat tempStorage, TFloat tempValue) const {
+   GPU_DEVICE INLINE_ALWAYS TFloat CalculateHessian(TFloat target, TFloat prediction, TFloat tempStorage, TFloat tempVal) const {
       //TODO implement
       return 999.9999;
    }

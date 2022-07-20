@@ -129,7 +129,7 @@ namespace DEFINED_ZONE_NAME {
 //       transpose_16384 = 7.73406
 
 EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION BinFeatureOneSample(
-   const double featureValue,
+   const double featureVal,
    IntEbmType countCuts,
    const double * cutsLowerBoundInclusive
 ) {
@@ -163,7 +163,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION BinFeatureOneSample(
    // overflow, so check that the maximum high added to the maximum low (which is the high) don't exceed that value
    EBM_ASSERT(static_cast<size_t>(countCuts) <= std::numeric_limits<size_t>::max() / size_t { 2 } + size_t { 1 });
 
-   if(PREDICTABLE(std::isnan(featureValue))) {
+   if(PREDICTABLE(std::isnan(featureVal))) {
       return IntEbmType { 0 };
    }
    if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
@@ -191,9 +191,9 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION BinFeatureOneSample(
       EBM_ASSERT(middle < static_cast<size_t>(countCuts));
       midVal = cutsLowerBoundInclusive[middle];
       EBM_ASSERT(middle < size_t { std::numeric_limits<ptrdiff_t>::max() });
-      low = UNPREDICTABLE(midVal <= featureValue) ? static_cast<ptrdiff_t>(middle) + ptrdiff_t { 1 } : low;
+      low = UNPREDICTABLE(midVal <= featureVal) ? static_cast<ptrdiff_t>(middle) + ptrdiff_t { 1 } : low;
       EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) <= static_cast<size_t>(countCuts));
-      high = UNPREDICTABLE(midVal <= featureValue) ? high : static_cast<ptrdiff_t>(middle) - ptrdiff_t { 1 };
+      high = UNPREDICTABLE(midVal <= featureVal) ? high : static_cast<ptrdiff_t>(middle) - ptrdiff_t { 1 };
       EBM_ASSERT(ptrdiff_t { -1 } <= high && high <= highStart);
 
       // high can become -1 in some cases, so it needs to be ptrdiff_t.  It's tempting to try and change
@@ -208,7 +208,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION BinFeatureOneSample(
       // for accessing memory are always size_t, so those should always work.
    } while(LIKELY(low <= high));
    EBM_ASSERT(size_t { 0 } <= middle && middle < static_cast<size_t>(countCuts));
-   middle = UNPREDICTABLE(midVal <= featureValue) ? middle + size_t { 2 } : middle + size_t { 1 };
+   middle = UNPREDICTABLE(midVal <= featureVal) ? middle + size_t { 2 } : middle + size_t { 1 };
    EBM_ASSERT(size_t { 1 } <= middle && middle <= size_t { 1 } + static_cast<size_t>(countCuts));
    EBM_ASSERT(!IsConvertError<IntEbmType>(middle));
    return static_cast<IntEbmType>(middle);
@@ -220,7 +220,7 @@ static int g_cLogExitBinFeatureParametersMessages = 25;
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
    IntEbmType countSamples,
-   const double * featureValues,
+   const double * featureVals,
    IntEbmType countCuts,
    const double * cutsLowerBoundInclusive,
    IntEbmType * binIndexesOut
@@ -277,13 +277,13 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
       TraceLevelVerbose,
       "Entered BinFeature: "
       "countSamples=%" IntEbmTypePrintf ", "
-      "featureValues=%p, "
+      "featureVals=%p, "
       "countCuts=%" IntEbmTypePrintf ", "
       "cutsLowerBoundInclusive=%p, "
       "binIndexesOut=%p"
       ,
       countSamples,
-      static_cast<const void *>(featureValues),
+      static_cast<const void *>(featureVals),
       countCuts,
       static_cast<const void *>(cutsLowerBoundInclusive),
       static_cast<void *>(binIndexesOut)
@@ -311,8 +311,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
       const size_t cSamples = static_cast<size_t>(countSamples);
 
-      if(IsMultiplyError(sizeof(*featureValues), cSamples)) {
-         LOG_0(TraceLevelError, "ERROR BinFeature countSamples was too large to fit into featureValues");
+      if(IsMultiplyError(sizeof(*featureVals), cSamples)) {
+         LOG_0(TraceLevelError, "ERROR BinFeature countSamples was too large to fit into featureVals");
          error = Error_IllegalParamValue;
          goto exit_with_log;
       }
@@ -323,8 +323,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          goto exit_with_log;
       }
 
-      if(UNLIKELY(nullptr == featureValues)) {
-         LOG_0(TraceLevelError, "ERROR BinFeature featureValues cannot be null");
+      if(UNLIKELY(nullptr == featureVals)) {
+         LOG_0(TraceLevelError, "ERROR BinFeature featureVals cannot be null");
          error = Error_IllegalParamValue;
          goto exit_with_log;
       }
@@ -335,8 +335,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          goto exit_with_log;
       }
 
-      const double * pValue = featureValues;
-      const double * const pValueEnd = featureValues + cSamples;
+      const double * pVal = featureVals;
+      const double * const pValsEnd = featureVals + cSamples;
       IntEbmType * piBin = binIndexesOut;
 
       if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
@@ -348,14 +348,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          EBM_ASSERT(IntEbmType { 0 } == countCuts);
 
          do {
-            const double val = *pValue;
+            const double val = *pVal;
             IntEbmType iBin;
             iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : IntEbmType { 1 };
             EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
             *piBin = iBin;
             ++piBin;
-            ++pValue;
-         } while(LIKELY(pValueEnd != pValue));
+            ++pVal;
+         } while(LIKELY(pValsEnd != pVal));
          error = Error_None;
          goto exit_with_log;
       }
@@ -389,7 +389,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
       if(PREDICTABLE(IntEbmType { 1 } == countCuts)) {
          const double cut0 = cutsLowerBoundInclusive[0];
          do {
-            const double val = *pValue;
+            const double val = *pVal;
             IntEbmType iBin;
 
             iBin = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
@@ -399,8 +399,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
             *piBin = iBin;
             ++piBin;
-            ++pValue;
-         } while(LIKELY(pValueEnd != pValue));
+            ++pVal;
+         } while(LIKELY(pValsEnd != pVal));
          error = Error_None;
          goto exit_with_log;
       }
@@ -409,7 +409,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          const double cut0 = cutsLowerBoundInclusive[0];
          const double cut1 = cutsLowerBoundInclusive[1];
          do {
-            const double val = *pValue;
+            const double val = *pVal;
             IntEbmType iBin;
 
             iBin = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
@@ -420,8 +420,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
             *piBin = iBin;
             ++piBin;
-            ++pValue;
-         } while(LIKELY(pValueEnd != pValue));
+            ++pVal;
+         } while(LIKELY(pValsEnd != pVal));
          error = Error_None;
          goto exit_with_log;
       }
@@ -431,7 +431,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          const double cut1 = cutsLowerBoundInclusive[1];
          const double cut2 = cutsLowerBoundInclusive[2];
          do {
-            const double val = *pValue;
+            const double val = *pVal;
             IntEbmType iBin;
 
             iBin = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
@@ -443,8 +443,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
             *piBin = iBin;
             ++piBin;
-            ++pValue;
-         } while(LIKELY(pValueEnd != pValue));
+            ++pVal;
+         } while(LIKELY(pValsEnd != pVal));
          error = Error_None;
          goto exit_with_log;
       }
@@ -455,7 +455,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          const double cut2 = cutsLowerBoundInclusive[2];
          const double cut3 = cutsLowerBoundInclusive[3];
          do {
-            const double val = *pValue;
+            const double val = *pVal;
             IntEbmType iBin;
 
             iBin = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
@@ -468,8 +468,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
             *piBin = iBin;
             ++piBin;
-            ++pValue;
-         } while(LIKELY(pValueEnd != pValue));
+            ++pVal;
+         } while(LIKELY(pValsEnd != pVal));
          error = Error_None;
          goto exit_with_log;
       }
@@ -481,7 +481,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          const double cut3 = cutsLowerBoundInclusive[3];
          const double cut4 = cutsLowerBoundInclusive[4];
          do {
-            const double val = *pValue;
+            const double val = *pVal;
             IntEbmType iBin;
 
             iBin = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
@@ -495,8 +495,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
             *piBin = iBin;
             ++piBin;
-            ++pValue;
-         } while(LIKELY(pValueEnd != pValue));
+            ++pVal;
+         } while(LIKELY(pValsEnd != pVal));
          error = Error_None;
          goto exit_with_log;
       }
@@ -509,7 +509,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          const double cut4 = cutsLowerBoundInclusive[4];
          const double cut5 = cutsLowerBoundInclusive[5];
          do {
-            const double val = *pValue;
+            const double val = *pVal;
             IntEbmType iBin;
 
             iBin = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
@@ -524,8 +524,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
             *piBin = iBin;
             ++piBin;
-            ++pValue;
-         } while(LIKELY(pValueEnd != pValue));
+            ++pVal;
+         } while(LIKELY(pValsEnd != pVal));
          error = Error_None;
          goto exit_with_log;
       }
@@ -564,7 +564,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
-               const double val = *pValue;
+               const double val = *pVal;
                char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
 
                pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
@@ -578,8 +578,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                *piBin = static_cast<IntEbmType>(iBin);
                ++piBin;
-               ++pValue;
-            } while(LIKELY(pValueEnd != pValue));
+               ++pVal;
+            } while(LIKELY(pValsEnd != pVal));
             error = Error_None;
             goto exit_with_log;
          }
@@ -609,7 +609,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
-               const double val = *pValue;
+               const double val = *pVal;
                char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
 
                pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
@@ -624,8 +624,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                *piBin = static_cast<IntEbmType>(iBin);
                ++piBin;
-               ++pValue;
-            } while(LIKELY(pValueEnd != pValue));
+               ++pVal;
+            } while(LIKELY(pValsEnd != pVal));
             error = Error_None;
             goto exit_with_log;
          }
@@ -655,7 +655,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
-               const double val = *pValue;
+               const double val = *pVal;
                char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
 
                pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
@@ -671,8 +671,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                *piBin = static_cast<IntEbmType>(iBin);
                ++piBin;
-               ++pValue;
-            } while(LIKELY(pValueEnd != pValue));
+               ++pVal;
+            } while(LIKELY(pValsEnd != pVal));
             error = Error_None;
             goto exit_with_log;
          }
@@ -702,7 +702,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
-               const double val = *pValue;
+               const double val = *pVal;
                char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
 
                pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
@@ -719,8 +719,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                *piBin = static_cast<IntEbmType>(iBin);
                ++piBin;
-               ++pValue;
-            } while(LIKELY(pValueEnd != pValue));
+               ++pVal;
+            } while(LIKELY(pValsEnd != pVal));
             error = Error_None;
             goto exit_with_log;
          }
@@ -750,7 +750,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
-               const double val = *pValue;
+               const double val = *pVal;
                char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
 
                pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
@@ -768,8 +768,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                *piBin = static_cast<IntEbmType>(iBin);
                ++piBin;
-               ++pValue;
-            } while(LIKELY(pValueEnd != pValue));
+               ++pVal;
+            } while(LIKELY(pValsEnd != pVal));
             error = Error_None;
             goto exit_with_log;
          }
@@ -799,7 +799,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
-               const double val = *pValue;
+               const double val = *pVal;
                char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
 
                pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
@@ -818,8 +818,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                *piBin = static_cast<IntEbmType>(iBin);
                ++piBin;
-               ++pValue;
-            } while(LIKELY(pValueEnd != pValue));
+               ++pVal;
+            } while(LIKELY(pValsEnd != pVal));
             error = Error_None;
             goto exit_with_log;
          }
@@ -849,7 +849,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
-               const double val = *pValue;
+               const double val = *pVal;
                char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
 
                pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
@@ -869,8 +869,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                *piBin = static_cast<IntEbmType>(iBin);
                ++piBin;
-               ++pValue;
-            } while(LIKELY(pValueEnd != pValue));
+               ++pVal;
+            } while(LIKELY(pValsEnd != pVal));
             error = Error_None;
             goto exit_with_log;
          }
@@ -959,7 +959,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
       const ptrdiff_t firstMidHigh = static_cast<ptrdiff_t>(firstMiddle) - ptrdiff_t { 1 };
 
       do {
-         const double val = *pValue;
+         const double val = *pVal;
          size_t middle = size_t { 0 };
          if(PREDICTABLE(!std::isnan(val))) {
             ptrdiff_t high = UNPREDICTABLE(firstMidVal <= val) ? highStart : firstMidHigh;
@@ -1008,8 +1008,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
          *piBin = iBin;
          ++piBin;
-         ++pValue;
-      } while(LIKELY(pValueEnd != pValue));
+         ++pVal;
+      } while(LIKELY(pValsEnd != pVal));
       error = Error_None;
    }
 

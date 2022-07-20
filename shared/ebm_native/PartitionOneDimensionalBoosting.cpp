@@ -50,7 +50,7 @@ static void Flatten(
       const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
          pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
       Flatten<bClassification>(pLeftChild, ppSplits, ppUpdateScore, cScores);
-      **ppSplits = pTreeNode->AFTER_GetSplitValue();
+      **ppSplits = pTreeNode->AFTER_GetSplitVal();
       ++(*ppSplits);
       const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
          pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
@@ -422,13 +422,13 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    EBM_ASSERT(reinterpret_cast<const char *>(aBins) <= reinterpret_cast<const char *>(BEST_pBin));
    EBM_ASSERT(0 == (reinterpret_cast<const char *>(BEST_pBin) - reinterpret_cast<const char *>(aBins)) % cBytesPerBin);
-   pTreeNode->AFTER_SetSplitValue((reinterpret_cast<const char *>(BEST_pBin) - 
+   pTreeNode->AFTER_SetSplitVal((reinterpret_cast<const char *>(BEST_pBin) - 
       reinterpret_cast<const char *>(aBins)) / cBytesPerBin);
 
    LOG_N(
       TraceLevelVerbose,
-      "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: splitValue=%zu, gain=%le",
-      static_cast<size_t>(pTreeNode->AFTER_GetSplitValue()),
+      "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: splitVal=%zu, gain=%le",
+      static_cast<size_t>(pTreeNode->AFTER_GetSplitVal()),
       pTreeNode->AFTER_GetSplitGain()
    );
 
@@ -616,7 +616,7 @@ public:
          }
 
          ActiveDataType * pSplits = pInnerTermUpdate->GetSplitPointer(iDimension);
-         pSplits[0] = pRootTreeNode->AFTER_GetSplitValue();
+         pSplits[0] = pRootTreeNode->AFTER_GetSplitVal();
 
          // we don't need to call EnsureTensorScoreCapacity because by default we start with a value capacity of 2 * cScores
 

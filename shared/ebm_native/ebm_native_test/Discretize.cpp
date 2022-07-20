@@ -61,7 +61,7 @@ TEST_CASE("BinFeature, increasing lengths") {
    ErrorEbmType error;
 
    double * cutsLowerBoundInclusive = new double[cCutsEnd];
-   double * featureValues = new double[cData];
+   double * featureVals = new double[cData];
    IntEbmType * aiBins = new IntEbmType[cData];
    for(size_t iCutPoint = 0; iCutPoint < cCutsEnd; ++iCutPoint) {
       const double cutPoint = static_cast<double>(iCutPoint);
@@ -70,20 +70,20 @@ TEST_CASE("BinFeature, increasing lengths") {
       // we have 11 items here, which will put these odd values into various positions for SIMD testing
       // we wrap missing at the first and last positions for additional testing of initial memory slots
 
-      featureValues[11 * iCutPoint + 0] = std::numeric_limits<double>::lowest();
-      featureValues[11 * iCutPoint + 1] = std::numeric_limits<double>::quiet_NaN();
+      featureVals[11 * iCutPoint + 0] = std::numeric_limits<double>::lowest();
+      featureVals[11 * iCutPoint + 1] = std::numeric_limits<double>::quiet_NaN();
 
-      featureValues[11 * iCutPoint + 2] = -std::numeric_limits<double>::denorm_min();
-      featureValues[11 * iCutPoint + 3] = std::numeric_limits<double>::denorm_min();
+      featureVals[11 * iCutPoint + 2] = -std::numeric_limits<double>::denorm_min();
+      featureVals[11 * iCutPoint + 3] = std::numeric_limits<double>::denorm_min();
 
-      featureValues[11 * iCutPoint + 4] = FloatTickDecrementTest(cutPoint);
-      featureValues[11 * iCutPoint + 5] = cutPoint;
-      featureValues[11 * iCutPoint + 6] = FloatTickIncrementTest(cutPoint);
-      featureValues[11 * iCutPoint + 7] = std::numeric_limits<double>::max();
-      featureValues[11 * iCutPoint + 8] = std::numeric_limits<double>::infinity();
+      featureVals[11 * iCutPoint + 4] = FloatTickDecrementTest(cutPoint);
+      featureVals[11 * iCutPoint + 5] = cutPoint;
+      featureVals[11 * iCutPoint + 6] = FloatTickIncrementTest(cutPoint);
+      featureVals[11 * iCutPoint + 7] = std::numeric_limits<double>::max();
+      featureVals[11 * iCutPoint + 8] = std::numeric_limits<double>::infinity();
 
-      featureValues[11 * iCutPoint + 9] = std::numeric_limits<double>::signaling_NaN();
-      featureValues[11 * iCutPoint + 10] = -std::numeric_limits<double>::infinity();
+      featureVals[11 * iCutPoint + 9] = std::numeric_limits<double>::signaling_NaN();
+      featureVals[11 * iCutPoint + 10] = -std::numeric_limits<double>::infinity();
    }
 
    for(size_t cCuts = 0; cCuts < cCutsEnd; ++cCuts) {
@@ -96,7 +96,7 @@ TEST_CASE("BinFeature, increasing lengths") {
       memset(aiBins + cRemoveLow, 0, cSamples * sizeof(*aiBins));
       error = BinFeature(
          static_cast<IntEbmType>(cSamples),
-         featureValues + cRemoveLow,
+         featureVals + cRemoveLow,
          cCuts,
          cutsLowerBoundInclusive,
          aiBins + cRemoveLow
@@ -122,7 +122,7 @@ TEST_CASE("BinFeature, increasing lengths") {
    }
 
    delete[] cutsLowerBoundInclusive;
-   delete[] featureValues;
+   delete[] featureVals;
    delete[] aiBins;
 }
 

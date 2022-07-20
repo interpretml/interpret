@@ -270,7 +270,7 @@ ErrorEbmType BoosterCore::Create(
          bool bUnknown;
          bool bNominal;
          bool bSparse;
-         SharedStorageDataType defaultValueSparse;
+         SharedStorageDataType defaultValSparse;
          size_t cNonDefaultsSparse;
          GetDataSetSharedFeature(
             pDataSetShared,
@@ -280,7 +280,7 @@ ErrorEbmType BoosterCore::Create(
             &bUnknown,
             &bNominal,
             &bSparse,
-            &defaultValueSparse,
+            &defaultValSparse,
             &cNonDefaultsSparse
          );
          if(0 == cBins && (0 != cTrainingSamples || 0 != cValidationSamples)) {

@@ -188,7 +188,7 @@ static_assert(std::is_trivial<FeatureDataSetShared>::value,
 
 struct SparseFeatureDataSetShared {
    // TODO: implement sparse features
-   SharedStorageDataType m_defaultValue;
+   SharedStorageDataType m_defaultVal;
    SharedStorageDataType m_cNonDefaults;
 
    // m_nonDefaults needs to be at the bottom of this struct.  We use the struct hack to size this array
@@ -1481,10 +1481,10 @@ extern ErrorEbmType GetDataSetSharedHeader(
             reinterpret_cast<const SparseFeatureDataSetShared *>(pDataSetShared + iOffsetNext);
          iOffsetNext += cBytesSparseHeaderNoOffset;
 
-         // TODO: are there any limits to what defaultValue can be?
-         //const SharedStorageDataType defaultValue = pSparseFeatureDataSetShared->m_defaultValue;
-         //if(IsConvertError<size_t>(defaultValue)) {
-         //   LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(defaultValue)");
+         // TODO: are there any limits to what defaultVal can be?
+         //const SharedStorageDataType defaultVal = pSparseFeatureDataSetShared->m_defaultVal;
+         //if(IsConvertError<size_t>(defaultVal)) {
+         //   LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(defaultVal)");
          //   return Error_IllegalParamValue;
          //}
 
@@ -1604,7 +1604,7 @@ extern const void * GetDataSetSharedFeature(
    bool * const pbUnknownOut,
    bool * const pbNominalOut,
    bool * const pbSparseOut,
-   SharedStorageDataType * const pDefaultValueSparseOut,
+   SharedStorageDataType * const pDefaultValSparseOut,
    size_t * const pcNonDefaultsSparseOut
 ) {
    const HeaderDataSetShared * const pHeaderDataSetShared = 
@@ -1640,7 +1640,7 @@ extern const void * GetDataSetSharedFeature(
       const SparseFeatureDataSetShared * const pSparseFeatureDataSetShared =
          reinterpret_cast<const SparseFeatureDataSetShared *>(pRet);
 
-      *pDefaultValueSparseOut = pSparseFeatureDataSetShared->m_defaultValue;
+      *pDefaultValSparseOut = pSparseFeatureDataSetShared->m_defaultVal;
       const SharedStorageDataType countNonDefaults = pSparseFeatureDataSetShared->m_cNonDefaults;
       EBM_ASSERT(!IsConvertError<size_t>(countNonDefaults));
       const size_t cNonDefaults = static_cast<size_t>(countNonDefaults);

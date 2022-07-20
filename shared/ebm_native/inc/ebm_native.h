@@ -223,13 +223,13 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
 
 EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
    IntEbmType countSamples,
-   const double * featureValues,
+   const double * featureVals,
    IntEbmType strategy
 );
 
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
    IntEbmType countSamples,
-   const double * featureValues,
+   const double * featureVals,
    IntEbmType countSamplesPerBinMin,
    BoolEbmType isRounded,
    IntEbmType * countCutsInOut,
@@ -237,13 +237,13 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
 );
 EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION CutUniform(
    IntEbmType countSamples,
-   const double * featureValues,
+   const double * featureVals,
    IntEbmType countDesiredCuts,
    double * cutsLowerBoundInclusiveOut
 );
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
    IntEbmType countSamples,
-   const double * featureValues,
+   const double * featureVals,
    IntEbmType * countCutsInOut,
    double * cutsLowerBoundInclusiveOut
 );
@@ -252,15 +252,15 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
    IntEbmType countCuts,
    double lowestCut,
    double highestCut,
-   double minValue,
-   double maxValue,
+   double minFeatureVal,
+   double maxFeatureVal,
    double * lowGraphBoundOut,
    double * highGraphBoundOut
 );
 
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
    IntEbmType countSamples,
-   const double * featureValues,
+   const double * featureVals,
    IntEbmType countCuts,
    const double * cutsLowerBoundInclusive,
    IntEbmType * binIndexesOut

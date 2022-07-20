@@ -39,7 +39,7 @@ namespace DEFINED_ZONE_NAME {
 // NO m_cTensorScores -> we don't need to pass this arround from process to process since it's global info and can be passed to the individual functions
 // NO m_cDimensionsMax -> we pre-determine the maximum size and always allocate the max max size
 // NO m_cDimensions; -> we can pass in the Term object to know the # of dimensions
-// FloatFast m_values[]; // a space for our values
+// FloatFast m_aTensorScores[]; // a space for our values
 // UIntEbmType DIMENSION_1_SPLIT_POINTS
 // UIntEbmType DIMENSION_1_BIN_COUNT -> we find this by traversing the 0th dimension items
 // UIntEbmType DIMENSION_0_SPLIT_POINTS -> we travel backwards by the count

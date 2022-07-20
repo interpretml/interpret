@@ -91,7 +91,7 @@ int RegisterTestHidden(const TestCaseHidden & testCaseHidden);
 
 void FAILED(const double val, TestCaseHidden * const pTestCaseHidden, const std::string message);
 
-bool IsApproxEqual(const double value, const double expected, const double percentage);
+bool IsApproxEqual(const double val, const double expected, const double percentage);
 
 // this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the 
 // function where CHECK(expression) is called
@@ -105,23 +105,23 @@ bool IsApproxEqual(const double value, const double expected, const double perce
 
 // this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the 
 // function where CHECK_APPROX(expression) is called
-#define CHECK_APPROX(value, expected) \
+#define CHECK_APPROX(val, expected) \
    do { \
-      const double valueHidden = (value); \
-      const bool bApproxEqualHidden = IsApproxEqual(valueHidden, static_cast<double>(expected), double { 1e-6 }); \
+      const double valHidden = (val); \
+      const bool bApproxEqualHidden = IsApproxEqual(valHidden, static_cast<double>(expected), double { 1e-6 }); \
       if(!bApproxEqualHidden) { \
-         FAILED(valueHidden, &testCaseHidden, std::string(" FAILED on \"" #value "(") + std::to_string(valueHidden) + ") approx " #expected "\""); \
+         FAILED(valHidden, &testCaseHidden, std::string(" FAILED on \"" #val "(") + std::to_string(valHidden) + ") approx " #expected "\""); \
       } \
    } while( (void)0, 0)
 
 // this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the 
 // function where CHECK_APPROX(expression) is called
-#define CHECK_APPROX_TOLERANCE(value, expected, tolerance) \
+#define CHECK_APPROX_TOLERANCE(val, expected, tolerance) \
    do { \
-      const double valueHidden = static_cast<double>(value); \
-      const bool bApproxEqualHidden = IsApproxEqual(valueHidden, static_cast<double>(expected), static_cast<double>(tolerance)); \
+      const double valHidden = static_cast<double>(val); \
+      const bool bApproxEqualHidden = IsApproxEqual(valHidden, static_cast<double>(expected), static_cast<double>(tolerance)); \
       if(!bApproxEqualHidden) { \
-         FAILED(valueHidden, &testCaseHidden, std::string(" FAILED on \"" #value "(") + std::to_string(valueHidden) + ") approx " #expected "\""); \
+         FAILED(valHidden, &testCaseHidden, std::string(" FAILED on \"" #val "(") + std::to_string(valHidden) + ") approx " #expected "\""); \
       } \
    } while( (void)0, 0)
 
@@ -415,14 +415,14 @@ public:
 
 void DisplayCuts(
    IntEbmType countSamples,
-   double * featureValues,
+   double * featureVals,
    IntEbmType countBinsMax,
    IntEbmType countSamplesPerBinMin,
    IntEbmType countCuts,
    double * cutsLowerBoundInclusive,
    IntEbmType isMissingPresent,
-   double minValue,
-   double maxValue
+   double minFeatureVal,
+   double maxFeatureVal
 );
 
 #endif // EBM_NATIVE_TEST_HPP

@@ -219,7 +219,6 @@ IntEbmType CountDoubles(const SEXP items) {
       return IntEbmType { -1 };
    }
    return static_cast<IntEbmType>(countItemsR);
-
 }
 
 SEXP GenerateDeterministicSeed_R(
@@ -250,24 +249,24 @@ SEXP GenerateDeterministicSeed_R(
 }
 
 SEXP CutQuantile_R(
-   SEXP featureValues,
+   SEXP featureVals,
    SEXP countSamplesPerBinMin,
    SEXP isRounded,
    SEXP countCuts
 ) {
-   EBM_ASSERT(nullptr != featureValues);
+   EBM_ASSERT(nullptr != featureVals);
    EBM_ASSERT(nullptr != countSamplesPerBinMin);
    EBM_ASSERT(nullptr != isRounded);
    EBM_ASSERT(nullptr != countCuts);
 
    ErrorEbmType error;
 
-   const IntEbmType countFeatureValues = CountDoubles(featureValues);
-   if(countFeatureValues < 0) {
+   const IntEbmType countSamples = CountDoubles(featureVals);
+   if(countSamples < 0) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const double * const aFeatureValues = REAL(featureValues);
+   const double * const aFeatureVals = REAL(featureVals);
 
    if(!IsSingleDoubleVector(countSamplesPerBinMin)) {
       LOG_0(TraceLevelError, "ERROR CutQuantile_R !IsSingleDoubleVector(countSamplesPerBinMin)");
@@ -310,8 +309,8 @@ SEXP CutQuantile_R(
    EBM_ASSERT(nullptr != aCutsLowerBoundInclusive); // R_alloc doesn't return nullptr, so we don't need to check aItems
 
    error = CutQuantile(
-      countFeatureValues,
-      aFeatureValues,
+      countSamples,
+      aFeatureVals,
       countSamplesPerBinMinIntEbmType,
       bRounded ? EBM_TRUE : EBM_FALSE,
       &countCutsIntEbmType,
@@ -356,20 +355,21 @@ SEXP CutQuantile_R(
 }
 
 SEXP BinFeature_R(
-   SEXP featureValues,
+   SEXP featureVals,
    SEXP cutsLowerBoundInclusive,
    SEXP binIndexesOut
 ) {
-   EBM_ASSERT(nullptr != featureValues);
+   EBM_ASSERT(nullptr != featureVals);
    EBM_ASSERT(nullptr != cutsLowerBoundInclusive);
    EBM_ASSERT(nullptr != binIndexesOut);
 
-   const IntEbmType countFeatureValues = CountDoubles(featureValues);
-   if(countFeatureValues < 0) {
+   const IntEbmType countSamples = CountDoubles(featureVals);
+   if(countSamples < 0) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const double * const aFeatureValues = REAL(featureValues);
+   const size_t cSamples = static_cast<size_t>(countSamples);
+   const double * const aFeatureVals = REAL(featureVals);
 
    const IntEbmType countCuts = CountDoubles(cutsLowerBoundInclusive);
    if(countCuts < 0) {
@@ -388,19 +388,19 @@ SEXP BinFeature_R(
       return R_NilValue;
    }
    const size_t cBinIndexesOut = static_cast<size_t>(countBinIndexesOutR);
-   if(cFeatureValues != cBinIndexesOut) {
-      LOG_0(TraceLevelError, "ERROR BinFeature_R cFeatureValues != cBinIndexesOut");
+   if(cSamples != cBinIndexesOut) {
+      LOG_0(TraceLevelError, "ERROR BinFeature_R cSamples != cBinIndexesOut");
       return R_NilValue;
    }
 
-   if(0 != cFeatureValues) {
+   if(0 != cSamples) {
       IntEbmType * const aiBins = 
-         reinterpret_cast<IntEbmType *>(R_alloc(cFeatureValues, static_cast<int>(sizeof(IntEbmType))));
+         reinterpret_cast<IntEbmType *>(R_alloc(cSamples, static_cast<int>(sizeof(IntEbmType))));
       EBM_ASSERT(nullptr != aiBins); // this can't be nullptr since R_alloc uses R error handling
 
       if(Error_None != BinFeature(
-         countFeatureValues,
-         aFeatureValues,
+         countSamples,
+         aFeatureVals,
          countCuts,
          aCutsLowerBoundInclusive,
          aiBins
@@ -411,7 +411,7 @@ SEXP BinFeature_R(
 
       double * pBinIndexesOut = REAL(binIndexesOut);
       const IntEbmType * piBin = aiBins;
-      const IntEbmType * const piBinsEnd = aiBins + cFeatureValues;
+      const IntEbmType * const piBinsEnd = aiBins + cSamples;
       do {
          const IntEbmType iBin = *piBin;
          *pBinIndexesOut = static_cast<double>(iBin);
@@ -422,7 +422,7 @@ SEXP BinFeature_R(
 
    // this return isn't useful beyond that it's not R_NilValue, which would signify error
    SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(cFeatureValues);
+   REAL(ret)[0] = static_cast<double>(cSamples);
    UNPROTECT(1);
    return ret;
 }

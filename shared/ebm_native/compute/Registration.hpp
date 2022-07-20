@@ -41,7 +41,7 @@ public:
 };
 
 class FloatParam final : public ParamBase {
-   const double m_defaultValue;
+   const double m_defaultVal;
 
    void * operator new(std::size_t) = delete; // no virtual destructor so disallow pointer delete
    void operator delete (void *) = delete; // no virtual destructor so disallow pointer delete
@@ -50,18 +50,18 @@ public:
 
    typedef double ParamType;
 
-   INLINE_ALWAYS double GetDefaultValue() const noexcept {
-      return m_defaultValue;
+   INLINE_ALWAYS double GetDefaultVal() const noexcept {
+      return m_defaultVal;
    }
 
-   INLINE_ALWAYS FloatParam(const char * const sParamName, const double defaultValue) :
+   INLINE_ALWAYS FloatParam(const char * const sParamName, const double defaultVal) :
       ParamBase(sParamName),
-      m_defaultValue(defaultValue) {
+      m_defaultVal(defaultVal) {
    }
 };
 
 class BoolParam final : public ParamBase {
-   const bool m_defaultValue;
+   const bool m_defaultVal;
 
    void * operator new(std::size_t) = delete; // no virtual destructor so disallow pointer delete
    void operator delete (void *) = delete; // no virtual destructor so disallow pointer delete
@@ -70,13 +70,13 @@ public:
 
    typedef bool ParamType;
 
-   INLINE_ALWAYS bool GetDefaultValue() const noexcept {
-      return m_defaultValue;
+   INLINE_ALWAYS bool GetDefaultVal() const noexcept {
+      return m_defaultVal;
    }
 
-   INLINE_ALWAYS BoolParam(const char * const sParamName, const bool defaultValue) :
+   INLINE_ALWAYS BoolParam(const char * const sParamName, const bool defaultVal) :
       ParamBase(sParamName),
-      m_defaultValue(defaultValue) {
+      m_defaultVal(defaultVal) {
    }
 };
 
@@ -122,7 +122,7 @@ protected:
       EBM_ASSERT(!(0x20 == *(sRegistrationEnd - 1) || (0x9 <= *(sRegistrationEnd - 1) && *(sRegistrationEnd - 1) <= 0xd)));
       EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd || 0x20 == *sRegistrationEnd || (0x9 <= *sRegistrationEnd && *sRegistrationEnd <= 0xd));
 
-      typename TParam::ParamType paramValue = param.GetDefaultValue();
+      typename TParam::ParamType paramVal = param.GetDefaultVal();
       while(true) {
          // check and handle a possible parameter
          const char * sNext = IsStringEqualsCaseInsensitive(sRegistration, param.GetParamName());
@@ -133,7 +133,7 @@ protected:
                // before this point we could have been seeing a longer version of our proposed tag
                // eg: the given tag was "something_else=" but our tag was "something="
                sRegistration = sNext + 1;
-               sRegistration = ConvertStringToRegistrationType(sRegistration, &paramValue);
+               sRegistration = ConvertStringToRegistrationType(sRegistration, &paramVal);
                if(nullptr == sRegistration) {
                   throw ParamValueMalformedException();
                }
@@ -154,7 +154,7 @@ protected:
          }
          ++sRegistration;
       }
-      return paramValue;
+      return paramVal;
    }
 
    static void FinalCheckParameters(

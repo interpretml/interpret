@@ -130,7 +130,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       bool bUnknown;
       bool bNominal;
       bool bSparse;
-      SharedStorageDataType defaultValueSparse;
+      SharedStorageDataType defaultValSparse;
       size_t cNonDefaultsSparse;
       const void * aInputDataFrom = GetDataSetSharedFeature(
          pDataSetShared,
@@ -140,7 +140,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          &bUnknown,
          &bNominal,
          &bSparse,
-         &defaultValueSparse,
+         &defaultValSparse,
          &cNonDefaultsSparse
       );
       EBM_ASSERT(nullptr != aInputDataFrom);

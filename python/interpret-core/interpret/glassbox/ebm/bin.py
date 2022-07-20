@@ -1644,17 +1644,17 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     bounds = None if self.privacy_schema is None else self.privacy_schema.get(feature_idx, None)
                     if bounds is None:
                         is_privacy_warning = True
-                        min_val = np.nanmin(X_col)
-                        max_val = np.nanmax(X_col)
+                        min_feature_val = np.nanmin(X_col)
+                        max_feature_val = np.nanmax(X_col)
                     else:
-                        min_val = bounds[0]
-                        max_val = bounds[1]
-                    cuts, feature_bin_weights = DPUtils.private_numeric_binning(X_col, sample_weight, noise_scale, max_bins - 1, min_val, max_val, seed)
+                        min_feature_val = bounds[0]
+                        max_feature_val = bounds[1]
+                    cuts, feature_bin_weights = DPUtils.private_numeric_binning(X_col, sample_weight, noise_scale, max_bins - 1, min_feature_val, max_feature_val, seed)
                     feature_bin_weights.append(0)
                     feature_bin_weights = np.array(feature_bin_weights, dtype=np.float64)
                 else:
-                    min_val = np.nanmin(X_col)
-                    max_val = np.nanmax(X_col)
+                    min_feature_val = np.nanmin(X_col)
+                    max_feature_val = np.nanmax(X_col)
                     feature_type_given = None if self.feature_types is None else self.feature_types[feature_idx]
                     cuts = _cut_continuous(native, X_col, feature_type_given, self.binning, max_bins, self.min_samples_bin)
                     bin_indexes = native.bin_feature(X_col, cuts)
@@ -1674,8 +1674,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     zero_val_counts.itemset(feature_idx, len(X_col) - np.count_nonzero(X_col))
 
                 bins[feature_idx] = cuts
-                feature_bounds.itemset((feature_idx, 0), min_val)
-                feature_bounds.itemset((feature_idx, 1), max_val)
+                feature_bounds.itemset((feature_idx, 0), min_feature_val)
+                feature_bounds.itemset((feature_idx, 1), max_feature_val)
             else:
                 # categorical feature
                 if bad is not None:
