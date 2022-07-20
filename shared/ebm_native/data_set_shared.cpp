@@ -492,12 +492,12 @@ static IntEbmType AppendHeader(
    return cBytesHeader;
 }
 
-static bool DecideIfSparse(const size_t cSamples, const IntEbmType * aBinnedData) {
+static bool DecideIfSparse(const size_t cSamples, const IntEbmType * binIndexes) {
    // For sparsity in the data set shared memory the only thing that matters is compactness since we don't use
    // this memory in any high performance loops
 
    UNUSED(cSamples);
-   UNUSED(aBinnedData);
+   UNUSED(binIndexes);
 
    // TODO: evalute the data to decide if the feature should be sparse or not
    return false;
@@ -509,7 +509,7 @@ static IntEbmType AppendFeature(
    const BoolEbmType unknown,
    const BoolEbmType nominal,
    const IntEbmType countSamples,
-   const IntEbmType * aBinnedData,
+   const IntEbmType * binIndexes,
    const size_t cBytesAllocated,
    unsigned char * const pFillMem
 ) {
@@ -524,7 +524,7 @@ static IntEbmType AppendFeature(
       "unknown=%" BoolEbmTypePrintf ", "
       "nominal=%" BoolEbmTypePrintf ", "
       "countSamples=%" IntEbmTypePrintf ", "
-      "aBinnedData=%p, "
+      "binIndexes=%p, "
       "cBytesAllocated=%zu, "
       "pFillMem=%p"
       ,
@@ -533,7 +533,7 @@ static IntEbmType AppendFeature(
       unknown,
       nominal,
       countSamples,
-      static_cast<const void *>(aBinnedData),
+      static_cast<const void *>(binIndexes),
       cBytesAllocated,
       static_cast<void *>(pFillMem)
    );
@@ -564,13 +564,13 @@ static IntEbmType AppendFeature(
 
       bool bSparse = false;
       if(size_t { 0 } != cSamples) {
-         if(nullptr == aBinnedData) {
-            LOG_0(TraceLevelError, "ERROR AppendFeature nullptr == aBinnedData");
+         if(nullptr == binIndexes) {
+            LOG_0(TraceLevelError, "ERROR AppendFeature nullptr == binIndexes");
             goto return_bad;
          }
 
          // TODO: handle sparse data someday
-         bSparse = DecideIfSparse(cSamples, aBinnedData);
+         bSparse = DecideIfSparse(cSamples, binIndexes);
       }
 
       size_t iOffset = 0;
@@ -639,33 +639,33 @@ static IntEbmType AppendFeature(
                goto return_bad;
             }
 
-            if(IsMultiplyError(sizeof(aBinnedData[0]), cSamples)) {
-               LOG_0(TraceLevelError, "ERROR AppendFeature IsMultiplyError(sizeof(aBinnedData[0]), cSamples)");
+            if(IsMultiplyError(sizeof(binIndexes[0]), cSamples)) {
+               LOG_0(TraceLevelError, "ERROR AppendFeature IsMultiplyError(sizeof(binIndexes[0]), cSamples)");
                goto return_bad;
             }
-            const IntEbmType * pBinnedData = aBinnedData;
-            const IntEbmType * const pBinnedDataEnd = aBinnedData + cSamples;
+            const IntEbmType * pBinIndex = binIndexes;
+            const IntEbmType * const pBinIndexsEnd = binIndexes + cSamples;
             SharedStorageDataType * pFillData = reinterpret_cast<SharedStorageDataType *>(pFillMem + iByteCur);
             do {
-               const IntEbmType binnedData = *pBinnedData;
-               if(binnedData < IntEbmType { 0 }) {
-                  LOG_0(TraceLevelError, "ERROR AppendFeature binnedData can't be negative");
+               const IntEbmType indexBin = *pBinIndex;
+               if(indexBin < IntEbmType { 0 }) {
+                  LOG_0(TraceLevelError, "ERROR AppendFeature indexBin can't be negative");
                   goto return_bad;
                }
-               if(countBins <= binnedData) {
-                  LOG_0(TraceLevelError, "ERROR AppendFeature countBins <= binnedData");
+               if(countBins <= indexBin) {
+                  LOG_0(TraceLevelError, "ERROR AppendFeature countBins <= indexBin");
                   goto return_bad;
                }
-               // since countBins can be converted to these, so now can binnedData
-               EBM_ASSERT(!IsConvertError<size_t>(binnedData));
-               EBM_ASSERT(!IsConvertError<SharedStorageDataType>(binnedData));
+               // since countBins can be converted to these, so now can indexBin
+               EBM_ASSERT(!IsConvertError<size_t>(indexBin));
+               EBM_ASSERT(!IsConvertError<SharedStorageDataType>(indexBin));
 
                // TODO: bit compact this
-               *pFillData = static_cast<SharedStorageDataType>(binnedData);
+               *pFillData = static_cast<SharedStorageDataType>(indexBin);
 
                ++pFillData;
-               ++pBinnedData;
-            } while(pBinnedDataEnd != pBinnedData);
+               ++pBinIndex;
+            } while(pBinIndexsEnd != pBinIndex);
             EBM_ASSERT(reinterpret_cast<unsigned char *>(pFillData) == pFillMem + iByteNext);
          }
          iByteCur = iByteNext;
@@ -1144,7 +1144,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeFeature(
    BoolEbmType unknown,
    BoolEbmType nominal,
    IntEbmType countSamples,
-   const IntEbmType * binnedData
+   const IntEbmType * binIndexes
 ) {
    return AppendFeature(
       countBins,
@@ -1152,7 +1152,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeFeature(
       unknown,
       nominal,
       countSamples,
-      binnedData,
+      binIndexes,
       0,
       nullptr
    );
@@ -1164,7 +1164,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillFeature(
    BoolEbmType unknown,
    BoolEbmType nominal,
    IntEbmType countSamples,
-   const IntEbmType * binnedData,
+   const IntEbmType * binIndexes,
    IntEbmType countBytesAllocated,
    void * fillMem
 ) {
@@ -1199,7 +1199,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillFeature(
       unknown,
       nominal,
       countSamples,
-      binnedData,
+      binIndexes,
       cBytesAllocated,
       static_cast<unsigned char *>(fillMem)
    );

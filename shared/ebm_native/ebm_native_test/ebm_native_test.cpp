@@ -318,7 +318,7 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
       m_bNullTrainingWeights = bNullWeights;
 
       for(const TestSample & oneSample : samples) {
-         if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
+         if(cFeatures != oneSample.m_sampleBinIndexes.size()) {
             exit(1);
          }
          if(bNullInitScores != (0 == oneSample.m_initScores.size())) {
@@ -428,14 +428,14 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
          const IntEbmType countBins = m_featureBinCounts[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-            const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
-            if(data < 0) {
+            const IntEbmType indexBin = samples[iSample].m_sampleBinIndexes[iFeature];
+            if(indexBin < 0) {
                exit(1);
             }
-            if(countBins <= data) {
+            if(countBins <= indexBin) {
                exit(1);
             }
-            m_trainingBinnedData.push_back(data);
+            m_trainingBinIndexes.push_back(indexBin);
          }
       }
    }
@@ -456,7 +456,7 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
       m_bNullValidationWeights = bNullWeights;
 
       for(const TestSample & oneSample : samples) {
-         if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
+         if(cFeatures != oneSample.m_sampleBinIndexes.size()) {
             exit(1);
          }
          if(bNullInitScores != (0 == oneSample.m_initScores.size())) {
@@ -566,14 +566,14 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
          const IntEbmType countBins = m_featureBinCounts[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-            const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
-            if(data < 0) {
+            const IntEbmType indexBin = samples[iSample].m_sampleBinIndexes[iFeature];
+            if(indexBin < 0) {
                exit(1);
             }
-            if(countBins <= data) {
+            if(countBins <= indexBin) {
                exit(1);
             }
-            m_validationBinnedData.push_back(data);
+            m_validationBinIndexes.push_back(indexBin);
          }
       }
    }
@@ -610,8 +610,8 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
 
    IntEbmType size = SizeDataSetHeader(cFeatures, 1, 1);
    for(size_t i = 0; i < cFeatures; ++i) {
-      std::vector<IntEbmType> trainingFeatures(m_trainingBinnedData.begin() + i * cTrainingSamples, m_trainingBinnedData.begin() + i * cTrainingSamples + cTrainingSamples);
-      std::vector<IntEbmType> validationFeatures(m_validationBinnedData.begin() + i * cValidationSamples, m_validationBinnedData.begin() + i * cValidationSamples + cValidationSamples);
+      std::vector<IntEbmType> trainingFeatures(m_trainingBinIndexes.begin() + i * cTrainingSamples, m_trainingBinIndexes.begin() + i * cTrainingSamples + cTrainingSamples);
+      std::vector<IntEbmType> validationFeatures(m_validationBinIndexes.begin() + i * cValidationSamples, m_validationBinIndexes.begin() + i * cValidationSamples + cValidationSamples);
 
       std::vector<IntEbmType> allFeatures(trainingFeatures);
       allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
@@ -638,8 +638,8 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    error = FillDataSetHeader(cFeatures, 1, 1, size, pDataSet);
 
    for(size_t i = 0; i < cFeatures; ++i) {
-      std::vector<IntEbmType> trainingFeatures(m_trainingBinnedData.begin() + i * cTrainingSamples, m_trainingBinnedData.begin() + i * cTrainingSamples + cTrainingSamples);
-      std::vector<IntEbmType> validationFeatures(m_validationBinnedData.begin() + i * cValidationSamples, m_validationBinnedData.begin() + i * cValidationSamples + cValidationSamples);
+      std::vector<IntEbmType> trainingFeatures(m_trainingBinIndexes.begin() + i * cTrainingSamples, m_trainingBinIndexes.begin() + i * cTrainingSamples + cTrainingSamples);
+      std::vector<IntEbmType> validationFeatures(m_validationBinIndexes.begin() + i * cValidationSamples, m_validationBinIndexes.begin() + i * cValidationSamples + cValidationSamples);
 
       std::vector<IntEbmType> allFeatures(trainingFeatures);
       allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
@@ -884,7 +884,7 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
       m_bNullInteractionWeights = bNullWeights;
 
       for(const TestSample & oneSample : samples) {
-         if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
+         if(cFeatures != oneSample.m_sampleBinIndexes.size()) {
             exit(1);
          }
          if(bNullInitScores != (0 == oneSample.m_initScores.size())) {
@@ -996,14 +996,14 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
          const IntEbmType countBins = m_featureBinCounts[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-            const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
-            if(data < 0) {
+            const IntEbmType indexBin = samples[iSample].m_sampleBinIndexes[iFeature];
+            if(indexBin < 0) {
                exit(1);
             }
-            if(countBins <= data) {
+            if(countBins <= indexBin) {
                exit(1);
             }
-            m_interactionBinnedData.push_back(data);
+            m_interactionBinIndexes.push_back(indexBin);
          }
       }
    }
@@ -1030,7 +1030,7 @@ void TestApi::InitializeInteraction() {
 
    IntEbmType size = SizeDataSetHeader(cFeatures, 1, 1);
    for(size_t i = 0; i < cFeatures; ++i) {
-      std::vector<IntEbmType> allFeatures(m_interactionBinnedData.begin() + i * cSamples, m_interactionBinnedData.begin() + i * cSamples + cSamples);
+      std::vector<IntEbmType> allFeatures(m_interactionBinIndexes.begin() + i * cSamples, m_interactionBinIndexes.begin() + i * cSamples + cSamples);
       size += SizeFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
    }
 
@@ -1047,7 +1047,7 @@ void TestApi::InitializeInteraction() {
    error = FillDataSetHeader(cFeatures, 1, 1, size, pDataSet);
 
    for(size_t i = 0; i < cFeatures; ++i) {
-      std::vector<IntEbmType> allFeatures(m_interactionBinnedData.begin() + i * cSamples, m_interactionBinnedData.begin() + i * cSamples + cSamples);
+      std::vector<IntEbmType> allFeatures(m_interactionBinIndexes.begin() + i * cSamples, m_interactionBinIndexes.begin() + i * cSamples + cSamples);
       error = FillFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
    }
 

@@ -32,11 +32,11 @@ create_classification_booster <- function(
    features_bin_count,
    feature_counts, 
    feature_indexes, 
-   training_binned_data, 
+   training_bin_indexes, 
    training_targets, 
    training_weights, 
    training_init_scores, 
-   validation_binned_data, 
+   validation_bin_indexes, 
    validation_targets, 
    validation_weights, 
    validation_init_scores, 
@@ -48,7 +48,7 @@ create_classification_booster <- function(
    features_bin_count <- as.double(features_bin_count)
    feature_counts <- as.double(feature_counts)
    feature_indexes <- as.double(feature_indexes)
-   training_binned_data <- as.double(training_binned_data)
+   training_bin_indexes <- as.double(training_bin_indexes)
    training_targets <- as.double(training_targets)
    if(!is.null(training_weights)) {
       training_weights <- as.double(training_weights)
@@ -56,7 +56,7 @@ create_classification_booster <- function(
    if(!is.null(training_init_scores)) {
       training_init_scores <- as.double(training_init_scores)
    }
-   validation_binned_data <- as.double(validation_binned_data)
+   validation_bin_indexes <- as.double(validation_bin_indexes)
    validation_targets <- as.double(validation_targets)
    if(!is.null(validation_weights)) {
       validation_weights <- as.double(validation_weights)
@@ -74,11 +74,11 @@ create_classification_booster <- function(
       features_bin_count,
       feature_counts, 
       feature_indexes, 
-      training_binned_data, 
+      training_bin_indexes, 
       training_targets, 
       training_weights, 
       training_init_scores, 
-      validation_binned_data, 
+      validation_bin_indexes, 
       validation_targets, 
       validation_weights, 
       validation_init_scores, 
@@ -96,11 +96,11 @@ create_regression_booster <- function(
    features_bin_count,
    feature_counts, 
    feature_indexes, 
-   training_binned_data, 
+   training_bin_indexes, 
    training_targets, 
    training_weights, 
    training_init_scores, 
-   validation_binned_data, 
+   validation_bin_indexes, 
    validation_targets, 
    validation_weights, 
    validation_init_scores, 
@@ -111,7 +111,7 @@ create_regression_booster <- function(
    features_bin_count <- as.double(features_bin_count)
    feature_counts <- as.double(feature_counts)
    feature_indexes <- as.double(feature_indexes)
-   training_binned_data <- as.double(training_binned_data)
+   training_bin_indexes <- as.double(training_bin_indexes)
    training_targets <- as.double(training_targets)
    if(!is.null(training_weights)) {
       training_weights <- as.double(training_weights)
@@ -119,7 +119,7 @@ create_regression_booster <- function(
    if(!is.null(training_init_scores)) {
       training_init_scores <- as.double(training_init_scores)
    }
-   validation_binned_data <- as.double(validation_binned_data)
+   validation_bin_indexes <- as.double(validation_bin_indexes)
    validation_targets <- as.double(validation_targets)
    if(!is.null(validation_weights)) {
       validation_weights <- as.double(validation_weights)
@@ -136,11 +136,11 @@ create_regression_booster <- function(
       features_bin_count,
       feature_counts, 
       feature_indexes, 
-      training_binned_data, 
+      training_bin_indexes, 
       training_targets, 
       training_weights, 
       training_init_scores, 
-      validation_binned_data, 
+      validation_bin_indexes, 
       validation_targets, 
       validation_weights, 
       validation_init_scores, 

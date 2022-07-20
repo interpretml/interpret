@@ -34,7 +34,7 @@ EXPORTS
   CutQuantile
   CutWinsorized
   CutUniform
-  Discretize
+  BinFeature
   SuggestGraphBounds
   CleanFloats
   GenerateDeterministicSeed

@@ -6,7 +6,7 @@ create_classification_interaction_detector <- function(
    count_classes, 
    features_categorical,
    features_bin_count,
-   binned_data, 
+   bin_indexes, 
    targets, 
    weights, 
    predictor_scores
@@ -14,7 +14,7 @@ create_classification_interaction_detector <- function(
    count_classes <- as.double(count_classes)
    features_categorical <- as.logical(features_categorical)
    features_bin_count <- as.double(features_bin_count)
-   binned_data <- as.double(binned_data)
+   bin_indexes <- as.double(bin_indexes)
    targets <- as.double(targets)
    if(!is.null(weights)) {
       weights <- as.double(weights)
@@ -28,7 +28,7 @@ create_classification_interaction_detector <- function(
       count_classes, 
       features_categorical,
       features_bin_count,
-      binned_data, 
+      bin_indexes, 
       targets, 
       weights, 
       predictor_scores
@@ -42,14 +42,14 @@ create_classification_interaction_detector <- function(
 create_regression_interaction_detector <- function(
    features_categorical,
    features_bin_count,
-   binned_data, 
+   bin_indexes, 
    targets, 
    weights, 
    predictor_scores
 ) {
    features_categorical <- as.logical(features_categorical)
    features_bin_count <- as.double(features_bin_count)
-   binned_data <- as.double(binned_data)
+   bin_indexes <- as.double(bin_indexes)
    targets <- as.double(targets)
    if(!is.null(weights)) {
       weights <- as.double(weights)
@@ -62,7 +62,7 @@ create_regression_interaction_detector <- function(
       CreateRegressionInteractionDetector_R, 
       features_categorical,
       features_bin_count,
-      binned_data, 
+      bin_indexes, 
       targets, 
       weights, 
       predictor_scores

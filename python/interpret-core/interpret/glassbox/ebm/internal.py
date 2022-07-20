@@ -265,23 +265,23 @@ class Native:
 
         return sample_counts_out
 
-    def get_histogram_cut_count(self, col_data, strategy=None):
+    def get_histogram_cut_count(self, X_col, strategy=None):
         n_cuts = self._unsafe.GetHistogramCutCount(
-            col_data.shape[0],
-            Native._make_pointer(col_data, np.float64),
+            X_col.shape[0],
+            Native._make_pointer(X_col, np.float64),
             0
         )
         return n_cuts
 
-    def cut_quantile(self, col_data, min_samples_bin, is_rounded, max_cuts):
+    def cut_quantile(self, X_col, min_samples_bin, is_rounded, max_cuts):
         if max_cuts < 0:
             raise Exception(f"max_cuts can't be negative: {max_cuts}.")
 
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
         return_code = self._unsafe.CutQuantile(
-            col_data.shape[0],
-            Native._make_pointer(col_data, np.float64),
+            X_col.shape[0],
+            Native._make_pointer(X_col, np.float64),
             min_samples_bin,
             is_rounded,
             ct.byref(count_cuts),
@@ -292,28 +292,28 @@ class Native:
 
         return cuts[:count_cuts.value]
 
-    def cut_uniform(self, col_data, max_cuts):
+    def cut_uniform(self, X_col, max_cuts):
         if max_cuts < 0:
             raise Exception(f"max_cuts can't be negative: {max_cuts}.")
 
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = self._unsafe.CutUniform(
-            col_data.shape[0],
-            Native._make_pointer(col_data, np.float64),
+            X_col.shape[0],
+            Native._make_pointer(X_col, np.float64),
             max_cuts,
             Native._make_pointer(cuts, np.float64),
         )
         return cuts[:count_cuts]
 
-    def cut_winsorized(self, col_data, max_cuts):
+    def cut_winsorized(self, X_col, max_cuts):
         if max_cuts < 0:
             raise Exception(f"max_cuts can't be negative: {max_cuts}.")
 
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
         return_code = self._unsafe.CutWinsorized(
-            col_data.shape[0],
-            Native._make_pointer(col_data, np.float64),
+            X_col.shape[0],
+            Native._make_pointer(X_col, np.float64),
             ct.byref(count_cuts),
             Native._make_pointer(cuts, np.float64),
         )
@@ -352,19 +352,20 @@ class Native:
 
         return min_graph.value, max_graph.value
 
-    def discretize(self, col_data, cuts):
-        discretized = np.empty(col_data.shape[0], dtype=np.int64, order="C")
-        return_code = self._unsafe.Discretize(
-            col_data.shape[0],
-            Native._make_pointer(col_data, np.float64),
+    def bin_feature(self, X_col, cuts):
+        # TODO: for speed and efficiency, we should instead accept in the bin_indexes array
+        bin_indexes = np.empty(X_col.shape[0], dtype=np.int64, order="C")
+        return_code = self._unsafe.BinFeature(
+            X_col.shape[0],
+            Native._make_pointer(X_col, np.float64),
             cuts.shape[0],
             Native._make_pointer(cuts, np.float64),
-            Native._make_pointer(discretized, np.int64),
+            Native._make_pointer(bin_indexes, np.int64),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "Discretize")
+            raise Native._get_native_exception(return_code, "BinFeature")
 
-        return discretized
+        return bin_indexes
 
 
     def size_dataset_header(self, n_features, n_weights, n_targets):
@@ -384,27 +385,27 @@ class Native:
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillDataSetHeader")
 
-    def size_feature(self, n_bins, missing, unknown, nominal, binned_data):
+    def size_feature(self, n_bins, missing, unknown, nominal, bin_indexes):
         n_bytes = self._unsafe.SizeFeature(
             n_bins, 
             missing, 
             unknown, 
             nominal, 
-            len(binned_data), 
-            Native._make_pointer(binned_data, np.int64),
+            len(bin_indexes), 
+            Native._make_pointer(bin_indexes, np.int64),
         )
         if n_bytes < 0:  # pragma: no cover
             raise Native._get_native_exception(n_bytes, "SizeFeature")
         return n_bytes
 
-    def fill_feature(self, n_bins, missing, unknown, nominal, binned_data, dataset):
+    def fill_feature(self, n_bins, missing, unknown, nominal, bin_indexes, dataset):
         return_code = self._unsafe.FillFeature(
             n_bins, 
             missing, 
             unknown, 
             nominal, 
-            len(binned_data), 
-            Native._make_pointer(binned_data, np.int64),
+            len(bin_indexes), 
+            Native._make_pointer(bin_indexes, np.int64),
             dataset.nbytes, 
             Native._make_pointer(dataset, np.ubyte),
         )
@@ -707,7 +708,7 @@ class Native:
         self._unsafe.SuggestGraphBounds.restype = ct.c_int32
 
 
-        self._unsafe.Discretize.argtypes = [
+        self._unsafe.BinFeature.argtypes = [
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
@@ -716,10 +717,10 @@ class Native:
             ct.c_int64,
             # double * cutsLowerBoundInclusive
             ct.c_void_p,
-            # int64_t * discretizedOut
+            # int64_t * binIndexesOut
             ct.c_void_p,
         ]
-        self._unsafe.Discretize.restype = ct.c_int32
+        self._unsafe.BinFeature.restype = ct.c_int32
 
 
         self._unsafe.SizeDataSetHeader.argtypes = [
@@ -757,7 +758,7 @@ class Native:
             ct.c_int64,
             # int64_t countSamples
             ct.c_int64,
-            # int64_t * binnedData
+            # int64_t * binIndexes
             ct.c_void_p,
         ]
         self._unsafe.SizeFeature.restype = ct.c_int64
@@ -773,7 +774,7 @@ class Native:
             ct.c_int64,
             # int64_t countSamples
             ct.c_int64,
-            # int64_t * binnedData
+            # int64_t * binIndexes
             ct.c_void_p,
             # int64_t countBytesAllocated
             ct.c_int64,

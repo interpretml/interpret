@@ -1657,14 +1657,14 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     max_val = np.nanmax(X_col)
                     feature_type_given = None if self.feature_types is None else self.feature_types[feature_idx]
                     cuts = _cut_continuous(native, X_col, feature_type_given, self.binning, max_bins, self.min_samples_bin)
-                    discretized = native.discretize(X_col, cuts)
-                    feature_bin_weights = np.bincount(discretized, weights=sample_weight, minlength=len(cuts) + 3)
+                    bin_indexes = native.bin_feature(X_col, cuts)
+                    feature_bin_weights = np.bincount(bin_indexes, weights=sample_weight, minlength=len(cuts) + 3)
                     feature_bin_weights = feature_bin_weights.astype(np.float64, copy=False)
 
                     n_cuts = native.get_histogram_cut_count(X_col)
                     histogram_cuts = native.cut_uniform(X_col, n_cuts)
-                    discretized = native.discretize(X_col, histogram_cuts)
-                    feature_histogram_counts = np.bincount(discretized, minlength=len(histogram_cuts) + 3)
+                    bin_indexes = native.bin_feature(X_col, histogram_cuts)
+                    feature_histogram_counts = np.bincount(bin_indexes, minlength=len(histogram_cuts) + 3)
                     feature_histogram_counts = feature_histogram_counts.astype(np.int64, copy=False)
 
                     histogram_counts[feature_idx] = feature_histogram_counts
@@ -1790,7 +1790,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         # X_col could be a slice that has a stride.  We need contiguous for caling into C
                         X_col = X_col.copy()
 
-                    X_col = native.discretize(X_col, bins)
+                    X_col = native.bin_feature(X_col, bins)
 
                 X_binned[:, feature_idx] = X_col
 
@@ -1915,7 +1915,7 @@ def bin_native(
             n_bins = 1 if len(feature_bins) == 0 else (max(feature_bins.values()) + 1)
         else:
             # continuous feature
-            X_col = native.discretize(X_col, feature_bins)
+            X_col = native.bin_feature(X_col, feature_bins)
             n_bins = len(feature_bins) + 2
 
         if bad is not None:
@@ -1957,7 +1957,7 @@ def bin_native(
             n_bins = 1 if len(feature_bins) == 0 else (max(feature_bins.values()) + 1)
         else:
             # continuous feature
-            X_col = native.discretize(X_col, feature_bins)
+            X_col = native.bin_feature(X_col, feature_bins)
             n_bins = len(feature_bins) + 2
 
         if bad is not None:
@@ -2066,13 +2066,13 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 bad = bad != _none_ndarray
 
             if not X_col.flags.c_contiguous:
-                # we requrested this feature, so at some point we're going to call discretize, 
+                # we requrested this feature, so at some point we're going to call bin_feature, 
                 # which requires contiguous memory
                 X_col = X_col.copy()
 
             bin_levels = bins[column_feature_idx]
             max_level = len(bin_levels)
-            cuts_completed = _none_list * max_level
+            binning_completed = _none_list * max_level
             for requirements in waiting[column_feature_idx]:
                 if len(requirements) != 0:
                     term_idx = requirements[-1]
@@ -2081,14 +2081,14 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                     for dimension_idx, term_feature_idx in enumerate(feature_idxs):
                         if term_feature_idx == column_feature_idx:
                             level_idx = min(max_level, len(feature_idxs)) - 1
-                            discretized = cuts_completed[level_idx]
-                            if discretized is None:
+                            bin_indexes = binning_completed[level_idx]
+                            if bin_indexes is None:
                                 cuts = bin_levels[level_idx]
-                                discretized = native.discretize(X_col, cuts)
+                                bin_indexes = native.bin_feature(X_col, cuts)
                                 if bad is not None:
-                                    discretized[bad] = -1
-                                cuts_completed[level_idx] = discretized
-                            requirements[dimension_idx] = discretized
+                                    bin_indexes[bad] = -1
+                                binning_completed[level_idx] = bin_indexes
+                            requirements[dimension_idx] = bin_indexes
                         elif requirements[dimension_idx] is None:
                             is_done = False
 
@@ -2138,8 +2138,8 @@ def ebm_decision_function(
         sample_scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
 
     if 0 < n_samples:
-        for term_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
-            sample_scores += term_scores[term_idx][tuple(binned_data)]
+        for term_idx, bin_indexes in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
+            sample_scores += term_scores[term_idx][tuple(bin_indexes)]
 
     return sample_scores
 
@@ -2162,8 +2162,8 @@ def ebm_decision_function_and_explain(
         explanations = np.empty((n_samples, len(term_features), len(intercept)), dtype=np.float64)
 
     if 0 < n_samples:
-        for term_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
-            scores = term_scores[term_idx][tuple(binned_data)]
+        for term_idx, bin_indexes in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
+            scores = term_scores[term_idx][tuple(bin_indexes)]
             sample_scores += scores
             explanations[:, term_idx] = scores
 
@@ -2173,7 +2173,7 @@ def get_counts_and_weights(X, n_samples, sample_weight, feature_names_in, featur
     bin_counts = _none_list * len(term_features)
     bin_weights = _none_list * len(term_features)
 
-    for term_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
+    for term_idx, bin_indexes in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
         feature_idxs = term_features[term_idx]
         multiple = 1
         dimensions = []
@@ -2189,7 +2189,7 @@ def get_counts_and_weights(X, n_samples, sample_weight, feature_names_in, featur
                 n_bins = len(feature_bins) + 3
 
             dimensions.append(n_bins)
-            dim_data = binned_data[dimension_idx]
+            dim_data = bin_indexes[dimension_idx]
             dim_data = np.where(dim_data < 0, n_bins - 1, dim_data)
             if multiple == 1:
                 flat_indexes = dim_data

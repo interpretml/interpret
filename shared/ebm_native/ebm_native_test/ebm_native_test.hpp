@@ -19,7 +19,7 @@ enum class TestPriority {
    CutUniform,
    CutWinsorized,
    CutQuantile,
-   Discretize
+   BinFeature
 };
 
 
@@ -188,26 +188,26 @@ public:
 
 class TestSample final {
 public:
-   const std::vector<IntEbmType> m_binnedDataPerFeatureArray;
+   const std::vector<IntEbmType> m_sampleBinIndexes;
    const double m_target;
    const bool m_bNullWeight;
    const double m_weight;
    const std::vector<double> m_initScores;
 
-   inline TestSample(const std::vector<IntEbmType> binnedDataPerFeatureArray, const double target) :
-      m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
+   inline TestSample(const std::vector<IntEbmType> sampleBinIndexes, const double target) :
+      m_sampleBinIndexes(sampleBinIndexes),
       m_target(target),
       m_bNullWeight(true),
-      m_weight(1) {
+      m_weight(1.0) {
    }
 
    inline TestSample(
-      const std::vector<IntEbmType> binnedDataPerFeatureArray, 
+      const std::vector<IntEbmType> sampleBinIndexes, 
       const double target,
       const double weight,
       const std::vector<double> initScores = {}
    ) :
-      m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
+      m_sampleBinIndexes(sampleBinIndexes),
       m_target(target),
       m_bNullWeight(false),
       m_weight(weight),
@@ -319,7 +319,8 @@ class TestApi {
 
    std::vector<double> m_trainingRegressionTargets;
    std::vector<IntEbmType> m_trainingClassificationTargets;
-   std::vector<IntEbmType> m_trainingBinnedData;
+   // TODO: make this a vector of vectors.  The first vector being indexed by iFeature
+   std::vector<IntEbmType> m_trainingBinIndexes;
    std::vector<double> m_trainingWeights;
    std::vector<double> m_trainingInitScores;
    bool m_bNullTrainingWeights;
@@ -327,7 +328,8 @@ class TestApi {
 
    std::vector<double> m_validationRegressionTargets;
    std::vector<IntEbmType> m_validationClassificationTargets;
-   std::vector<IntEbmType> m_validationBinnedData;
+   // TODO: make this a vector of vectors.  The first vector being indexed by iFeature
+   std::vector<IntEbmType> m_validationBinIndexes;
    std::vector<double> m_validationWeights;
    std::vector<double> m_validationInitScores;
    bool m_bNullValidationWeights;
@@ -337,7 +339,7 @@ class TestApi {
 
    std::vector<double> m_interactionRegressionTargets;
    std::vector<IntEbmType> m_interactionClassificationTargets;
-   std::vector<IntEbmType> m_interactionBinnedData;
+   std::vector<IntEbmType> m_interactionBinIndexes;
    std::vector<double> m_interactionWeights;
    std::vector<double> m_interactionInitScores;
    bool m_bNullInteractionWeights;

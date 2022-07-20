@@ -102,18 +102,18 @@ TEST_CASE("data_set_shared, two features, 3 samples, regression") {
    IntEbmType part;
    ErrorEbmType error;
    constexpr IntEbmType k_cSamples = 3;
-   IntEbmType binnedData[k_cSamples] { 2, 1, 0 };
+   IntEbmType binIndexes[k_cSamples] { 2, 1, 0 };
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
    part = SizeDataSetHeader(2, 0, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
@@ -126,9 +126,9 @@ TEST_CASE("data_set_shared, two features, 3 samples, regression") {
 
    error = FillDataSetHeader(2, 0, 1, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0], sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0], sum, &buffer[0]);
    CHECK(Error_None == error);
    error = FillRegressionTarget(k_cSamples, &targets[0], sum, &buffer[0]);
    CHECK(Error_None == error);
@@ -228,18 +228,18 @@ TEST_CASE("data_set_shared, two features, 3 samples, classification") {
    IntEbmType part;
    ErrorEbmType error;
    constexpr IntEbmType k_cSamples = 3;
-   IntEbmType binnedData[k_cSamples] { 2, 1, 0 };
+   IntEbmType binIndexes[k_cSamples] { 2, 1, 0 };
    IntEbmType targets[k_cSamples] { 2, 1, 0 };
 
    part = SizeDataSetHeader(2, 0, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
@@ -252,9 +252,9 @@ TEST_CASE("data_set_shared, two features, 3 samples, classification") {
 
    error = FillDataSetHeader(2, 0, 1, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0], sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0], sum, &buffer[0]);
    CHECK(Error_None == error);
    error = FillClassificationTarget(3, k_cSamples, &targets[0], sum, &buffer[0]);
    CHECK(Error_None == error);
@@ -377,7 +377,7 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
    IntEbmType part;
    ErrorEbmType error;
    constexpr IntEbmType k_cSamples = 3;
-   IntEbmType binnedData[k_cSamples] { 2, 1, 0 };
+   IntEbmType binIndexes[k_cSamples] { 2, 1, 0 };
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
@@ -385,11 +385,11 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
@@ -406,9 +406,9 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
 
    error = FillDataSetHeader(2, 1, 1, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0], sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0], sum, &buffer[0]);
    CHECK(Error_None == error);
    error = FillWeight(k_cSamples, weights, sum, &buffer[0]);
    CHECK(Error_None == error);
@@ -529,7 +529,7 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, classification") {
    IntEbmType part;
    ErrorEbmType error;
    constexpr IntEbmType k_cSamples = 3;
-   IntEbmType binnedData[k_cSamples] { 2, 1, 0 };
+   IntEbmType binIndexes[k_cSamples] { 2, 1, 0 };
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    IntEbmType targets[k_cSamples] { 2, 1, 0 };
 
@@ -537,11 +537,11 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, classification") {
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
@@ -558,9 +558,9 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, classification") {
 
    error = FillDataSetHeader(2, 1, 1, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0], sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0], sum, &buffer[0]);
    CHECK(Error_None == error);
    error = FillWeight(k_cSamples, weights, sum, &buffer[0]);
    CHECK(Error_None == error);

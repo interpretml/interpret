@@ -355,14 +355,14 @@ SEXP CutQuantile_R(
    return ret;
 }
 
-SEXP Discretize_R(
+SEXP BinFeature_R(
    SEXP featureValues,
    SEXP cutsLowerBoundInclusive,
-   SEXP discretizedOut
+   SEXP binIndexesOut
 ) {
    EBM_ASSERT(nullptr != featureValues);
    EBM_ASSERT(nullptr != cutsLowerBoundInclusive);
-   EBM_ASSERT(nullptr != discretizedOut);
+   EBM_ASSERT(nullptr != binIndexesOut);
 
    const IntEbmType countFeatureValues = CountDoubles(featureValues);
    if(countFeatureValues < 0) {
@@ -378,46 +378,46 @@ SEXP Discretize_R(
    }
    const double * const aCutsLowerBoundInclusive = REAL(cutsLowerBoundInclusive);
 
-   if(REALSXP != TYPEOF(discretizedOut)) {
-      LOG_0(TraceLevelError, "ERROR Discretize_R REALSXP != TYPEOF(discretizedOut)");
+   if(REALSXP != TYPEOF(binIndexesOut)) {
+      LOG_0(TraceLevelError, "ERROR BinFeature_R REALSXP != TYPEOF(binIndexesOut)");
       return R_NilValue;
    }
-   const R_xlen_t countDiscretizedOutR = xlength(discretizedOut);
-   if(IsConvertError<size_t>(countDiscretizedOutR)) {
-      LOG_0(TraceLevelError, "ERROR Discretize_R IsConvertError<size_t>(countDiscretizedOutR)");
+   const R_xlen_t countBinIndexesOutR = xlength(binIndexesOut);
+   if(IsConvertError<size_t>(countBinIndexesOutR)) {
+      LOG_0(TraceLevelError, "ERROR BinFeature_R IsConvertError<size_t>(countBinIndexesOutR)");
       return R_NilValue;
    }
-   const size_t cDiscretizedOut = static_cast<size_t>(countDiscretizedOutR);
-   if(cFeatureValues != cDiscretizedOut) {
-      LOG_0(TraceLevelError, "ERROR Discretize_R cFeatureValues != cDiscretizedOut");
+   const size_t cBinIndexesOut = static_cast<size_t>(countBinIndexesOutR);
+   if(cFeatureValues != cBinIndexesOut) {
+      LOG_0(TraceLevelError, "ERROR BinFeature_R cFeatureValues != cBinIndexesOut");
       return R_NilValue;
    }
 
    if(0 != cFeatureValues) {
-      IntEbmType * const aDiscretized = 
+      IntEbmType * const aiBins = 
          reinterpret_cast<IntEbmType *>(R_alloc(cFeatureValues, static_cast<int>(sizeof(IntEbmType))));
-      EBM_ASSERT(nullptr != aDiscretized); // this can't be nullptr since R_alloc uses R error handling
+      EBM_ASSERT(nullptr != aiBins); // this can't be nullptr since R_alloc uses R error handling
 
-      if(Error_None != Discretize(
+      if(Error_None != BinFeature(
          countFeatureValues,
          aFeatureValues,
          countCuts,
          aCutsLowerBoundInclusive,
-         aDiscretized
+         aiBins
       )) {
          // we've already logged any errors
          return R_NilValue;
       }
 
-      double * pDiscretizedOut = REAL(discretizedOut);
-      const IntEbmType * pDiscretized = aDiscretized;
-      const IntEbmType * const pDiscretizedEnd = aDiscretized + cFeatureValues;
+      double * pBinIndexesOut = REAL(binIndexesOut);
+      const IntEbmType * piBin = aiBins;
+      const IntEbmType * const piBinsEnd = aiBins + cFeatureValues;
       do {
-         const IntEbmType val = *pDiscretized;
-         *pDiscretizedOut = static_cast<double>(val);
-         ++pDiscretizedOut;
-         ++pDiscretized;
-      } while(pDiscretizedEnd != pDiscretized);
+         const IntEbmType iBin = *piBin;
+         *pBinIndexesOut = static_cast<double>(iBin);
+         ++pBinIndexesOut;
+         ++piBin;
+      } while(piBinsEnd != piBin);
    }
 
    // this return isn't useful beyond that it's not R_NilValue, which would signify error
@@ -526,11 +526,11 @@ SEXP CreateClassificationBooster_R(
    SEXP featuresBinCount,
    SEXP dimensionCounts,
    SEXP featureIndexes,
-   SEXP trainingBinnedData,
+   SEXP trainingBinIndexes,
    SEXP trainingTargets,
    SEXP trainingWeights,
    SEXP trainingInitScores,
-   SEXP validationBinnedData,
+   SEXP validationBinIndexes,
    SEXP validationTargets,
    SEXP validationWeights,
    SEXP validationInitScores,
@@ -542,11 +542,11 @@ SEXP CreateClassificationBooster_R(
    EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != dimensionCounts);
    EBM_ASSERT(nullptr != featureIndexes);
-   EBM_ASSERT(nullptr != trainingBinnedData);
+   EBM_ASSERT(nullptr != trainingBinIndexes);
    EBM_ASSERT(nullptr != trainingTargets);
    EBM_ASSERT(nullptr != trainingWeights);
    EBM_ASSERT(nullptr != trainingInitScores);
-   EBM_ASSERT(nullptr != validationBinnedData);
+   EBM_ASSERT(nullptr != validationBinIndexes);
    EBM_ASSERT(nullptr != validationTargets);
    EBM_ASSERT(nullptr != validationWeights);
    EBM_ASSERT(nullptr != validationInitScores);
@@ -623,9 +623,9 @@ SEXP CreateClassificationBooster_R(
       return R_NilValue;
    }
 
-   size_t cTrainingBinnedData;
-   const IntEbmType * aTrainingBinnedData;
-   if(ConvertDoublesToIndexes(trainingBinnedData, &cTrainingBinnedData, &aTrainingBinnedData)) {
+   size_t cTrainingBinIndexes;
+   const IntEbmType * aTrainingBinIndexes;
+   if(ConvertDoublesToIndexes(trainingBinIndexes, &cTrainingBinIndexes, &aTrainingBinIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -641,8 +641,8 @@ SEXP CreateClassificationBooster_R(
       LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cTrainingSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cTrainingSamples * cFeatures != cTrainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cTrainingSamples * cFeatures != cTrainingBinnedData");
+   if(cTrainingSamples * cFeatures != cTrainingBinIndexes) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cTrainingSamples * cFeatures != cTrainingBinIndexes");
       return R_NilValue;
    }
 
@@ -662,9 +662,9 @@ SEXP CreateClassificationBooster_R(
    }
    const double * const aTrainingInitScores = REAL(trainingInitScores);
 
-   size_t cValidationBinnedData;
-   const IntEbmType * aValidationBinnedData;
-   if(ConvertDoublesToIndexes(validationBinnedData, &cValidationBinnedData, &aValidationBinnedData)) {
+   size_t cValidationBinIndexes;
+   const IntEbmType * aValidationBinIndexes;
+   if(ConvertDoublesToIndexes(validationBinIndexes, &cValidationBinIndexes, &aValidationBinIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -681,8 +681,8 @@ SEXP CreateClassificationBooster_R(
       LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cValidationSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cValidationSamples * cFeatures != cValidationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cValidationSamples * cFeatures != cValidationBinnedData");
+   if(cValidationSamples * cFeatures != cValidationBinIndexes) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cValidationSamples * cFeatures != cValidationBinIndexes");
       return R_NilValue;
    }
 
@@ -760,12 +760,12 @@ SEXP CreateClassificationBooster_R(
       acTermDimensions,
       aiTermFeatures,
       countTrainingSamples, 
-      aTrainingBinnedData, 
+      aTrainingBinIndexes, 
       aTrainingTargets, 
       pTrainingWeights,
       aTrainingInitScores,
       countValidationSamples, 
-      aValidationBinnedData, 
+      aValidationBinIndexes, 
       aValidationTargets, 
       pValidationWeights,
       aValidationInitScores,
@@ -793,11 +793,11 @@ SEXP CreateRegressionBooster_R(
    SEXP featuresBinCount,
    SEXP dimensionCounts,
    SEXP featureIndexes,
-   SEXP trainingBinnedData,
+   SEXP trainingBinIndexes,
    SEXP trainingTargets,
    SEXP trainingWeights,
    SEXP trainingInitScores,
-   SEXP validationBinnedData,
+   SEXP validationBinIndexes,
    SEXP validationTargets,
    SEXP validationWeights,
    SEXP validationInitScores,
@@ -808,11 +808,11 @@ SEXP CreateRegressionBooster_R(
    EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != dimensionCounts);
    EBM_ASSERT(nullptr != featureIndexes);
-   EBM_ASSERT(nullptr != trainingBinnedData);
+   EBM_ASSERT(nullptr != trainingBinIndexes);
    EBM_ASSERT(nullptr != trainingTargets);
    EBM_ASSERT(nullptr != trainingWeights);
    EBM_ASSERT(nullptr != trainingInitScores);
-   EBM_ASSERT(nullptr != validationBinnedData);
+   EBM_ASSERT(nullptr != validationBinIndexes);
    EBM_ASSERT(nullptr != validationTargets);
    EBM_ASSERT(nullptr != validationWeights);
    EBM_ASSERT(nullptr != validationInitScores);
@@ -872,9 +872,9 @@ SEXP CreateRegressionBooster_R(
       return R_NilValue;
    }
 
-   size_t cTrainingBinnedData;
-   const IntEbmType * aTrainingBinnedData;
-   if(ConvertDoublesToIndexes(trainingBinnedData, &cTrainingBinnedData, &aTrainingBinnedData)) {
+   size_t cTrainingBinIndexes;
+   const IntEbmType * aTrainingBinIndexes;
+   if(ConvertDoublesToIndexes(trainingBinIndexes, &cTrainingBinIndexes, &aTrainingBinIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -889,8 +889,8 @@ SEXP CreateRegressionBooster_R(
       LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R IsMultiplyError(cTrainingSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cTrainingSamples * cFeatures != cTrainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cTrainingSamples * cFeatures != cTrainingBinnedData");
+   if(cTrainingSamples * cFeatures != cTrainingBinIndexes) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cTrainingSamples * cFeatures != cTrainingBinIndexes");
       return R_NilValue;
    }
    const double * const aTrainingTargets = REAL(trainingTargets);
@@ -907,9 +907,9 @@ SEXP CreateRegressionBooster_R(
    }
    const double * const aTrainingInitScores = REAL(trainingInitScores);
 
-   size_t cValidationBinnedData;
-   const IntEbmType * aValidationBinnedData;
-   if(ConvertDoublesToIndexes(validationBinnedData, &cValidationBinnedData, &aValidationBinnedData)) {
+   size_t cValidationBinIndexes;
+   const IntEbmType * aValidationBinIndexes;
+   if(ConvertDoublesToIndexes(validationBinIndexes, &cValidationBinIndexes, &aValidationBinIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -924,8 +924,8 @@ SEXP CreateRegressionBooster_R(
       LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R IsMultiplyError(cValidationSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cValidationSamples * cFeatures != cValidationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cValidationSamples * cFeatures != cValidationBinnedData");
+   if(cValidationSamples * cFeatures != cValidationBinIndexes) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cValidationSamples * cFeatures != cValidationBinIndexes");
       return R_NilValue;
    }
    const double * const aValidationTargets = REAL(validationTargets);
@@ -999,12 +999,12 @@ SEXP CreateRegressionBooster_R(
       acTermDimensions,
       aiTermFeatures,
       countTrainingSamples, 
-      aTrainingBinnedData, 
+      aTrainingBinIndexes, 
       aTrainingTargets, 
       pTrainingWeights, 
       aTrainingInitScores,
       countValidationSamples, 
-      aValidationBinnedData, 
+      aValidationBinIndexes, 
       aValidationTargets, 
       pValidationWeights, 
       aValidationInitScores,
@@ -1297,7 +1297,7 @@ SEXP CreateClassificationInteractionDetector_R(
    SEXP countClasses,
    SEXP featuresCategorical,
    SEXP featuresBinCount,
-   SEXP binnedData,
+   SEXP binIndexes,
    SEXP targets,
    SEXP weights,
    SEXP initScores
@@ -1305,7 +1305,7 @@ SEXP CreateClassificationInteractionDetector_R(
    EBM_ASSERT(nullptr != countClasses);
    EBM_ASSERT(nullptr != featuresCategorical);
    EBM_ASSERT(nullptr != featuresBinCount);
-   EBM_ASSERT(nullptr != binnedData);
+   EBM_ASSERT(nullptr != binIndexes);
    EBM_ASSERT(nullptr != targets);
    EBM_ASSERT(nullptr != weights);
    EBM_ASSERT(nullptr != initScores);
@@ -1348,9 +1348,9 @@ SEXP CreateClassificationInteractionDetector_R(
       return R_NilValue;
    }
 
-   size_t cBinnedData;
-   const IntEbmType * aBinnedData;
-   if(ConvertDoublesToIndexes(binnedData, &cBinnedData, &aBinnedData)) {
+   size_t cBinIndexes;
+   const IntEbmType * aBinIndexes;
+   if(ConvertDoublesToIndexes(binIndexes, &cBinIndexes, &aBinIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -1367,8 +1367,8 @@ SEXP CreateClassificationInteractionDetector_R(
       LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R IsMultiplyError(cSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cSamples * cFeatures != cBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cSamples * cFeatures != cBinnedData");
+   if(cSamples * cFeatures != cBinIndexes) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cSamples * cFeatures != cBinIndexes");
       return R_NilValue;
    }
 
@@ -1414,7 +1414,7 @@ SEXP CreateClassificationInteractionDetector_R(
       aFeaturesCategorical,
       aFeaturesBinCount,
       countSamples,
-      aBinnedData,
+      aBinIndexes,
       aTargets,
       pWeights,
       aInitScores,
@@ -1438,14 +1438,14 @@ SEXP CreateClassificationInteractionDetector_R(
 SEXP CreateRegressionInteractionDetector_R(
    SEXP featuresCategorical,
    SEXP featuresBinCount,
-   SEXP binnedData,
+   SEXP binIndexes,
    SEXP targets,
    SEXP weights,
    SEXP initScores
 ) {
    EBM_ASSERT(nullptr != featuresCategorical);
    EBM_ASSERT(nullptr != featuresBinCount);
-   EBM_ASSERT(nullptr != binnedData);
+   EBM_ASSERT(nullptr != binIndexes);
    EBM_ASSERT(nullptr != targets);
    EBM_ASSERT(nullptr != weights);
    EBM_ASSERT(nullptr != initScores);
@@ -1472,9 +1472,9 @@ SEXP CreateRegressionInteractionDetector_R(
       return R_NilValue;
    }
 
-   size_t cBinnedData;
-   const IntEbmType * aBinnedData;
-   if(ConvertDoublesToIndexes(binnedData, &cBinnedData, &aBinnedData)) {
+   size_t cBinIndexes;
+   const IntEbmType * aBinIndexes;
+   if(ConvertDoublesToIndexes(binIndexes, &cBinIndexes, &aBinIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -1489,8 +1489,8 @@ SEXP CreateRegressionInteractionDetector_R(
       LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R IsMultiplyError(cSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cSamples * cFeatures != cBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cSamples * cFeatures != cBinnedData");
+   if(cSamples * cFeatures != cBinIndexes) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cSamples * cFeatures != cBinIndexes");
       return R_NilValue;
    }
    const double * const aTargets = REAL(targets);
@@ -1532,7 +1532,7 @@ SEXP CreateRegressionInteractionDetector_R(
       aFeaturesCategorical,
       aFeaturesBinCount,
       countSamples,
-      aBinnedData, 
+      aBinIndexes, 
       aTargets, 
       pWeights,
       aInitScores,
@@ -1621,7 +1621,7 @@ SEXP FreeInteractionDetector_R(
 static const R_CallMethodDef g_exposedFunctions[] = {
    { "GenerateDeterministicSeed_R", (DL_FUNC)&GenerateDeterministicSeed_R, 2 },
    { "CutQuantile_R", (DL_FUNC)&CutQuantile_R, 4 },
-   { "Discretize_R", (DL_FUNC)&Discretize_R, 3 },
+   { "BinFeature_R", (DL_FUNC)&BinFeature_R, 3 },
    { "SampleWithoutReplacement_R", (DL_FUNC)&SampleWithoutReplacement_R, 4 },
    { "CreateClassificationBooster_R", (DL_FUNC)&CreateClassificationBooster_R, 15 },
    { "CreateRegressionBooster_R", (DL_FUNC)&CreateRegressionBooster_R, 14 },

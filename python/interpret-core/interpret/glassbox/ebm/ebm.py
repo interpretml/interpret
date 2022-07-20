@@ -1311,8 +1311,8 @@ class EBMModel(BaseEstimator):
                     }
                 data_dicts.append(data_dict)
 
-            for term_idx, binned_data in eval_terms(X, n_samples, self.feature_names_in_, self.feature_types_in_, self.bins_, self.term_features_):
-                scores = self.term_scores_[term_idx][tuple(binned_data)]
+            for term_idx, bin_indexes in eval_terms(X, n_samples, self.feature_names_in_, self.feature_types_in_, self.bins_, self.term_features_):
+                scores = self.term_scores_[term_idx][tuple(bin_indexes)]
                 feature_idxs = self.term_features_[term_idx]
                 for row_idx in range(n_samples):
                     term_name = term_names[term_idx]

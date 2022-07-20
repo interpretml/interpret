@@ -7,7 +7,7 @@
 #include "ebm_native.h"
 #include "ebm_native_test.hpp"
 
-static const TestPriority k_filePriority = TestPriority::Discretize;
+static const TestPriority k_filePriority = TestPriority::BinFeature;
 
 TEST_CASE("GetHistogramCutCount, normals") {
    UNUSED(testCaseHidden);
@@ -27,7 +27,7 @@ TEST_CASE("GetHistogramCutCount, out of bound inputs") {
    CHECK(3 == result);
 }
 
-TEST_CASE("Discretize, zero samples") {
+TEST_CASE("BinFeature, zero samples") {
    ErrorEbmType error;
 
    UNUSED(testCaseHidden);
@@ -35,7 +35,7 @@ TEST_CASE("Discretize, zero samples") {
    constexpr IntEbmType countCuts = sizeof(cutsLowerBoundInclusive) / sizeof(cutsLowerBoundInclusive[0]);
    constexpr IntEbmType  cSamples = 0;
 
-   error = Discretize(
+   error = BinFeature(
       cSamples,
       nullptr,
       countCuts,
@@ -44,7 +44,7 @@ TEST_CASE("Discretize, zero samples") {
    );
    CHECK(Error_None == error);
 
-   error = Discretize(
+   error = BinFeature(
       cSamples,
       nullptr,
       countCuts,
@@ -54,7 +54,7 @@ TEST_CASE("Discretize, zero samples") {
    CHECK(Error_None == error);
 }
 
-TEST_CASE("Discretize, increasing lengths") {
+TEST_CASE("BinFeature, increasing lengths") {
    constexpr size_t cCutsEnd = 1024 * 2 + 100;
    constexpr size_t cData = 11 * cCutsEnd;
 
@@ -62,7 +62,7 @@ TEST_CASE("Discretize, increasing lengths") {
 
    double * cutsLowerBoundInclusive = new double[cCutsEnd];
    double * featureValues = new double[cData];
-   IntEbmType * singleFeatureDiscretized = new IntEbmType[cData];
+   IntEbmType * aiBins = new IntEbmType[cData];
    for(size_t iCutPoint = 0; iCutPoint < cCutsEnd; ++iCutPoint) {
       const double cutPoint = static_cast<double>(iCutPoint);
       cutsLowerBoundInclusive[iCutPoint] = cutPoint;
@@ -93,36 +93,36 @@ TEST_CASE("Discretize, increasing lengths") {
       const size_t cRemoveHigh = 0 == cCuts % 7 ? size_t { 0 } : size_t { 1 };
 
       const size_t cSamples = cData - cRemoveLow - cRemoveHigh;
-      memset(singleFeatureDiscretized + cRemoveLow, 0, cSamples * sizeof(*singleFeatureDiscretized));
-      error = Discretize(
+      memset(aiBins + cRemoveLow, 0, cSamples * sizeof(*aiBins));
+      error = BinFeature(
          static_cast<IntEbmType>(cSamples),
          featureValues + cRemoveLow,
          cCuts,
          cutsLowerBoundInclusive,
-         singleFeatureDiscretized + cRemoveLow
+         aiBins + cRemoveLow
       );
       CHECK(Error_None == error);
 
       for(size_t iCutPoint = 0; iCutPoint < cCutsEnd; ++iCutPoint) {
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 0] == IntEbmType { 1 });
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 1] == IntEbmType { 0 });
+         CHECK(aiBins[11 * iCutPoint + 0] == IntEbmType { 1 });
+         CHECK(aiBins[11 * iCutPoint + 1] == IntEbmType { 0 });
 
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 2] == IntEbmType { 1 });
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 3] == (size_t { 0 } == cCuts ? IntEbmType { 1 } : IntEbmType { 2 }));
+         CHECK(aiBins[11 * iCutPoint + 2] == IntEbmType { 1 });
+         CHECK(aiBins[11 * iCutPoint + 3] == (size_t { 0 } == cCuts ? IntEbmType { 1 } : IntEbmType { 2 }));
 
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 4] == IntEbmType { 1 } + static_cast<IntEbmType>(std::min(iCutPoint, cCuts)));
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 5] == IntEbmType { 1 } + static_cast<IntEbmType>(std::min(iCutPoint + 1, cCuts)));
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 6] == IntEbmType { 1 } + static_cast<IntEbmType>(std::min(iCutPoint + 1, cCuts)));
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 7] == IntEbmType { 1 } + static_cast<IntEbmType>(cCuts));
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 8] == IntEbmType { 1 } + static_cast<IntEbmType>(cCuts));
+         CHECK(aiBins[11 * iCutPoint + 4] == IntEbmType { 1 } + static_cast<IntEbmType>(std::min(iCutPoint, cCuts)));
+         CHECK(aiBins[11 * iCutPoint + 5] == IntEbmType { 1 } + static_cast<IntEbmType>(std::min(iCutPoint + 1, cCuts)));
+         CHECK(aiBins[11 * iCutPoint + 6] == IntEbmType { 1 } + static_cast<IntEbmType>(std::min(iCutPoint + 1, cCuts)));
+         CHECK(aiBins[11 * iCutPoint + 7] == IntEbmType { 1 } + static_cast<IntEbmType>(cCuts));
+         CHECK(aiBins[11 * iCutPoint + 8] == IntEbmType { 1 } + static_cast<IntEbmType>(cCuts));
 
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 9] == IntEbmType { 0 });
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 10] == IntEbmType { 1 });
+         CHECK(aiBins[11 * iCutPoint + 9] == IntEbmType { 0 });
+         CHECK(aiBins[11 * iCutPoint + 10] == IntEbmType { 1 });
       }
    }
 
    delete[] cutsLowerBoundInclusive;
    delete[] featureValues;
-   delete[] singleFeatureDiscretized;
+   delete[] aiBins;
 }
 

@@ -76,11 +76,11 @@ ebm_classify <- function(
 
    # byrow = FALSE to ensure this matrix is column-major (FORTRAN ordered), which is the fastest memory ordering for us
    X_binned <- matrix(nrow = nrow(X), ncol = ncol(X), byrow = FALSE)
-   discretized <- vector("numeric", length(y))
+   bin_indexes <- vector("numeric", length(y))
    for(i_feature in 1:n_features) {
-      X_feature <- X[, i_feature] # if our originator X matrix is byrow, pay the transpose cost once
+      X_col <- X[, i_feature] # if our originator X matrix is byrow, pay the transpose cost once
       feature_cuts <- cut_quantile(
-         X_feature, 
+         X_col, 
          min_samples_bin, 
          rounded, 
          max_bins
@@ -92,9 +92,9 @@ ebm_classify <- function(
       # one more bin than cuts plus one more for the missing value
       features_bin_count[[i_feature]] <- length(feature_cuts) + 2
 
-      # WARNING: discretized is modified in-place
-      discretize(X_feature, feature_cuts, discretized)
-      X_binned[, i_feature] <- discretized
+      # WARNING: bin_indexes is modified in-place
+      bin_feature(X_col, feature_cuts, bin_indexes)
+      X_binned[, i_feature] <- bin_indexes
    }
 
    # create the terms for the mains
@@ -183,17 +183,17 @@ ebm_predict_proba <- function (model, X) {
       col_names <- 1:n_features
    }
 
-   discretized <- vector("numeric", nrow(X))
+   bin_indexes <- vector("numeric", nrow(X))
    scores <- vector("numeric", nrow(X))
    for(i_feature in 1:n_features) {
       col_name <- col_names[[i_feature]]
-      X_feature <- X[, i_feature]
+      X_col <- X[, i_feature]
 
-      # WARNING: discretized is modified in-place
-      discretize(X_feature, model$cuts[[col_name]], discretized)
+      # WARNING: bin_indexes is modified in-place
+      bin_feature(X_col, model$cuts[[col_name]], bin_indexes)
 
       term_scores <- model$term_scores[[col_name]]
-      update_scores <- term_scores[discretized + 1]
+      update_scores <- term_scores[bin_indexes + 1]
       scores <- scores + update_scores
    }
 

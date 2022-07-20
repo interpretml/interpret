@@ -1255,9 +1255,9 @@ class DPUtils:
         return root_scalar(f, bracket=[0, 500], method='brentq').root
 
     @staticmethod
-    def private_numeric_binning(col_data, sample_weight, noise_scale, max_bins, min_val, max_val, random_state=None):
+    def private_numeric_binning(X_col, sample_weight, noise_scale, max_bins, min_val, max_val, random_state=None):
         native = Native.get_native_singleton()
-        uniform_weights, uniform_edges = np.histogram(col_data, bins=max_bins*2, range=(min_val, max_val), weights=sample_weight)
+        uniform_weights, uniform_edges = np.histogram(X_col, bins=max_bins*2, range=(min_val, max_val), weights=sample_weight)
         noisy_weights = uniform_weights + native.generate_gaussian_random(random_seed=random_state, stddev=noise_scale, count=uniform_weights.shape[0])
         
         # Postprocess to ensure realistic bin values (min=0)
@@ -1267,7 +1267,7 @@ class DPUtils:
         # so that the larger leftover bin tends to be in the center rather than on the right.
 
         # Greedily collapse bins until they meet or exceed target_weight threshold
-        sample_weight_total = len(col_data) if sample_weight is None else np.sum(sample_weight)
+        sample_weight_total = len(X_col) if sample_weight is None else np.sum(sample_weight)
         target_weight = sample_weight_total / max_bins
         bin_weights, bin_cuts = [0], [uniform_edges[0]]
         curr_weight = 0
@@ -1295,11 +1295,11 @@ class DPUtils:
         return bin_cuts, bin_weights
 
     @staticmethod
-    def private_categorical_binning(col_data, sample_weight, noise_scale, max_bins, random_state=None):
+    def private_categorical_binning(X_col, sample_weight, noise_scale, max_bins, random_state=None):
         native = Native.get_native_singleton()
         # Initialize estimate
-        col_data = col_data.astype('U')
-        uniq_vals, uniq_idxs = np.unique(col_data, return_inverse=True)
+        X_col = X_col.astype('U')
+        uniq_vals, uniq_idxs = np.unique(X_col, return_inverse=True)
         weights = np.bincount(uniq_idxs, weights=sample_weight, minlength=len(uniq_vals))
 
         weights = weights + native.generate_gaussian_random(random_seed=random_state, stddev=noise_scale, count=weights.shape[0])
@@ -1308,7 +1308,7 @@ class DPUtils:
         weights = np.clip(weights, 0, None)
 
         # Collapse bins until target_weight is achieved.
-        sample_weight_total = len(col_data) if sample_weight is None else np.sum(sample_weight)
+        sample_weight_total = len(X_col) if sample_weight is None else np.sum(sample_weight)
         target_weight = sample_weight_total / max_bins
         small_bins = np.where(weights < target_weight)[0]
         if len(small_bins) > 0:

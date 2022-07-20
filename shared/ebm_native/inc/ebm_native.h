@@ -258,12 +258,12 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
    double * highGraphBoundOut
 );
 
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION Discretize(
+EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
    IntEbmType countSamples,
    const double * featureValues,
    IntEbmType countCuts,
    const double * cutsLowerBoundInclusive,
-   IntEbmType * discretizedOut
+   IntEbmType * binIndexesOut
 );
 
 EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION SizeDataSetHeader(
@@ -285,7 +285,7 @@ EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION SizeFeature(
    BoolEbmType unknown,
    BoolEbmType nominal,
    IntEbmType countSamples,
-   const IntEbmType * binnedData
+   const IntEbmType * binIndexes
 );
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION FillFeature(
    IntEbmType countBins,
@@ -293,7 +293,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION FillFeature(
    BoolEbmType unknown,
    BoolEbmType nominal,
    IntEbmType countSamples,
-   const IntEbmType * binnedData,
+   const IntEbmType * binIndexes,
    IntEbmType countBytesAllocated,
    void * fillMem
 );
