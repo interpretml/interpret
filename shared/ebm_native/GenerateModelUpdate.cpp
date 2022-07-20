@@ -36,7 +36,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void BinBoosting(
+extern void BinSumsBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
    const SamplingSet * const pTrainingSet
@@ -123,7 +123,7 @@ static ErrorEbmType BoostZeroDimensional(
    pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(pBinFast) + cBytesPerBinFast);
 #endif // NDEBUG
 
-   BinBoosting(
+   BinSumsBoosting(
       pBoosterShell,
       nullptr,
       pTrainingSet
@@ -266,7 +266,7 @@ static ErrorEbmType BoostSingleDimensional(
    pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast);
 #endif // NDEBUG
 
-   BinBoosting(
+   BinSumsBoosting(
       pBoosterShell,
       pTerm,
       pTrainingSet
@@ -405,7 +405,7 @@ static ErrorEbmType BoostMultiDimensional(
    pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast);
 #endif // NDEBUG
 
-   BinBoosting(
+   BinSumsBoosting(
       pBoosterShell,
       pTerm,
       pTrainingSet
@@ -679,7 +679,7 @@ static ErrorEbmType BoostRandom(
    pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast);
 #endif // NDEBUG
 
-   BinBoosting(
+   BinSumsBoosting(
       pBoosterShell,
       pTerm,
       pTrainingSet

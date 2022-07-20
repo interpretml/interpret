@@ -30,7 +30,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void BinInteraction(InteractionShell * const pInteractionShell, const Term * const pTerm);
+extern void BinSumsInteraction(InteractionShell * const pInteractionShell, const Term * const pTerm);
 
 extern void TensorTotalsBuild(
    const ptrdiff_t cClasses,
@@ -140,7 +140,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    pInteractionShell->SetBinsFastEndDebug(pBinsFastEndDebug);
 #endif // NDEBUG
 
-   BinInteraction(pInteractionShell, pTerm);
+   BinSumsInteraction(pInteractionShell, pTerm);
 
    const size_t cAuxillaryBinsForSplitting = 4;
    const size_t cAuxillaryBins =

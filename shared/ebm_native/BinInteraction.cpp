@@ -30,15 +30,15 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
-class BinInteractionInternal final {
+class BinSumsInteractionInternal final {
 public:
 
-   BinInteractionInternal() = delete; // this is a static class.  Do not construct
+   BinSumsInteractionInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
 
-      LOG_0(TraceLevelVerbose, "Entered BinInteractionInternal");
+      LOG_0(TraceLevelVerbose, "Entered BinSumsInteractionInternal");
 
       BinBase * const aBinsBase = pInteractionShell->GetBinBaseFast();
       auto * const aBins = aBinsBase->Specialize<FloatFast, bClassification>();
@@ -163,15 +163,15 @@ public:
       EBM_ASSERT(nullptr != pWeight || 
          static_cast<FloatBig>(pDataSet->GetCountSamples()) == pDataSet->GetWeightTotal());
 
-      LOG_0(TraceLevelVerbose, "Exited BinInteractionInternal");
+      LOG_0(TraceLevelVerbose, "Exited BinSumsInteractionInternal");
    }
 };
 
 template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensionsPossible>
-class BinInteractionDimensions final {
+class BinSumsInteractionDimensions final {
 public:
 
-   BinInteractionDimensions() = delete; // this is a static class.  Do not construct
+   BinSumsInteractionDimensions() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
       static_assert(1 <= cCompilerDimensionsPossible, "can't have less than 1 dimension for interactions");
@@ -182,31 +182,31 @@ public:
       EBM_ASSERT(1 <= cRuntimeDimensions);
       EBM_ASSERT(cRuntimeDimensions <= k_cDimensionsMax);
       if(cCompilerDimensionsPossible == cRuntimeDimensions) {
-         BinInteractionInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(pInteractionShell, pTerm);
+         BinSumsInteractionInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(pInteractionShell, pTerm);
       } else {
-         BinInteractionDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pInteractionShell, pTerm);
+         BinSumsInteractionDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pInteractionShell, pTerm);
       }
    }
 };
 
 template<ptrdiff_t cCompilerClasses>
-class BinInteractionDimensions<cCompilerClasses, k_cCompilerOptimizedCountDimensionsMax + 1> final {
+class BinSumsInteractionDimensions<cCompilerClasses, k_cCompilerOptimizedCountDimensionsMax + 1> final {
 public:
 
-   BinInteractionDimensions() = delete; // this is a static class.  Do not construct
+   BinSumsInteractionDimensions() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
       EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
       EBM_ASSERT(pTerm->GetCountSignificantDimensions() <= k_cDimensionsMax);
-      BinInteractionInternal<cCompilerClasses, k_dynamicDimensions>::Func(pInteractionShell, pTerm);
+      BinSumsInteractionInternal<cCompilerClasses, k_dynamicDimensions>::Func(pInteractionShell, pTerm);
    }
 };
 
 template<ptrdiff_t cPossibleClasses>
-class BinInteractionTarget final {
+class BinSumsInteractionTarget final {
 public:
 
-   BinInteractionTarget() = delete; // this is a static class.  Do not construct
+   BinSumsInteractionTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
@@ -218,18 +218,18 @@ public:
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
       if(cPossibleClasses == cRuntimeClasses) {
-         BinInteractionDimensions<cPossibleClasses, 2>::Func(pInteractionShell, pTerm);
+         BinSumsInteractionDimensions<cPossibleClasses, 2>::Func(pInteractionShell, pTerm);
       } else {
-         BinInteractionTarget<cPossibleClasses + 1>::Func(pInteractionShell, pTerm);
+         BinSumsInteractionTarget<cPossibleClasses + 1>::Func(pInteractionShell, pTerm);
       }
    }
 };
 
 template<>
-class BinInteractionTarget<k_cCompilerClassesMax + 1> final {
+class BinSumsInteractionTarget<k_cCompilerClassesMax + 1> final {
 public:
 
-   BinInteractionTarget() = delete; // this is a static class.  Do not construct
+   BinSumsInteractionTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
@@ -237,19 +237,19 @@ public:
       EBM_ASSERT(IsClassification(pInteractionShell->GetInteractionCore()->GetCountClasses()));
       EBM_ASSERT(k_cCompilerClassesMax < pInteractionShell->GetInteractionCore()->GetCountClasses());
 
-      BinInteractionDimensions<k_dynamicClassification, 2>::Func(pInteractionShell, pTerm);
+      BinSumsInteractionDimensions<k_dynamicClassification, 2>::Func(pInteractionShell, pTerm);
    }
 };
 
-extern void BinInteraction(InteractionShell * const pInteractionShell, const Term * const pTerm) {
+extern void BinSumsInteraction(InteractionShell * const pInteractionShell, const Term * const pTerm) {
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
    const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
 
    if(IsClassification(cRuntimeClasses)) {
-      BinInteractionTarget<2>::Func(pInteractionShell, pTerm);
+      BinSumsInteractionTarget<2>::Func(pInteractionShell, pTerm);
    } else {
       EBM_ASSERT(IsRegression(cRuntimeClasses));
-      BinInteractionDimensions<k_regression, 2>::Func(pInteractionShell, pTerm);
+      BinSumsInteractionDimensions<k_regression, 2>::Func(pInteractionShell, pTerm);
    }
 }
 

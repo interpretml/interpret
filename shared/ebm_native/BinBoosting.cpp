@@ -30,10 +30,10 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 template<ptrdiff_t cCompilerClasses>
-class BinBoostingZeroDimensions final {
+class BinSumsBoostingZeroDimensions final {
 public:
 
-   BinBoostingZeroDimensions() = delete; // this is a static class.  Do not construct
+   BinSumsBoostingZeroDimensions() = delete; // this is a static class.  Do not construct
 
    static void Func(
       BoosterShell * const pBoosterShell,
@@ -41,7 +41,7 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
 
-      LOG_0(TraceLevelVerbose, "Entered BinBoostingZeroDimensions");
+      LOG_0(TraceLevelVerbose, "Entered BinSumsBoostingZeroDimensions");
 
       BinBase * const pBinBase = pBoosterShell->GetBinBaseFast();
       auto * const pBin = pBinBase->Specialize<FloatFast, bClassification>();
@@ -140,15 +140,15 @@ public:
       EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pTrainingSet->GetWeightTotal() &&
          pTrainingSet->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
 
-      LOG_0(TraceLevelVerbose, "Exited BinBoostingZeroDimensions");
+      LOG_0(TraceLevelVerbose, "Exited BinSumsBoostingZeroDimensions");
    }
 };
 
 template<ptrdiff_t cPossibleClasses>
-class BinBoostingZeroDimensionsTarget final {
+class BinSumsBoostingZeroDimensionsTarget final {
 public:
 
-   BinBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
+   BinSumsBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -163,12 +163,12 @@ public:
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
       if(cPossibleClasses == cRuntimeClasses) {
-         BinBoostingZeroDimensions<cPossibleClasses>::Func(
+         BinSumsBoostingZeroDimensions<cPossibleClasses>::Func(
             pBoosterShell,
             pTrainingSet
          );
       } else {
-         BinBoostingZeroDimensionsTarget<cPossibleClasses + 1>::Func(
+         BinSumsBoostingZeroDimensionsTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
             pTrainingSet
          );
@@ -177,10 +177,10 @@ public:
 };
 
 template<>
-class BinBoostingZeroDimensionsTarget<k_cCompilerClassesMax + 1> final {
+class BinSumsBoostingZeroDimensionsTarget<k_cCompilerClassesMax + 1> final {
 public:
 
-   BinBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
+   BinSumsBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -191,7 +191,7 @@ public:
       EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
       EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
 
-      BinBoostingZeroDimensions<k_dynamicClassification>::Func(
+      BinSumsBoostingZeroDimensions<k_dynamicClassification>::Func(
          pBoosterShell,
          pTrainingSet
       );
@@ -199,10 +199,10 @@ public:
 };
 
 template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
-class BinBoostingInternal final {
+class BinSumsBoostingInternal final {
 public:
 
-   BinBoostingInternal() = delete; // this is a static class.  Do not construct
+   BinSumsBoostingInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(
       BoosterShell * const pBoosterShell,
@@ -211,7 +211,7 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
 
-      LOG_0(TraceLevelVerbose, "Entered BinBoostingInternal");
+      LOG_0(TraceLevelVerbose, "Entered BinSumsBoostingInternal");
 
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseFast();
       auto * const aBins = aBinsBase->Specialize<FloatFast, bClassification>();
@@ -349,7 +349,7 @@ public:
 
       // first time through?
       if(pGradientAndHessiansTrueEnd != pGradientAndHessian) {
-         LOG_0(TraceLevelVerbose, "Handling last BinBoostingInternal loop");
+         LOG_0(TraceLevelVerbose, "Handling last BinSumsBoostingInternal loop");
 
          EBM_ASSERT(0 == (pGradientAndHessiansTrueEnd - pGradientAndHessian) % (cScores * (bClassification ? 2 : 1)));
          cItemsRemaining = (pGradientAndHessiansTrueEnd - pGradientAndHessian) / (cScores * (bClassification ? 2 : 1));
@@ -365,15 +365,15 @@ public:
       EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pTrainingSet->GetWeightTotal() &&
          pTrainingSet->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
 
-      LOG_0(TraceLevelVerbose, "Exited BinBoostingInternal");
+      LOG_0(TraceLevelVerbose, "Exited BinSumsBoostingInternal");
    }
 };
 
 template<ptrdiff_t cPossibleClasses>
-class BinBoostingNormalTarget final {
+class BinSumsBoostingNormalTarget final {
 public:
 
-   BinBoostingNormalTarget() = delete; // this is a static class.  Do not construct
+   BinSumsBoostingNormalTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -389,13 +389,13 @@ public:
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
       if(cPossibleClasses == cRuntimeClasses) {
-         BinBoostingInternal<cPossibleClasses, k_cItemsPerBitPackDynamic>::Func(
+         BinSumsBoostingInternal<cPossibleClasses, k_cItemsPerBitPackDynamic>::Func(
             pBoosterShell,
             pTerm,
             pTrainingSet
          );
       } else {
-         BinBoostingNormalTarget<cPossibleClasses + 1>::Func(
+         BinSumsBoostingNormalTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
             pTerm,
             pTrainingSet
@@ -405,10 +405,10 @@ public:
 };
 
 template<>
-class BinBoostingNormalTarget<k_cCompilerClassesMax + 1> final {
+class BinSumsBoostingNormalTarget<k_cCompilerClassesMax + 1> final {
 public:
 
-   BinBoostingNormalTarget() = delete; // this is a static class.  Do not construct
+   BinSumsBoostingNormalTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -420,7 +420,7 @@ public:
       EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
       EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
 
-      BinBoostingInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
+      BinSumsBoostingInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
          pTerm,
          pTrainingSet
@@ -429,10 +429,10 @@ public:
 };
 
 template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
-class BinBoostingSIMDPacking final {
+class BinSumsBoostingSIMDPacking final {
 public:
 
-   BinBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
+   BinSumsBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -445,13 +445,13 @@ public:
       EBM_ASSERT(runtimeBitPack <= ptrdiff_t { k_cBitsForStorageType });
       static_assert(compilerBitPack <= ptrdiff_t { k_cBitsForStorageType }, "We can't have this many items in a data pack.");
       if(compilerBitPack == runtimeBitPack) {
-         BinBoostingInternal<cCompilerClasses, compilerBitPack>::Func(
+         BinSumsBoostingInternal<cCompilerClasses, compilerBitPack>::Func(
             pBoosterShell,
             pTerm,
             pTrainingSet
          );
       } else {
-         BinBoostingSIMDPacking<
+         BinSumsBoostingSIMDPacking<
             cCompilerClasses,
             GetNextCountItemsBitPacked(compilerBitPack)
          >::Func(
@@ -464,10 +464,10 @@ public:
 };
 
 template<ptrdiff_t cCompilerClasses>
-class BinBoostingSIMDPacking<cCompilerClasses, k_cItemsPerBitPackDynamic> final {
+class BinSumsBoostingSIMDPacking<cCompilerClasses, k_cItemsPerBitPackDynamic> final {
 public:
 
-   BinBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
+   BinSumsBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -476,7 +476,7 @@ public:
    ) {
       EBM_ASSERT(ptrdiff_t { 1 } <= pTerm->GetBitPack());
       EBM_ASSERT(pTerm->GetBitPack() <= ptrdiff_t { k_cBitsForStorageType });
-      BinBoostingInternal<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(
+      BinSumsBoostingInternal<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
          pTerm,
          pTrainingSet
@@ -485,10 +485,10 @@ public:
 };
 
 template<ptrdiff_t cPossibleClasses>
-class BinBoostingSIMDTarget final {
+class BinSumsBoostingSIMDTarget final {
 public:
 
-   BinBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
+   BinSumsBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -504,7 +504,7 @@ public:
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
       if(cPossibleClasses == cRuntimeClasses) {
-         BinBoostingSIMDPacking<
+         BinSumsBoostingSIMDPacking<
             cPossibleClasses,
             k_cItemsPerBitPackMax
          >::Func(
@@ -513,7 +513,7 @@ public:
             pTrainingSet
          );
       } else {
-         BinBoostingSIMDTarget<cPossibleClasses + 1>::Func(
+         BinSumsBoostingSIMDTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
             pTerm,
             pTrainingSet
@@ -523,10 +523,10 @@ public:
 };
 
 template<>
-class BinBoostingSIMDTarget<k_cCompilerClassesMax + 1> final {
+class BinSumsBoostingSIMDTarget<k_cCompilerClassesMax + 1> final {
 public:
 
-   BinBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
+   BinSumsBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -538,7 +538,7 @@ public:
       EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
       EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
 
-      BinBoostingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackMax>::Func(
+      BinSumsBoostingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackMax>::Func(
          pBoosterShell,
          pTerm,
          pTrainingSet
@@ -546,25 +546,25 @@ public:
    }
 };
 
-extern void BinBoosting(
+extern void BinSumsBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
    const SamplingSet * const pTrainingSet
 ) {
-   LOG_0(TraceLevelVerbose, "Entered BinBoosting");
+   LOG_0(TraceLevelVerbose, "Entered BinSumsBoosting");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
    if(nullptr == pTerm) {
       if(IsClassification(cRuntimeClasses)) {
-         BinBoostingZeroDimensionsTarget<2>::Func(
+         BinSumsBoostingZeroDimensionsTarget<2>::Func(
             pBoosterShell,
             pTrainingSet
          );
       } else {
          EBM_ASSERT(IsRegression(cRuntimeClasses));
-         BinBoostingZeroDimensions<k_regression>::Func(
+         BinSumsBoostingZeroDimensions<k_regression>::Func(
             pBoosterShell,
             pTrainingSet
          );
@@ -585,14 +585,14 @@ extern void BinBoosting(
          // 7,6,5,4,3,2,1 - use a mask to exclude the non-used conditions and process them like the 8.  These are rare since they require more than 256 values
 
          if(IsClassification(cRuntimeClasses)) {
-            BinBoostingSIMDTarget<2>::Func(
+            BinSumsBoostingSIMDTarget<2>::Func(
                pBoosterShell,
                pTerm,
                pTrainingSet
             );
          } else {
             EBM_ASSERT(IsRegression(cRuntimeClasses));
-            BinBoostingSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
+            BinSumsBoostingSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
                pBoosterShell,
                pTerm,
                pTrainingSet
@@ -606,14 +606,14 @@ extern void BinBoosting(
          // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
 
          if(IsClassification(cRuntimeClasses)) {
-            BinBoostingNormalTarget<2>::Func(
+            BinSumsBoostingNormalTarget<2>::Func(
                pBoosterShell,
                pTerm,
                pTrainingSet
             );
          } else {
             EBM_ASSERT(IsRegression(cRuntimeClasses));
-            BinBoostingInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
+            BinSumsBoostingInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
                pBoosterShell,
                pTerm,
                pTrainingSet
@@ -622,7 +622,7 @@ extern void BinBoosting(
       }
    }
 
-   LOG_0(TraceLevelVerbose, "Exited BinBoosting");
+   LOG_0(TraceLevelVerbose, "Exited BinSumsBoosting");
 }
 
 } // DEFINED_ZONE_NAME
