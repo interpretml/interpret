@@ -378,7 +378,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
    const IntEbmType * dimensionCounts,
    const IntEbmType * featureIndexes,
    IntEbmType countInnerBags,
-   const double * optionalTempParams,
+   const double * experimentalParams,
    BoosterHandle * boosterHandleOut
 );
 // TODO: we might need a function to set the booster's internal random seed so that a booster view 
@@ -433,7 +433,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
    const BagEbmType * bag,
    const double * initScores, // only samples with non-zeros in the bag are included
-   const double * optionalTempParams,
+   const double * experimentalParams,
    InteractionHandle * interactionHandleOut
 );
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(

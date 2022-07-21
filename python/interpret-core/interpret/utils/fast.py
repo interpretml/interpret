@@ -58,11 +58,11 @@ def _get_ranked_interactions(
         iter_term_features,
         interaction_options,
         min_samples_leaf,
-        optional_temp_params=None,
+        experimental_params=None,
         num_output_interactions=0
     ):
     interaction_strengths = []
-    with InteractionDetector(dataset, bag, scores, optional_temp_params) as interaction_detector:
+    with InteractionDetector(dataset, bag, scores, experimental_params) as interaction_detector:
         for feature_idxs in iter_term_features:
             strength = interaction_detector.calc_interaction_strength(
                 feature_idxs, interaction_options, min_samples_leaf,
@@ -155,7 +155,7 @@ def fast(X,
         iter_term_features=combinations(range(n_features_in), 2),
         interaction_options=Native.InteractionOptions_Pure,
         min_samples_leaf=min_samples_leaf,
-        optional_temp_params=None,
+        experimental_params=None,
         num_output_interactions=num_output_interactions
     )
 

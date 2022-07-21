@@ -89,20 +89,20 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
    const BagEbmType * bag,
    const double * initScores, // only samples with non-zeros in the bag are included
-   const double * optionalTempParams,
+   const double * experimentalParams,
    InteractionHandle * interactionHandleOut
 ) {
    LOG_N(TraceLevelInfo, "Entered CreateInteractionDetector: "
       "dataSet=%p, "
       "bag=%p, "
       "initScores=%p, "
-      "optionalTempParams=%p, "
+      "experimentalParams=%p, "
       "interactionHandleOut=%p"
       ,
       static_cast<const void *>(dataSet),
       static_cast<const void *>(bag),
       static_cast<const void *>(initScores),
-      static_cast<const void *>(optionalTempParams),
+      static_cast<const void *>(experimentalParams),
       static_cast<const void *>(interactionHandleOut)
    );
 
@@ -130,7 +130,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateInteractionDetector(
       static_cast<const unsigned char *>(dataSet),
       bag,
       initScores,
-      optionalTempParams
+      experimentalParams
    );
    if(Error_None != error) {
       InteractionShell::Free(pInteractionShell);

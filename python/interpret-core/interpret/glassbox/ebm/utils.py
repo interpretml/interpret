@@ -1123,7 +1123,7 @@ class EBMUtils:
         noise_scale,
         bin_weights,
         random_state,
-        optional_temp_params=None,
+        experimental_params=None,
     ):
         min_metric = np.inf
         episode_index = 0
@@ -1134,7 +1134,7 @@ class EBMUtils:
             term_features,
             n_inner_bags,
             random_state,
-            optional_temp_params,
+            experimental_params,
         ) as booster:
             no_change_run_length = 0
             bp_metric = np.inf

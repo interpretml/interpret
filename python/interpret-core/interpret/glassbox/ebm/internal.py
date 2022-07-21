@@ -881,7 +881,7 @@ class Native:
             ct.c_void_p,
             # int64_t countInnerBags
             ct.c_int64,
-            # double * optionalTempParams
+            # double * experimentalParams
             ct.c_void_p,
             # BoosterHandle * boosterHandleOut
             ct.POINTER(ct.c_void_p),
@@ -978,7 +978,7 @@ class Native:
             ct.c_void_p,
             # double * initScores
             ct.c_void_p,
-            # double * optionalTempParams
+            # double * experimentalParams
             ct.c_void_p,
             # InteractionHandle * interactionHandleOut
             ct.POINTER(ct.c_void_p),
@@ -1019,7 +1019,7 @@ class Booster(AbstractContextManager):
         term_features,
         n_inner_bags,
         random_state,
-        optional_temp_params,
+        experimental_params,
     ):
 
         """ Initializes internal wrapper for EBM C code.
@@ -1034,7 +1034,7 @@ class Booster(AbstractContextManager):
             term_features: List of term feature indexes
             n_inner_bags: number of inner bags.
             random_state: Random seed as integer.
-            optional_temp_params: unused data that can be passed into the native layer for debugging
+            experimental_params: unused data that can be passed into the native layer for debugging
         """
 
         self.dataset = dataset
@@ -1043,7 +1043,7 @@ class Booster(AbstractContextManager):
         self.term_features = term_features
         self.n_inner_bags = n_inner_bags
         self.random_state = random_state
-        self.optional_temp_params = optional_temp_params
+        self.experimental_params = experimental_params
 
         # start off with an invalid _term_idx
         self._term_idx = -1
@@ -1114,7 +1114,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(dimension_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
-            Native._make_pointer(self.optional_temp_params, np.float64, 1, True),
+            Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(booster_handle),
         )
         if return_code:  # pragma: no cover
@@ -1420,7 +1420,7 @@ class InteractionDetector(AbstractContextManager):
         dataset,
         bag,
         init_scores,
-        optional_temp_params,
+        experimental_params,
     ):
 
         """ Initializes internal wrapper for EBM C code.
@@ -1432,14 +1432,14 @@ class InteractionDetector(AbstractContextManager):
                 that this class will boost on top of.  For regression
                 there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
-            optional_temp_params: unused data that can be passed into the native layer for debugging
+            experimental_params: unused data that can be passed into the native layer for debugging
 
         """
 
         self.dataset = dataset
         self.bag = bag
         self.init_scores = init_scores
-        self.optional_temp_params = optional_temp_params
+        self.experimental_params = experimental_params
 
     def __enter__(self):
         log.info("Allocation interaction start")
@@ -1477,7 +1477,7 @@ class InteractionDetector(AbstractContextManager):
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
             Native._make_pointer(self.init_scores, np.float64, 2 if n_class_scores > 1 else 1, True),
-            Native._make_pointer(self.optional_temp_params, np.float64, 1, True),
+            Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(interaction_handle),
         )
         if return_code:  # pragma: no cover

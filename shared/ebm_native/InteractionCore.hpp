@@ -91,7 +91,7 @@ public:
       const unsigned char * const pDataSetShared,
       const BagEbmType * const aBag,
       const double * const aInitScores,
-      const double * const optionalTempParams
+      const double * const experimentalParams
    );
 };
 

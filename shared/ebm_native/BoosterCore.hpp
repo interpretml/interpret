@@ -185,7 +185,7 @@ public:
       BoosterShell * const pBoosterShell,
       const size_t cTerms,
       const size_t cSamplingSets,
-      const double * const optionalTempParams,
+      const double * const experimentalParams,
       const IntEbmType * const acTermDimensions,
       const IntEbmType * const aiTermFeatures,
       const unsigned char * const pDataSetShared,

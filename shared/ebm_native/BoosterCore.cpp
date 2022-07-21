@@ -169,16 +169,16 @@ ErrorEbmType BoosterCore::Create(
    BoosterShell * const pBoosterShell,
    const size_t cTerms,
    const size_t cSamplingSets,
-   const double * const optionalTempParams,
+   const double * const experimentalParams,
    const IntEbmType * const acTermDimensions,
    const IntEbmType * const aiTermFeatures, 
    const unsigned char * const pDataSetShared,
    const BagEbmType * const aBag,
    const double * const aInitScores
 ) {
-   // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
+   // experimentalParams isn't used by default.  It's meant to provide an easy way for python or other higher
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
-   UNUSED(optionalTempParams);
+   UNUSED(experimentalParams);
 
    LOG_0(TraceLevelInfo, "Entered BoosterCore::Create");
 

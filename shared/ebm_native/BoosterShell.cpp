@@ -188,7 +188,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
    const IntEbmType * dimensionCounts,
    const IntEbmType * featureIndexes,
    IntEbmType countInnerBags,
-   const double * optionalTempParams,
+   const double * experimentalParams,
    BoosterHandle * boosterHandleOut
 ) {
    LOG_N(
@@ -203,7 +203,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
       "dimensionCounts=%p, "
       "featureIndexes=%p, "
       "countInnerBags=%" IntEbmTypePrintf ", "
-      "optionalTempParams=%p, "
+      "experimentalParams=%p, "
       "boosterHandleOut=%p"
       ,
       ObtainTruth(isDeterministic),
@@ -215,7 +215,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
       static_cast<const void *>(dimensionCounts),
       static_cast<const void *>(featureIndexes),
       countInnerBags,
-      static_cast<const void *>(optionalTempParams),
+      static_cast<const void *>(experimentalParams),
       static_cast<const void *>(boosterHandleOut)
    );
 
@@ -300,7 +300,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
       pBoosterShell,
       cTerms,
       cInnerBags,
-      optionalTempParams,
+      experimentalParams,
       dimensionCounts,
       featureIndexes,
       static_cast<const unsigned char *>(dataSet),
