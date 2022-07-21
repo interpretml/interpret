@@ -1029,13 +1029,13 @@ SEXP GenerateTermUpdate_R(
    SEXP boosterHandleWrapped,
    SEXP indexTerm,
    SEXP learningRate,
-   SEXP countSamplesRequiredForChildSplitMin,
+   SEXP minSamplesLeaf,
    SEXP leavesMax
 ) {
    EBM_ASSERT(nullptr != boosterHandleWrapped);
    EBM_ASSERT(nullptr != indexTerm);
    EBM_ASSERT(nullptr != learningRate);
-   EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
+   EBM_ASSERT(nullptr != minSamplesLeaf);
    EBM_ASSERT(nullptr != leavesMax);
 
    ErrorEbmType error;
@@ -1068,23 +1068,21 @@ SEXP GenerateTermUpdate_R(
    }
    const double learningRateLocal = REAL(learningRate)[0];
 
-   if(!IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)) {
-      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
+   if(!IsSingleDoubleVector(minSamplesLeaf)) {
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R !IsSingleDoubleVector(minSamplesLeaf)");
       return R_NilValue;
    }
-   double doubleCountSamplesRequiredForChildSplitMin = REAL(countSamplesRequiredForChildSplitMin)[0];
-   IntEbmType countEbmSamplesRequiredForChildSplitMin;
+   double doubleMinSamplesLeaf = REAL(minSamplesLeaf)[0];
+   IntEbmType minSamplesLeafEbm;
    static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
-   if(std::isnan(doubleCountSamplesRequiredForChildSplitMin) ||
-      static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountSamplesRequiredForChildSplitMin
-      ) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate_R countSamplesRequiredForChildSplitMin overflow");
-      countEbmSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
-   } else if(doubleCountSamplesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate_R countSamplesRequiredForChildSplitMin underflow");
-      countEbmSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
+   if(std::isnan(doubleMinSamplesLeaf) || FLOAT64_TO_INT64_MAX < doubleMinSamplesLeaf) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate_R minSamplesLeaf overflow");
+      minSamplesLeafEbm = FLOAT64_TO_INT64_MAX;
+   } else if(doubleMinSamplesLeaf < IntEmbType { 1 }) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate_R minSamplesLeaf can't be less than 1. Adjusting to 1.");
+      minSamplesLeafEbm = 1;
    } else {
-      countEbmSamplesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountSamplesRequiredForChildSplitMin);
+      minSamplesLeafEbm = static_cast<IntEbmType>(doubleMinSamplesLeaf);
    }
 
    size_t cDimensions;
@@ -1109,7 +1107,7 @@ SEXP GenerateTermUpdate_R(
       static_cast<IntEbmType>(iTerm),
       GenerateUpdateOptions_Default,
       learningRateLocal,
-      countEbmSamplesRequiredForChildSplitMin,
+      minSamplesLeafEbm,
       aLeavesMax,
       &avgGain
    );
@@ -1556,11 +1554,11 @@ SEXP CreateRegressionInteractionDetector_R(
 SEXP CalcInteractionStrength_R(
    SEXP interactionHandleWrapped,
    SEXP featureIndexes,
-   SEXP countSamplesRequiredForChildSplitMin
+   SEXP minSamplesLeaf
 ) {
    EBM_ASSERT(nullptr != interactionHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != featureIndexes); // shouldn't be possible
-   EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
+   EBM_ASSERT(nullptr != minSamplesLeaf);
 
    if(EXTPTRSXP != TYPEOF(interactionHandleWrapped)) {
       LOG_0(TraceLevelError, "ERROR CalcInteractionStrength_R EXTPTRSXP != TYPEOF(interactionHandleWrapped)");
@@ -1580,27 +1578,25 @@ SEXP CalcInteractionStrength_R(
    }
    const IntEbmType countDimensions = static_cast<IntEbmType>(cDimensions);
 
-   if(!IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)) {
-      LOG_0(TraceLevelError, "ERROR CalcInteractionStrength_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
+   if(!IsSingleDoubleVector(minSamplesLeaf)) {
+      LOG_0(TraceLevelError, "ERROR CalcInteractionStrength_R !IsSingleDoubleVector(minSamplesLeaf)");
       return R_NilValue;
    }
-   double doubleCountSamplesRequiredForChildSplitMin = REAL(countSamplesRequiredForChildSplitMin)[0];
-   IntEbmType countEbmSamplesRequiredForChildSplitMin;
+   double doubleMinSamplesLeaf = REAL(minSamplesLeaf)[0];
+   IntEbmType minSamplesLeafEbm;
    static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
-   if(std::isnan(doubleCountSamplesRequiredForChildSplitMin) ||
-      static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountSamplesRequiredForChildSplitMin
-   ) {
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength_R countSamplesRequiredForChildSplitMin overflow");
-      countEbmSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
-   } else if(doubleCountSamplesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength_R countSamplesRequiredForChildSplitMin underflow");
-      countEbmSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
+   if(std::isnan(doubleMinSamplesLeaf) || FLOAT64_TO_INT64_MAX < doubleMinSamplesLeaf) {
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength_R minSamplesLeaf overflow");
+      minSamplesLeafEbm = FLOAT64_TO_INT64_MAX;
+   } else if(doubleMinSamplesLeaf < IntEmbType { 1 }) {
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength_R minSamplesLeaf can't be less than 1. Adjusting to 1.");
+      minSamplesLeafEbm = 1;
    } else {
-      countEbmSamplesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountSamplesRequiredForChildSplitMin);
+      minSamplesLeafEbm = static_cast<IntEbmType>(doubleMinSamplesLeaf);
    }
 
    double avgInteractionStrength;
-   if(Error_None != CalcInteractionStrength(interactionHandle, countDimensions, aFeatureIndexes, countEbmSamplesRequiredForChildSplitMin, &avgInteractionStrength)) {
+   if(Error_None != CalcInteractionStrength(interactionHandle, countDimensions, aFeatureIndexes, minSamplesLeafEbm, &avgInteractionStrength)) {
       LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength_R CalcInteractionStrength returned error code");
       return R_NilValue;
    }

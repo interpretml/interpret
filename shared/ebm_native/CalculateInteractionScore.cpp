@@ -47,7 +47,7 @@ extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
    const Term * const pTerm,
    const InteractionOptionsType options,
-   const size_t cSamplesRequiredForChildSplitMin,
+   const size_t cSamplesLeafMin,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
 #ifndef NDEBUG
@@ -61,7 +61,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    InteractionCore * const pInteractionCore,
    const Term * const pTerm,
    const InteractionOptionsType options,
-   const size_t cSamplesRequiredForChildSplitMin,
+   const size_t cSamplesLeafMin,
    double * const pInteractionStrengthAvgOut
 ) {
    // TODO : we NEVER use the hessian term (currently) in GradientPair when calculating interaction scores, but we're spending time calculating 
@@ -210,7 +210,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
          pInteractionCore,
          pTerm,
          options,
-         cSamplesRequiredForChildSplitMin,
+         cSamplesLeafMin,
          aAuxiliaryBins,
          aBinsBig
 #ifndef NDEBUG
@@ -280,7 +280,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,
    InteractionOptionsType options,
-   IntEbmType countSamplesRequiredForChildSplitMin,
+   IntEbmType minSamplesLeaf,
    double * avgInteractionStrengthOut
 ) {
    LOG_COUNTED_N(
@@ -292,14 +292,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       "countDimensions=%" IntEbmTypePrintf ", "
       "featureIndexes=%p, "
       "options=0x%" UInteractionOptionsTypePrintf ", "
-      "countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", "
+      "minSamplesLeaf=%" IntEbmTypePrintf ", "
       "avgInteractionStrengthOut=%p"
       ,
       static_cast<void *>(interactionHandle),
       countDimensions,
       static_cast<const void *>(featureIndexes),
       static_cast<UInteractionOptionsType>(options), // signed to unsigned conversion is defined behavior in C++
-      countSamplesRequiredForChildSplitMin,
+      minSamplesLeaf,
       static_cast<void *>(avgInteractionStrengthOut)
    );
 
@@ -326,16 +326,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       LOG_0(TraceLevelError, "ERROR CalcInteractionStrength options contains unknown flags. Ignoring extras.");
    }
 
-   size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
-   if(IntEbmType { 1 } <= countSamplesRequiredForChildSplitMin) {
-      cSamplesRequiredForChildSplitMin = static_cast<size_t>(countSamplesRequiredForChildSplitMin);
-      if(IsConvertError<size_t>(countSamplesRequiredForChildSplitMin)) {
+   size_t cSamplesLeafMin = size_t { 1 }; // this is the min value
+   if(IntEbmType { 1 } <= minSamplesLeaf) {
+      cSamplesLeafMin = static_cast<size_t>(minSamplesLeaf);
+      if(IsConvertError<size_t>(minSamplesLeaf)) {
          // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to 
          // overflow because it will generate the same results as if we used the true number
-         cSamplesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
+         cSamplesLeafMin = std::numeric_limits<size_t>::max();
       }
    } else {
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength countSamplesRequiredForChildSplitMin can't be less than 1. Adjusting to 1.");
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength minSamplesLeaf can't be less than 1. Adjusting to 1.");
    }
 
    if(countDimensions <= IntEbmType { 0 }) {
@@ -429,7 +429,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       pInteractionCore,
       &term,
       options,
-      cSamplesRequiredForChildSplitMin,
+      cSamplesLeafMin,
       avgInteractionStrengthOut
    );
    if(Error_None != error) {

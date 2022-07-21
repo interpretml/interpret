@@ -52,7 +52,7 @@ public:
       //       provide a soft trigger that generates 10 random ones and selects the one that violates the least
       //       maybe provide a flag to indicate if we want a hard or soft allowance.  We won't be splitting if we
       //       require a soft allowance and a lot of regions have zeros.
-      // TODO: accept 0 == countSamplesRequiredForChildSplitMin as a minimum number of items so that we can always choose to allow a tensor split (for DP)
+      // TODO: accept 0 == minSamplesLeaf as a minimum number of items so that we can always choose to allow a tensor split (for DP)
       // TODO: move most of this code out of this function into a non-templated place
 
       ErrorEbmType error;

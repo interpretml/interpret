@@ -40,7 +40,7 @@ static FloatBig SweepMultiDimensional(
    const size_t directionVectorLow,
    const unsigned int iDimensionSweep,
    const size_t cSweepBins,
-   const size_t cSamplesRequiredForChildSplitMin,
+   const size_t cSamplesLeafMin,
    const ptrdiff_t cRuntimeClasses,
    Bin<FloatBig, IsClassification(cCompilerClasses)> * const pBinBestAndTemp,
    size_t * const piBestSplit
@@ -83,7 +83,7 @@ static FloatBig SweepMultiDimensional(
    auto * const pTotalsHigh = IndexBin(cBytesPerBin, pBinBestAndTemp, 3);
    ASSERT_BIN_OK(cBytesPerBin, pTotalsHigh, pBinsEndDebug);
 
-   EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
+   EBM_ASSERT(0 < cSamplesLeafMin);
 
    FloatBig bestGain = k_illegalGainFloat;
    size_t iBin = 0;
@@ -103,7 +103,7 @@ static FloatBig SweepMultiDimensional(
          , pBinsEndDebug
 #endif // NDEBUG
          );
-      if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsLow->GetCountSamples())) {
+      if(LIKELY(cSamplesLeafMin <= pTotalsLow->GetCountSamples())) {
          EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
          TensorTotalsSum<cCompilerClasses, 2>(
             cRuntimeClasses,
@@ -117,7 +117,7 @@ static FloatBig SweepMultiDimensional(
             , pBinsEndDebug
 #endif // NDEBUG
          );
-         if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsHigh->GetCountSamples())) {
+         if(LIKELY(cSamplesLeafMin <= pTotalsHigh->GetCountSamples())) {
             FloatBig gain = 0;
             EBM_ASSERT(0 < pTotalsLow->GetCountSamples());
             EBM_ASSERT(0 < pTotalsHigh->GetCountSamples());
@@ -187,7 +187,7 @@ public:
    static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const size_t cSamplesRequiredForChildSplitMin,
+      const size_t cSamplesLeafMin,
       BinBase * aAuxiliaryBinsBase,
       double * const pTotalGain
 #ifndef NDEBUG
@@ -260,7 +260,7 @@ public:
       auto * pTotals1HighLowBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 2);
       auto * pTotals1HighHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 3);
 
-      EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
+      EBM_ASSERT(0 < cSamplesLeafMin);
 
       LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Starting FIRST bin sweep loop");
       size_t iBin1 = 0;
@@ -277,7 +277,7 @@ public:
             0x0,
             1,
             cBinsDimension2,
-            cSamplesRequiredForChildSplitMin,
+            cSamplesLeafMin,
             cRuntimeClasses,
             pTotals2LowLowBest,
             &splitSecond1LowBest
@@ -300,7 +300,7 @@ public:
                0x1,
                1,
                cBinsDimension2,
-               cSamplesRequiredForChildSplitMin,
+               cSamplesLeafMin,
                cRuntimeClasses,
                pTotals2HighLowBest,
                &splitSecond1HighBest
@@ -368,7 +368,7 @@ public:
             0x0,
             0,
             cBinsDimension1,
-            cSamplesRequiredForChildSplitMin,
+            cSamplesLeafMin,
             cRuntimeClasses,
             pTotals1LowLowBestInner,
             &splitSecond2LowBest
@@ -391,7 +391,7 @@ public:
                0x2,
                0,
                cBinsDimension1,
-               cSamplesRequiredForChildSplitMin,
+               cSamplesLeafMin,
                cRuntimeClasses,
                pTotals1HighLowBestInner,
                &splitSecond2HighBest
@@ -850,7 +850,7 @@ public:
    INLINE_ALWAYS static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const size_t cSamplesRequiredForChildSplitMin,
+      const size_t cSamplesLeafMin,
       BinBase * aAuxiliaryBinsBase,
       double * const pTotalGain
 #ifndef NDEBUG
@@ -869,7 +869,7 @@ public:
          return PartitionTwoDimensionalBoostingInternal<cPossibleClasses>::Func(
             pBoosterShell,
             pTerm,
-            cSamplesRequiredForChildSplitMin,
+            cSamplesLeafMin,
             aAuxiliaryBinsBase,
             pTotalGain
 #ifndef NDEBUG
@@ -880,7 +880,7 @@ public:
          return PartitionTwoDimensionalBoostingTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
             pTerm,
-            cSamplesRequiredForChildSplitMin,
+            cSamplesLeafMin,
             aAuxiliaryBinsBase,
             pTotalGain
 #ifndef NDEBUG
@@ -900,7 +900,7 @@ public:
    INLINE_ALWAYS static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const size_t cSamplesRequiredForChildSplitMin,
+      const size_t cSamplesLeafMin,
       BinBase * aAuxiliaryBinsBase,
       double * const pTotalGain
 #ifndef NDEBUG
@@ -915,7 +915,7 @@ public:
       return PartitionTwoDimensionalBoostingInternal<k_dynamicClassification>::Func(
          pBoosterShell,
          pTerm,
-         cSamplesRequiredForChildSplitMin,
+         cSamplesLeafMin,
          aAuxiliaryBinsBase,
          pTotalGain
 #ifndef NDEBUG
@@ -928,7 +928,7 @@ public:
 extern ErrorEbmType PartitionTwoDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
-   const size_t cSamplesRequiredForChildSplitMin,
+   const size_t cSamplesLeafMin,
    BinBase * aAuxiliaryBinsBase,
    double * const pTotalGain
 #ifndef NDEBUG
@@ -942,7 +942,7 @@ extern ErrorEbmType PartitionTwoDimensionalBoosting(
       return PartitionTwoDimensionalBoostingTarget<2>::Func(
          pBoosterShell,
          pTerm,
-         cSamplesRequiredForChildSplitMin,
+         cSamplesLeafMin,
          aAuxiliaryBinsBase,
          pTotalGain
 #ifndef NDEBUG
@@ -954,7 +954,7 @@ extern ErrorEbmType PartitionTwoDimensionalBoosting(
       return PartitionTwoDimensionalBoostingInternal<k_regression>::Func(
          pBoosterShell,
          pTerm,
-         cSamplesRequiredForChildSplitMin,
+         cSamplesLeafMin,
          aAuxiliaryBinsBase,
          pTotalGain
 #ifndef NDEBUG

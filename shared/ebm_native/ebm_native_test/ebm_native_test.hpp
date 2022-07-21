@@ -218,7 +218,7 @@ public:
 static constexpr ptrdiff_t k_iZeroClassificationLogitDefault = ptrdiff_t { -1 };
 static constexpr IntEbmType k_countInnerBagsDefault = IntEbmType { 0 };
 static constexpr double k_learningRateDefault = double { 0.01 };
-static constexpr IntEbmType k_countSamplesRequiredForChildSplitMinDefault = IntEbmType { 1 };
+static constexpr IntEbmType k_minSamplesLeafDefault = IntEbmType { 1 };
 
 static constexpr IntEbmType k_leavesMaxFillDefault = 5;
 // 64 dimensions is the most we can express with a 64 bit IntEbmType
@@ -382,7 +382,7 @@ public:
       const IntEbmType indexTerm,
       const GenerateUpdateOptionsType options = GenerateUpdateOptions_Default,
       const double learningRate = k_learningRateDefault,
-      const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault,
+      const IntEbmType minSamplesLeaf = k_minSamplesLeafDefault,
       const std::vector<IntEbmType> leavesMax = k_leavesMaxDefault
    );
 
@@ -409,7 +409,7 @@ public:
    double TestCalcInteractionStrength(
       const std::vector<IntEbmType> features, 
       const InteractionOptionsType options = InteractionOptions_Default,
-      const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault
+      const IntEbmType minSamplesLeaf = k_minSamplesLeafDefault
    ) const;
 };
 

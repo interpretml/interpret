@@ -68,7 +68,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
    const size_t cSamplesTotal,
    const FloatBig weightTotal,
    const size_t iDimension,
-   const size_t cSamplesRequiredForChildSplitMin,
+   const size_t cSamplesLeafMin,
    const size_t cLeavesMax,
    double * const pTotalGain
 );
@@ -76,7 +76,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
 extern ErrorEbmType PartitionTwoDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
-   const size_t cSamplesRequiredForChildSplitMin,
+   const size_t cSamplesLeafMin,
    BinBase * aAuxiliaryBinsBase,
    double * const pTotalGain
 #ifndef NDEBUG
@@ -216,7 +216,7 @@ static ErrorEbmType BoostSingleDimensional(
    const size_t cBins,
    const SamplingSet * const pTrainingSet,
    const size_t iDimension,
-   const size_t cSamplesRequiredForChildSplitMin,
+   const size_t cSamplesLeafMin,
    const IntEbmType countLeavesMax,
    double * const pTotalGain
 ) {
@@ -322,7 +322,7 @@ static ErrorEbmType BoostSingleDimensional(
       cSamplesTotal,
       weightTotal,
       iDimension,
-      cSamplesRequiredForChildSplitMin,
+      cSamplesLeafMin,
       cLeavesMax, 
       pTotalGain
    );
@@ -338,7 +338,7 @@ static ErrorEbmType BoostMultiDimensional(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
    const SamplingSet * const pTrainingSet,
-   const size_t cSamplesRequiredForChildSplitMin,
+   const size_t cSamplesLeafMin,
    double * const pTotalGain
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostMultiDimensional");
@@ -581,7 +581,7 @@ static ErrorEbmType BoostMultiDimensional(
       error = PartitionTwoDimensionalBoosting(
          pBoosterShell,
          pTerm,
-         cSamplesRequiredForChildSplitMin,
+         cSamplesLeafMin,
          aAuxiliaryBins,
          pTotalGain
 #ifndef NDEBUG
@@ -736,7 +736,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
    const size_t iTerm,
    const GenerateUpdateOptionsType options,
    const double learningRate,
-   const size_t cSamplesRequiredForChildSplitMin,
+   const size_t cSamplesLeafMin,
    const IntEbmType * const aLeavesMax, 
    double * const pGainAvgOut
 ) {
@@ -827,9 +827,9 @@ static ErrorEbmType GenerateTermUpdateInternal(
          } else {
             double gain;
             if(0 != (GenerateUpdateOptions_RandomSplits & options) || 2 < cSignificantDimensions) {
-               if(size_t { 1 } != cSamplesRequiredForChildSplitMin) {
+               if(size_t { 1 } != cSamplesLeafMin) {
                   LOG_0(TraceLevelWarning,
-                     "WARNING GenerateTermUpdateInternal cSamplesRequiredForChildSplitMin is ignored when doing random splitting"
+                     "WARNING GenerateTermUpdateInternal cSamplesLeafMin is ignored when doing random splitting"
                   );
                }
                // THIS RANDOM SPLIT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
@@ -859,7 +859,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
                   cSignificantBinCount,
                   pSamplingSet,
                   iDimensionImportant,
-                  cSamplesRequiredForChildSplitMin,
+                  cSamplesLeafMin,
                   lastDimensionLeavesMax,
                   &gain
                );
@@ -874,7 +874,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
                   pBoosterShell,
                   pTerm,
                   pSamplingSet,
-                  cSamplesRequiredForChildSplitMin,
+                  cSamplesLeafMin,
                   &gain
                );
                if(Error_None != error) {
@@ -1021,7 +1021,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
    IntEbmType indexTerm,
    GenerateUpdateOptionsType options,
    double learningRate,
-   IntEbmType countSamplesRequiredForChildSplitMin,
+   IntEbmType minSamplesLeaf,
    const IntEbmType * leavesMax,
    double * avgGainOut
 ) {
@@ -1034,7 +1034,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       "indexTerm=%" IntEbmTypePrintf ", "
       "options=0x%" UGenerateUpdateOptionsTypePrintf ", "
       "learningRate=%le, "
-      "countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", "
+      "minSamplesLeaf=%" IntEbmTypePrintf ", "
       "leavesMax=%p, "
       "avgGainOut=%p"
       ,
@@ -1042,7 +1042,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       indexTerm,
       static_cast<UGenerateUpdateOptionsType>(options), // signed to unsigned conversion is defined behavior in C++
       learningRate,
-      countSamplesRequiredForChildSplitMin,
+      minSamplesLeaf,
       static_cast<const void *>(leavesMax),
       static_cast<void *>(avgGainOut)
    );
@@ -1109,16 +1109,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate learningRate is negative");
    }
 
-   size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
-   if(IntEbmType { 1 } <= countSamplesRequiredForChildSplitMin) {
-      cSamplesRequiredForChildSplitMin = static_cast<size_t>(countSamplesRequiredForChildSplitMin);
-      if(IsConvertError<size_t>(countSamplesRequiredForChildSplitMin)) {
+   size_t cSamplesLeafMin = size_t { 1 }; // this is the min value
+   if(IntEbmType { 1 } <= minSamplesLeaf) {
+      cSamplesLeafMin = static_cast<size_t>(minSamplesLeaf);
+      if(IsConvertError<size_t>(minSamplesLeaf)) {
          // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to overflow because it will generate 
          // the same results as if we used the true number
-         cSamplesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
+         cSamplesLeafMin = std::numeric_limits<size_t>::max();
       }
    } else {
-      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
+      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate minSamplesLeaf can't be less than 1.  Adjusting to 1.");
    }
 
    // leavesMax is handled in GenerateTermUpdateInternal
@@ -1146,7 +1146,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       iTerm,
       options,
       learningRate,
-      cSamplesRequiredForChildSplitMin,
+      cSamplesLeafMin,
       leavesMax,
       avgGainOut
    );

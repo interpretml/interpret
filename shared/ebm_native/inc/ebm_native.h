@@ -392,7 +392,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
    IntEbmType indexTerm,
    GenerateUpdateOptionsType options, 
    double learningRate, 
-   IntEbmType countSamplesRequiredForChildSplitMin, 
+   IntEbmType minSamplesLeaf, 
    const IntEbmType * leavesMax, 
    double * avgGainOut
 );
@@ -441,7 +441,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,
    InteractionOptionsType options,
-   IntEbmType countSamplesRequiredForChildSplitMin,
+   IntEbmType minSamplesLeaf,
    double * avgInteractionStrengthOut
 );
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION FreeInteractionDetector(

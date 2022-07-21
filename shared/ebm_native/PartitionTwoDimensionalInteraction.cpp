@@ -39,7 +39,7 @@ public:
       InteractionCore * const pInteractionCore,
       const Term * const pTerm,
       const InteractionOptionsType options,
-      const size_t cSamplesRequiredForChildSplitMin,
+      const size_t cSamplesLeafMin,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
 #ifndef NDEBUG
@@ -83,7 +83,7 @@ public:
       EBM_ASSERT(2 <= cBinsDimension1);
       EBM_ASSERT(2 <= cBinsDimension2);
 
-      EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
+      EBM_ASSERT(0 < cSamplesLeafMin);
 
 #ifndef NDEBUG
       bool bAnySplits = false;
@@ -116,7 +116,7 @@ public:
                , pBinsEndDebug
 #endif // NDEBUG
                );
-            if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals00->GetCountSamples())) {
+            if(LIKELY(cSamplesLeafMin <= pTotals00->GetCountSamples())) {
                EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                TensorTotalsSum<cCompilerClasses, 2>(
                   cClasses,
@@ -130,7 +130,7 @@ public:
                   , pBinsEndDebug
 #endif // NDEBUG
                   );
-               if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals01->GetCountSamples())) {
+               if(LIKELY(cSamplesLeafMin <= pTotals01->GetCountSamples())) {
                   EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                   TensorTotalsSum<cCompilerClasses, 2>(
                      cClasses,
@@ -144,7 +144,7 @@ public:
                      , pBinsEndDebug
 #endif // NDEBUG
                      );
-                  if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals10->GetCountSamples())) {
+                  if(LIKELY(cSamplesLeafMin <= pTotals10->GetCountSamples())) {
                      EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                      TensorTotalsSum<cCompilerClasses, 2>(
                         cClasses,
@@ -158,7 +158,7 @@ public:
                         , pBinsEndDebug
 #endif // NDEBUG
                         );
-                     if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals11->GetCountSamples())) {
+                     if(LIKELY(cSamplesLeafMin <= pTotals11->GetCountSamples())) {
 #ifndef NDEBUG
                         bAnySplits = true;
 #endif // NDEBUG
@@ -394,7 +394,7 @@ public:
       InteractionCore * const pInteractionCore,
       const Term * const pTerm,
       const InteractionOptionsType options,
-      const size_t cSamplesRequiredForChildSplitMin,
+      const size_t cSamplesLeafMin,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
 #ifndef NDEBUG
@@ -414,7 +414,7 @@ public:
             pInteractionCore,
             pTerm,
             options,
-            cSamplesRequiredForChildSplitMin,
+            cSamplesLeafMin,
             aAuxiliaryBinsBase,
             aBinsBase
 #ifndef NDEBUG
@@ -427,7 +427,7 @@ public:
             pInteractionCore,
             pTerm,
             options,
-            cSamplesRequiredForChildSplitMin,
+            cSamplesLeafMin,
             aAuxiliaryBinsBase,
             aBinsBase
 #ifndef NDEBUG
@@ -449,7 +449,7 @@ public:
       InteractionCore * const pInteractionCore,
       const Term * const pTerm,
       const InteractionOptionsType options,
-      const size_t cSamplesRequiredForChildSplitMin,
+      const size_t cSamplesLeafMin,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
 #ifndef NDEBUG
@@ -466,7 +466,7 @@ public:
          pInteractionCore,
          pTerm,
          options,
-         cSamplesRequiredForChildSplitMin,
+         cSamplesLeafMin,
          aAuxiliaryBinsBase,
          aBinsBase
 #ifndef NDEBUG
@@ -481,7 +481,7 @@ extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
    const Term * const pTerm,
    const InteractionOptionsType options,
-   const size_t cSamplesRequiredForChildSplitMin,
+   const size_t cSamplesLeafMin,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
 #ifndef NDEBUG
@@ -496,7 +496,7 @@ extern double PartitionTwoDimensionalInteraction(
          pInteractionCore,
          pTerm,
          options,
-         cSamplesRequiredForChildSplitMin,
+         cSamplesLeafMin,
          aAuxiliaryBinsBase,
          aBinsBase
 #ifndef NDEBUG
@@ -510,7 +510,7 @@ extern double PartitionTwoDimensionalInteraction(
          pInteractionCore,
          pTerm,
          options,
-         cSamplesRequiredForChildSplitMin,
+         cSamplesLeafMin,
          aAuxiliaryBinsBase,
          aBinsBase
 #ifndef NDEBUG

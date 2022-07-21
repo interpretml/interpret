@@ -897,7 +897,7 @@ class Native:
             ct.c_int64,
             # double learningRate
             ct.c_double,
-            # int64_t countSamplesRequiredForChildSplitMin
+            # int64_t minSamplesLeaf
             ct.c_int64,
             # int64_t * leavesMax
             ct.c_void_p,
@@ -994,7 +994,7 @@ class Native:
             ct.c_void_p,
             # InteractionOptionsType options 
             ct.c_int64,
-            # int64_t countSamplesRequiredForChildSplitMin
+            # int64_t minSamplesLeaf
             ct.c_int64,
             # double * avgInteractionStrengthOut
             ct.POINTER(ct.c_double),

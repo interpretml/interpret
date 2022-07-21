@@ -102,18 +102,18 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    BoosterShell * const pBoosterShell,
    TreeNode<IsClassification(cCompilerClasses)> * pTreeNode,
    TreeNode<IsClassification(cCompilerClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur,
-   const size_t cSamplesRequiredForChildSplitMin
+   const size_t cSamplesLeafMin
 ) {
    constexpr bool bClassification = IsClassification(cCompilerClasses);
 
    LOG_N(
       TraceLevelVerbose,
       "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pBoosterShell=%p, pTreeNode=%p, "
-      "pTreeNodeChildrenAvailableStorageSpaceCur=%p, cSamplesRequiredForChildSplitMin=%zu",
+      "pTreeNodeChildrenAvailableStorageSpaceCur=%p, cSamplesLeafMin=%zu",
       static_cast<const void *>(pBoosterShell),
       static_cast<void *>(pTreeNode),
       static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur),
-      cSamplesRequiredForChildSplitMin
+      cSamplesLeafMin
    );
    constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
 
@@ -180,14 +180,14 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    EBM_ASSERT(0 <= k_gainMin);
    FloatBig BEST_gain = k_gainMin; // it must at least be this, and maybe it needs to be more
-   EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
+   EBM_ASSERT(0 < cSamplesLeafMin);
    EBM_ASSERT(pBinLast != pBinCur); // we wouldn't call this function on a non-splittable node
    do {
       ASSERT_BIN_OK(cBytesPerBin, pBinCur, pBoosterShell->GetBinsBigEndDebug());
 
       const size_t CHANGE_cSamples = pBinCur->GetCountSamples();
       cSamplesRight -= CHANGE_cSamples;
-      if(UNLIKELY(cSamplesRight < cSamplesRequiredForChildSplitMin)) {
+      if(UNLIKELY(cSamplesRight < cSamplesLeafMin)) {
          break; // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
       }
       cSamplesLeft += CHANGE_cSamples;
@@ -199,7 +199,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
       const auto * pGradientPair = pBinCur->GetGradientPairs();
 
-      if(LIKELY(cSamplesRequiredForChildSplitMin <= cSamplesLeft)) {
+      if(LIKELY(cSamplesLeafMin <= cSamplesLeft)) {
          EBM_ASSERT(0 < cSamplesRight);
          EBM_ASSERT(0 < cSamplesLeft);
 
@@ -457,7 +457,7 @@ public:
       const size_t cSamplesTotal,
       const FloatBig weightTotal,
       const size_t iDimension,
-      const size_t cSamplesRequiredForChildSplitMin,
+      const size_t cSamplesLeafMin,
       const size_t cLeavesMax,
       double * const pTotalGain
    ) {
@@ -543,7 +543,7 @@ public:
          pBoosterShell,
          pRootTreeNode,
          AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
-         cSamplesRequiredForChildSplitMin
+         cSamplesLeafMin
       );
       if(UNLIKELY(0 != retExamine)) {
          // there will be no splits at all
@@ -769,7 +769,7 @@ public:
                   pBoosterShell,
                   pLeftChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
-                  cSamplesRequiredForChildSplitMin
+                  cSamplesLeafMin
                )) {
                   pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
                   // our priority queue comparison function cannot handle NaN gains so we filter out before
@@ -823,7 +823,7 @@ public:
                   pBoosterShell,
                   pRightChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
-                  cSamplesRequiredForChildSplitMin
+                  cSamplesLeafMin
                )) {
                   pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
                   // our priority queue comparison function cannot handle NaN gains so we filter out before
@@ -913,7 +913,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
    const size_t cSamplesTotal,
    const FloatBig weightTotal,
    const size_t iDimension,
-   const size_t cSamplesRequiredForChildSplitMin,
+   const size_t cSamplesLeafMin,
    const size_t cLeavesMax,
    double * const pTotalGain
 ) {
@@ -932,7 +932,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
             cSamplesTotal,
             weightTotal,
             iDimension,
-            cSamplesRequiredForChildSplitMin,
+            cSamplesLeafMin,
             cLeavesMax,
             pTotalGain
          );
@@ -943,7 +943,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
             cSamplesTotal,
             weightTotal,
             iDimension,
-            cSamplesRequiredForChildSplitMin,
+            cSamplesLeafMin,
             cLeavesMax,
             pTotalGain
          );
@@ -956,7 +956,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
          cSamplesTotal,
          weightTotal,
          iDimension,
-         cSamplesRequiredForChildSplitMin,
+         cSamplesLeafMin,
          cLeavesMax,
          pTotalGain
       );

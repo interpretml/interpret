@@ -697,7 +697,7 @@ BoostRet TestApi::Boost(
    const IntEbmType indexTerm,
    const GenerateUpdateOptionsType options,
    const double learningRate,
-   const IntEbmType countSamplesRequiredForChildSplitMin,
+   const IntEbmType minSamplesLeaf,
    const std::vector<IntEbmType> leavesMax
 ) {
    ErrorEbmType error;
@@ -717,7 +717,7 @@ BoostRet TestApi::Boost(
    if(std::isinf(learningRate)) {
       exit(1);
    }
-   if(countSamplesRequiredForChildSplitMin < double { 0 }) {
+   if(minSamplesLeaf < double { 0 }) {
       exit(1);
    }
 
@@ -729,7 +729,7 @@ BoostRet TestApi::Boost(
       indexTerm,
       options,
       learningRate,
-      countSamplesRequiredForChildSplitMin,
+      minSamplesLeaf,
       0 == leavesMax.size() ? nullptr : &leavesMax[0],
       &gainAvg
    );
@@ -1087,7 +1087,7 @@ void TestApi::InitializeInteraction() {
 double TestApi::TestCalcInteractionStrength(
    const std::vector<IntEbmType> features, 
    const InteractionOptionsType options,
-   const IntEbmType countSamplesRequiredForChildSplitMin
+   const IntEbmType minSamplesLeaf
 ) const {
    ErrorEbmType error;
 
@@ -1109,7 +1109,7 @@ double TestApi::TestCalcInteractionStrength(
       features.size(),
       0 == features.size() ? nullptr : &features[0],
       options,
-      countSamplesRequiredForChildSplitMin,
+      minSamplesLeaf,
       &avgInteractionStrength
    );
    if(Error_None != error) {

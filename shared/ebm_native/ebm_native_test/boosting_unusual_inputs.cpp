@@ -196,7 +196,7 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
    CHECK_APPROX_TOLERANCE(termScore, 1.23185585569831419, double { 1e-1 });
 }
 
-TEST_CASE("zero countSamplesRequiredForChildSplitMin, boosting, regression") {
+TEST_CASE("zero minSamplesLeaf, boosting, regression") {
    // TODO : call test.Boost many more times in a loop, and verify the output remains the same as previous runs
    // TODO : add classification binary and multiclass versions of this
 
@@ -540,7 +540,7 @@ TEST_CASE("one leavesMax, boosting, regression") {
    test.AddValidationSamples({ TestSample({ 1 }, 12) });
    test.InitializeBoosting();
 
-   double validationMetric = test.Boost(0, GenerateUpdateOptions_Default, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax).validationMetric;
+   double validationMetric = test.Boost(0, GenerateUpdateOptions_Default, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax).validationMetric;
    CHECK_APPROX(validationMetric, 141.61);
    double termScore;
    termScore = test.GetCurrentTermScore(0, { 0 }, 0);
@@ -1208,7 +1208,7 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         double validationMetric = test.Boost(iTerm, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax).validationMetric;
+         double validationMetric = test.Boost(iTerm, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax).validationMetric;
          if(0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.0340957641601563f, double { 1e-1 });
 
@@ -1243,7 +1243,7 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         double validationMetric = test.Boost(iTerm, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_GradientSums, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax).validationMetric;
+         double validationMetric = test.Boost(iTerm, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_GradientSums, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax).validationMetric;
          if(0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.0986122886681098, double { 1e-1 });
 
@@ -1434,7 +1434,7 @@ TEST_CASE("Random splitting, pure tripples, regression") {
 
 TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
    constexpr IntEbmType k_cStates = 7;
-   constexpr IntEbmType k_countSamplesRequiredForChildSplitMin = 1;
+   constexpr IntEbmType k_minSamplesLeaf = 1;
    static const std::vector<IntEbmType> k_leavesMax = {
       IntEbmType { 1 },
       IntEbmType { 1 },
@@ -1470,7 +1470,7 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
             iTerm, 
             GenerateUpdateOptions_RandomSplits, 
             k_learningRateDefault,
-            k_countSamplesRequiredForChildSplitMin,
+            k_minSamplesLeaf,
             k_leavesMax
          ).validationMetric;
       }
@@ -1522,7 +1522,7 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
    double validationMetric = 0;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric = test.Boost(iTerm, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_GradientSums, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax).validationMetric;
+         validationMetric = test.Boost(iTerm, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_GradientSums, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax).validationMetric;
          if(0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529, double { 1e-1 });
 
