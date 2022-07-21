@@ -210,9 +210,6 @@ EBM_API_INCLUDE SeedEbmType EBM_CALLING_CONVENTION GenerateDeterministicSeed(
    SeedEbmType randomSeed,
    SeedEbmType stageRandomizationMix
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GenerateNondeterministicSeed(
-   SeedEbmType * randomSeedOut
-);
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
    BoolEbmType isDeterministic,
    SeedEbmType randomSeed,
@@ -363,6 +360,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
 );
 
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
+   BoolEbmType isDeterministic,
    SeedEbmType randomSeed,
    IntEbmType countClasses,
    IntEbmType countTrainingSamples,
@@ -372,6 +370,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutRep
 );
 
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
+   BoolEbmType isDeterministic,
    SeedEbmType randomSeed,
    const void * dataSet,
    const BagEbmType * bag,

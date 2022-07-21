@@ -74,6 +74,7 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
       }
 
       error = StratifiedSamplingWithoutReplacement(
+         EBM_TRUE,
          randomSeed,
          cClassSize,
          cTrainingSamples,

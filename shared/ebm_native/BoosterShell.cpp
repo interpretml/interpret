@@ -15,6 +15,7 @@
 #include "ebm_internal.hpp"
 
 #include "RandomStream.hpp"
+#include "RandomNondeterministic.hpp"
 
 #include "CompressibleTensor.hpp"
 
@@ -178,6 +179,7 @@ ErrorEbmType BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
 }
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
+   BoolEbmType isDeterministic,
    SeedEbmType randomSeed,
    const void * dataSet,
    const BagEbmType * bag,
@@ -192,6 +194,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
    LOG_N(
       TraceLevelInfo,
       "Entered CreateBooster: "
+      "isDeterministic=%s, "
       "randomSeed=%" SeedEbmTypePrintf ", "
       "dataSet=%p, "
       "bag=%p, "
@@ -203,6 +206,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
       "optionalTempParams=%p, "
       "boosterHandleOut=%p"
       ,
+      ObtainTruth(isDeterministic),
       randomSeed,
       static_cast<const void *>(dataSet),
       static_cast<const void *>(bag),
@@ -259,6 +263,31 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
 
    size_t cTerms = static_cast<size_t>(countTerms);
    size_t cInnerBags = static_cast<size_t>(countInnerBags);
+
+   if(EBM_FALSE == isDeterministic) {
+      // We use the seed for three things during boosting, and none of them requires
+      // a cryptographically secure random number generator. We use the seed for:
+      //   - Creating inner bags. Inner bags are not used in DP-EBMs
+      //   - Deciding ties in regular boosting, but we use random boosting in DP-EBMs, which doesn't have ties
+      //   - Deciding split points during random boosting. The DP-EBM proof doesn't rely on the perfect 
+      //     randomness of the chosen split points.It only relies on the fact that the splits are
+      //     chosen independently of the data.We could allow an attacker to choose the split points,
+      //     and privacy would be preserved provided the attacker was not able to look at the data when
+      //     choosing the splits.
+      //
+      // Since we do not need high-quality non-determinism, generate a non-deterministic seed
+
+      try {
+         RandomNondeterministic<uint32_t> randomGenerator;
+         randomSeed = randomGenerator.NextSeed();
+      } catch(const std::bad_alloc &) {
+         LOG_0(TraceLevelWarning, "WARNING CreateBooster Out of memory in std::random_device");
+         return Error_OutOfMemory;
+      } catch(...) {
+         LOG_0(TraceLevelWarning, "WARNING CreateBooster Unknown error in std::random_device");
+         return Error_UnexpectedInternal;
+      }
+   }
 
    BoosterShell * const pBoosterShell = BoosterShell::Create();
    if(UNLIKELY(nullptr == pBoosterShell)) {

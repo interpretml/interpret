@@ -37,7 +37,6 @@
       SuggestGraphBounds;
       CleanFloats;
       GenerateDeterministicSeed;
-      GenerateNondeterministicSeed;
       GenerateGaussianRandom;
       SampleWithoutReplacement;
       StratifiedSamplingWithoutReplacement;

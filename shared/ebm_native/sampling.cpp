@@ -47,29 +47,6 @@ EBM_API_BODY SeedEbmType EBM_CALLING_CONVENTION GenerateDeterministicSeed(
    return ret;
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateNondeterministicSeed(
-   SeedEbmType * randomSeedOut
-) {
-   if(UNLIKELY(nullptr == randomSeedOut)) {
-      LOG_0(TraceLevelError, "ERROR GenerateNondeterministicSeed nullptr == randomSeedOut");
-      return Error_IllegalParamValue;
-   }
-
-   try {
-      RandomNondeterministic<uint32_t> randomGenerator;
-      const SeedEbmType ret = randomGenerator.NextSeed();
-      *randomSeedOut = ret;
-   } catch(const std::bad_alloc &) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateNondeterministicSeed Out of memory in std::random_device");
-      return Error_OutOfMemory;
-   } catch(...) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateNondeterministicSeed Unknown error in std::random_device");
-      return Error_UnexpectedInternal;
-   }
-   return Error_None;
-}
-
-
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
 static int g_cLogEnterSampleWithoutReplacementParametersMessages = 5;
 static int g_cLogExitSampleWithoutReplacementParametersMessages = 5;
@@ -190,6 +167,7 @@ WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
+   BoolEbmType isDeterministic,
    SeedEbmType randomSeed,
    IntEbmType countClasses,
    IntEbmType countTrainingSamples,
@@ -207,6 +185,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered StratifiedSamplingWithoutReplacement: "
+      "isDeterministic=%s, "
       "randomSeed=%" SeedEbmTypePrintf ", "
       "countClasses=%" IntEbmTypePrintf ", "
       "countTrainingSamples=%" IntEbmTypePrintf ", "
@@ -214,6 +193,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
       "targets=%p, "
       "sampleCountsOut=%p"
       ,
+      ObtainTruth(isDeterministic),
       randomSeed,
       countClasses,
       countTrainingSamples,
@@ -289,6 +269,21 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
 
    if (UNLIKELY(cValidationSamples < cClasses)) {
       LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement cValidationSamples < cClasses");
+   }
+
+   if(EBM_FALSE == isDeterministic) {
+      // StratifiedSamplingWithoutReplacement is not called when building a differentially private model, so
+      // we can use low-quality non-determinism.  Generate a non-deterministic seed
+      try {
+         RandomNondeterministic<uint32_t> randomGenerator;
+         randomSeed = randomGenerator.NextSeed();
+      } catch(const std::bad_alloc &) {
+         LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement Out of memory in std::random_device");
+         return Error_OutOfMemory;
+      } catch(...) {
+         LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement Unknown error in std::random_device");
+         return Error_UnexpectedInternal;
+      }
    }
 
    const size_t targetSamplingCountsSize = sizeof(TargetSamplingCounts) * cClasses;

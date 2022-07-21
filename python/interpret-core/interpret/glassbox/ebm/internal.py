@@ -173,15 +173,6 @@ class Native:
             return None
         return self._unsafe.GenerateDeterministicSeed(random_seed, stage_randomization_mix)
 
-    def generate_nondeterministic_seed(self):
-        random_seed = ct.c_int32(0)
-        return_code = self._unsafe.GenerateNondeterministicSeed(ct.byref(random_seed))
-
-        if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "GenerateNondeterministicSeed")
-
-        return random_seed.value
-
     def generate_gaussian_random(self, random_seed, stddev, count):
         is_deterministic = random_seed is not None
         random_seed = 0 if random_seed is None else random_seed
@@ -206,9 +197,10 @@ class Native:
         count_training_samples,
         count_validation_samples
     ):
-        count_samples = count_training_samples + count_validation_samples
         is_deterministic = random_seed is not None
         random_seed = 0 if random_seed is None else random_seed
+
+        count_samples = count_training_samples + count_validation_samples
         count_training_samples = ct.c_int64(count_training_samples)
         count_validation_samples = ct.c_int64(count_validation_samples)
 
@@ -235,15 +227,13 @@ class Native:
         count_validation_samples,
         targets
     ):
+        is_deterministic = random_seed is not None
+        random_seed = 0 if random_seed is None else random_seed
+
         count_samples = count_training_samples + count_validation_samples
 
         if len(targets) != count_samples:
             raise ValueError("count_training_samples + count_validation_samples should be equal to len(targets)")
-
-        if random_seed is None:
-            # We don't call this function in differential privacy, so use a non-deterministic seed
-            # to generate non-deterministic outputs since it doesn't need to be cryptographically secure
-            random_seed = self.generate_nondeterministic_seed()
 
         n_classes = ct.c_int64(n_classes)
         count_training_samples = ct.c_int64(count_training_samples)
@@ -252,6 +242,7 @@ class Native:
         sample_counts_out = np.empty(count_samples, dtype=np.int8, order="C")
 
         return_code = self._unsafe.StratifiedSamplingWithoutReplacement(
+            is_deterministic,
             random_seed,
             n_classes,
             count_training_samples,
@@ -588,12 +579,6 @@ class Native:
         ]
         self._unsafe.GenerateDeterministicSeed.restype = ct.c_int32
 
-        self._unsafe.GenerateNondeterministicSeed.argtypes = [
-            # int32_t * randomSeedOut
-            ct.POINTER(ct.c_int32),
-        ]
-        self._unsafe.GenerateNondeterministicSeed.restype = ct.c_int32
-
         self._unsafe.GenerateGaussianRandom.argtypes = [
             # int64_t isDeterministic
             ct.c_int64,
@@ -623,6 +608,8 @@ class Native:
         self._unsafe.SampleWithoutReplacement.restype = ct.c_int32
 
         self._unsafe.StratifiedSamplingWithoutReplacement.argtypes = [
+            # int64_t isDeterministic
+            ct.c_int64,
             # int32_t randomSeed
             ct.c_int32,
             # int64_t countClasses
@@ -883,6 +870,8 @@ class Native:
 
 
         self._unsafe.CreateBooster.argtypes = [
+            # int64_t isDeterministic
+            ct.c_int64,
             # int32_t randomSeed
             ct.c_int32,
             # void * dataSet
@@ -1117,25 +1106,13 @@ class Booster(AbstractContextManager):
             if self.init_scores.shape[0] != n_scores:  # pragma: no cover
                 raise ValueError("init_scores should have the same length as the number of non-zero bag entries")
 
-        random_seed = self.random_state
-        if random_seed is None:
-            # We use the seed for three things during boosting, and none of them requires 
-            # a cryptographically secure random number generator.  We use the seed for:
-            #   - Creating inner bags. Inner bags are not used in DP-EBMs
-            #   - Deciding ties in regular boosting, but we use random boosting in DP-EBMs, which doesn't have ties
-            #   - Deciding split points during random boosting. The DP-EBM proof doesn't rely on the perfect 
-            #     randomness of the chosen split points. It only relies on the fact that the splits are 
-            #     chosen independently of the data. We could allow an attacker to choose the split points, 
-            #     and privacy would be preserved provided the attacker was not able to look at the data when 
-            #     choosing the splits.
-            #
-            # Since we do not need high-quality non-determinism, generate a non-deterministic seed
-            #
-            random_seed = native.generate_nondeterministic_seed()
+        is_deterministic = self.random_state is not None
+        random_seed = 0 if self.random_state is None else self.random_state
 
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateBooster(
+            is_deterministic,
             random_seed,
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
