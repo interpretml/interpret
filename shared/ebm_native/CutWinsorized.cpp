@@ -30,8 +30,8 @@ extern double ArithmeticMean(
 ) noexcept;
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterCutWinsorizedParametersMessages = 25;
-static int g_cLogExitCutWinsorizedParametersMessages = 25;
+static int g_cLogEnterCutWinsorized = 25;
+static int g_cLogExitCutWinsorized = 25;
 
 // TODO: add this as a python/R option "winsorized"
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
@@ -41,7 +41,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
    double * cutsLowerBoundInclusiveOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogEnterCutWinsorizedParametersMessages,
+      &g_cLogEnterCutWinsorized,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered CutWinsorized: "
@@ -405,7 +405,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
    }
 
    LOG_COUNTED_N(
-      &g_cLogExitCutWinsorizedParametersMessages,
+      &g_cLogExitCutWinsorized,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Exited CutWinsorized: "

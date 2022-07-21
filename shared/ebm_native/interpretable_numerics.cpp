@@ -1328,15 +1328,15 @@ static double Mean(const size_t cSamples, const double * const aFeatureVals, con
 }
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterGetHistogramCutCountParametersMessages = 25;
-static int g_cLogExitGetHistogramCutCountParametersMessages = 25;
+static int g_cLogEnterGetHistogramCutCount = 25;
+static int g_cLogExitGetHistogramCutCount = 25;
 
 EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
    IntEbmType countSamples,
    const double * featureVals
 ) {
    LOG_COUNTED_N(
-      &g_cLogEnterGetHistogramCutCountParametersMessages,
+      &g_cLogEnterGetHistogramCutCount,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered GetHistogramCutCount: "
@@ -1397,7 +1397,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
    }
 
    LOG_COUNTED_N(
-      &g_cLogExitGetHistogramCutCountParametersMessages,
+      &g_cLogExitGetHistogramCutCount,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Exited GetHistogramCutCount: "

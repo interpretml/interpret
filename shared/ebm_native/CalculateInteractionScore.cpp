@@ -273,7 +273,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
 
 // there is a race condition for decrementing this variable, but if a thread loses the 
 // race then it just doesn't get decremented as quickly, which we can live with
-static int g_cLogCalcInteractionStrengthParametersMessages = 10;
+static int g_cLogCalcInteractionStrength = 10;
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
    InteractionHandle interactionHandle,
@@ -284,7 +284,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
    double * avgInteractionStrengthOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogCalcInteractionStrengthParametersMessages,
+      &g_cLogCalcInteractionStrength,
       TraceLevelInfo,
       TraceLevelVerbose,
       "CalcInteractionStrength: "

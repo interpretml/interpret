@@ -20,8 +20,8 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterGenerateGaussianRandomCountParametersMessages = 25;
-static int g_cLogExitGenerateGaussianRandomCountParametersMessages = 25;
+static int g_cLogEnterGenerateGaussianRandom = 25;
+static int g_cLogExitGenerateGaussianRandom = 25;
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
    BoolEbmType isDeterministic,
@@ -31,7 +31,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
    double * randomOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogEnterGenerateGaussianRandomCountParametersMessages,
+      &g_cLogEnterGenerateGaussianRandom,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered GenerateGaussianRandom: "
@@ -54,7 +54,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
          return Error_IllegalParamValue;
       } else {
          LOG_COUNTED_0(
-            &g_cLogExitGenerateGaussianRandomCountParametersMessages,
+            &g_cLogExitGenerateGaussianRandom,
             TraceLevelInfo,
             TraceLevelVerbose,
             "GenerateGaussianRandom zero items requested");
@@ -119,7 +119,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
    }
 
    LOG_COUNTED_0(
-      &g_cLogExitGenerateGaussianRandomCountParametersMessages,
+      &g_cLogExitGenerateGaussianRandom,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Exited GenerateGaussianRandom");

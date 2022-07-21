@@ -215,8 +215,8 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION BinFeatureOneSample(
 }
 
 // don't bother using a lock here.  We don't care if an extra log message is written out due to thread parallism
-static int g_cLogEnterBinFeatureParametersMessages = 25;
-static int g_cLogExitBinFeatureParametersMessages = 25;
+static int g_cLogEnterBinFeature = 25;
+static int g_cLogExitBinFeature = 25;
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
    IntEbmType countSamples,
@@ -272,7 +272,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
    //         after that as a special case
 
    LOG_COUNTED_N(
-      &g_cLogEnterBinFeatureParametersMessages,
+      &g_cLogEnterBinFeature,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered BinFeature: "
@@ -1016,7 +1016,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 exit_with_log:;
 
    LOG_COUNTED_N(
-      &g_cLogExitBinFeatureParametersMessages,
+      &g_cLogExitBinFeature,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Exited BinFeature: "

@@ -1013,7 +1013,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
 // we made this a global because if we had put this variable inside the BoosterCore object, then we would need to dereference that before getting 
 // the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us we only decrease the count if the 
 // count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
-static int g_cLogGenerateTermUpdateParametersMessages = 10;
+static int g_cLogGenerateTermUpdate = 10;
 
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
@@ -1026,7 +1026,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
    double * avgGainOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogGenerateTermUpdateParametersMessages,
+      &g_cLogGenerateTermUpdate,
       TraceLevelInfo,
       TraceLevelVerbose,
       "GenerateTermUpdate: "

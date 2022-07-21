@@ -48,8 +48,8 @@ EBM_API_BODY SeedEbmType EBM_CALLING_CONVENTION GenerateSeed(
 }
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterSampleWithoutReplacementParametersMessages = 5;
-static int g_cLogExitSampleWithoutReplacementParametersMessages = 5;
+static int g_cLogEnterSampleWithoutReplacement = 5;
+static int g_cLogExitSampleWithoutReplacement = 5;
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
    BoolEbmType isDeterministic,
@@ -59,7 +59,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
    BagEbmType * sampleCountsOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogEnterSampleWithoutReplacementParametersMessages,
+      &g_cLogEnterSampleWithoutReplacement,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered SampleWithoutReplacement: "
@@ -151,7 +151,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
    EBM_ASSERT(0 == cTrainingRemaining); // this should be all used up too now
 
    LOG_COUNTED_0(
-      &g_cLogExitSampleWithoutReplacementParametersMessages,
+      &g_cLogExitSampleWithoutReplacement,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Exited SampleWithoutReplacement"
@@ -160,8 +160,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
 }
 
 
-static int g_cLogEnterStratifiedSamplingWithoutReplacementParametersMessages = 5;
-static int g_cLogExitStratifiedSamplingWithoutReplacementParametersMessages = 5;
+static int g_cLogEnterStratifiedSamplingWithoutReplacement = 5;
+static int g_cLogExitStratifiedSamplingWithoutReplacement = 5;
 
 WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
@@ -181,7 +181,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
    };
 
    LOG_COUNTED_N(
-      &g_cLogEnterStratifiedSamplingWithoutReplacementParametersMessages,
+      &g_cLogEnterStratifiedSamplingWithoutReplacement,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered StratifiedSamplingWithoutReplacement: "
@@ -471,7 +471,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
    free(pMostImprovedClasses);
 
    LOG_COUNTED_0(
-      &g_cLogExitStratifiedSamplingWithoutReplacementParametersMessages,
+      &g_cLogExitStratifiedSamplingWithoutReplacement,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Exited StratifiedSamplingWithoutReplacement"

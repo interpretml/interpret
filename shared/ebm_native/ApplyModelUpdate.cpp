@@ -137,7 +137,7 @@ static ErrorEbmType ApplyTermUpdateInternal(
 // getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static int g_cLogApplyTermUpdateParametersMessages = 10;
+static int g_cLogApplyTermUpdate = 10;
 
 // TODO: validationMetricOut should be an average
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
@@ -145,7 +145,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
    double * validationMetricOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogApplyTermUpdateParametersMessages,
+      &g_cLogApplyTermUpdate,
       TraceLevelInfo,
       TraceLevelVerbose,
       "ApplyTermUpdate: "
@@ -244,7 +244,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
 // getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static int g_cLogGetTermUpdateSplitsParametersMessages = 10;
+static int g_cLogGetTermUpdateSplits = 10;
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
    BoosterHandle boosterHandle,
@@ -253,7 +253,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
    IntEbmType * splitIndexesOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogGetTermUpdateSplitsParametersMessages,
+      &g_cLogGetTermUpdateSplits,
       TraceLevelInfo,
       TraceLevelVerbose,
       "GetTermUpdateSplits: "
@@ -345,14 +345,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
 // getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static int g_cLogGetTermUpdateParametersMessages = 10;
+static int g_cLogGetTermUpdate = 10;
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdate(
    BoosterHandle boosterHandle,
    double * updateScoresTensorOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogGetTermUpdateParametersMessages,
+      &g_cLogGetTermUpdate,
       TraceLevelInfo,
       TraceLevelVerbose,
       "GetTermUpdate: "
@@ -417,7 +417,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdate(
 // getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static int g_cLogSetTermUpdateParametersMessages = 10;
+static int g_cLogSetTermUpdate = 10;
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdate(
    BoosterHandle boosterHandle,
@@ -425,7 +425,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdate(
    double * updateScoresTensor
 ) {
    LOG_COUNTED_N(
-      &g_cLogSetTermUpdateParametersMessages,
+      &g_cLogSetTermUpdate,
       TraceLevelInfo,
       TraceLevelVerbose,
       "SetTermUpdate: "

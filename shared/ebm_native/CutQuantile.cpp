@@ -2448,8 +2448,8 @@ INLINE_RELEASE_UNTEMPLATED static size_t GetUncuttableRangeLengthMin(
 }
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterCutQuantileParametersMessages = 25;
-static int g_cLogExitCutQuantileParametersMessages = 25;
+static int g_cLogEnterCutQuantile = 25;
+static int g_cLogExitCutQuantile = 25;
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
    IntEbmType countSamples,
@@ -2466,7 +2466,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
    const SeedEbmType seed = SeedEbmType { 1260428135 };
 
    LOG_COUNTED_N(
-      &g_cLogEnterCutQuantileParametersMessages,
+      &g_cLogEnterCutQuantile,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered CutQuantile: "
@@ -3230,7 +3230,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
    }
 
    LOG_COUNTED_N(
-      &g_cLogExitCutQuantileParametersMessages,
+      &g_cLogExitCutQuantile,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Exited CutQuantile: "
