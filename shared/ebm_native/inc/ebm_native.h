@@ -402,11 +402,11 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
    IntEbmType * countSplitsInOut,
    IntEbmType * splitIndexesOut
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateExpanded(
+EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdate(
    BoosterHandle boosterHandle,
    double * updateScoresTensorOut
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdateExpanded(
+EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdate(
    BoosterHandle boosterHandle,
    IntEbmType indexTerm,
    double * updateScoresTensor

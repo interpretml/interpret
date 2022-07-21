@@ -1158,7 +1158,7 @@ class EBMUtils:
                     if noise_scale: # Differentially private updates
                         splits = booster.get_term_update_splits()[0]
 
-                        term_update_tensor = booster.get_term_update_expanded()
+                        term_update_tensor = booster.get_term_update()
                         noisy_update_tensor = term_update_tensor.copy()
 
                         splits_iter = [0] + list(splits + 1) + [len(term_update_tensor)] # Make splits iteration friendly
@@ -1177,7 +1177,7 @@ class EBMUtils:
                             noisy_update_tensor[f:s] = noisy_update_tensor[f:s] / instance_weight
 
                         noisy_update_tensor = noisy_update_tensor * -1 # Invert gradients before updates
-                        booster.set_term_update_expanded(term_idx, noisy_update_tensor)
+                        booster.set_term_update(term_idx, noisy_update_tensor)
 
 
                     curr_metric = booster.apply_term_update()

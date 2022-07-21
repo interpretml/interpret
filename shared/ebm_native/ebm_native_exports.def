@@ -21,8 +21,8 @@ EXPORTS
   CreateBoosterView
   GenerateTermUpdate
   GetTermUpdateSplits
-  GetTermUpdateExpanded
-  SetTermUpdateExpanded
+  GetTermUpdate
+  SetTermUpdate
   ApplyTermUpdate
   GetBestTermScores
   GetCurrentTermScores

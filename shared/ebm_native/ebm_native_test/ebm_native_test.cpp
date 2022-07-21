@@ -750,7 +750,7 @@ BoostRet TestApi::Boost(
       double * aUpdateScores = new double[cUpdateScores];
       memset(aUpdateScores, 0, sizeof(*aUpdateScores) * cUpdateScores);
 
-      error = SetTermUpdateExpanded(
+      error = SetTermUpdate(
          m_boosterHandle,
          indexTerm,
          aUpdateScores

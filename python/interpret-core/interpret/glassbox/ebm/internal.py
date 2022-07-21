@@ -918,15 +918,15 @@ class Native:
         ]
         self._unsafe.GetTermUpdateSplits.restype = ct.c_int32
 
-        self._unsafe.GetTermUpdateExpanded.argtypes = [
+        self._unsafe.GetTermUpdate.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
             # double * updateScoresTensorOut
             ct.c_void_p,
         ]
-        self._unsafe.GetTermUpdateExpanded.restype = ct.c_int32
+        self._unsafe.GetTermUpdate.restype = ct.c_int32
 
-        self._unsafe.SetTermUpdateExpanded.argtypes = [
+        self._unsafe.SetTermUpdate.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
             # int64_t indexTerm
@@ -934,7 +934,7 @@ class Native:
             # double * updateScoresTensor
             ct.c_void_p,
         ]
-        self._unsafe.SetTermUpdateExpanded.restype = ct.c_int32
+        self._unsafe.SetTermUpdate.restype = ct.c_int32
 
         self._unsafe.ApplyTermUpdate.argtypes = [
             # void * boosterHandle
@@ -1348,7 +1348,7 @@ class Booster(AbstractContextManager):
         splits = splits[:count_splits.value]
         return splits
 
-    def get_term_update_expanded(self):
+    def get_term_update(self):
         if self._term_idx < 0:  # pragma: no cover
             raise RuntimeError("invalid internal self._term_idx")
 
@@ -1363,12 +1363,12 @@ class Booster(AbstractContextManager):
         shape = self._term_shapes[self._term_idx]
         update_scores = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = native._unsafe.GetTermUpdateExpanded(
+        return_code = native._unsafe.GetTermUpdate(
             self._booster_handle, 
             Native._make_pointer(update_scores, np.float64, len(shape)),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "GetTermUpdateExpanded")
+            raise Native._get_native_exception(return_code, "GetTermUpdate")
 
         n_dimensions = len(self.term_features[self._term_idx])
         temp_transpose = [*range(n_dimensions - 1, -1, -1)]
@@ -1377,7 +1377,7 @@ class Booster(AbstractContextManager):
         update_scores = np.ascontiguousarray(np.transpose(update_scores, tuple(temp_transpose)))
         return update_scores
 
-    def set_term_update_expanded(self, term_idx, update_scores):
+    def set_term_update(self, term_idx, update_scores):
         self._term_idx = -1
 
         if self._term_shapes is None:  # pragma: no cover
@@ -1395,16 +1395,16 @@ class Booster(AbstractContextManager):
         update_scores = np.ascontiguousarray(np.transpose(update_scores, tuple(temp_transpose)))
 
         if shape != update_scores.shape:  # pragma: no cover
-            raise ValueError("incorrect tensor shape in call to set_term_update_expanded")
+            raise ValueError("incorrect tensor shape in call to set_term_update")
 
         native = Native.get_native_singleton()
-        return_code = native._unsafe.SetTermUpdateExpanded(
+        return_code = native._unsafe.SetTermUpdate(
             self._booster_handle, 
             term_idx, 
             Native._make_pointer(update_scores, np.float64, len(shape)),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "SetTermUpdateExpanded")
+            raise Native._get_native_exception(return_code, "SetTermUpdate")
 
         self._term_idx = term_idx
 

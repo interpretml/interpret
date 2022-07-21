@@ -345,17 +345,17 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
 // getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static int g_cLogGetTermUpdateExpandedParametersMessages = 10;
+static int g_cLogGetTermUpdateParametersMessages = 10;
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateExpanded(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdate(
    BoosterHandle boosterHandle,
    double * updateScoresTensorOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogGetTermUpdateExpandedParametersMessages,
+      &g_cLogGetTermUpdateParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "GetTermUpdateExpanded: "
+      "GetTermUpdate: "
       "boosterHandle=%p, "
       "updateScoresTensorOut=%p"
       ,
@@ -373,7 +373,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateExpanded(
 
    const size_t iTerm = pBoosterShell->GetTermIndex();
    if(BoosterShell::k_illegalTermIndex == iTerm) {
-      LOG_0(TraceLevelError, "ERROR GetTermUpdateExpanded bad internal state.  No Term index set");
+      LOG_0(TraceLevelError, "ERROR GetTermUpdate bad internal state.  No Term index set");
       return Error_IllegalParamValue; // technically we're in an illegal state, but why split hairs
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -417,18 +417,18 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateExpanded(
 // getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static int g_cLogSetTermUpdateExpandedParametersMessages = 10;
+static int g_cLogSetTermUpdateParametersMessages = 10;
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdateExpanded(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdate(
    BoosterHandle boosterHandle,
    IntEbmType indexTerm,
    double * updateScoresTensor
 ) {
    LOG_COUNTED_N(
-      &g_cLogSetTermUpdateExpandedParametersMessages,
+      &g_cLogSetTermUpdateParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "SetTermUpdateExpanded: "
+      "SetTermUpdate: "
       "boosterHandle=%p, "
       "indexTerm=%" IntEbmTypePrintf ", "
       "updateScoresTensor=%p"
@@ -451,19 +451,19 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdateExpanded(
 
    if(indexTerm < 0) {
       pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
-      LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexTerm must be positive");
+      LOG_0(TraceLevelError, "ERROR SetTermUpdate indexTerm must be positive");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(indexTerm)) {
       pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexTerm is too high to index");
+      LOG_0(TraceLevelError, "ERROR SetTermUpdate indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
    const size_t iTerm = static_cast<size_t>(indexTerm);
    if(pBoosterCore->GetCountTerms() <= iTerm) {
       pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
-      LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexTerm above the number of feature groups that we have");
+      LOG_0(TraceLevelError, "ERROR SetTermUpdate indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
    // pBoosterCore->GetTerms() can be null if 0 == pBoosterCore->m_cTerms, but we checked that condition above
