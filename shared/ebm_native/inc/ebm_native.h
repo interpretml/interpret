@@ -277,17 +277,17 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION FillDataSetHeader(
 
 EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION SizeFeature(
    IntEbmType countBins,
-   BoolEbmType missing,
-   BoolEbmType unknown,
-   BoolEbmType nominal,
+   BoolEbmType isMissing,
+   BoolEbmType isUnknown,
+   BoolEbmType isNominal,
    IntEbmType countSamples,
    const IntEbmType * binIndexes
 );
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION FillFeature(
    IntEbmType countBins,
-   BoolEbmType missing,
-   BoolEbmType unknown,
-   BoolEbmType nominal,
+   BoolEbmType isMissing,
+   BoolEbmType isUnknown,
+   BoolEbmType isNominal,
    IntEbmType countSamples,
    const IntEbmType * binIndexes,
    IntEbmType countBytesAllocated,

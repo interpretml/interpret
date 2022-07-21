@@ -371,12 +371,12 @@ class Native:
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillDataSetHeader")
 
-    def size_feature(self, n_bins, missing, unknown, nominal, bin_indexes):
+    def size_feature(self, n_bins, is_missing, is_unknown, is_nominal, bin_indexes):
         n_bytes = self._unsafe.SizeFeature(
             n_bins, 
-            missing, 
-            unknown, 
-            nominal, 
+            is_missing, 
+            is_unknown, 
+            is_nominal, 
             len(bin_indexes), 
             Native._make_pointer(bin_indexes, np.int64),
         )
@@ -384,12 +384,12 @@ class Native:
             raise Native._get_native_exception(n_bytes, "SizeFeature")
         return n_bytes
 
-    def fill_feature(self, n_bins, missing, unknown, nominal, bin_indexes, dataset):
+    def fill_feature(self, n_bins, is_missing, is_unknown, is_nominal, bin_indexes, dataset):
         return_code = self._unsafe.FillFeature(
             n_bins, 
-            missing, 
-            unknown, 
-            nominal, 
+            is_missing, 
+            is_unknown, 
+            is_nominal, 
             len(bin_indexes), 
             Native._make_pointer(bin_indexes, np.int64),
             dataset.nbytes, 
@@ -730,11 +730,11 @@ class Native:
         self._unsafe.SizeFeature.argtypes = [
             # int64_t countBins
             ct.c_int64,
-            # int64_t missing
+            # int64_t isMissing
             ct.c_int64,
-            # int64_t unknown
+            # int64_t isUnknown
             ct.c_int64,
-            # int64_t nominal
+            # int64_t isNominal
             ct.c_int64,
             # int64_t countSamples
             ct.c_int64,
@@ -746,11 +746,11 @@ class Native:
         self._unsafe.FillFeature.argtypes = [
             # int64_t countBins
             ct.c_int64,
-            # int64_t missing
+            # int64_t isMissing
             ct.c_int64,
-            # int64_t unknown
+            # int64_t isUnknown
             ct.c_int64,
-            # int64_t nominal
+            # int64_t isNominal
             ct.c_int64,
             # int64_t countSamples
             ct.c_int64,

@@ -505,9 +505,9 @@ static bool DecideIfSparse(const size_t cSamples, const IntEbmType * binIndexes)
 
 static IntEbmType AppendFeature(
    const IntEbmType countBins,
-   const BoolEbmType missing,
-   const BoolEbmType unknown,
-   const BoolEbmType nominal,
+   const BoolEbmType isMissing,
+   const BoolEbmType isUnknown,
+   const BoolEbmType isNominal,
    const IntEbmType countSamples,
    const IntEbmType * binIndexes,
    const size_t cBytesAllocated,
@@ -520,18 +520,18 @@ static IntEbmType AppendFeature(
       TraceLevelInfo,
       "Entered AppendFeature: "
       "countBins=%" IntEbmTypePrintf ", "
-      "missing=%" BoolEbmTypePrintf ", "
-      "unknown=%" BoolEbmTypePrintf ", "
-      "nominal=%" BoolEbmTypePrintf ", "
+      "isMissing=%s, "
+      "isUnknown=%s, "
+      "isNominal=%s, "
       "countSamples=%" IntEbmTypePrintf ", "
       "binIndexes=%p, "
       "cBytesAllocated=%zu, "
       "pFillMem=%p"
       ,
       countBins,
-      missing,
-      unknown,
-      nominal,
+      ObtainTruth(isMissing),
+      ObtainTruth(isUnknown),
+      ObtainTruth(isNominal),
       countSamples,
       static_cast<const void *>(binIndexes),
       cBytesAllocated,
@@ -543,17 +543,17 @@ static IntEbmType AppendFeature(
          LOG_0(TraceLevelError, "ERROR AppendFeature countBins is outside the range of a valid index");
          goto return_bad;
       }
-      if(EBM_FALSE != missing && EBM_TRUE != missing) {
-         LOG_0(TraceLevelError, "ERROR AppendFeature missing is not EBM_FALSE or EBM_TRUE");
+      if(EBM_FALSE != isMissing && EBM_TRUE != isMissing) {
+         LOG_0(TraceLevelError, "ERROR AppendFeature isMissing is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
       }
 
-      if(EBM_FALSE != unknown && EBM_TRUE != unknown) {
-         LOG_0(TraceLevelError, "ERROR AppendFeature unknown is not EBM_FALSE or EBM_TRUE");
+      if(EBM_FALSE != isUnknown && EBM_TRUE != isUnknown) {
+         LOG_0(TraceLevelError, "ERROR AppendFeature isUnknown is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
       }
-      if(EBM_FALSE != nominal && EBM_TRUE != nominal) {
-         LOG_0(TraceLevelError, "ERROR AppendFeature nominal is not EBM_FALSE or EBM_TRUE");
+      if(EBM_FALSE != isNominal && EBM_TRUE != isNominal) {
+         LOG_0(TraceLevelError, "ERROR AppendFeature isNominal is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
       }
       if(IsConvertErrorDual<size_t, SharedStorageDataType>(countSamples)) {
@@ -612,9 +612,9 @@ static IntEbmType AppendFeature(
 
          FeatureDataSetShared * pFeatureDataSetShared = reinterpret_cast<FeatureDataSetShared *>(pFillMem + iHighestOffset);
          pFeatureDataSetShared->m_id = GetFeatureId(
-            EBM_FALSE != missing,
-            EBM_FALSE != unknown,
-            EBM_FALSE != nominal,
+            EBM_FALSE != isMissing,
+            EBM_FALSE != isUnknown,
+            EBM_FALSE != isNominal,
             bSparse
          );
          pFeatureDataSetShared->m_cBins = static_cast<SharedStorageDataType>(countBins);
@@ -1140,17 +1140,17 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillDataSetHeader(
 
 EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeFeature(
    IntEbmType countBins,
-   BoolEbmType missing,
-   BoolEbmType unknown,
-   BoolEbmType nominal,
+   BoolEbmType isMissing,
+   BoolEbmType isUnknown,
+   BoolEbmType isNominal,
    IntEbmType countSamples,
    const IntEbmType * binIndexes
 ) {
    return AppendFeature(
       countBins,
-      missing,
-      unknown,
-      nominal,
+      isMissing,
+      isUnknown,
+      isNominal,
       countSamples,
       binIndexes,
       0,
@@ -1160,9 +1160,9 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeFeature(
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillFeature(
    IntEbmType countBins,
-   BoolEbmType missing,
-   BoolEbmType unknown,
-   BoolEbmType nominal,
+   BoolEbmType isMissing,
+   BoolEbmType isUnknown,
+   BoolEbmType isNominal,
    IntEbmType countSamples,
    const IntEbmType * binIndexes,
    IntEbmType countBytesAllocated,
@@ -1195,9 +1195,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillFeature(
 
    const IntEbmType ret = AppendFeature(
       countBins,
-      missing,
-      unknown,
-      nominal,
+      isMissing,
+      isUnknown,
+      isNominal,
       countSamples,
       binIndexes,
       cBytesAllocated,
