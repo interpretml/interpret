@@ -633,7 +633,7 @@ class Native:
             ct.c_int64,
             # double * featureVals
             ct.c_void_p,
-            # int64_t countSamplesPerBinMin
+            # int64_t minSamplesBin
             ct.c_int64,
             # int64_t isRounded
             ct.c_int64,

@@ -33,14 +33,14 @@ void TestQuantileBinning(
    const bool bTestReverse,
    const bool bSmart,
    const size_t cCutsMax,
-   const size_t cSamplesPerBinMin,
+   const size_t cSamplesBinMin,
    const std::vector<double> featureVals,
    const std::vector<double> expectedCuts
 ) {
    ErrorEbmType error;
 
    const IntEbmType countCutsMax = cCutsMax;
-   const IntEbmType countSamplesPerBinMin = cSamplesPerBinMin;
+   const IntEbmType minSamplesBin = cSamplesBinMin;
 
    constexpr double illegalVal = double { -888.88 };
    std::vector<double> cutsLowerBoundInclusive(cCutsMax + 2, illegalVal); // allocate values at ends
@@ -54,7 +54,7 @@ void TestQuantileBinning(
    error = CutQuantile(
       featureVals1.size(),
       0 == featureVals1.size() ? nullptr : &featureVals1[0],
-      countSamplesPerBinMin,
+      minSamplesBin,
       bSmart ? EBM_TRUE : EBM_FALSE,
       &countCuts,
       &cutsLowerBoundInclusive[1]
@@ -81,7 +81,7 @@ void TestQuantileBinning(
       error = CutQuantile(
          featureVals2.size(),
          0 == featureVals2.size() ? nullptr : &featureVals2[0],
-         countSamplesPerBinMin,
+         minSamplesBin,
          bSmart ? EBM_TRUE : EBM_FALSE,
          &countCuts,
          &cutsLowerBoundInclusive[1]
@@ -107,7 +107,7 @@ TEST_CASE("CutQuantile, 0 samples") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { };
    const std::vector<double> expectedCuts { };
 
@@ -116,7 +116,7 @@ TEST_CASE("CutQuantile, 0 samples") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -126,7 +126,7 @@ TEST_CASE("CutQuantile, only missing") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::signaling_NaN() };
    const std::vector<double> expectedCuts {};
 
@@ -135,7 +135,7 @@ TEST_CASE("CutQuantile, only missing") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -145,7 +145,7 @@ TEST_CASE("CutQuantile, zero cuts") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 0;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { 1, 2 };
    const std::vector<double> expectedCuts {};
 
@@ -154,7 +154,7 @@ TEST_CASE("CutQuantile, zero cuts") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -164,7 +164,7 @@ TEST_CASE("CutQuantile, too small") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 5 };
    const std::vector<double> expectedCuts {};
 
@@ -173,7 +173,7 @@ TEST_CASE("CutQuantile, too small") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -183,7 +183,7 @@ TEST_CASE("CutQuantile, positive and +infinity") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { 11, std::numeric_limits<double>::infinity() };
    const std::vector<double> expectedCuts { 4e+154 };
 
@@ -192,7 +192,7 @@ TEST_CASE("CutQuantile, positive and +infinity") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -202,7 +202,7 @@ TEST_CASE("CutQuantile, positive and +max") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { 11, std::numeric_limits<double>::max() };
    const std::vector<double> expectedCuts { 4e+154 };
 
@@ -211,7 +211,7 @@ TEST_CASE("CutQuantile, positive and +max") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -221,7 +221,7 @@ TEST_CASE("CutQuantile, one and +max minus one tick backwards") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { double { 1 }, FloatTickDecrementTest(std::numeric_limits<double>::max()) };
    const std::vector<double> expectedCuts { 1e+154 };
 
@@ -230,7 +230,7 @@ TEST_CASE("CutQuantile, one and +max minus one tick backwards") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -240,7 +240,7 @@ TEST_CASE("CutQuantile, zero and +max") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { 0, std::numeric_limits<double>::max() };
    const std::vector<double> expectedCuts { 9e+307 };
 
@@ -249,7 +249,7 @@ TEST_CASE("CutQuantile, zero and +max") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -259,7 +259,7 @@ TEST_CASE("CutQuantile, negative and +max") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { -11, std::numeric_limits<double>::max() };
    const std::vector<double> expectedCuts { 0 };
 
@@ -268,7 +268,7 @@ TEST_CASE("CutQuantile, negative and +max") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -278,7 +278,7 @@ TEST_CASE("CutQuantile, negative and -infinity") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { -11, -std::numeric_limits<double>::infinity() };
    const std::vector<double> expectedCuts { -4e+154 };
 
@@ -287,7 +287,7 @@ TEST_CASE("CutQuantile, negative and -infinity") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -297,7 +297,7 @@ TEST_CASE("CutQuantile, negative and lowest") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { -11, std::numeric_limits<double>::lowest() };
    const std::vector<double> expectedCuts { -4e+154 };
 
@@ -306,7 +306,7 @@ TEST_CASE("CutQuantile, negative and lowest") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -316,7 +316,7 @@ TEST_CASE("CutQuantile, -1 and lowest plus one tick backwards") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { double { -1 }, FloatTickIncrementTest(std::numeric_limits<double>::lowest()) };
    const std::vector<double> expectedCuts { -1e+154 };
 
@@ -325,7 +325,7 @@ TEST_CASE("CutQuantile, -1 and lowest plus one tick backwards") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -335,7 +335,7 @@ TEST_CASE("CutQuantile, zero and lowest") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { 0, std::numeric_limits<double>::lowest() };
    const std::vector<double> expectedCuts { -9e+307 };
 
@@ -344,7 +344,7 @@ TEST_CASE("CutQuantile, zero and lowest") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -354,7 +354,7 @@ TEST_CASE("CutQuantile, positive and lowest") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { 11, std::numeric_limits<double>::lowest() };
    const std::vector<double> expectedCuts { 0 };
 
@@ -363,7 +363,7 @@ TEST_CASE("CutQuantile, positive and lowest") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -373,7 +373,7 @@ TEST_CASE("CutQuantile, cuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 0, 1, 2, 3 };
    const std::vector<double> expectedCuts { 1.5 };
 
@@ -382,7 +382,7 @@ TEST_CASE("CutQuantile, cuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -392,7 +392,7 @@ TEST_CASE("CutQuantile, cuttable (first interior check not cuttable)") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 3;
+   constexpr size_t cSamplesBinMin = 3;
    const std::vector<double> featureVals { 0, 1, 5, 5, 7, 8, 9 };
    const std::vector<double> expectedCuts { 6 };
 
@@ -401,7 +401,7 @@ TEST_CASE("CutQuantile, cuttable (first interior check not cuttable)") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -411,7 +411,7 @@ TEST_CASE("CutQuantile, cuttable except middle isn't available") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 3;
+   constexpr size_t cSamplesBinMin = 3;
    const std::vector<double> featureVals { 0, 1, 5, 5, 8, 9 };
    const std::vector<double> expectedCuts { };
 
@@ -420,7 +420,7 @@ TEST_CASE("CutQuantile, cuttable except middle isn't available") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -430,7 +430,7 @@ TEST_CASE("CutQuantile, uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 5, 5, 5, 5 };
    const std::vector<double> expectedCuts {};
 
@@ -439,7 +439,7 @@ TEST_CASE("CutQuantile, uncuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -449,7 +449,7 @@ TEST_CASE("CutQuantile, left+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 1, 5, 5, 5 };
    const std::vector<double> expectedCuts {};
 
@@ -458,7 +458,7 @@ TEST_CASE("CutQuantile, left+uncuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -468,7 +468,7 @@ TEST_CASE("CutQuantile, uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 5, 5, 5, 9 };
    const std::vector<double> expectedCuts {};
 
@@ -477,7 +477,7 @@ TEST_CASE("CutQuantile, uncuttable+right") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -487,7 +487,7 @@ TEST_CASE("CutQuantile, left+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 1, 5, 5, 9 };
    const std::vector<double> expectedCuts {};
 
@@ -496,7 +496,7 @@ TEST_CASE("CutQuantile, left+uncuttable+right") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -506,7 +506,7 @@ TEST_CASE("CutQuantile, uncuttable+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 4, 4, 6, 6 };
    const std::vector<double> expectedCuts { 5 };
 
@@ -515,7 +515,7 @@ TEST_CASE("CutQuantile, uncuttable+uncuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -525,7 +525,7 @@ TEST_CASE("CutQuantile, left+uncuttable+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 1, 4, 4, 6, 6, 6 };
    const std::vector<double> expectedCuts { 5 };
 
@@ -534,7 +534,7 @@ TEST_CASE("CutQuantile, left+uncuttable+uncuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -544,7 +544,7 @@ TEST_CASE("CutQuantile, uncuttable+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 4, 4, 6, 6, 6, 9 };
    const std::vector<double> expectedCuts { 5 };
 
@@ -553,7 +553,7 @@ TEST_CASE("CutQuantile, uncuttable+uncuttable+right") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -563,7 +563,7 @@ TEST_CASE("CutQuantile, uncuttable+mid+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 4, 4, 4, 5, 6, 6 };
    const std::vector<double> expectedCuts { 4.5 };
 
@@ -572,7 +572,7 @@ TEST_CASE("CutQuantile, uncuttable+mid+uncuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -582,7 +582,7 @@ TEST_CASE("CutQuantile, left+uncuttable+mid+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 1, 4, 4, 5, 6, 6 };
    const std::vector<double> expectedCuts { 4.5 };
 
@@ -591,7 +591,7 @@ TEST_CASE("CutQuantile, left+uncuttable+mid+uncuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -601,7 +601,7 @@ TEST_CASE("CutQuantile, uncuttable+mid+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 4, 4, 5, 6, 6, 9 };
    const std::vector<double> expectedCuts { 5.5 };
 
@@ -610,7 +610,7 @@ TEST_CASE("CutQuantile, uncuttable+mid+uncuttable+right") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -620,7 +620,7 @@ TEST_CASE("CutQuantile, uncuttable+cuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 5, 5, 7, 8 };
    const std::vector<double> expectedCuts { 6 };
 
@@ -629,7 +629,7 @@ TEST_CASE("CutQuantile, uncuttable+cuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -639,7 +639,7 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 1, 5, 5, 5, 7, 8 };
    const std::vector<double> expectedCuts { 6 };
 
@@ -648,7 +648,7 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -658,7 +658,7 @@ TEST_CASE("CutQuantile, cuttable+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 2, 3, 5, 5 };
    const std::vector<double> expectedCuts { 4 };
 
@@ -667,7 +667,7 @@ TEST_CASE("CutQuantile, cuttable+uncuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -677,7 +677,7 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 1, 2, 3, 5, 5, 7 };
    const std::vector<double> expectedCuts { 4 };
 
@@ -686,7 +686,7 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+right") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -696,7 +696,7 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 2, 3, 5, 5, 7, 8 };
    const std::vector<double> expectedCuts { 4, 6 };
 
@@ -705,7 +705,7 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -715,7 +715,7 @@ TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 2, 2, 4, 6, 8, 8 };
    const std::vector<double> expectedCuts { 3, 7 };
 
@@ -724,7 +724,7 @@ TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -734,7 +734,7 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 1, 2, 2, 4, 5, 6, 8, 8 };
    const std::vector<double> expectedCuts { 3, 7 };
 
@@ -743,7 +743,7 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -753,7 +753,7 @@ TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 2, 2, 2, 4, 6, 8, 8, 9 };
    const std::vector<double> expectedCuts { 3, 7 };
 
@@ -762,7 +762,7 @@ TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable+right") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -772,7 +772,7 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 1, 2, 2, 4, 6, 8, 8, 9 };
    const std::vector<double> expectedCuts { 3, 7 };
 
@@ -781,7 +781,7 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+right") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -791,7 +791,7 @@ TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable+cuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 1, 1, 2, 3, 5, 5, 7, 8 };
    const std::vector<double> expectedCuts { 1.5, 4, 6 };
 
@@ -800,7 +800,7 @@ TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable+cuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -810,7 +810,7 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+cuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 0, 1, 1, 2, 3, 5, 5, 5, 7, 8 };
    const std::vector<double> expectedCuts { 1.5, 4, 6 };
 
@@ -819,7 +819,7 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+cuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -829,7 +829,7 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 2, 3, 5, 5, 7, 8, 9, 9 };
    const std::vector<double> expectedCuts { 4, 6, 8.5 };
 
@@ -838,7 +838,7 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable+uncuttable") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -848,7 +848,7 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 2, 3, 5, 5, 5, 7, 8, 9, 9, 10 };
    const std::vector<double> expectedCuts { 4, 6, 8.5 };
 
@@ -857,7 +857,7 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable+uncuttable+right") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -867,7 +867,7 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+cuttable+uncuttable+
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 1, 2, 2, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9 };
    const std::vector<double> expectedCuts { 3.5, 4.5, 7.5 };
 
@@ -876,7 +876,7 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+cuttable+uncuttable+
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -886,7 +886,7 @@ TEST_CASE("CutQuantile, infinities") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 
       -std::numeric_limits<double>::infinity(),
       std::numeric_limits<double>::lowest(),
@@ -906,7 +906,7 @@ TEST_CASE("CutQuantile, infinities") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -924,7 +924,7 @@ TEST_CASE("CutQuantile, average segment sizes that requires the ceiling instead 
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 26;
-   constexpr size_t cSamplesPerBinMin = 2;
+   constexpr size_t cSamplesBinMin = 2;
    const std::vector<double> featureVals { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12,
       13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 
       27, 27, 28, 28, 29, 29, 30, 30 };
@@ -935,7 +935,7 @@ TEST_CASE("CutQuantile, average segment sizes that requires the ceiling instead 
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -945,7 +945,7 @@ TEST_CASE("CutQuantile, reversibility, 2") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { -1, 1 };
    const std::vector<double> expectedCuts { 0 };
 
@@ -954,7 +954,7 @@ TEST_CASE("CutQuantile, reversibility, 2") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -964,7 +964,7 @@ TEST_CASE("CutQuantile, reversibility, 3") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { -2, 1, 2 };
    const std::vector<double> expectedCuts { 0, 1.5 };
 
@@ -973,7 +973,7 @@ TEST_CASE("CutQuantile, reversibility, 3") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -983,7 +983,7 @@ TEST_CASE("CutQuantile, reversibility") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { -2, -1, 1, 2 };
    const std::vector<double> expectedCuts { -1.5, 0, 1.5 };
 
@@ -992,7 +992,7 @@ TEST_CASE("CutQuantile, reversibility") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -1002,7 +1002,7 @@ TEST_CASE("CutQuantile, imbalanced") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { -3, -1, 2, 3 };
    const std::vector<double> expectedCuts { -2, 0, 2.5 };
 
@@ -1011,7 +1011,7 @@ TEST_CASE("CutQuantile, imbalanced") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -1021,7 +1021,7 @@ TEST_CASE("CutQuantile, extreme tails") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { std::numeric_limits<double>::lowest(), 1, 2, 3, std::numeric_limits<double>::max() };
    const std::vector<double> expectedCuts { 0.5, 1.5, 2.5, 3.5 };
 
@@ -1030,7 +1030,7 @@ TEST_CASE("CutQuantile, extreme tails") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -1040,7 +1040,7 @@ TEST_CASE("CutQuantile, far tails") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { -1, 1, 2, 3, 5 };
    const std::vector<double> expectedCuts { 0.5, 1.5, 2.5, 3.5 };
 
@@ -1049,7 +1049,7 @@ TEST_CASE("CutQuantile, far tails") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -1059,7 +1059,7 @@ TEST_CASE("CutQuantile, close tails") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { 0.9, 1, 2, 3, 3.1 };
    const std::vector<double> expectedCuts { 0.95, 1.5, 2.5, 3.05 };
 
@@ -1068,7 +1068,7 @@ TEST_CASE("CutQuantile, close tails") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -1078,7 +1078,7 @@ TEST_CASE("CutQuantile, non-smart") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = false;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals { std::numeric_limits<double>::lowest(), 0, 1000, 10000000, std::numeric_limits<double>::max() };
    const std::vector<double> expectedCuts { -8.9884656743115785e+307, 500, 5000500, 8.9884656743115785e+307 };
 
@@ -1087,7 +1087,7 @@ TEST_CASE("CutQuantile, non-smart") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -1097,7 +1097,7 @@ TEST_CASE("CutQuantile, overflow interpretable ends") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals {
       std::numeric_limits<double>::lowest(),
       FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
@@ -1116,7 +1116,7 @@ TEST_CASE("CutQuantile, overflow interpretable ends") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -1126,7 +1126,7 @@ TEST_CASE("CutQuantile, maximum non-overflow interpretable ends") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
    const std::vector<double> featureVals {
       std::numeric_limits<double>::lowest(),
       FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
@@ -1145,7 +1145,7 @@ TEST_CASE("CutQuantile, maximum non-overflow interpretable ends") {
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -1186,14 +1186,14 @@ TEST_CASE("CutQuantile, stress test the guarantee of one cut per CuttingRange, b
    constexpr bool bSmart = true;
    constexpr bool bTestReverse = true;
    constexpr size_t cCutsMax = cInteriorRanges + 1 - cRemoveCuts;
-   constexpr size_t cSamplesPerBinMin = 1;
+   constexpr size_t cSamplesBinMin = 1;
 
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
       bSmart,
       cCutsMax,
-      cSamplesPerBinMin,
+      cSamplesBinMin,
       featureVals,
       expectedCuts
    );
@@ -1208,7 +1208,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
    }
 
    constexpr bool bSmart = true;
-   constexpr IntEbmType countSamplesPerBinMin = 1;
+   constexpr IntEbmType minSamplesBin = 1;
    constexpr IntEbmType countSamples = 100;
    double featureVals[countSamples]; // preserve these for debugging purposes
    double featureValsForward[countSamples];
@@ -1250,7 +1250,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
          error = CutQuantile(
             countSamples,
             featureValsForward,
-            countSamplesPerBinMin,
+            minSamplesBin,
             bSmart ? EBM_TRUE : EBM_FALSE,
             &countCutsForward,
             cutsLowerBoundInclusiveForward
@@ -1261,7 +1261,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
          //   countSamples,
          //   featureVals,
          //   cCuts + 1,
-         //   countSamplesPerBinMin,
+         //   minSamplesBin,
          //   countCutsForward,
          //   cutsLowerBoundInclusiveForward,
          //   0 != countMissingVals,
@@ -1276,7 +1276,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
          error = CutQuantile(
             countSamples,
             featureValsReversed,
-            countSamplesPerBinMin,
+            minSamplesBin,
             bSmart ? EBM_TRUE : EBM_FALSE,
             &countCutsReversed,
             cutsLowerBoundInclusiveReversed
@@ -1346,8 +1346,8 @@ TEST_CASE("CutQuantile, chunky randomized check") {
    constexpr size_t cSamplesMax = 250;
    constexpr size_t cCutsMin = 1;
    constexpr size_t cCutsMax = 70;
-   constexpr IntEbmType countSamplesPerBinMinMin = 1;
-   constexpr IntEbmType countSamplesPerBinMinMax = 3;
+   constexpr IntEbmType minSamplesBinMin = 1;
+   constexpr IntEbmType minSamplesBinMax = 3;
 
    constexpr size_t randomValMax = 70; // the min is 1 since the value doesn't really matter
 
@@ -1361,7 +1361,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
    for(size_t iIteration = 0; iIteration < 30000; ++iIteration) {
       const size_t cSamples = randomStream.Next(cSamplesMax - cSamplesMin + 1) + cSamplesMin;
       const size_t cCuts = randomStream.Next(cCutsMax - cCutsMin + 1) + cCutsMin;
-      const IntEbmType countSamplesPerBinMin = randomStream.Next(countSamplesPerBinMinMax - countSamplesPerBinMinMin + 1) + countSamplesPerBinMinMin;
+      const IntEbmType minSamplesBin = randomStream.Next(minSamplesBinMax - minSamplesBinMin + 1) + minSamplesBinMin;
 
       const size_t denominator = cCuts + size_t { 1 };
       const size_t cLongBinLength = static_cast<size_t>(
@@ -1412,7 +1412,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
       error = CutQuantile(
          countSamples,
          featureValsForward,
-         countSamplesPerBinMin,
+         minSamplesBin,
          bSmart ? EBM_TRUE : EBM_FALSE,
          &countCutsForward,
          cutsLowerBoundInclusiveForward
@@ -1426,7 +1426,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
       error = CutQuantile(
          countSamples,
          featureValsReversed,
-         countSamplesPerBinMin,
+         minSamplesBin,
          bSmart ? EBM_TRUE : EBM_FALSE,
          &countCutsReversed,
          cutsLowerBoundInclusiveReversed

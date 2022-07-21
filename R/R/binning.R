@@ -4,19 +4,19 @@
 
 cut_quantile <- function(
    X_col, 
-   count_samples_per_bin_min, 
+   min_samples_bin, 
    is_rounded, 
    count_cuts
 ) {
    X_col <- as.double(X_col)
-   count_samples_per_bin_min <- as.double(count_samples_per_bin_min)
+   min_samples_bin <- as.double(min_samples_bin)
    is_rounded <- as.logical(is_rounded)
    count_cuts <- as.double(count_cuts)
 
    cuts_lower_bound_inclusive <- .Call(
       CutQuantile_R, 
       X_col, 
-      count_samples_per_bin_min, 
+      min_samples_bin, 
       is_rounded, 
       count_cuts
    )

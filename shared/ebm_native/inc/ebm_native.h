@@ -226,7 +226,7 @@ EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
    IntEbmType countSamples,
    const double * featureVals,
-   IntEbmType countSamplesPerBinMin,
+   IntEbmType minSamplesBin,
    BoolEbmType isRounded,
    IntEbmType * countCutsInOut,
    double * cutsLowerBoundInclusiveOut

@@ -417,7 +417,7 @@ void DisplayCuts(
    IntEbmType countSamples,
    double * featureVals,
    IntEbmType countBinsMax,
-   IntEbmType countSamplesPerBinMin,
+   IntEbmType minSamplesBin,
    IntEbmType countCuts,
    double * cutsLowerBoundInclusive,
    IntEbmType isMissingPresent,

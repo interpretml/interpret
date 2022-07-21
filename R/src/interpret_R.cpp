@@ -250,12 +250,12 @@ SEXP GenerateSeed_R(
 
 SEXP CutQuantile_R(
    SEXP featureVals,
-   SEXP countSamplesPerBinMin,
+   SEXP minSamplesBin,
    SEXP isRounded,
    SEXP countCuts
 ) {
    EBM_ASSERT(nullptr != featureVals);
-   EBM_ASSERT(nullptr != countSamplesPerBinMin);
+   EBM_ASSERT(nullptr != minSamplesBin);
    EBM_ASSERT(nullptr != isRounded);
    EBM_ASSERT(nullptr != countCuts);
 
@@ -268,16 +268,16 @@ SEXP CutQuantile_R(
    }
    const double * const aFeatureVals = REAL(featureVals);
 
-   if(!IsSingleDoubleVector(countSamplesPerBinMin)) {
-      LOG_0(TraceLevelError, "ERROR CutQuantile_R !IsSingleDoubleVector(countSamplesPerBinMin)");
+   if(!IsSingleDoubleVector(minSamplesBin)) {
+      LOG_0(TraceLevelError, "ERROR CutQuantile_R !IsSingleDoubleVector(minSamplesBin)");
       return R_NilValue;
    }
-   const double countSamplesPerBinMinDouble = REAL(countSamplesPerBinMin)[0];
-   if(!IsDoubleToIntEbmTypeIndexValid(countSamplesPerBinMinDouble)) {
-      LOG_0(TraceLevelError, "ERROR CutQuantile_R !IsDoubleToIntEbmTypeIndexValid(countSamplesPerBinMinDouble)");
+   const double minSamplesBinDouble = REAL(minSamplesBin)[0];
+   if(!IsDoubleToIntEbmTypeIndexValid(minSamplesBinDouble)) {
+      LOG_0(TraceLevelError, "ERROR CutQuantile_R !IsDoubleToIntEbmTypeIndexValid(minSamplesBinDouble)");
       return R_NilValue;
    }
-   const IntEbmType countSamplesPerBinMinIntEbmType = static_cast<IntEbmType>(countSamplesPerBinMinDouble);
+   const IntEbmType minSamplesBinIntEbmType = static_cast<IntEbmType>(minSamplesBinDouble);
 
    if(!IsSingleBoolVector(isRounded)) {
       LOG_0(TraceLevelError, "ERROR CutQuantile_R !IsSingleBoolVector(isRounded)");
@@ -311,7 +311,7 @@ SEXP CutQuantile_R(
    error = CutQuantile(
       countSamples,
       aFeatureVals,
-      countSamplesPerBinMinIntEbmType,
+      minSamplesBinIntEbmType,
       bRounded ? EBM_TRUE : EBM_FALSE,
       &countCutsIntEbmType,
       aCutsLowerBoundInclusive,

@@ -1122,7 +1122,7 @@ extern void DisplayCuts(
    IntEbmType countSamples,
    double * featureVals,
    IntEbmType countBinsMax,
-   IntEbmType countSamplesPerBinMin,
+   IntEbmType minSamplesBin,
    IntEbmType countCuts,
    double * cutsLowerBoundInclusive,
    IntEbmType isMissingPresent,
@@ -1143,7 +1143,7 @@ extern void DisplayCuts(
 
    std::cout << std::endl << std::endl;
    std::cout << "missing=" << (countSamples - samples.size()) << ", countBinsMax=" << countBinsMax << 
-      ", countSamplesPerBinMin=" << countSamplesPerBinMin << ", avgBin=" << 
+      ", minSamplesBin=" << minSamplesBin << ", avgBin=" << 
       static_cast<double>(samples.size()) / static_cast<double>(countBinsMax) << std::endl;
 
    size_t iCut = 0;
