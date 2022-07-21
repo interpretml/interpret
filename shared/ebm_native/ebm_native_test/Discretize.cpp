@@ -14,7 +14,7 @@ TEST_CASE("GetHistogramCutCount, normals") {
    const double test[] { 1, 2, 3, 5 };
    constexpr size_t cTest = sizeof(test) / sizeof(test[0]);
 
-   IntEbmType result = GetHistogramCutCount(static_cast<IntEbmType>(cTest), test, 0);
+   IntEbmType result = GetHistogramCutCount(static_cast<IntEbmType>(cTest), test);
    CHECK(3 == result);
 }
 
@@ -23,7 +23,7 @@ TEST_CASE("GetHistogramCutCount, out of bound inputs") {
    const double test[] { std::numeric_limits<double>::infinity(), 1, 2, std::numeric_limits<double>::quiet_NaN(), 3, 5, -std::numeric_limits<double>::infinity() };
    constexpr size_t cTest = sizeof(test) / sizeof(test[0]);
 
-   IntEbmType result = GetHistogramCutCount(static_cast<IntEbmType>(cTest), test, 0);
+   IntEbmType result = GetHistogramCutCount(static_cast<IntEbmType>(cTest), test);
    CHECK(3 == result);
 }
 

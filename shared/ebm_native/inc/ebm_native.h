@@ -220,8 +220,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
 
 EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
    IntEbmType countSamples,
-   const double * featureVals,
-   IntEbmType strategy
+   const double * featureVals
 );
 
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(

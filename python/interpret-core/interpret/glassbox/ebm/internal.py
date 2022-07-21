@@ -256,13 +256,8 @@ class Native:
 
         return sample_counts_out
 
-    def get_histogram_cut_count(self, X_col, strategy=None):
-        n_cuts = self._unsafe.GetHistogramCutCount(
-            X_col.shape[0],
-            Native._make_pointer(X_col, np.float64),
-            0
-        )
-        return n_cuts
+    def get_histogram_cut_count(self, X_col):
+        return self._unsafe.GetHistogramCutCount(X_col.shape[0], Native._make_pointer(X_col, np.float64))
 
     def cut_quantile(self, X_col, min_samples_bin, is_rounded, max_cuts):
         if max_cuts < 0:
@@ -630,8 +625,6 @@ class Native:
             ct.c_int64,
             # double * featureVals
             ct.c_void_p,
-            # int64_t strategy
-            ct.c_int64,
         ]
         self._unsafe.GetHistogramCutCount.restype = ct.c_int64
 

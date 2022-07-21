@@ -1333,23 +1333,18 @@ static int g_cLogExitGetHistogramCutCountParametersMessages = 25;
 
 EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
    IntEbmType countSamples,
-   const double * featureVals,
-   IntEbmType strategy
+   const double * featureVals
 ) {
-   UNUSED(strategy);
-
    LOG_COUNTED_N(
       &g_cLogEnterGetHistogramCutCountParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered GetHistogramCutCount: "
       "countSamples=%" IntEbmTypePrintf ", "
-      "featureVals=%p, "
-      "strategy=%" IntEbmTypePrintf
+      "featureVals=%p"
       ,
       countSamples,
-      static_cast<const void *>(featureVals),
-      strategy
+      static_cast<const void *>(featureVals)
    );
 
    if(UNLIKELY(countSamples <= 0)) {
