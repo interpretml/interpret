@@ -5,7 +5,7 @@
 #ifndef RANDOM_STREAM_TEST_HPP
 #define RANDOM_STREAM_TEST_HPP
 
-#include <inttypes.h> // uint32_t seed
+#include <inttypes.h> // uint32_t
 #include <random>
 #include <stddef.h> // size_t, ptrdiff_t
 #include <assert.h>

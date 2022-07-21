@@ -960,7 +960,7 @@ def merge_ebms(models):
 class EBMUtils:
     
     @staticmethod
-    def normalize_initial_random_seed(seed):  # pragma: no cover
+    def normalize_initial_seed(seed):  # pragma: no cover
         # Some languages do not support 64-bit values.  Other languages do not support unsigned integers.
         # Almost all languages support signed 32-bit integers, so we standardize on that for our 
         # random number seed values.  If the caller passes us a number that doesn't fit into a 
@@ -1258,7 +1258,7 @@ class DPUtils:
     def private_numeric_binning(X_col, sample_weight, noise_scale, max_bins, min_feature_val, max_feature_val, random_state=None):
         native = Native.get_native_singleton()
         uniform_weights, uniform_edges = np.histogram(X_col, bins=max_bins*2, range=(min_feature_val, max_feature_val), weights=sample_weight)
-        noisy_weights = uniform_weights + native.generate_gaussian_random(random_seed=random_state, stddev=noise_scale, count=uniform_weights.shape[0])
+        noisy_weights = uniform_weights + native.generate_gaussian_random(random_state=random_state, stddev=noise_scale, count=uniform_weights.shape[0])
         
         # Postprocess to ensure realistic bin values (min=0)
         noisy_weights = np.clip(noisy_weights, 0, None)
@@ -1302,7 +1302,7 @@ class DPUtils:
         uniq_vals, uniq_idxs = np.unique(X_col, return_inverse=True)
         weights = np.bincount(uniq_idxs, weights=sample_weight, minlength=len(uniq_vals))
 
-        weights = weights + native.generate_gaussian_random(random_seed=random_state, stddev=noise_scale, count=weights.shape[0])
+        weights = weights + native.generate_gaussian_random(random_state=random_state, stddev=noise_scale, count=weights.shape[0])
 
         # Postprocess to ensure realistic bin values (min=0)
         weights = np.clip(weights, 0, None)

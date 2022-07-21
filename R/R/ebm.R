@@ -61,7 +61,7 @@ ebm_classify <- function(
    stopifnot(!any(is.na(y)))
    y <- as.logical(y) # for now we just support binary classification
 
-   random_state <- normalize_initial_random_seed(random_state)
+   random_state <- normalize_initial_seed(random_state)
    
    n_features <- ncol(X)
    col_names <- colnames(X)

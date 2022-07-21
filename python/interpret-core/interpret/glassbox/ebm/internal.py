@@ -168,19 +168,19 @@ class Native:
         self._unsafe.CleanFloats(len(val_array), Native._make_pointer(val_array, np.float64))
         return val_array[0]
 
-    def generate_deterministic_seed(self, random_seed, stage_randomization_mix):
-        if random_seed is None: # For cases when users want non-determinism (e.g differential privacy), seed will be None -- handle that here.
+    def generate_deterministic_seed(self, random_state, stage_randomization_mix):
+        if random_state is None:
             return None
-        return self._unsafe.GenerateDeterministicSeed(random_seed, stage_randomization_mix)
+        return self._unsafe.GenerateDeterministicSeed(random_state, stage_randomization_mix)
 
-    def generate_gaussian_random(self, random_seed, stddev, count):
-        is_deterministic = random_seed is not None
-        random_seed = 0 if random_seed is None else random_seed
+    def generate_gaussian_random(self, random_state, stddev, count):
+        is_deterministic = random_state is not None
+        random_state = 0 if random_state is None else random_state
         random_numbers = np.empty(count, dtype=np.float64, order="C")
 
         return_code = self._unsafe.GenerateGaussianRandom(
             is_deterministic,
-            random_seed,
+            random_state,
             stddev,
             count,
             Native._make_pointer(random_numbers, np.float64)
@@ -193,12 +193,12 @@ class Native:
 
     def sample_without_replacement(
         self, 
-        random_seed, 
+        random_state, 
         count_training_samples,
         count_validation_samples
     ):
-        is_deterministic = random_seed is not None
-        random_seed = 0 if random_seed is None else random_seed
+        is_deterministic = random_state is not None
+        random_state = 0 if random_state is None else random_state
 
         count_samples = count_training_samples + count_validation_samples
         count_training_samples = ct.c_int64(count_training_samples)
@@ -208,7 +208,7 @@ class Native:
 
         return_code = self._unsafe.SampleWithoutReplacement(
             is_deterministic,
-            random_seed,
+            random_state,
             count_training_samples,
             count_validation_samples,
             Native._make_pointer(sample_counts_out, np.int8),
@@ -221,14 +221,14 @@ class Native:
 
     def stratified_sampling_without_replacement(
         self, 
-        random_seed, 
+        random_state, 
         n_classes,
         count_training_samples,
         count_validation_samples,
         targets
     ):
-        is_deterministic = random_seed is not None
-        random_seed = 0 if random_seed is None else random_seed
+        is_deterministic = random_state is not None
+        random_state = 0 if random_state is None else random_state
 
         count_samples = count_training_samples + count_validation_samples
 
@@ -243,7 +243,7 @@ class Native:
 
         return_code = self._unsafe.StratifiedSamplingWithoutReplacement(
             is_deterministic,
-            random_seed,
+            random_state,
             n_classes,
             count_training_samples,
             count_validation_samples,
@@ -1100,13 +1100,13 @@ class Booster(AbstractContextManager):
                 raise ValueError("init_scores should have the same length as the number of non-zero bag entries")
 
         is_deterministic = self.random_state is not None
-        random_seed = 0 if self.random_state is None else self.random_state
+        random_state = 0 if self.random_state is None else self.random_state
 
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateBooster(
             is_deterministic,
-            random_seed,
+            random_state,
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
             Native._make_pointer(self.init_scores, np.float64, 2 if n_class_scores > 1 else 1, True),

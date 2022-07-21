@@ -317,7 +317,7 @@ class EBMModel(BaseEstimator):
 
             bin_levels = [self.max_bins, self.max_interaction_bins]
 
-        init_seed = EBMUtils.normalize_initial_random_seed(self.random_state)
+        init_random_state = EBMUtils.normalize_initial_seed(self.random_state)
 
         binning_result = construct_bins(
             X=X,
@@ -332,7 +332,7 @@ class EBMModel(BaseEstimator):
             delta=bin_delta, 
             composition=composition,
             privacy_schema=privacy_schema,
-            random_state=init_seed,
+            random_state=init_random_state,
         )
         feature_names_in = binning_result[0]
         feature_types_in = binning_result[1]
@@ -389,15 +389,15 @@ class EBMModel(BaseEstimator):
             interactions = self.interactions
 
         native = Native.get_native_singleton()
-        bagged_seed = init_seed
+        bagged_random_state = init_random_state
         bag_weights = []
         bags = []
         for _ in range(self.outer_bags):
-            bagged_seed = native.generate_deterministic_seed(bagged_seed, 886321150)
+            bagged_random_state = native.generate_deterministic_seed(bagged_random_state, 886321150)
             bag = EBMUtils.make_bag(
                 y,
                 self.validation_size,
-                bagged_seed,
+                bagged_random_state,
                 is_classifier(self) and not is_differential_privacy
             )
             bags.append(bag)
@@ -427,10 +427,10 @@ class EBMModel(BaseEstimator):
             feature_types_in, 
         )
 
-        bagged_seed = init_seed
+        bagged_random_state = init_random_state
         parallel_args = []
         for idx in range(self.outer_bags):
-            bagged_seed = native.generate_deterministic_seed(bagged_seed, 13098686)
+            bagged_random_state = native.generate_deterministic_seed(bagged_random_state, 13098686)
             parallel_args.append(
                 (
                     dataset,
@@ -447,7 +447,7 @@ class EBMModel(BaseEstimator):
                     self.max_rounds,
                     noise_scale,
                     bin_data_weights,
-                    bagged_seed,
+                    bagged_random_state,
                     None,
                 )
             )
@@ -568,10 +568,10 @@ class EBMModel(BaseEstimator):
                     warn("Interactions with 3 or more terms are not graphed in global explanations. Local explanations are still available and exact.")
 
 
-            bagged_seed = init_seed
+            bagged_random_state = init_random_state
             parallel_args = []
             for idx in range(self.outer_bags):
-                bagged_seed = native.generate_deterministic_seed(bagged_seed, 521040308)
+                bagged_random_state = native.generate_deterministic_seed(bagged_random_state, 521040308)
                 parallel_args.append(
                     (
                         dataset,
@@ -588,7 +588,7 @@ class EBMModel(BaseEstimator):
                         self.max_rounds,
                         noise_scale,
                         bin_data_weights,
-                        bagged_seed,
+                        bagged_random_state,
                         None,
                     )
                 )

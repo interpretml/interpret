@@ -183,9 +183,9 @@ def test_ebm_synthetic_pairwise():
     X = df[["a", "b"]]
     y = df["y"]
 
-    seed = 1
+    random_state = 1
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.20, random_state=seed
+        X, y, test_size=0.20, random_state=random_state
     )
 
     clf = ExplainableBoostingClassifier(n_jobs=1, outer_bags=1, interactions=1)

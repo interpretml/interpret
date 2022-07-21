@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 # Author: Paul Koch <code@koch.ninja>
 
-normalize_initial_random_seed <- function(seed) {
+normalize_initial_seed <- function(seed) {
    # Some languages do not support 64-bit values.  Other languages do not support unsigned integers.
    # Almost all languages support signed 32-bit integers, so we standardize on that for our 
    # random number seed values.  If the caller passes us a number that doesn't fit into a 
@@ -25,11 +25,11 @@ normalize_initial_random_seed <- function(seed) {
    return(seed)
 }
 
-generate_deterministic_seed <- function(random_seed, stage_randomization_mix) {
-   random_seed <- as.integer(random_seed)
+generate_deterministic_seed <- function(random_state, stage_randomization_mix) {
+   random_state <- as.integer(random_state)
    stage_randomization_mix <- as.integer(stage_randomization_mix)
 
-   ret <- .Call(GenerateDeterministicSeed_R, random_seed, stage_randomization_mix)
+   ret <- .Call(GenerateDeterministicSeed_R, random_state, stage_randomization_mix)
    if(is.null(ret)) {
       stop("error in GenerateDeterministicSeed_R")
    }
