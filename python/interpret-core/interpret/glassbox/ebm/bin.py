@@ -1626,7 +1626,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
 
 
-            random_state = native.generate_deterministic_seed(random_state, 1786913576)
+            random_state = native.generate_seed(random_state, 1786913576)
             feature_types_in[feature_idx] = feature_type_in
             if categories is None:
                 # continuous feature
@@ -1829,7 +1829,7 @@ def construct_bins(
     is_mains = True
     native = Native.get_native_singleton()
     for max_bins in max_bins_leveled:
-        random_state = native.generate_deterministic_seed(random_state, 559276972)
+        random_state = native.generate_seed(random_state, 559276972)
         preprocessor = EBMPreprocessor(
             feature_names_given, 
             feature_types_given, 

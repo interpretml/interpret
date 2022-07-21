@@ -18,7 +18,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 // I generated these as purely random numbers from 0 to 2^64-1
-static const uint_fast64_t k_oneTimePadRandomSeed[64] {
+static const uint_fast64_t k_oneTimePadSeed[64] {
    uint_fast64_t { 12108613678499979739U },
    uint_fast64_t { 8329435972752283296U },
    uint_fast64_t { 17571318292481228596U },
@@ -87,14 +87,14 @@ static const uint_fast64_t k_oneTimePadRandomSeed[64] {
 
 uint_fast64_t RandomDeterministic::GetOneTimePadConversion(uint_fast64_t seed) {
    static_assert(CountBitsRequiredPositiveMax<uint64_t>() ==
-      sizeof(k_oneTimePadRandomSeed) / sizeof(k_oneTimePadRandomSeed[0]),
+      sizeof(k_oneTimePadSeed) / sizeof(k_oneTimePadSeed[0]),
       "the one time pad must have the same length as the number of bits"
       );
    EBM_ASSERT(seed == static_cast<uint_fast64_t>(static_cast<uint64_t>(seed)));
 
    // this number generates a perfectly valid converted seed in a single pass if the user passes us a seed of zero
    uint_fast64_t result = uint_fast64_t { 0x6b79a38fd52c4e71 };
-   const uint_fast64_t * pRandom = k_oneTimePadRandomSeed;
+   const uint_fast64_t * pRandom = k_oneTimePadSeed;
    do {
       if(UNPREDICTABLE(0 != (uint_fast64_t { 1 } &seed))) {
          result ^= *pRandom;

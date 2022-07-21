@@ -180,7 +180,7 @@ ErrorEbmType BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
    BoolEbmType isDeterministic,
-   SeedEbmType randomSeed,
+   SeedEbmType seed,
    const void * dataSet,
    const BagEbmType * bag,
    const double * initScores,
@@ -195,7 +195,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
       TraceLevelInfo,
       "Entered CreateBooster: "
       "isDeterministic=%s, "
-      "randomSeed=%" SeedEbmTypePrintf ", "
+      "seed=%" SeedEbmTypePrintf ", "
       "dataSet=%p, "
       "bag=%p, "
       "initScores=%p, "
@@ -207,7 +207,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
       "boosterHandleOut=%p"
       ,
       ObtainTruth(isDeterministic),
-      randomSeed,
+      seed,
       static_cast<const void *>(dataSet),
       static_cast<const void *>(bag),
       static_cast<const void *>(initScores),
@@ -279,7 +279,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
 
       try {
          RandomNondeterministic<uint32_t> randomGenerator;
-         randomSeed = randomGenerator.NextSeed();
+         seed = randomGenerator.NextSeed();
       } catch(const std::bad_alloc &) {
          LOG_0(TraceLevelWarning, "WARNING CreateBooster Out of memory in std::random_device");
          return Error_OutOfMemory;
@@ -294,7 +294,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
       return Error_OutOfMemory;
    }
 
-   pBoosterShell->GetRandomDeterministic()->InitializeUnsigned(randomSeed, k_boosterRandomizationMix);
+   pBoosterShell->GetRandomDeterministic()->InitializeUnsigned(seed, k_boosterRandomizationMix);
 
    error = BoosterCore::Create(
       pBoosterShell,

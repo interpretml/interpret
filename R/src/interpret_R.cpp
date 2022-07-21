@@ -221,26 +221,26 @@ IntEbmType CountDoubles(const SEXP items) {
    return static_cast<IntEbmType>(countItemsR);
 }
 
-SEXP GenerateDeterministicSeed_R(
-   SEXP randomSeed,
+SEXP GenerateSeed_R(
+   SEXP seed,
    SEXP stageRandomizationMix
 ) {
-   EBM_ASSERT(nullptr != randomSeed);
+   EBM_ASSERT(nullptr != seed);
    EBM_ASSERT(nullptr != stageRandomizationMix);
 
-   if(!IsSingleIntVector(randomSeed)) {
-      LOG_0(TraceLevelError, "ERROR GenerateDeterministicSeed_R !IsSingleIntVector(randomSeed)");
+   if(!IsSingleIntVector(seed)) {
+      LOG_0(TraceLevelError, "ERROR GenerateSeed_R !IsSingleIntVector(seed)");
       return R_NilValue;
    }
-   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
+   const SeedEbmType seedLocal = INTEGER(seed)[0];
 
    if(!IsSingleIntVector(stageRandomizationMix)) {
-      LOG_0(TraceLevelError, "ERROR GenerateDeterministicSeed_R !IsSingleIntVector(stageRandomizationMix)");
+      LOG_0(TraceLevelError, "ERROR GenerateSeed_R !IsSingleIntVector(stageRandomizationMix)");
       return R_NilValue;
    }
    const SeedEbmType stageRandomizationMixLocal = INTEGER(stageRandomizationMix)[0];
 
-   const SeedEbmType retSeed = GenerateDeterministicSeed(randomSeedLocal, stageRandomizationMixLocal);
+   const SeedEbmType retSeed = GenerateSeed(seedLocal, stageRandomizationMixLocal);
 
    SEXP ret = PROTECT(allocVector(INTSXP, R_xlen_t { 1 }));
    INTEGER(ret)[0] = retSeed;
@@ -428,23 +428,23 @@ SEXP BinFeature_R(
 }
 
 SEXP SampleWithoutReplacement_R(
-   SEXP randomSeed,
+   SEXP seed,
    SEXP countTrainingSamples,
    SEXP countValidationSamples,
    SEXP sampleCountsOut
 ) {
-   EBM_ASSERT(nullptr != randomSeed);
+   EBM_ASSERT(nullptr != seed);
    EBM_ASSERT(nullptr != countTrainingSamples);
    EBM_ASSERT(nullptr != countValidationSamples);
    EBM_ASSERT(nullptr != sampleCountsOut);
 
    ErrorEbmType error;
 
-   if(!IsSingleIntVector(randomSeed)) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R !IsSingleIntVector(randomSeed)");
+   if(!IsSingleIntVector(seed)) {
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R !IsSingleIntVector(seed)");
       return R_NilValue;
    }
-   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
+   const SeedEbmType seedLocal = INTEGER(seed)[0];
 
    if(!IsSingleDoubleVector(countTrainingSamples)) {
       LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R !IsSingleDoubleVector(countTrainingSamples)");
@@ -491,7 +491,7 @@ SEXP SampleWithoutReplacement_R(
       EBM_ASSERT(nullptr != aSampleCounts); // this can't be nullptr since R_alloc uses R error handling
 
       error = SampleWithoutReplacement(
-         randomSeedLocal,
+         seedLocal,
          countTrainingSamplesIntEbmType,
          countValidationSamplesIntEbmType,
          aSampleCounts
@@ -520,7 +520,7 @@ SEXP SampleWithoutReplacement_R(
 }
 
 SEXP CreateClassificationBooster_R(
-   SEXP randomSeed,
+   SEXP seed,
    SEXP countClasses,
    SEXP featuresCategorical,
    SEXP featuresBinCount,
@@ -536,7 +536,7 @@ SEXP CreateClassificationBooster_R(
    SEXP validationInitScores,
    SEXP countInnerBags
 ) {
-   EBM_ASSERT(nullptr != randomSeed);
+   EBM_ASSERT(nullptr != seed);
    EBM_ASSERT(nullptr != countClasses);
    EBM_ASSERT(nullptr != featuresCategorical);
    EBM_ASSERT(nullptr != featuresBinCount);
@@ -554,11 +554,11 @@ SEXP CreateClassificationBooster_R(
 
    ErrorEbmType error;
 
-   if(!IsSingleIntVector(randomSeed)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsSingleIntVector(randomSeed)");
+   if(!IsSingleIntVector(seed)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsSingleIntVector(seed)");
       return R_NilValue;
    }
-   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
+   const SeedEbmType seedLocal = INTEGER(seed)[0];
 
    if(!IsSingleDoubleVector(countClasses)) {
       LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsSingleDoubleVector(countClasses)");
@@ -751,7 +751,7 @@ SEXP CreateClassificationBooster_R(
 
    BoosterHandle boosterHandle;
    error = CreateClassificationBooster(
-      randomSeedLocal,
+      seedLocal,
       static_cast<IntEbmType>(cClasses),
       countFeatures, 
       aFeaturesCategorical,
@@ -788,7 +788,7 @@ SEXP CreateClassificationBooster_R(
 }
 
 SEXP CreateRegressionBooster_R(
-   SEXP randomSeed,
+   SEXP seed,
    SEXP featuresCategorical,
    SEXP featuresBinCount,
    SEXP dimensionCounts,
@@ -803,7 +803,7 @@ SEXP CreateRegressionBooster_R(
    SEXP validationInitScores,
    SEXP countInnerBags
 ) {
-   EBM_ASSERT(nullptr != randomSeed);
+   EBM_ASSERT(nullptr != seed);
    EBM_ASSERT(nullptr != featuresCategorical);
    EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != dimensionCounts);
@@ -820,11 +820,11 @@ SEXP CreateRegressionBooster_R(
 
    ErrorEbmType error;
 
-   if(!IsSingleIntVector(randomSeed)) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R !IsSingleIntVector(randomSeed)");
+   if(!IsSingleIntVector(seed)) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R !IsSingleIntVector(seed)");
       return R_NilValue;
    }
-   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
+   const SeedEbmType seedLocal = INTEGER(seed)[0];
 
    size_t cFeatures;
    const BoolEbmType * aFeaturesCategorical;
@@ -991,7 +991,7 @@ SEXP CreateRegressionBooster_R(
 
    BoosterHandle boosterHandle;
    error = CreateRegressionBooster(
-      randomSeedLocal,
+      seedLocal,
       countFeatures,
       aFeaturesCategorical,
       aFeaturesBinCount,
@@ -1619,7 +1619,7 @@ SEXP FreeInteractionDetector_R(
 }
 
 static const R_CallMethodDef g_exposedFunctions[] = {
-   { "GenerateDeterministicSeed_R", (DL_FUNC)&GenerateDeterministicSeed_R, 2 },
+   { "GenerateSeed_R", (DL_FUNC)&GenerateSeed_R, 2 },
    { "CutQuantile_R", (DL_FUNC)&CutQuantile_R, 4 },
    { "BinFeature_R", (DL_FUNC)&BinFeature_R, 3 },
    { "SampleWithoutReplacement_R", (DL_FUNC)&SampleWithoutReplacement_R, 4 },

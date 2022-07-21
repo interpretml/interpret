@@ -25,7 +25,7 @@ static int g_cLogExitGenerateGaussianRandomCountParametersMessages = 25;
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
    BoolEbmType isDeterministic,
-   SeedEbmType randomSeed,
+   SeedEbmType seed,
    double stddev,
    IntEbmType count,
    double * randomOut
@@ -36,13 +36,13 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
       TraceLevelVerbose,
       "Entered GenerateGaussianRandom: "
       "isDeterministic=%s, "
-      "randomSeed=%" SeedEbmTypePrintf ", "
+      "seed=%" SeedEbmTypePrintf ", "
       "stddev=%le, "
       "count=%" IntEbmTypePrintf ", "
       "randomOut=%p"
       ,
       ObtainTruth(isDeterministic),
-      randomSeed,
+      seed,
       stddev,
       count,
       static_cast<const void *>(randomOut)
@@ -97,7 +97,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
    const double * const pRandomEnd = randomOut + count;
    if(EBM_FALSE != isDeterministic) {
       RandomDeterministic randomGenerator;
-      randomGenerator.InitializeUnsigned(randomSeed, k_gaussianRandomizationMix);
+      randomGenerator.InitializeUnsigned(seed, k_gaussianRandomizationMix);
       do {
          *pRandom = gaussian.Sample(randomGenerator, 1.0);
          ++pRandom;

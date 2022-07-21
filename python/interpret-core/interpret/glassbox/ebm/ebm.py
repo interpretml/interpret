@@ -393,7 +393,7 @@ class EBMModel(BaseEstimator):
         bag_weights = []
         bags = []
         for _ in range(self.outer_bags):
-            bagged_random_state = native.generate_deterministic_seed(bagged_random_state, 886321150)
+            bagged_random_state = native.generate_seed(bagged_random_state, 886321150)
             bag = EBMUtils.make_bag(
                 y,
                 self.validation_size,
@@ -430,7 +430,7 @@ class EBMModel(BaseEstimator):
         bagged_random_state = init_random_state
         parallel_args = []
         for idx in range(self.outer_bags):
-            bagged_random_state = native.generate_deterministic_seed(bagged_random_state, 13098686)
+            bagged_random_state = native.generate_seed(bagged_random_state, 13098686)
             parallel_args.append(
                 (
                     dataset,
@@ -571,7 +571,7 @@ class EBMModel(BaseEstimator):
             bagged_random_state = init_random_state
             parallel_args = []
             for idx in range(self.outer_bags):
-                bagged_random_state = native.generate_deterministic_seed(bagged_random_state, 521040308)
+                bagged_random_state = native.generate_seed(bagged_random_state, 521040308)
                 parallel_args.append(
                     (
                         dataset,

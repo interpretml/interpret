@@ -668,7 +668,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
 
    error = CreateBooster(
       EBM_TRUE,
-      k_randomSeed,
+      k_seed,
       pDataSet,
       0 == bag.size() ? nullptr : &bag[0],
       0 == allScores.size() ? nullptr : &allScores[0],

@@ -35,14 +35,14 @@ namespace DEFINED_ZONE_NAME {
 // an init function and just use a single function that modifies the 16 character string?
 // We need to also provide utilities to generate normal distributions using the random number
 
-EBM_API_BODY SeedEbmType EBM_CALLING_CONVENTION GenerateDeterministicSeed(
-   SeedEbmType randomSeed,
+EBM_API_BODY SeedEbmType EBM_CALLING_CONVENTION GenerateSeed(
+   SeedEbmType seed,
    SeedEbmType stageRandomizationMix
 ) {
    RandomDeterministic randomDeterministic;
    // this is a bit inefficient in that we go through a complete regeneration of the internal state,
    // but it gives us a simple interface
-   randomDeterministic.InitializeSigned(randomSeed, stageRandomizationMix);
+   randomDeterministic.InitializeSigned(seed, stageRandomizationMix);
    SeedEbmType ret = randomDeterministic.NextSeed();
    return ret;
 }
@@ -53,7 +53,7 @@ static int g_cLogExitSampleWithoutReplacementParametersMessages = 5;
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
    BoolEbmType isDeterministic,
-   SeedEbmType randomSeed,
+   SeedEbmType seed,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
    BagEbmType * sampleCountsOut
@@ -64,13 +64,13 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
       TraceLevelVerbose,
       "Entered SampleWithoutReplacement: "
       "isDeterministic=%s, "
-      "randomSeed=%" SeedEbmTypePrintf ", "
+      "seed=%" SeedEbmTypePrintf ", "
       "countTrainingSamples=%" IntEbmTypePrintf ", "
       "countValidationSamples=%" IntEbmTypePrintf ", "
       "sampleCountsOut=%p"
       ,
       ObtainTruth(isDeterministic),
-      randomSeed,
+      seed,
       countTrainingSamples,
       countValidationSamples,
       static_cast<void *>(sampleCountsOut)
@@ -120,7 +120,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
    BagEbmType * pSampleCountsOut = sampleCountsOut;
    if(EBM_FALSE != isDeterministic) {
       RandomDeterministic randomGenerator;
-      randomGenerator.InitializeUnsigned(randomSeed, k_samplingWithoutReplacementRandomizationMix);
+      randomGenerator.InitializeUnsigned(seed, k_samplingWithoutReplacementRandomizationMix);
       do {
          const size_t iRandom = randomGenerator.NextFast(cSamplesRemaining);
          const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
@@ -168,7 +168,7 @@ WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
    BoolEbmType isDeterministic,
-   SeedEbmType randomSeed,
+   SeedEbmType seed,
    IntEbmType countClasses,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
@@ -186,7 +186,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
       TraceLevelVerbose,
       "Entered StratifiedSamplingWithoutReplacement: "
       "isDeterministic=%s, "
-      "randomSeed=%" SeedEbmTypePrintf ", "
+      "seed=%" SeedEbmTypePrintf ", "
       "countClasses=%" IntEbmTypePrintf ", "
       "countTrainingSamples=%" IntEbmTypePrintf ", "
       "countValidationSamples=%" IntEbmTypePrintf ", "
@@ -194,7 +194,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
       "sampleCountsOut=%p"
       ,
       ObtainTruth(isDeterministic),
-      randomSeed,
+      seed,
       countClasses,
       countTrainingSamples,
       countValidationSamples,
@@ -276,7 +276,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
       // we can use low-quality non-determinism.  Generate a non-deterministic seed
       try {
          RandomNondeterministic<uint32_t> randomGenerator;
-         randomSeed = randomGenerator.NextSeed();
+         seed = randomGenerator.NextSeed();
       } catch(const std::bad_alloc &) {
          LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement Out of memory in std::random_device");
          return Error_OutOfMemory;
@@ -379,7 +379,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
    }
 
    RandomDeterministic randomDeterministic;
-   randomDeterministic.InitializeUnsigned(randomSeed, k_stratifiedSamplingWithoutReplacementRandomizationMix);
+   randomDeterministic.InitializeUnsigned(seed, k_stratifiedSamplingWithoutReplacementRandomizationMix);
 
    for (size_t iLeftover = 0; iLeftover < globalLeftover; iLeftover++) {
       double maxImprovement = std::numeric_limits<double>::lowest();

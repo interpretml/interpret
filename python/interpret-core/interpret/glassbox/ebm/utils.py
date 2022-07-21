@@ -960,7 +960,7 @@ def merge_ebms(models):
 class EBMUtils:
     
     @staticmethod
-    def normalize_initial_seed(seed):  # pragma: no cover
+    def normalize_initial_seed(seed):
         # Some languages do not support 64-bit values.  Other languages do not support unsigned integers.
         # Almost all languages support signed 32-bit integers, so we standardize on that for our 
         # random number seed values.  If the caller passes us a number that doesn't fit into a 
@@ -1167,7 +1167,7 @@ class EBMUtils:
                             if s == 1: 
                                 continue # Skip cuts that fall on 0th (missing value) bin -- missing values not supported in DP
 
-                            random_state = native.generate_deterministic_seed(random_state, 1458059807)
+                            random_state = native.generate_seed(random_state, 1458059807)
                             noise = native.generate_gaussian_random(random_state, noise_scale, 1)
                             noisy_update_tensor[f:s] = term_update_tensor[f:s] + noise
 

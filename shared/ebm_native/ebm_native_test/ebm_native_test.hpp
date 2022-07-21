@@ -166,7 +166,7 @@ inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) {
 #endif // EXPAND_BINARY_LOGITS
 }
 
-constexpr SeedEbmType k_randomSeed = SeedEbmType { -42 };
+constexpr SeedEbmType k_seed = SeedEbmType { -42 };
 
 class FeatureTest final {
 public:

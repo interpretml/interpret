@@ -168,10 +168,10 @@ class Native:
         self._unsafe.CleanFloats(len(val_array), Native._make_pointer(val_array, np.float64))
         return val_array[0]
 
-    def generate_deterministic_seed(self, random_state, stage_randomization_mix):
+    def generate_seed(self, random_state, stage_randomization_mix):
         if random_state is None:
             return None
-        return self._unsafe.GenerateDeterministicSeed(random_state, stage_randomization_mix)
+        return self._unsafe.GenerateSeed(random_state, stage_randomization_mix)
 
     def generate_gaussian_random(self, random_state, stddev, count):
         is_deterministic = random_state is not None
@@ -566,18 +566,18 @@ class Native:
         ]
         self._unsafe.CleanFloats.restype = None
 
-        self._unsafe.GenerateDeterministicSeed.argtypes = [
-            # int32_t randomSeed
+        self._unsafe.GenerateSeed.argtypes = [
+            # int32_t seed
             ct.c_int32,
             # int64_t stageRandomizationMix
             ct.c_int32,
         ]
-        self._unsafe.GenerateDeterministicSeed.restype = ct.c_int32
+        self._unsafe.GenerateSeed.restype = ct.c_int32
 
         self._unsafe.GenerateGaussianRandom.argtypes = [
             # int64_t isDeterministic
             ct.c_int64,
-            # int32_t randomSeed
+            # int32_t seed
             ct.c_int32,
             # double stddev
             ct.c_double,
@@ -591,7 +591,7 @@ class Native:
         self._unsafe.SampleWithoutReplacement.argtypes = [
             # int64_t isDeterministic
             ct.c_int64,
-            # int32_t randomSeed
+            # int32_t seed
             ct.c_int32,
             # int64_t countTrainingSamples
             ct.c_int64,
@@ -605,7 +605,7 @@ class Native:
         self._unsafe.StratifiedSamplingWithoutReplacement.argtypes = [
             # int64_t isDeterministic
             ct.c_int64,
-            # int32_t randomSeed
+            # int32_t seed
             ct.c_int32,
             # int64_t countClasses
             ct.c_int64,
@@ -865,7 +865,7 @@ class Native:
         self._unsafe.CreateBooster.argtypes = [
             # int64_t isDeterministic
             ct.c_int64,
-            # int32_t randomSeed
+            # int32_t seed
             ct.c_int32,
             # void * dataSet
             ct.c_void_p,

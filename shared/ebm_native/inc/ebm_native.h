@@ -206,13 +206,13 @@ EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm
 
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION CleanFloats(IntEbmType count, double * valsInOut);
 
-EBM_API_INCLUDE SeedEbmType EBM_CALLING_CONVENTION GenerateDeterministicSeed(
-   SeedEbmType randomSeed,
+EBM_API_INCLUDE SeedEbmType EBM_CALLING_CONVENTION GenerateSeed(
+   SeedEbmType seed,
    SeedEbmType stageRandomizationMix
 );
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
    BoolEbmType isDeterministic,
-   SeedEbmType randomSeed,
+   SeedEbmType seed,
    double stddev,
    IntEbmType count,
    double * randomOut
@@ -352,7 +352,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION ExtractTargetClasses(
 
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
    BoolEbmType isDeterministic,
-   SeedEbmType randomSeed,
+   SeedEbmType seed,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
    BagEbmType * sampleCountsOut
@@ -360,7 +360,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
 
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
    BoolEbmType isDeterministic,
-   SeedEbmType randomSeed,
+   SeedEbmType seed,
    IntEbmType countClasses,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
@@ -370,7 +370,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutRep
 
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
    BoolEbmType isDeterministic,
-   SeedEbmType randomSeed,
+   SeedEbmType seed,
    const void * dataSet,
    const BagEbmType * bag,
    const double * initScores, // only samples with non-zeros in the bag are included

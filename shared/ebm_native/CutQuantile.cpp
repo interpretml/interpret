@@ -2463,7 +2463,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
    // marginal changes to where the cuts are placed.  Exposing it just means we need to 
    // use the same value in every language that we support, and any preprocessors then need to
    // take a random number to be useful, which would be odd for a preprocessor.
-   const SeedEbmType randomSeed = SeedEbmType { 1260428135 };
+   const SeedEbmType seed = SeedEbmType { 1260428135 };
 
    LOG_COUNTED_N(
       &g_cLogEnterCutQuantileParametersMessages,
@@ -2746,7 +2746,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          const bool bSymmetryReversal = DetermineSymmetricDirection(cSamples, aFeatureVals);
 
          RandomDeterministic randomDeterministic;
-         randomDeterministic.InitializeUnsigned(randomSeed, k_quantileRandomizationMix);
+         randomDeterministic.InitializeUnsigned(seed, k_quantileRandomizationMix);
 
          FillTiebreakers(bSymmetryReversal, &randomDeterministic, cCuttingRanges, aCuttingRange);
 

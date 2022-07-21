@@ -1202,7 +1202,7 @@ TEST_CASE("CutQuantile, stress test the guarantee of one cut per CuttingRange, b
 TEST_CASE("CutQuantile, randomized fairness check") {
    ErrorEbmType error;
 
-   RandomStreamTest randomStream(k_randomSeed);
+   RandomStreamTest randomStream(k_seed);
    if(!randomStream.IsSuccess()) {
       exit(1);
    }
@@ -1336,7 +1336,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
 TEST_CASE("CutQuantile, chunky randomized check") {
    ErrorEbmType error;
 
-   RandomStreamTest randomStream(k_randomSeed);
+   RandomStreamTest randomStream(k_seed);
    if(!randomStream.IsSuccess()) {
       exit(1);
    }
