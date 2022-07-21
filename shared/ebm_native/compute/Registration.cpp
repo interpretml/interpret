@@ -113,7 +113,7 @@ bool Registration::CreateRegistrable(
    return bNoMatch;
 }
 
-void Registration::FinalCheckParameters(
+void Registration::FinalCheckParams(
    const char * sRegistration,
    const char * const sRegistrationEnd,
    const size_t cUsedParams

@@ -1,7 +1,7 @@
 LIBRARY
 
 EXPORTS
-  SetLogMessageFunction
+  SetLogCallback
   SetTraceLevel
   GetTraceLevelString
   SizeDataSetHeader

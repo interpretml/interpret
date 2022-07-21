@@ -34,7 +34,7 @@ class Native:
 
     _native = None
     # if we supported win32 32-bit functions then this would need to be WINFUNCTYPE
-    _LogFuncType = ct.CFUNCTYPE(None, ct.c_int32, ct.c_char_p)
+    _LogCallbackType = ct.CFUNCTYPE(None, ct.c_int32, ct.c_char_p)
 
     def __init__(self):
         # Do not call "Native()".  Call "Native.get_native_singleton()" instead
@@ -154,11 +154,11 @@ class Native:
         }
 
         trace_level = level_dict[level]
-        if self._typed_log_func is None and trace_level != self._TraceLevelOff:
-            # it's critical that we put _LogFuncType(native_log) into 
-            # self._typed_log_func, otherwise it will be garbage collected
-            self._typed_log_func = self._LogFuncType(native_log)
-            self._unsafe.SetLogMessageFunction(self._typed_log_func)
+        if self._log_callback_func is None and trace_level != self._TraceLevelOff:
+            # it's critical that we put _LogCallbackType(native_log) into 
+            # self._log_callback_func, otherwise it will be garbage collected
+            self._log_callback_func = self._LogCallbackType(native_log)
+            self._unsafe.SetLogCallback(self._log_callback_func)
 
         self._unsafe.SetTraceLevel(trace_level)
 
@@ -543,14 +543,14 @@ class Native:
     def _initialize(self, is_debug):
         self.is_debug = is_debug
 
-        self._typed_log_func = None
+        self._log_callback_func = None
         self._unsafe = ct.cdll.LoadLibrary(Native._get_ebm_lib_path(debug=is_debug))
 
-        self._unsafe.SetLogMessageFunction.argtypes = [
-            # void (* fn)(int32 traceLevel, const char * message) logMessageFunction
-            self._LogFuncType
+        self._unsafe.SetLogCallback.argtypes = [
+            # void (* fn)(int32 traceLevel, const char * message) logCallback
+            self._LogCallbackType
         ]
-        self._unsafe.SetLogMessageFunction.restype = None
+        self._unsafe.SetLogCallback.restype = None
 
         self._unsafe.SetTraceLevel.argtypes = [
             # int32 traceLevel

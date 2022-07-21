@@ -157,7 +157,7 @@ protected:
       return paramVal;
    }
 
-   static void FinalCheckParameters(
+   static void FinalCheckParams(
       const char * sRegistration, 
       const char * const sRegistrationEnd,
       const size_t cUsedParams
@@ -224,8 +224,8 @@ class RegistrationPack final : public Registration {
    ) {
       // The registration string has been processed so we now have either the default param values or we have the parameter
       // values specified in the registration string.  Now we need to verify that there weren't any unused parameters,
-      // which would have been an error.  FinalCheckParameters does this and throws an exception if it finds any errors
-      FinalCheckParameters(sRegistration, sRegistrationEnd, cUsedParams);
+      // which would have been an error.  FinalCheckParams does this and throws an exception if it finds any errors
+      FinalCheckParams(sRegistration, sRegistrationEnd, cUsedParams);
 
       // use malloc so that we can use the C free function on the main zone side.
       // it is legal for the destructor to not be called on a placement new object when the destructor is trivial

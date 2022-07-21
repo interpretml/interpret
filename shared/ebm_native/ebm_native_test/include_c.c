@@ -8,7 +8,7 @@
 // include this AFTER ebm_native.h to test that ebm_native.h can stand alone
 #include <stdio.h>
 
-static void EBM_CALLING_CONVENTION LogMessage(TraceEbmType traceLevel, const char * message) {
+static void EBM_CALLING_CONVENTION LogCallback(TraceEbmType traceLevel, const char * message) {
    char buffer[1000];
    const size_t cBytesBuffer = sizeof(buffer) / sizeof(buffer[0]);
    snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf ".%s\n", traceLevel, message);
@@ -64,6 +64,6 @@ extern void TestCHeaderConstructs() {
    snprintf(buffer, cBytesBuffer, "%s\n", GetTraceLevelString(testTraceVerbose));
    snprintf(buffer, cBytesBuffer, "%s\n", GetTraceLevelString(testTraceIllegal));
 
-   LOG_MESSAGE_FUNCTION logMessageFunction = &LogMessage;
-   (*logMessageFunction)(TraceLevelVerbose, "I am a test.  What are you?");
+   LOG_CALLBACK logCallback = &LogCallback;
+   (*logCallback)(TraceLevelVerbose, "I am a test.  What are you?");
 }

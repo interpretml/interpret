@@ -195,12 +195,10 @@ typedef uint64_t UInteractionOptionsType;
 #define TraceLevelVerbose  (TRACE_CAST(4))
 
 // All our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
-typedef void (EBM_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(TraceEbmType traceLevel, const char * message);
+typedef void (EBM_CALLING_CONVENTION * LOG_CALLBACK)(TraceEbmType traceLevel, const char * message);
 
-// SetLogMessageFunction does not need to be called if the level is left at TraceLevelOff
-EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetLogMessageFunction(
-   LOG_MESSAGE_FUNCTION logMessageFunction
-);
+// SetLogCallback does not need to be called if the level is left at TraceLevelOff
+EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetLogCallback(LOG_CALLBACK logCallback);
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel);
 EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbmType traceLevel);
 
@@ -381,7 +379,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
    const double * experimentalParams,
    BoosterHandle * boosterHandleOut
 );
-// TODO: we might need a function to set the booster's internal random seed so that a booster view 
+// TODO: we might need a function to set the booster's internal seed so that a booster view 
 // can either use the same seed as the original booster, or diverge on some new random sequence path
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CreateBoosterView(
    BoosterHandle boosterHandle,
@@ -396,6 +394,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
    const IntEbmType * leavesMax, 
    double * avgGainOut
 );
+// GetTermUpdateSplits must be called before calls to GetTermUpdate/SetTermUpdate
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
    BoosterHandle boosterHandle,
    IntEbmType indexDimension,

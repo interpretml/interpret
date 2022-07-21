@@ -1,6 +1,6 @@
 {
    global: 
-      SetLogMessageFunction;
+      SetLogCallback;
       SetTraceLevel;
       GetTraceLevelString;
       SizeDataSetHeader;
