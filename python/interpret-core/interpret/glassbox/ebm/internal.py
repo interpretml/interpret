@@ -168,10 +168,10 @@ class Native:
         self._unsafe.CleanFloats(len(val_array), Native._make_pointer(val_array, np.float64))
         return val_array[0]
 
-    def generate_seed(self, random_state, stage_randomization_mix):
+    def generate_seed(self, random_state, random_mix):
         if random_state is None:
             return None
-        return self._unsafe.GenerateSeed(random_state, stage_randomization_mix)
+        return self._unsafe.GenerateSeed(random_state, random_mix)
 
     def generate_gaussian_random(self, random_state, stddev, count):
         is_deterministic = random_state is not None
@@ -569,7 +569,7 @@ class Native:
         self._unsafe.GenerateSeed.argtypes = [
             # int32_t seed
             ct.c_int32,
-            # int64_t stageRandomizationMix
+            # int64_t randomMix
             ct.c_int32,
         ]
         self._unsafe.GenerateSeed.restype = ct.c_int32

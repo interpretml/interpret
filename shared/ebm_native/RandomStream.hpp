@@ -88,16 +88,16 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS void InitializeSigned(const SeedEbmType seed, const SeedEbmType stageRandomizationMix) {
+   INLINE_ALWAYS void InitializeSigned(const SeedEbmType seed, const SeedEbmType randomMix) {
       // the C++ standard guarantees that the unsigned result of this 
       // conversion is 2^64 + seed if seed is negative
-      Initialize(static_cast<uint64_t>(seed) ^ static_cast<uint64_t>(stageRandomizationMix));
+      Initialize(static_cast<uint64_t>(seed) ^ static_cast<uint64_t>(randomMix));
    }
 
-   INLINE_ALWAYS void InitializeUnsigned(const SeedEbmType seed, const uint64_t stageRandomizationMix) {
+   INLINE_ALWAYS void InitializeUnsigned(const SeedEbmType seed, const uint64_t randomMix) {
       // the C++ standard guarantees that the unsigned result of this 
       // conversion is 2^64 + seed if seed is negative
-      Initialize(static_cast<uint64_t>(seed) ^ stageRandomizationMix);
+      Initialize(static_cast<uint64_t>(seed) ^ randomMix);
    }
 
    INLINE_ALWAYS void Initialize(const RandomDeterministic & other) {

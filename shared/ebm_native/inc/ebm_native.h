@@ -208,7 +208,7 @@ EBM_API_INCLUDE void EBM_CALLING_CONVENTION CleanFloats(IntEbmType count, double
 
 EBM_API_INCLUDE SeedEbmType EBM_CALLING_CONVENTION GenerateSeed(
    SeedEbmType seed,
-   SeedEbmType stageRandomizationMix
+   SeedEbmType randomMix
 );
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
    BoolEbmType isDeterministic,

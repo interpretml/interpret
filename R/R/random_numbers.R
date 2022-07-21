@@ -25,11 +25,11 @@ normalize_initial_seed <- function(seed) {
    return(seed)
 }
 
-generate_seed <- function(random_state, stage_randomization_mix) {
+generate_seed <- function(random_state, random_mix) {
    random_state <- as.integer(random_state)
-   stage_randomization_mix <- as.integer(stage_randomization_mix)
+   random_mix <- as.integer(random_mix)
 
-   ret <- .Call(GenerateSeed_R, random_state, stage_randomization_mix)
+   ret <- .Call(GenerateSeed_R, random_state, random_mix)
    if(is.null(ret)) {
       stop("error in GenerateSeed_R")
    }

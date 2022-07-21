@@ -223,10 +223,10 @@ IntEbmType CountDoubles(const SEXP items) {
 
 SEXP GenerateSeed_R(
    SEXP seed,
-   SEXP stageRandomizationMix
+   SEXP randomMix
 ) {
    EBM_ASSERT(nullptr != seed);
-   EBM_ASSERT(nullptr != stageRandomizationMix);
+   EBM_ASSERT(nullptr != randomMix);
 
    if(!IsSingleIntVector(seed)) {
       LOG_0(TraceLevelError, "ERROR GenerateSeed_R !IsSingleIntVector(seed)");
@@ -234,13 +234,13 @@ SEXP GenerateSeed_R(
    }
    const SeedEbmType seedLocal = INTEGER(seed)[0];
 
-   if(!IsSingleIntVector(stageRandomizationMix)) {
-      LOG_0(TraceLevelError, "ERROR GenerateSeed_R !IsSingleIntVector(stageRandomizationMix)");
+   if(!IsSingleIntVector(randomMix)) {
+      LOG_0(TraceLevelError, "ERROR GenerateSeed_R !IsSingleIntVector(randomMix)");
       return R_NilValue;
    }
-   const SeedEbmType stageRandomizationMixLocal = INTEGER(stageRandomizationMix)[0];
+   const SeedEbmType randomMixLocal = INTEGER(randomMix)[0];
 
-   const SeedEbmType retSeed = GenerateSeed(seedLocal, stageRandomizationMixLocal);
+   const SeedEbmType retSeed = GenerateSeed(seedLocal, randomMixLocal);
 
    SEXP ret = PROTECT(allocVector(INTSXP, R_xlen_t { 1 }));
    INTEGER(ret)[0] = retSeed;

@@ -37,12 +37,12 @@ namespace DEFINED_ZONE_NAME {
 
 EBM_API_BODY SeedEbmType EBM_CALLING_CONVENTION GenerateSeed(
    SeedEbmType seed,
-   SeedEbmType stageRandomizationMix
+   SeedEbmType randomMix
 ) {
    RandomDeterministic randomDeterministic;
    // this is a bit inefficient in that we go through a complete regeneration of the internal state,
    // but it gives us a simple interface
-   randomDeterministic.InitializeSigned(seed, stageRandomizationMix);
+   randomDeterministic.InitializeSigned(seed, randomMix);
    SeedEbmType ret = randomDeterministic.NextSeed();
    return ret;
 }
