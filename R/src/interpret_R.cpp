@@ -1105,7 +1105,7 @@ SEXP GenerateTermUpdate_R(
    error = GenerateTermUpdate(
       boosterHandle,
       static_cast<IntEbmType>(iTerm),
-      GenerateUpdateOptions_Default,
+      BoostFlags_Default,
       learningRateLocal,
       minSamplesLeafEbm,
       aLeavesMax,

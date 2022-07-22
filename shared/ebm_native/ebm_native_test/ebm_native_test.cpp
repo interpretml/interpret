@@ -695,7 +695,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
 
 BoostRet TestApi::Boost(
    const IntEbmType indexTerm,
-   const GenerateUpdateOptionsType options,
+   const BoostFlagsType flags,
    const double learningRate,
    const IntEbmType minSamplesLeaf,
    const std::vector<IntEbmType> leavesMax
@@ -727,7 +727,7 @@ BoostRet TestApi::Boost(
    error = GenerateTermUpdate(
       m_boosterHandle,
       indexTerm,
-      options,
+      flags,
       learningRate,
       minSamplesLeaf,
       0 == leavesMax.size() ? nullptr : &leavesMax[0],
@@ -736,7 +736,7 @@ BoostRet TestApi::Boost(
    if(Error_None != error) {
       exit(1);
    }
-   if(0 != (GenerateUpdateOptions_GradientSums & options)) {
+   if(0 != (BoostFlags_GradientSums & flags)) {
       // if sums are on, then we MUST change the term update
 
       size_t cUpdateScores = GetCountScores(m_cClasses);
@@ -1086,7 +1086,7 @@ void TestApi::InitializeInteraction() {
 
 double TestApi::TestCalcInteractionStrength(
    const std::vector<IntEbmType> features, 
-   const InteractionOptionsType options,
+   const InteractionFlagsType flags,
    const IntEbmType minSamplesLeaf
 ) const {
    ErrorEbmType error;
@@ -1108,7 +1108,7 @@ double TestApi::TestCalcInteractionStrength(
       m_interactionHandle,
       features.size(),
       0 == features.size() ? nullptr : &features[0],
-      options,
+      flags,
       minSamplesLeaf,
       &avgInteractionStrength
    );

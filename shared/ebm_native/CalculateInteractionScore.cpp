@@ -46,7 +46,7 @@ extern void TensorTotalsBuild(
 extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
    const Term * const pTerm,
-   const InteractionOptionsType options,
+   const InteractionFlagsType flags,
    const size_t cSamplesLeafMin,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
@@ -60,7 +60,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    InteractionShell * const pInteractionShell,
    InteractionCore * const pInteractionCore,
    const Term * const pTerm,
-   const InteractionOptionsType options,
+   const InteractionFlagsType flags,
    const size_t cSamplesLeafMin,
    double * const pInteractionStrengthAvgOut
 ) {
@@ -209,7 +209,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       double bestGain = PartitionTwoDimensionalInteraction(
          pInteractionCore,
          pTerm,
-         options,
+         flags,
          cSamplesLeafMin,
          aAuxiliaryBins,
          aBinsBig
@@ -279,7 +279,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
    InteractionHandle interactionHandle,
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,
-   InteractionOptionsType options,
+   InteractionFlagsType flags,
    IntEbmType minSamplesLeaf,
    double * avgInteractionStrengthOut
 ) {
@@ -291,14 +291,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       "interactionHandle=%p, "
       "countDimensions=%" IntEbmTypePrintf ", "
       "featureIndexes=%p, "
-      "options=0x%" UInteractionOptionsTypePrintf ", "
+      "flags=0x%" UInteractionFlagsTypePrintf ", "
       "minSamplesLeaf=%" IntEbmTypePrintf ", "
       "avgInteractionStrengthOut=%p"
       ,
       static_cast<void *>(interactionHandle),
       countDimensions,
       static_cast<const void *>(featureIndexes),
-      static_cast<UInteractionOptionsType>(options), // signed to unsigned conversion is defined behavior in C++
+      static_cast<UInteractionFlagsType>(flags), // signed to unsigned conversion is defined behavior in C++
       minSamplesLeaf,
       static_cast<void *>(avgInteractionStrengthOut)
    );
@@ -321,9 +321,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       "Entered CalcInteractionStrength"
    );
 
-   if(0 != ((~static_cast<UInteractionOptionsType>(InteractionOptions_Pure)) &
-      static_cast<UInteractionOptionsType>(options))) {
-      LOG_0(TraceLevelError, "ERROR CalcInteractionStrength options contains unknown flags. Ignoring extras.");
+   if(0 != ((~static_cast<UInteractionFlagsType>(InteractionFlags_Pure)) &
+      static_cast<UInteractionFlagsType>(flags))) {
+      LOG_0(TraceLevelError, "ERROR CalcInteractionStrength flags contains unknown flags. Ignoring extras.");
    }
 
    size_t cSamplesLeafMin = size_t { 1 }; // this is the min value
@@ -428,7 +428,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       pInteractionShell,
       pInteractionCore,
       &term,
-      options,
+      flags,
       cSamplesLeafMin,
       avgInteractionStrengthOut
    );

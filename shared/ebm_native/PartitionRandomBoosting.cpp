@@ -39,7 +39,7 @@ public:
    static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const GenerateUpdateOptionsType options,
+      const BoostFlagsType flags,
       const IntEbmType * const aLeavesMax,
       double * const pTotalGain
    ) {
@@ -526,7 +526,7 @@ public:
       FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
       auto * pCollapsedBin2 = aCollapsedBins;
 
-      if(0 != (GenerateUpdateOptions_GradientSums & options)) {
+      if(0 != (BoostFlags_GradientSums & flags)) {
          do {
             auto * const pGradientPair = pCollapsedBin2->GetGradientPairs();
 
@@ -613,7 +613,7 @@ public:
    INLINE_ALWAYS static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const GenerateUpdateOptionsType options,
+      const BoostFlagsType flags,
       const IntEbmType * const aLeavesMax,
       double * const pTotalGain
    ) {
@@ -629,7 +629,7 @@ public:
          return PartitionRandomBoostingInternal<cPossibleClasses>::Func(
             pBoosterShell,
             pTerm,
-            options,
+            flags,
             aLeavesMax,
             pTotalGain
          );
@@ -637,7 +637,7 @@ public:
          return PartitionRandomBoostingTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
             pTerm,
-            options,
+            flags,
             aLeavesMax,
             pTotalGain
          );
@@ -654,7 +654,7 @@ public:
    INLINE_ALWAYS static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const GenerateUpdateOptionsType options,
+      const BoostFlagsType flags,
       const IntEbmType * const aLeavesMax,
       double * const pTotalGain
    ) {
@@ -666,7 +666,7 @@ public:
       return PartitionRandomBoostingInternal<k_dynamicClassification>::Func(
          pBoosterShell,
          pTerm,
-         options,
+         flags,
          aLeavesMax,
          pTotalGain
       );
@@ -676,7 +676,7 @@ public:
 extern ErrorEbmType PartitionRandomBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
-   const GenerateUpdateOptionsType options,
+   const BoostFlagsType flags,
    const IntEbmType * const aLeavesMax,
    double * const pTotalGain
 ) {
@@ -687,7 +687,7 @@ extern ErrorEbmType PartitionRandomBoosting(
       return PartitionRandomBoostingTarget<2>::Func(
          pBoosterShell,
          pTerm,
-         options,
+         flags,
          aLeavesMax,
          pTotalGain
       );
@@ -696,7 +696,7 @@ extern ErrorEbmType PartitionRandomBoosting(
       return PartitionRandomBoostingInternal<k_regression>::Func(
          pBoosterShell,
          pTerm,
-         options,
+         flags,
          aLeavesMax,
          pTotalGain
       );

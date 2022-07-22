@@ -16,11 +16,11 @@ extern "C" {
 #define STATIC_CAST(__type, __val)  ((__type)(__val))
 #endif // __cplusplus
 
-#define BOOL_CAST(EBM_VAL)                      (STATIC_CAST(BoolEbmType, (EBM_VAL)))
-#define ERROR_CAST(EBM_VAL)                     (STATIC_CAST(ErrorEbmType, (EBM_VAL)))
-#define TRACE_CAST(EBM_VAL)                     (STATIC_CAST(TraceEbmType, (EBM_VAL)))
-#define GENERATE_UPDATE_OPTIONS_CAST(EBM_VAL)   (STATIC_CAST(GenerateUpdateOptionsType, (EBM_VAL)))
-#define INTERACTION_OPTIONS_CAST(EBM_VAL)       (STATIC_CAST(InteractionOptionsType, (EBM_VAL)))
+#define BOOL_CAST(EBM_VAL)                (STATIC_CAST(BoolEbmType, (EBM_VAL)))
+#define ERROR_CAST(EBM_VAL)               (STATIC_CAST(ErrorEbmType, (EBM_VAL)))
+#define TRACE_CAST(EBM_VAL)               (STATIC_CAST(TraceEbmType, (EBM_VAL)))
+#define BOOST_FLAGS_CAST(EBM_VAL)         (STATIC_CAST(BoostFlagsType, (EBM_VAL)))
+#define INTERACTION_FLAGS_CAST(EBM_VAL)   (STATIC_CAST(InteractionFlagsType, (EBM_VAL)))
 
 //#define EXPAND_BINARY_LOGITS
 // TODO: implement REDUCE_MULTICLASS_LOGITS
@@ -142,14 +142,14 @@ typedef int64_t BoolEbmType;
 #define BoolEbmTypePrintf PRId64
 typedef int32_t ErrorEbmType;
 #define ErrorEbmTypePrintf PRId32
-typedef int64_t GenerateUpdateOptionsType;
+typedef int64_t BoostFlagsType;
 // technically printf hexidecimals are unsigned, so convert it first to unsigned before calling printf
-typedef uint64_t UGenerateUpdateOptionsType;
-#define UGenerateUpdateOptionsTypePrintf PRIx64
-typedef int64_t InteractionOptionsType;
+typedef uint64_t UBoostFlagsType;
+#define UBoostFlagsTypePrintf PRIx64
+typedef int64_t InteractionFlagsType;
 // technically printf hexidecimals are unsigned, so convert it first to unsigned before calling printf
-typedef uint64_t UInteractionOptionsType;
-#define UInteractionOptionsTypePrintf PRIx64
+typedef uint64_t UInteractionFlagsType;
+#define UInteractionFlagsTypePrintf PRIx64
 
 #define EBM_FALSE          (BOOL_CAST(0))
 #define EBM_TRUE           (BOOL_CAST(1))
@@ -174,14 +174,14 @@ typedef uint64_t UInteractionOptionsType;
 #define Error_LossIllegalParamName                 (ERROR_CAST(-17))
 #define Error_LossDuplicateParamName               (ERROR_CAST(-18))
 
-#define GenerateUpdateOptions_Default              (GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000000))
-#define GenerateUpdateOptions_DisableNewtonGain    (GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000001))
-#define GenerateUpdateOptions_DisableNewtonUpdate  (GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000002))
-#define GenerateUpdateOptions_GradientSums         (GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000004))
-#define GenerateUpdateOptions_RandomSplits         (GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000008))
+#define BoostFlags_Default                         (BOOST_FLAGS_CAST(0x0000000000000000))
+#define BoostFlags_DisableNewtonGain               (BOOST_FLAGS_CAST(0x0000000000000001))
+#define BoostFlags_DisableNewtonUpdate             (BOOST_FLAGS_CAST(0x0000000000000002))
+#define BoostFlags_GradientSums                    (BOOST_FLAGS_CAST(0x0000000000000004))
+#define BoostFlags_RandomSplits                    (BOOST_FLAGS_CAST(0x0000000000000008))
 
-#define InteractionOptions_Default                 (INTERACTION_OPTIONS_CAST(0x0000000000000000))
-#define InteractionOptions_Pure                    (INTERACTION_OPTIONS_CAST(0x0000000000000001))
+#define InteractionFlags_Default                   (INTERACTION_FLAGS_CAST(0x0000000000000000))
+#define InteractionFlags_Pure                      (INTERACTION_FLAGS_CAST(0x0000000000000001))
 
 // No messages will be logged. This is the default.
 #define TraceLevelOff      (TRACE_CAST(0))
@@ -388,7 +388,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CreateBoosterView(
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
    BoosterHandle boosterHandle,
    IntEbmType indexTerm,
-   GenerateUpdateOptionsType options, 
+   BoostFlagsType flags, 
    double learningRate, 
    IntEbmType minSamplesLeaf, 
    const IntEbmType * leavesMax, 
@@ -439,7 +439,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
    InteractionHandle interactionHandle, 
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,
-   InteractionOptionsType options,
+   InteractionFlagsType flags,
    IntEbmType minSamplesLeaf,
    double * avgInteractionStrengthOut
 );

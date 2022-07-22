@@ -87,7 +87,7 @@ extern ErrorEbmType PartitionTwoDimensionalBoosting(
 extern ErrorEbmType PartitionRandomBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
-   const GenerateUpdateOptionsType options,
+   const BoostFlagsType flags,
    const IntEbmType * const aLeavesMax,
    double * const pTotalGain
 );
@@ -95,7 +95,7 @@ extern ErrorEbmType PartitionRandomBoosting(
 static ErrorEbmType BoostZeroDimensional(
    BoosterShell * const pBoosterShell, 
    const SamplingSet * const pTrainingSet,
-   const GenerateUpdateOptionsType options
+   const BoostFlagsType flags
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostZeroDimensional");
 
@@ -155,7 +155,7 @@ static ErrorEbmType BoostZeroDimensional(
    if(bClassification) {
       const auto * const pBin = pBinBig->Specialize<FloatBig, true>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
-      if(0 != (GenerateUpdateOptions_GradientSums & options)) {
+      if(0 != (BoostFlags_GradientSums & flags)) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aGradientPairs[iScore].m_sumGradients);
 
@@ -194,7 +194,7 @@ static ErrorEbmType BoostZeroDimensional(
       EBM_ASSERT(IsRegression(cClasses));
       const auto * const pBin = pBinBig->Specialize<FloatBig, false>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
-      if(0 != (GenerateUpdateOptions_GradientSums & options)) {
+      if(0 != (BoostFlags_GradientSums & flags)) {
          const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aGradientPairs[0].m_sumGradients);
          aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
       } else {
@@ -624,7 +624,7 @@ static ErrorEbmType BoostRandom(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
    const SamplingSet * const pTrainingSet,
-   const GenerateUpdateOptionsType options,
+   const BoostFlagsType flags,
    const IntEbmType * const aLeavesMax,
    double * const pTotalGain
 ) {
@@ -715,7 +715,7 @@ static ErrorEbmType BoostRandom(
    error = PartitionRandomBoosting(
       pBoosterShell,
       pTerm,
-      options,
+      flags,
       aLeavesMax,
       pTotalGain
    );
@@ -734,7 +734,7 @@ static ErrorEbmType BoostRandom(
 static ErrorEbmType GenerateTermUpdateInternal(
    BoosterShell * const pBoosterShell,
    const size_t iTerm,
-   const GenerateUpdateOptionsType options,
+   const BoostFlagsType flags,
    const double learningRate,
    const size_t cSamplesLeafMin,
    const IntEbmType * const aLeavesMax, 
@@ -817,7 +817,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
          const SamplingSet * const pSamplingSet = *ppSamplingSet;
          if(UNLIKELY(IntEbmType { 0 } == lastDimensionLeavesMax)) {
             LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdateInternal boosting zero dimensional");
-            error = BoostZeroDimensional(pBoosterShell, pSamplingSet, options);
+            error = BoostZeroDimensional(pBoosterShell, pSamplingSet, flags);
             if(Error_None != error) {
                if(LIKELY(nullptr != pGainAvgOut)) {
                   *pGainAvgOut = double { 0 };
@@ -826,7 +826,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
             }
          } else {
             double gain;
-            if(0 != (GenerateUpdateOptions_RandomSplits & options) || 2 < cSignificantDimensions) {
+            if(0 != (BoostFlags_RandomSplits & flags) || 2 < cSignificantDimensions) {
                if(size_t { 1 } != cSamplesLeafMin) {
                   LOG_0(TraceLevelWarning,
                      "WARNING GenerateTermUpdateInternal cSamplesLeafMin is ignored when doing random splitting"
@@ -838,7 +838,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
                   pBoosterShell,
                   pTerm,
                   pSamplingSet,
-                  options,
+                  flags,
                   aLeavesMax,
                   &gain
                );
@@ -1019,7 +1019,7 @@ static int g_cLogGenerateTermUpdate = 10;
 EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
    BoosterHandle boosterHandle,
    IntEbmType indexTerm,
-   GenerateUpdateOptionsType options,
+   BoostFlagsType flags,
    double learningRate,
    IntEbmType minSamplesLeaf,
    const IntEbmType * leavesMax,
@@ -1032,7 +1032,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       "GenerateTermUpdate: "
       "boosterHandle=%p, "
       "indexTerm=%" IntEbmTypePrintf ", "
-      "options=0x%" UGenerateUpdateOptionsTypePrintf ", "
+      "flags=0x%" UBoostFlagsTypePrintf ", "
       "learningRate=%le, "
       "minSamplesLeaf=%" IntEbmTypePrintf ", "
       "leavesMax=%p, "
@@ -1040,7 +1040,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       ,
       static_cast<void *>(boosterHandle),
       indexTerm,
-      static_cast<UGenerateUpdateOptionsType>(options), // signed to unsigned conversion is defined behavior in C++
+      static_cast<UBoostFlagsType>(flags), // signed to unsigned conversion is defined behavior in C++
       learningRate,
       minSamplesLeaf,
       static_cast<const void *>(leavesMax),
@@ -1097,7 +1097,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       "Entered GenerateTermUpdate"
    );
 
-   // TODO : test if our GenerateUpdateOptionsType options flags only include flags that we use
+   // TODO : test if our BoostFlagsType flags flags only include flags that we use
 
    if(std::isnan(learningRate)) {
       LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate learningRate is NaN");
@@ -1144,7 +1144,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
    error = GenerateTermUpdateInternal(
       pBoosterShell,
       iTerm,
-      options,
+      flags,
       learningRate,
       cSamplesLeafMin,
       leavesMax,

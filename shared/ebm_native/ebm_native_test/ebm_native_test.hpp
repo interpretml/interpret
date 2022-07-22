@@ -380,7 +380,7 @@ public:
    
    BoostRet Boost(
       const IntEbmType indexTerm,
-      const GenerateUpdateOptionsType options = GenerateUpdateOptions_Default,
+      const BoostFlagsType flags = BoostFlags_Default,
       const double learningRate = k_learningRateDefault,
       const IntEbmType minSamplesLeaf = k_minSamplesLeafDefault,
       const std::vector<IntEbmType> leavesMax = k_leavesMaxDefault
@@ -408,7 +408,7 @@ public:
 
    double TestCalcInteractionStrength(
       const std::vector<IntEbmType> features, 
-      const InteractionOptionsType options = InteractionOptions_Default,
+      const InteractionFlagsType flags = InteractionFlags_Default,
       const IntEbmType minSamplesLeaf = k_minSamplesLeafDefault
    ) const;
 };

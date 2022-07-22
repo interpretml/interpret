@@ -14,16 +14,16 @@ log = logging.getLogger(__name__)
 
 class Native:
 
-    # GenerateUpdateOptionsType
-    GenerateUpdateOptions_Default               = 0x0000000000000000
-    GenerateUpdateOptions_DisableNewtonGain     = 0x0000000000000001
-    GenerateUpdateOptions_DisableNewtonUpdate   = 0x0000000000000002
-    GenerateUpdateOptions_GradientSums          = 0x0000000000000004
-    GenerateUpdateOptions_RandomSplits          = 0x0000000000000008
+    # BoostFlagsType
+    BoostFlags_Default              = 0x0000000000000000
+    BoostFlags_DisableNewtonGain    = 0x0000000000000001
+    BoostFlags_DisableNewtonUpdate  = 0x0000000000000002
+    BoostFlags_GradientSums         = 0x0000000000000004
+    BoostFlags_RandomSplits         = 0x0000000000000008
 
-    # InteractionOptionsType
-    InteractionOptions_Default                  = 0x0000000000000000
-    InteractionOptions_Pure                     = 0x0000000000000001
+    # InteractionFlagsType
+    InteractionFlags_Default        = 0x0000000000000000
+    InteractionFlags_Pure           = 0x0000000000000001
 
     # TraceLevel
     _TraceLevelOff = 0
@@ -893,7 +893,7 @@ class Native:
             ct.c_void_p,
             # int64_t indexTerm
             ct.c_int64,
-            # GenerateUpdateOptionsType options 
+            # BoostFlagsType flags 
             ct.c_int64,
             # double learningRate
             ct.c_double,
@@ -992,7 +992,7 @@ class Native:
             ct.c_int64,
             # int64_t * featureIndexes
             ct.c_void_p,
-            # InteractionOptionsType options 
+            # InteractionFlagsType flags 
             ct.c_int64,
             # int64_t minSamplesLeaf
             ct.c_int64,
@@ -1145,7 +1145,7 @@ class Booster(AbstractContextManager):
     def generate_term_update(
         self, 
         term_idx, 
-        boosting_flags, 
+        boost_flags, 
         learning_rate, 
         min_samples_leaf, 
         max_leaves, 
@@ -1156,7 +1156,7 @@ class Booster(AbstractContextManager):
 
         Args:
             term_idx: The index for the term to generate the update for
-            boosting_flags: C interface options
+            boost_flags: C interface options
             learning_rate: Learning rate as a float.
             min_samples_leaf: Min observations required to split.
             max_leaves: Max leaf nodes on feature step.
@@ -1178,7 +1178,7 @@ class Booster(AbstractContextManager):
         return_code = native._unsafe.GenerateTermUpdate(
             self._booster_handle, 
             term_idx,
-            boosting_flags,
+            boost_flags,
             learning_rate,
             min_samples_leaf,
             Native._make_pointer(max_leaves_arr, np.int64),
@@ -1505,7 +1505,7 @@ class InteractionDetector(AbstractContextManager):
         
         log.info("Deallocation interaction end")
 
-    def calc_interaction_strength(self, feature_idxs, interaction_options, min_samples_leaf):
+    def calc_interaction_strength(self, feature_idxs, interaction_flags, min_samples_leaf):
         """ Provides strength for an feature interaction. Higher is better."""
         log.info("Fast interaction strength start")
 
@@ -1516,7 +1516,7 @@ class InteractionDetector(AbstractContextManager):
             self._interaction_handle,
             len(feature_idxs),
             Native._make_pointer(np.array(feature_idxs, np.int64), np.int64),
-            interaction_options, 
+            interaction_flags, 
             min_samples_leaf,
             ct.byref(strength),
         )

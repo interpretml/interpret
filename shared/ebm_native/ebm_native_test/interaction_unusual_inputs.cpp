@@ -346,7 +346,7 @@ TEST_CASE("purified interaction strength with impure inputs should be zero, inte
       });
 
    test1.InitializeInteraction();
-   double metricReturn = test1.TestCalcInteractionStrength({ 0, 1 }, InteractionOptions_Pure);
+   double metricReturn = test1.TestCalcInteractionStrength({ 0, 1 }, InteractionFlags_Pure);
 
    CHECK(0 <= metricReturn && metricReturn < 0.0000001);
 }
@@ -374,7 +374,7 @@ TEST_CASE("purified interaction strength same as pre-purified strength, interact
       TestSample({ 1, 1 }, -8.0, 5),
       });
    test1.InitializeInteraction();
-   double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 }, InteractionOptions_Pure);
+   double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 }, InteractionFlags_Pure);
 
    // to the pure input we add on one   axis: 3, 5
    // to the pure input we add on other axis: 7, 11
@@ -397,7 +397,7 @@ TEST_CASE("purified interaction strength same as pre-purified strength, interact
       TestSample({ 1, 1 }, -8.0 + (5.0 + 7.0), 5),
       });
    test2.InitializeInteraction();
-   double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 }, InteractionOptions_Pure);
+   double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 }, InteractionFlags_Pure);
 
    CHECK_APPROX(metricReturn1, metricReturn2);
 }

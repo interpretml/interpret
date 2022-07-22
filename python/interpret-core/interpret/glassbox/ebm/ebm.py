@@ -374,7 +374,7 @@ class EBMModel(BaseEstimator):
                 raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
 
             bin_data_weights = make_boosting_weights(main_bin_weights)
-            boosting_flags = Native.GenerateUpdateOptions_GradientSums | Native.GenerateUpdateOptions_RandomSplits
+            boost_flags = Native.BoostFlags_GradientSums | Native.BoostFlags_RandomSplits
             inner_bags = 0
             early_stopping_rounds = -1
             early_stopping_tolerance = -1
@@ -382,7 +382,7 @@ class EBMModel(BaseEstimator):
         else:
             noise_scale = None
             bin_data_weights = None
-            boosting_flags = Native.GenerateUpdateOptions_Default
+            boost_flags = Native.BoostFlags_Default
             inner_bags = self.inner_bags
             early_stopping_rounds = self.early_stopping_rounds
             early_stopping_tolerance = self.early_stopping_tolerance
@@ -438,7 +438,7 @@ class EBMModel(BaseEstimator):
                     None,
                     term_features,
                     inner_bags,
-                    boosting_flags,
+                    boost_flags,
                     self.learning_rate,
                     self.min_samples_leaf,
                     self.max_leaves,
@@ -514,7 +514,7 @@ class EBMModel(BaseEstimator):
                             bags[idx],
                             scores_bags[idx],
                             combinations(range(n_features_in), 2),
-                            Native.InteractionOptions_Default, 
+                            Native.InteractionFlags_Default, 
                             self.min_samples_leaf,
                             None,
                         )
@@ -579,7 +579,7 @@ class EBMModel(BaseEstimator):
                         scores_bags[idx],
                         boost_groups,
                         inner_bags,
-                        boosting_flags,
+                        boost_flags,
                         self.learning_rate,
                         self.min_samples_leaf,
                         self.max_leaves,
