@@ -160,13 +160,13 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
 }
 
 
-static int g_cLogEnterStratifiedSamplingWithoutReplacement = 5;
-static int g_cLogExitStratifiedSamplingWithoutReplacement = 5;
+static int g_cLogEnterSampleWithoutReplacementStratified = 5;
+static int g_cLogExitSampleWithoutReplacementStratified = 5;
 
 WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    BoolEbmType isDeterministic,
    SeedEbmType seed,
    IntEbmType countClasses,
@@ -181,10 +181,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
    };
 
    LOG_COUNTED_N(
-      &g_cLogEnterStratifiedSamplingWithoutReplacement,
+      &g_cLogEnterSampleWithoutReplacementStratified,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Entered StratifiedSamplingWithoutReplacement: "
+      "Entered SampleWithoutReplacementStratified: "
       "isDeterministic=%s, "
       "seed=%" SeedEbmTypePrintf ", "
       "countClasses=%" IntEbmTypePrintf ", "
@@ -203,37 +203,37 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
    );
 
    if (UNLIKELY(nullptr == targets)) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement nullptr == targets");
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified nullptr == targets");
       return Error_IllegalParamValue;
    }
 
    if (UNLIKELY(nullptr == sampleCountsOut)) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement nullptr == sampleCountsOut");
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified nullptr == sampleCountsOut");
       return Error_IllegalParamValue;
    }
 
    if (UNLIKELY(countTrainingSamples < IntEbmType{ 0 })) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement countTrainingSamples < IntEbmType{ 0 }");
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified countTrainingSamples < IntEbmType{ 0 }");
       return Error_IllegalParamValue;
    }
    if (UNLIKELY(IsConvertError<size_t>(countTrainingSamples))) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsConvertError<size_t>(countTrainingSamples)");
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified IsConvertError<size_t>(countTrainingSamples)");
       return Error_IllegalParamValue;
    }
    const size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
 
    if (UNLIKELY(countValidationSamples < IntEbmType{ 0 })) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement countValidationSamples < IntEbmType{ 0 }");
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified countValidationSamples < IntEbmType{ 0 }");
       return Error_IllegalParamValue;
    }
    if (UNLIKELY(IsConvertError<size_t>(countValidationSamples))) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsConvertError<size_t>(countValidationSamples)");
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified IsConvertError<size_t>(countValidationSamples)");
       return Error_IllegalParamValue;
    }
    const size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
 
    if (UNLIKELY(IsAddError(cTrainingSamples, cValidationSamples))) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsAddError(countTrainingSamples, countValidationSamples))");
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified IsAddError(countTrainingSamples, countValidationSamples))");
       return Error_IllegalParamValue;
    }
 
@@ -244,44 +244,44 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
    }
 
    if (countClasses <= 0) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement countClasses can't be negative or zero");
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified countClasses can't be negative or zero");
       return Error_IllegalParamValue;
    }
    if (IsConvertError<size_t>(countClasses)) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsConvertError<size_t>(countClasses)");
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified IsConvertError<size_t>(countClasses)");
       return Error_IllegalParamValue;
    }
    const size_t cClasses = static_cast<size_t>(countClasses);
 
    if (UNLIKELY(IsMultiplyError(sizeof(*sampleCountsOut), cSamples))) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsMultiplyError(sizeof(*sampleCountsOut), cSamples)");
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified IsMultiplyError(sizeof(*sampleCountsOut), cSamples)");
       return Error_IllegalParamValue;
    }
 
    if (UNLIKELY(IsMultiplyError(sizeof(TargetSamplingCounts), cClasses))) {
-      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement IsMultiplyError(sizeof(TargetSamplingCounts), cClasses)");
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified IsMultiplyError(sizeof(TargetSamplingCounts), cClasses)");
       return Error_OutOfMemory;
    }
 
    if (UNLIKELY(cTrainingSamples < cClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement cTrainingSamples < cClasses");
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified cTrainingSamples < cClasses");
    }
 
    if (UNLIKELY(cValidationSamples < cClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement cValidationSamples < cClasses");
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified cValidationSamples < cClasses");
    }
 
    if(EBM_FALSE == isDeterministic) {
-      // StratifiedSamplingWithoutReplacement is not called when building a differentially private model, so
+      // SampleWithoutReplacementStratified is not called when building a differentially private model, so
       // we can use low-quality non-determinism.  Generate a non-deterministic seed
       try {
          RandomNondeterministic<uint32_t> randomGenerator;
          seed = randomGenerator.NextSeed();
       } catch(const std::bad_alloc &) {
-         LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement Out of memory in std::random_device");
+         LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified Out of memory in std::random_device");
          return Error_OutOfMemory;
       } catch(...) {
-         LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement Unknown error in std::random_device");
+         LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified Unknown error in std::random_device");
          return Error_UnexpectedInternal;
       }
    }
@@ -290,7 +290,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
    TargetSamplingCounts* pTargetSamplingCounts = static_cast<TargetSamplingCounts*>(malloc(targetSamplingCountsSize));
 
    if (UNLIKELY(nullptr == pTargetSamplingCounts)) {
-      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement out of memory on aTargetSamplingCounts");
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified out of memory on aTargetSamplingCounts");
       return Error_OutOfMemory;
    }
 
@@ -301,7 +301,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
       IntEbmType label = targets[i];
 
       if (UNLIKELY(label < 0 || label >= countClasses)) {
-         LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement label >= cClasses");
+         LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified label >= cClasses");
          free(pTargetSamplingCounts);
          return Error_IllegalParamValue;
       }
@@ -373,13 +373,13 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
    size_t* pMostImprovedClasses = static_cast<size_t*>(malloc(mostImprovedClassesCapacity));
 
    if (UNLIKELY(nullptr == pMostImprovedClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement out of memory on pMostImprovedClasses");
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified out of memory on pMostImprovedClasses");
       free(pTargetSamplingCounts);
       return Error_OutOfMemory;
    }
 
    RandomDeterministic randomDeterministic;
-   randomDeterministic.InitializeUnsigned(seed, k_stratifiedSamplingWithoutReplacementRandomizationMix);
+   randomDeterministic.InitializeUnsigned(seed, k_sampleWithoutReplacementStratifiedRandomizationMix);
 
    for (size_t iLeftover = 0; iLeftover < globalLeftover; iLeftover++) {
       double maxImprovement = std::numeric_limits<double>::lowest();
@@ -471,10 +471,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplac
    free(pMostImprovedClasses);
 
    LOG_COUNTED_0(
-      &g_cLogExitStratifiedSamplingWithoutReplacement,
+      &g_cLogExitSampleWithoutReplacementStratified,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Exited StratifiedSamplingWithoutReplacement"
+      "Exited SampleWithoutReplacementStratified"
    );
 
    return Error_None;

@@ -39,6 +39,6 @@
       GenerateSeed;
       GenerateGaussianRandom;
       SampleWithoutReplacement;
-      StratifiedSamplingWithoutReplacement;
+      SampleWithoutReplacementStratified;
    local: *;
 };

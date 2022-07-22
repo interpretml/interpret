@@ -40,4 +40,4 @@ EXPORTS
   GenerateSeed
   GenerateGaussianRandom
   SampleWithoutReplacement
-  StratifiedSamplingWithoutReplacement
+  SampleWithoutReplacementStratified

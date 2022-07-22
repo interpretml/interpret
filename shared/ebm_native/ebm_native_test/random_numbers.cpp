@@ -35,7 +35,7 @@ TEST_CASE("GenerateSeed, lowest") {
    CHECK(879100963 == ret);
 }
 
-TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
+TEST_CASE("SampleWithoutReplacementStratified, stress test") {
    constexpr size_t cSamples = 500;
    constexpr size_t cClasses = 10;
 
@@ -73,7 +73,7 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
          ++classCount[targetClass];
       }
 
-      error = StratifiedSamplingWithoutReplacement(
+      error = SampleWithoutReplacementStratified(
          EBM_TRUE,
          seed,
          cClassSize,

@@ -356,7 +356,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
    BagEbmType * sampleCountsOut
 );
 
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
+EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    BoolEbmType isDeterministic,
    SeedEbmType seed,
    IntEbmType countClasses,

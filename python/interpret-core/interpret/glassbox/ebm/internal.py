@@ -219,7 +219,7 @@ class Native:
 
         return sample_counts_out
 
-    def stratified_sampling_without_replacement(
+    def sample_without_replacement_stratified(
         self, 
         random_state, 
         n_classes,
@@ -241,7 +241,7 @@ class Native:
 
         sample_counts_out = np.empty(count_samples, dtype=np.int8, order="C")
 
-        return_code = self._unsafe.StratifiedSamplingWithoutReplacement(
+        return_code = self._unsafe.SampleWithoutReplacementStratified(
             is_deterministic,
             random_state,
             n_classes,
@@ -252,7 +252,7 @@ class Native:
         )
 
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "StratifiedSamplingWithoutReplacement")
+            raise Native._get_native_exception(return_code, "SampleWithoutReplacementStratified")
 
         return sample_counts_out
 
@@ -602,7 +602,7 @@ class Native:
         ]
         self._unsafe.SampleWithoutReplacement.restype = ct.c_int32
 
-        self._unsafe.StratifiedSamplingWithoutReplacement.argtypes = [
+        self._unsafe.SampleWithoutReplacementStratified.argtypes = [
             # int64_t isDeterministic
             ct.c_int64,
             # int32_t seed
@@ -618,7 +618,7 @@ class Native:
             # int8_t * sampleCountsOut
             ct.c_void_p,
         ]
-        self._unsafe.StratifiedSamplingWithoutReplacement.restype = ct.c_int32
+        self._unsafe.SampleWithoutReplacementStratified.restype = ct.c_int32
 
         self._unsafe.GetHistogramCutCount.argtypes = [
             # int64_t countSamples

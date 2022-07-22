@@ -1062,7 +1062,7 @@ class EBMUtils:
                     n_test_samples = n_classes
                     n_train_samples = n_samples - n_test_samples
 
-                return native.stratified_sampling_without_replacement(
+                return native.sample_without_replacement_stratified(
                     random_state,
                     n_classes,
                     n_train_samples,
