@@ -59,7 +59,7 @@ extern void FAILED(const double val, TestCaseHidden * const pTestCaseHidden, con
 void EBM_CALLING_CONVENTION LogCallback(TraceEbmType traceLevel, const char * message) {
    const size_t cChars = strlen(message); // test that the string memory is accessible
    UNUSED(cChars);
-   if(traceLevel <= TraceLevelOff) {
+   if(traceLevel <= Trace_Off) {
       // don't display log messages during tests, but having this code here makes it easy to turn on when needed
       printf("\n%s: %s\n", GetTraceLevelString(traceLevel), message);
    }
@@ -1178,7 +1178,7 @@ int main() {
 #endif // _MSC_VER
 
    SetLogCallback(&LogCallback);
-   SetTraceLevel(TraceLevelVerbose);
+   SetTraceLevel(Trace_Verbose);
 
    std::vector<TestCaseHidden> g_allTestsHidden = GetAllTestsHidden();
    std::stable_sort(g_allTestsHidden.begin(), g_allTestsHidden.end(),

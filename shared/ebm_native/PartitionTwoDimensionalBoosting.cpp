@@ -262,7 +262,7 @@ public:
 
       EBM_ASSERT(0 < cSamplesLeafMin);
 
-      LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Starting FIRST bin sweep loop");
+      LOG_0(Trace_Verbose, "PartitionTwoDimensionalBoostingInternal Starting FIRST bin sweep loop");
       size_t iBin1 = 0;
       do {
          aiStart[0] = iBin1;
@@ -353,7 +353,7 @@ public:
       auto * pTotals2HighLowBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 14);
       auto * pTotals2HighHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 15);
 
-      LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Starting SECOND bin sweep loop");
+      LOG_0(Trace_Verbose, "PartitionTwoDimensionalBoostingInternal Starting SECOND bin sweep loop");
       size_t iBin2 = 0;
       do {
          aiStart[1] = iBin2;
@@ -434,7 +434,7 @@ public:
          }
          ++iBin2;
       } while(iBin2 < cBinsDimension2 - 1);
-      LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Done sweep loops");
+      LOG_0(Trace_Verbose, "PartitionTwoDimensionalBoostingInternal Done sweep loops");
 
       EBM_ASSERT(std::isnan(bestGain) || k_illegalGainFloat == bestGain || 0 <= bestGain);
 

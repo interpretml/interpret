@@ -97,7 +97,7 @@ static ErrorEbmType BoostZeroDimensional(
    const SamplingSet * const pTrainingSet,
    const BoostFlagsType flags
 ) {
-   LOG_0(TraceLevelVerbose, "Entered BoostZeroDimensional");
+   LOG_0(Trace_Verbose, "Entered BoostZeroDimensional");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
@@ -107,7 +107,7 @@ static ErrorEbmType BoostZeroDimensional(
 
    if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)) {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING BoostZeroDimensional IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)");
+      LOG_0(Trace_Warning, "WARNING BoostZeroDimensional IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)");
       return Error_OutOfMemory;
    }
    const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
@@ -206,7 +206,7 @@ static ErrorEbmType BoostZeroDimensional(
       }
    }
 
-   LOG_0(TraceLevelVerbose, "Exited BoostZeroDimensional");
+   LOG_0(Trace_Verbose, "Exited BoostZeroDimensional");
    return Error_None;
 }
 
@@ -222,7 +222,7 @@ static ErrorEbmType BoostSingleDimensional(
 ) {
    ErrorEbmType error;
 
-   LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");
+   LOG_0(Trace_Verbose, "Entered BoostSingleDimensional");
 
    EBM_ASSERT(1 == pTerm->GetCountSignificantDimensions());
 
@@ -243,14 +243,14 @@ static ErrorEbmType BoostSingleDimensional(
       IsOverflowBinSize<FloatBig>(bClassification, cScores)) 
    {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)");
+      LOG_0(Trace_Warning, "WARNING BoostSingleDimensional IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)");
       return Error_OutOfMemory;
    }
 
    const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinFast, cBins)) {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerBinFast, cBins)");
+      LOG_0(Trace_Warning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerBinFast, cBins)");
       return Error_OutOfMemory;
    }
    const size_t cBytesBufferFast = cBytesPerBinFast * cBins;
@@ -275,7 +275,7 @@ static ErrorEbmType BoostSingleDimensional(
    const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinBig, cBins)) {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerBinBig, cBins)");
+      LOG_0(Trace_Warning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerBinBig, cBins)");
       return Error_OutOfMemory;
    }
    const size_t cBytesBufferBig = cBytesPerBinBig * cBins;
@@ -327,7 +327,7 @@ static ErrorEbmType BoostSingleDimensional(
       pTotalGain
    );
 
-   LOG_0(TraceLevelVerbose, "Exited BoostSingleDimensional");
+   LOG_0(Trace_Verbose, "Exited BoostSingleDimensional");
    return error;
 }
 
@@ -341,7 +341,7 @@ static ErrorEbmType BoostMultiDimensional(
    const size_t cSamplesLeafMin,
    double * const pTotalGain
 ) {
-   LOG_0(TraceLevelVerbose, "Entered BoostMultiDimensional");
+   LOG_0(Trace_Verbose, "Entered BoostMultiDimensional");
 
    EBM_ASSERT(2 <= pTerm->GetCountDimensions());
    EBM_ASSERT(2 <= pTerm->GetCountSignificantDimensions());
@@ -381,14 +381,14 @@ static ErrorEbmType BoostMultiDimensional(
       IsOverflowBinSize<FloatBig>(bClassification, cScores)) 
    {
       LOG_0(
-         TraceLevelWarning,
+         Trace_Warning,
          "WARNING BoostMultiDimensional IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)"
       );
       return Error_OutOfMemory;
    }
    const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinFast, cTotalBinsMainSpace)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerBinFast, cTotalBinsMainSpace)");
+      LOG_0(Trace_Warning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerBinFast, cTotalBinsMainSpace)");
       return Error_OutOfMemory;
    }
    const size_t cBytesBufferFast = cBytesPerBinFast * cTotalBinsMainSpace;
@@ -416,14 +416,14 @@ static ErrorEbmType BoostMultiDimensional(
    const size_t cAuxillaryBins =
       cAuxillaryBinsForBuildFastTotals < cAuxillaryBinsForSplitting ? cAuxillaryBinsForSplitting : cAuxillaryBinsForBuildFastTotals;
    if(IsAddError(cTotalBinsMainSpace, cAuxillaryBins)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsAddError(cTotalBinsMainSpace, cAuxillaryBins)");
+      LOG_0(Trace_Warning, "WARNING BoostMultiDimensional IsAddError(cTotalBinsMainSpace, cAuxillaryBins)");
       return Error_OutOfMemory;
    }
    const size_t cTotalBinsBig = cTotalBinsMainSpace + cAuxillaryBins;
 
    const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)");
+      LOG_0(Trace_Warning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)");
       return Error_OutOfMemory;
    }
    const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBinsBig;
@@ -593,7 +593,7 @@ static ErrorEbmType BoostMultiDimensional(
          free(aBinsDebugCopy);
 #endif // NDEBUG
 
-         LOG_0(TraceLevelVerbose, "Exited BoostMultiDimensional with Error code");
+         LOG_0(Trace_Verbose, "Exited BoostMultiDimensional with Error code");
 
          return error;
       }
@@ -601,7 +601,7 @@ static ErrorEbmType BoostMultiDimensional(
       EBM_ASSERT(!std::isnan(*pTotalGain));
       EBM_ASSERT(0 <= *pTotalGain);
    } else {
-      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional 2 != pTerm->GetCountSignificantFeatures()");
+      LOG_0(Trace_Warning, "WARNING BoostMultiDimensional 2 != pTerm->GetCountSignificantFeatures()");
 
       // TODO: eventually handle this in our caller and this function can specialize in handling just 2 dimensional
       //       then we can replace this branch with an assert
@@ -616,7 +616,7 @@ static ErrorEbmType BoostMultiDimensional(
    free(aBinsDebugCopy);
 #endif // NDEBUG
 
-   LOG_0(TraceLevelVerbose, "Exited BoostMultiDimensional");
+   LOG_0(Trace_Verbose, "Exited BoostMultiDimensional");
    return Error_None;
 }
 
@@ -630,7 +630,7 @@ static ErrorEbmType BoostRandom(
 ) {
    // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
-   LOG_0(TraceLevelVerbose, "Entered BoostRandom");
+   LOG_0(Trace_Verbose, "Entered BoostRandom");
 
    ErrorEbmType error;
 
@@ -655,14 +655,14 @@ static ErrorEbmType BoostRandom(
       IsOverflowBinSize<FloatBig>(bClassification, cScores))
    {
       LOG_0(
-         TraceLevelWarning,
+         Trace_Warning,
          "WARNING BoostRandom IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)"
       );
       return Error_OutOfMemory;
    }
    const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinFast, cTotalBins)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerBinFast, cTotalBins)");
+      LOG_0(Trace_Warning, "WARNING BoostRandom IsMultiplyError(cBytesPerBinFast, cTotalBins)");
       return Error_OutOfMemory;
    }
    const size_t cBytesBufferFast = cBytesPerBinFast * cTotalBins;
@@ -687,7 +687,7 @@ static ErrorEbmType BoostRandom(
 
    const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinBig, cTotalBins)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerBinBig, cTotalBins)");
+      LOG_0(Trace_Warning, "WARNING BoostRandom IsMultiplyError(cBytesPerBinBig, cTotalBins)");
       return Error_OutOfMemory;
    }
    const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBins;
@@ -720,14 +720,14 @@ static ErrorEbmType BoostRandom(
       pTotalGain
    );
    if(Error_None != error) {
-      LOG_0(TraceLevelVerbose, "Exited BoostRandom with Error code");
+      LOG_0(Trace_Verbose, "Exited BoostRandom with Error code");
       return error;
    }
 
    EBM_ASSERT(!std::isnan(*pTotalGain));
    EBM_ASSERT(0 <= *pTotalGain);
 
-   LOG_0(TraceLevelVerbose, "Exited BoostRandom");
+   LOG_0(Trace_Verbose, "Exited BoostRandom");
    return Error_None;
 }
 
@@ -746,7 +746,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
    const bool bClassification = IsClassification(cClasses);
 
-   LOG_0(TraceLevelVerbose, "Entered GenerateTermUpdateInternal");
+   LOG_0(Trace_Verbose, "Entered GenerateTermUpdateInternal");
 
    const size_t cSamplingSetsAfterZero = (0 == pBoosterCore->GetCountSamplingSets()) ? 1 : pBoosterCore->GetCountSamplingSets();
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
@@ -760,7 +760,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
    size_t cSignificantBinCount = size_t { 0 };
    size_t iDimensionImportant = 0;
    if(nullptr == aLeavesMax) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdateInternal aLeavesMax was null, so there won't be any splits");
+      LOG_0(Trace_Warning, "WARNING GenerateTermUpdateInternal aLeavesMax was null, so there won't be any splits");
    } else {
       if(0 != cSignificantDimensions) {
          size_t iDimensionInit = 0;
@@ -779,7 +779,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
                EBM_ASSERT(nullptr != pLeavesMax);
                const IntEbmType countLeavesMax = *pLeavesMax;
                if(countLeavesMax <= IntEbmType { 1 }) {
-                  LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdateInternal countLeavesMax is 1 or less.");
+                  LOG_0(Trace_Warning, "WARNING GenerateTermUpdateInternal countLeavesMax is 1 or less.");
                } else {
                   // keep iteration even once we find this so that we output logs for any bins of 1
                   lastDimensionLeavesMax = countLeavesMax;
@@ -816,7 +816,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
       do {
          const SamplingSet * const pSamplingSet = *ppSamplingSet;
          if(UNLIKELY(IntEbmType { 0 } == lastDimensionLeavesMax)) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdateInternal boosting zero dimensional");
+            LOG_0(Trace_Warning, "WARNING GenerateTermUpdateInternal boosting zero dimensional");
             error = BoostZeroDimensional(pBoosterShell, pSamplingSet, flags);
             if(Error_None != error) {
                if(LIKELY(nullptr != pGainAvgOut)) {
@@ -828,7 +828,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
             double gain;
             if(0 != (BoostFlags_RandomSplits & flags) || 2 < cSignificantDimensions) {
                if(size_t { 1 } != cSamplesLeafMin) {
-                  LOG_0(TraceLevelWarning,
+                  LOG_0(Trace_Warning,
                      "WARNING GenerateTermUpdateInternal cSamplesLeafMin is ignored when doing random splitting"
                   );
                }
@@ -937,7 +937,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
          EBM_ASSERT(0 <= gainAvg);
       }
 
-      LOG_0(TraceLevelVerbose, "GenerateTermUpdateInternal done sampling set loop");
+      LOG_0(Trace_Verbose, "GenerateTermUpdateInternal done sampling set loop");
 
       double multiple = 1.0; // TODO: get this from the loss function
       multiple /= cSamplingSetsAfterZero;
@@ -1006,7 +1006,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
       *pGainAvgOut = gainAvgOut;
    }
 
-   LOG_0(TraceLevelVerbose, "Exited GenerateTermUpdateInternal");
+   LOG_0(Trace_Verbose, "Exited GenerateTermUpdateInternal");
    return Error_None;
 }
 
@@ -1027,8 +1027,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
 ) {
    LOG_COUNTED_N(
       &g_cLogGenerateTermUpdate,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "GenerateTermUpdate: "
       "boosterHandle=%p, "
       "indexTerm=%" IntEbmTypePrintf ", "
@@ -1068,7 +1068,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       if(LIKELY(nullptr != avgGainOut)) {
          *avgGainOut = double { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate indexTerm must be positive");
+      LOG_0(Trace_Error, "ERROR GenerateTermUpdate indexTerm must be positive");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(indexTerm)) {
@@ -1076,7 +1076,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       if(LIKELY(nullptr != avgGainOut)) {
          *avgGainOut = double { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate indexTerm is too high to index");
+      LOG_0(Trace_Error, "ERROR GenerateTermUpdate indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
    size_t iTerm = static_cast<size_t>(indexTerm);
@@ -1084,7 +1084,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       if(LIKELY(nullptr != avgGainOut)) {
          *avgGainOut = double { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate indexTerm above the number of feature groups that we have");
+      LOG_0(Trace_Error, "ERROR GenerateTermUpdate indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
    // this is true because 0 < pBoosterCore->m_cTerms since our caller needs to pass in a valid indexTerm to this function
@@ -1092,21 +1092,21 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
 
    LOG_COUNTED_0(
       pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogEnterGenerateTermUpdateMessages(),
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Entered GenerateTermUpdate"
    );
 
    // TODO : test if our BoostFlagsType flags flags only include flags that we use
 
    if(std::isnan(learningRate)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate learningRate is NaN");
+      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate learningRate is NaN");
    } else if(std::numeric_limits<double>::infinity() == learningRate) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate learningRate is +infinity");
+      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate learningRate is +infinity");
    } else if(0.0 == learningRate) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate learningRate is zero");
+      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate learningRate is zero");
    } else if(learningRate < double { 0 }) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate learningRate is negative");
+      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate learningRate is negative");
    }
 
    size_t cSamplesLeafMin = size_t { 1 }; // this is the min value
@@ -1118,7 +1118,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
          cSamplesLeafMin = std::numeric_limits<size_t>::max();
       }
    } else {
-      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate minSamplesLeaf can't be less than 1.  Adjusting to 1.");
+      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate minSamplesLeaf can't be less than 1.  Adjusting to 1.");
    }
 
    // leavesMax is handled in GenerateTermUpdateInternal
@@ -1135,7 +1135,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       pBoosterShell->SetTermIndex(iTerm);
 
       LOG_0(
-         TraceLevelWarning,
+         Trace_Warning,
          "WARNING GenerateTermUpdate pBoosterCore->m_cClasses <= ptrdiff_t { 1 }"
       );
       return Error_None;
@@ -1151,7 +1151,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       avgGainOut
    );
    if(Error_None != error) {
-      LOG_N(TraceLevelWarning, "WARNING GenerateTermUpdate: return=%" ErrorEbmTypePrintf, error);
+      LOG_N(Trace_Warning, "WARNING GenerateTermUpdate: return=%" ErrorEbmTypePrintf, error);
       if(LIKELY(nullptr != avgGainOut)) {
          *avgGainOut = double { 0 };
       }
@@ -1165,8 +1165,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       EBM_ASSERT(double { 0 } <= *avgGainOut);
       LOG_COUNTED_N(
          pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitGenerateTermUpdateMessages(),
-         TraceLevelInfo,
-         TraceLevelVerbose,
+         Trace_Info,
+         Trace_Verbose,
          "Exited GenerateTermUpdate: "
          "*avgGainOut=%le"
          ,
@@ -1175,8 +1175,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
    } else {
       LOG_COUNTED_0(
          pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitGenerateTermUpdateMessages(),
-         TraceLevelInfo,
-         TraceLevelVerbose,
+         Trace_Info,
+         Trace_Verbose,
          "Exited GenerateTermUpdate"
       );
    }

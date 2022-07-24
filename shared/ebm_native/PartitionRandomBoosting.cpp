@@ -110,7 +110,7 @@ public:
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
             if(IsAddError(cSlicesTotal, cPossibleSplitLocations)) {
-               LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsAddError(cSlicesTotal, cPossibleSplitLocations)");
+               LOG_0(Trace_Warning, "WARNING PartitionRandomBoostingInternal IsAddError(cSlicesTotal, cPossibleSplitLocations)");
                return Error_OutOfMemory;
             }
             const size_t cSlicesPlusRandom = cSlicesTotal + cPossibleSplitLocations;
@@ -133,7 +133,7 @@ public:
       cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesTotal);
 
       if(IsMultiplyError(sizeof(size_t), cSlicesPlusRandomMax)) {
-         LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsMultiplyError(sizeof(size_t), cSlicesPlusRandomMax)");
+         LOG_0(Trace_Warning, "WARNING PartitionRandomBoostingInternal IsMultiplyError(sizeof(size_t), cSlicesPlusRandomMax)");
          return Error_OutOfMemory;
       }
       const size_t cBytesSlicesPlusRandom = sizeof(size_t) * cSlicesPlusRandomMax;
@@ -152,7 +152,7 @@ public:
       EBM_ASSERT(!IsMultiplyError(cBytesPerBin, cCollapsedTensorCells)); // our allocated histogram is bigger
       cCollapsedTensorCells *= cBytesPerBin;
       if(IsAddError(cBytesSlices, cCollapsedTensorCells)) {
-         LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsAddError(cBytesSlices, cBytesCollapsedTensor1)");
+         LOG_0(Trace_Warning, "WARNING PartitionRandomBoostingInternal IsAddError(cBytesSlices, cBytesCollapsedTensor1)");
          return Error_OutOfMemory;
       }
       const size_t cBytesSlicesAndCollapsedTensor = cBytesSlices + cCollapsedTensorCells;
@@ -162,7 +162,7 @@ public:
       // TODO: use GrowThreadByteBuffer2 for this, but first we need to change that to allocate void or bytes
       char * const pBuffer = static_cast<char *>(malloc(cBytesBuffer));
       if(UNLIKELY(nullptr == pBuffer)) {
-         LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal nullptr == pBuffer");
+         LOG_0(Trace_Warning, "WARNING PartitionRandomBoostingInternal nullptr == pBuffer");
          return Error_OutOfMemory;
       }
       size_t * const acItemsInNextSliceOrBytesInCurrentSlice = reinterpret_cast<size_t *>(pBuffer);

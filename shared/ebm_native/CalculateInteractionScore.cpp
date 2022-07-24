@@ -71,7 +71,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
    const bool bClassification = IsClassification(cClasses);
 
-   LOG_0(TraceLevelVerbose, "Entered CalcInteractionStrengthInternal");
+   LOG_0(Trace_Verbose, "Entered CalcInteractionStrengthInternal");
 
    // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
    EBM_ASSERT(1 <= pTerm->GetCountDimensions());
@@ -99,7 +99,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
          // unlike in the boosting code where we check at allocation time if the tensor created overflows on multiplication
          // we don't know what group of features our caller will give us for calculating the interaction scores,
          // so we need to check if our caller gave us a tensor that overflows multiplication
-         LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cTotalBinsMainSpace, cBins)");
+         LOG_0(Trace_Warning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cTotalBinsMainSpace, cBins)");
          return Error_OutOfMemory;
       }
       cTotalBinsMainSpace *= cBins;
@@ -115,14 +115,14 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       IsOverflowBinSize<FloatBig>(bClassification, cScores)) 
    {
       LOG_0(
-         TraceLevelWarning,
+         Trace_Warning,
          "WARNING CalcInteractionStrengthInternal IsOverflowBinSize overflow"
       );
       return Error_OutOfMemory;
    }
    const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinFast, cTotalBinsMainSpace)) {
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerBin, cTotalBinsMainSpace)");
+      LOG_0(Trace_Warning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerBin, cTotalBinsMainSpace)");
       return Error_OutOfMemory;
    }
    const size_t cBytesBufferFast = cBytesPerBinFast * cTotalBinsMainSpace;
@@ -146,7 +146,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    const size_t cAuxillaryBins =
       cAuxillaryBinsForBuildFastTotals < cAuxillaryBinsForSplitting ? cAuxillaryBinsForSplitting : cAuxillaryBinsForBuildFastTotals;
    if(IsAddError(cTotalBinsMainSpace, cAuxillaryBins)) {
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsAddError(cTotalBinsMainSpace, cAuxillaryBins)");
+      LOG_0(Trace_Warning, "WARNING CalcInteractionStrengthInternal IsAddError(cTotalBinsMainSpace, cAuxillaryBins)");
       return Error_OutOfMemory;
    }
 
@@ -154,7 +154,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
 
    const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)) {
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerBin, cTotalBinsBig)");
+      LOG_0(Trace_Warning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerBin, cTotalBinsBig)");
       return Error_OutOfMemory;
    }
    const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBinsBig;
@@ -204,7 +204,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    );
 
    if(2 == pTerm->GetCountSignificantDimensions()) {
-      LOG_0(TraceLevelVerbose, "CalcInteractionStrengthInternal Starting bin sweep loop");
+      LOG_0(Trace_Verbose, "CalcInteractionStrengthInternal Starting bin sweep loop");
 
       double bestGain = PartitionTwoDimensionalInteraction(
          pInteractionCore,
@@ -253,7 +253,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       }
    } else {
       EBM_ASSERT(false); // we only support pairs currently
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal 2 != pTerm->GetCountSignificantDimensions()");
+      LOG_0(Trace_Warning, "WARNING CalcInteractionStrengthInternal 2 != pTerm->GetCountSignificantDimensions()");
 
       // TODO: handle this better
       if(nullptr != pInteractionStrengthAvgOut) {
@@ -267,7 +267,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    free(aBinsDebugCopy);
 #endif // NDEBUG
 
-   LOG_0(TraceLevelVerbose, "Exited CalcInteractionStrengthInternal");
+   LOG_0(Trace_Verbose, "Exited CalcInteractionStrengthInternal");
    return Error_None;
 }
 
@@ -285,8 +285,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
 ) {
    LOG_COUNTED_N(
       &g_cLogCalcInteractionStrength,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "CalcInteractionStrength: "
       "interactionHandle=%p, "
       "countDimensions=%" IntEbmTypePrintf ", "
@@ -316,14 +316,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
    }
    LOG_COUNTED_0(
       pInteractionShell->GetPointerCountLogEnterMessages(), 
-      TraceLevelInfo, 
-      TraceLevelVerbose, 
+      Trace_Info, 
+      Trace_Verbose, 
       "Entered CalcInteractionStrength"
    );
 
    if(0 != ((~static_cast<UInteractionFlagsType>(InteractionFlags_Pure)) &
       static_cast<UInteractionFlagsType>(flags))) {
-      LOG_0(TraceLevelError, "ERROR CalcInteractionStrength flags contains unknown flags. Ignoring extras.");
+      LOG_0(Trace_Error, "ERROR CalcInteractionStrength flags contains unknown flags. Ignoring extras.");
    }
 
    size_t cSamplesLeafMin = size_t { 1 }; // this is the min value
@@ -335,27 +335,27 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
          cSamplesLeafMin = std::numeric_limits<size_t>::max();
       }
    } else {
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength minSamplesLeaf can't be less than 1. Adjusting to 1.");
+      LOG_0(Trace_Warning, "WARNING CalcInteractionStrength minSamplesLeaf can't be less than 1. Adjusting to 1.");
    }
 
    if(countDimensions <= IntEbmType { 0 }) {
       if(IntEbmType { 0 } == countDimensions) {
-         LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength empty feature list");
+         LOG_0(Trace_Info, "INFO CalcInteractionStrength empty feature list");
          if(LIKELY(nullptr != avgInteractionStrengthOut)) {
             *avgInteractionStrengthOut = 0.0;
          }
          return Error_None;
       } else {
-         LOG_0(TraceLevelError, "ERROR CalcInteractionStrength countDimensions must be positive");
+         LOG_0(Trace_Error, "ERROR CalcInteractionStrength countDimensions must be positive");
          return Error_IllegalParamValue;
       }
    }
    if(nullptr == featureIndexes) {
-      LOG_0(TraceLevelError, "ERROR CalcInteractionStrength featureIndexes cannot be nullptr if 0 < countDimensions");
+      LOG_0(Trace_Error, "ERROR CalcInteractionStrength featureIndexes cannot be nullptr if 0 < countDimensions");
       return Error_IllegalParamValue;
    }
    if(IntEbmType { k_cDimensionsMax } < countDimensions) {
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength countDimensions too large and would cause out of memory condition");
+      LOG_0(Trace_Warning, "WARNING CalcInteractionStrength countDimensions too large and would cause out of memory condition");
       return Error_OutOfMemory;
    }
    size_t cDimensions = static_cast<size_t>(countDimensions);
@@ -372,25 +372,25 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
 
       const IntEbmType indexFeature = *piFeature;
       if(indexFeature < IntEbmType { 0 }) {
-         LOG_0(TraceLevelError, "ERROR CalcInteractionStrength featureIndexes value cannot be negative");
+         LOG_0(Trace_Error, "ERROR CalcInteractionStrength featureIndexes value cannot be negative");
          return Error_IllegalParamValue;
       }
       if(static_cast<IntEbmType>(pInteractionCore->GetCountFeatures()) <= indexFeature) {
-         LOG_0(TraceLevelError, "ERROR CalcInteractionStrength featureIndexes value must be less than the number of features");
+         LOG_0(Trace_Error, "ERROR CalcInteractionStrength featureIndexes value must be less than the number of features");
          return Error_IllegalParamValue;
       }
       const size_t iFeature = static_cast<size_t>(indexFeature);
       const Feature * const pFeature = &aFeatures[iFeature];
       const size_t cBins = pFeature->GetCountBins();
       if(cBins <= size_t { 1 }) {
-         LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength feature group contains a feature with only 1 bin");
+         LOG_0(Trace_Info, "INFO CalcInteractionStrength feature group contains a feature with only 1 bin");
          if(nullptr != avgInteractionStrengthOut) {
             *avgInteractionStrengthOut = double { 0 };
          }
          return Error_None;
       }
       if(IsMultiplyError(cTensorBins, cBins)) {
-         LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength IsMultiplyError(cTensorBins, cBins)");
+         LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cTensorBins, cBins)");
          return Error_OutOfMemory;
       }
       cTensorBins *= cBins;
@@ -406,7 +406,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
 
    if(size_t { 0 } == pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
       // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
-      LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength zero samples");
+      LOG_0(Trace_Info, "INFO CalcInteractionStrength zero samples");
       if(nullptr != avgInteractionStrengthOut) {
          *avgInteractionStrengthOut = double { 0 };
       }
@@ -416,7 +416,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
    EBM_ASSERT(ptrdiff_t { 0 } != pInteractionCore->GetCountClasses());
 
    if(ptrdiff_t { 1 } == pInteractionCore->GetCountClasses()) {
-      LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength target with 1 class perfectly predicts the target");
+      LOG_0(Trace_Info, "INFO CalcInteractionStrength target with 1 class perfectly predicts the target");
       if(nullptr != avgInteractionStrengthOut) {
          *avgInteractionStrengthOut = double { 0 };
       }
@@ -433,7 +433,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       avgInteractionStrengthOut
    );
    if(Error_None != error) {
-      LOG_N(TraceLevelWarning, "WARNING CalcInteractionStrength: return=%" ErrorEbmTypePrintf, error);
+      LOG_N(Trace_Warning, "WARNING CalcInteractionStrength: return=%" ErrorEbmTypePrintf, error);
       return error;
    }
 
@@ -441,8 +441,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       EBM_ASSERT(k_illegalGainDouble == *avgInteractionStrengthOut || double { 0 } <= *avgInteractionStrengthOut);
       LOG_COUNTED_N(
          pInteractionShell->GetPointerCountLogExitMessages(),
-         TraceLevelInfo,
-         TraceLevelVerbose,
+         Trace_Info,
+         Trace_Verbose,
          "Exited CalcInteractionStrength: "
          "*avgInteractionStrengthOut=%le"
          , 
@@ -451,8 +451,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
    } else {
       LOG_COUNTED_0(
          pInteractionShell->GetPointerCountLogExitMessages(),
-         TraceLevelInfo, 
-         TraceLevelVerbose, 
+         Trace_Info, 
+         Trace_Verbose, 
          "Exited CalcInteractionStrength"
       );
    }

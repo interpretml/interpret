@@ -184,20 +184,20 @@ typedef uint64_t UInteractionFlagsType;
 #define InteractionFlags_Pure                      (INTERACTION_FLAGS_CAST(0x0000000000000001))
 
 // No messages will be logged. This is the default.
-#define TraceLevelOff      (TRACE_CAST(0))
+#define Trace_Off      (TRACE_CAST(0))
 // Invalid inputs to the C interface, internal errors, or assert failures before exiting. Cannot continue afterwards.
-#define TraceLevelError    (TRACE_CAST(1))
+#define Trace_Error    (TRACE_CAST(1))
 // Out of memory or other conditions that are unexpected or odd. Can either return with an error, or continue.
-#define TraceLevelWarning  (TRACE_CAST(2))
+#define Trace_Warning  (TRACE_CAST(2))
 // Important informational messages such as entering important functions. Should be reasonable for production systems.
-#define TraceLevelInfo     (TRACE_CAST(3))
+#define Trace_Info     (TRACE_CAST(3))
 // All messages logged. Useful for tracing execution in detail. Might log too much detail for production systems.
-#define TraceLevelVerbose  (TRACE_CAST(4))
+#define Trace_Verbose  (TRACE_CAST(4))
 
 // All our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void (EBM_CALLING_CONVENTION * LOG_CALLBACK)(TraceEbmType traceLevel, const char * message);
 
-// SetLogCallback does not need to be called if the level is left at TraceLevelOff
+// SetLogCallback does not need to be called if the level is left at Trace_Off
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetLogCallback(LOG_CALLBACK logCallback);
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel);
 EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbmType traceLevel);

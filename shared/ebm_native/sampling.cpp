@@ -60,8 +60,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
 ) {
    LOG_COUNTED_N(
       &g_cLogEnterSampleWithoutReplacement,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Entered SampleWithoutReplacement: "
       "isDeterministic=%s, "
       "seed=%" SeedEbmTypePrintf ", "
@@ -77,32 +77,32 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
    );
 
    if(UNLIKELY(nullptr == sampleCountsOut)) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement nullptr == sampleCountsOut");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement nullptr == sampleCountsOut");
       return Error_IllegalParamValue;
    }
 
    if(UNLIKELY(countTrainingSamples < IntEbmType { 0 })) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement countTrainingSamples < IntEbmType { 0 }");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement countTrainingSamples < IntEbmType { 0 }");
       return Error_IllegalParamValue;
    }
    if(UNLIKELY(IsConvertError<size_t>(countTrainingSamples))) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement IsConvertError<size_t>(countTrainingSamples)");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement IsConvertError<size_t>(countTrainingSamples)");
       return Error_IllegalParamValue;
    }
    const size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
 
    if(UNLIKELY(countValidationSamples < IntEbmType { 0 })) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement countValidationSamples < IntEbmType { 0 }");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement countValidationSamples < IntEbmType { 0 }");
       return Error_IllegalParamValue;
    }
    if(UNLIKELY(IsConvertError<size_t>(countValidationSamples))) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement IsConvertError<size_t>(countValidationSamples)");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement IsConvertError<size_t>(countValidationSamples)");
       return Error_IllegalParamValue;
    }
    const size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
 
    if(UNLIKELY(IsAddError(cTrainingSamples, cValidationSamples))) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement IsAddError(cTrainingSamples, cValidationSamples)");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement IsAddError(cTrainingSamples, cValidationSamples)");
       return Error_IllegalParamValue;
    }
    size_t cSamplesRemaining = cTrainingSamples + cValidationSamples;
@@ -111,7 +111,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
       return Error_None;
    }
    if(UNLIKELY(IsMultiplyError(sizeof(*sampleCountsOut), cSamplesRemaining))) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement IsMultiplyError(sizeof(*sampleCountsOut), cSamplesRemaining)");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement IsMultiplyError(sizeof(*sampleCountsOut), cSamplesRemaining)");
       return Error_IllegalParamValue;
    }
 
@@ -141,10 +141,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
             --cSamplesRemaining;
          } while(0 != cSamplesRemaining);
       } catch(const std::bad_alloc &) {
-         LOG_0(TraceLevelWarning, "WARNING GenerateGaussianRandom Out of memory in std::random_device");
+         LOG_0(Trace_Warning, "WARNING GenerateGaussianRandom Out of memory in std::random_device");
          return Error_OutOfMemory;
       } catch(...) {
-         LOG_0(TraceLevelWarning, "WARNING GenerateGaussianRandom Unknown error in std::random_device");
+         LOG_0(Trace_Warning, "WARNING GenerateGaussianRandom Unknown error in std::random_device");
          return Error_UnexpectedInternal;
       }
    }
@@ -152,8 +152,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
 
    LOG_COUNTED_0(
       &g_cLogExitSampleWithoutReplacement,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Exited SampleWithoutReplacement"
    );
    return Error_None;
@@ -182,8 +182,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
 
    LOG_COUNTED_N(
       &g_cLogEnterSampleWithoutReplacementStratified,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Entered SampleWithoutReplacementStratified: "
       "isDeterministic=%s, "
       "seed=%" SeedEbmTypePrintf ", "
@@ -203,37 +203,37 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
    );
 
    if (UNLIKELY(nullptr == targets)) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified nullptr == targets");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified nullptr == targets");
       return Error_IllegalParamValue;
    }
 
    if (UNLIKELY(nullptr == sampleCountsOut)) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified nullptr == sampleCountsOut");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified nullptr == sampleCountsOut");
       return Error_IllegalParamValue;
    }
 
    if (UNLIKELY(countTrainingSamples < IntEbmType{ 0 })) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified countTrainingSamples < IntEbmType{ 0 }");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified countTrainingSamples < IntEbmType{ 0 }");
       return Error_IllegalParamValue;
    }
    if (UNLIKELY(IsConvertError<size_t>(countTrainingSamples))) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified IsConvertError<size_t>(countTrainingSamples)");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsConvertError<size_t>(countTrainingSamples)");
       return Error_IllegalParamValue;
    }
    const size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
 
    if (UNLIKELY(countValidationSamples < IntEbmType{ 0 })) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified countValidationSamples < IntEbmType{ 0 }");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified countValidationSamples < IntEbmType{ 0 }");
       return Error_IllegalParamValue;
    }
    if (UNLIKELY(IsConvertError<size_t>(countValidationSamples))) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified IsConvertError<size_t>(countValidationSamples)");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsConvertError<size_t>(countValidationSamples)");
       return Error_IllegalParamValue;
    }
    const size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
 
    if (UNLIKELY(IsAddError(cTrainingSamples, cValidationSamples))) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified IsAddError(countTrainingSamples, countValidationSamples))");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsAddError(countTrainingSamples, countValidationSamples))");
       return Error_IllegalParamValue;
    }
 
@@ -244,31 +244,31 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
    }
 
    if (countClasses <= 0) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified countClasses can't be negative or zero");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified countClasses can't be negative or zero");
       return Error_IllegalParamValue;
    }
    if (IsConvertError<size_t>(countClasses)) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified IsConvertError<size_t>(countClasses)");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsConvertError<size_t>(countClasses)");
       return Error_IllegalParamValue;
    }
    const size_t cClasses = static_cast<size_t>(countClasses);
 
    if (UNLIKELY(IsMultiplyError(sizeof(*sampleCountsOut), cSamples))) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified IsMultiplyError(sizeof(*sampleCountsOut), cSamples)");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsMultiplyError(sizeof(*sampleCountsOut), cSamples)");
       return Error_IllegalParamValue;
    }
 
    if (UNLIKELY(IsMultiplyError(sizeof(TargetSamplingCounts), cClasses))) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified IsMultiplyError(sizeof(TargetSamplingCounts), cClasses)");
+      LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified IsMultiplyError(sizeof(TargetSamplingCounts), cClasses)");
       return Error_OutOfMemory;
    }
 
    if (UNLIKELY(cTrainingSamples < cClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified cTrainingSamples < cClasses");
+      LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified cTrainingSamples < cClasses");
    }
 
    if (UNLIKELY(cValidationSamples < cClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified cValidationSamples < cClasses");
+      LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified cValidationSamples < cClasses");
    }
 
    if(EBM_FALSE == isDeterministic) {
@@ -278,10 +278,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
          RandomNondeterministic<uint32_t> randomGenerator;
          seed = randomGenerator.NextSeed();
       } catch(const std::bad_alloc &) {
-         LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified Out of memory in std::random_device");
+         LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified Out of memory in std::random_device");
          return Error_OutOfMemory;
       } catch(...) {
-         LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified Unknown error in std::random_device");
+         LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified Unknown error in std::random_device");
          return Error_UnexpectedInternal;
       }
    }
@@ -290,7 +290,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
    TargetSamplingCounts* pTargetSamplingCounts = static_cast<TargetSamplingCounts*>(malloc(targetSamplingCountsSize));
 
    if (UNLIKELY(nullptr == pTargetSamplingCounts)) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified out of memory on aTargetSamplingCounts");
+      LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified out of memory on aTargetSamplingCounts");
       return Error_OutOfMemory;
    }
 
@@ -301,7 +301,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
       IntEbmType label = targets[i];
 
       if (UNLIKELY(label < 0 || label >= countClasses)) {
-         LOG_0(TraceLevelError, "ERROR SampleWithoutReplacementStratified label >= cClasses");
+         LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified label >= cClasses");
          free(pTargetSamplingCounts);
          return Error_IllegalParamValue;
       }
@@ -373,7 +373,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
    size_t* pMostImprovedClasses = static_cast<size_t*>(malloc(mostImprovedClassesCapacity));
 
    if (UNLIKELY(nullptr == pMostImprovedClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacementStratified out of memory on pMostImprovedClasses");
+      LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified out of memory on pMostImprovedClasses");
       free(pTargetSamplingCounts);
       return Error_OutOfMemory;
    }
@@ -472,8 +472,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
 
    LOG_COUNTED_0(
       &g_cLogExitSampleWithoutReplacementStratified,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Exited SampleWithoutReplacementStratified"
    );
 
@@ -501,31 +501,31 @@ extern ErrorEbmType Unbag(
             BagEbmType sampleDefinition = *pBag;
             if(sampleDefinition < BagEbmType { 0 }) {
                if(IsConvertError<ptrdiff_t>(sampleDefinition)) {
-                  LOG_0(TraceLevelError, "ERROR Unbag IsConvertError<ptrdiff_t>(sampleDefinition)");
+                  LOG_0(Trace_Error, "ERROR Unbag IsConvertError<ptrdiff_t>(sampleDefinition)");
                   return Error_IllegalParamValue;
                }
                ptrdiff_t cSampleDefinitionSigned = static_cast<ptrdiff_t>(sampleDefinition);
                // by creating a ptrdiff_t with "ptrdiff_t { ... }" the compiler is suposed to give us an 
                // error if for some reason the negation of the max fails
                if(cSampleDefinitionSigned < ptrdiff_t { -std::numeric_limits<ptrdiff_t>::max() }) {
-                  LOG_0(TraceLevelError, "ERROR Unbag cSampleDefinitionSigned < ptrdiff_t { -std::numeric_limits<ptrdiff_t>::max() }");
+                  LOG_0(Trace_Error, "ERROR Unbag cSampleDefinitionSigned < ptrdiff_t { -std::numeric_limits<ptrdiff_t>::max() }");
                   return Error_IllegalParamValue;
                }
                cSampleDefinitionSigned = -cSampleDefinitionSigned;
                const size_t cSampleDefinition = static_cast<size_t>(cSampleDefinitionSigned);
                if(IsAddError(cValidationSamples, cSampleDefinition)) {
-                  LOG_0(TraceLevelError, "ERROR Unbag IsAddError(cValidationSamples, cSampleDefinition)");
+                  LOG_0(Trace_Error, "ERROR Unbag IsAddError(cValidationSamples, cSampleDefinition)");
                   return Error_IllegalParamValue;
                }
                cValidationSamples += cSampleDefinition;
             } else {
                if(IsConvertError<size_t>(sampleDefinition)) {
-                  LOG_0(TraceLevelError, "ERROR Unbag IsConvertError<size_t>(sampleDefinition)");
+                  LOG_0(Trace_Error, "ERROR Unbag IsConvertError<size_t>(sampleDefinition)");
                   return Error_IllegalParamValue;
                }
                const size_t cSampleDefinition = static_cast<size_t>(sampleDefinition);
                if(IsAddError(cTrainingSamples, cSampleDefinition)) {
-                  LOG_0(TraceLevelError, "ERROR Unbag IsAddError(cTrainingSamples, cSampleDefinition)");
+                  LOG_0(Trace_Error, "ERROR Unbag IsAddError(cTrainingSamples, cSampleDefinition)");
                   return Error_IllegalParamValue;
                }
                cTrainingSamples += cSampleDefinition;
@@ -600,7 +600,7 @@ extern ErrorEbmType ExtractWeights(
       const size_t cBytes = sizeof(*aWeights) * cSetSamples;
       FloatFast * const aRet = static_cast<FloatFast *>(malloc(cBytes));
       if(UNLIKELY(nullptr == aRet)) {
-         LOG_0(TraceLevelWarning, "WARNING ExtractWeights nullptr == aRet");
+         LOG_0(Trace_Warning, "WARNING ExtractWeights nullptr == aRet");
          return Error_OutOfMemory;
       }
       *ppWeightsOut = aRet;

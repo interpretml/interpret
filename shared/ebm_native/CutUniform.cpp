@@ -320,12 +320,12 @@ EBM_API_BODY void EBM_CALLING_CONVENTION CleanFloats(IntEbmType count, double * 
    // per EBM spec requirements.  It also converts negative zeros into zeros.
 
    if(IsConvertError<size_t>(count)) {
-      LOG_0(TraceLevelError, "ERROR CleanFloats count is not a valid index into an array");
+      LOG_0(Trace_Error, "ERROR CleanFloats count is not a valid index into an array");
       return;
    }
    size_t c = static_cast<size_t>(count);
    if(IsMultiplyError(sizeof(*valsInOut), c)) {
-      LOG_0(TraceLevelError, "ERROR CleanFloats count value too large to index into memory");
+      LOG_0(Trace_Error, "ERROR CleanFloats count value too large to index into memory");
       return;
    }
    while(0 != c) {
@@ -450,27 +450,27 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
       return 0;
    }
    if(IsConvertError<size_t>(countDesiredCuts)) {
-      LOG_0(TraceLevelError, "ERROR CutUniform countDesiredCuts is not a valid index into an array");
+      LOG_0(Trace_Error, "ERROR CutUniform countDesiredCuts is not a valid index into an array");
       return 0;
    }
    const size_t cCuts = static_cast<size_t>(countDesiredCuts);
    if(IsMultiplyError(sizeof(*cutsLowerBoundInclusiveOut), cCuts)) {
-      LOG_0(TraceLevelError, "ERROR CutUniform countDesiredCuts value too large to index into memory");
+      LOG_0(Trace_Error, "ERROR CutUniform countDesiredCuts value too large to index into memory");
       return 0;
    }
 
    if(IsConvertError<size_t>(countSamples)) {
-      LOG_0(TraceLevelError, "ERROR CutUniform countSamples is not a valid index into an array");
+      LOG_0(Trace_Error, "ERROR CutUniform countSamples is not a valid index into an array");
       return 0;
    }
    const size_t cSamples = static_cast<size_t>(countSamples);
    if(IsMultiplyError(sizeof(*featureVals), cSamples)) {
-      LOG_0(TraceLevelError, "ERROR CutUniform countSamples value too large to index into memory");
+      LOG_0(Trace_Error, "ERROR CutUniform countSamples value too large to index into memory");
       return 0;
    }
 
    if(nullptr == featureVals) {
-      LOG_0(TraceLevelError, "ERROR CutUniform featureVals cannot be NULL");
+      LOG_0(Trace_Error, "ERROR CutUniform featureVals cannot be NULL");
       return 0;
    }
 
@@ -524,7 +524,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
    EBM_ASSERT(valMin < valMax);
 
    if(nullptr == cutsLowerBoundInclusiveOut) {
-      LOG_0(TraceLevelError, "ERROR CutUniform cutsLowerBoundInclusiveOut cannot be NULL");
+      LOG_0(Trace_Error, "ERROR CutUniform cutsLowerBoundInclusiveOut cannot be NULL");
       return 0;
    }
 

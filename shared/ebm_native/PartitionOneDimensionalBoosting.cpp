@@ -107,7 +107,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    constexpr bool bClassification = IsClassification(cCompilerClasses);
 
    LOG_N(
-      TraceLevelVerbose,
+      Trace_Verbose,
       "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pBoosterShell=%p, pTreeNode=%p, "
       "pTreeNodeChildrenAvailableStorageSpaceCur=%p, cSamplesLeafMin=%zu",
       static_cast<const void *>(pBoosterShell),
@@ -426,7 +426,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       reinterpret_cast<const char *>(aBins)) / cBytesPerBin);
 
    LOG_N(
-      TraceLevelVerbose,
+      Trace_Verbose,
       "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: splitVal=%zu, gain=%le",
       static_cast<size_t>(pTreeNode->AFTER_GetSplitVal()),
       pTreeNode->AFTER_GetSplitGain()
@@ -489,7 +489,7 @@ public:
       // there will be at least one split
 
       if(GetTreeNodeSizeOverflow(bClassification, cScores)) {
-         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting GetTreeNodeSizeOverflow<bClassification>(cScores)");
+         LOG_0(Trace_Warning, "WARNING PartitionOneDimensionalBoosting GetTreeNodeSizeOverflow<bClassification>(cScores)");
          return Error_OutOfMemory; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
       }
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
@@ -869,11 +869,11 @@ public:
          );
       } catch(const std::bad_alloc &) {
          // calling anything inside bestTreeNodeToSplit can throw exceptions
-         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting out of memory exception");
+         LOG_0(Trace_Warning, "WARNING PartitionOneDimensionalBoosting out of memory exception");
          return Error_OutOfMemory;
       } catch(...) {
          // calling anything inside bestTreeNodeToSplit can throw exceptions
-         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting exception");
+         LOG_0(Trace_Warning, "WARNING PartitionOneDimensionalBoosting exception");
          return Error_UnexpectedInternal;
       }
 
@@ -883,7 +883,7 @@ public:
          return error;
       }
       if(IsMultiplyError(cScores, cLeaves)) {
-         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting IsMultiplyError(cScores, cLeaves)");
+         LOG_0(Trace_Warning, "WARNING PartitionOneDimensionalBoosting IsMultiplyError(cScores, cLeaves)");
          return Error_OutOfMemory;
       }
       error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * cLeaves);
@@ -894,9 +894,9 @@ public:
       ActiveDataType * pSplits = pInnerTermUpdate->GetSplitPointer(iDimension);
       FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
 
-      LOG_0(TraceLevelVerbose, "Entered Flatten");
+      LOG_0(Trace_Verbose, "Entered Flatten");
       Flatten<bClassification>(pRootTreeNode, &pSplits, &pUpdateScore, cScores);
-      LOG_0(TraceLevelVerbose, "Exited Flatten");
+      LOG_0(Trace_Verbose, "Exited Flatten");
 
       EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension) <= pSplits);
       EBM_ASSERT(static_cast<size_t>(pSplits - pInnerTermUpdate->GetSplitPointer(iDimension)) == cLeaves - 1);
@@ -917,7 +917,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
    const size_t cLeavesMax,
    double * const pTotalGain
 ) {
-   LOG_0(TraceLevelVerbose, "Entered PartitionOneDimensionalBoosting");
+   LOG_0(Trace_Verbose, "Entered PartitionOneDimensionalBoosting");
 
    ErrorEbmType error;
 
@@ -962,7 +962,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
       );
    }
 
-   LOG_0(TraceLevelVerbose, "Exited PartitionOneDimensionalBoosting");
+   LOG_0(Trace_Verbose, "Exited PartitionOneDimensionalBoosting");
 
    return error;
 }

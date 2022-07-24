@@ -799,7 +799,7 @@ extern double ApplyTermUpdateValidation(
    BoosterShell * const pBoosterShell, 
    const Term * const pTerm
 ) {
-   LOG_0(TraceLevelVerbose, "Entered ApplyTermUpdateValidation");
+   LOG_0(Trace_Verbose, "Entered ApplyTermUpdateValidation");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
@@ -891,7 +891,7 @@ extern double ApplyTermUpdateValidation(
    EBM_ASSERT(!std::isinf(ret));
    EBM_ASSERT(0 <= ret);
 
-   LOG_0(TraceLevelVerbose, "Exited ApplyTermUpdateValidation");
+   LOG_0(Trace_Verbose, "Exited ApplyTermUpdateValidation");
 
    return ret;
 }

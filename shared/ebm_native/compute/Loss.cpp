@@ -44,7 +44,7 @@ ErrorEbmType Loss::CreateLoss(
    EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
    EBM_ASSERT(nullptr == pLossWrapperOut->m_pFunctionPointersCpp);
 
-   LOG_0(TraceLevelInfo, "Entered Loss::CreateLoss");
+   LOG_0(Trace_Info, "Entered Loss::CreateLoss");
 
    void * const pFunctionPointersCpp = malloc(sizeof(FunctionPointersCpp));
    ErrorEbmType error = Error_OutOfMemory;
@@ -57,49 +57,49 @@ ErrorEbmType Loss::CreateLoss(
             EBM_ASSERT(nullptr != pLossWrapperOut->m_pLoss);
             pLossWrapperOut->m_pApplyTrainingC = MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining);
             pLossWrapperOut->m_pApplyValidationC = MAKE_ZONED_C_FUNCTION_NAME(ApplyValidation);
-            LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss");
+            LOG_0(Trace_Info, "Exited Loss::CreateLoss");
             return Error_None;
          }
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss unknown loss");
+         LOG_0(Trace_Info, "Exited Loss::CreateLoss unknown loss");
          error = Error_LossUnknown;
       } catch(const ParamValueMalformedException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParamValueMalformedException");
+         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamValueMalformedException");
          error = Error_LossParamValueMalformed;
       } catch(const ParamUnknownException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParamUnknownException");
+         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamUnknownException");
          error = Error_LossParamUnknown;
       } catch(const RegistrationConstructorException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss RegistrationConstructorException");
+         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss RegistrationConstructorException");
          error = Error_LossConstructorException;
       } catch(const ParamValueOutOfRangeException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParamValueOutOfRangeException");
+         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamValueOutOfRangeException");
          error = Error_LossParamValueOutOfRange;
       } catch(const ParamMismatchWithConfigException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParamMismatchWithConfigException");
+         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamMismatchWithConfigException");
          error = Error_LossParamMismatchWithConfig;
       } catch(const IllegalRegistrationNameException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss IllegalRegistrationNameException");
+         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss IllegalRegistrationNameException");
          error = Error_LossIllegalRegistrationName;
       } catch(const IllegalParamNameException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss IllegalParamNameException");
+         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss IllegalParamNameException");
          error = Error_LossIllegalParamName;
       } catch(const DuplicateParamNameException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss DuplicateParamNameException");
+         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss DuplicateParamNameException");
          error = Error_LossDuplicateParamName;
       } catch(const std::bad_alloc &) {
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss Out of Memory");
+         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss Out of Memory");
          error = Error_OutOfMemory;
       } catch(...) {
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss internal error, unknown exception");
+         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss internal error, unknown exception");
          error = Error_UnexpectedInternal;
       }
       free(pLossWrapperOut->m_pLoss); // this is legal if pLossWrapper->m_pLoss is nullptr

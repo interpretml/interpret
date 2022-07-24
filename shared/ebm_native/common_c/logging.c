@@ -21,7 +21,7 @@ const char g_sFalse[] = "false";
 static const char g_sAssertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";
 static const char g_sLoggingParamError[] = "Error in vsnprintf parameters for logging.";
 
-TraceEbmType g_traceLevel = TraceLevelOff;
+TraceEbmType g_traceLevel = Trace_Off;
 static LOG_CALLBACK g_pLogCallback = NULL;
 
 static const char g_sTraceOff[] = "OFF";
@@ -33,15 +33,15 @@ static const char g_sTraceIllegal[] = "ILLEGAL";
 
 EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbmType traceLevel) {
    switch(traceLevel) {
-   case TraceLevelOff:
+   case Trace_Off:
       return g_sTraceOff;
-   case TraceLevelError:
+   case Trace_Error:
       return g_sTraceError;
-   case TraceLevelWarning:
+   case Trace_Warning:
       return g_sTraceWarning;
-   case TraceLevelInfo:
+   case Trace_Info:
       return g_sTraceInfo;
-   case TraceLevelVerbose:
+   case Trace_Verbose:
       return g_sTraceVerbose;
    default:
       return g_sTraceIllegal;
@@ -51,7 +51,7 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbmTyp
 EBM_API_BODY void EBM_CALLING_CONVENTION SetLogCallback(LOG_CALLBACK logCallback) {
    assert(NULL != logCallback);
    assert(NULL == g_pLogCallback); /* SetLogCallback should only be called once */
-   assert(TraceLevelOff == g_traceLevel);
+   assert(Trace_Off == g_traceLevel);
 
    g_pLogCallback = logCallback;
 }
@@ -72,26 +72,26 @@ static const char sStartLogIllegal[] = "Native logging set to ILLEGAL in " COMPI
 EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel) {
    const char * sMessage;
    switch(traceLevel) {
-   case TraceLevelOff:
+   case Trace_Off:
       // if the previous logging level allows us to log a message, then do it before turning logging off
-      sMessage = TraceLevelOff == g_traceLevel ? NULL : sStartLogOff;
-   case TraceLevelError:
+      sMessage = Trace_Off == g_traceLevel ? NULL : sStartLogOff;
+   case Trace_Error:
       sMessage = sStartLogError;
-   case TraceLevelWarning:
+   case Trace_Warning:
       sMessage = sStartLogWarning;
-   case TraceLevelInfo:
+   case Trace_Info:
       sMessage = sStartLogInfo;
-   case TraceLevelVerbose:
+   case Trace_Verbose:
       sMessage = sStartLogVerbose;
    default:
       // if the previous logging level allows us to log a message, then do it before turning logging off
-      sMessage = TraceLevelOff == g_traceLevel ? NULL : sStartLogIllegal;
-      traceLevel = TraceLevelOff;
+      sMessage = Trace_Off == g_traceLevel ? NULL : sStartLogIllegal;
+      traceLevel = Trace_Off;
    }
 
    if(NULL == g_pLogCallback) {
-      assert(TraceLevelOff == traceLevel && TraceLevelOff == g_traceLevel);
-      traceLevel = TraceLevelOff;
+      assert(Trace_Off == traceLevel && Trace_Off == g_traceLevel);
+      traceLevel = Trace_Off;
       sMessage = NULL;
    }
 
@@ -103,7 +103,7 @@ EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel) 
 
    if(NULL != sMessage) {
       // log as an error message to guarantee a starting message is recorded even though this is not an error
-      InteralLogWithoutArguments(TraceLevelError, sMessage);
+      InteralLogWithoutArguments(Trace_Error, sMessage);
    }
 
    g_traceLevel = traceLevel;
@@ -152,8 +152,8 @@ extern void LogAssertFailure(
    const char * const sFunctionName,
    const char * const sAssertText
 ) LOGGING_ANALYZER_NORETURN {
-   if(TraceLevelError <= g_traceLevel) {
-      InteralLogWithArguments(TraceLevelError, g_sAssertLogMessage, lineNumber, sFileName, sFunctionName, sAssertText);
+   if(Trace_Error <= g_traceLevel) {
+      InteralLogWithArguments(Trace_Error, g_sAssertLogMessage, lineNumber, sFileName, sFunctionName, sAssertText);
    }
 }
 

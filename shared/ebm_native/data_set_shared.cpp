@@ -239,7 +239,7 @@ static bool IsHeaderError(
    const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
    if(IsConvertError<size_t>(countFeatures)) {
       // we're being untrusting of the caller manipulating the memory improperly here
-      LOG_0(TraceLevelError, "ERROR IsHeaderError countFeatures is outside the range of a valid index");
+      LOG_0(Trace_Error, "ERROR IsHeaderError countFeatures is outside the range of a valid index");
       return true;
    }
    const size_t cFeatures = static_cast<size_t>(countFeatures);
@@ -247,7 +247,7 @@ static bool IsHeaderError(
    const SharedStorageDataType countWeights = pHeaderDataSetShared->m_cWeights;
    if(IsConvertError<size_t>(countWeights)) {
       // we're being untrusting of the caller manipulating the memory improperly here
-      LOG_0(TraceLevelError, "ERROR IsHeaderError countWeights is outside the range of a valid index");
+      LOG_0(Trace_Error, "ERROR IsHeaderError countWeights is outside the range of a valid index");
       return true;
    }
    const size_t cWeights = static_cast<size_t>(countWeights);
@@ -255,45 +255,45 @@ static bool IsHeaderError(
    const SharedStorageDataType countTargets = pHeaderDataSetShared->m_cTargets;
    if(IsConvertError<size_t>(countTargets)) {
       // we're being untrusting of the caller manipulating the memory improperly here
-      LOG_0(TraceLevelError, "ERROR IsHeaderError countTargets is outside the range of a valid index");
+      LOG_0(Trace_Error, "ERROR IsHeaderError countTargets is outside the range of a valid index");
       return true;
    }
    const size_t cTargets = static_cast<size_t>(countTargets);
 
    if(IsAddError(cFeatures, cWeights, cTargets)) {
-      LOG_0(TraceLevelError, "ERROR IsHeaderError IsAddError(cFeatures, cWeights, cTargets)");
+      LOG_0(Trace_Error, "ERROR IsHeaderError IsAddError(cFeatures, cWeights, cTargets)");
       return true;
    }
    const size_t cOffsets = cFeatures + cWeights + cTargets;
 
    if(IsMultiplyError(sizeof(HeaderDataSetShared::m_offsets[0]), cOffsets)) {
-      LOG_0(TraceLevelError, "ERROR IsHeaderError IsMultiplyError(sizeof(HeaderDataSetShared::m_offsets[0]), cOffsets)");
+      LOG_0(Trace_Error, "ERROR IsHeaderError IsMultiplyError(sizeof(HeaderDataSetShared::m_offsets[0]), cOffsets)");
       return true;
    }
    const size_t cBytesOffsets = sizeof(HeaderDataSetShared::m_offsets[0]) * cOffsets;
 
    if(IsAddError(k_cBytesHeaderNoOffset, cBytesOffsets)) {
-      LOG_0(TraceLevelError, "ERROR IsHeaderError IsAddError(k_cBytesHeaderNoOffset, cBytesOffsets)");
+      LOG_0(Trace_Error, "ERROR IsHeaderError IsAddError(k_cBytesHeaderNoOffset, cBytesOffsets)");
       return true;
    }
    const size_t cBytesHeader = k_cBytesHeaderNoOffset + cBytesOffsets;
 
    if(cBytesAllocated - sizeof(SharedStorageDataType) < cBytesHeader) {
-      LOG_0(TraceLevelError, "ERROR IsHeaderError cBytesAllocated - sizeof(SharedStorageDataType) < cBytesHeader");
+      LOG_0(Trace_Error, "ERROR IsHeaderError cBytesAllocated - sizeof(SharedStorageDataType) < cBytesHeader");
       return true;
    }
 
    const SharedStorageDataType indexByte0 = pHeaderDataSetShared->m_offsets[0];
    if(IsConvertError<size_t>(indexByte0)) {
       // we're being untrusting of the caller manipulating the memory improperly here
-      LOG_0(TraceLevelError, "ERROR IsHeaderError indexByte0 is outside the range of a valid index");
+      LOG_0(Trace_Error, "ERROR IsHeaderError indexByte0 is outside the range of a valid index");
       return true;
    }
    const size_t iByte0 = static_cast<size_t>(indexByte0);
 
    if(iByte0 != cBytesHeader) {
       // we're being untrusting of the caller manipulating the memory improperly here
-      LOG_0(TraceLevelError, "ERROR IsHeaderError iByte0 != cBytesHeader");
+      LOG_0(Trace_Error, "ERROR IsHeaderError iByte0 != cBytesHeader");
       return true;
    }
 
@@ -302,24 +302,24 @@ static bool IsHeaderError(
 
    const SharedStorageDataType internalState = *pInternalState;
    if(IsConvertError<size_t>(internalState)) {
-      LOG_0(TraceLevelError, "ERROR IsHeaderError opaqueState invalid");
+      LOG_0(Trace_Error, "ERROR IsHeaderError opaqueState invalid");
       return true;
    }
    const size_t iOffset = static_cast<size_t>(internalState);
 
    if(cOffsets <= iOffset) {
-      LOG_0(TraceLevelError, "ERROR IsHeaderError cOffsets <= iOffset");
+      LOG_0(Trace_Error, "ERROR IsHeaderError cOffsets <= iOffset");
       return true;
    }
 
    if(size_t { 0 } == iOffset) {
       if(SharedStorageDataType { 0 } != pHeaderDataSetShared->m_cSamples) {
-         LOG_0(TraceLevelError, "ERROR IsHeaderError SharedStorageDataType { 0 } != pHeaderDataSetShared->m_cSamples");
+         LOG_0(Trace_Error, "ERROR IsHeaderError SharedStorageDataType { 0 } != pHeaderDataSetShared->m_cSamples");
          return true;
       }
    } else {
       if(pHeaderDataSetShared->m_cSamples != static_cast<SharedStorageDataType>(cSamples)) {
-         LOG_0(TraceLevelError, "ERROR IsHeaderError pHeaderDataSetShared->m_cSamples != cSamples");
+         LOG_0(Trace_Error, "ERROR IsHeaderError pHeaderDataSetShared->m_cSamples != cSamples");
          return true;
       }
 
@@ -327,28 +327,28 @@ static bool IsHeaderError(
       const SharedStorageDataType indexHighestOffsetPrev = ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset - 1];
       if(IsConvertError<size_t>(indexHighestOffsetPrev)) {
          // we're being untrusting of the caller manipulating the memory improperly here
-         LOG_0(TraceLevelError, "ERROR IsHeaderError indexHighestOffsetPrev is outside the range of a valid index");
+         LOG_0(Trace_Error, "ERROR IsHeaderError indexHighestOffsetPrev is outside the range of a valid index");
          return true;
       }
       const size_t iHighestOffsetPrev = static_cast<size_t>(indexHighestOffsetPrev);
 
       if(iHighestOffsetPrev < iByte0) {
          // we're being untrusting of the caller manipulating the memory improperly here
-         LOG_0(TraceLevelError, "ERROR IsHeaderError iHighestOffsetPrev < iByte0");
+         LOG_0(Trace_Error, "ERROR IsHeaderError iHighestOffsetPrev < iByte0");
          return true;
       }
 
       const SharedStorageDataType indexHighestOffset = ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset];
       if(IsConvertError<size_t>(indexHighestOffset)) {
          // we're being untrusting of the caller manipulating the memory improperly here
-         LOG_0(TraceLevelError, "ERROR IsHeaderError indexHighestOffset is outside the range of a valid index");
+         LOG_0(Trace_Error, "ERROR IsHeaderError indexHighestOffset is outside the range of a valid index");
          return true;
       }
       const size_t iHighestOffset = static_cast<size_t>(indexHighestOffset);
 
       if(iHighestOffset < iHighestOffsetPrev) {
          // we're being untrusting of the caller manipulating the memory improperly here
-         LOG_0(TraceLevelError, "ERROR IsHeaderError iHighestOffset < iHighestOffsetPrev");
+         LOG_0(Trace_Error, "ERROR IsHeaderError iHighestOffset < iHighestOffsetPrev");
          return true;
       }
 
@@ -360,7 +360,7 @@ static bool IsHeaderError(
    if(iOffsetNext != cOffsets) {
       const SharedStorageDataType indexHighestOffsetNext = ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffsetNext];
       if(k_unfilledOffset != indexHighestOffsetNext) {
-         LOG_0(TraceLevelError, "ERROR IsHeaderError k_unfilledOffset != indexHighestOffsetNext");
+         LOG_0(Trace_Error, "ERROR IsHeaderError k_unfilledOffset != indexHighestOffsetNext");
          return true;
       }
    }
@@ -387,7 +387,7 @@ static IntEbmType AppendHeader(
    EBM_ASSERT(size_t { 0 } == cBytesAllocated && nullptr == pFillMem || nullptr != pFillMem);
 
    LOG_N(
-      TraceLevelInfo,
+      Trace_Info,
       "Entered AppendHeader: "
       "countFeatures=%" IntEbmTypePrintf ", "
       "countWeights=%" IntEbmTypePrintf ", "
@@ -403,55 +403,55 @@ static IntEbmType AppendHeader(
    );
 
    if(IsConvertErrorDual<size_t, SharedStorageDataType>(countFeatures)) {
-      LOG_0(TraceLevelError, "ERROR AppendHeader countFeatures is outside the range of a valid index");
+      LOG_0(Trace_Error, "ERROR AppendHeader countFeatures is outside the range of a valid index");
       return Error_IllegalParamValue;
    }
    const size_t cFeatures = static_cast<size_t>(countFeatures);
 
    if(IsConvertErrorDual<size_t, SharedStorageDataType>(countWeights)) {
-      LOG_0(TraceLevelError, "ERROR AppendHeader countWeights is outside the range of a valid index");
+      LOG_0(Trace_Error, "ERROR AppendHeader countWeights is outside the range of a valid index");
       return Error_IllegalParamValue;
    }
    const size_t cWeights = static_cast<size_t>(countWeights);
 
    if(IsConvertErrorDual<size_t, SharedStorageDataType>(countTargets)) {
-      LOG_0(TraceLevelError, "ERROR AppendHeader countTargets is outside the range of a valid index");
+      LOG_0(Trace_Error, "ERROR AppendHeader countTargets is outside the range of a valid index");
       return Error_IllegalParamValue;
    }
    const size_t cTargets = static_cast<size_t>(countTargets);
 
    if(IsAddError(cFeatures, cWeights, cTargets)) {
-      LOG_0(TraceLevelError, "ERROR AppendHeader IsAddError(cFeatures, cWeights, cTargets)");
+      LOG_0(Trace_Error, "ERROR AppendHeader IsAddError(cFeatures, cWeights, cTargets)");
       return Error_IllegalParamValue;
    }
    const size_t cOffsets = cFeatures + cWeights + cTargets;
 
    if(IsMultiplyError(sizeof(HeaderDataSetShared::m_offsets[0]), cOffsets)) {
-      LOG_0(TraceLevelError, "ERROR AppendHeader IsMultiplyError(sizeof(HeaderDataSetShared::m_offsets[0]), cOffsets)");
+      LOG_0(Trace_Error, "ERROR AppendHeader IsMultiplyError(sizeof(HeaderDataSetShared::m_offsets[0]), cOffsets)");
       return Error_IllegalParamValue;
    }
    const size_t cBytesOffsets = sizeof(HeaderDataSetShared::m_offsets[0]) * cOffsets;
 
    if(IsAddError(k_cBytesHeaderNoOffset, cBytesOffsets)) {
-      LOG_0(TraceLevelError, "ERROR AppendHeader IsAddError(k_cBytesHeaderNoOffset, cBytesOffsets)");
+      LOG_0(Trace_Error, "ERROR AppendHeader IsAddError(k_cBytesHeaderNoOffset, cBytesOffsets)");
       return Error_IllegalParamValue;
    }
    const size_t cBytesHeader = k_cBytesHeaderNoOffset + cBytesOffsets;
 
    if(IsConvertError<SharedStorageDataType>(cBytesHeader)) {
-      LOG_0(TraceLevelError, "ERROR AppendHeader cBytesHeader is outside the range of a valid size");
+      LOG_0(Trace_Error, "ERROR AppendHeader cBytesHeader is outside the range of a valid size");
       return Error_IllegalParamValue;
    }
 
    if(nullptr != pFillMem) {
       if(size_t { 0 } == cOffsets) {
          if(cBytesAllocated != cBytesHeader) {
-            LOG_0(TraceLevelError, "ERROR AppendHeader buffer size and fill size do not agree");
+            LOG_0(Trace_Error, "ERROR AppendHeader buffer size and fill size do not agree");
             return Error_IllegalParamValue;
          }
       } else {
          if(cBytesAllocated - sizeof(SharedStorageDataType) < cBytesHeader) {
-            LOG_0(TraceLevelError, "ERROR AppendHeader cBytesAllocated - sizeof(SharedStorageDataType) < cBytesHeader");
+            LOG_0(Trace_Error, "ERROR AppendHeader cBytesAllocated - sizeof(SharedStorageDataType) < cBytesHeader");
             // don't set the header to bad if we don't have enough memory for the header itself
             return Error_IllegalParamValue;
          }
@@ -486,7 +486,7 @@ static IntEbmType AppendHeader(
       return Error_None;
    }
    if(IsConvertError<IntEbmType>(cBytesHeader)) {
-      LOG_0(TraceLevelError, "ERROR AppendHeader IsConvertError<IntEbmType>(cBytesHeader)");
+      LOG_0(Trace_Error, "ERROR AppendHeader IsConvertError<IntEbmType>(cBytesHeader)");
       return Error_OutOfMemory;
    }
    return cBytesHeader;
@@ -517,7 +517,7 @@ static IntEbmType AppendFeature(
       nullptr != pFillMem && k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType) <= cBytesAllocated);
 
    LOG_N(
-      TraceLevelInfo,
+      Trace_Info,
       "Entered AppendFeature: "
       "countBins=%" IntEbmTypePrintf ", "
       "isMissing=%s, "
@@ -540,24 +540,24 @@ static IntEbmType AppendFeature(
 
    {
       if(IsConvertErrorDual<size_t, SharedStorageDataType>(countBins)) {
-         LOG_0(TraceLevelError, "ERROR AppendFeature countBins is outside the range of a valid index");
+         LOG_0(Trace_Error, "ERROR AppendFeature countBins is outside the range of a valid index");
          goto return_bad;
       }
       if(EBM_FALSE != isMissing && EBM_TRUE != isMissing) {
-         LOG_0(TraceLevelError, "ERROR AppendFeature isMissing is not EBM_FALSE or EBM_TRUE");
+         LOG_0(Trace_Error, "ERROR AppendFeature isMissing is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
       }
 
       if(EBM_FALSE != isUnknown && EBM_TRUE != isUnknown) {
-         LOG_0(TraceLevelError, "ERROR AppendFeature isUnknown is not EBM_FALSE or EBM_TRUE");
+         LOG_0(Trace_Error, "ERROR AppendFeature isUnknown is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
       }
       if(EBM_FALSE != isNominal && EBM_TRUE != isNominal) {
-         LOG_0(TraceLevelError, "ERROR AppendFeature isNominal is not EBM_FALSE or EBM_TRUE");
+         LOG_0(Trace_Error, "ERROR AppendFeature isNominal is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
       }
       if(IsConvertErrorDual<size_t, SharedStorageDataType>(countSamples)) {
-         LOG_0(TraceLevelError, "ERROR AppendFeature countSamples is outside the range of a valid index");
+         LOG_0(Trace_Error, "ERROR AppendFeature countSamples is outside the range of a valid index");
          goto return_bad;
       }
       const size_t cSamples = static_cast<size_t>(countSamples);
@@ -565,7 +565,7 @@ static IntEbmType AppendFeature(
       bool bSparse = false;
       if(size_t { 0 } != cSamples) {
          if(nullptr == binIndexes) {
-            LOG_0(TraceLevelError, "ERROR AppendFeature nullptr == binIndexes");
+            LOG_0(Trace_Error, "ERROR AppendFeature nullptr == binIndexes");
             goto return_bad;
          }
 
@@ -590,19 +590,19 @@ static IntEbmType AppendFeature(
 
          // check that we haven't exceeded the number of features
          if(cFeatures <= iOffset) {
-            LOG_0(TraceLevelError, "ERROR AppendFeature cFeatures <= iOffset");
+            LOG_0(Trace_Error, "ERROR AppendFeature cFeatures <= iOffset");
             goto return_bad;
          }
 
          const size_t iHighestOffset = static_cast<size_t>(ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset]);
 
          if(IsAddError(iByteCur, iHighestOffset)) {
-            LOG_0(TraceLevelError, "ERROR AppendFeature IsAddError(iByteCur, iHighestOffset)");
+            LOG_0(Trace_Error, "ERROR AppendFeature IsAddError(iByteCur, iHighestOffset)");
             goto return_bad;
          }
          iByteCur += iHighestOffset; // if we're going to access FeatureDataSetShared, then check if we have the space
          if(cBytesAllocated < iByteCur) {
-            LOG_0(TraceLevelError, "ERROR AppendFeature cBytesAllocated < iByteCur");
+            LOG_0(Trace_Error, "ERROR AppendFeature cBytesAllocated < iByteCur");
             goto return_bad;
          }
 
@@ -622,25 +622,25 @@ static IntEbmType AppendFeature(
 
       if(size_t { 0 } != cSamples) {
          if(IsMultiplyError(sizeof(SharedStorageDataType), cSamples)) {
-            LOG_0(TraceLevelError, "ERROR AppendFeature IsMultiplyError(sizeof(SharedStorageDataType), cSamples)");
+            LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(SharedStorageDataType), cSamples)");
             goto return_bad;
          }
          const size_t cBytesAllSamples = sizeof(SharedStorageDataType) * cSamples;
 
          if(IsAddError(iByteCur, cBytesAllSamples)) {
-            LOG_0(TraceLevelError, "ERROR AppendFeature IsAddError(iByteCur, cBytesAllSamples)");
+            LOG_0(Trace_Error, "ERROR AppendFeature IsAddError(iByteCur, cBytesAllSamples)");
             goto return_bad;
          }
          const size_t iByteNext = iByteCur + cBytesAllSamples;
 
          if(nullptr != pFillMem) {
             if(cBytesAllocated < iByteNext) {
-               LOG_0(TraceLevelError, "ERROR AppendFeature cBytesAllocated < iByteNext");
+               LOG_0(Trace_Error, "ERROR AppendFeature cBytesAllocated < iByteNext");
                goto return_bad;
             }
 
             if(IsMultiplyError(sizeof(binIndexes[0]), cSamples)) {
-               LOG_0(TraceLevelError, "ERROR AppendFeature IsMultiplyError(sizeof(binIndexes[0]), cSamples)");
+               LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(binIndexes[0]), cSamples)");
                goto return_bad;
             }
             const IntEbmType * pBinIndex = binIndexes;
@@ -649,11 +649,11 @@ static IntEbmType AppendFeature(
             do {
                const IntEbmType indexBin = *pBinIndex;
                if(indexBin < IntEbmType { 0 }) {
-                  LOG_0(TraceLevelError, "ERROR AppendFeature indexBin can't be negative");
+                  LOG_0(Trace_Error, "ERROR AppendFeature indexBin can't be negative");
                   goto return_bad;
                }
                if(countBins <= indexBin) {
-                  LOG_0(TraceLevelError, "ERROR AppendFeature countBins <= indexBin");
+                  LOG_0(Trace_Error, "ERROR AppendFeature countBins <= indexBin");
                   goto return_bad;
                }
                // since countBins can be converted to these, so now can indexBin
@@ -685,23 +685,23 @@ static IntEbmType AppendFeature(
          
          if(iOffset == cOffsets) {
             if(cBytesAllocated != iByteCur) {
-               LOG_0(TraceLevelError, "ERROR AppendFeature buffer size and fill size do not agree");
+               LOG_0(Trace_Error, "ERROR AppendFeature buffer size and fill size do not agree");
                goto return_bad;
             }
 
             LockDataSetShared(pFillMem);
          } else {
             if(cBytesAllocated - sizeof(SharedStorageDataType) < iByteCur) {
-               LOG_0(TraceLevelError, "ERROR AppendFeature cBytesAllocated - sizeof(SharedStorageDataType) < iByteNext");
+               LOG_0(Trace_Error, "ERROR AppendFeature cBytesAllocated - sizeof(SharedStorageDataType) < iByteNext");
                goto return_bad;
             }
 
             if(IsConvertError<SharedStorageDataType>(iOffset)) {
-               LOG_0(TraceLevelError, "ERROR AppendFeature IsConvertError<IntEbmType>(iOffset)");
+               LOG_0(Trace_Error, "ERROR AppendFeature IsConvertError<IntEbmType>(iOffset)");
                goto return_bad;
             }
             if(IsConvertError<SharedStorageDataType>(iByteCur)) {
-               LOG_0(TraceLevelError, "ERROR AppendFeature IsConvertError<SharedStorageDataType>(iByteCur)");
+               LOG_0(Trace_Error, "ERROR AppendFeature IsConvertError<SharedStorageDataType>(iByteCur)");
                goto return_bad;
             }
             ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset] = static_cast<SharedStorageDataType>(iByteCur);
@@ -712,7 +712,7 @@ static IntEbmType AppendFeature(
          return Error_None;
       }
       if(IsConvertError<IntEbmType>(iByteCur)) {
-         LOG_0(TraceLevelError, "ERROR AppendFeature IsConvertError<IntEbmType>(iByteCur)");
+         LOG_0(Trace_Error, "ERROR AppendFeature IsConvertError<IntEbmType>(iByteCur)");
          goto return_bad;
       }
       return static_cast<IntEbmType>(iByteCur);
@@ -737,7 +737,7 @@ static IntEbmType AppendWeight(
       nullptr != pFillMem && k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType) <= cBytesAllocated);
 
    LOG_N(
-      TraceLevelInfo,
+      Trace_Info,
       "Entered AppendWeight: "
       "countSamples=%" IntEbmTypePrintf ", "
       "aWeights=%p, "
@@ -752,7 +752,7 @@ static IntEbmType AppendWeight(
 
    {
       if(IsConvertErrorDual<size_t, SharedStorageDataType>(countSamples)) {
-         LOG_0(TraceLevelError, "ERROR AppendWeight countSamples is outside the range of a valid index");
+         LOG_0(Trace_Error, "ERROR AppendWeight countSamples is outside the range of a valid index");
          goto return_bad;
       }
       const size_t cSamples = static_cast<size_t>(countSamples);
@@ -776,23 +776,23 @@ static IntEbmType AppendWeight(
 
          // check that we're in the weight setting range
          if(iOffset < cFeatures) {
-            LOG_0(TraceLevelError, "ERROR AppendWeight iOffset < cFeatures");
+            LOG_0(Trace_Error, "ERROR AppendWeight iOffset < cFeatures");
             goto return_bad;
          }
          if(cFeatures + cWeights <= iOffset) {
-            LOG_0(TraceLevelError, "ERROR AppendWeight cFeatures + cWeights <= iOffset");
+            LOG_0(Trace_Error, "ERROR AppendWeight cFeatures + cWeights <= iOffset");
             goto return_bad;
          }
 
          const size_t iHighestOffset = static_cast<size_t>(ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset]);
 
          if(IsAddError(iByteCur, iHighestOffset)) {
-            LOG_0(TraceLevelError, "ERROR AppendWeight IsAddError(iByteCur, iHighestOffset)");
+            LOG_0(Trace_Error, "ERROR AppendWeight IsAddError(iByteCur, iHighestOffset)");
             goto return_bad;
          }
          iByteCur += iHighestOffset; // if we're going to access FeatureDataSetShared, then check if we have the space
          if(cBytesAllocated < iByteCur) {
-            LOG_0(TraceLevelError, "ERROR AppendWeight cBytesAllocated < iByteCur");
+            LOG_0(Trace_Error, "ERROR AppendWeight cBytesAllocated < iByteCur");
             goto return_bad;
          }
 
@@ -806,24 +806,24 @@ static IntEbmType AppendWeight(
 
       if(size_t { 0 } != cSamples) {
          if(nullptr == aWeights) {
-            LOG_0(TraceLevelError, "ERROR AppendWeight nullptr == aWeights");
+            LOG_0(Trace_Error, "ERROR AppendWeight nullptr == aWeights");
             goto return_bad;
          }
 
          if(IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatFast)), cSamples)) {
-            LOG_0(TraceLevelError, "ERROR AppendWeight IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatFast)), cSamples)");
+            LOG_0(Trace_Error, "ERROR AppendWeight IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatFast)), cSamples)");
             goto return_bad;
          }
          const size_t cBytesAllSamples = sizeof(FloatFast) * cSamples;
 
          if(IsAddError(iByteCur, cBytesAllSamples)) {
-            LOG_0(TraceLevelError, "ERROR AppendWeight IsAddError(iByteCur, cBytesAllSamples)");
+            LOG_0(Trace_Error, "ERROR AppendWeight IsAddError(iByteCur, cBytesAllSamples)");
             goto return_bad;
          }
          const size_t iByteNext = iByteCur + cBytesAllSamples;
          if(nullptr != pFillMem) {
             if(cBytesAllocated < iByteNext) {
-               LOG_0(TraceLevelError, "ERROR AppendWeight cBytesAllocated < iByteNext");
+               LOG_0(Trace_Error, "ERROR AppendWeight cBytesAllocated < iByteNext");
                goto return_bad;
             }
 
@@ -847,23 +847,23 @@ static IntEbmType AppendWeight(
 
          if(iOffset == cOffsets) {
             if(cBytesAllocated != iByteCur) {
-               LOG_0(TraceLevelError, "ERROR AppendWeight buffer size and fill size do not agree");
+               LOG_0(Trace_Error, "ERROR AppendWeight buffer size and fill size do not agree");
                goto return_bad;
             }
 
             LockDataSetShared(pFillMem);
          } else {
             if(cBytesAllocated - sizeof(SharedStorageDataType) < iByteCur) {
-               LOG_0(TraceLevelError, "ERROR AppendWeight cBytesAllocated - sizeof(SharedStorageDataType) < iByteCur");
+               LOG_0(Trace_Error, "ERROR AppendWeight cBytesAllocated - sizeof(SharedStorageDataType) < iByteCur");
                goto return_bad;
             }
 
             if(IsConvertError<SharedStorageDataType>(iOffset)) {
-               LOG_0(TraceLevelError, "ERROR AppendWeight IsConvertError<IntEbmType>(iOffset)");
+               LOG_0(Trace_Error, "ERROR AppendWeight IsConvertError<IntEbmType>(iOffset)");
                goto return_bad;
             }
             if(IsConvertError<SharedStorageDataType>(iByteCur)) {
-               LOG_0(TraceLevelError, "ERROR AppendWeight IsConvertError<SharedStorageDataType>(iByteCur)");
+               LOG_0(Trace_Error, "ERROR AppendWeight IsConvertError<SharedStorageDataType>(iByteCur)");
                goto return_bad;
             }
             ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset] = static_cast<SharedStorageDataType>(iByteCur);
@@ -874,7 +874,7 @@ static IntEbmType AppendWeight(
          return Error_None;
       }
       if(IsConvertError<IntEbmType>(iByteCur)) {
-         LOG_0(TraceLevelError, "ERROR AppendWeight IsConvertError<IntEbmType>(iByteCur)");
+         LOG_0(Trace_Error, "ERROR AppendWeight IsConvertError<IntEbmType>(iByteCur)");
          goto return_bad;
       }
       return static_cast<IntEbmType>(iByteCur);
@@ -901,7 +901,7 @@ static IntEbmType AppendTarget(
       nullptr != pFillMem && k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType) <= cBytesAllocated);
 
    LOG_N(
-      TraceLevelInfo,
+      Trace_Info,
       "Entered AppendTarget: "
       "bClassification=%" BoolEbmTypePrintf ", "
       "countClasses=%" IntEbmTypePrintf ", "
@@ -920,11 +920,11 @@ static IntEbmType AppendTarget(
 
    {
       if(IsConvertErrorDual<size_t, SharedStorageDataType>(countClasses)) {
-         LOG_0(TraceLevelError, "ERROR AppendTarget countClasses is outside the range of a valid index");
+         LOG_0(Trace_Error, "ERROR AppendTarget countClasses is outside the range of a valid index");
          goto return_bad;
       }
       if(IsConvertErrorDual<size_t, SharedStorageDataType>(countSamples)) {
-         LOG_0(TraceLevelError, "ERROR AppendTarget countSamples is outside the range of a valid index");
+         LOG_0(Trace_Error, "ERROR AppendTarget countSamples is outside the range of a valid index");
          goto return_bad;
       }
       const size_t cSamples = static_cast<size_t>(countSamples);
@@ -949,19 +949,19 @@ static IntEbmType AppendTarget(
 
          // check that we're done the features and weights
          if(iOffset < cFeatures + cWeights) {
-            LOG_0(TraceLevelError, "ERROR AppendTarget iOffset < cFeatures + cWeights");
+            LOG_0(Trace_Error, "ERROR AppendTarget iOffset < cFeatures + cWeights");
             goto return_bad;
          }
 
          const size_t iHighestOffset = static_cast<size_t>(ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset]);
 
          if(IsAddError(iByteCur, iHighestOffset)) {
-            LOG_0(TraceLevelError, "ERROR AppendTarget IsAddError(iByteCur, iHighestOffset)");
+            LOG_0(Trace_Error, "ERROR AppendTarget IsAddError(iByteCur, iHighestOffset)");
             goto return_bad;
          }
          iByteCur += iHighestOffset; // if we're going to access FeatureDataSetShared, then check if we have the space
          if(cBytesAllocated < iByteCur) {
-            LOG_0(TraceLevelError, "ERROR AppendTarget cBytesAllocated < iByteCur");
+            LOG_0(Trace_Error, "ERROR AppendTarget cBytesAllocated < iByteCur");
             goto return_bad;
          }
 
@@ -981,38 +981,38 @@ static IntEbmType AppendTarget(
 
       if(size_t { 0 } != cSamples) {
          if(nullptr == aTargets) {
-            LOG_0(TraceLevelError, "ERROR AppendTarget nullptr == aTargets");
+            LOG_0(Trace_Error, "ERROR AppendTarget nullptr == aTargets");
             goto return_bad;
          }
 
          size_t cBytesAllSamples;
          if(bClassification) {
             if(IsMultiplyError(EbmMax(sizeof(IntEbmType), sizeof(SharedStorageDataType)), cSamples)) {
-               LOG_0(TraceLevelError, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(IntEbmType), sizeof(SharedStorageDataType)), cSamples)");
+               LOG_0(Trace_Error, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(IntEbmType), sizeof(SharedStorageDataType)), cSamples)");
                goto return_bad;
             }
             cBytesAllSamples = sizeof(SharedStorageDataType) * cSamples;
          } else {
             if(IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatFast)), cSamples)) {
-               LOG_0(TraceLevelError, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatFast)), cSamples)");
+               LOG_0(Trace_Error, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatFast)), cSamples)");
                goto return_bad;
             }
             cBytesAllSamples = sizeof(FloatFast) * cSamples;
          }
          if(IsAddError(iByteCur, cBytesAllSamples)) {
-            LOG_0(TraceLevelError, "ERROR AppendTarget IsAddError(iByteCur, cBytesAllSamples)");
+            LOG_0(Trace_Error, "ERROR AppendTarget IsAddError(iByteCur, cBytesAllSamples)");
             goto return_bad;
          }
          const size_t iByteNext = iByteCur + cBytesAllSamples;
          if(nullptr != pFillMem) {
             if(cBytesAllocated < iByteNext) {
-               LOG_0(TraceLevelError, "ERROR AppendTarget cBytesAllocated < iByteNext");
+               LOG_0(Trace_Error, "ERROR AppendTarget cBytesAllocated < iByteNext");
                goto return_bad;
             }
             if(bClassification) {
                const IntEbmType * pTarget = reinterpret_cast<const IntEbmType *>(aTargets);
                if(IsMultiplyError(sizeof(pTarget[0]), cSamples)) {
-                  LOG_0(TraceLevelError, "ERROR AppendTarget IsMultiplyError(sizeof(SharedStorageDataType), cSamples)");
+                  LOG_0(Trace_Error, "ERROR AppendTarget IsMultiplyError(sizeof(SharedStorageDataType), cSamples)");
                   goto return_bad;
                }
                const IntEbmType * const pTargetsEnd = pTarget + cSamples;
@@ -1020,11 +1020,11 @@ static IntEbmType AppendTarget(
                do {
                   const IntEbmType target = *pTarget;
                   if(target < IntEbmType { 0 }) {
-                     LOG_0(TraceLevelError, "ERROR AppendTarget classification target can't be negative");
+                     LOG_0(Trace_Error, "ERROR AppendTarget classification target can't be negative");
                      goto return_bad;
                   }
                   if(countClasses <= target) {
-                     LOG_0(TraceLevelError, "ERROR AppendTarget countClasses <= target");
+                     LOG_0(Trace_Error, "ERROR AppendTarget countClasses <= target");
                      goto return_bad;
                   }
                   // since countClasses can be converted to these, so now can target
@@ -1060,22 +1060,22 @@ static IntEbmType AppendTarget(
 
          if(iOffset == cOffsets) {
             if(cBytesAllocated != iByteCur) {
-               LOG_0(TraceLevelError, "ERROR AppendTarget buffer size and fill size do not agree");
+               LOG_0(Trace_Error, "ERROR AppendTarget buffer size and fill size do not agree");
                goto return_bad;
             }
 
             LockDataSetShared(pFillMem);
          } else {
             if(cBytesAllocated - sizeof(SharedStorageDataType) < iByteCur) {
-               LOG_0(TraceLevelError, "ERROR AppendTarget cBytesAllocated - sizeof(SharedStorageDataType) < iByteCur");
+               LOG_0(Trace_Error, "ERROR AppendTarget cBytesAllocated - sizeof(SharedStorageDataType) < iByteCur");
                goto return_bad;
             }
             if(IsConvertError<SharedStorageDataType>(iOffset)) {
-               LOG_0(TraceLevelError, "ERROR AppendTarget IsConvertError<IntEbmType>(iOffset)");
+               LOG_0(Trace_Error, "ERROR AppendTarget IsConvertError<IntEbmType>(iOffset)");
                goto return_bad;
             }
             if(IsConvertError<SharedStorageDataType>(iByteCur)) {
-               LOG_0(TraceLevelError, "ERROR AppendTarget IsConvertError<SharedStorageDataType>(iByteCur)");
+               LOG_0(Trace_Error, "ERROR AppendTarget IsConvertError<SharedStorageDataType>(iByteCur)");
                goto return_bad;
             }
             ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset] = static_cast<SharedStorageDataType>(iByteCur);
@@ -1086,7 +1086,7 @@ static IntEbmType AppendTarget(
          return Error_None;
       }
       if(IsConvertError<IntEbmType>(iByteCur)) {
-         LOG_0(TraceLevelError, "ERROR AppendTarget IsConvertError<IntEbmType>(iByteCur)");
+         LOG_0(Trace_Error, "ERROR AppendTarget IsConvertError<IntEbmType>(iByteCur)");
          goto return_bad;
       }
       return static_cast<IntEbmType>(iByteCur);
@@ -1117,12 +1117,12 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillDataSetHeader(
    void * fillMem
 ) {
    if(nullptr == fillMem) {
-      LOG_0(TraceLevelError, "ERROR FillDataSetHeader nullptr == fillMem");
+      LOG_0(Trace_Error, "ERROR FillDataSetHeader nullptr == fillMem");
       return Error_IllegalParamValue;
    }
 
    if(IsConvertError<size_t>(countBytesAllocated)) {
-      LOG_0(TraceLevelError, "ERROR FillDataSetHeader countBytesAllocated is outside the range of a valid size");
+      LOG_0(Trace_Error, "ERROR FillDataSetHeader countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
    }
@@ -1169,26 +1169,26 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillFeature(
    void * fillMem
 ) {
    if(nullptr == fillMem) {
-      LOG_0(TraceLevelError, "ERROR FillFeature nullptr == fillMem");
+      LOG_0(Trace_Error, "ERROR FillFeature nullptr == fillMem");
       return Error_IllegalParamValue;
    }
 
    if(IsConvertError<size_t>(countBytesAllocated)) {
-      LOG_0(TraceLevelError, "ERROR FillFeature countBytesAllocated is outside the range of a valid size");
+      LOG_0(Trace_Error, "ERROR FillFeature countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
    if(cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)) {
-      LOG_0(TraceLevelError, "ERROR FillFeature cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
+      LOG_0(Trace_Error, "ERROR FillFeature cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
    }
 
    HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(fillMem);
    if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
-      LOG_0(TraceLevelError, "ERROR FillFeature k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
+      LOG_0(Trace_Error, "ERROR FillFeature k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
       // don't set the header to bad since it's already set to something invalid and we don't know why
       return Error_IllegalParamValue;
    }
@@ -1225,26 +1225,26 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillWeight(
    void * fillMem
 ) {
    if(nullptr == fillMem) {
-      LOG_0(TraceLevelError, "ERROR FillWeight nullptr == fillMem");
+      LOG_0(Trace_Error, "ERROR FillWeight nullptr == fillMem");
       return Error_IllegalParamValue;
    }
 
    if(IsConvertError<size_t>(countBytesAllocated)) {
-      LOG_0(TraceLevelError, "ERROR FillWeight countBytesAllocated is outside the range of a valid size");
+      LOG_0(Trace_Error, "ERROR FillWeight countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
    if(cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)) {
-      LOG_0(TraceLevelError, "ERROR FillWeight cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
+      LOG_0(Trace_Error, "ERROR FillWeight cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
    }
 
    HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(fillMem);
    if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
-      LOG_0(TraceLevelError, "ERROR FillWeight k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
+      LOG_0(Trace_Error, "ERROR FillWeight k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
       // don't set the header to bad since it's already set to something invalid and we don't know why
       return Error_IllegalParamValue;
    }
@@ -1281,26 +1281,26 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillClassificationTarget(
    void * fillMem
 ) {
    if(nullptr == fillMem) {
-      LOG_0(TraceLevelError, "ERROR FillClassificationTarget nullptr == fillMem");
+      LOG_0(Trace_Error, "ERROR FillClassificationTarget nullptr == fillMem");
       return Error_IllegalParamValue;
    }
 
    if(IsConvertError<size_t>(countBytesAllocated)) {
-      LOG_0(TraceLevelError, "ERROR FillClassificationTarget countBytesAllocated is outside the range of a valid size");
+      LOG_0(Trace_Error, "ERROR FillClassificationTarget countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
    if(cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)) {
-      LOG_0(TraceLevelError, "ERROR FillClassificationTarget cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
+      LOG_0(Trace_Error, "ERROR FillClassificationTarget cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
    }
 
    HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(fillMem);
    if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
-      LOG_0(TraceLevelError, "ERROR FillClassificationTarget k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
+      LOG_0(Trace_Error, "ERROR FillClassificationTarget k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
       // don't set the header to bad since it's already set to something invalid and we don't know why
       return Error_IllegalParamValue;
    }
@@ -1337,26 +1337,26 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillRegressionTarget(
    void * fillMem
 ) {
    if(nullptr == fillMem) {
-      LOG_0(TraceLevelError, "ERROR FillRegressionTarget nullptr == fillMem");
+      LOG_0(Trace_Error, "ERROR FillRegressionTarget nullptr == fillMem");
       return Error_IllegalParamValue;
    }
 
    if(IsConvertError<size_t>(countBytesAllocated)) {
-      LOG_0(TraceLevelError, "ERROR FillRegressionTarget countBytesAllocated is outside the range of a valid size");
+      LOG_0(Trace_Error, "ERROR FillRegressionTarget countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
    if(cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)) {
-      LOG_0(TraceLevelError, "ERROR FillRegressionTarget cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
+      LOG_0(Trace_Error, "ERROR FillRegressionTarget cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
    }
 
    HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(fillMem);
    if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
-      LOG_0(TraceLevelError, "ERROR FillRegressionTarget k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
+      LOG_0(Trace_Error, "ERROR FillRegressionTarget k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
       // don't set the header to bad since it's already set to something invalid and we don't know why
       return Error_IllegalParamValue;
    }
@@ -1383,13 +1383,13 @@ extern ErrorEbmType GetDataSetSharedHeader(
       reinterpret_cast<const HeaderDataSetShared *>(pDataSetShared);
    
    if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
-      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
+      LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
       return Error_IllegalParamValue;
    }
 
    const SharedStorageDataType countSamples = pHeaderDataSetShared->m_cSamples;
    if(IsConvertError<size_t>(countSamples)) {
-      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countSamples)");
+      LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countSamples)");
       return Error_IllegalParamValue;
    }
    const size_t cSamples = static_cast<size_t>(countSamples);
@@ -1397,7 +1397,7 @@ extern ErrorEbmType GetDataSetSharedHeader(
 
    const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
    if(IsConvertError<size_t>(countFeatures)) {
-      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countFeatures)");
+      LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countFeatures)");
       return Error_IllegalParamValue;
    }
    size_t cFeatures = static_cast<size_t>(countFeatures);
@@ -1405,7 +1405,7 @@ extern ErrorEbmType GetDataSetSharedHeader(
 
    const SharedStorageDataType countWeights = pHeaderDataSetShared->m_cWeights;
    if(IsConvertError<size_t>(countWeights)) {
-      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countWeights)");
+      LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countWeights)");
       return Error_IllegalParamValue;
    }
    size_t cWeights = static_cast<size_t>(countWeights);
@@ -1413,25 +1413,25 @@ extern ErrorEbmType GetDataSetSharedHeader(
 
    const SharedStorageDataType countTargets = pHeaderDataSetShared->m_cTargets;
    if(IsConvertError<size_t>(countTargets)) {
-      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countTargets)");
+      LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countTargets)");
       return Error_IllegalParamValue;
    }
    size_t cTargets = static_cast<size_t>(countTargets);
    *pcTargetsOut = cTargets;
 
    if(IsAddError(cFeatures, cWeights, cTargets)) {
-      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsAddError(cFeatures, cWeights, cTargets)");
+      LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsAddError(cFeatures, cWeights, cTargets)");
       return Error_IllegalParamValue;
    }
    const size_t cOffsets = cFeatures + cWeights + cTargets;
 
    if(IsMultiplyError(cOffsets, sizeof(pHeaderDataSetShared->m_offsets[0]))) {
-      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsMultiplyError(cOffsets, sizeof(pHeaderDataSetShared->m_offsets[0]))");
+      LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(cOffsets, sizeof(pHeaderDataSetShared->m_offsets[0]))");
       return Error_IllegalParamValue;
    }
    size_t iOffsetNext = cOffsets * sizeof(pHeaderDataSetShared->m_offsets[0]);
    if(IsAddError(k_cBytesHeaderNoOffset, iOffsetNext)) {
-      LOG_0(TraceLevelError, "ERROR IsHeaderError IsAddError(k_cBytesHeaderNoOffset, iOffsetNext)");
+      LOG_0(Trace_Error, "ERROR IsHeaderError IsAddError(k_cBytesHeaderNoOffset, iOffsetNext)");
       return Error_IllegalParamValue;
    }
    iOffsetNext += k_cBytesHeaderNoOffset;
@@ -1440,19 +1440,19 @@ extern ErrorEbmType GetDataSetSharedHeader(
    while(0 != cFeatures) {
       const SharedStorageDataType indexOffsetCur = *pOffset;
       if(IsConvertError<size_t>(indexOffsetCur)) {
-         LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(indexOffsetCur)");
+         LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(indexOffsetCur)");
          return Error_IllegalParamValue;
       }
       const size_t iOffsetCur = static_cast<size_t>(indexOffsetCur);
 
       if(iOffsetNext != iOffsetCur) {
-         LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader iOffsetNext != offsetCur");
+         LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader iOffsetNext != offsetCur");
          return Error_IllegalParamValue;
       }
       ++pOffset;
 
       if(IsAddError(iOffsetNext, sizeof(FeatureDataSetShared))) {
-         LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, sizeof(FeatureDataSetShared))");
+         LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, sizeof(FeatureDataSetShared))");
          return Error_IllegalParamValue;
       }
       const FeatureDataSetShared * pFeatureDataSetShared =
@@ -1461,20 +1461,20 @@ extern ErrorEbmType GetDataSetSharedHeader(
 
       const SharedStorageDataType id = pFeatureDataSetShared->m_id;
       if(!IsFeature(id)) {
-         LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader !IsFeature(id)");
+         LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader !IsFeature(id)");
          return Error_IllegalParamValue;
       }
 
       const SharedStorageDataType countBins = pFeatureDataSetShared->m_cBins;
       if(IsConvertError<size_t>(countBins)) {
-         LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countBins)");
+         LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countBins)");
          return Error_IllegalParamValue;
       }
       if(IsSparseFeature(id)) {
          const size_t cBytesSparseHeaderNoOffset = offsetof(SparseFeatureDataSetShared, m_nonDefaults);
 
          if(IsAddError(iOffsetNext, cBytesSparseHeaderNoOffset)) {
-            LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cBytesSparseHeaderNoOffset)");
+            LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cBytesSparseHeaderNoOffset)");
             return Error_IllegalParamValue;
          }
          const SparseFeatureDataSetShared * const pSparseFeatureDataSetShared =
@@ -1484,36 +1484,36 @@ extern ErrorEbmType GetDataSetSharedHeader(
          // TODO: are there any limits to what defaultVal can be?
          //const SharedStorageDataType defaultVal = pSparseFeatureDataSetShared->m_defaultVal;
          //if(IsConvertError<size_t>(defaultVal)) {
-         //   LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(defaultVal)");
+         //   LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(defaultVal)");
          //   return Error_IllegalParamValue;
          //}
 
          const SharedStorageDataType countNonDefaults = pSparseFeatureDataSetShared->m_cNonDefaults;
          if(IsConvertError<size_t>(countNonDefaults)) {
-            LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countNonDefaults)");
+            LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countNonDefaults)");
             return Error_IllegalParamValue;
          }
          const size_t cNonDefaults = static_cast<size_t>(countNonDefaults);
 
          if(IsMultiplyError(cNonDefaults, sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]))) {
-            LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsMultiplyError(cNonDefaults, sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]))");
+            LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(cNonDefaults, sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]))");
             return Error_IllegalParamValue;
          }
          const size_t cTotalNonDefaults = cNonDefaults * sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]);
          if(IsAddError(iOffsetNext, cTotalNonDefaults)) {
-            LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cTotalNonDefaults)");
+            LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cTotalNonDefaults)");
                return Error_IllegalParamValue;
          }
          iOffsetNext += cTotalNonDefaults;
       } else {
          if(IsMultiplyError(cSamples, sizeof(SharedStorageDataType))) {
-            LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsMultiplyError(cSamples, sizeof(SharedStorageDataType))");
+            LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(cSamples, sizeof(SharedStorageDataType))");
             return Error_IllegalParamValue;
          }
          const size_t cTotalMem = cSamples * sizeof(SharedStorageDataType);
 
          if(IsAddError(iOffsetNext, cTotalMem)) {
-            LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cTotalMem)");
+            LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cTotalMem)");
             return Error_IllegalParamValue;
          }
          iOffsetNext += cTotalMem;
@@ -1536,7 +1536,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractDataSetHeader(
    ErrorEbmType error;
 
    if(nullptr == dataSet) {
-      LOG_0(TraceLevelError, "ERROR ExtractDataSetHeader nullptr == dataSet");
+      LOG_0(Trace_Error, "ERROR ExtractDataSetHeader nullptr == dataSet");
       return Error_IllegalParamValue;
    }
 
@@ -1559,22 +1559,22 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractDataSetHeader(
 
    if(IsConvertError<IntEbmType>(cSamples)) {
       // cSamples should have originally came to us as an IntEbmType, but check in case of corruption
-      LOG_0(TraceLevelError, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cSamples)");
+      LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cSamples)");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<IntEbmType>(cFeatures)) {
       // cFeatures should have originally came to us as an IntEbmType, but check in case of corruption
-      LOG_0(TraceLevelError, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cFeatures)");
+      LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cFeatures)");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<IntEbmType>(cWeights)) {
       // cWeights should have originally came to us as an IntEbmType, but check in case of corruption
-      LOG_0(TraceLevelError, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cWeights)");
+      LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cWeights)");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<IntEbmType>(cTargets)) {
       // cTargets should have originally came to us as an IntEbmType, but check in case of corruption
-      LOG_0(TraceLevelError, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cTargets)");
+      LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cTargets)");
       return Error_IllegalParamValue;
    }
 
@@ -1656,12 +1656,12 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractBinCounts(
    IntEbmType * binCountsOut
 ) {
    if(nullptr == dataSet) {
-      LOG_0(TraceLevelError, "ERROR ExtractBinCounts nullptr == dataSet");
+      LOG_0(Trace_Error, "ERROR ExtractBinCounts nullptr == dataSet");
       return Error_IllegalParamValue;
    }
 
    if(IsConvertError<size_t>(countFeaturesVerify)) {
-      LOG_0(TraceLevelError, "ERROR ExtractBinCounts IsConvertError<size_t>(countFeaturesVerify)");
+      LOG_0(Trace_Error, "ERROR ExtractBinCounts IsConvertError<size_t>(countFeaturesVerify)");
       return Error_IllegalParamValue;
    }
    const size_t cFeaturesVerify = static_cast<size_t>(countFeaturesVerify);
@@ -1670,24 +1670,24 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractBinCounts(
       reinterpret_cast<const HeaderDataSetShared *>(dataSet);
 
    if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
-      LOG_0(TraceLevelError, "ERROR ExtractBinCounts k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
+      LOG_0(Trace_Error, "ERROR ExtractBinCounts k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
       return Error_IllegalParamValue;
    }
 
    const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
    if(IsConvertError<size_t>(countFeatures)) {
-      LOG_0(TraceLevelError, "ERROR ExtractBinCounts IsConvertError<size_t>(countFeatures)");
+      LOG_0(Trace_Error, "ERROR ExtractBinCounts IsConvertError<size_t>(countFeatures)");
       return Error_IllegalParamValue;
    }
    size_t cFeatures = static_cast<size_t>(countFeatures);
 
    if(cFeatures != cFeaturesVerify) {
-      LOG_0(TraceLevelError, "ERROR ExtractBinCounts cFeatures != cFeaturesVerify");
+      LOG_0(Trace_Error, "ERROR ExtractBinCounts cFeatures != cFeaturesVerify");
       return Error_IllegalParamValue;
    }
    if(size_t { 0 } != cFeatures) {
       if(nullptr == binCountsOut) {
-         LOG_0(TraceLevelError, "ERROR ExtractBinCounts nullptr == binCountsOut");
+         LOG_0(Trace_Error, "ERROR ExtractBinCounts nullptr == binCountsOut");
          return Error_IllegalParamValue;
       }
 
@@ -1699,7 +1699,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractBinCounts(
          ++pOffset;
 
          if(IsConvertError<size_t>(indexOffsetCur)) {
-            LOG_0(TraceLevelError, "ERROR ExtractBinCounts IsConvertError<size_t>(indexOffsetCur)");
+            LOG_0(Trace_Error, "ERROR ExtractBinCounts IsConvertError<size_t>(indexOffsetCur)");
             return Error_IllegalParamValue;
          }
          const size_t iOffsetCur = static_cast<size_t>(indexOffsetCur);
@@ -1709,13 +1709,13 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractBinCounts(
 
          const SharedStorageDataType id = pFeatureDataSetShared->m_id;
          if(!IsFeature(id)) {
-            LOG_0(TraceLevelError, "ERROR ExtractBinCounts !IsFeature(id)");
+            LOG_0(Trace_Error, "ERROR ExtractBinCounts !IsFeature(id)");
             return Error_IllegalParamValue;
          }
 
          const SharedStorageDataType countBins = pFeatureDataSetShared->m_cBins;
          if(IsConvertError<IntEbmType>(countBins)) {
-            LOG_0(TraceLevelError, "ERROR ExtractBinCounts IsConvertError<IntEbmType>(countBins)");
+            LOG_0(Trace_Error, "ERROR ExtractBinCounts IsConvertError<IntEbmType>(countBins)");
             return Error_IllegalParamValue;
          }
 
@@ -1815,12 +1815,12 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractTargetClasses(
    IntEbmType * classCountsOut
 ) {
    if(nullptr == dataSet) {
-      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses nullptr == dataSet");
+      LOG_0(Trace_Error, "ERROR ExtractTargetClasses nullptr == dataSet");
       return Error_IllegalParamValue;
    }
 
    if(IsConvertError<size_t>(countTargetsVerify)) {
-      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<size_t>(countTargetsVerify)");
+      LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<size_t>(countTargetsVerify)");
       return Error_IllegalParamValue;
    }
    const size_t cTargetsVerify = static_cast<size_t>(countTargetsVerify);
@@ -1829,39 +1829,39 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractTargetClasses(
       reinterpret_cast<const HeaderDataSetShared *>(dataSet);
 
    if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
-      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
+      LOG_0(Trace_Error, "ERROR ExtractTargetClasses k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
       return Error_IllegalParamValue;
    }
 
    const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
    if(IsConvertError<size_t>(countFeatures)) {
-      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<size_t>(countFeatures)");
+      LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<size_t>(countFeatures)");
       return Error_IllegalParamValue;
    }
    size_t cFeatures = static_cast<size_t>(countFeatures);
 
    const SharedStorageDataType countWeights = pHeaderDataSetShared->m_cWeights;
    if(IsConvertError<size_t>(countWeights)) {
-      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<size_t>(countWeights)");
+      LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<size_t>(countWeights)");
       return Error_IllegalParamValue;
    }
    size_t cWeights = static_cast<size_t>(countWeights);
 
    const SharedStorageDataType countTargets = pHeaderDataSetShared->m_cTargets;
    if(IsConvertError<size_t>(countTargets)) {
-      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<size_t>(countTargets)");
+      LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<size_t>(countTargets)");
       return Error_IllegalParamValue;
    }
    size_t cTargets = static_cast<size_t>(countTargets);
 
    if(cTargets != cTargetsVerify) {
-      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses cTargets != cTargetsVerify");
+      LOG_0(Trace_Error, "ERROR ExtractTargetClasses cTargets != cTargetsVerify");
       return Error_IllegalParamValue;
    }
 
    if(size_t { 0 } != cTargets) {
       if(nullptr == classCountsOut) {
-         LOG_0(TraceLevelError, "ERROR ExtractTargetClasses nullptr == classCountsOut");
+         LOG_0(Trace_Error, "ERROR ExtractTargetClasses nullptr == classCountsOut");
          return Error_IllegalParamValue;
       }
 
@@ -1873,7 +1873,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractTargetClasses(
          ++pOffset;
 
          if(IsConvertError<size_t>(indexOffsetCur)) {
-            LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<size_t>(indexOffsetCur)");
+            LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<size_t>(indexOffsetCur)");
             return Error_IllegalParamValue;
          }
          const size_t iOffsetCur = static_cast<size_t>(indexOffsetCur);
@@ -1883,7 +1883,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractTargetClasses(
 
          const SharedStorageDataType id = pTargetDataSetShared->m_id;
          if(!IsTarget(id)) {
-            LOG_0(TraceLevelError, "ERROR ExtractTargetClasses !IsTarget(id)");
+            LOG_0(Trace_Error, "ERROR ExtractTargetClasses !IsTarget(id)");
             return Error_IllegalParamValue;
          }
 
@@ -1895,13 +1895,13 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractTargetClasses(
             const SharedStorageDataType cClasses = pClassificationTargetDataSetShared->m_cClasses;
 
             if(IsConvertError<IntEbmType>(cClasses)) {
-               LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<IntEbmType>(cClasses)");
+               LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<IntEbmType>(cClasses)");
                return Error_IllegalParamValue;
             }
 
             countClasses = static_cast<IntEbmType>(cClasses);
             if(countClasses < IntEbmType { 0 }) {
-               LOG_0(TraceLevelError, "ERROR ExtractTargetClasses countClasses < IntEbmType { 0 }");
+               LOG_0(Trace_Error, "ERROR ExtractTargetClasses countClasses < IntEbmType { 0 }");
                return Error_IllegalParamValue;
             }
          }

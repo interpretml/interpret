@@ -26,11 +26,11 @@ class Native:
     InteractionFlags_Pure           = 0x0000000000000001
 
     # TraceLevel
-    _TraceLevelOff = 0
-    _TraceLevelError = 1
-    _TraceLevelWarning = 2
-    _TraceLevelInfo = 3
-    _TraceLevelVerbose = 4
+    _Trace_Off = 0
+    _Trace_Error = 1
+    _Trace_Warning = 2
+    _Trace_Info = 3
+    _Trace_Verbose = 4
 
     _native = None
     # if we supported win32 32-bit functions then this would need to be WINFUNCTYPE
@@ -122,13 +122,13 @@ class Native:
             try:
                 message = message.decode("ascii")
 
-                if trace_level == self._TraceLevelError:
+                if trace_level == self._Trace_Error:
                     log.error(message)
-                elif trace_level == self._TraceLevelWarning:
+                elif trace_level == self._Trace_Warning:
                     log.warning(message)
-                elif trace_level == self._TraceLevelInfo:
+                elif trace_level == self._Trace_Info:
                     log.info(message)
-                elif trace_level == self._TraceLevelVerbose:
+                elif trace_level == self._Trace_Verbose:
                     log.debug(message)
             except:  # pragma: no cover
                 # we're being called from C, so we can't raise exceptions
@@ -139,22 +139,22 @@ class Native:
             level = root.getEffectiveLevel()
 
         level_dict = {
-            logging.DEBUG: self._TraceLevelVerbose,
-            logging.INFO: self._TraceLevelInfo,
-            logging.WARNING: self._TraceLevelWarning,
-            logging.ERROR: self._TraceLevelError,
-            logging.CRITICAL: self._TraceLevelError,
-            logging.NOTSET: self._TraceLevelOff,
-            "DEBUG": self._TraceLevelVerbose,
-            "INFO": self._TraceLevelInfo,
-            "WARNING": self._TraceLevelWarning,
-            "ERROR": self._TraceLevelError,
-            "CRITICAL": self._TraceLevelError,
-            "NOTSET": self._TraceLevelOff,
+            logging.DEBUG: self._Trace_Verbose,
+            logging.INFO: self._Trace_Info,
+            logging.WARNING: self._Trace_Warning,
+            logging.ERROR: self._Trace_Error,
+            logging.CRITICAL: self._Trace_Error,
+            logging.NOTSET: self._Trace_Off,
+            "DEBUG": self._Trace_Verbose,
+            "INFO": self._Trace_Info,
+            "WARNING": self._Trace_Warning,
+            "ERROR": self._Trace_Error,
+            "CRITICAL": self._Trace_Error,
+            "NOTSET": self._Trace_Off,
         }
 
         trace_level = level_dict[level]
-        if self._log_callback_func is None and trace_level != self._TraceLevelOff:
+        if self._log_callback_func is None and trace_level != self._Trace_Off:
             # it's critical that we put _LogCallbackType(native_log) into 
             # self._log_callback_func, otherwise it will be garbage collected
             self._log_callback_func = self._LogCallbackType(native_log)

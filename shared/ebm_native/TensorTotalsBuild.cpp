@@ -172,7 +172,7 @@ public:
          size_t m_cBins;
       };
 
-      LOG_0(TraceLevelVerbose, "Entered BuildFastTotals");
+      LOG_0(Trace_Verbose, "Entered BuildFastTotals");
 
       auto * pAuxiliaryBin =
          aAuxiliaryBinsBase->Specialize<FloatBig, bClassification>();
@@ -328,7 +328,7 @@ public:
                free(pDebugBin);
 #endif // NDEBUG
 
-               LOG_0(TraceLevelVerbose, "Exited BuildFastTotals");
+               LOG_0(Trace_Verbose, "Exited BuildFastTotals");
                return;
             }
          }
@@ -813,7 +813,7 @@ extern void TensorTotalsBuild(
 //   , const Bin<IsClassification(cCompilerClasses)> * const aBinsDebugCopy, const unsigned char * const pBinsEndDebug
 //#endif // NDEBUG
 //) {
-//   LOG_0(TraceLevelVerbose, "Entered BuildFastTotalsZeroMemoryIncrease");
+//   LOG_0(Trace_Verbose, "Entered BuildFastTotalsZeroMemoryIncrease");
 //
 //   DO: ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
@@ -971,7 +971,7 @@ extern void TensorTotalsBuild(
 //      }
 //   }
 //
-//   LOG_0(TraceLevelVerbose, "Exited BuildFastTotalsZeroMemoryIncrease");
+//   LOG_0(Trace_Verbose, "Exited BuildFastTotalsZeroMemoryIncrease");
 //}
 
 

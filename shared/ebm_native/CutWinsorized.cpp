@@ -42,8 +42,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
 ) {
    LOG_COUNTED_N(
       &g_cLogEnterCutWinsorized,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Entered CutWinsorized: "
       "countSamples=%" IntEbmTypePrintf ", "
       "featureVals=%p, "
@@ -61,26 +61,26 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
    IntEbmType countCutsRet = IntEbmType { 0 };
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
-      LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == countCutsInOut");
+      LOG_0(Trace_Error, "ERROR CutWinsorized nullptr == countCutsInOut");
       error = Error_IllegalParamValue;
    } else {
       if(UNLIKELY(countSamples <= IntEbmType { 1 })) {
          // can't cut 1 sample
          error = Error_None;
          if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-            LOG_0(TraceLevelError, "ERROR CutWinsorized countSamples < IntEbmType { 0 }");
+            LOG_0(Trace_Error, "ERROR CutWinsorized countSamples < IntEbmType { 0 }");
             error = Error_IllegalParamValue;
          }
       } else {
          if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
-            LOG_0(TraceLevelWarning, "WARNING CutWinsorized IsConvertError<size_t>(countSamples)");
+            LOG_0(Trace_Warning, "WARNING CutWinsorized IsConvertError<size_t>(countSamples)");
 
             error = Error_IllegalParamValue;
             goto exit_with_log;
          }
 
          if(UNLIKELY(nullptr == featureVals)) {
-            LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == featureVals");
+            LOG_0(Trace_Error, "ERROR CutWinsorized nullptr == featureVals");
 
             error = Error_IllegalParamValue;
             goto exit_with_log;
@@ -90,7 +90,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
 
          double * const aFeatureVals = EbmMalloc<double>(cSamplesIncludingMissingVals);
          if(UNLIKELY(nullptr == aFeatureVals)) {
-            LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == aFeatureVals");
+            LOG_0(Trace_Error, "ERROR CutWinsorized nullptr == aFeatureVals");
 
             error = Error_OutOfMemory;
             goto exit_with_log;
@@ -116,14 +116,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
                free(aFeatureVals);
                error = Error_None;
                if(UNLIKELY(countCuts < IntEbmType { 0 })) {
-                  LOG_0(TraceLevelError, "ERROR CutWinsorized countCuts can't be negative.");
+                  LOG_0(Trace_Error, "ERROR CutWinsorized countCuts can't be negative.");
                   error = Error_IllegalParamValue;
                }
                goto exit_with_log;
             }
 
             if(UNLIKELY(IsConvertError<size_t>(countCuts))) {
-               LOG_0(TraceLevelWarning, "WARNING CutWinsorized IsConvertError<size_t>(countCuts)");
+               LOG_0(Trace_Warning, "WARNING CutWinsorized IsConvertError<size_t>(countCuts)");
                free(aFeatureVals);
                error = Error_IllegalParamValue;
                goto exit_with_log;
@@ -131,7 +131,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
             const size_t cCuts = static_cast<size_t>(countCuts);
 
             if(UNLIKELY(IsMultiplyError(sizeof(*cutsLowerBoundInclusiveOut), cCuts))) {
-               LOG_0(TraceLevelError, "ERROR CutWinsorized countCuts was too large to fit into cutsLowerBoundInclusiveOut");
+               LOG_0(Trace_Error, "ERROR CutWinsorized countCuts was too large to fit into cutsLowerBoundInclusiveOut");
                free(aFeatureVals);
                error = Error_IllegalParamValue;
                goto exit_with_log;
@@ -139,7 +139,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
 
             if(UNLIKELY(nullptr == cutsLowerBoundInclusiveOut)) {
                // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
-               LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == cutsLowerBoundInclusiveOut");
+               LOG_0(Trace_Error, "ERROR CutWinsorized nullptr == cutsLowerBoundInclusiveOut");
                free(aFeatureVals);
                error = Error_IllegalParamValue;
                goto exit_with_log;
@@ -406,8 +406,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
 
    LOG_COUNTED_N(
       &g_cLogExitCutWinsorized,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Exited CutWinsorized: "
       "countCuts=%" IntEbmTypePrintf ", "
       "return=%" ErrorEbmTypePrintf

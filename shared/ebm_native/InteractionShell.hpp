@@ -70,7 +70,7 @@ public:
       const InteractionHandle interactionHandle
    ) {
       if(nullptr == interactionHandle) {
-         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromHandle null interactionHandle");
+         LOG_0(Trace_Error, "ERROR GetInteractionShellFromHandle null interactionHandle");
          return nullptr;
       }
       InteractionShell * const pInteractionShell = reinterpret_cast<InteractionShell *>(interactionHandle);
@@ -78,9 +78,9 @@ public:
          return pInteractionShell;
       }
       if(k_handleVerificationFreed == pInteractionShell->m_handleVerification) {
-         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromHandle attempt to use freed InteractionHandle");
+         LOG_0(Trace_Error, "ERROR GetInteractionShellFromHandle attempt to use freed InteractionHandle");
       } else {
-         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromHandle attempt to use invalid InteractionHandle");
+         LOG_0(Trace_Error, "ERROR GetInteractionShellFromHandle attempt to use invalid InteractionHandle");
       }
       return nullptr;
    }

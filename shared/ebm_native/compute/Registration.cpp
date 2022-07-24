@@ -95,7 +95,7 @@ bool Registration::CreateRegistrable(
    EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd || 0x20 == *sRegistrationEnd || (0x9 <= *sRegistrationEnd && *sRegistrationEnd <= 0xd));
    EBM_ASSERT(nullptr != pWrapperOut);
 
-   LOG_0(TraceLevelInfo, "Entered Registrable::CreateRegistrable");
+   LOG_0(Trace_Info, "Entered Registrable::CreateRegistrable");
 
    bool bNoMatch = true;
    for(const std::shared_ptr<const Registration> & registration : registrations) {
@@ -109,7 +109,7 @@ bool Registration::CreateRegistrable(
       }
    }
 
-   LOG_0(TraceLevelInfo, "Exited Registrable::CreateRegistrable");
+   LOG_0(Trace_Info, "Exited Registrable::CreateRegistrable");
    return bNoMatch;
 }
 

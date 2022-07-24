@@ -53,7 +53,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
    const size_t cSetSamples,
    FloatFast ** paGradientsAndHessiansOut
 ) {
-   LOG_0(TraceLevelInfo, "Entered ConstructGradientsAndHessians");
+   LOG_0(Trace_Info, "Entered ConstructGradientsAndHessians");
 
    // cClasses can only be zero if there are zero samples and we shouldn't get here
    EBM_ASSERT(0 != cClasses);
@@ -69,14 +69,14 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
 
    const size_t cStorageItems = bAllocateHessians ? 2 : 1;
    if(IsMultiplyError(cScores, cStorageItems, cSetSamples)) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cScores, cStorageItems, cSamples)");
+      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cScores, cStorageItems, cSamples)");
       return Error_OutOfMemory;
    }
    const size_t cElements = cScores * cStorageItems * cSetSamples;
 
    FloatFast * aGradientsAndHessians = EbmMalloc<FloatFast>(cElements);
    if(UNLIKELY(nullptr == aGradientsAndHessians)) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
+      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
       return Error_OutOfMemory;
    }
    *paGradientsAndHessiansOut = aGradientsAndHessians; // transfer ownership for future deletion
@@ -94,7 +94,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
       return error;
    }
 
-   LOG_0(TraceLevelInfo, "Exited ConstructGradientsAndHessians");
+   LOG_0(Trace_Info, "Exited ConstructGradientsAndHessians");
    return Error_None;
 }
 
@@ -104,7 +104,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const size_t cSetSamples,
    const size_t cFeatures
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataSetInteraction::ConstructInputData");
+   LOG_0(Trace_Info, "Entered DataSetInteraction::ConstructInputData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(0 < cSetSamples);
@@ -112,7 +112,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
    StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatures);
    if(nullptr == aaInputDataTo) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetInteraction::ConstructInputData nullptr == aaInputDataTo");
+      LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
@@ -120,7 +120,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    do {
       StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cSetSamples);
       if(nullptr == pInputDataTo) {
-         LOG_0(TraceLevelWarning, "WARNING DataSetInteraction::ConstructInputData nullptr == pInputDataTo");
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData nullptr == pInputDataTo");
          goto free_all;
       }
       aaInputDataTo[iFeature] = pInputDataTo;
@@ -162,7 +162,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             EBM_ASSERT(!IsConvertError<size_t>(inputData));
             iData = static_cast<size_t>(inputData);
             if(cBins <= iData) {
-               LOG_0(TraceLevelError, "ERROR DataSetInteraction::ConstructInputData iData value must be less than the number of bins");
+               LOG_0(Trace_Error, "ERROR DataSetInteraction::ConstructInputData iData value must be less than the number of bins");
                goto free_all;
             }
 
@@ -177,7 +177,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
          if(IsConvertError<StorageDataType>(iData)) {
             // we can remove this check once we get into bit packing this since we'll have checked it beforehand
-            LOG_0(TraceLevelError, "ERROR DataSetInteraction::ConstructInputData iData value too big to reference memory");
+            LOG_0(Trace_Error, "ERROR DataSetInteraction::ConstructInputData iData value too big to reference memory");
             goto free_all;
          }
 
@@ -187,7 +187,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       EBM_ASSERT(0 == countBagged);
    } while(cFeatures != iFeature);
 
-   LOG_0(TraceLevelInfo, "Exited DataSetInteraction::ConstructInputData");
+   LOG_0(Trace_Info, "Exited DataSetInteraction::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
@@ -202,7 +202,7 @@ free_all:
 WARNING_PUSH
 WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 void DataSetInteraction::Destruct() {
-   LOG_0(TraceLevelInfo, "Entered DataSetInteraction::Destruct");
+   LOG_0(Trace_Info, "Entered DataSetInteraction::Destruct");
 
    free(m_aGradientsAndHessians);
    free(m_aWeights);
@@ -218,7 +218,7 @@ void DataSetInteraction::Destruct() {
       free(m_aaInputData);
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataSetInteraction::Destruct");
+   LOG_0(Trace_Info, "Exited DataSetInteraction::Destruct");
 }
 WARNING_POP
 
@@ -239,7 +239,7 @@ ErrorEbmType DataSetInteraction::Initialize(
    EBM_ASSERT(nullptr == m_aaInputData); // we expect to start with zeroed values
    EBM_ASSERT(0 == m_cSamples); // we expect to start with zeroed values
 
-   LOG_0(TraceLevelInfo, "Entered DataSetInteraction::Initialize");
+   LOG_0(Trace_Info, "Entered DataSetInteraction::Initialize");
 
    ErrorEbmType error;
 
@@ -271,7 +271,7 @@ ErrorEbmType DataSetInteraction::Initialize(
          if(nullptr != m_aWeights) {
             const FloatBig total = AddPositiveFloatsSafeBig(cSetSamples, m_aWeights);
             if(std::isnan(total) || std::isinf(total) || total <= 0) {
-               LOG_0(TraceLevelWarning, "WARNING DataSetInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= 0");
+               LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= 0");
                return Error_UserParamValue;
             }
             // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
@@ -312,7 +312,7 @@ ErrorEbmType DataSetInteraction::Initialize(
    }
    m_cFeatures = cFeatures;
 
-   LOG_0(TraceLevelInfo, "Exited DataSetInteraction::Initialize");
+   LOG_0(Trace_Info, "Exited DataSetInteraction::Initialize");
    return Error_None;
 }
 

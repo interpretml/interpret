@@ -27,7 +27,7 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
    EBM_ASSERT(1 <= cScores); // having 0 classes makes no sense, and having 1 class is useless
 
    if(IsMultiplyError(k_initialTensorCapacity, cScores)) {
-      LOG_0(TraceLevelWarning, "WARNING Allocate IsMultiplyError(k_initialTensorCapacity, cScores)");
+      LOG_0(Trace_Warning, "WARNING Allocate IsMultiplyError(k_initialTensorCapacity, cScores)");
       return nullptr;
    }
    const size_t cTensorScoreCapacity = k_initialTensorCapacity * cScores;
@@ -36,7 +36,7 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
    const size_t cBytesTensor = sizeof(Tensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
    Tensor * const pTensor = EbmMalloc<Tensor>(1, cBytesTensor);
    if(UNLIKELY(nullptr == pTensor)) {
-      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == pTensor");
+      LOG_0(Trace_Warning, "WARNING Allocate nullptr == pTensor");
       return nullptr;
    }
 
@@ -48,7 +48,7 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
 
    FloatFast * const aTensorScores = EbmMalloc<FloatFast>(cTensorScoreCapacity);
    if(UNLIKELY(nullptr == aTensorScores)) {
-      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aTensorScores");
+      LOG_0(Trace_Warning, "WARNING Allocate nullptr == aTensorScores");
       free(pTensor); // don't need to call the full Free(*) yet
       return nullptr;
    }
@@ -76,7 +76,7 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
       do {
          ActiveDataType * const aSplits = EbmMalloc<ActiveDataType>(k_initialSplitCapacity);
          if(UNLIKELY(nullptr == aSplits)) {
-            LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aSplits");
+            LOG_0(Trace_Warning, "WARNING Allocate nullptr == aSplits");
             Free(pTensor); // free everything!
             return nullptr;
          }
@@ -125,16 +125,16 @@ ErrorEbmType Tensor::SetCountSplits(const size_t iDimension, const size_t cSplit
       EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
       if(IsAddError(cSplits, cSplits >> 1)) {
-         LOG_0(TraceLevelWarning, "WARNING SetCountSplits IsAddError(cSplits, cSplits >> 1)");
+         LOG_0(Trace_Warning, "WARNING SetCountSplits IsAddError(cSplits, cSplits >> 1)");
          return Error_OutOfMemory;
       }
       // just increase it by 50% since we don't expect to grow our splits often after an initial period, 
       // and realloc takes some of the cost of growing away
       size_t cNewSplitCapacity = cSplits + (cSplits >> 1);
-      LOG_N(TraceLevelInfo, "SetCountSplits Growing to size %zu", cNewSplitCapacity);
+      LOG_N(Trace_Info, "SetCountSplits Growing to size %zu", cNewSplitCapacity);
 
       if(IsMultiplyError(sizeof(ActiveDataType), cNewSplitCapacity)) {
-         LOG_0(TraceLevelWarning, "WARNING SetCountSplits IsMultiplyError(sizeof(ActiveDataType), cNewSplitCapacity)");
+         LOG_0(Trace_Warning, "WARNING SetCountSplits IsMultiplyError(sizeof(ActiveDataType), cNewSplitCapacity)");
          return Error_OutOfMemory;
       }
       size_t cBytes = sizeof(ActiveDataType) * cNewSplitCapacity;
@@ -142,7 +142,7 @@ ErrorEbmType Tensor::SetCountSplits(const size_t iDimension, const size_t cSplit
       if(UNLIKELY(nullptr == aNewSplits)) {
          // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
          // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
-         LOG_0(TraceLevelWarning, "WARNING SetCountSplits nullptr == aNewSplits");
+         LOG_0(Trace_Warning, "WARNING SetCountSplits nullptr == aNewSplits");
          return Error_OutOfMemory;
       }
       pDimension->m_aSplits = aNewSplits;
@@ -157,15 +157,15 @@ ErrorEbmType Tensor::EnsureTensorScoreCapacity(const size_t cTensorScores) {
       EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
       if(IsAddError(cTensorScores, cTensorScores >> 1)) {
-         LOG_0(TraceLevelWarning, "WARNING EnsureTensorScoreCapacity IsAddError(cTensorScores, cTensorScores >> 1)");
+         LOG_0(Trace_Warning, "WARNING EnsureTensorScoreCapacity IsAddError(cTensorScores, cTensorScores >> 1)");
          return Error_OutOfMemory;
       }
       // just increase it by 50% since we don't expect to grow our scores often after an initial period, and realloc takes some of the cost of growing away
       size_t cNewTensorScoreCapacity = cTensorScores + (cTensorScores >> 1);
-      LOG_N(TraceLevelInfo, "EnsureTensorScoreCapacity Growing to size %zu", cNewTensorScoreCapacity);
+      LOG_N(Trace_Info, "EnsureTensorScoreCapacity Growing to size %zu", cNewTensorScoreCapacity);
 
       if(IsMultiplyError(sizeof(FloatFast), cNewTensorScoreCapacity)) {
-         LOG_0(TraceLevelWarning, "WARNING EnsureTensorScoreCapacity IsMultiplyError(sizeof(FloatFast), cNewTensorScoreCapacity)");
+         LOG_0(Trace_Warning, "WARNING EnsureTensorScoreCapacity IsMultiplyError(sizeof(FloatFast), cNewTensorScoreCapacity)");
          return Error_OutOfMemory;
       }
       size_t cBytes = sizeof(FloatFast) * cNewTensorScoreCapacity;
@@ -173,7 +173,7 @@ ErrorEbmType Tensor::EnsureTensorScoreCapacity(const size_t cTensorScores) {
       if(UNLIKELY(nullptr == aNewTensorScores)) {
          // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
          // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
-         LOG_0(TraceLevelWarning, "WARNING EnsureTensorScoreCapacity nullptr == aNewTensorScores");
+         LOG_0(Trace_Warning, "WARNING EnsureTensorScoreCapacity nullptr == aNewTensorScores");
          return Error_OutOfMemory;
       }
       m_aTensorScores = aNewTensorScores;
@@ -198,7 +198,7 @@ ErrorEbmType Tensor::Copy(const Tensor & rhs) {
       cTensorScores *= (cSplits + 1);
       error = SetCountSplits(iDimension, cSplits);
       if(UNLIKELY(Error_None != error)) {
-         LOG_0(TraceLevelWarning, "WARNING Copy SetCountSplits(iDimension, cSplits)");
+         LOG_0(Trace_Warning, "WARNING Copy SetCountSplits(iDimension, cSplits)");
          return error;
       }
       EBM_ASSERT(!IsMultiplyError(sizeof(ActiveDataType), cSplits)); // we're copying this memory, so multiplication can't overflow
@@ -250,11 +250,11 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
 
    ErrorEbmType error;
 
-   LOG_0(TraceLevelVerbose, "Entered Expand");
+   LOG_0(Trace_Verbose, "Entered Expand");
 
    if(m_bExpanded) {
       // we're already expanded
-      LOG_0(TraceLevelVerbose, "Exited Expand");
+      LOG_0(Trace_Verbose, "Exited Expand");
       return Error_None;
    }
 
@@ -298,7 +298,7 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
          // there's a really degenerate case where we have zero training and zero validation samples, and the user 
          // specifies zero bins which is legal since there are no bins in the training or validation, in this case
          // the tensor has zero bins in one dimension, so there are zero bins in the entire tensor.
-         LOG_0(TraceLevelWarning, "WARNING Expand Zero sized tensor");
+         LOG_0(Trace_Warning, "WARNING Expand Zero sized tensor");
       } else {
          // call EnsureTensorScoreCapacity before using the m_aTensorScores pointer since m_aTensorScores might change inside EnsureTensorScoreCapacity
          error = EnsureTensorScoreCapacity(cNewTensorScores);
@@ -426,7 +426,7 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
    }
    m_bExpanded = true;
    
-   LOG_0(TraceLevelVerbose, "Exited Expand");
+   LOG_0(Trace_Verbose, "Exited Expand");
    return Error_None;
 }
 

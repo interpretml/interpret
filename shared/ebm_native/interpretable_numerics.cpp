@@ -1067,16 +1067,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
 
 
    if(nullptr == lowGraphBoundOut) {
-      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds nullptr == lowGraphBoundOut");
+      LOG_0(Trace_Error, "ERROR SuggestGraphBounds nullptr == lowGraphBoundOut");
       return Error_IllegalParamValue;
    }
    if(nullptr == highGraphBoundOut) {
-      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds nullptr == highGraphBoundOut");
+      LOG_0(Trace_Error, "ERROR SuggestGraphBounds nullptr == highGraphBoundOut");
       return Error_IllegalParamValue;
    }
    if(maxFeatureVal < minFeatureVal) {
       // silly caller, these should be reversed.  If either or both are NaN this won't execute, which is good
-      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds maxFeatureVal < minFeatureVal");
+      LOG_0(Trace_Error, "ERROR SuggestGraphBounds maxFeatureVal < minFeatureVal");
       *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
       *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
       return Error_IllegalParamValue;
@@ -1084,7 +1084,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
 
    if(countCuts <= IntEbmType { 0 }) {
       if(countCuts < IntEbmType { 0 }) {
-         LOG_0(TraceLevelError, "ERROR SuggestGraphBounds countCuts < IntEbmType { 0 }");
+         LOG_0(Trace_Error, "ERROR SuggestGraphBounds countCuts < IntEbmType { 0 }");
          *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
          *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
          return Error_IllegalParamValue;
@@ -1127,7 +1127,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
    }
 
    if(std::isnan(lowestCut) || std::isinf(lowestCut) || std::isnan(highestCut) || std::isinf(highestCut)) {
-      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds std::isnan(lowestCut) || std::isinf(lowestCut) || std::isnan(highestCut) || std::isinf(highestCut)");
+      LOG_0(Trace_Error, "ERROR SuggestGraphBounds std::isnan(lowestCut) || std::isinf(lowestCut) || std::isnan(highestCut) || std::isinf(highestCut)");
       *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
       *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
       return Error_IllegalParamValue;
@@ -1136,7 +1136,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
    // we're going to be checking lowestCut and highestCut, so we should check that they have valid values
    if(IntEbmType { 1 } == countCuts) {
       if(lowestCut != highestCut) {
-         LOG_0(TraceLevelError,
+         LOG_0(Trace_Error,
             "ERROR SuggestGraphBounds when 1 == countCuts, then lowestCut and highestCut should be identical");
          *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
          *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
@@ -1144,7 +1144,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
       }
    } else {
       if(highestCut <= lowestCut) {
-         LOG_0(TraceLevelError,
+         LOG_0(Trace_Error,
             "ERROR SuggestGraphBounds highestCut <= lowestCut");
          *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
          *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
@@ -1337,8 +1337,8 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
 ) {
    LOG_COUNTED_N(
       &g_cLogEnterGetHistogramCutCount,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Entered GetHistogramCutCount: "
       "countSamples=%" IntEbmTypePrintf ", "
       "featureVals=%p"
@@ -1349,12 +1349,12 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
 
    if(UNLIKELY(countSamples <= 0)) {
       if(UNLIKELY(countSamples < 0)) {
-         LOG_0(TraceLevelWarning, "WARNING GetHistogramCutCount countSamples < 0");
+         LOG_0(Trace_Warning, "WARNING GetHistogramCutCount countSamples < 0");
       }
       return 0;
    }
    if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
-      LOG_0(TraceLevelWarning, "WARNING GetHistogramCutCount IsConvertError<size_t>(countSamples)");
+      LOG_0(Trace_Warning, "WARNING GetHistogramCutCount IsConvertError<size_t>(countSamples)");
       return 0;
    }
    const size_t cSamples = static_cast<size_t>(countSamples);
@@ -1398,8 +1398,8 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
 
    LOG_COUNTED_N(
       &g_cLogExitGetHistogramCutCount,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Exited GetHistogramCutCount: "
       "return=%" IntEbmTypePrintf
       ,

@@ -41,7 +41,7 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
 
-      LOG_0(TraceLevelVerbose, "Entered BinSumsBoostingZeroDimensions");
+      LOG_0(Trace_Verbose, "Entered BinSumsBoostingZeroDimensions");
 
       BinBase * const pBinBase = pBoosterShell->GetBinBaseFast();
       auto * const pBin = pBinBase->Specialize<FloatFast, bClassification>();
@@ -140,7 +140,7 @@ public:
       EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pTrainingSet->GetWeightTotal() &&
          pTrainingSet->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
 
-      LOG_0(TraceLevelVerbose, "Exited BinSumsBoostingZeroDimensions");
+      LOG_0(Trace_Verbose, "Exited BinSumsBoostingZeroDimensions");
    }
 };
 
@@ -211,7 +211,7 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
 
-      LOG_0(TraceLevelVerbose, "Entered BinSumsBoostingInternal");
+      LOG_0(Trace_Verbose, "Entered BinSumsBoostingInternal");
 
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseFast();
       auto * const aBins = aBinsBase->Specialize<FloatFast, bClassification>();
@@ -349,7 +349,7 @@ public:
 
       // first time through?
       if(pGradientAndHessiansTrueEnd != pGradientAndHessian) {
-         LOG_0(TraceLevelVerbose, "Handling last BinSumsBoostingInternal loop");
+         LOG_0(Trace_Verbose, "Handling last BinSumsBoostingInternal loop");
 
          EBM_ASSERT(0 == (pGradientAndHessiansTrueEnd - pGradientAndHessian) % (cScores * (bClassification ? 2 : 1)));
          cItemsRemaining = (pGradientAndHessiansTrueEnd - pGradientAndHessian) / (cScores * (bClassification ? 2 : 1));
@@ -365,7 +365,7 @@ public:
       EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pTrainingSet->GetWeightTotal() &&
          pTrainingSet->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
 
-      LOG_0(TraceLevelVerbose, "Exited BinSumsBoostingInternal");
+      LOG_0(Trace_Verbose, "Exited BinSumsBoostingInternal");
    }
 };
 
@@ -551,7 +551,7 @@ extern void BinSumsBoosting(
    const Term * const pTerm,
    const SamplingSet * const pTrainingSet
 ) {
-   LOG_0(TraceLevelVerbose, "Entered BinSumsBoosting");
+   LOG_0(Trace_Verbose, "Entered BinSumsBoosting");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
@@ -622,7 +622,7 @@ extern void BinSumsBoosting(
       }
    }
 
-   LOG_0(TraceLevelVerbose, "Exited BinSumsBoosting");
+   LOG_0(Trace_Verbose, "Exited BinSumsBoosting");
 }
 
 } // DEFINED_ZONE_NAME

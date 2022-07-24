@@ -692,7 +692,7 @@ extern void ApplyTermUpdateTraining(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm
 ) {
-   LOG_0(TraceLevelVerbose, "Entered ApplyTermUpdateTraining");
+   LOG_0(Trace_Verbose, "Entered ApplyTermUpdateTraining");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
@@ -746,7 +746,7 @@ extern void ApplyTermUpdateTraining(
       }
    }
 
-   LOG_0(TraceLevelVerbose, "Exited ApplyTermUpdateTraining");
+   LOG_0(Trace_Verbose, "Exited ApplyTermUpdateTraining");
 }
 
 } // DEFINED_ZONE_NAME

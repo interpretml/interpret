@@ -383,7 +383,7 @@ static double CalculatePriority(
    }
 
 #ifdef LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
-   LOG_N(TraceLevelVerbose, "Prioritized CutPoint: %zu, %zu, %le, %td, %le",
+   LOG_N(Trace_Verbose, "Prioritized CutPoint: %zu, %zu, %le, %td, %le",
       pCutCur->m_uniqueTiebreaker,
       pCutCur->m_iVal,
       pCutCur->m_iValAspirationalFloat,
@@ -778,7 +778,7 @@ static void BuildNeighbourhoodPlan(
       }
 
 #ifdef LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
-      LOG_N(TraceLevelVerbose, "Plan CutPoint: %zu, %zu, %le, %td, %le" ", %le",
+      LOG_N(Trace_Verbose, "Plan CutPoint: %zu, %zu, %le, %td, %le" ", %le",
          pCutCur->m_uniqueTiebreaker,
          pCutCur->m_iVal,
          pCutCur->m_iValAspirationalFloat,
@@ -800,7 +800,7 @@ static void BuildNeighbourhoodPlan(
       pCutCur->m_cPredeterminedMovementOnCut = 0; // set this to indicate that we aren't cut
 
 #ifdef LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
-      LOG_0(TraceLevelVerbose, "Plan CutPoint: DENIED");
+      LOG_0(Trace_Verbose, "Plan CutPoint: DENIED");
 #endif // LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
    }
    EBM_ASSERT(!pCutCur->IsCut());
@@ -926,7 +926,7 @@ static ErrorEbmType CutCuttingRange(
          CutPoint * const pCutBest = *pBestCuts->begin();
 
 #ifdef LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
-         LOG_N(TraceLevelVerbose, "Dequeue CutPoint: %zu, %zu, %le, %td, %le",
+         LOG_N(Trace_Verbose, "Dequeue CutPoint: %zu, %zu, %le, %td, %le",
             pCutBest->m_uniqueTiebreaker,
             pCutBest->m_iVal,
             pCutBest->m_iValAspirationalFloat,
@@ -1480,10 +1480,10 @@ static ErrorEbmType CutCuttingRange(
          }
       }
    } catch(const std::bad_alloc &) {
-      LOG_0(TraceLevelWarning, "WARNING CutSegment out of memory");
+      LOG_0(Trace_Warning, "WARNING CutSegment out of memory");
       return Error_OutOfMemory;
    } catch(...) {
-      LOG_0(TraceLevelWarning, "WARNING CutSegment exception");
+      LOG_0(Trace_Warning, "WARNING CutSegment exception");
       return Error_UnexpectedInternal;
    }
 
@@ -1670,10 +1670,10 @@ static ErrorEbmType TreeSearchCutSegment(
          pCutCenter = pCutCenter->m_pNext;
       } while(pCutNext != pCutCenter);
    } catch(const std::bad_alloc &) {
-      LOG_0(TraceLevelWarning, "WARNING TreeSearchCutSegment out of memory exception");
+      LOG_0(Trace_Warning, "WARNING TreeSearchCutSegment out of memory exception");
       return Error_OutOfMemory;
    } catch(...) {
-      LOG_0(TraceLevelWarning, "WARNING TreeSearchCutSegment exception");
+      LOG_0(Trace_Warning, "WARNING TreeSearchCutSegment exception");
       return Error_UnexpectedInternal;
    }
 
@@ -2467,8 +2467,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
 
    LOG_COUNTED_N(
       &g_cLogEnterCutQuantile,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Entered CutQuantile: "
       "countSamples=%" IntEbmTypePrintf ", "
       "featureVals=%p, "
@@ -2490,7 +2490,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
    IntEbmType countCutsRet;
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
-      LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == countCutsInOut");
+      LOG_0(Trace_Error, "ERROR CutQuantile nullptr == countCutsInOut");
       countCutsRet = IntEbmType { 0 };
       error = Error_IllegalParamValue;
    } else {
@@ -2499,12 +2499,12 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          countCutsRet = IntEbmType { 0 };
          error = Error_None;
          if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-            LOG_0(TraceLevelError, "ERROR CutQuantile countSamples < IntEbmType { 0 }");
+            LOG_0(Trace_Error, "ERROR CutQuantile countSamples < IntEbmType { 0 }");
             error = Error_IllegalParamValue;
          }
       } else {
          if(UNLIKELY(nullptr == featureVals)) {
-            LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == featureVals");
+            LOG_0(Trace_Error, "ERROR CutQuantile nullptr == featureVals");
 
             countCutsRet = IntEbmType { 0 };
             error = Error_IllegalParamValue;
@@ -2512,7 +2512,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          }
 
          if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsConvertError<size_t>(countSamples)");
+            LOG_0(Trace_Warning, "WARNING CutQuantile IsConvertError<size_t>(countSamples)");
 
             countCutsRet = IntEbmType { 0 };
             error = Error_IllegalParamValue;
@@ -2523,7 +2523,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
 
          double * const aFeatureVals = EbmMalloc<double>(cSamplesIncludingMissingVals);
          if(UNLIKELY(nullptr == aFeatureVals)) {
-            LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == aFeatureVals");
+            LOG_0(Trace_Error, "ERROR CutQuantile nullptr == aFeatureVals");
 
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
@@ -2557,7 +2557,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
             countCutsRet = IntEbmType { 0 };
             error = Error_None;
             if(UNLIKELY(countCuts < IntEbmType { 0 })) {
-               LOG_0(TraceLevelError, "ERROR CutQuantile countCuts can't be negative.");
+               LOG_0(Trace_Error, "ERROR CutQuantile countCuts can't be negative.");
                error = Error_IllegalParamValue;
             }
             goto exit_with_log;
@@ -2565,7 +2565,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          
          if(UNLIKELY(nullptr == cutsLowerBoundInclusiveOut)) {
             // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
-            LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == cutsLowerBoundInclusiveOut");
+            LOG_0(Trace_Error, "ERROR CutQuantile nullptr == cutsLowerBoundInclusiveOut");
 
             free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
@@ -2575,7 +2575,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          }
 
          if(UNLIKELY(minSamplesBin <= IntEbmType { 0 })) {
-            LOG_0(TraceLevelWarning,
+            LOG_0(Trace_Warning,
                "WARNING CutQuantile minSamplesBin shouldn't be zero or negative.  Setting to 1");
 
             minSamplesBin = IntEbmType { 1 };
@@ -2622,7 +2622,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          // we need to be able to index both the cutsLowerBoundInclusiveOut AND we also allocate an array
          // of pointers below of double * to index into aFeatureVals 
          if(UNLIKELY(IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(double *)), cCutsMax))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(double *)), cCutsMax)");
+            LOG_0(Trace_Warning, "WARNING CutQuantile IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(double *)), cCutsMax)");
             free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
@@ -2657,7 +2657,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          }
 
          if(UNLIKELY(IsMultiplyError(sizeof(NeighbourJump), cSamples))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(sizeof(NeighbourJump), cSamples)");
+            LOG_0(Trace_Warning, "WARNING CutQuantile IsMultiplyError(sizeof(NeighbourJump), cSamples)");
             free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
@@ -2677,7 +2677,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          // include storage for the end points
          const size_t cCutsWithEndpointsMax = cCutsMax + size_t { 2 };
          if(UNLIKELY(IsMultiplyError(sizeof(CutPoint), cCutsWithEndpointsMax))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(sizeof(CutPoint), cCutsWithEndpointsMax)");
+            LOG_0(Trace_Warning, "WARNING CutQuantile IsMultiplyError(sizeof(CutPoint), cCutsWithEndpointsMax)");
             free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
@@ -2686,7 +2686,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          const size_t cBytesCuts = sizeof(CutPoint) * cCutsWithEndpointsMax;
 
          if(UNLIKELY(IsMultiplyError(sizeof(CuttingRange), cCuttingRanges))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(sizeof(CuttingRange), cCuttingRanges)");
+            LOG_0(Trace_Warning, "WARNING CutQuantile IsMultiplyError(sizeof(CuttingRange), cCuttingRanges)");
             free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
@@ -2699,7 +2699,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          const size_t cBytesToValCutPointers = cBytesToNeighbourJump + cBytesNeighbourJumps;
 
          if(UNLIKELY(IsAddError(cBytesToValCutPointers, cBytesValCutPointers))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsAddError(cBytesToValCutPointers, cBytesValCutPointers))");
+            LOG_0(Trace_Warning, "WARNING CutQuantile IsAddError(cBytesToValCutPointers, cBytesValCutPointers))");
             free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
@@ -2708,7 +2708,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          const size_t cBytesToCuts = cBytesToValCutPointers + cBytesValCutPointers;
 
          if(UNLIKELY(IsAddError(cBytesToCuts, cBytesCuts))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsAddError(cBytesToCuts, cBytesCuts))");
+            LOG_0(Trace_Warning, "WARNING CutQuantile IsAddError(cBytesToCuts, cBytesCuts))");
             free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
@@ -2717,7 +2717,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          const size_t cBytesToCuttingRange = cBytesToCuts + cBytesCuts;
 
          if(UNLIKELY(IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))");
+            LOG_0(Trace_Warning, "WARNING CutQuantile IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))");
             free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
@@ -2727,7 +2727,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
 
          char * const pMem = static_cast<char *>(malloc(cBytesToEnd));
          if(UNLIKELY(nullptr == pMem)) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile nullptr == pMem");
+            LOG_0(Trace_Warning, "WARNING CutQuantile nullptr == pMem");
             free(aFeatureVals);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
@@ -2775,7 +2775,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
                const size_t cRanges = pCuttingRange->m_cRangesAssigned;
 
 #ifdef LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
-               LOG_N(TraceLevelVerbose, "Dequque CuttingRange: %zu, %zu, %zu, %zu, %zu, %zu, %zu, %le",
+               LOG_N(Trace_Verbose, "Dequque CuttingRange: %zu, %zu, %zu, %zu, %zu, %zu, %zu, %le",
                   pCuttingRange->m_uniqueTiebreaker,
                   pCuttingRange->m_cRangesAssigned,
                   pCuttingRange->m_cCuttableVals,
@@ -2992,7 +2992,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
                }
             } while(!priorityQueue.empty());
          } catch(const std::bad_alloc &) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile out of memory");
+            LOG_0(Trace_Warning, "WARNING CutQuantile out of memory");
 
             free(pMem);
             free(aFeatureVals);
@@ -3001,7 +3001,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
             error = Error_OutOfMemory;
             goto exit_with_log;
          } catch(...) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile exception");
+            LOG_0(Trace_Warning, "WARNING CutQuantile exception");
 
             free(pMem);
             free(aFeatureVals);
@@ -3231,8 +3231,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
 
    LOG_COUNTED_N(
       &g_cLogExitCutQuantile,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Exited CutQuantile: "
       "countCuts=%" IntEbmTypePrintf ", "
       "return=%" ErrorEbmTypePrintf

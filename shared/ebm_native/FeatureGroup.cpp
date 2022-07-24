@@ -32,7 +32,7 @@ Term * Term::Allocate(const size_t cFeatures, const size_t iTerm) noexcept {
 }
 
 Term ** Term::AllocateTerms(const size_t cTerms) noexcept {
-   LOG_0(TraceLevelInfo, "Entered Term::AllocateTerms");
+   LOG_0(Trace_Info, "Entered Term::AllocateTerms");
 
    EBM_ASSERT(0 < cTerms);
    Term ** const apTerms = EbmMalloc<Term *>(cTerms);
@@ -42,12 +42,12 @@ Term ** Term::AllocateTerms(const size_t cTerms) noexcept {
       }
    }
 
-   LOG_0(TraceLevelInfo, "Exited Term::AllocateTerms");
+   LOG_0(Trace_Info, "Exited Term::AllocateTerms");
    return apTerms;
 }
 
 void Term::FreeTerms(const size_t cTerms, Term ** apTerms) noexcept {
-   LOG_0(TraceLevelInfo, "Entered Term::FreeTerms");
+   LOG_0(Trace_Info, "Entered Term::FreeTerms");
    if(nullptr != apTerms) {
       EBM_ASSERT(0 < cTerms);
       for(size_t iTerm = 0; iTerm < cTerms; ++iTerm) {
@@ -57,7 +57,7 @@ void Term::FreeTerms(const size_t cTerms, Term ** apTerms) noexcept {
       }
       free(apTerms);
    }
-   LOG_0(TraceLevelInfo, "Exited Term::FreeTerms");
+   LOG_0(Trace_Info, "Exited Term::FreeTerms");
 }
 
 } // DEFINED_ZONE_NAME

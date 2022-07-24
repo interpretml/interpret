@@ -39,19 +39,19 @@ extern void TestCHeaderConstructs() {
    BoolEbmType testBoolFalse = EBM_FALSE;
    snprintf(buffer, cBytesBuffer, "%" BoolEbmTypePrintf "\n", testBoolFalse);
 
-   TraceEbmType testTraceOff = TraceLevelOff;
+   TraceEbmType testTraceOff = Trace_Off;
    snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceOff);
 
-   TraceEbmType testTraceError = TraceLevelError;
+   TraceEbmType testTraceError = Trace_Error;
    snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceError);
 
-   TraceEbmType testTraceWarning = TraceLevelWarning;
+   TraceEbmType testTraceWarning = Trace_Warning;
    snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceWarning);
 
-   TraceEbmType testTraceInfo = TraceLevelInfo;
+   TraceEbmType testTraceInfo = Trace_Info;
    snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceInfo);
 
-   TraceEbmType testTraceVerbose = TraceLevelVerbose;
+   TraceEbmType testTraceVerbose = Trace_Verbose;
    snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceVerbose);
 
    TraceEbmType testTraceIllegal = 9999;
@@ -65,5 +65,5 @@ extern void TestCHeaderConstructs() {
    snprintf(buffer, cBytesBuffer, "%s\n", GetTraceLevelString(testTraceIllegal));
 
    LOG_CALLBACK logCallback = &LogCallback;
-   (*logCallback)(TraceLevelVerbose, "I am a test.  What are you?");
+   (*logCallback)(Trace_Verbose, "I am a test.  What are you?");
 }

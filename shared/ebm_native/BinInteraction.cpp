@@ -38,7 +38,7 @@ public:
    static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
 
-      LOG_0(TraceLevelVerbose, "Entered BinSumsInteractionInternal");
+      LOG_0(Trace_Verbose, "Entered BinSumsInteractionInternal");
 
       BinBase * const aBinsBase = pInteractionShell->GetBinBaseFast();
       auto * const aBins = aBinsBase->Specialize<FloatFast, bClassification>();
@@ -163,7 +163,7 @@ public:
       EBM_ASSERT(nullptr != pWeight || 
          static_cast<FloatBig>(pDataSet->GetCountSamples()) == pDataSet->GetWeightTotal());
 
-      LOG_0(TraceLevelVerbose, "Exited BinSumsInteractionInternal");
+      LOG_0(Trace_Verbose, "Exited BinSumsInteractionInternal");
    }
 };
 

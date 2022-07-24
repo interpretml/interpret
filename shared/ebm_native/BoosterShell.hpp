@@ -95,7 +95,7 @@ public:
 
    static INLINE_ALWAYS BoosterShell * GetBoosterShellFromHandle(const BoosterHandle boosterHandle) {
       if(nullptr == boosterHandle) {
-         LOG_0(TraceLevelError, "ERROR GetBoosterShellFromHandle null boosterHandle");
+         LOG_0(Trace_Error, "ERROR GetBoosterShellFromHandle null boosterHandle");
          return nullptr;
       }
       BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
@@ -103,9 +103,9 @@ public:
          return pBoosterShell;
       }
       if(k_handleVerificationFreed == pBoosterShell->m_handleVerification) {
-         LOG_0(TraceLevelError, "ERROR GetBoosterShellFromHandle attempt to use freed BoosterHandle");
+         LOG_0(Trace_Error, "ERROR GetBoosterShellFromHandle attempt to use freed BoosterHandle");
       } else {
-         LOG_0(TraceLevelError, "ERROR GetBoosterShellFromHandle attempt to use invalid BoosterHandle");
+         LOG_0(Trace_Error, "ERROR GetBoosterShellFromHandle attempt to use invalid BoosterHandle");
       }
       return nullptr;
    }

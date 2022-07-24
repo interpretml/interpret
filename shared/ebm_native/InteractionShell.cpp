@@ -22,7 +22,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 void InteractionShell::Free(InteractionShell * const pInteractionShell) {
-   LOG_0(TraceLevelInfo, "Entered InteractionShell::Free");
+   LOG_0(Trace_Info, "Entered InteractionShell::Free");
 
    if(nullptr != pInteractionShell) {
       free(pInteractionShell->m_aThreadByteBuffer1Fast);
@@ -35,18 +35,18 @@ void InteractionShell::Free(InteractionShell * const pInteractionShell) {
       free(pInteractionShell);
    }
 
-   LOG_0(TraceLevelInfo, "Exited InteractionShell::Free");
+   LOG_0(Trace_Info, "Exited InteractionShell::Free");
 }
 
 InteractionShell * InteractionShell::Create() {
-   LOG_0(TraceLevelInfo, "Entered InteractionShell::Create");
+   LOG_0(Trace_Info, "Entered InteractionShell::Create");
 
    InteractionShell * const pNew = EbmMalloc<InteractionShell>();
    if(nullptr != pNew) {
       pNew->InitializeUnfailing();
    }
 
-   LOG_0(TraceLevelInfo, "Exited InteractionShell::Create");
+   LOG_0(Trace_Info, "Exited InteractionShell::Create");
 
    return pNew;
 }
@@ -56,13 +56,13 @@ BinBase * InteractionShell::GetBinBaseFast(size_t cBytesRequired) {
    if(UNLIKELY(m_cThreadByteBufferCapacity1Fast < cBytesRequired)) {
       cBytesRequired <<= 1;
       m_cThreadByteBufferCapacity1Fast = cBytesRequired;
-      LOG_N(TraceLevelInfo, "Growing InteractionShell::ThreadByteBuffer1Fast to %zu", cBytesRequired);
+      LOG_N(Trace_Info, "Growing InteractionShell::ThreadByteBuffer1Fast to %zu", cBytesRequired);
 
       free(aBuffer);
       aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
       m_aThreadByteBuffer1Fast = aBuffer; // store it before checking it incase it's null so that we don't free old memory
       if(nullptr == aBuffer) {
-         LOG_0(TraceLevelWarning, "WARNING InteractionShell::GetBinBaseFast OutOfMemory");
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetBinBaseFast OutOfMemory");
       }
    }
    return aBuffer;
@@ -73,13 +73,13 @@ BinBase * InteractionShell::GetBinBaseBig(size_t cBytesRequired) {
    if(UNLIKELY(m_cThreadByteBufferCapacity1Big < cBytesRequired)) {
       cBytesRequired <<= 1;
       m_cThreadByteBufferCapacity1Big = cBytesRequired;
-      LOG_N(TraceLevelInfo, "Growing InteractionShell::ThreadByteBuffer1Big to %zu", cBytesRequired);
+      LOG_N(Trace_Info, "Growing InteractionShell::ThreadByteBuffer1Big to %zu", cBytesRequired);
 
       free(aBuffer);
       aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
       m_aThreadByteBuffer1Big = aBuffer; // store it before checking it incase it's null so that we don't free old memory
       if(nullptr == aBuffer) {
-         LOG_0(TraceLevelWarning, "WARNING InteractionShell::GetBinBaseBig OutOfMemory");
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetBinBaseBig OutOfMemory");
       }
    }
    return aBuffer;
@@ -92,7 +92,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateInteractionDetector(
    const double * experimentalParams,
    InteractionHandle * interactionHandleOut
 ) {
-   LOG_N(TraceLevelInfo, "Entered CreateInteractionDetector: "
+   LOG_N(Trace_Info, "Entered CreateInteractionDetector: "
       "dataSet=%p, "
       "bag=%p, "
       "initScores=%p, "
@@ -109,19 +109,19 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateInteractionDetector(
    ErrorEbmType error;
 
    if(nullptr == interactionHandleOut) {
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector nullptr == interactionHandleOut");
+      LOG_0(Trace_Error, "ERROR CreateInteractionDetector nullptr == interactionHandleOut");
       return Error_IllegalParamValue;
    }
    *interactionHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
    if(nullptr == dataSet) {
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector nullptr == dataSet");
+      LOG_0(Trace_Error, "ERROR CreateInteractionDetector nullptr == dataSet");
       return Error_IllegalParamValue;
    }
 
    InteractionShell * const pInteractionShell = InteractionShell::Create();
    if(UNLIKELY(nullptr == pInteractionShell)) {
-      LOG_0(TraceLevelWarning, "WARNING CreateInteractionDetector nullptr == pInteractionShell");
+      LOG_0(Trace_Warning, "WARNING CreateInteractionDetector nullptr == pInteractionShell");
       return Error_OutOfMemory;
    }
 
@@ -139,7 +139,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateInteractionDetector(
 
    const InteractionHandle handle = pInteractionShell->GetHandle();
 
-   LOG_N(TraceLevelInfo, "Exited CreateInteractionDetector: *interactionHandleOut=%p", static_cast<void *>(handle));
+   LOG_N(Trace_Info, "Exited CreateInteractionDetector: *interactionHandleOut=%p", static_cast<void *>(handle));
 
    *interactionHandleOut = handle;
    return Error_None;
@@ -148,7 +148,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateInteractionDetector(
 EBM_API_BODY void EBM_CALLING_CONVENTION FreeInteractionDetector(
    InteractionHandle interactionHandle
 ) {
-   LOG_N(TraceLevelInfo, "Entered FreeInteractionDetector: interactionHandle=%p", static_cast<void *>(interactionHandle));
+   LOG_N(Trace_Info, "Entered FreeInteractionDetector: interactionHandle=%p", static_cast<void *>(interactionHandle));
 
    InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromHandle(interactionHandle);
    // if the conversion above doesn't work, it'll return null, and our free will not in fact free any memory,
@@ -157,7 +157,7 @@ EBM_API_BODY void EBM_CALLING_CONVENTION FreeInteractionDetector(
    // it's legal to call free on nullptr, just like for free().  This is checked inside InteractionCore::Free()
    InteractionShell::Free(pInteractionShell);
 
-   LOG_0(TraceLevelInfo, "Exited FreeInteractionDetector");
+   LOG_0(Trace_Info, "Exited FreeInteractionDetector");
 }
 
 } // DEFINED_ZONE_NAME

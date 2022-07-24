@@ -273,8 +273,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
    LOG_COUNTED_N(
       &g_cLogEnterBinFeature,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Entered BinFeature: "
       "countSamples=%" IntEbmTypePrintf ", "
       "featureVals=%p, "
@@ -293,7 +293,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
    
    if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
       if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-         LOG_0(TraceLevelError, "ERROR BinFeature countSamples cannot be negative");
+         LOG_0(Trace_Error, "ERROR BinFeature countSamples cannot be negative");
          error = Error_IllegalParamValue;
          goto exit_with_log;
       } else {
@@ -304,7 +304,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
    } else {
       if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
          // this needs to point to real memory, otherwise it's invalid
-         LOG_0(TraceLevelError, "ERROR BinFeature countSamples was too large to fit into memory");
+         LOG_0(Trace_Error, "ERROR BinFeature countSamples was too large to fit into memory");
          error = Error_IllegalParamValue;
          goto exit_with_log;
       }
@@ -312,25 +312,25 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
       const size_t cSamples = static_cast<size_t>(countSamples);
 
       if(IsMultiplyError(sizeof(*featureVals), cSamples)) {
-         LOG_0(TraceLevelError, "ERROR BinFeature countSamples was too large to fit into featureVals");
+         LOG_0(Trace_Error, "ERROR BinFeature countSamples was too large to fit into featureVals");
          error = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
       if(IsMultiplyError(sizeof(*binIndexesOut), cSamples)) {
-         LOG_0(TraceLevelError, "ERROR BinFeature countSamples was too large to fit into binIndexesOut");
+         LOG_0(Trace_Error, "ERROR BinFeature countSamples was too large to fit into binIndexesOut");
          error = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
       if(UNLIKELY(nullptr == featureVals)) {
-         LOG_0(TraceLevelError, "ERROR BinFeature featureVals cannot be null");
+         LOG_0(Trace_Error, "ERROR BinFeature featureVals cannot be null");
          error = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
       if(UNLIKELY(nullptr == binIndexesOut)) {
-         LOG_0(TraceLevelError, "ERROR BinFeature binIndexesOut cannot be null");
+         LOG_0(Trace_Error, "ERROR BinFeature binIndexesOut cannot be null");
          error = Error_IllegalParamValue;
          goto exit_with_log;
       }
@@ -341,7 +341,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
       if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
          if(UNLIKELY(countCuts < IntEbmType { 0 })) {
-            LOG_0(TraceLevelError, "ERROR BinFeature countCuts cannot be negative");
+            LOG_0(Trace_Error, "ERROR BinFeature countCuts cannot be negative");
             error = Error_IllegalParamValue;
             goto exit_with_log;
          }
@@ -361,7 +361,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
       }
 
       if(UNLIKELY(nullptr == cutsLowerBoundInclusive)) {
-         LOG_0(TraceLevelError, "ERROR BinFeature cutsLowerBoundInclusive cannot be null");
+         LOG_0(Trace_Error, "ERROR BinFeature cutsLowerBoundInclusive cannot be null");
          error = Error_IllegalParamValue;
          goto exit_with_log;
       }
@@ -878,13 +878,13 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
       if(UNLIKELY(IsConvertError<size_t>(countCuts))) {
          // this needs to point to real memory, otherwise it's invalid
-         LOG_0(TraceLevelError, "ERROR BinFeature countCuts was too large to fit into memory");
+         LOG_0(Trace_Error, "ERROR BinFeature countCuts was too large to fit into memory");
          error = Error_IllegalParamValue; // the cutsLowerBoundInclusive wouldn't be possible
          goto exit_with_log;
       }
 
       if(IsMultiplyError(sizeof(*cutsLowerBoundInclusive), cCuts)) {
-         LOG_0(TraceLevelError,
+         LOG_0(Trace_Error,
             "ERROR BinFeature countCuts was too large to fit into cutsLowerBoundInclusive");
          error = Error_IllegalParamValue; // the cutsLowerBoundInclusive array wouldn't be possible
          goto exit_with_log;
@@ -896,7 +896,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          // bin, so we have max - 1 normal bins.  We have 1 less cuts than we have bins (1 cut means 2 bins), so we can
          // have a maximum of max - 2 cuts.
 
-         LOG_0(TraceLevelError,
+         LOG_0(Trace_Error,
             "ERROR BinFeature countCuts was too large to allow for a missing value placeholder and -+inf bins");
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
@@ -907,7 +907,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
       if(UNLIKELY(std::numeric_limits<size_t>::max() == cCuts)) {
          // we add 1 to cCuts as our missing value, so this addition must succeed
-         LOG_0(TraceLevelError,
+         LOG_0(Trace_Error,
             "ERROR BinFeature countCuts was too large to allow for a missing value placeholder");
 
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
@@ -920,7 +920,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
       if(UNLIKELY(size_t { std::numeric_limits<ptrdiff_t>::max() } < cCuts)) {
          // the low value can increase until it's equal to cCuts, so cCuts must be expressable as a ptrdiff_t
          // we need to keep low as a ptrdiff_t since we compare it right after with high, which can be -1
-         LOG_0(TraceLevelError,
+         LOG_0(Trace_Error,
             "ERROR BinFeature countCuts was too large to allow for the binary search comparison");
 
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
@@ -933,7 +933,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
       if(UNLIKELY(std::numeric_limits<size_t>::max() / size_t { 2 } + size_t { 1 } < cCuts)) {
          // our first operation towards getting the mid-point is to add the size_t low and size_t high, and that can't 
          // overflow, so check that the maximum high added to the maximum low (which is the high) don't exceed that value
-         LOG_0(TraceLevelError,
+         LOG_0(Trace_Error,
             "ERROR BinFeature countCuts was too large to allow for the binary search add");
 
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
@@ -1017,8 +1017,8 @@ exit_with_log:;
 
    LOG_COUNTED_N(
       &g_cLogExitBinFeature,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Exited BinFeature: "
       "return=%" ErrorEbmTypePrintf
       ,

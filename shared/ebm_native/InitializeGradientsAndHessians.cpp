@@ -39,7 +39,7 @@ public:
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
 
-      LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
+      LOG_0(Trace_Info, "Entered InitializeGradientsAndHessians");
 
       EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
       EBM_ASSERT(0 < cSetSamples);
@@ -55,7 +55,7 @@ public:
       // TODO: we could eliminate this memory by doing the calculation twice below and then this code could return on error value (or would that work with the loss function stuff?)
       FloatFast * const aExps = EbmMalloc<FloatFast>(cScores);
       if(UNLIKELY(nullptr == aExps)) {
-         LOG_0(TraceLevelWarning, "WARNING InitializeGradientsAndHessians nullptr == aExps");
+         LOG_0(Trace_Warning, "WARNING InitializeGradientsAndHessians nullptr == aExps");
          return Error_OutOfMemory;
       }
 
@@ -142,7 +142,7 @@ public:
 
       free(aExps);
 
-      LOG_0(TraceLevelInfo, "Exited InitializeGradientsAndHessians");
+      LOG_0(Trace_Info, "Exited InitializeGradientsAndHessians");
       return Error_None;
    }
 };
@@ -164,7 +164,7 @@ public:
       FloatFast * const aGradientAndHessian
    ) {
       UNUSED(cRuntimeClasses);
-      LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
+      LOG_0(Trace_Info, "Entered InitializeGradientsAndHessians");
 
       // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pInitScore (I assume so), 
       //   and does it affect any calculations below like sumExp += std::exp(initScore) and the equivalent.  Should we use cScores or 
@@ -218,7 +218,7 @@ public:
          ++pTargetData;
       } while(pGradientAndHessianEnd != pGradientAndHessian);
 
-      LOG_0(TraceLevelInfo, "Exited InitializeGradientsAndHessians");
+      LOG_0(Trace_Info, "Exited InitializeGradientsAndHessians");
       return Error_None;
    }
 };
@@ -240,7 +240,7 @@ public:
       FloatFast * const aGradientAndHessian
    ) {
       UNUSED(cRuntimeClasses);
-      LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
+      LOG_0(Trace_Info, "Entered InitializeGradientsAndHessians");
 
       // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pInitScore (I assume so), 
       //   and does it affect any calculations below like sumExp += std::exp(initScore) and the equivalent.  Should we use cScores or 
@@ -294,7 +294,7 @@ public:
          ++pTargetData;
       } while(pGradientAndHessianEnd != pGradientAndHessian);
 
-      LOG_0(TraceLevelInfo, "Exited InitializeGradientsAndHessians");
+      LOG_0(Trace_Info, "Exited InitializeGradientsAndHessians");
       return Error_None;
    }
 };

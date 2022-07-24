@@ -28,14 +28,14 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    const DataSetBoosting * const pOriginDataSet,
    const FloatFast * const aWeights
 ) {
-   LOG_0(TraceLevelVerbose, "Entered SamplingSet::GenerateSingleSamplingSet");
+   LOG_0(Trace_Verbose, "Entered SamplingSet::GenerateSingleSamplingSet");
 
    EBM_ASSERT(nullptr != pRandomDeterministic);
    EBM_ASSERT(nullptr != pOriginDataSet);
 
    SamplingSet * pRet = EbmMalloc<SamplingSet>();
    if(nullptr == pRet) {
-      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == pRet");
+      LOG_0(Trace_Warning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == pRet");
       return nullptr;
    }
    pRet->InitializeUnfailing();
@@ -46,7 +46,7 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
    if(nullptr == aCountOccurrences) {
       pRet->Free();
-      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == aCountOccurrences");
+      LOG_0(Trace_Warning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == aCountOccurrences");
       return nullptr;
    }
    pRet->m_aCountOccurrences = aCountOccurrences;
@@ -54,7 +54,7 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    FloatFast * const aWeightsInternal = EbmMalloc<FloatFast>(cSamples);
    if(nullptr == aWeightsInternal) {
       pRet->Free();
-      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == aWeightsInternal");
+      LOG_0(Trace_Warning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == aWeightsInternal");
       return nullptr;
    }
    pRet->m_aWeights = aWeightsInternal;
@@ -89,7 +89,7 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
       total = AddPositiveFloatsSafeBig(cSamples, aWeightsInternal);
       if(std::isnan(total) || std::isinf(total) || total <= 0) {
          pRet->Free();
-         LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet std::isnan(total) || std::isinf(total) || total <= 0");
+         LOG_0(Trace_Warning, "WARNING SamplingSet::GenerateSingleSamplingSet std::isnan(total) || std::isinf(total) || total <= 0");
          return nullptr;
       }
    }
@@ -100,7 +100,7 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    pRet->m_pOriginDataSet = pOriginDataSet;
    pRet->m_weightTotal = total;
 
-   LOG_0(TraceLevelVerbose, "Exited SamplingSet::GenerateSingleSamplingSet");
+   LOG_0(Trace_Verbose, "Exited SamplingSet::GenerateSingleSamplingSet");
    return pRet;
 }
 
@@ -108,14 +108,14 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(
    const DataSetBoosting * const pOriginDataSet,
    const FloatFast * const aWeights
 ) {
-   LOG_0(TraceLevelInfo, "Entered SamplingSet::GenerateFlatSamplingSet");
+   LOG_0(Trace_Info, "Entered SamplingSet::GenerateFlatSamplingSet");
 
    // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
    EBM_ASSERT(nullptr != pOriginDataSet);
 
    SamplingSet * const pRet = EbmMalloc<SamplingSet>();
    if(nullptr == pRet) {
-      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == pRet");
+      LOG_0(Trace_Warning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == pRet");
       return nullptr;
    }
    pRet->InitializeUnfailing();
@@ -126,7 +126,7 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(
    size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
    if(nullptr == aCountOccurrences) {
       pRet->Free();
-      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == aCountOccurrences");
+      LOG_0(Trace_Warning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == aCountOccurrences");
       return nullptr;
    }
    pRet->m_aCountOccurrences = aCountOccurrences;
@@ -134,7 +134,7 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(
    FloatFast * const aWeightsInternal = EbmMalloc<FloatFast>(cSamples);
    if(nullptr == aWeightsInternal) {
       pRet->Free();
-      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == aWeightsInternal");
+      LOG_0(Trace_Warning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == aWeightsInternal");
       return nullptr;
    }
    pRet->m_aWeights = aWeightsInternal;
@@ -150,7 +150,7 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(
       total = AddPositiveFloatsSafeBig(cSamples, aWeights);
       if(std::isnan(total) || std::isinf(total) || total <= 0) {
          pRet->Free();
-         LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet std::isnan(total) || std::isinf(total) || total <= 0");
+         LOG_0(Trace_Warning, "WARNING SamplingSet::GenerateFlatSamplingSet std::isnan(total) || std::isinf(total) || total <= 0");
          return nullptr;
       }
       memcpy(aWeightsInternal, aWeights, sizeof(aWeights[0]) * cSamples);
@@ -165,7 +165,7 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(
    pRet->m_pOriginDataSet = pOriginDataSet;
    pRet->m_weightTotal = total;
 
-   LOG_0(TraceLevelInfo, "Exited SamplingSet::GenerateFlatSamplingSet");
+   LOG_0(Trace_Info, "Exited SamplingSet::GenerateFlatSamplingSet");
    return pRet;
 }
 
@@ -183,7 +183,7 @@ void SamplingSet::InitializeUnfailing() {
 WARNING_PUSH
 WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 void SamplingSet::FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** const apSamplingSets) {
-   LOG_0(TraceLevelInfo, "Entered SamplingSet::FreeSamplingSets");
+   LOG_0(Trace_Info, "Entered SamplingSet::FreeSamplingSets");
    if(LIKELY(nullptr != apSamplingSets)) {
       const size_t cSamplingSetsAfterZero = 0 == cSamplingSets ? 1 : cSamplingSets;
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
@@ -194,7 +194,7 @@ void SamplingSet::FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** co
       }
       free(apSamplingSets);
    }
-   LOG_0(TraceLevelInfo, "Exited SamplingSet::FreeSamplingSets");
+   LOG_0(Trace_Info, "Exited SamplingSet::FreeSamplingSets");
 }
 WARNING_POP
 
@@ -204,7 +204,7 @@ SamplingSet ** SamplingSet::GenerateSamplingSets(
    const FloatFast * const aWeights,
    const size_t cSamplingSets
 ) {
-   LOG_0(TraceLevelInfo, "Entered SamplingSet::GenerateSamplingSets");
+   LOG_0(Trace_Info, "Entered SamplingSet::GenerateSamplingSets");
 
    EBM_ASSERT(nullptr != pRandomDeterministic);
    EBM_ASSERT(nullptr != pOriginDataSet);
@@ -213,7 +213,7 @@ SamplingSet ** SamplingSet::GenerateSamplingSets(
 
    SamplingSet ** apSamplingSets = EbmMalloc<SamplingSet *>(cSamplingSetsAfterZero);
    if(UNLIKELY(nullptr == apSamplingSets)) {
-      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSamplingSets nullptr == apSamplingSets");
+      LOG_0(Trace_Warning, "WARNING SamplingSet::GenerateSamplingSets nullptr == apSamplingSets");
       return nullptr;
    }
    for(size_t i = 0; i < cSamplingSetsAfterZero; ++i) {
@@ -224,7 +224,7 @@ SamplingSet ** SamplingSet::GenerateSamplingSets(
       // zero is a special value that really means allocate one set that contains all samples.
       SamplingSet * const pSingleSamplingSet = GenerateFlatSamplingSet(pOriginDataSet, aWeights);
       if(UNLIKELY(nullptr == pSingleSamplingSet)) {
-         LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSamplingSets nullptr == pSingleSamplingSet");
+         LOG_0(Trace_Warning, "WARNING SamplingSet::GenerateSamplingSets nullptr == pSingleSamplingSet");
          free(apSamplingSets);
          return nullptr;
       }
@@ -233,14 +233,14 @@ SamplingSet ** SamplingSet::GenerateSamplingSets(
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSets; ++iSamplingSet) {
          SamplingSet * const pSingleSamplingSet = GenerateSingleSamplingSet(pRandomDeterministic, pOriginDataSet, aWeights);
          if(UNLIKELY(nullptr == pSingleSamplingSet)) {
-            LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSamplingSets nullptr == pSingleSamplingSet");
+            LOG_0(Trace_Warning, "WARNING SamplingSet::GenerateSamplingSets nullptr == pSingleSamplingSet");
             FreeSamplingSets(cSamplingSets, apSamplingSets);
             return nullptr;
          }
          apSamplingSets[iSamplingSet] = pSingleSamplingSet;
       }
    }
-   LOG_0(TraceLevelInfo, "Exited SamplingSet::GenerateSamplingSets");
+   LOG_0(Trace_Info, "Exited SamplingSet::GenerateSamplingSets");
    return apSamplingSets;
 }
 

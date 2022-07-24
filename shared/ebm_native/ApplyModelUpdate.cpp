@@ -38,7 +38,7 @@ static ErrorEbmType ApplyTermUpdateInternal(
    BoosterShell * const pBoosterShell,
    double * const pValidationMetricReturn
 ) {
-   LOG_0(TraceLevelVerbose, "Entered ApplyTermUpdateInternal");
+   LOG_0(Trace_Verbose, "Entered ApplyTermUpdateInternal");
 
    ErrorEbmType error;
 
@@ -118,7 +118,7 @@ static ErrorEbmType ApplyTermUpdateInternal(
                if(nullptr != pValidationMetricReturn) {
                   *pValidationMetricReturn = double { 0 };
                }
-               LOG_0(TraceLevelVerbose, "Exited ApplyTermUpdateInternal with memory allocation error in copy");
+               LOG_0(Trace_Verbose, "Exited ApplyTermUpdateInternal with memory allocation error in copy");
                return error;
             }
             ++iTermCopy;
@@ -129,7 +129,7 @@ static ErrorEbmType ApplyTermUpdateInternal(
       *pValidationMetricReturn = modelMetric;
    }
 
-   LOG_0(TraceLevelVerbose, "Exited ApplyTermUpdateInternal");
+   LOG_0(Trace_Verbose, "Exited ApplyTermUpdateInternal");
    return Error_None;
 }
 
@@ -146,8 +146,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
 ) {
    LOG_COUNTED_N(
       &g_cLogApplyTermUpdate,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "ApplyTermUpdate: "
       "boosterHandle=%p, "
       "validationMetricOut=%p"
@@ -172,7 +172,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
       if(LIKELY(nullptr != validationMetricOut)) {
          *validationMetricOut = 0.0;
       }
-      LOG_0(TraceLevelError, "ERROR ApplyTermUpdate bad internal state.  No Term index set");
+      LOG_0(Trace_Error, "ERROR ApplyTermUpdate bad internal state.  No Term index set");
       return Error_IllegalParamValue;
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -182,8 +182,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
 
    LOG_COUNTED_0(
       pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogEnterApplyTermUpdateMessages(),
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Entered ApplyTermUpdate"
    );
 
@@ -197,8 +197,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
       pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
       LOG_COUNTED_0(
          pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitApplyTermUpdateMessages(),
-         TraceLevelInfo,
-         TraceLevelVerbose,
+         Trace_Info,
+         Trace_Verbose,
          "Exited ApplyTermUpdate. cClasses <= 1"
       );
       return Error_None;
@@ -212,7 +212,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
    pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
 
    if(Error_None != error) {
-      LOG_N(TraceLevelWarning, "WARNING ApplyTermUpdate: return=%" ErrorEbmTypePrintf, error);
+      LOG_N(Trace_Warning, "WARNING ApplyTermUpdate: return=%" ErrorEbmTypePrintf, error);
    }
 
    if(nullptr != validationMetricOut) {
@@ -222,8 +222,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
       EBM_ASSERT(0.0 <= *validationMetricOut);
       LOG_COUNTED_N(
          pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitApplyTermUpdateMessages(),
-         TraceLevelInfo,
-         TraceLevelVerbose,
+         Trace_Info,
+         Trace_Verbose,
          "Exited ApplyTermUpdate: "
          "*validationMetricOut=%le"
          , 
@@ -232,8 +232,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
    } else {
       LOG_COUNTED_0(
          pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitApplyTermUpdateMessages(),
-         TraceLevelInfo,
-         TraceLevelVerbose,
+         Trace_Info,
+         Trace_Verbose,
          "Exited ApplyTermUpdate"
       );
    }
@@ -254,8 +254,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
 ) {
    LOG_COUNTED_N(
       &g_cLogGetTermUpdateSplits,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "GetTermUpdateSplits: "
       "boosterHandle=%p, "
       "indexDimension=%" IntEbmTypePrintf ", "
@@ -269,7 +269,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
    );
 
    if(nullptr == countSplitsInOut) {
-      LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits countSplitsInOut cannot be nullptr");
+      LOG_0(Trace_Error, "ERROR GetTermUpdateSplits countSplitsInOut cannot be nullptr");
       return Error_IllegalParamValue;
    }
 
@@ -283,7 +283,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
    const size_t iTerm = pBoosterShell->GetTermIndex();
    if(BoosterShell::k_illegalTermIndex == iTerm) {
       *countSplitsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits bad internal state.  No Term index set");
+      LOG_0(Trace_Error, "ERROR GetTermUpdateSplits bad internal state.  No Term index set");
       return Error_IllegalParamValue;
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -294,12 +294,12 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
 
    if(indexDimension < 0) {
       *countSplitsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits indexDimension must be positive");
+      LOG_0(Trace_Error, "ERROR GetTermUpdateSplits indexDimension must be positive");
       return Error_IllegalParamValue;
    }
    if(static_cast<IntEbmType>(pTerm->GetCountDimensions()) <= indexDimension) {
       *countSplitsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits indexDimension above the number of dimensions that we have");
+      LOG_0(Trace_Error, "ERROR GetTermUpdateSplits indexDimension above the number of dimensions that we have");
       return Error_IllegalParamValue;
    }
    const size_t iDimension = static_cast<size_t>(indexDimension);
@@ -308,7 +308,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
    // cBins started from IntEbmType, so we should be able to convert back safely
    if(*countSplitsInOut != static_cast<IntEbmType>(cBins - size_t { 1 })) {
       *countSplitsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits bad split array length");
+      LOG_0(Trace_Error, "ERROR GetTermUpdateSplits bad split array length");
       return Error_IllegalParamValue;
    }
 
@@ -317,7 +317,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
    if(0 != cSplits) {
       if(nullptr == splitIndexesOut) {
          *countSplitsInOut = IntEbmType { 0 };
-         LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits splitIndexesOut cannot be nullptr");
+         LOG_0(Trace_Error, "ERROR GetTermUpdateSplits splitIndexesOut cannot be nullptr");
          return Error_IllegalParamValue;
       }
 
@@ -353,8 +353,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdate(
 ) {
    LOG_COUNTED_N(
       &g_cLogGetTermUpdate,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "GetTermUpdate: "
       "boosterHandle=%p, "
       "updateScoresTensorOut=%p"
@@ -373,7 +373,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdate(
 
    const size_t iTerm = pBoosterShell->GetTermIndex();
    if(BoosterShell::k_illegalTermIndex == iTerm) {
-      LOG_0(TraceLevelError, "ERROR GetTermUpdate bad internal state.  No Term index set");
+      LOG_0(Trace_Error, "ERROR GetTermUpdate bad internal state.  No Term index set");
       return Error_IllegalParamValue; // technically we're in an illegal state, but why split hairs
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -426,8 +426,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdate(
 ) {
    LOG_COUNTED_N(
       &g_cLogSetTermUpdate,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "SetTermUpdate: "
       "boosterHandle=%p, "
       "indexTerm=%" IntEbmTypePrintf ", "
@@ -451,19 +451,19 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdate(
 
    if(indexTerm < 0) {
       pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
-      LOG_0(TraceLevelError, "ERROR SetTermUpdate indexTerm must be positive");
+      LOG_0(Trace_Error, "ERROR SetTermUpdate indexTerm must be positive");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(indexTerm)) {
       pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR SetTermUpdate indexTerm is too high to index");
+      LOG_0(Trace_Error, "ERROR SetTermUpdate indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
    const size_t iTerm = static_cast<size_t>(indexTerm);
    if(pBoosterCore->GetCountTerms() <= iTerm) {
       pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
-      LOG_0(TraceLevelError, "ERROR SetTermUpdate indexTerm above the number of feature groups that we have");
+      LOG_0(Trace_Error, "ERROR SetTermUpdate indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
    // pBoosterCore->GetTerms() can be null if 0 == pBoosterCore->m_cTerms, but we checked that condition above

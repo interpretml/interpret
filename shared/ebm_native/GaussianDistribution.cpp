@@ -32,8 +32,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
 ) {
    LOG_COUNTED_N(
       &g_cLogEnterGenerateGaussianRandom,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Entered GenerateGaussianRandom: "
       "isDeterministic=%s, "
       "seed=%" SeedEbmTypePrintf ", "
@@ -50,44 +50,44 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
 
    if(UNLIKELY(count <= IntEbmType { 0 })) {
       if(UNLIKELY(count < IntEbmType { 0 })) {
-         LOG_0(TraceLevelError, "ERROR GenerateGaussianRandom count < IntEbmType { 0 }");
+         LOG_0(Trace_Error, "ERROR GenerateGaussianRandom count < IntEbmType { 0 }");
          return Error_IllegalParamValue;
       } else {
          LOG_COUNTED_0(
             &g_cLogExitGenerateGaussianRandom,
-            TraceLevelInfo,
-            TraceLevelVerbose,
+            Trace_Info,
+            Trace_Verbose,
             "GenerateGaussianRandom zero items requested");
          return Error_None;
       }
    }
    if(UNLIKELY(IsConvertError<size_t>(count))) {
-      LOG_0(TraceLevelError, "ERROR GenerateGaussianRandom IsConvertError<size_t>(count)");
+      LOG_0(Trace_Error, "ERROR GenerateGaussianRandom IsConvertError<size_t>(count)");
       return Error_IllegalParamValue;
    }
    const size_t c = static_cast<size_t>(count);
    if(UNLIKELY(IsMultiplyError(sizeof(*randomOut), c))) {
-      LOG_0(TraceLevelError, "ERROR GenerateGaussianRandom IsMultiplyError(sizeof(*randomOut), c)");
+      LOG_0(Trace_Error, "ERROR GenerateGaussianRandom IsMultiplyError(sizeof(*randomOut), c)");
       return Error_IllegalParamValue;
    }
 
    if(UNLIKELY(nullptr == randomOut)) {
-      LOG_0(TraceLevelError, "ERROR GenerateGaussianRandom nullptr == randomOut");
+      LOG_0(Trace_Error, "ERROR GenerateGaussianRandom nullptr == randomOut");
       return Error_IllegalParamValue;
    }
 
    if(UNLIKELY(std::isnan(stddev))) {
-      LOG_0(TraceLevelError, "ERROR GenerateGaussianRandom stddev cannot be NaN");
+      LOG_0(Trace_Error, "ERROR GenerateGaussianRandom stddev cannot be NaN");
       return Error_IllegalParamValue;
    }
    if(UNLIKELY(std::isinf(stddev))) {
-      LOG_0(TraceLevelError, "ERROR GenerateGaussianRandom stddev cannot be +-infinity");
+      LOG_0(Trace_Error, "ERROR GenerateGaussianRandom stddev cannot be +-infinity");
       return Error_IllegalParamValue;
    }
    if(UNLIKELY(stddev < 0)) {
       // TODO: do we handle 0?  We would write out all zeros..
 
-      LOG_0(TraceLevelError, "ERROR GenerateGaussianRandom stddev <= 0");
+      LOG_0(Trace_Error, "ERROR GenerateGaussianRandom stddev <= 0");
       return Error_IllegalParamValue;
    }
 
@@ -110,18 +110,18 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
             ++pRandom;
          } while(pRandomEnd != pRandom);
       } catch(const std::bad_alloc &) {
-         LOG_0(TraceLevelWarning, "WARNING GenerateGaussianRandom Out of memory allocating BoosterCore");
+         LOG_0(Trace_Warning, "WARNING GenerateGaussianRandom Out of memory allocating BoosterCore");
          return Error_OutOfMemory;
       } catch(...) {
-         LOG_0(TraceLevelWarning, "WARNING GenerateGaussianRandom Unknown error");
+         LOG_0(Trace_Warning, "WARNING GenerateGaussianRandom Unknown error");
          return Error_UnexpectedInternal;
       }
    }
 
    LOG_COUNTED_0(
       &g_cLogExitGenerateGaussianRandom,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      Trace_Info,
+      Trace_Verbose,
       "Exited GenerateGaussianRandom");
 
    return Error_None;

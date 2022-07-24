@@ -25,21 +25,21 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructGradientsAndHessians(const bool bAllocateHessians, const size_t cSamples, const size_t cScores) {
-   LOG_0(TraceLevelInfo, "Entered ConstructGradientsAndHessians");
+   LOG_0(Trace_Info, "Entered ConstructGradientsAndHessians");
 
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(1 <= cScores);
 
    const size_t cStorageItems = bAllocateHessians ? 2 : 1;
    if(IsMultiplyError(cScores, cStorageItems, cSamples)) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cScores, cStorageItems, cSamples)");
+      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cScores, cStorageItems, cSamples)");
       return nullptr;
    }
    const size_t cElements = cScores * cStorageItems * cSamples;
 
    FloatFast * aGradientsAndHessians = EbmMalloc<FloatFast>(cElements);
 
-   LOG_0(TraceLevelInfo, "Exited ConstructGradientsAndHessians");
+   LOG_0(Trace_Info, "Exited ConstructGradientsAndHessians");
    return aGradientsAndHessians;
 }
 
@@ -50,21 +50,21 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
    const double * const aInitScores,
    const size_t cSetSamples
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructSampleScores");
+   LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructSampleScores");
 
    EBM_ASSERT(0 < cScores);
    EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
    EBM_ASSERT(0 < cSetSamples);
 
    if(IsMultiplyError(cScores, cSetSamples)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(cScores, cSetSamples)");
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(cScores, cSetSamples)");
       return nullptr;
    }
 
    const size_t cElements = cScores * cSetSamples;
    FloatFast * const aSampleScores = EbmMalloc<FloatFast>(cElements);
    if(nullptr == aSampleScores) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == aSampleScores");
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == aSampleScores");
       return nullptr;
    }
 
@@ -121,7 +121,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
 
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-   LOG_0(TraceLevelInfo, "Exited DataSetBoosting::ConstructSampleScores");
+   LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructSampleScores");
    return aSampleScores;
 }
 
@@ -131,7 +131,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
    const BagEbmType * const aBag,
    const size_t cSetSamples
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructTargetData");
+   LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructTargetData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
@@ -146,7 +146,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
 
    StorageDataType * const aTargetData = EbmMalloc<StorageDataType>(cSetSamples);
    if(nullptr == aTargetData) {
-      LOG_0(TraceLevelWarning, "WARNING nullptr == aTargetData");
+      LOG_0(Trace_Warning, "WARNING nullptr == aTargetData");
       return nullptr;
    }
 
@@ -169,13 +169,13 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
             if(IsConvertError<StorageDataType>(data)) {
                // this shouldn't be possible since we previously checked that we could convert our target,
                // so if this is failing then we'll be larger than the maximum number of classes
-               LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
+               LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
                free(aTargetData);
                return nullptr;
             }
             const StorageDataType iData = static_cast<StorageDataType>(data);
             if(countClasses <= static_cast<size_t>(iData)) {
-               LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData target value larger than number of classes");
+               LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData target value larger than number of classes");
                free(aTargetData);
                return nullptr;
             }
@@ -190,7 +190,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
       ++pTargetFrom;
    } while(pTargetToEnd != pTargetTo);
 
-   LOG_0(TraceLevelInfo, "Exited DataSetBoosting::ConstructTargetData");
+   LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
    return aTargetData;
 }
 
@@ -219,7 +219,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const size_t cTerms,
    const Term * const * const apTerms
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructInputData");
+   LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructInputData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
@@ -229,7 +229,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
    StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cTerms);
    if(nullptr == aaInputDataTo) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructInputData nullptr == aaInputDataTo");
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
@@ -258,7 +258,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
          StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cDataUnits);
          if(nullptr == pInputDataTo) {
-            LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructInputData nullptr == pInputDataTo");
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == pInputDataTo");
             goto free_all;
          }
          *paInputDataTo = pInputDataTo;
@@ -335,7 +335,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
                         if(pDimensionInfo->m_cBins <= iData) {
                            // TODO: I think this check has been moved to constructing the shared dataset
-                           LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructInputData iData value must be less than the number of bins");
+                           LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructInputData iData value must be less than the number of bins");
                            goto free_all;
                         }
                         // we check for overflows during Term construction, but let's check here again
@@ -390,7 +390,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       ++ppTerm;
    } while(ppTermsEnd != ppTerm);
 
-   LOG_0(TraceLevelInfo, "Exited DataSetBoosting::ConstructInputData");
+   LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
@@ -424,14 +424,14 @@ ErrorEbmType DataSetBoosting::Initialize(
    EBM_ASSERT(nullptr == m_aTargetData);
    EBM_ASSERT(nullptr == m_aaInputData);
 
-   LOG_0(TraceLevelInfo, "Entered DataSetBoosting::Initialize");
+   LOG_0(Trace_Info, "Entered DataSetBoosting::Initialize");
    const size_t cScores = GetCountScores(cClasses);
 
    if(0 != cSetSamples) {
       if(bAllocateGradients) {
          FloatFast * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSetSamples, cScores);
          if(nullptr == aGradientsAndHessians) {
-            LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aGradientsAndHessians");
+            LOG_0(Trace_Warning, "WARNING Exited DataSetBoosting::Initialize nullptr == aGradientsAndHessians");
             return Error_OutOfMemory;
          }
          m_aGradientsAndHessians = aGradientsAndHessians;
@@ -447,7 +447,7 @@ ErrorEbmType DataSetBoosting::Initialize(
             cSetSamples
          );
          if(nullptr == aSampleScores) {
-            LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aSampleScores");
+            LOG_0(Trace_Warning, "WARNING Exited DataSetBoosting::Initialize nullptr == aSampleScores");
             return Error_OutOfMemory;
          }
          m_aSampleScores = aSampleScores;
@@ -460,7 +460,7 @@ ErrorEbmType DataSetBoosting::Initialize(
             cSetSamples
          );
          if(nullptr == aTargetData) {
-            LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aTargetData");
+            LOG_0(Trace_Warning, "WARNING Exited DataSetBoosting::Initialize nullptr == aTargetData");
             return Error_OutOfMemory;
          }
          m_aTargetData = aTargetData;
@@ -475,7 +475,7 @@ ErrorEbmType DataSetBoosting::Initialize(
             apTerms
          );
          if(nullptr == aaInputData) {
-            LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aaInputData");
+            LOG_0(Trace_Warning, "WARNING Exited DataSetBoosting::Initialize nullptr == aaInputData");
             return Error_OutOfMemory;
          }
          m_aaInputData = aaInputData;
@@ -484,7 +484,7 @@ ErrorEbmType DataSetBoosting::Initialize(
       m_cTerms = cTerms;
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataSetBoosting::Initialize");
+   LOG_0(Trace_Info, "Exited DataSetBoosting::Initialize");
 
    return Error_None;
 }
@@ -492,7 +492,7 @@ ErrorEbmType DataSetBoosting::Initialize(
 WARNING_PUSH
 WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 void DataSetBoosting::Destruct() {
-   LOG_0(TraceLevelInfo, "Entered DataSetBoosting::Destruct");
+   LOG_0(Trace_Info, "Entered DataSetBoosting::Destruct");
 
    free(m_aGradientsAndHessians);
    free(m_aSampleScores);
@@ -509,7 +509,7 @@ void DataSetBoosting::Destruct() {
       free(m_aaInputData);
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataSetBoosting::Destruct");
+   LOG_0(Trace_Info, "Exited DataSetBoosting::Destruct");
 }
 WARNING_POP
 

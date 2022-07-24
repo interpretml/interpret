@@ -113,7 +113,7 @@ extern void SumAllBins(
    , const FloatBig weightTotal
 #endif // NDEBUG
 ) {
-   LOG_0(TraceLevelVerbose, "Entered SumAllBins");
+   LOG_0(Trace_Verbose, "Entered SumAllBins");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
@@ -150,7 +150,7 @@ extern void SumAllBins(
       );
    }
 
-   LOG_0(TraceLevelVerbose, "Exited SumAllBins");
+   LOG_0(Trace_Verbose, "Exited SumAllBins");
 }
 
 } // DEFINED_ZONE_NAME

@@ -75,8 +75,8 @@ extern void LogAssertFailure(
 #define LOG_0(traceLevel, sMessage) \
    do { \
       const TraceEbmType LOG__traceLevel = (traceLevel); \
-      static_assert(TraceLevelOff < LOG__traceLevel, "traceLevel can't be TraceLevelOff or lower for call to LOG_0(traceLevel, sMessage, ...)"); \
-      static_assert(LOG__traceLevel <= TraceLevelVerbose, "traceLevel can't be higher than TraceLevelVerbose for call to LOG_0(traceLevel, sMessage, ...)"); \
+      static_assert(Trace_Off < LOG__traceLevel, "traceLevel can't be Trace_Off or lower for call to LOG_0(traceLevel, sMessage, ...)"); \
+      static_assert(LOG__traceLevel <= Trace_Verbose, "traceLevel can't be higher than Trace_Verbose for call to LOG_0(traceLevel, sMessage, ...)"); \
       if(LOG__traceLevel <= g_traceLevel) { \
          const static char LOG__sMessage[] = sMessage; \
          InteralLogWithoutArguments(LOG__traceLevel, LOG__sMessage); \
@@ -86,9 +86,9 @@ extern void LogAssertFailure(
 #define LOG_N(traceLevel, sMessage, ...) \
    do { \
       const TraceEbmType LOG__traceLevel = (traceLevel); \
-      static_assert(TraceLevelOff < LOG__traceLevel, "traceLevel can't be TraceLevelOff or lower for call to LOG_N(traceLevel, sMessage, ...)"); \
-      static_assert(LOG__traceLevel <= TraceLevelVerbose, \
-         "traceLevel can't be higher than TraceLevelVerbose for call to LOG_N(traceLevel, sMessage, ...)"); \
+      static_assert(Trace_Off < LOG__traceLevel, "traceLevel can't be Trace_Off or lower for call to LOG_N(traceLevel, sMessage, ...)"); \
+      static_assert(LOG__traceLevel <= Trace_Verbose, \
+         "traceLevel can't be higher than Trace_Verbose for call to LOG_N(traceLevel, sMessage, ...)"); \
       if(LOG__traceLevel <= g_traceLevel) { \
          const static char LOG__sMessage[] = sMessage; \
          InteralLogWithArguments(LOG__traceLevel, LOG__sMessage, __VA_ARGS__); \
@@ -98,15 +98,15 @@ extern void LogAssertFailure(
 #define LOG_COUNTED_0(pLogCountDecrement, traceLevelBefore, traceLevelAfter, sMessage) \
    do { \
       const TraceEbmType LOG__traceLevelBefore = (traceLevelBefore); \
-      static_assert(TraceLevelOff < LOG__traceLevelBefore, \
-         "traceLevelBefore can't be TraceLevelOff or lower for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
-      static_assert(LOG__traceLevelBefore <= TraceLevelVerbose, \
-         "traceLevelBefore can't be higher than TraceLevelVerbose for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
+      static_assert(Trace_Off < LOG__traceLevelBefore, \
+         "traceLevelBefore can't be Trace_Off or lower for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
+      static_assert(LOG__traceLevelBefore <= Trace_Verbose, \
+         "traceLevelBefore can't be higher than Trace_Verbose for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
       const TraceEbmType LOG__traceLevelAfter = (traceLevelAfter); \
-      static_assert(TraceLevelOff < LOG__traceLevelAfter, \
-         "traceLevelAfter can't be TraceLevelOff or lower for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
-      static_assert(LOG__traceLevelAfter <= TraceLevelVerbose, \
-         "traceLevelAfter can't be higher than TraceLevelVerbose for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
+      static_assert(Trace_Off < LOG__traceLevelAfter, \
+         "traceLevelAfter can't be Trace_Off or lower for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
+      static_assert(LOG__traceLevelAfter <= Trace_Verbose, \
+         "traceLevelAfter can't be higher than Trace_Verbose for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
       static_assert(LOG__traceLevelBefore < LOG__traceLevelAfter, \
          "We only support increasing the required trace level after N iterations. It doesn't make sense to have equal values, otherwise just use LOG_0(..)"); \
       const TraceEbmType LOG__traceLevel = g_traceLevel; \
@@ -133,15 +133,15 @@ extern void LogAssertFailure(
 #define LOG_COUNTED_N(pLogCountDecrement, traceLevelBefore, traceLevelAfter, sMessage, ...) \
    do { \
       const TraceEbmType LOG__traceLevelBefore = (traceLevelBefore); \
-      static_assert(TraceLevelOff < LOG__traceLevelBefore, \
-         "traceLevelBefore can't be TraceLevelOff or lower for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
-      static_assert(LOG__traceLevelBefore <= TraceLevelVerbose, \
-         "traceLevelBefore can't be higher than TraceLevelVerbose for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
+      static_assert(Trace_Off < LOG__traceLevelBefore, \
+         "traceLevelBefore can't be Trace_Off or lower for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
+      static_assert(LOG__traceLevelBefore <= Trace_Verbose, \
+         "traceLevelBefore can't be higher than Trace_Verbose for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
       const TraceEbmType LOG__traceLevelAfter = (traceLevelAfter); \
-      static_assert(TraceLevelOff < LOG__traceLevelAfter, \
-         "traceLevelAfter can't be TraceLevelOff or lower for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
-      static_assert(LOG__traceLevelAfter <= TraceLevelVerbose, \
-         "traceLevelAfter can't be higher than TraceLevelVerbose for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
+      static_assert(Trace_Off < LOG__traceLevelAfter, \
+         "traceLevelAfter can't be Trace_Off or lower for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
+      static_assert(LOG__traceLevelAfter <= Trace_Verbose, \
+         "traceLevelAfter can't be higher than Trace_Verbose for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, sMessage, ...)"); \
       static_assert(LOG__traceLevelBefore < LOG__traceLevelAfter, \
          "We only support increasing the required trace level after N iterations and it doesn't make sense to have equal values, otherwise just use LOG_N(...)"); \
       const TraceEbmType LOG__traceLevel = g_traceLevel; \

@@ -30,7 +30,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 void BoosterShell::Free(BoosterShell * const pBoosterShell) {
-   LOG_0(TraceLevelInfo, "Entered BoosterShell::Free");
+   LOG_0(Trace_Info, "Entered BoosterShell::Free");
 
    if(nullptr != pBoosterShell) {
       Tensor::Free(pBoosterShell->m_pTermUpdate);
@@ -51,18 +51,18 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
       free(pBoosterShell);
    }
 
-   LOG_0(TraceLevelInfo, "Exited BoosterShell::Free");
+   LOG_0(Trace_Info, "Exited BoosterShell::Free");
 }
 
 BoosterShell * BoosterShell::Create() {
-   LOG_0(TraceLevelInfo, "Entered BoosterShell::Create");
+   LOG_0(Trace_Info, "Entered BoosterShell::Create");
 
    BoosterShell * const pNew = EbmMalloc<BoosterShell>();
    if(LIKELY(nullptr != pNew)) {
       pNew->InitializeUnfailing();
    }
 
-   LOG_0(TraceLevelInfo, "Exited BoosterShell::Create");
+   LOG_0(Trace_Info, "Exited BoosterShell::Create");
 
    return pNew;
 }
@@ -70,7 +70,7 @@ BoosterShell * BoosterShell::Create() {
 ErrorEbmType BoosterShell::FillAllocations() {
    EBM_ASSERT(nullptr != m_pBoosterCore);
 
-   LOG_0(TraceLevelInfo, "Entered BoosterShell::FillAllocations");
+   LOG_0(Trace_Info, "Entered BoosterShell::FillAllocations");
 
    const ptrdiff_t cClasses = m_pBoosterCore->GetCountClasses();
    const size_t cScores = GetCountScores(cClasses);
@@ -113,11 +113,11 @@ ErrorEbmType BoosterShell::FillAllocations() {
       }
    }
 
-   LOG_0(TraceLevelInfo, "Exited BoosterShell::FillAllocations");
+   LOG_0(Trace_Info, "Exited BoosterShell::FillAllocations");
    return Error_None;
 
 failed_allocation:;
-   LOG_0(TraceLevelWarning, "WARNING Exited BoosterShell::FillAllocations with allocation failure");
+   LOG_0(Trace_Warning, "WARNING Exited BoosterShell::FillAllocations with allocation failure");
    return Error_OutOfMemory;
 }
 
@@ -126,13 +126,13 @@ BinBase * BoosterShell::GetBinBaseFast(size_t cBytesRequired) {
    if(UNLIKELY(m_cThreadByteBufferCapacity1Fast < cBytesRequired)) {
       cBytesRequired <<= 1;
       m_cThreadByteBufferCapacity1Fast = cBytesRequired;
-      LOG_N(TraceLevelInfo, "Growing BoosterShell::ThreadByteBuffer1Fast to %zu", cBytesRequired);
+      LOG_N(Trace_Info, "Growing BoosterShell::ThreadByteBuffer1Fast to %zu", cBytesRequired);
 
       free(aBuffer);
       aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
       m_aThreadByteBuffer1Fast = aBuffer; // store it before checking it incase it's null so that we don't free old memory
       if(nullptr == aBuffer) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterShell::GetBinBaseFast OutOfMemory");
+         LOG_0(Trace_Warning, "WARNING BoosterShell::GetBinBaseFast OutOfMemory");
       }
    }
    return aBuffer;
@@ -143,13 +143,13 @@ BinBase * BoosterShell::GetBinBaseBig(size_t cBytesRequired) {
    if(UNLIKELY(m_cThreadByteBufferCapacity1Big < cBytesRequired)) {
       cBytesRequired <<= 1;
       m_cThreadByteBufferCapacity1Big = cBytesRequired;
-      LOG_N(TraceLevelInfo, "Growing BoosterShell::ThreadByteBuffer1Big to %zu", cBytesRequired);
+      LOG_N(Trace_Info, "Growing BoosterShell::ThreadByteBuffer1Big to %zu", cBytesRequired);
 
       free(aBuffer);
       aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
       m_aThreadByteBuffer1Big = aBuffer; // store it before checking it incase it's null so that we don't free old memory
       if(nullptr == aBuffer) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterShell::GetBinBaseBig OutOfMemory");
+         LOG_0(Trace_Warning, "WARNING BoosterShell::GetBinBaseBig OutOfMemory");
       }
    }
    return aBuffer;
@@ -161,7 +161,7 @@ ErrorEbmType BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
    //   2) we'll always get back an odd number of items, which is good because we always have an odd number of TreeNodeChilden
    EBM_ASSERT(0 == m_cThreadByteBufferCapacity2 % cByteBoundaries);
    m_cThreadByteBufferCapacity2 = cByteBoundaries + (m_cThreadByteBufferCapacity2 << 1);
-   LOG_N(TraceLevelInfo, "Growing BoosterShell::ThreadByteBuffer2 to %zu", m_cThreadByteBufferCapacity2);
+   LOG_N(Trace_Info, "Growing BoosterShell::ThreadByteBuffer2 to %zu", m_cThreadByteBufferCapacity2);
 
    // our tree objects have internal pointers, so we're going to dispose of our work anyways
    // We can't use realloc since there is no way to check if the array was re-allocated or not without 
@@ -172,7 +172,7 @@ ErrorEbmType BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
    aBuffer = EbmMalloc<void>(m_cThreadByteBufferCapacity2);
    m_aThreadByteBuffer2 = aBuffer; // store it before checking it incase it's null so that we don't free old memory
    if(UNLIKELY(nullptr == aBuffer)) {
-      LOG_0(TraceLevelWarning, "WARNING GrowThreadByteBuffer2 OutOfMemory");
+      LOG_0(Trace_Warning, "WARNING GrowThreadByteBuffer2 OutOfMemory");
       return Error_OutOfMemory;
    }
    return Error_None;
@@ -192,7 +192,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
    BoosterHandle * boosterHandleOut
 ) {
    LOG_N(
-      TraceLevelInfo,
+      Trace_Info,
       "Entered CreateBooster: "
       "isDeterministic=%s, "
       "seed=%" SeedEbmTypePrintf ", "
@@ -222,22 +222,22 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
    ErrorEbmType error;
 
    if(nullptr == boosterHandleOut) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster nullptr == boosterHandleOut");
+      LOG_0(Trace_Error, "ERROR CreateBooster nullptr == boosterHandleOut");
       return Error_IllegalParamValue;
    }
    *boosterHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
    if(nullptr == dataSet) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster nullptr == dataSet");
+      LOG_0(Trace_Error, "ERROR CreateBooster nullptr == dataSet");
       return Error_IllegalParamValue;
    }
 
    if(countTerms < IntEbmType { 0 }) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster countTerms must be positive");
+      LOG_0(Trace_Error, "ERROR CreateBooster countTerms must be positive");
       return Error_IllegalParamValue;
    }
    if(IntEbmType { 0 } != countTerms && nullptr == dimensionCounts) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster dimensionCounts cannot be null if 0 < countTerms");
+      LOG_0(Trace_Error, "ERROR CreateBooster dimensionCounts cannot be null if 0 < countTerms");
       return Error_IllegalParamValue;
    }
    // it's legal for featureIndexes to be null if there are no features indexed by our feature groups
@@ -245,19 +245,19 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
 
    if(countInnerBags < IntEbmType { 0 }) {
       // 0 means use the full set. 1 means make a single bag which is useless, but allowed for comparison purposes
-      LOG_0(TraceLevelError, "ERROR CreateBooster countInnerBags cannot be negative");
+      LOG_0(Trace_Error, "ERROR CreateBooster countInnerBags cannot be negative");
       return Error_UserParamValue;
    }
 
    if(IsConvertError<size_t>(countTerms)) {
       // the caller should not have been able to allocate memory for dimensionCounts if this wasn't fittable in size_t
-      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countTerms)");
+      LOG_0(Trace_Error, "ERROR CreateBooster IsConvertError<size_t>(countTerms)");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(countInnerBags)) {
       // this is just a warning since the caller doesn't pass us anything material, but if it's this high
       // then our allocation would fail since it can't even in pricipal fit into memory
-      LOG_0(TraceLevelWarning, "WARNING CreateBooster IsConvertError<size_t>(countInnerBags)");
+      LOG_0(Trace_Warning, "WARNING CreateBooster IsConvertError<size_t>(countInnerBags)");
       return Error_OutOfMemory;
    }
 
@@ -281,10 +281,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
          RandomNondeterministic<uint32_t> randomGenerator;
          seed = randomGenerator.NextSeed();
       } catch(const std::bad_alloc &) {
-         LOG_0(TraceLevelWarning, "WARNING CreateBooster Out of memory in std::random_device");
+         LOG_0(Trace_Warning, "WARNING CreateBooster Out of memory in std::random_device");
          return Error_OutOfMemory;
       } catch(...) {
-         LOG_0(TraceLevelWarning, "WARNING CreateBooster Unknown error in std::random_device");
+         LOG_0(Trace_Warning, "WARNING CreateBooster Unknown error in std::random_device");
          return Error_UnexpectedInternal;
       }
    }
@@ -320,7 +320,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
 
    const BoosterHandle handle = pBoosterShell->GetHandle();
 
-   LOG_N(TraceLevelInfo, "Exited CreateBooster: *boosterHandleOut=%p", static_cast<void *>(handle));
+   LOG_N(Trace_Info, "Exited CreateBooster: *boosterHandleOut=%p", static_cast<void *>(handle));
 
    *boosterHandleOut = handle;
    return Error_None;
@@ -331,7 +331,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBoosterView(
    BoosterHandle * boosterHandleViewOut
 ) {
    LOG_N(
-      TraceLevelInfo,
+      Trace_Info,
       "Entered CreateBoosterView: "
       "boosterHandle=%p, "
       "boosterHandleViewOut=%p"
@@ -343,7 +343,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBoosterView(
    ErrorEbmType error;
 
    if(UNLIKELY(nullptr == boosterHandleViewOut)) {
-      LOG_0(TraceLevelWarning, "WARNING CreateBooster nullptr == boosterHandleViewOut");
+      LOG_0(Trace_Warning, "WARNING CreateBooster nullptr == boosterHandleViewOut");
       return Error_IllegalParamValue;
    }
    *boosterHandleViewOut = nullptr; // set this as soon as possible so our caller doesn't end up freeing garbage
@@ -356,7 +356,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBoosterView(
 
    BoosterShell * const pBoosterShellNew = BoosterShell::Create();
    if(UNLIKELY(nullptr == pBoosterShellNew)) {
-      LOG_0(TraceLevelWarning, "WARNING CreateBooster nullptr == pBoosterShellNew");
+      LOG_0(Trace_Warning, "WARNING CreateBooster nullptr == pBoosterShellNew");
       return Error_OutOfMemory;
    }
 
@@ -373,7 +373,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBoosterView(
       return error;
    }
 
-   LOG_0(TraceLevelInfo, "Exited CreateBoosterView");
+   LOG_0(Trace_Info, "Exited CreateBoosterView");
 
    *boosterHandleViewOut = pBoosterShellNew->GetHandle();
    return Error_None;
@@ -385,7 +385,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
    double * termScoresTensorOut
 ) {
    LOG_N(
-      TraceLevelInfo,
+      Trace_Info,
       "Entered GetBestTermScores: "
       "boosterHandle=%p, "
       "indexTerm=%" IntEbmTypePrintf ", "
@@ -403,19 +403,19 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
    }
 
    if(indexTerm < 0) {
-      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexTerm must be positive");
+      LOG_0(Trace_Error, "ERROR GetBestTermScores indexTerm must be positive");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(indexTerm)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexTerm is too high to index");
+      LOG_0(Trace_Error, "ERROR GetBestTermScores indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
    size_t iTerm = static_cast<size_t>(indexTerm);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountTerms() <= iTerm) {
-      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexTerm above the number of feature groups that we have");
+      LOG_0(Trace_Error, "ERROR GetBestTermScores indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
 
@@ -423,12 +423,12 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
-      LOG_0(TraceLevelInfo, "Exited GetBestTermScores no scores");
+      LOG_0(Trace_Info, "Exited GetBestTermScores no scores");
       return Error_None;
    }
 
    if(nullptr == termScoresTensorOut) {
-      LOG_0(TraceLevelError, "ERROR GetBestTermScores termScoresTensorOut cannot be nullptr");
+      LOG_0(Trace_Error, "ERROR GetBestTermScores termScoresTensorOut cannot be nullptr");
       return Error_IllegalParamValue;
    }
 
@@ -467,7 +467,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
    static_assert(sizeof(*termScoresTensorOut) == sizeof(*aTermScores), "float mismatch");
    memcpy(termScoresTensorOut, aTermScores, sizeof(*aTermScores) * cTensorScores);
 
-   LOG_0(TraceLevelInfo, "Exited GetBestTermScores");
+   LOG_0(Trace_Info, "Exited GetBestTermScores");
    return Error_None;
 }
 
@@ -477,7 +477,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
    double * termScoresTensorOut
 ) {
    LOG_N(
-      TraceLevelInfo,
+      Trace_Info,
       "Entered GetCurrentTermScores: "
       "boosterHandle=%p, "
       "indexTerm=%" IntEbmTypePrintf ", "
@@ -495,19 +495,19 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
    }
 
    if(indexTerm < 0) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexTerm must be positive");
+      LOG_0(Trace_Error, "ERROR GetCurrentTermScores indexTerm must be positive");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(indexTerm)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexTerm is too high to index");
+      LOG_0(Trace_Error, "ERROR GetCurrentTermScores indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
    size_t iTerm = static_cast<size_t>(indexTerm);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountTerms() <= iTerm) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexTerm above the number of feature groups that we have");
+      LOG_0(Trace_Error, "ERROR GetCurrentTermScores indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
 
@@ -515,12 +515,12 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
-      LOG_0(TraceLevelInfo, "Exited GetCurrentTermScores no scores");
+      LOG_0(Trace_Info, "Exited GetCurrentTermScores no scores");
       return Error_None;
    }
 
    if(nullptr == termScoresTensorOut) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores termScoresTensorOut cannot be nullptr");
+      LOG_0(Trace_Error, "ERROR GetCurrentTermScores termScoresTensorOut cannot be nullptr");
       return Error_IllegalParamValue;
    }
 
@@ -559,14 +559,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
    static_assert(sizeof(*termScoresTensorOut) == sizeof(*aTermScores), "float mismatch");
    memcpy(termScoresTensorOut, aTermScores, sizeof(*aTermScores) * cTensorScores);
 
-   LOG_0(TraceLevelInfo, "Exited GetCurrentTermScores");
+   LOG_0(Trace_Info, "Exited GetCurrentTermScores");
    return Error_None;
 }
 
 EBM_API_BODY void EBM_CALLING_CONVENTION FreeBooster(
    BoosterHandle boosterHandle
 ) {
-   LOG_N(TraceLevelInfo, "Entered FreeBooster: boosterHandle=%p", static_cast<void *>(boosterHandle));
+   LOG_N(Trace_Info, "Entered FreeBooster: boosterHandle=%p", static_cast<void *>(boosterHandle));
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    // if the conversion above doesn't work, it'll return null, and our free will not in fact free any memory,
@@ -575,7 +575,7 @@ EBM_API_BODY void EBM_CALLING_CONVENTION FreeBooster(
    // it's legal to call free on nullptr, just like for free().  This is checked inside BoosterCore::Free()
    BoosterShell::Free(pBoosterShell);
 
-   LOG_0(TraceLevelInfo, "Exited FreeBooster");
+   LOG_0(Trace_Info, "Exited FreeBooster");
 }
 
 } // DEFINED_ZONE_NAME

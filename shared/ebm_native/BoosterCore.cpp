@@ -71,7 +71,7 @@ INLINE_ALWAYS static size_t GetCountItemsBitPacked(const size_t cBits) {
 }
 
 void BoosterCore::DeleteTensors(const size_t cTerms, Tensor ** const apTensors) {
-   LOG_0(TraceLevelInfo, "Entered DeleteTensors");
+   LOG_0(Trace_Info, "Entered DeleteTensors");
 
    if(UNLIKELY(nullptr != apTensors)) {
       EBM_ASSERT(0 < cTerms);
@@ -83,7 +83,7 @@ void BoosterCore::DeleteTensors(const size_t cTerms, Tensor ** const apTensors) 
       } while(ppTensorsEnd != ppTensor);
       free(apTensors);
    }
-   LOG_0(TraceLevelInfo, "Exited DeleteTensors");
+   LOG_0(Trace_Info, "Exited DeleteTensors");
 }
 
 ErrorEbmType BoosterCore::InitializeTensors(
@@ -92,7 +92,7 @@ ErrorEbmType BoosterCore::InitializeTensors(
    const size_t cScores,
    Tensor *** papTensorsOut)
 {
-   LOG_0(TraceLevelInfo, "Entered InitializeTensors");
+   LOG_0(Trace_Info, "Entered InitializeTensors");
 
    EBM_ASSERT(0 < cTerms);
    EBM_ASSERT(nullptr != apTerms);
@@ -104,7 +104,7 @@ ErrorEbmType BoosterCore::InitializeTensors(
 
    Tensor ** const apTensors = EbmMalloc<Tensor *>(cTerms);
    if(UNLIKELY(nullptr == apTensors)) {
-      LOG_0(TraceLevelWarning, "WARNING InitializeTensors nullptr == apTensors");
+      LOG_0(Trace_Warning, "WARNING InitializeTensors nullptr == apTensors");
       return Error_OutOfMemory;
    }
    for(size_t iTerm = 0; iTerm < cTerms; ++iTerm) {
@@ -118,7 +118,7 @@ ErrorEbmType BoosterCore::InitializeTensors(
       Tensor * const pTensors = 
          Tensor::Allocate(pTerm->GetCountDimensions(), cScores);
       if(UNLIKELY(nullptr == pTensors)) {
-         LOG_0(TraceLevelWarning, "WARNING InitializeTensors nullptr == pTensors");
+         LOG_0(Trace_Warning, "WARNING InitializeTensors nullptr == pTensors");
          return Error_OutOfMemory;
       }
       *ppTensor = pTensors; // transfer ownership for future deletion
@@ -132,12 +132,12 @@ ErrorEbmType BoosterCore::InitializeTensors(
       ++ppTensor;
    }
 
-   LOG_0(TraceLevelInfo, "Exited InitializeTensors");
+   LOG_0(Trace_Info, "Exited InitializeTensors");
    return Error_None;
 }
 
 void BoosterCore::Free(BoosterCore * const pBoosterCore) {
-   LOG_0(TraceLevelInfo, "Entered BoosterCore::Free");
+   LOG_0(Trace_Info, "Entered BoosterCore::Free");
    if(nullptr != pBoosterCore) {
       // for reference counting in general, a release is needed during the decrement and aquire is needed if freeing
       // https://www.boost.org/doc/libs/1_59_0/doc/html/atomic/usage_examples.html
@@ -153,11 +153,11 @@ void BoosterCore::Free(BoosterCore * const pBoosterCore) {
          // we don't have to worry about staleness, so only use memory_order_acquire if we're going to delete the
          // object
          std::atomic_thread_fence(std::memory_order_acquire);
-         LOG_0(TraceLevelInfo, "INFO BoosterCore::Free deleting BoosterCore");
+         LOG_0(Trace_Info, "INFO BoosterCore::Free deleting BoosterCore");
          delete pBoosterCore;
       }
    }
-   LOG_0(TraceLevelInfo, "Exited BoosterCore::Free");
+   LOG_0(Trace_Info, "Exited BoosterCore::Free");
 }
 
 //static int g_TODO_removeThisThreadTest = 0;
@@ -180,7 +180,7 @@ ErrorEbmType BoosterCore::Create(
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
    UNUSED(experimentalParams);
 
-   LOG_0(TraceLevelInfo, "Entered BoosterCore::Create");
+   LOG_0(Trace_Info, "Entered BoosterCore::Create");
 
    EBM_ASSERT(nullptr != pBoosterShell);
 
@@ -191,33 +191,33 @@ ErrorEbmType BoosterCore::Create(
    //   std::thread testThread(TODO_removeThisThreadTest);
    //   testThread.join();
    //   if(0 == g_TODO_removeThisThreadTest) {
-   //      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread not started");
+   //      LOG_0(Trace_Warning, "WARNING BoosterCore::Create thread not started");
    //      return Error_UnexpectedInternal;
    //   }
    //} catch(const std::bad_alloc &) {
-   //   LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread start out of memory");
+   //   LOG_0(Trace_Warning, "WARNING BoosterCore::Create thread start out of memory");
    //   return Error_OutOfMemory;
    //} catch(...) {
    //   // the C++ standard doesn't really seem to say what kind of exceptions we'd get for various errors, so
    //   // about the best we can do is catch(...) since the exact exceptions seem to be implementation specific
-   //   LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread start failed");
+   //   LOG_0(Trace_Warning, "WARNING BoosterCore::Create thread start failed");
    //   return Error_ThreadStartFailed;
    //}
-   //LOG_0(TraceLevelInfo, "INFO BoosterCore::Create thread started");
+   //LOG_0(Trace_Info, "INFO BoosterCore::Create thread started");
 
    BoosterCore * pBoosterCore;
    try {
       pBoosterCore = new BoosterCore();
    } catch(const std::bad_alloc &) {
-      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create Out of memory allocating BoosterCore");
+      LOG_0(Trace_Warning, "WARNING BoosterCore::Create Out of memory allocating BoosterCore");
       return Error_OutOfMemory;
    } catch(...) {
-      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create Unknown error");
+      LOG_0(Trace_Warning, "WARNING BoosterCore::Create Unknown error");
       return Error_UnexpectedInternal;
    }
    if(nullptr == pBoosterCore) {
       // this should be impossible since bad_alloc should have been thrown, but let's be untrusting
-      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == pBoosterCore");
+      LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == pBoosterCore");
       return Error_OutOfMemory;
    }
    // give ownership of our object to pBoosterShell
@@ -233,11 +233,11 @@ ErrorEbmType BoosterCore::Create(
       return error;
    }
    if(size_t { 1 } < cWeights) {
-      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create size_t { 1 } < cWeights");
+      LOG_0(Trace_Warning, "WARNING BoosterCore::Create size_t { 1 } < cWeights");
       return Error_IllegalParamValue;
    }
    if(size_t { 1 } != cTargets) {
-      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create 1 != cTargets");
+      LOG_0(Trace_Warning, "WARNING BoosterCore::Create 1 != cTargets");
       return Error_IllegalParamValue;
    }
 
@@ -254,12 +254,12 @@ ErrorEbmType BoosterCore::Create(
 
    const size_t cScores = GetCountScores(cClasses);
 
-   LOG_0(TraceLevelInfo, "BoosterCore::Create starting feature processing");
+   LOG_0(Trace_Info, "BoosterCore::Create starting feature processing");
    if(0 != cFeatures) {
       pBoosterCore->m_cFeatures = cFeatures;
       pBoosterCore->m_aFeatures = EbmMalloc<Feature>(cFeatures);
       if(nullptr == pBoosterCore->m_aFeatures) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == pBoosterCore->m_aFeatures");
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == pBoosterCore->m_aFeatures");
          return Error_OutOfMemory;
       }
 
@@ -284,25 +284,25 @@ ErrorEbmType BoosterCore::Create(
             &cNonDefaultsSparse
          );
          if(0 == cBins && (0 != cTrainingSamples || 0 != cValidationSamples)) {
-            LOG_0(TraceLevelError, "ERROR BoosterCore::Create countBins cannot be zero if either 0 < cTrainingSamples OR 0 < cValidationSamples");
+            LOG_0(Trace_Error, "ERROR BoosterCore::Create countBins cannot be zero if either 0 < cTrainingSamples OR 0 < cValidationSamples");
             return Error_IllegalParamValue;
          }
          if(0 == cBins) {
             // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
             // can only occur if there were zero training and zero validation cases since the 
             // features would require a value, even if it was 0.
-            LOG_0(TraceLevelInfo, "INFO BoosterCore::Create feature with 0 values");
+            LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 0 values");
          } else if(1 == cBins) {
             // Dimensions with 1 bin don't contribute anything to the model since they always have the same value, but 
             // the user can specify interactions, so we handle them anyways in a consistent way by boosting on them
-            LOG_0(TraceLevelInfo, "INFO BoosterCore::Create feature with 1 value");
+            LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 1 value");
          }
          pBoosterCore->m_aFeatures[iFeatureInitialize].Initialize(iFeatureInitialize, cBins, bMissing, bUnknown, bNominal);
 
          ++iFeatureInitialize;
       } while(cFeatures != iFeatureInitialize);
    }
-   LOG_0(TraceLevelInfo, "BoosterCore::Create done feature processing");
+   LOG_0(Trace_Info, "BoosterCore::Create done feature processing");
 
    const bool bClassification = IsClassification(cClasses);
    size_t cBytesArrayEquivalentSplitMax = 0;
@@ -310,17 +310,17 @@ ErrorEbmType BoosterCore::Create(
    EBM_ASSERT(nullptr == pBoosterCore->m_apCurrentTermTensors);
    EBM_ASSERT(nullptr == pBoosterCore->m_apBestTermTensors);
 
-   LOG_0(TraceLevelInfo, "BoosterCore::Create starting feature group processing");
+   LOG_0(Trace_Info, "BoosterCore::Create starting feature group processing");
    if(0 != cTerms) {
       pBoosterCore->m_cTerms = cTerms;
       pBoosterCore->m_apTerms = Term::AllocateTerms(cTerms);
       if(UNLIKELY(nullptr == pBoosterCore->m_apTerms)) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create 0 != m_cTerms && nullptr == m_apTerms");
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create 0 != m_cTerms && nullptr == m_apTerms");
          return Error_OutOfMemory;
       }
 
       if(GetTreeSweepSizeOverflow(bClassification, cScores)) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create GetTreeSweepSizeOverflow(bClassification, cScores)");
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create GetTreeSweepSizeOverflow(bClassification, cScores)");
          return Error_OutOfMemory;
       }
       const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cScores);
@@ -330,17 +330,17 @@ ErrorEbmType BoosterCore::Create(
       do {
          const IntEbmType countDimensions = acTermDimensions[iTerm];
          if(countDimensions < IntEbmType { 0 }) {
-            LOG_0(TraceLevelError, "ERROR BoosterCore::Create countDimensions cannot be negative");
+            LOG_0(Trace_Error, "ERROR BoosterCore::Create countDimensions cannot be negative");
             return Error_IllegalParamValue;
          }
          if(IntEbmType { k_cDimensionsMax } < countDimensions) {
-            LOG_0(TraceLevelError, "WARNING BoosterCore::Create countDimensions too large and would cause out of memory condition");
+            LOG_0(Trace_Error, "WARNING BoosterCore::Create countDimensions too large and would cause out of memory condition");
             return Error_OutOfMemory;
          }
          const size_t cDimensions = static_cast<size_t>(countDimensions);
          Term * const pTerm = Term::Allocate(cDimensions, iTerm);
          if(nullptr == pTerm) {
-            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == pTerm");
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == pTerm");
             return Error_OutOfMemory;
          }
          // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
@@ -350,10 +350,10 @@ ErrorEbmType BoosterCore::Create(
          ptrdiff_t cItemsPerBitPack = k_cItemsPerBitPackNone;
          size_t cTensorBins = 1;
          if(UNLIKELY(0 == cDimensions)) {
-            LOG_0(TraceLevelInfo, "INFO BoosterCore::Create empty feature group");
+            LOG_0(Trace_Info, "INFO BoosterCore::Create empty feature group");
          } else {
             if(nullptr == piTermFeature) {
-               LOG_0(TraceLevelError, "ERROR BoosterCore::Create aiTermFeatures is null when there are Terms with non-zero numbers of features");
+               LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures is null when there are Terms with non-zero numbers of features");
                return Error_IllegalParamValue;
             }
             size_t cEquivalentSplits = 1;
@@ -362,17 +362,17 @@ ErrorEbmType BoosterCore::Create(
             do {
                const IntEbmType indexFeature = *piTermFeature;
                if(indexFeature < 0) {
-                  LOG_0(TraceLevelError, "ERROR BoosterCore::Create aiTermFeatures value cannot be negative");
+                  LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures value cannot be negative");
                   return Error_IllegalParamValue;
                }
                if(IsConvertError<size_t>(indexFeature)) {
-                  LOG_0(TraceLevelError, "ERROR BoosterCore::Create aiTermFeatures value too big to reference memory");
+                  LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures value too big to reference memory");
                   return Error_IllegalParamValue;
                }
                const size_t iFeature = static_cast<size_t>(indexFeature);
 
                if(cFeatures <= iFeature) {
-                  LOG_0(TraceLevelError, "ERROR BoosterCore::Create aiTermFeatures value must be less than the number of features");
+                  LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures value must be less than the number of features");
                   return Error_IllegalParamValue;
                }
 
@@ -389,13 +389,13 @@ ErrorEbmType BoosterCore::Create(
                   ++cSignificantDimensions;
                   if(IsMultiplyError(cTensorBins, cBins)) {
                      // if this overflows, we definetly won't be able to allocate it
-                     LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create IsMultiplyError(cTensorStates, cBins)");
+                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cTensorStates, cBins)");
                      return Error_OutOfMemory;
                   }
                   cTensorBins *= cBins;
                   cEquivalentSplits *= cBins - 1; // we can only split between the bins
                } else {
-                  LOG_0(TraceLevelInfo, "INFO BoosterCore::Create feature group with no useful features");
+                  LOG_0(Trace_Info, "INFO BoosterCore::Create feature group with no useful features");
                }
 
                ++piTermFeature;
@@ -408,7 +408,7 @@ ErrorEbmType BoosterCore::Create(
                size_t cBytesArrayEquivalentSplit;
                if(1 == cSignificantDimensions) {
                   if(IsMultiplyError(cBytesPerTreeSweep, cEquivalentSplits)) {
-                     LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerTreeSweep, cEquivalentSplits)");
+                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerTreeSweep, cEquivalentSplits)");
                      return Error_OutOfMemory;
                   }
                   cBytesArrayEquivalentSplit = cBytesPerTreeSweep * cEquivalentSplits;
@@ -436,17 +436,17 @@ ErrorEbmType BoosterCore::Create(
       if(!bClassification || ptrdiff_t { 2 } <= cClasses) {
          error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apCurrentTermTensors);
          if(Error_None != error) {
-            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apCurrentTermTensors");
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == m_apCurrentTermTensors");
             return error;
          }
          error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apBestTermTensors);
          if(Error_None != error) {
-            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apBestTermTensors");
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == m_apBestTermTensors");
             return error;
          }
       }
    }
-   LOG_0(TraceLevelInfo, "BoosterCore::Create finished feature group processing");
+   LOG_0(Trace_Info, "BoosterCore::Create finished feature group processing");
 
    pBoosterCore->m_cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplitMax;
 
@@ -465,7 +465,7 @@ ErrorEbmType BoosterCore::Create(
       pBoosterCore->m_apTerms
    );
    if(Error_None != error) {
-      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create m_trainingSet.Initialize");
+      LOG_0(Trace_Warning, "WARNING BoosterCore::Create m_trainingSet.Initialize");
       return error;
    }
 
@@ -484,7 +484,7 @@ ErrorEbmType BoosterCore::Create(
       pBoosterCore->m_apTerms
    );
    if(Error_None != error) {
-      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create m_validationSet.Initialize");
+      LOG_0(Trace_Warning, "WARNING BoosterCore::Create m_validationSet.Initialize");
       return error;
    }
 
@@ -515,7 +515,7 @@ ErrorEbmType BoosterCore::Create(
       );
       free(aWeights);
       if(UNLIKELY(nullptr == pBoosterCore->m_apSamplingSets)) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apSamplingSets");
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == m_apSamplingSets");
          return Error_OutOfMemory;
       }
    }
@@ -538,7 +538,7 @@ ErrorEbmType BoosterCore::Create(
       if(nullptr != pBoosterCore->m_aValidationWeights) {
          const FloatBig total = AddPositiveFloatsSafeBig(cValidationSamples, pBoosterCore->m_aValidationWeights);
          if(std::isnan(total) || std::isinf(total) || total <= 0) {
-            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create std::isnan(total) || std::isinf(total) || total <= 0");
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create std::isnan(total) || std::isinf(total) || total <= 0");
             return Error_UserParamValue;
          }
          // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
@@ -598,7 +598,7 @@ ErrorEbmType BoosterCore::Create(
    pBoosterCore->m_cClasses = cClasses;
    pBoosterCore->m_bestModelMetric = std::numeric_limits<double>::max();
 
-   LOG_0(TraceLevelInfo, "Exited BoosterCore::Create");
+   LOG_0(Trace_Info, "Exited BoosterCore::Create");
    return Error_None;
 }
 
