@@ -289,7 +289,7 @@ template<typename TTo, typename TFrom, InternalCheckUUN<TTo, TFrom> = true>
 INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
-   static_assert(0 == std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be zero");
+   static_assert(0 == std::numeric_limits<TTo>::lowest(), "TTo::lowest must be zero");
    static_assert(0 <= std::numeric_limits<TTo>::max(), "TTo::max must be positive");
 
    static_assert(std::is_integral<TFrom>::value, "TFrom must be integral");
@@ -317,7 +317,7 @@ template<typename TTo, typename TFrom, InternalCheckUUY<TTo, TFrom> = true>
 INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
-   static_assert(0 == std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be zero");
+   static_assert(0 == std::numeric_limits<TTo>::lowest(), "TTo::lowest must be zero");
    static_assert(0 <= std::numeric_limits<TTo>::max(), "TTo::max must be positive");
 
    static_assert(std::is_integral<TFrom>::value, "TFrom must be integral");

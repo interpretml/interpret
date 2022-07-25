@@ -75,14 +75,19 @@ EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel) 
    case Trace_Off:
       // if the previous logging level allows us to log a message, then do it before turning logging off
       sMessage = Trace_Off == g_traceLevel ? NULL : sStartLogOff;
+      break;
    case Trace_Error:
       sMessage = sStartLogError;
+      break;
    case Trace_Warning:
       sMessage = sStartLogWarning;
+      break;
    case Trace_Info:
       sMessage = sStartLogInfo;
+      break;
    case Trace_Verbose:
       sMessage = sStartLogVerbose;
+      break;
    default:
       // if the previous logging level allows us to log a message, then do it before turning logging off
       sMessage = Trace_Off == g_traceLevel ? NULL : sStartLogIllegal;

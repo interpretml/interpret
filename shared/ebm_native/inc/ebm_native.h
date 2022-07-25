@@ -10,33 +10,20 @@
 #ifdef __cplusplus
 extern "C" {
 #define EBM_EXTERN_C  extern "C"
-#define STATIC_CAST(__type, __val)  (static_cast<__type>(__val))
+#define STATIC_CAST(type, val)  (static_cast<type>(val))
 #else // __cplusplus
 #define EBM_EXTERN_C  extern
-#define STATIC_CAST(__type, __val)  ((__type)(__val))
+#define STATIC_CAST(type, val)  ((type)(val))
 #endif // __cplusplus
 
-#define BOOL_CAST(EBM_VAL)                (STATIC_CAST(BoolEbmType, (EBM_VAL)))
-#define ERROR_CAST(EBM_VAL)               (STATIC_CAST(ErrorEbmType, (EBM_VAL)))
-#define TRACE_CAST(EBM_VAL)               (STATIC_CAST(TraceEbmType, (EBM_VAL)))
-#define BOOST_FLAGS_CAST(EBM_VAL)         (STATIC_CAST(BoostFlagsType, (EBM_VAL)))
-#define INTERACTION_FLAGS_CAST(EBM_VAL)   (STATIC_CAST(InteractionFlagsType, (EBM_VAL)))
-
 //#define EXPAND_BINARY_LOGITS
-// TODO: implement REDUCE_MULTICLASS_LOGITS
-//#define REDUCE_MULTICLASS_LOGITS
-#if defined(EXPAND_BINARY_LOGITS) && defined(REDUCE_MULTICLASS_LOGITS)
-#error we should not be expanding binary logits while reducing multiclass logits
-#endif
 
 #if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
 
 #define EBM_API_INCLUDE extern
 
 #ifdef EBM_NATIVE_R
-// R has it's own way of exporting functions.  There is a single entry point that describes to 
-// R how to call our functions.  Also, we export R specific functions rather than the generic 
-// ones that we can consume from other languages
+// R has it's own way of exporting functions. We export R specific functionality via the R_init_interpret function
 #define EBM_API_BODY EBM_EXTERN_C
 #else // EBM_NATIVE_R
 #define EBM_API_BODY EBM_EXTERN_C __attribute__ ((visibility ("default")))
@@ -47,35 +34,29 @@ extern "C" {
 #elif defined(_MSC_VER) // compiler type
 
 #ifdef EBM_NATIVE_R 
-// R has it's own way of exporting functions.  There is a single entry point that describes to 
-// R how to call our functions.  Also, we export R specific functions rather than the generic 
-// ones that we can consume from other languages
+// R has it's own way of exporting functions. We export R specific functionality via the R_init_interpret function
 #define EBM_API_INCLUDE extern
 #define EBM_API_BODY EBM_EXTERN_C
 #else // EBM_NATIVE_R
 
 #ifdef EBM_NATIVE_EXPORTS
-// we use a .def file in Visual Studio because we can remove the C name mangling entirely, 
-// in addition to C++ name mangling, unlike __declspec(dllexport)
+// we use a .def file in Visual Studio because we can remove the C name mangling, unlike __declspec(dllexport)
 #define EBM_API_INCLUDE extern
 #define EBM_API_BODY EBM_EXTERN_C
 #else // EBM_NATIVE_EXPORTS
-// __declspec(dllimport) is optional, but having it allows the compiler to make the 
-// resulting code more efficient when imported
+// __declspec(dllimport) is optional, but it allows the compiler to make the code more efficient when imported
 #define EBM_API_INCLUDE extern __declspec(dllimport)
 #endif // EBM_NATIVE_EXPORTS
 
 #endif // EBM_NATIVE_R
 
 #ifdef _WIN64
-// _WIN32 is defined even for 64 bit compilations for compatibility, so use _WIN64
-// in Windows, __fastcall is used for x64 always.  We don't need to define it, so let's leave it blank for 
-// future compatibility.  Not specifying it means it can be the new default if somehting new comes along later
+// _WIN32 is defined during 64-bit compilations, so use _WIN64
+// In x64 Windows, __fastcall is the only calling convention, and it does not need to be specified
 #define EBM_CALLING_CONVENTION
 #else // _WIN64
-// In Windows, __stdcall (otherwise known as WINAPI) is used for the Win32 OS functions.  It is precicely defined 
-// by Windows and all languages essentially support it within the Windows ecosystem since they all need to call 
-// win32 functions.  Not all languages support CDECL since that's a C/C++ specification.
+// In x86 Windows, __stdcall (WINAPI) is used for Win32 OS functions. It is defined by Windows and most languages 
+// support it since they all need to call win32 internally. Not all languages support CDECL since it is C specified.
 #define EBM_CALLING_CONVENTION __stdcall
 #endif // _WIN64
 
@@ -117,6 +98,7 @@ typedef struct _InteractionHandle {
 // https://stackoverflow.com/questions/1848700/biggest-integer-that-can-be-stored-in-a-double
 // R has a lower maximum index of 4503599627370496 (R_XLEN_T_MAX) probably to store a bit somewhere.
 #define SAFE_FLOAT64_AS_INT64_MAX   9007199254740991
+
 // The maximum signed int64 value is 9223372036854775807, but doubles above 9223372036854775295 round in IEEE-754
 // to a number above that, so if we're converting from a float64 to an int64, the maximum safe number is 
 // 9223372036854775295. When we convert 9223372036854775295 to a float64 though, we loose precision and if we output 
@@ -150,6 +132,12 @@ typedef int64_t InteractionFlagsType;
 // technically printf hexidecimals are unsigned, so convert it first to unsigned before calling printf
 typedef uint64_t UInteractionFlagsType;
 #define UInteractionFlagsTypePrintf PRIx64
+
+#define BOOL_CAST(val)                 (STATIC_CAST(BoolEbmType, (val)))
+#define ERROR_CAST(val)                (STATIC_CAST(ErrorEbmType, (val)))
+#define TRACE_CAST(val)                (STATIC_CAST(TraceEbmType, (val)))
+#define BOOST_FLAGS_CAST(val)          (STATIC_CAST(BoostFlagsType, (val)))
+#define INTERACTION_FLAGS_CAST(val)    (STATIC_CAST(InteractionFlagsType, (val)))
 
 #define EBM_FALSE          (BOOL_CAST(0))
 #define EBM_TRUE           (BOOL_CAST(1))

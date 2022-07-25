@@ -1078,7 +1078,7 @@ SEXP GenerateTermUpdate_R(
    if(std::isnan(doubleMinSamplesLeaf) || FLOAT64_TO_INT64_MAX < doubleMinSamplesLeaf) {
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate_R minSamplesLeaf overflow");
       minSamplesLeafEbm = FLOAT64_TO_INT64_MAX;
-   } else if(doubleMinSamplesLeaf < IntEmbType { 1 }) {
+   } else if(doubleMinSamplesLeaf < IntEbmType { 1 }) {
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate_R minSamplesLeaf can't be less than 1. Adjusting to 1.");
       minSamplesLeafEbm = 1;
    } else {
@@ -1588,7 +1588,7 @@ SEXP CalcInteractionStrength_R(
    if(std::isnan(doubleMinSamplesLeaf) || FLOAT64_TO_INT64_MAX < doubleMinSamplesLeaf) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength_R minSamplesLeaf overflow");
       minSamplesLeafEbm = FLOAT64_TO_INT64_MAX;
-   } else if(doubleMinSamplesLeaf < IntEmbType { 1 }) {
+   } else if(doubleMinSamplesLeaf < IntEbmType { 1 }) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength_R minSamplesLeaf can't be less than 1. Adjusting to 1.");
       minSamplesLeafEbm = 1;
    } else {

@@ -62,8 +62,8 @@ static_assert(k_minNonSubnormal == std::numeric_limits<double>::min(), "bad k_mi
 static_assert(k_nonDoubleable + k_lastTick != k_nonDoubleable, "bad k_lastTick");
 static_assert(k_nonDoubleable + k_lastTick / 2 == k_nonDoubleable, "bad k_lastTick");
 static_assert(k_nonDoubleable - k_lastTick / 2 != k_nonDoubleable, "bad k_lastTick");
-static_assert(std::numeric_limits<double>::infinity() == k_nonDoubleable * 2, "bad k_nonDoubleable");
-static_assert(std::numeric_limits<double>::infinity() != (k_nonDoubleable - k_lastTick / 2) * 2, "bad k_nonDoubleable");
+static_assert((k_nonDoubleable - k_lastTick / 2) * 2 <= std::numeric_limits<double>::max(), "bad k_nonDoubleable");
+//static_assert(std::numeric_limits<double>::max() < k_nonDoubleable * 2, "bad k_nonDoubleable");
 
 extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept {
    // This is a cross-language portable implementation of nextafter

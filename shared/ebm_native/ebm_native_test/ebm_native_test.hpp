@@ -134,35 +134,9 @@ inline constexpr static bool IsClassification(const ptrdiff_t cClasses) {
 
 inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) {
 #ifdef EXPAND_BINARY_LOGITS
-#ifdef REDUCE_MULTICLASS_LOGITS
-
-   // EXPAND_BINARY_LOGITS && REDUCE_MULTICLASS_LOGITS
-#error we should not be expanding binary logits while reducing multiclass logits
-
-#else // REDUCE_MULTICLASS_LOGITS
-
-   // EXPAND_BINARY_LOGITS && !REDUCE_MULTICLASS_LOGITS
-   return cClasses <= ptrdiff_t { 1 } ? 
-      size_t { 1 } : 
-      static_cast<size_t>(cClasses);
-
-#endif // REDUCE_MULTICLASS_LOGITS
+   return cClasses <= ptrdiff_t { 1 } ? size_t { 1 } : static_cast<size_t>(cClasses);
 #else // EXPAND_BINARY_LOGITS
-#ifdef REDUCE_MULTICLASS_LOGITS
-
-   // !EXPAND_BINARY_LOGITS && REDUCE_MULTICLASS_LOGITS
-   return cClasses <= ptrdiff_t { 2 } ? 
-      size_t { 1 } : 
-      static_cast<size_t>(cClasses) - size_t { 1 };
-
-#else // REDUCE_MULTICLASS_LOGITS
-
-   // !EXPAND_BINARY_LOGITS && !REDUCE_MULTICLASS_LOGITS
-   return cClasses <= ptrdiff_t { 2 } ? 
-      size_t { 1 } : 
-      static_cast<size_t>(cClasses);
-
-#endif // REDUCE_MULTICLASS_LOGITS
+   return cClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
 #endif // EXPAND_BINARY_LOGITS
 }
 

@@ -210,29 +210,11 @@ double TestApi::GetTermScore(
 #endif // EXPAND_BINARY_LOGITS
    } else {
       // multiclass
-#ifdef REDUCE_MULTICLASS_LOGITS
-      if(m_iZeroClassificationLogit < 0) {
-         if(0 == iClassOrZero) {
-            return double { 0 };
-         } else {
-            return aScores[iClassOrZero - 1];
-         }
-      } else {
-         if(staitc_cast<size_t>(m_iZeroClassificationLogit) == iClassOrZero) {
-            return double { 0 };
-         } else if(staitc_cast<size_t>(m_iZeroClassificationLogit) < iClassOrZero) {
-            return aScores[iClassOrZero - 1];
-         } else {
-            return aScores[iClassOrZero];
-         }
-      }
-#else // REDUCE_MULTICLASS_LOGITS
       if(m_iZeroClassificationLogit < 0) {
          return aScores[iClassOrZero];
       } else {
          return aScores[iClassOrZero] - aScores[m_iZeroClassificationLogit];
       }
-#endif // REDUCE_MULTICLASS_LOGITS
    }
 }
 
@@ -378,25 +360,12 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
 #endif // EXPAND_BINARY_LOGITS
                   } else {
                      // multiclass
-#ifdef REDUCE_MULTICLASS_LOGITS
-                     if(m_iZeroClassificationLogit < 0) {
-                        if(0 != iLogit) {
-                           m_trainingInitScores.push_back(oneLogit - oneSample.m_logits[0]);
-                        }
-                     } else {
-                        if(m_iZeroClassificationLogit != iLogit) {
-                           m_trainingInitScores.push_back(
-                              oneLogit - oneSample.m_logits[m_iZeroClassificationLogit]);
-                        }
-                     }
-#else // REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         m_trainingInitScores.push_back(oneLogit);
                      } else {
                         m_trainingInitScores.push_back(
                            oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
-#endif // REDUCE_MULTICLASS_LOGITS
                   }
                   ++iLogit;
                }
@@ -516,25 +485,12 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
 #endif // EXPAND_BINARY_LOGITS
                   } else {
                      // multiclass
-#ifdef REDUCE_MULTICLASS_LOGITS
-                     if(m_iZeroClassificationLogit < 0) {
-                        if(0 != iLogit) {
-                           m_validationInitScores.push_back(oneLogit - oneSample.m_logits[0]);
-                        }
-                     } else {
-                        if(m_iZeroClassificationLogit != iLogit) {
-                           m_validationInitScores.push_back(
-                              oneLogit - oneSample.m_logits[m_iZeroClassificationLogit]);
-                        }
-                     }
-#else // REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         m_validationInitScores.push_back(oneLogit);
                      } else {
                         m_validationInitScores.push_back(
                            oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
-#endif // REDUCE_MULTICLASS_LOGITS
                   }
                   ++iLogit;
                }
@@ -947,25 +903,12 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
 #endif // EXPAND_BINARY_LOGITS
                   } else {
                      // multiclass
-#ifdef REDUCE_MULTICLASS_LOGITS
-                     if(m_iZeroClassificationLogit < 0) {
-                        if(0 != iLogit) {
-                           m_interactionInitScores.push_back(oneLogit - oneSample.m_logits[0]);
-                        }
-                     } else {
-                        if(m_iZeroClassificationLogit != iLogit) {
-                           m_interactionInitScores.push_back(
-                              oneLogit - oneSample.m_logits[m_iZeroClassificationLogit]);
-                        }
-                     }
-#else // REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         m_interactionInitScores.push_back(oneLogit);
                      } else {
                         m_interactionInitScores.push_back(
                            oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
-#endif // REDUCE_MULTICLASS_LOGITS
                   }
                   ++iLogit;
                }
