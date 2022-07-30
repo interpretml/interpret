@@ -148,14 +148,14 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
       ++iFeature;
 
-      const BagEbmType * pBag = aBag;
-      BagEbmType countBagged = 0;
+      const BagEbmType * pSampleReplication = aBag;
+      BagEbmType replication = 0;
       size_t iData = 0;
 
       const SharedStorageDataType * pInputDataFrom = static_cast<const SharedStorageDataType *>(aInputDataFrom);
       const StorageDataType * pInputDataToEnd = &pInputDataTo[cSetSamples];
       do {
-         while(countBagged <= BagEbmType { 0 }) {
+         while(replication <= BagEbmType { 0 }) {
             const SharedStorageDataType inputData = *pInputDataFrom;
             ++pInputDataFrom;
 
@@ -166,14 +166,14 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                goto free_all;
             }
 
-            countBagged = 1;
-            if(nullptr != pBag) {
-               countBagged = *pBag;
-               ++pBag;
+            replication = 1;
+            if(nullptr != pSampleReplication) {
+               replication = *pSampleReplication;
+               ++pSampleReplication;
             }
          }
-         EBM_ASSERT(0 < countBagged);
-         --countBagged;
+         EBM_ASSERT(0 < replication);
+         --replication;
 
          if(IsConvertError<StorageDataType>(iData)) {
             // we can remove this check once we get into bit packing this since we'll have checked it beforehand
@@ -184,7 +184,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          *pInputDataTo = static_cast<StorageDataType>(iData);
          ++pInputDataTo;
       } while(pInputDataToEnd != pInputDataTo);
-      EBM_ASSERT(0 == countBagged);
+      EBM_ASSERT(0 == replication);
    } while(cFeatures != iFeature);
 
    LOG_0(Trace_Info, "Exited DataSetInteraction::ConstructInputData");

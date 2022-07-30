@@ -59,20 +59,20 @@ public:
          return Error_OutOfMemory;
       }
 
-      const BagEbmType * pBag = aBag;
+      const BagEbmType * pSampleReplication = aBag;
       const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
       const double * pInitScore = aInitScores;
       FloatFast * pGradientAndHessian = aGradientAndHessian;
       const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cScores * cSetSamples * 2;
       const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
-         BagEbmType countBagged = 1;
-         if(nullptr != pBag) {
-            countBagged = *pBag;
-            ++pBag;
+         BagEbmType replication = 1;
+         if(nullptr != pSampleReplication) {
+            replication = *pSampleReplication;
+            ++pSampleReplication;
          }
-         if(BagEbmType { 0 } != countBagged) {
-            const bool isItemTraining = BagEbmType { 0 } < countBagged;
+         if(BagEbmType { 0 } != replication) {
+            const bool isItemTraining = BagEbmType { 0 } < replication;
             if(isLoopTraining == isItemTraining) {
                const SharedStorageDataType targetOriginal = *pTargetData;
                // if we can't fit it, then we should increase our StorageDataType size!
@@ -129,8 +129,8 @@ public:
                      ++iScore;
                   } while(iScore < cScores);
 
-                  countBagged -= direction;
-               } while(BagEbmType { 0 } != countBagged);
+                  replication -= direction;
+               } while(BagEbmType { 0 } != replication);
             } else {
                if(nullptr != pInitScore) {
                   pInitScore += cScores;
@@ -176,25 +176,25 @@ public:
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != aGradientAndHessian);
 
-      const BagEbmType * pBag = aBag;
+      const BagEbmType * pSampleReplication = aBag;
       const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
       const double * pInitScore = aInitScores;
       FloatFast * pGradientAndHessian = aGradientAndHessian;
       const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples * 2;
       const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
-         BagEbmType countBagged = 1;
-         if(nullptr != pBag) {
-            countBagged = *pBag;
-            ++pBag;
+         BagEbmType replication = 1;
+         if(nullptr != pSampleReplication) {
+            replication = *pSampleReplication;
+            ++pSampleReplication;
          }
-         if(BagEbmType { 0 } != countBagged) {
+         if(BagEbmType { 0 } != replication) {
             FloatFast initScore = 0;
             if(nullptr != pInitScore) {
                initScore = SafeConvertFloat<FloatFast>(*pInitScore);
                ++pInitScore;
             }
-            const bool isItemTraining = BagEbmType { 0 } < countBagged;
+            const bool isItemTraining = BagEbmType { 0 } < replication;
             if(isLoopTraining == isItemTraining) {
                const SharedStorageDataType targetOriginal = *pTargetData;
                // if we can't fit it, then we should increase our StorageDataType size!
@@ -211,8 +211,8 @@ public:
                   *(pGradientAndHessian + 1) = hessian;
                   pGradientAndHessian += 2;
 
-                  countBagged -= direction;
-               } while(BagEbmType { 0 } != countBagged);
+                  replication -= direction;
+               } while(BagEbmType { 0 } != replication);
             }
          }
          ++pTargetData;
@@ -252,25 +252,25 @@ public:
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != aGradientAndHessian);
 
-      const BagEbmType * pBag = aBag;
+      const BagEbmType * pSampleReplication = aBag;
       const FloatFast * pTargetData = static_cast<const FloatFast *>(aTargets);
       const double * pInitScore = aInitScores;
       FloatFast * pGradientAndHessian = aGradientAndHessian;
       const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples;
       const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
-         BagEbmType countBagged = 1;
-         if(nullptr != pBag) {
-            countBagged = *pBag;
-            ++pBag;
+         BagEbmType replication = 1;
+         if(nullptr != pSampleReplication) {
+            replication = *pSampleReplication;
+            ++pSampleReplication;
          }
-         if(BagEbmType { 0 } != countBagged) {
+         if(BagEbmType { 0 } != replication) {
             FloatFast initScore = 0;
             if(nullptr != pInitScore) {
                initScore = SafeConvertFloat<FloatFast>(*pInitScore);
                ++pInitScore;
             }
-            const bool isItemTraining = BagEbmType { 0 } < countBagged;
+            const bool isItemTraining = BagEbmType { 0 } < replication;
             if(isLoopTraining == isItemTraining) {
                // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 
                //   from the input data
@@ -287,8 +287,8 @@ public:
                   *pGradientAndHessian = gradient;
                   ++pGradientAndHessian;
 
-                  countBagged -= direction;
-               } while(BagEbmType { 0 } != countBagged);
+                  replication -= direction;
+               } while(BagEbmType { 0 } != replication);
             }
          }
          ++pTargetData;

@@ -105,7 +105,7 @@ ebm_classify <- function(
       term_scores[[col_name]] <- vector("numeric", length(cuts[[col_name]]) + 1)
    }
 
-   sample_counts <- vector("numeric", length(y))
+   bag <- vector("integer", length(y))
 
    n_classes <- 2 # only binary classification for now
    num_scores <- get_count_scores_c(n_classes)
@@ -118,13 +118,13 @@ ebm_classify <- function(
 
    for(i_outer_bag in 1:outer_bags) {
       random_state <- generate_seed(random_state, 1416147523)
-      # WARNING: sample_counts is modified in-place
-      sample_without_replacement(random_state, train_size, validation_size, sample_counts)
+      # WARNING: bag is modified in-place
+      sample_without_replacement(random_state, train_size, validation_size, bag)
 
-      X_train <- X_binned[0 < sample_counts, ]
-      y_train <- y[0 < sample_counts]
-      X_val <- X_binned[sample_counts < 0, ]
-      y_val <- y[sample_counts < 0] 
+      X_train <- X_binned[0 < bag, ]
+      y_train <- y[0 < bag]
+      X_val <- X_binned[bag < 0, ]
+      y_val <- y[bag < 0] 
 
       result_list <- cyclic_gradient_boost(
          "classification",

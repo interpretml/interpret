@@ -56,7 +56,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
    SeedEbmType seed,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
-   BagEbmType * sampleCountsOut
+   BagEbmType * bagOut
 ) {
    LOG_COUNTED_N(
       &g_cLogEnterSampleWithoutReplacement,
@@ -67,17 +67,17 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
       "seed=%" SeedEbmTypePrintf ", "
       "countTrainingSamples=%" IntEbmTypePrintf ", "
       "countValidationSamples=%" IntEbmTypePrintf ", "
-      "sampleCountsOut=%p"
+      "bagOut=%p"
       ,
       ObtainTruth(isDeterministic),
       seed,
       countTrainingSamples,
       countValidationSamples,
-      static_cast<void *>(sampleCountsOut)
+      static_cast<void *>(bagOut)
    );
 
-   if(UNLIKELY(nullptr == sampleCountsOut)) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement nullptr == sampleCountsOut");
+   if(UNLIKELY(nullptr == bagOut)) {
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement nullptr == bagOut");
       return Error_IllegalParamValue;
    }
 
@@ -110,14 +110,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
       // there's nothing for us to fill the array with
       return Error_None;
    }
-   if(UNLIKELY(IsMultiplyError(sizeof(*sampleCountsOut), cSamplesRemaining))) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement IsMultiplyError(sizeof(*sampleCountsOut), cSamplesRemaining)");
+   if(UNLIKELY(IsMultiplyError(sizeof(*bagOut), cSamplesRemaining))) {
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement IsMultiplyError(sizeof(*bagOut), cSamplesRemaining)");
       return Error_IllegalParamValue;
    }
 
    size_t cTrainingRemaining = cTrainingSamples;
 
-   BagEbmType * pSampleCountsOut = sampleCountsOut;
+   BagEbmType * pSampleReplicationOut = bagOut;
    if(EBM_FALSE != isDeterministic) {
       RandomDeterministic randomGenerator;
       randomGenerator.InitializeUnsigned(seed, k_samplingWithoutReplacementRandomizationMix);
@@ -125,8 +125,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
          const size_t iRandom = randomGenerator.NextFast(cSamplesRemaining);
          const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
          cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
-         *pSampleCountsOut = UNPREDICTABLE(bTrainingSample) ? BagEbmType { 1 } : BagEbmType { -1 };
-         ++pSampleCountsOut;
+         *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbmType { 1 } : BagEbmType { -1 };
+         ++pSampleReplicationOut;
          --cSamplesRemaining;
       } while(0 != cSamplesRemaining);
    } else {
@@ -136,8 +136,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
             const size_t iRandom = randomGenerator.NextFast(cSamplesRemaining);
             const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
             cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
-            *pSampleCountsOut = UNPREDICTABLE(bTrainingSample) ? BagEbmType { 1 } : BagEbmType { -1 };
-            ++pSampleCountsOut;
+            *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbmType { 1 } : BagEbmType { -1 };
+            ++pSampleReplicationOut;
             --cSamplesRemaining;
          } while(0 != cSamplesRemaining);
       } catch(const std::bad_alloc &) {
@@ -173,7 +173,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
    IntEbmType * targets,
-   BagEbmType * sampleCountsOut
+   BagEbmType * bagOut
 ) {
    struct TargetSamplingCounts {
       size_t m_cTraining;
@@ -191,7 +191,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
       "countTrainingSamples=%" IntEbmTypePrintf ", "
       "countValidationSamples=%" IntEbmTypePrintf ", "
       "targets=%p, "
-      "sampleCountsOut=%p"
+      "bagOut=%p"
       ,
       ObtainTruth(isDeterministic),
       seed,
@@ -199,7 +199,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
       countTrainingSamples,
       countValidationSamples,
       static_cast<void*>(targets),
-      static_cast<void*>(sampleCountsOut)
+      static_cast<void*>(bagOut)
    );
 
    if (UNLIKELY(nullptr == targets)) {
@@ -207,8 +207,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
       return Error_IllegalParamValue;
    }
 
-   if (UNLIKELY(nullptr == sampleCountsOut)) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified nullptr == sampleCountsOut");
+   if (UNLIKELY(nullptr == bagOut)) {
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified nullptr == bagOut");
       return Error_IllegalParamValue;
    }
 
@@ -239,7 +239,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
 
    size_t cSamples = cTrainingSamples + cValidationSamples;
    if (UNLIKELY(cSamples == 0)) {
-      // there's nothing for us to fill the sampleCountsOut with
+      // there's nothing for us to fill the bagOut with
       return Error_None;
    }
 
@@ -253,8 +253,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
    }
    const size_t cClasses = static_cast<size_t>(countClasses);
 
-   if (UNLIKELY(IsMultiplyError(sizeof(*sampleCountsOut), cSamples))) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsMultiplyError(sizeof(*sampleCountsOut), cSamples)");
+   if (UNLIKELY(IsMultiplyError(sizeof(*bagOut), cSamples))) {
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsMultiplyError(sizeof(*bagOut), cSamples)");
       return Error_IllegalParamValue;
    }
 
@@ -449,10 +449,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
 
       if (UNPREDICTABLE(bTrainingSample)) {
          --pTargetSample->m_cTraining;
-         sampleCountsOut[iSample] = BagEbmType{ 1 };
+         bagOut[iSample] = BagEbmType{ 1 };
       }
       else {
-         sampleCountsOut[iSample] = BagEbmType{ -1 };
+         bagOut[iSample] = BagEbmType{ -1 };
       }
 
       --pTargetSample->m_cTotalRemaining;
@@ -495,43 +495,43 @@ extern ErrorEbmType Unbag(
    if(nullptr != aBag) {
       cTrainingSamples = 0;
       if(0 != cSamples) {
-         const BagEbmType * pBag = aBag;
-         const BagEbmType * const pBagEnd = aBag + cSamples;
+         const BagEbmType * pSampleReplication = aBag;
+         const BagEbmType * const pSampleReplicationEnd = aBag + cSamples;
          do {
-            BagEbmType sampleDefinition = *pBag;
-            if(sampleDefinition < BagEbmType { 0 }) {
-               if(IsConvertError<ptrdiff_t>(sampleDefinition)) {
-                  LOG_0(Trace_Error, "ERROR Unbag IsConvertError<ptrdiff_t>(sampleDefinition)");
+            const BagEbmType replication = *pSampleReplication;
+            if(replication < BagEbmType { 0 }) {
+               if(IsConvertError<ptrdiff_t>(replication)) {
+                  LOG_0(Trace_Error, "ERROR Unbag IsConvertError<ptrdiff_t>(replication)");
                   return Error_IllegalParamValue;
                }
-               ptrdiff_t cSampleDefinitionSigned = static_cast<ptrdiff_t>(sampleDefinition);
+               ptrdiff_t replicationSigned = static_cast<ptrdiff_t>(replication);
                // by creating a ptrdiff_t with "ptrdiff_t { ... }" the compiler is suposed to give us an 
                // error if for some reason the negation of the max fails
-               if(cSampleDefinitionSigned < ptrdiff_t { -std::numeric_limits<ptrdiff_t>::max() }) {
-                  LOG_0(Trace_Error, "ERROR Unbag cSampleDefinitionSigned < ptrdiff_t { -std::numeric_limits<ptrdiff_t>::max() }");
+               if(replicationSigned < ptrdiff_t { -std::numeric_limits<ptrdiff_t>::max() }) {
+                  LOG_0(Trace_Error, "ERROR Unbag replicationSigned < ptrdiff_t { -std::numeric_limits<ptrdiff_t>::max() }");
                   return Error_IllegalParamValue;
                }
-               cSampleDefinitionSigned = -cSampleDefinitionSigned;
-               const size_t cSampleDefinition = static_cast<size_t>(cSampleDefinitionSigned);
-               if(IsAddError(cValidationSamples, cSampleDefinition)) {
-                  LOG_0(Trace_Error, "ERROR Unbag IsAddError(cValidationSamples, cSampleDefinition)");
+               replicationSigned = -replicationSigned;
+               const size_t replicationUnsigned = static_cast<size_t>(replicationSigned);
+               if(IsAddError(cValidationSamples, replicationUnsigned)) {
+                  LOG_0(Trace_Error, "ERROR Unbag IsAddError(cValidationSamples, replicationUnsigned)");
                   return Error_IllegalParamValue;
                }
-               cValidationSamples += cSampleDefinition;
+               cValidationSamples += replicationUnsigned;
             } else {
-               if(IsConvertError<size_t>(sampleDefinition)) {
-                  LOG_0(Trace_Error, "ERROR Unbag IsConvertError<size_t>(sampleDefinition)");
+               if(IsConvertError<size_t>(replication)) {
+                  LOG_0(Trace_Error, "ERROR Unbag IsConvertError<size_t>(replication)");
                   return Error_IllegalParamValue;
                }
-               const size_t cSampleDefinition = static_cast<size_t>(sampleDefinition);
-               if(IsAddError(cTrainingSamples, cSampleDefinition)) {
-                  LOG_0(Trace_Error, "ERROR Unbag IsAddError(cTrainingSamples, cSampleDefinition)");
+               const size_t replicationUnsigned = static_cast<size_t>(replication);
+               if(IsAddError(cTrainingSamples, replicationUnsigned)) {
+                  LOG_0(Trace_Error, "ERROR Unbag IsAddError(cTrainingSamples, replicationUnsigned)");
                   return Error_IllegalParamValue;
                }
-               cTrainingSamples += cSampleDefinition;
+               cTrainingSamples += replicationUnsigned;
             }
-            ++pBag;
-         } while(pBagEnd != pBag);
+            ++pSampleReplication;
+         } while(pSampleReplicationEnd != pSampleReplication);
       }
    }
    *pcTrainingSamplesOut = cTrainingSamples;
@@ -542,7 +542,7 @@ extern ErrorEbmType Unbag(
 INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
    const BagEbmType direction,
    const size_t cAllSamples,
-   const BagEbmType * pBag,
+   const BagEbmType * const aBag,
    const FloatFast * pWeights
 ) {
    EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
@@ -552,14 +552,15 @@ INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
    FloatFast firstWeight = std::numeric_limits<FloatFast>::quiet_NaN();
    const FloatFast * const pWeightsEnd = pWeights + cAllSamples;
    const bool isLoopTraining = BagEbmType { 0 } < direction;
+   const BagEbmType * pSampleReplication = aBag;
    do {
-      BagEbmType countBagged = 1;
-      if(nullptr != pBag) {
-         countBagged = *pBag;
-         ++pBag;
+      BagEbmType replication = 1;
+      if(nullptr != pSampleReplication) {
+         replication = *pSampleReplication;
+         ++pSampleReplication;
       }
-      if(BagEbmType { 0 } != countBagged) {
-         const bool isItemTraining = BagEbmType { 0 } < countBagged;
+      if(BagEbmType { 0 } != replication) {
+         const bool isItemTraining = BagEbmType { 0 } < replication;
          if(isLoopTraining == isItemTraining) {
             const FloatFast weight = *pWeights;
             // this relies on the property that NaN is not equal to everything, including NaN
@@ -605,27 +606,27 @@ extern ErrorEbmType ExtractWeights(
       }
       *ppWeightsOut = aRet;
 
-      const BagEbmType * pBag = aBag;
+      const BagEbmType * pSampleReplication = aBag;
       const FloatFast * pWeightFrom = aWeights;
       FloatFast * pWeightTo = aRet;
       FloatFast * pWeightToEnd = aRet + cSetSamples;
       const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
-         BagEbmType countBagged = 1;
-         if(nullptr != pBag) {
-            countBagged = *pBag;
-            ++pBag;
+         BagEbmType replication = 1;
+         if(nullptr != pSampleReplication) {
+            replication = *pSampleReplication;
+            ++pSampleReplication;
          }
-         if(BagEbmType { 0 } != countBagged) {
-            const bool isItemTraining = BagEbmType { 0 } < countBagged;
+         if(BagEbmType { 0 } != replication) {
+            const bool isItemTraining = BagEbmType { 0 } < replication;
             if(isLoopTraining == isItemTraining) {
                const FloatFast weight = *pWeightFrom;
                do {
                   EBM_ASSERT(pWeightTo < pWeightToEnd);
                   *pWeightTo = weight;
                   ++pWeightTo;
-                  countBagged -= direction;
-               } while(BagEbmType { 0 } != countBagged);
+                  replication -= direction;
+               } while(BagEbmType { 0 } != replication);
             }
          }
          ++pWeightFrom;

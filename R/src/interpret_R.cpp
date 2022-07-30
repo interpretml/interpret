@@ -431,12 +431,12 @@ SEXP SampleWithoutReplacement_R(
    SEXP seed,
    SEXP countTrainingSamples,
    SEXP countValidationSamples,
-   SEXP sampleCountsOut
+   SEXP bagOut
 ) {
    EBM_ASSERT(nullptr != seed);
    EBM_ASSERT(nullptr != countTrainingSamples);
    EBM_ASSERT(nullptr != countValidationSamples);
-   EBM_ASSERT(nullptr != sampleCountsOut);
+   EBM_ASSERT(nullptr != bagOut);
 
    ErrorEbmType error;
 
@@ -470,51 +470,51 @@ SEXP SampleWithoutReplacement_R(
    IntEbmType countValidationSamplesIntEbmType = static_cast<IntEbmType>(countValidationSamplesDouble);
    EBM_ASSERT(!IsConvertError<size_t>(countValidationSamplesIntEbmType)); // IsDoubleToIntEbmTypeIndexValid checks this
 
-   if(REALSXP != TYPEOF(sampleCountsOut)) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement_R REALSXP != TYPEOF(sampleCountsOut)");
+   if(INTSXP != TYPEOF(bagOut)) {
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement_R INTSXP != TYPEOF(bagOut)");
       return R_NilValue;
    }
-   const R_xlen_t sampleCountsOutR = xlength(sampleCountsOut);
-   if(IsConvertError<size_t>(sampleCountsOutR)) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement_R IsConvertError<size_t>(sampleCountsOutR)");
+   const R_xlen_t countSamples = xlength(bagOut);
+   if(IsConvertError<size_t>(countSamples)) {
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement_R IsConvertError<size_t>(countSamples)");
       return R_NilValue;
    }
-   const size_t cSampleCountsOut = static_cast<size_t>(sampleCountsOutR);
-   if(static_cast<size_t>(countTrainingSamplesIntEbmType) + static_cast<size_t>(countValidationSamplesIntEbmType) != cSampleCountsOut) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement_R static_cast<size_t>(countTrainingSamplesIntEbmType) + static_cast<size_t>(countValidationSamplesIntEbmType) != cSampleCountsOut");
+   const size_t cSamples = static_cast<size_t>(countSamples);
+   if(static_cast<size_t>(countTrainingSamplesIntEbmType) + static_cast<size_t>(countValidationSamplesIntEbmType) != cSamples) {
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement_R static_cast<size_t>(countTrainingSamplesIntEbmType) + static_cast<size_t>(countValidationSamplesIntEbmType) != cSamples");
       return R_NilValue;
    }
 
-   if(0 != cSampleCountsOut) {
-      IntEbmType * const aSampleCounts =
-         reinterpret_cast<IntEbmType *>(R_alloc(cSampleCountsOut, static_cast<int>(sizeof(IntEbmType))));
-      EBM_ASSERT(nullptr != aSampleCounts); // this can't be nullptr since R_alloc uses R error handling
+   if(0 != cSamples) {
+      BagEbmType * const aBag =
+         reinterpret_cast<BagEbmType *>(R_alloc(cSamples, static_cast<int>(sizeof(BagEbmType))));
+      EBM_ASSERT(nullptr != aBag); // this can't be nullptr since R_alloc uses R error handling
 
       error = SampleWithoutReplacement(
          seedLocal,
          countTrainingSamplesIntEbmType,
          countValidationSamplesIntEbmType,
-         aSampleCounts
+         aBag
       );
 
       if(Error_None != error) {
          return R_NilValue;
       }
 
-      double * pSampleCountsOut = REAL(sampleCountsOut);
-      const IntEbmType * pSampleCounts = aSampleCounts;
-      const IntEbmType * const pSampleCountsEnd = aSampleCounts + cSampleCountsOut;
+      int32_t * pSampleReplicationOut = INT(bagOut);
+      const BagEbmType * pSampleReplication = aBag;
+      const BagEbmType * const pSampleReplicationEnd = aBag + cSamples;
       do {
-         const IntEbmType val = *pSampleCounts;
-         *pSampleCountsOut = static_cast<double>(val);
-         ++pSampleCountsOut;
-         ++pSampleCounts;
-      } while(pSampleCountsEnd != pSampleCounts);
+         const BagEbmType replication = *pSampleReplication;
+         *pSampleReplicationOut = static_cast<int32_t>(replication);
+         ++pSampleReplicationOut;
+         ++pSampleReplication;
+      } while(pSampleReplicationEnd != pSampleReplication);
    }
 
    // this return isn't useful beyond that it's not R_NilValue, which would signify error
    SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(cSampleCountsOut);
+   REAL(ret)[0] = static_cast<double>(cSamples);
    UNPROTECT(1);
    return ret;
 }

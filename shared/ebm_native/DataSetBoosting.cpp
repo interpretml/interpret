@@ -70,19 +70,19 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
 
    const size_t cBytesPerItem = sizeof(*aSampleScores) * cScores;
 
-   const BagEbmType * pBag = aBag;
+   const BagEbmType * pSampleReplication = aBag;
    FloatFast * pSampleScore = aSampleScores;
    const FloatFast * const pSampleScoresEnd = aSampleScores + cScores * cSetSamples;
    const double * pInitScore = aInitScores;
    const bool isLoopTraining = BagEbmType { 0 } < direction;
    do {
-      BagEbmType countBagged = 1;
-      if(nullptr != pBag) {
-         countBagged = *pBag;
-         ++pBag;
+      BagEbmType replication = 1;
+      if(nullptr != pSampleReplication) {
+         replication = *pSampleReplication;
+         ++pSampleReplication;
       }
-      if(BagEbmType { 0 } != countBagged) {
-         const bool isItemTraining = BagEbmType { 0 } < countBagged;
+      if(BagEbmType { 0 } != replication) {
+         const bool isItemTraining = BagEbmType { 0 } < replication;
          if(isLoopTraining == isItemTraining) {
             do {
                EBM_ASSERT(pSampleScore < aSampleScores + cScores * cSetSamples);
@@ -94,8 +94,8 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
                   memcpy(pSampleScore, pInitScore, cBytesPerItem);
                }
                pSampleScore += cScores;
-               countBagged -= direction;
-            } while(BagEbmType { 0 } != countBagged);
+               replication -= direction;
+            } while(BagEbmType { 0 } != replication);
          }
          if(nullptr != pInitScore) {
             pInitScore += cScores;
@@ -150,19 +150,19 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
       return nullptr;
    }
 
-   const BagEbmType * pBag = aBag;
+   const BagEbmType * pSampleReplication = aBag;
    const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargets);
    StorageDataType * pTargetTo = aTargetData;
    StorageDataType * pTargetToEnd = aTargetData + cSetSamples;
    const bool isLoopTraining = BagEbmType { 0 } < direction;
    do {
-      BagEbmType countBagged = 1;
-      if(nullptr != pBag) {
-         countBagged = *pBag;
-         ++pBag;
+      BagEbmType replication = 1;
+      if(nullptr != pSampleReplication) {
+         replication = *pSampleReplication;
+         ++pSampleReplication;
       }
-      if(BagEbmType { 0 } != countBagged) {
-         const bool isItemTraining = BagEbmType { 0 } < countBagged;
+      if(BagEbmType { 0 } != replication) {
+         const bool isItemTraining = BagEbmType { 0 } < replication;
          if(isLoopTraining == isItemTraining) {
             const SharedStorageDataType data = *pTargetFrom;
             EBM_ASSERT(!IsConvertError<size_t>(data));
@@ -183,8 +183,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
                EBM_ASSERT(pTargetTo < aTargetData + cSetSamples);
                *pTargetTo = iData;
                ++pTargetTo;
-               countBagged -= direction;
-            } while(BagEbmType { 0 } != countBagged);
+               replication -= direction;
+            } while(BagEbmType { 0 } != replication);
          }
       }
       ++pTargetFrom;
@@ -309,8 +309,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          } while(pTermEntriesEnd != pTermEntry);
          EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pTerm->GetCountSignificantDimensions()]);
 
-         const BagEbmType * pBag = aBag;
-         BagEbmType countBagged = 0;
+         const BagEbmType * pSampleReplication = aBag;
+         BagEbmType replication = 0;
          size_t tensorIndex = 0;
 
          size_t shiftEnd = cBitsPerItemMax * cItemsPerBitPack;
@@ -321,7 +321,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             StorageDataType bits = 0;
             size_t shift = 0;
             do {
-               if(BagEbmType { 0 } == countBagged) {
+               if(BagEbmType { 0 } == replication) {
                   while(true) {
                      tensorIndex = 0;
                      size_t tensorMultiple = 1;
@@ -348,22 +348,22 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                         ++pDimensionInfo;
                      } while(pDimensionInfoInit != pDimensionInfo);
 
-                     countBagged = 1;
-                     if(nullptr != pBag) {
-                        countBagged = *pBag;
-                        ++pBag;
+                     replication = 1;
+                     if(nullptr != pSampleReplication) {
+                        replication = *pSampleReplication;
+                        ++pSampleReplication;
                      }
-                     if(BagEbmType { 0 } != countBagged) {
-                        const bool isItemTraining = BagEbmType { 0 } < countBagged;
+                     if(BagEbmType { 0 } != replication) {
+                        const bool isItemTraining = BagEbmType { 0 } < replication;
                         if(isLoopTraining == isItemTraining) {
                            break;
                         }
                      }
                   }
                }
-               EBM_ASSERT(0 != countBagged);
-               EBM_ASSERT(0 < countBagged && 0 < direction || countBagged < 0 && direction < 0);
-               countBagged -= direction;
+               EBM_ASSERT(0 != replication);
+               EBM_ASSERT(0 < replication && 0 < direction || replication < 0 && direction < 0);
+               replication -= direction;
 
                // put our first item in the least significant bits.  We do this so that later when
                // unpacking the indexes, we can just AND our mask with the bitfield to get the index and in subsequent loops
@@ -385,7 +385,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             goto one_last_loop;
          }
 
-         EBM_ASSERT(0 == countBagged);
+         EBM_ASSERT(0 == replication);
       }
       ++ppTerm;
    } while(ppTermsEnd != ppTerm);

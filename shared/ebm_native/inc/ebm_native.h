@@ -341,7 +341,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
    SeedEbmType seed,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
-   BagEbmType * sampleCountsOut
+   BagEbmType * bagOut
 );
 
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
@@ -351,7 +351,7 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStra
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
    IntEbmType * targets,
-   BagEbmType * sampleCountsOut
+   BagEbmType * bagOut
 );
 
 EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(

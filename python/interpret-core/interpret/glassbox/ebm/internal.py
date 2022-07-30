@@ -204,20 +204,20 @@ class Native:
         count_training_samples = ct.c_int64(count_training_samples)
         count_validation_samples = ct.c_int64(count_validation_samples)
 
-        sample_counts_out = np.empty(count_samples, dtype=np.int8, order="C")
+        bag = np.empty(count_samples, dtype=np.int8, order="C")
 
         return_code = self._unsafe.SampleWithoutReplacement(
             is_deterministic,
             random_state,
             count_training_samples,
             count_validation_samples,
-            Native._make_pointer(sample_counts_out, np.int8),
+            Native._make_pointer(bag, np.int8),
         )
 
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "SampleWithoutReplacement")
 
-        return sample_counts_out
+        return bag
 
     def sample_without_replacement_stratified(
         self, 
@@ -239,7 +239,7 @@ class Native:
         count_training_samples = ct.c_int64(count_training_samples)
         count_validation_samples = ct.c_int64(count_validation_samples)
 
-        sample_counts_out = np.empty(count_samples, dtype=np.int8, order="C")
+        bag = np.empty(count_samples, dtype=np.int8, order="C")
 
         return_code = self._unsafe.SampleWithoutReplacementStratified(
             is_deterministic,
@@ -248,13 +248,13 @@ class Native:
             count_training_samples,
             count_validation_samples,
             Native._make_pointer(targets, np.int64),
-            Native._make_pointer(sample_counts_out, np.int8),
+            Native._make_pointer(bag, np.int8),
         )
 
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "SampleWithoutReplacementStratified")
 
-        return sample_counts_out
+        return bag
 
     def get_histogram_cut_count(self, X_col):
         return self._unsafe.GetHistogramCutCount(X_col.shape[0], Native._make_pointer(X_col, np.float64))
@@ -597,7 +597,7 @@ class Native:
             ct.c_int64,
             # int64_t countValidationSamples
             ct.c_int64,
-            # int8_t * sampleCountsOut
+            # int8_t * bagOut
             ct.c_void_p,
         ]
         self._unsafe.SampleWithoutReplacement.restype = ct.c_int32
@@ -615,7 +615,7 @@ class Native:
             ct.c_int64,
             # int64_t * targets
             ct.c_void_p,
-            # int8_t * sampleCountsOut
+            # int8_t * bagOut
             ct.c_void_p,
         ]
         self._unsafe.SampleWithoutReplacementStratified.restype = ct.c_int32
