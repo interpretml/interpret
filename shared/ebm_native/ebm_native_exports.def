@@ -4,15 +4,15 @@ EXPORTS
   SetLogCallback
   SetTraceLevel
   GetTraceLevelString
-  SizeDataSetHeader
+  MeasureDataSetHeader
   FillDataSetHeader
-  SizeFeature
+  MeasureFeature
   FillFeature
-  SizeWeight
+  MeasureWeight
   FillWeight
-  SizeClassificationTarget
+  MeasureClassificationTarget
   FillClassificationTarget
-  SizeRegressionTarget
+  MeasureRegressionTarget
   FillRegressionTarget
   ExtractDataSetHeader
   ExtractBinCounts

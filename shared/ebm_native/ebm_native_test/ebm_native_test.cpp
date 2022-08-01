@@ -564,7 +564,7 @@ void TestApi::InitializeBoosting(const IntEbm countInnerBags) {
       m_validationWeights.resize(cValidationSamples);
    }
 
-   IntEbm size = SizeDataSetHeader(cFeatures, 1, 1);
+   IntEbm size = MeasureDataSetHeader(cFeatures, 1, 1);
    for(size_t i = 0; i < cFeatures; ++i) {
       std::vector<IntEbm> trainingFeatures(m_trainingBinIndexes.begin() + i * cTrainingSamples, m_trainingBinIndexes.begin() + i * cTrainingSamples + cTrainingSamples);
       std::vector<IntEbm> validationFeatures(m_validationBinIndexes.begin() + i * cValidationSamples, m_validationBinIndexes.begin() + i * cValidationSamples + cValidationSamples);
@@ -572,21 +572,21 @@ void TestApi::InitializeBoosting(const IntEbm countInnerBags) {
       std::vector<IntEbm> allFeatures(trainingFeatures);
       allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
 
-      size += SizeFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
+      size += MeasureFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
    }
 
    std::vector<double> allWeights(m_trainingWeights);
    allWeights.insert(allWeights.end(), m_validationWeights.begin(), m_validationWeights.end());
-   size += SizeWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0]);
+   size += MeasureWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0]);
 
    if(IsClassification(m_cClasses)) {
       std::vector<IntEbm> allTargets(m_trainingClassificationTargets);
       allTargets.insert(allTargets.end(), m_validationClassificationTargets.begin(), m_validationClassificationTargets.end());
-      size += SizeClassificationTarget(m_cClasses, allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0]);
+      size += MeasureClassificationTarget(m_cClasses, allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0]);
    } else {
       std::vector<double> allTargets(m_trainingRegressionTargets);
       allTargets.insert(allTargets.end(), m_validationRegressionTargets.begin(), m_validationRegressionTargets.end());
-      size += SizeRegressionTarget(allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0]);
+      size += MeasureRegressionTarget(allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0]);
    }
 
    void * pDataSet = malloc(static_cast<size_t>(size));
@@ -972,18 +972,18 @@ void TestApi::InitializeInteraction() {
       m_interactionWeights.resize(cSamples);
    }
 
-   IntEbm size = SizeDataSetHeader(cFeatures, 1, 1);
+   IntEbm size = MeasureDataSetHeader(cFeatures, 1, 1);
    for(size_t i = 0; i < cFeatures; ++i) {
       std::vector<IntEbm> allFeatures(m_interactionBinIndexes.begin() + i * cSamples, m_interactionBinIndexes.begin() + i * cSamples + cSamples);
-      size += SizeFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
+      size += MeasureFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
    }
 
-   size += SizeWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0]);
+   size += MeasureWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0]);
 
    if(IsClassification(m_cClasses)) {
-      size += SizeClassificationTarget(m_cClasses, cSamples, 0 == cSamples ? nullptr : &m_interactionClassificationTargets[0]);
+      size += MeasureClassificationTarget(m_cClasses, cSamples, 0 == cSamples ? nullptr : &m_interactionClassificationTargets[0]);
    } else {
-      size += SizeRegressionTarget(cSamples, 0 == cSamples ? nullptr : &m_interactionRegressionTargets[0]);
+      size += MeasureRegressionTarget(cSamples, 0 == cSamples ? nullptr : &m_interactionRegressionTargets[0]);
    }
 
    void * pDataSet = malloc(static_cast<size_t>(size));

@@ -1899,7 +1899,7 @@ def bin_native(
 
     n_weights = 0 if sample_weight is None else 1
 
-    n_bytes = native.size_dataset_header(len(requests), n_weights, 1)
+    n_bytes = native.measure_dataset_header(len(requests), n_weights, 1)
     for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(responses, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
@@ -1922,7 +1922,7 @@ def bin_native(
             n_bins += 1
             X_col[bad != _none_ndarray] = n_bins - 1
 
-        n_bytes += native.size_feature(
+        n_bytes += native.measure_feature(
             n_bins, 
             np.count_nonzero(X_col) != len(X_col), 
             bad is not None, 
@@ -1931,12 +1931,12 @@ def bin_native(
         )
 
     if sample_weight is not None:
-        n_bytes += native.size_weight(sample_weight)
+        n_bytes += native.measure_weight(sample_weight)
     
     if 0 <= n_classes:
-        n_bytes += native.size_classification_target(n_classes, y)
+        n_bytes += native.measure_classification_target(n_classes, y)
     else:
-        n_bytes += native.size_regression_target(y)
+        n_bytes += native.measure_regression_target(y)
 
     dataset = np.empty(n_bytes, np.ubyte) # joblib loky doesn't support RawArray
 

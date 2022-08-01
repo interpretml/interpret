@@ -249,7 +249,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION BinFeature(
    IntEbm * binIndexesOut
 );
 
-EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION SizeDataSetHeader(
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureDataSetHeader(
    IntEbm countFeatures,
    IntEbm countWeights,
    IntEbm countTargets
@@ -262,7 +262,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillDataSetHeader(
    void * fillMem
 );
 
-EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION SizeFeature(
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureFeature(
    IntEbm countBins,
    BoolEbm isMissing,
    BoolEbm isUnknown,
@@ -281,7 +281,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillFeature(
    void * fillMem
 );
 
-EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION SizeWeight(
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureWeight(
    IntEbm countSamples,
    const double * weights
 );
@@ -292,7 +292,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillWeight(
    void * fillMem
 );
 
-EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION SizeClassificationTarget(
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureClassificationTarget(
    IntEbm countClasses,
    IntEbm countSamples,
    const IntEbm * targets
@@ -305,7 +305,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillClassificationTarget(
    void * fillMem
 );
 
-EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION SizeRegressionTarget(
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureRegressionTarget(
    IntEbm countSamples,
    const double * targets
 );

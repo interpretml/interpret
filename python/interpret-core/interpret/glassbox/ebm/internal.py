@@ -348,10 +348,10 @@ class Native:
         return bin_indexes
 
 
-    def size_dataset_header(self, n_features, n_weights, n_targets):
-        n_bytes = self._unsafe.SizeDataSetHeader(n_features, n_weights, n_targets)
+    def measure_dataset_header(self, n_features, n_weights, n_targets):
+        n_bytes = self._unsafe.MeasureDataSetHeader(n_features, n_weights, n_targets)
         if n_bytes < 0:  # pragma: no cover
-            raise Native._get_native_exception(n_bytes, "SizeDataSetHeader")
+            raise Native._get_native_exception(n_bytes, "MeasureDataSetHeader")
         return n_bytes
 
     def fill_dataset_header(self, n_features, n_weights, n_targets, dataset):
@@ -365,8 +365,8 @@ class Native:
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillDataSetHeader")
 
-    def size_feature(self, n_bins, is_missing, is_unknown, is_nominal, bin_indexes):
-        n_bytes = self._unsafe.SizeFeature(
+    def measure_feature(self, n_bins, is_missing, is_unknown, is_nominal, bin_indexes):
+        n_bytes = self._unsafe.MeasureFeature(
             n_bins, 
             is_missing, 
             is_unknown, 
@@ -375,7 +375,7 @@ class Native:
             Native._make_pointer(bin_indexes, np.int64),
         )
         if n_bytes < 0:  # pragma: no cover
-            raise Native._get_native_exception(n_bytes, "SizeFeature")
+            raise Native._get_native_exception(n_bytes, "MeasureFeature")
         return n_bytes
 
     def fill_feature(self, n_bins, is_missing, is_unknown, is_nominal, bin_indexes, dataset):
@@ -392,13 +392,13 @@ class Native:
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillFeature")
 
-    def size_weight(self, weights):
-        n_bytes = self._unsafe.SizeWeight(
+    def measure_weight(self, weights):
+        n_bytes = self._unsafe.MeasureWeight(
             len(weights), 
             Native._make_pointer(weights, np.float64),
         )
         if n_bytes < 0:  # pragma: no cover
-            raise Native._get_native_exception(n_bytes, "SizeWeight")
+            raise Native._get_native_exception(n_bytes, "MeasureWeight")
         return n_bytes
 
     def fill_weight(self, weights, dataset):
@@ -411,14 +411,14 @@ class Native:
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillWeight")
 
-    def size_classification_target(self, n_classes, targets):
-        n_bytes = self._unsafe.SizeClassificationTarget(
+    def measure_classification_target(self, n_classes, targets):
+        n_bytes = self._unsafe.MeasureClassificationTarget(
             n_classes, 
             len(targets), 
             Native._make_pointer(targets, np.int64),
         )
         if n_bytes < 0:  # pragma: no cover
-            raise Native._get_native_exception(n_bytes, "SizeClassificationTarget")
+            raise Native._get_native_exception(n_bytes, "MeasureClassificationTarget")
         return n_bytes
 
     def fill_classification_target(self, n_classes, targets, dataset):
@@ -432,13 +432,13 @@ class Native:
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillClassificationTarget")
 
-    def size_regression_target(self, targets):
-        n_bytes = self._unsafe.SizeRegressionTarget(
+    def measure_regression_target(self, targets):
+        n_bytes = self._unsafe.MeasureRegressionTarget(
             len(targets), 
             Native._make_pointer(targets, np.float64),
         )
         if n_bytes < 0:  # pragma: no cover
-            raise Native._get_native_exception(n_bytes, "SizeRegressionTarget")
+            raise Native._get_native_exception(n_bytes, "MeasureRegressionTarget")
         return n_bytes
 
     def fill_regression_target(self, targets, dataset):
@@ -697,7 +697,7 @@ class Native:
         self._unsafe.BinFeature.restype = ct.c_int32
 
 
-        self._unsafe.SizeDataSetHeader.argtypes = [
+        self._unsafe.MeasureDataSetHeader.argtypes = [
             # int64_t countFeatures
             ct.c_int64,
             # int64_t countWeights
@@ -705,7 +705,7 @@ class Native:
             # int64_t countTargets
             ct.c_int64,
         ]
-        self._unsafe.SizeDataSetHeader.restype = ct.c_int64
+        self._unsafe.MeasureDataSetHeader.restype = ct.c_int64
 
         self._unsafe.FillDataSetHeader.argtypes = [
             # int64_t countFeatures
@@ -721,7 +721,7 @@ class Native:
         ]
         self._unsafe.FillDataSetHeader.restype = ct.c_int32
 
-        self._unsafe.SizeFeature.argtypes = [
+        self._unsafe.MeasureFeature.argtypes = [
             # int64_t countBins
             ct.c_int64,
             # int32_t isMissing
@@ -735,7 +735,7 @@ class Native:
             # int64_t * binIndexes
             ct.c_void_p,
         ]
-        self._unsafe.SizeFeature.restype = ct.c_int64
+        self._unsafe.MeasureFeature.restype = ct.c_int64
 
         self._unsafe.FillFeature.argtypes = [
             # int64_t countBins
@@ -757,13 +757,13 @@ class Native:
         ]
         self._unsafe.FillFeature.restype = ct.c_int32
 
-        self._unsafe.SizeWeight.argtypes = [
+        self._unsafe.MeasureWeight.argtypes = [
             # int64_t countSamples
             ct.c_int64,
             # double * weights
             ct.c_void_p,
         ]
-        self._unsafe.SizeWeight.restype = ct.c_int64
+        self._unsafe.MeasureWeight.restype = ct.c_int64
 
         self._unsafe.FillWeight.argtypes = [
             # int64_t countSamples
@@ -777,7 +777,7 @@ class Native:
         ]
         self._unsafe.FillWeight.restype = ct.c_int32
 
-        self._unsafe.SizeClassificationTarget.argtypes = [
+        self._unsafe.MeasureClassificationTarget.argtypes = [
             # int64_t countClasses
             ct.c_int64,
             # int64_t countSamples
@@ -785,7 +785,7 @@ class Native:
             # int64_t * targets
             ct.c_void_p,
         ]
-        self._unsafe.SizeClassificationTarget.restype = ct.c_int64
+        self._unsafe.MeasureClassificationTarget.restype = ct.c_int64
 
         self._unsafe.FillClassificationTarget.argtypes = [
             # int64_t countClasses
@@ -801,13 +801,13 @@ class Native:
         ]
         self._unsafe.FillClassificationTarget.restype = ct.c_int32
 
-        self._unsafe.SizeRegressionTarget.argtypes = [
+        self._unsafe.MeasureRegressionTarget.argtypes = [
             # int64_t countSamples
             ct.c_int64,
             # double * targets
             ct.c_void_p,
         ]
-        self._unsafe.SizeRegressionTarget.restype = ct.c_int64
+        self._unsafe.MeasureRegressionTarget.restype = ct.c_int64
 
         self._unsafe.FillRegressionTarget.argtypes = [
             # int64_t countSamples

@@ -14,11 +14,11 @@ TEST_CASE("data_set_shared, zero features, zero samples, regression") {
    IntEbm part;
    ErrorEbm error;
 
-   part = SizeDataSetHeader(0, 0, 1);
+   part = MeasureDataSetHeader(0, 0, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeRegressionTarget(0, nullptr);
+   part = MeasureRegressionTarget(0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
@@ -41,11 +41,11 @@ TEST_CASE("data_set_shared, zero features, three samples, regression") {
    constexpr IntEbm k_cSamples = 3;
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
-   part = SizeDataSetHeader(0, 0, 1);
+   part = MeasureDataSetHeader(0, 0, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeRegressionTarget(k_cSamples, targets);
+   part = MeasureRegressionTarget(k_cSamples, targets);
    CHECK(0 <= part);
    sum += part;
 
@@ -66,19 +66,19 @@ TEST_CASE("data_set_shared, two features, zero samples, regression") {
    IntEbm part;
    ErrorEbm error;
 
-   part = SizeDataSetHeader(2, 0, 1);
+   part = MeasureDataSetHeader(2, 0, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
+   part = MeasureFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
+   part = MeasureFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeRegressionTarget(0, nullptr);
+   part = MeasureRegressionTarget(0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
@@ -105,19 +105,19 @@ TEST_CASE("data_set_shared, two features, 3 samples, regression") {
    IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
-   part = SizeDataSetHeader(2, 0, 1);
+   part = MeasureDataSetHeader(2, 0, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
+   part = MeasureFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
+   part = MeasureFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeRegressionTarget(k_cSamples, &targets[0]);
+   part = MeasureRegressionTarget(k_cSamples, &targets[0]);
    CHECK(0 <= part);
    sum += part;
 
@@ -141,11 +141,11 @@ TEST_CASE("data_set_shared, zero features, zero samples, classification") {
    IntEbm part;
    ErrorEbm error;
 
-   part = SizeDataSetHeader(0, 0, 1);
+   part = MeasureDataSetHeader(0, 0, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeClassificationTarget(0, 0, nullptr);
+   part = MeasureClassificationTarget(0, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
@@ -168,11 +168,11 @@ TEST_CASE("data_set_shared, zero features, three samples, classification") {
    constexpr IntEbm k_cSamples = 3;
    IntEbm targets[k_cSamples] { 2, 1, 0 };
 
-   part = SizeDataSetHeader(0, 0, 1);
+   part = MeasureDataSetHeader(0, 0, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeClassificationTarget(3, k_cSamples, targets);
+   part = MeasureClassificationTarget(3, k_cSamples, targets);
    CHECK(0 <= part);
    sum += part;
 
@@ -192,19 +192,19 @@ TEST_CASE("data_set_shared, two features, zero samples, classification") {
    IntEbm part;
    ErrorEbm error;
 
-   part = SizeDataSetHeader(2, 0, 1);
+   part = MeasureDataSetHeader(2, 0, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
+   part = MeasureFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
+   part = MeasureFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeClassificationTarget(0, 0, nullptr);
+   part = MeasureClassificationTarget(0, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
@@ -231,19 +231,19 @@ TEST_CASE("data_set_shared, two features, 3 samples, classification") {
    IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
    IntEbm targets[k_cSamples] { 2, 1, 0 };
 
-   part = SizeDataSetHeader(2, 0, 1);
+   part = MeasureDataSetHeader(2, 0, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
+   part = MeasureFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
+   part = MeasureFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeClassificationTarget(3, k_cSamples, &targets[0]);
+   part = MeasureClassificationTarget(3, k_cSamples, &targets[0]);
    CHECK(0 <= part);
    sum += part;
 
@@ -270,15 +270,15 @@ TEST_CASE("data_set_shared, zero features, zero samples, weights, regression") {
    IntEbm part;
    ErrorEbm error;
 
-   part = SizeDataSetHeader(0, 1, 1);
+   part = MeasureDataSetHeader(0, 1, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeWeight(0, nullptr);
+   part = MeasureWeight(0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeRegressionTarget(0, nullptr);
+   part = MeasureRegressionTarget(0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
@@ -304,15 +304,15 @@ TEST_CASE("data_set_shared, zero features, three samples, weights, regression") 
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
-   part = SizeDataSetHeader(0, 1, 1);
+   part = MeasureDataSetHeader(0, 1, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeWeight(k_cSamples, weights);
+   part = MeasureWeight(k_cSamples, weights);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeRegressionTarget(k_cSamples, targets);
+   part = MeasureRegressionTarget(k_cSamples, targets);
    CHECK(0 <= part);
    sum += part;
 
@@ -335,23 +335,23 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, regression") {
    IntEbm part;
    ErrorEbm error;
 
-   part = SizeDataSetHeader(2, 1, 1);
+   part = MeasureDataSetHeader(2, 1, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeWeight(0, nullptr);
+   part = MeasureWeight(0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
+   part = MeasureFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
+   part = MeasureFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeRegressionTarget(0, nullptr);
+   part = MeasureRegressionTarget(0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
@@ -381,23 +381,23 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
-   part = SizeDataSetHeader(2, 1, 1);
+   part = MeasureDataSetHeader(2, 1, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
+   part = MeasureFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
+   part = MeasureFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeWeight(k_cSamples, weights);
+   part = MeasureWeight(k_cSamples, weights);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeRegressionTarget(k_cSamples, &targets[0]);
+   part = MeasureRegressionTarget(k_cSamples, &targets[0]);
    CHECK(0 <= part);
    sum += part;
 
@@ -423,15 +423,15 @@ TEST_CASE("data_set_shared, zero features, zero samples, weights, classification
    IntEbm part;
    ErrorEbm error;
 
-   part = SizeDataSetHeader(0, 1, 1);
+   part = MeasureDataSetHeader(0, 1, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeWeight(0, nullptr);
+   part = MeasureWeight(0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeClassificationTarget(0, 0, nullptr);
+   part = MeasureClassificationTarget(0, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
@@ -457,15 +457,15 @@ TEST_CASE("data_set_shared, zero features, three samples, weights, classificatio
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    IntEbm targets[k_cSamples] { 2, 1, 0 };
 
-   part = SizeDataSetHeader(0, 1, 1);
+   part = MeasureDataSetHeader(0, 1, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeWeight(k_cSamples, weights);
+   part = MeasureWeight(k_cSamples, weights);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeClassificationTarget(3, k_cSamples, targets);
+   part = MeasureClassificationTarget(3, k_cSamples, targets);
    CHECK(0 <= part);
    sum += part;
 
@@ -487,23 +487,23 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, classification"
    IntEbm part;
    ErrorEbm error;
 
-   part = SizeDataSetHeader(2, 1, 1);
+   part = MeasureDataSetHeader(2, 1, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
+   part = MeasureFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
+   part = MeasureFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeWeight(0, nullptr);
+   part = MeasureWeight(0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeClassificationTarget(0, 0, nullptr);
+   part = MeasureClassificationTarget(0, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
@@ -533,23 +533,23 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, classification") {
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    IntEbm targets[k_cSamples] { 2, 1, 0 };
 
-   part = SizeDataSetHeader(2, 1, 1);
+   part = MeasureDataSetHeader(2, 1, 1);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
+   part = MeasureFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
+   part = MeasureFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binIndexes[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeWeight(k_cSamples, weights);
+   part = MeasureWeight(k_cSamples, weights);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeClassificationTarget(3, k_cSamples, &targets[0]);
+   part = MeasureClassificationTarget(3, k_cSamples, &targets[0]);
    CHECK(0 <= part);
    sum += part;
 
