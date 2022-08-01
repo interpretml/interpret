@@ -26,7 +26,7 @@ namespace DEFINED_ZONE_NAME {
 // TODO: we need to radically change this data structure so that we can efficiently pass it between machines in a 
 // cluster AND within/between a GPU/CPU.  This stucture should be:
 //
-// IntEbmType m_cBytes; // our caller can fetch the memory size of this Tensor and memcpy it over the network
+// IntEbm m_cBytes; // our caller can fetch the memory size of this Tensor and memcpy it over the network
 //// The first thing our caller should do is call into the C++ to fix the endian nature of this struct
 //// 0x3333333333333333 non-expanded, big endian
 //// 0x2222222222222222 non-expanded, little endian
@@ -34,16 +34,16 @@ namespace DEFINED_ZONE_NAME {
 //// 0x0000000000000000 expanded, little endian
 //// if (m_endianAndExpanded < 0x2000000000000000) bExpanded = true;
 //// if (0 != (0x1 & m_endianAndExpanded)) bBigEndian = true;
-// UIntEbmType m_endianAndIsExpanded;
+// UIntEbm m_endianAndIsExpanded;
 // NO m_cTensorScoreCapacity -> we have a function that calculates the maximum capacity and we allocate it all at the start
 // NO m_cTensorScores -> we don't need to pass this arround from process to process since it's global info and can be passed to the individual functions
 // NO m_cDimensionsMax -> we pre-determine the maximum size and always allocate the max max size
 // NO m_cDimensions; -> we can pass in the Term object to know the # of dimensions
 // FloatFast m_aTensorScores[]; // a space for our values
-// UIntEbmType DIMENSION_1_SPLIT_POINTS
-// UIntEbmType DIMENSION_1_BIN_COUNT -> we find this by traversing the 0th dimension items
-// UIntEbmType DIMENSION_0_SPLIT_POINTS -> we travel backwards by the count
-// UIntEbmType DIMENSION_0_BIN_COUNT -> we find this using m_cBytes to find the end, then subtract sizeof(UIntEbmType)
+// UIntEbm DIMENSION_1_SPLIT_POINTS
+// UIntEbm DIMENSION_1_BIN_COUNT -> we find this by traversing the 0th dimension items
+// UIntEbm DIMENSION_0_SPLIT_POINTS -> we travel backwards by the count
+// UIntEbm DIMENSION_0_BIN_COUNT -> we find this using m_cBytes to find the end, then subtract sizeof(UIntEbm)
 //
 // - use SLICE_COUNT instead of SPLIT_COUNT because then we can express tensors with zero bins AND we can still
 //   get to the End pointer because our slices don't and split points are both 64 bit numbers, so subtracting from
@@ -193,13 +193,13 @@ public:
    static void Free(Tensor * const pTensor);
    static Tensor * Allocate(const size_t cDimensionsMax, const size_t cScores);
    void Reset();
-   ErrorEbmType SetCountSplits(const size_t iDimension, const size_t cSplits);
-   ErrorEbmType EnsureTensorScoreCapacity(const size_t cTensorScores);
-   ErrorEbmType Copy(const Tensor & rhs);
+   ErrorEbm SetCountSplits(const size_t iDimension, const size_t cSplits);
+   ErrorEbm EnsureTensorScoreCapacity(const size_t cTensorScores);
+   ErrorEbm Copy(const Tensor & rhs);
    bool MultiplyAndCheckForIssues(const double v);
-   ErrorEbmType Expand(const Term * const pTerm);
+   ErrorEbm Expand(const Term * const pTerm);
    void AddExpandedWithBadValueProtection(const FloatFast * const aFromValues);
-   ErrorEbmType Add(const Tensor & rhs);
+   ErrorEbm Add(const Tensor & rhs);
 
 #ifndef NDEBUG
    bool IsEqual(const Tensor & rhs) const;

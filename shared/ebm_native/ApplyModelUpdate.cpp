@@ -34,13 +34,13 @@ extern double ApplyTermUpdateValidation(
    const Term * const pTerm
 );
 
-static ErrorEbmType ApplyTermUpdateInternal(
+static ErrorEbm ApplyTermUpdateInternal(
    BoosterShell * const pBoosterShell,
    double * const pValidationMetricReturn
 ) {
    LOG_0(Trace_Verbose, "Entered ApplyTermUpdateInternal");
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t iTerm = pBoosterShell->GetTermIndex();
@@ -140,7 +140,7 @@ static ErrorEbmType ApplyTermUpdateInternal(
 static int g_cLogApplyTermUpdate = 10;
 
 // TODO: validationMetricOut should be an average
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
    BoosterHandle boosterHandle,
    double * validationMetricOut
 ) {
@@ -156,7 +156,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
       static_cast<void *>(validationMetricOut)
    );
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
@@ -212,7 +212,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
    pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
 
    if(Error_None != error) {
-      LOG_N(Trace_Warning, "WARNING ApplyTermUpdate: return=%" ErrorEbmTypePrintf, error);
+      LOG_N(Trace_Warning, "WARNING ApplyTermUpdate: return=%" ErrorEbmPrintf, error);
    }
 
    if(nullptr != validationMetricOut) {
@@ -246,11 +246,11 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
 // times than desired, but we can live with that
 static int g_cLogGetTermUpdateSplits = 10;
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
    BoosterHandle boosterHandle,
-   IntEbmType indexDimension,
-   IntEbmType * countSplitsInOut,
-   IntEbmType * splitIndexesOut
+   IntEbm indexDimension,
+   IntEbm * countSplitsInOut,
+   IntEbm * splitIndexesOut
 ) {
    LOG_COUNTED_N(
       &g_cLogGetTermUpdateSplits,
@@ -258,7 +258,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
       Trace_Verbose,
       "GetTermUpdateSplits: "
       "boosterHandle=%p, "
-      "indexDimension=%" IntEbmTypePrintf ", "
+      "indexDimension=%" IntEbmPrintf ", "
       "countSplitsInOut=%p"
       "splitIndexesOut=%p"
       ,
@@ -275,14 +275,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
-      *countSplitsInOut = IntEbmType { 0 };
+      *countSplitsInOut = IntEbm { 0 };
       // already logged
       return Error_IllegalParamValue;
    }
 
    const size_t iTerm = pBoosterShell->GetTermIndex();
    if(BoosterShell::k_illegalTermIndex == iTerm) {
-      *countSplitsInOut = IntEbmType { 0 };
+      *countSplitsInOut = IntEbm { 0 };
       LOG_0(Trace_Error, "ERROR GetTermUpdateSplits bad internal state.  No Term index set");
       return Error_IllegalParamValue;
    }
@@ -293,21 +293,21 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
 
    if(indexDimension < 0) {
-      *countSplitsInOut = IntEbmType { 0 };
+      *countSplitsInOut = IntEbm { 0 };
       LOG_0(Trace_Error, "ERROR GetTermUpdateSplits indexDimension must be positive");
       return Error_IllegalParamValue;
    }
-   if(static_cast<IntEbmType>(pTerm->GetCountDimensions()) <= indexDimension) {
-      *countSplitsInOut = IntEbmType { 0 };
+   if(static_cast<IntEbm>(pTerm->GetCountDimensions()) <= indexDimension) {
+      *countSplitsInOut = IntEbm { 0 };
       LOG_0(Trace_Error, "ERROR GetTermUpdateSplits indexDimension above the number of dimensions that we have");
       return Error_IllegalParamValue;
    }
    const size_t iDimension = static_cast<size_t>(indexDimension);
 
    const size_t cBins = pTerm->GetTermEntries()[iDimension].m_pFeature->GetCountBins();
-   // cBins started from IntEbmType, so we should be able to convert back safely
-   if(*countSplitsInOut != static_cast<IntEbmType>(cBins - size_t { 1 })) {
-      *countSplitsInOut = IntEbmType { 0 };
+   // cBins started from IntEbm, so we should be able to convert back safely
+   if(*countSplitsInOut != static_cast<IntEbm>(cBins - size_t { 1 })) {
+      *countSplitsInOut = IntEbm { 0 };
       LOG_0(Trace_Error, "ERROR GetTermUpdateSplits bad split array length");
       return Error_IllegalParamValue;
    }
@@ -316,28 +316,28 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
    EBM_ASSERT(cSplits < cBins);
    if(0 != cSplits) {
       if(nullptr == splitIndexesOut) {
-         *countSplitsInOut = IntEbmType { 0 };
+         *countSplitsInOut = IntEbm { 0 };
          LOG_0(Trace_Error, "ERROR GetTermUpdateSplits splitIndexesOut cannot be nullptr");
          return Error_IllegalParamValue;
       }
 
       const ActiveDataType * pSplitIndexesFrom = pBoosterShell->GetTermUpdate()->GetSplitPointer(iDimension);
-      IntEbmType * pSplitIndexesTo = splitIndexesOut;
-      IntEbmType * pSplitIndexesToEnd = splitIndexesOut + cSplits;
+      IntEbm * pSplitIndexesTo = splitIndexesOut;
+      IntEbm * pSplitIndexesToEnd = splitIndexesOut + cSplits;
       do {
          const ActiveDataType indexSplit = *pSplitIndexesFrom;
          ++pSplitIndexesFrom;
 
-         EBM_ASSERT(!IsConvertError<IntEbmType>(indexSplit)); // the total count works so the index should too
-         *pSplitIndexesTo = static_cast<IntEbmType>(indexSplit);
+         EBM_ASSERT(!IsConvertError<IntEbm>(indexSplit)); // the total count works so the index should too
+         *pSplitIndexesTo = static_cast<IntEbm>(indexSplit);
 
          ++pSplitIndexesTo;
       } while(pSplitIndexesToEnd != pSplitIndexesTo);
    }
 
-   EBM_ASSERT(!IsConvertError<IntEbmType>(cSplits)); // cSplits originally came from an IntEbmType
+   EBM_ASSERT(!IsConvertError<IntEbm>(cSplits)); // cSplits originally came from an IntEbm
 
-   *countSplitsInOut = static_cast<IntEbmType>(cSplits);
+   *countSplitsInOut = static_cast<IntEbm>(cSplits);
    return Error_None;
 }
 
@@ -347,7 +347,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
 // times than desired, but we can live with that
 static int g_cLogGetTermUpdate = 10;
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdate(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(
    BoosterHandle boosterHandle,
    double * updateScoresTensorOut
 ) {
@@ -363,7 +363,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdate(
       static_cast<void *>(updateScoresTensorOut)
    );
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
@@ -419,9 +419,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdate(
 // times than desired, but we can live with that
 static int g_cLogSetTermUpdate = 10;
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdate(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
    BoosterHandle boosterHandle,
-   IntEbmType indexTerm,
+   IntEbm indexTerm,
    double * updateScoresTensor
 ) {
    LOG_COUNTED_N(
@@ -430,7 +430,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdate(
       Trace_Verbose,
       "SetTermUpdate: "
       "boosterHandle=%p, "
-      "indexTerm=%" IntEbmTypePrintf ", "
+      "indexTerm=%" IntEbmPrintf ", "
       "updateScoresTensor=%p"
       ,
       static_cast<void *>(boosterHandle),
@@ -438,7 +438,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdate(
       static_cast<void *>(updateScoresTensor)
    );
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {

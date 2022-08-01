@@ -56,7 +56,7 @@ extern void FAILED(const double val, TestCaseHidden * const pTestCaseHidden, con
 #pragma optimize("", on)
 #endif // _MSC_VER
 
-void EBM_CALLING_CONVENTION LogCallback(TraceEbmType traceLevel, const char * message) {
+void EBM_CALLING_CONVENTION LogCallback(TraceEbm traceLevel, const char * message) {
    const size_t cChars = strlen(message); // test that the string memory is accessible
    UNUSED(cChars);
    if(traceLevel <= Trace_Off) {
@@ -317,11 +317,11 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
             exit(1);
          }
          if(IsClassification(m_cClasses)) {
-            const IntEbmType targetInt = static_cast<IntEbmType>(target);
-            if(targetInt < IntEbmType { 0 }) {
+            const IntEbm targetInt = static_cast<IntEbm>(target);
+            if(targetInt < IntEbm { 0 }) {
                exit(1);
             }
-            if(static_cast<IntEbmType>(m_cClasses) <= targetInt) {
+            if(static_cast<IntEbm>(m_cClasses) <= targetInt) {
                exit(1);
             }
             m_trainingClassificationTargets.push_back(targetInt);
@@ -395,9 +395,9 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featureBinCounts[iFeature];
+         const IntEbm countBins = m_featureBinCounts[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-            const IntEbmType indexBin = samples[iSample].m_sampleBinIndexes[iFeature];
+            const IntEbm indexBin = samples[iSample].m_sampleBinIndexes[iFeature];
             if(indexBin < 0) {
                exit(1);
             }
@@ -442,11 +442,11 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
             exit(1);
          }
          if(IsClassification(m_cClasses)) {
-            const IntEbmType targetInt = static_cast<IntEbmType>(target);
-            if(targetInt < IntEbmType { 0 }) {
+            const IntEbm targetInt = static_cast<IntEbm>(target);
+            if(targetInt < IntEbm { 0 }) {
                exit(1);
             }
-            if(static_cast<IntEbmType>(m_cClasses) <= targetInt) {
+            if(static_cast<IntEbm>(m_cClasses) <= targetInt) {
                exit(1);
             }
             m_validationClassificationTargets.push_back(targetInt);
@@ -520,9 +520,9 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featureBinCounts[iFeature];
+         const IntEbm countBins = m_featureBinCounts[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-            const IntEbmType indexBin = samples[iSample].m_sampleBinIndexes[iFeature];
+            const IntEbm indexBin = samples[iSample].m_sampleBinIndexes[iFeature];
             if(indexBin < 0) {
                exit(1);
             }
@@ -536,13 +536,13 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
    m_stage = Stage::ValidationAdded;
 }
 
-void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
-   ErrorEbmType error;
+void TestApi::InitializeBoosting(const IntEbm countInnerBags) {
+   ErrorEbm error;
 
    if(Stage::ValidationAdded != m_stage) {
       exit(1);
    }
-   if(countInnerBags < IntEbmType { 0 }) {
+   if(countInnerBags < IntEbm { 0 }) {
       exit(1);
    }
 
@@ -564,12 +564,12 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       m_validationWeights.resize(cValidationSamples);
    }
 
-   IntEbmType size = SizeDataSetHeader(cFeatures, 1, 1);
+   IntEbm size = SizeDataSetHeader(cFeatures, 1, 1);
    for(size_t i = 0; i < cFeatures; ++i) {
-      std::vector<IntEbmType> trainingFeatures(m_trainingBinIndexes.begin() + i * cTrainingSamples, m_trainingBinIndexes.begin() + i * cTrainingSamples + cTrainingSamples);
-      std::vector<IntEbmType> validationFeatures(m_validationBinIndexes.begin() + i * cValidationSamples, m_validationBinIndexes.begin() + i * cValidationSamples + cValidationSamples);
+      std::vector<IntEbm> trainingFeatures(m_trainingBinIndexes.begin() + i * cTrainingSamples, m_trainingBinIndexes.begin() + i * cTrainingSamples + cTrainingSamples);
+      std::vector<IntEbm> validationFeatures(m_validationBinIndexes.begin() + i * cValidationSamples, m_validationBinIndexes.begin() + i * cValidationSamples + cValidationSamples);
 
-      std::vector<IntEbmType> allFeatures(trainingFeatures);
+      std::vector<IntEbm> allFeatures(trainingFeatures);
       allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
 
       size += SizeFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
@@ -580,7 +580,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    size += SizeWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0]);
 
    if(IsClassification(m_cClasses)) {
-      std::vector<IntEbmType> allTargets(m_trainingClassificationTargets);
+      std::vector<IntEbm> allTargets(m_trainingClassificationTargets);
       allTargets.insert(allTargets.end(), m_validationClassificationTargets.begin(), m_validationClassificationTargets.end());
       size += SizeClassificationTarget(m_cClasses, allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0]);
    } else {
@@ -594,10 +594,10 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    error = FillDataSetHeader(cFeatures, 1, 1, size, pDataSet);
 
    for(size_t i = 0; i < cFeatures; ++i) {
-      std::vector<IntEbmType> trainingFeatures(m_trainingBinIndexes.begin() + i * cTrainingSamples, m_trainingBinIndexes.begin() + i * cTrainingSamples + cTrainingSamples);
-      std::vector<IntEbmType> validationFeatures(m_validationBinIndexes.begin() + i * cValidationSamples, m_validationBinIndexes.begin() + i * cValidationSamples + cValidationSamples);
+      std::vector<IntEbm> trainingFeatures(m_trainingBinIndexes.begin() + i * cTrainingSamples, m_trainingBinIndexes.begin() + i * cTrainingSamples + cTrainingSamples);
+      std::vector<IntEbm> validationFeatures(m_validationBinIndexes.begin() + i * cValidationSamples, m_validationBinIndexes.begin() + i * cValidationSamples + cValidationSamples);
 
-      std::vector<IntEbmType> allFeatures(trainingFeatures);
+      std::vector<IntEbm> allFeatures(trainingFeatures);
       allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
 
       error = FillFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
@@ -606,7 +606,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    error = FillWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0], size, pDataSet);
 
    if(IsClassification(m_cClasses)) {
-      std::vector<IntEbmType> allTargets(m_trainingClassificationTargets);
+      std::vector<IntEbm> allTargets(m_trainingClassificationTargets);
       allTargets.insert(allTargets.end(), m_validationClassificationTargets.begin(), m_validationClassificationTargets.end());
       error = FillClassificationTarget(m_cClasses, allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0], size, pDataSet);
    } else {
@@ -615,7 +615,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       error = FillRegressionTarget(allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0], size, pDataSet);
    }
 
-   std::vector<BagEbmType> bag;
+   std::vector<BagEbm> bag;
    bag.insert(bag.end(), cTrainingSamples, 1);
    bag.insert(bag.end(), cValidationSamples, -1);
 
@@ -650,18 +650,18 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
 }
 
 BoostRet TestApi::Boost(
-   const IntEbmType indexTerm,
-   const BoostFlagsType flags,
+   const IntEbm indexTerm,
+   const BoostFlags flags,
    const double learningRate,
-   const IntEbmType minSamplesLeaf,
-   const std::vector<IntEbmType> leavesMax
+   const IntEbm minSamplesLeaf,
+   const std::vector<IntEbm> leavesMax
 ) {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(indexTerm < IntEbmType { 0 }) {
+   if(indexTerm < IntEbm { 0 }) {
       exit(1);
    }
    if(m_dimensionCounts.size() <= static_cast<size_t>(indexTerm)) {
@@ -734,7 +734,7 @@ double TestApi::GetBestTermScore(
    const std::vector<size_t> indexes, 
    const size_t iScore
 ) const {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
@@ -764,7 +764,7 @@ double TestApi::GetBestTermScore(
 }
 
 void TestApi::GetBestTermScoresRaw(const size_t iTerm, double * const aTermScores) const {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
@@ -783,7 +783,7 @@ double TestApi::GetCurrentTermScore(
    const std::vector<size_t> indexes,
    const size_t iScore
 ) const {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
@@ -813,7 +813,7 @@ double TestApi::GetCurrentTermScore(
 }
 
 void TestApi::GetCurrentTermScoresRaw(const size_t iTerm, double * const aTermScores) const {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
@@ -858,11 +858,11 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
             exit(1);
          }
          if(IsClassification(m_cClasses)) {
-            const IntEbmType targetInt = static_cast<IntEbmType>(target);
-            if(targetInt < IntEbmType { 0 }) {
+            const IntEbm targetInt = static_cast<IntEbm>(target);
+            if(targetInt < IntEbm { 0 }) {
                exit(1);
             }
-            if(static_cast<IntEbmType>(m_cClasses) <= targetInt) {
+            if(static_cast<IntEbm>(m_cClasses) <= targetInt) {
                exit(1);
             }
             m_interactionClassificationTargets.push_back(targetInt);
@@ -938,9 +938,9 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featureBinCounts[iFeature];
+         const IntEbm countBins = m_featureBinCounts[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-            const IntEbmType indexBin = samples[iSample].m_sampleBinIndexes[iFeature];
+            const IntEbm indexBin = samples[iSample].m_sampleBinIndexes[iFeature];
             if(indexBin < 0) {
                exit(1);
             }
@@ -955,7 +955,7 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
 }
 
 void TestApi::InitializeInteraction() {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    if(Stage::InteractionAdded != m_stage) {
       exit(1);
@@ -972,9 +972,9 @@ void TestApi::InitializeInteraction() {
       m_interactionWeights.resize(cSamples);
    }
 
-   IntEbmType size = SizeDataSetHeader(cFeatures, 1, 1);
+   IntEbm size = SizeDataSetHeader(cFeatures, 1, 1);
    for(size_t i = 0; i < cFeatures; ++i) {
-      std::vector<IntEbmType> allFeatures(m_interactionBinIndexes.begin() + i * cSamples, m_interactionBinIndexes.begin() + i * cSamples + cSamples);
+      std::vector<IntEbm> allFeatures(m_interactionBinIndexes.begin() + i * cSamples, m_interactionBinIndexes.begin() + i * cSamples + cSamples);
       size += SizeFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
    }
 
@@ -991,7 +991,7 @@ void TestApi::InitializeInteraction() {
    error = FillDataSetHeader(cFeatures, 1, 1, size, pDataSet);
 
    for(size_t i = 0; i < cFeatures; ++i) {
-      std::vector<IntEbmType> allFeatures(m_interactionBinIndexes.begin() + i * cSamples, m_interactionBinIndexes.begin() + i * cSamples + cSamples);
+      std::vector<IntEbm> allFeatures(m_interactionBinIndexes.begin() + i * cSamples, m_interactionBinIndexes.begin() + i * cSamples + cSamples);
       error = FillFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
    }
 
@@ -1003,7 +1003,7 @@ void TestApi::InitializeInteraction() {
       error = FillRegressionTarget(cSamples, 0 == cSamples ? nullptr : &m_interactionRegressionTargets[0], size, pDataSet);
    }
 
-   std::vector<BagEbmType> bag;
+   std::vector<BagEbm> bag;
    bag.insert(bag.end(), cSamples, 1);
 
    error = CreateInteractionDetector(
@@ -1028,17 +1028,17 @@ void TestApi::InitializeInteraction() {
 }
 
 double TestApi::TestCalcInteractionStrength(
-   const std::vector<IntEbmType> features, 
-   const InteractionFlagsType flags,
-   const IntEbmType minSamplesLeaf
+   const std::vector<IntEbm> features, 
+   const InteractionFlags flags,
+   const IntEbm minSamplesLeaf
 ) const {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    if(Stage::InitializedInteraction != m_stage) {
       exit(1);
    }
-   for(const IntEbmType oneFeatureIndex : features) {
-      if(oneFeatureIndex < IntEbmType { 0 }) {
+   for(const IntEbm oneFeatureIndex : features) {
+      if(oneFeatureIndex < IntEbm { 0 }) {
          exit(1);
       }
       if(m_featureBinCounts.size() <= static_cast<size_t>(oneFeatureIndex)) {
@@ -1062,13 +1062,13 @@ double TestApi::TestCalcInteractionStrength(
 }
 
 extern void DisplayCuts(
-   IntEbmType countSamples,
+   IntEbm countSamples,
    double * featureVals,
-   IntEbmType countBinsMax,
-   IntEbmType minSamplesBin,
-   IntEbmType countCuts,
+   IntEbm countBinsMax,
+   IntEbm minSamplesBin,
+   IntEbm countCuts,
    double * cutsLowerBoundInclusive,
-   IntEbmType isMissingPresent,
+   IntEbm isMissingPresent,
    double minFeatureVal,
    double maxFeatureVal
 ) {

@@ -27,10 +27,10 @@ public:
 
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
-   static ErrorEbmType Func(
+   static ErrorEbm Func(
       const ptrdiff_t cRuntimeClasses,
-      const BagEbmType direction,
-      const BagEbmType * const aBag,
+      const BagEbm direction,
+      const BagEbm * const aBag,
       const void * const aTargets,
       const double * const aInitScores,
       const size_t cSetSamples,
@@ -41,7 +41,7 @@ public:
 
       LOG_0(Trace_Info, "Entered InitializeGradientsAndHessians");
 
-      EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
+      EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
       EBM_ASSERT(0 < cSetSamples);
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != aGradientAndHessian);
@@ -59,20 +59,20 @@ public:
          return Error_OutOfMemory;
       }
 
-      const BagEbmType * pSampleReplication = aBag;
+      const BagEbm * pSampleReplication = aBag;
       const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
       const double * pInitScore = aInitScores;
       FloatFast * pGradientAndHessian = aGradientAndHessian;
       const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cScores * cSetSamples * 2;
-      const bool isLoopTraining = BagEbmType { 0 } < direction;
+      const bool isLoopTraining = BagEbm { 0 } < direction;
       do {
-         BagEbmType replication = 1;
+         BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
             replication = *pSampleReplication;
             ++pSampleReplication;
          }
-         if(BagEbmType { 0 } != replication) {
-            const bool isItemTraining = BagEbmType { 0 } < replication;
+         if(BagEbm { 0 } != replication) {
+            const bool isItemTraining = BagEbm { 0 } < replication;
             if(isLoopTraining == isItemTraining) {
                const SharedStorageDataType targetOriginal = *pTargetData;
                // if we can't fit it, then we should increase our StorageDataType size!
@@ -130,7 +130,7 @@ public:
                   } while(iScore < cScores);
 
                   replication -= direction;
-               } while(BagEbmType { 0 } != replication);
+               } while(BagEbm { 0 } != replication);
             } else {
                if(nullptr != pInitScore) {
                   pInitScore += cScores;
@@ -154,10 +154,10 @@ public:
 
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
-   static ErrorEbmType Func(
+   static ErrorEbm Func(
       const ptrdiff_t cRuntimeClasses,
-      const BagEbmType direction,
-      const BagEbmType * const aBag,
+      const BagEbm direction,
+      const BagEbm * const aBag,
       const void * const aTargets,
       const double * const aInitScores,
       const size_t cSetSamples,
@@ -171,30 +171,30 @@ public:
       //   cRuntimeClasses for some of the addition
       // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
 
-      EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
+      EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
       EBM_ASSERT(0 < cSetSamples);
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != aGradientAndHessian);
 
-      const BagEbmType * pSampleReplication = aBag;
+      const BagEbm * pSampleReplication = aBag;
       const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
       const double * pInitScore = aInitScores;
       FloatFast * pGradientAndHessian = aGradientAndHessian;
       const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples * 2;
-      const bool isLoopTraining = BagEbmType { 0 } < direction;
+      const bool isLoopTraining = BagEbm { 0 } < direction;
       do {
-         BagEbmType replication = 1;
+         BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
             replication = *pSampleReplication;
             ++pSampleReplication;
          }
-         if(BagEbmType { 0 } != replication) {
+         if(BagEbm { 0 } != replication) {
             FloatFast initScore = 0;
             if(nullptr != pInitScore) {
                initScore = SafeConvertFloat<FloatFast>(*pInitScore);
                ++pInitScore;
             }
-            const bool isItemTraining = BagEbmType { 0 } < replication;
+            const bool isItemTraining = BagEbm { 0 } < replication;
             if(isLoopTraining == isItemTraining) {
                const SharedStorageDataType targetOriginal = *pTargetData;
                // if we can't fit it, then we should increase our StorageDataType size!
@@ -212,7 +212,7 @@ public:
                   pGradientAndHessian += 2;
 
                   replication -= direction;
-               } while(BagEbmType { 0 } != replication);
+               } while(BagEbm { 0 } != replication);
             }
          }
          ++pTargetData;
@@ -230,10 +230,10 @@ public:
 
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
-   static ErrorEbmType Func(
+   static ErrorEbm Func(
       const ptrdiff_t cRuntimeClasses,
-      const BagEbmType direction,
-      const BagEbmType * const aBag,
+      const BagEbm direction,
+      const BagEbm * const aBag,
       const void * const aTargets,
       const double * const aInitScores,
       const size_t cSetSamples,
@@ -247,30 +247,30 @@ public:
       //   cRuntimeClasses for some of the addition
       // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
 
-      EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
+      EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
       EBM_ASSERT(0 < cSetSamples);
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != aGradientAndHessian);
 
-      const BagEbmType * pSampleReplication = aBag;
+      const BagEbm * pSampleReplication = aBag;
       const FloatFast * pTargetData = static_cast<const FloatFast *>(aTargets);
       const double * pInitScore = aInitScores;
       FloatFast * pGradientAndHessian = aGradientAndHessian;
       const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples;
-      const bool isLoopTraining = BagEbmType { 0 } < direction;
+      const bool isLoopTraining = BagEbm { 0 } < direction;
       do {
-         BagEbmType replication = 1;
+         BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
             replication = *pSampleReplication;
             ++pSampleReplication;
          }
-         if(BagEbmType { 0 } != replication) {
+         if(BagEbm { 0 } != replication) {
             FloatFast initScore = 0;
             if(nullptr != pInitScore) {
                initScore = SafeConvertFloat<FloatFast>(*pInitScore);
                ++pInitScore;
             }
-            const bool isItemTraining = BagEbmType { 0 } < replication;
+            const bool isItemTraining = BagEbm { 0 } < replication;
             if(isLoopTraining == isItemTraining) {
                // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 
                //   from the input data
@@ -288,7 +288,7 @@ public:
                   ++pGradientAndHessian;
 
                   replication -= direction;
-               } while(BagEbmType { 0 } != replication);
+               } while(BagEbm { 0 } != replication);
             }
          }
          ++pTargetData;
@@ -299,10 +299,10 @@ public:
    }
 };
 
-extern ErrorEbmType InitializeGradientsAndHessians(
+extern ErrorEbm InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
-   const BagEbmType direction,
-   const BagEbmType * const aBag,
+   const BagEbm direction,
+   const BagEbm * const aBag,
    const double * const aInitScores,
    const size_t cSetSamples,
    FloatFast * const aGradientAndHessian

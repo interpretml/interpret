@@ -67,7 +67,7 @@ class BoosterCore final {
 
    static void DeleteTensors(const size_t cTerms, Tensor ** const apTensors);
 
-   static ErrorEbmType InitializeTensors(
+   static ErrorEbm InitializeTensors(
       const size_t cTerms,
       const Term * const * const apTerms,
       const size_t cScores,
@@ -181,15 +181,15 @@ public:
 
    static void Free(BoosterCore * const pBoosterCore);
 
-   static ErrorEbmType Create(
+   static ErrorEbm Create(
       BoosterShell * const pBoosterShell,
       const size_t cTerms,
       const size_t cSamplingSets,
       const double * const experimentalParams,
-      const IntEbmType * const acTermDimensions,
-      const IntEbmType * const aiTermFeatures,
+      const IntEbm * const acTermDimensions,
+      const IntEbm * const aiTermFeatures,
       const unsigned char * const pDataSetShared,
-      const BagEbmType * const aBag,
+      const BagEbm * const aBag,
       const double * const aInitScores
    );
 };

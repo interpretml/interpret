@@ -140,16 +140,16 @@ inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) {
 #endif // EXPAND_BINARY_LOGITS
 }
 
-constexpr SeedEbmType k_seed = SeedEbmType { -42 };
+constexpr SeedEbm k_seed = SeedEbm { -42 };
 
 class FeatureTest final {
 public:
 
    const bool m_bNominal;
-   const IntEbmType m_countBins;
+   const IntEbm m_countBins;
 
    inline FeatureTest(
-      const IntEbmType countBins, 
+      const IntEbm countBins, 
       const bool bNominal = false
    ) :
       m_bNominal(bNominal),
@@ -162,13 +162,13 @@ public:
 
 class TestSample final {
 public:
-   const std::vector<IntEbmType> m_sampleBinIndexes;
+   const std::vector<IntEbm> m_sampleBinIndexes;
    const double m_target;
    const bool m_bNullWeight;
    const double m_weight;
    const std::vector<double> m_initScores;
 
-   inline TestSample(const std::vector<IntEbmType> sampleBinIndexes, const double target) :
+   inline TestSample(const std::vector<IntEbm> sampleBinIndexes, const double target) :
       m_sampleBinIndexes(sampleBinIndexes),
       m_target(target),
       m_bNullWeight(true),
@@ -176,7 +176,7 @@ public:
    }
 
    inline TestSample(
-      const std::vector<IntEbmType> sampleBinIndexes, 
+      const std::vector<IntEbm> sampleBinIndexes, 
       const double target,
       const double weight,
       const std::vector<double> initScores = {}
@@ -190,77 +190,77 @@ public:
 };
 
 static constexpr ptrdiff_t k_iZeroClassificationLogitDefault = ptrdiff_t { -1 };
-static constexpr IntEbmType k_countInnerBagsDefault = IntEbmType { 0 };
+static constexpr IntEbm k_countInnerBagsDefault = IntEbm { 0 };
 static constexpr double k_learningRateDefault = double { 0.01 };
-static constexpr IntEbmType k_minSamplesLeafDefault = IntEbmType { 1 };
+static constexpr IntEbm k_minSamplesLeafDefault = IntEbm { 1 };
 
-static constexpr IntEbmType k_leavesMaxFillDefault = 5;
-// 64 dimensions is the most we can express with a 64 bit IntEbmType
-static const std::vector<IntEbmType> k_leavesMaxDefault = { 
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault }
+static constexpr IntEbm k_leavesMaxFillDefault = 5;
+// 64 dimensions is the most we can express with a 64 bit IntEbm
+static const std::vector<IntEbm> k_leavesMaxDefault = { 
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault }
 };
 
 struct BoostRet {
@@ -284,26 +284,26 @@ class TestApi {
    const ptrdiff_t m_cClasses;
    const ptrdiff_t m_iZeroClassificationLogit;
 
-   std::vector<BoolEbmType> m_featureNominals;
-   std::vector<IntEbmType> m_featureBinCounts;
-   std::vector<IntEbmType> m_dimensionCounts;
-   std::vector<IntEbmType> m_featureIndexes;
+   std::vector<BoolEbm> m_featureNominals;
+   std::vector<IntEbm> m_featureBinCounts;
+   std::vector<IntEbm> m_dimensionCounts;
+   std::vector<IntEbm> m_featureIndexes;
 
    std::vector<std::vector<size_t>> m_termBinCounts;
 
    std::vector<double> m_trainingRegressionTargets;
-   std::vector<IntEbmType> m_trainingClassificationTargets;
+   std::vector<IntEbm> m_trainingClassificationTargets;
    // TODO: make this a vector of vectors.  The first vector being indexed by iFeature
-   std::vector<IntEbmType> m_trainingBinIndexes;
+   std::vector<IntEbm> m_trainingBinIndexes;
    std::vector<double> m_trainingWeights;
    std::vector<double> m_trainingInitScores;
    bool m_bNullTrainingWeights;
    bool m_bNullTrainingInitScores;
 
    std::vector<double> m_validationRegressionTargets;
-   std::vector<IntEbmType> m_validationClassificationTargets;
+   std::vector<IntEbm> m_validationClassificationTargets;
    // TODO: make this a vector of vectors.  The first vector being indexed by iFeature
-   std::vector<IntEbmType> m_validationBinIndexes;
+   std::vector<IntEbm> m_validationBinIndexes;
    std::vector<double> m_validationWeights;
    std::vector<double> m_validationInitScores;
    bool m_bNullValidationWeights;
@@ -312,8 +312,8 @@ class TestApi {
    BoosterHandle m_boosterHandle;
 
    std::vector<double> m_interactionRegressionTargets;
-   std::vector<IntEbmType> m_interactionClassificationTargets;
-   std::vector<IntEbmType> m_interactionBinIndexes;
+   std::vector<IntEbm> m_interactionClassificationTargets;
+   std::vector<IntEbm> m_interactionBinIndexes;
    std::vector<double> m_interactionWeights;
    std::vector<double> m_interactionInitScores;
    bool m_bNullInteractionWeights;
@@ -350,14 +350,14 @@ public:
    void AddTerms(const std::vector<std::vector<size_t>> termFeatures);
    void AddTrainingSamples(const std::vector<TestSample> samples);
    void AddValidationSamples(const std::vector<TestSample> samples);
-   void InitializeBoosting(const IntEbmType countInnerBags = k_countInnerBagsDefault);
+   void InitializeBoosting(const IntEbm countInnerBags = k_countInnerBagsDefault);
    
    BoostRet Boost(
-      const IntEbmType indexTerm,
-      const BoostFlagsType flags = BoostFlags_Default,
+      const IntEbm indexTerm,
+      const BoostFlags flags = BoostFlags_Default,
       const double learningRate = k_learningRateDefault,
-      const IntEbmType minSamplesLeaf = k_minSamplesLeafDefault,
-      const std::vector<IntEbmType> leavesMax = k_leavesMaxDefault
+      const IntEbm minSamplesLeaf = k_minSamplesLeafDefault,
+      const std::vector<IntEbm> leavesMax = k_leavesMaxDefault
    );
 
    double GetBestTermScore(
@@ -381,20 +381,20 @@ public:
    void InitializeInteraction();
 
    double TestCalcInteractionStrength(
-      const std::vector<IntEbmType> features, 
-      const InteractionFlagsType flags = InteractionFlags_Default,
-      const IntEbmType minSamplesLeaf = k_minSamplesLeafDefault
+      const std::vector<IntEbm> features, 
+      const InteractionFlags flags = InteractionFlags_Default,
+      const IntEbm minSamplesLeaf = k_minSamplesLeafDefault
    ) const;
 };
 
 void DisplayCuts(
-   IntEbmType countSamples,
+   IntEbm countSamples,
    double * featureVals,
-   IntEbmType countBinsMax,
-   IntEbmType minSamplesBin,
-   IntEbmType countCuts,
+   IntEbm countBinsMax,
+   IntEbm minSamplesBin,
+   IntEbm countCuts,
    double * cutsLowerBoundInclusive,
-   IntEbmType isMissingPresent,
+   IntEbm isMissingPresent,
    double minFeatureVal,
    double maxFeatureVal
 );

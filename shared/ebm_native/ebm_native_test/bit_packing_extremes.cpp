@@ -11,10 +11,10 @@ static const TestPriority k_filePriority = TestPriority::BitPackingExtremes;
 
 TEST_CASE("Test data bit packing extremes, boosting, regression") {
    for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
-      IntEbmType exponential = static_cast<IntEbmType>(std::pow(2, exponentialBins));
+      IntEbm exponential = static_cast<IntEbm>(std::pow(2, exponentialBins));
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
-      for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
-         IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+      for(IntEbm iRange = IntEbm { -1 }; iRange <= IntEbm { 1 }; ++iRange) {
+         IntEbm cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 
          // 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
@@ -43,10 +43,10 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
 
 TEST_CASE("Test data bit packing extremes, boosting, binary") {
    for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
-      IntEbmType exponential = static_cast<IntEbmType>(std::pow(2, exponentialBins));
+      IntEbm exponential = static_cast<IntEbm>(std::pow(2, exponentialBins));
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
-      for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
-         IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+      for(IntEbm iRange = IntEbm { -1 }; iRange <= IntEbm { 1 }; ++iRange) {
+         IntEbm cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
          // a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
@@ -79,10 +79,10 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
 
 TEST_CASE("Test data bit packing extremes, interaction, regression") {
    for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
-      IntEbmType exponential = static_cast<IntEbmType>(std::pow(2, exponentialBins));
+      IntEbm exponential = static_cast<IntEbm>(std::pow(2, exponentialBins));
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
-      for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
-         IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+      for(IntEbm iRange = IntEbm { -1 }; iRange <= IntEbm { 1 }; ++iRange) {
+         IntEbm cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
          // a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
@@ -105,10 +105,10 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
 
 TEST_CASE("Test data bit packing extremes, interaction, binary") {
    for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
-      IntEbmType exponential = static_cast<IntEbmType>(std::pow(2, exponentialBins));
+      IntEbm exponential = static_cast<IntEbm>(std::pow(2, exponentialBins));
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
-      for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
-         IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+      for(IntEbm iRange = IntEbm { -1 }; iRange <= IntEbm { 1 }; ++iRange) {
+         IntEbm cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
          // a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {

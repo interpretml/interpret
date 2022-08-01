@@ -14,7 +14,7 @@ TEST_CASE("GetHistogramCutCount, normals") {
    const double test[] { 1, 2, 3, 5 };
    constexpr size_t cTest = sizeof(test) / sizeof(test[0]);
 
-   IntEbmType result = GetHistogramCutCount(static_cast<IntEbmType>(cTest), test);
+   IntEbm result = GetHistogramCutCount(static_cast<IntEbm>(cTest), test);
    CHECK(3 == result);
 }
 
@@ -23,17 +23,17 @@ TEST_CASE("GetHistogramCutCount, out of bound inputs") {
    const double test[] { std::numeric_limits<double>::infinity(), 1, 2, std::numeric_limits<double>::quiet_NaN(), 3, 5, -std::numeric_limits<double>::infinity() };
    constexpr size_t cTest = sizeof(test) / sizeof(test[0]);
 
-   IntEbmType result = GetHistogramCutCount(static_cast<IntEbmType>(cTest), test);
+   IntEbm result = GetHistogramCutCount(static_cast<IntEbm>(cTest), test);
    CHECK(3 == result);
 }
 
 TEST_CASE("BinFeature, zero samples") {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    UNUSED(testCaseHidden);
    const double cutsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
-   constexpr IntEbmType countCuts = sizeof(cutsLowerBoundInclusive) / sizeof(cutsLowerBoundInclusive[0]);
-   constexpr IntEbmType  cSamples = 0;
+   constexpr IntEbm countCuts = sizeof(cutsLowerBoundInclusive) / sizeof(cutsLowerBoundInclusive[0]);
+   constexpr IntEbm  cSamples = 0;
 
    error = BinFeature(
       cSamples,
@@ -58,11 +58,11 @@ TEST_CASE("BinFeature, increasing lengths") {
    constexpr size_t cCutsEnd = 1024 * 2 + 100;
    constexpr size_t cData = 11 * cCutsEnd;
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    double * cutsLowerBoundInclusive = new double[cCutsEnd];
    double * featureVals = new double[cData];
-   IntEbmType * aiBins = new IntEbmType[cData];
+   IntEbm * aiBins = new IntEbm[cData];
    for(size_t iCutPoint = 0; iCutPoint < cCutsEnd; ++iCutPoint) {
       const double cutPoint = static_cast<double>(iCutPoint);
       cutsLowerBoundInclusive[iCutPoint] = cutPoint;
@@ -95,7 +95,7 @@ TEST_CASE("BinFeature, increasing lengths") {
       const size_t cSamples = cData - cRemoveLow - cRemoveHigh;
       memset(aiBins + cRemoveLow, 0, cSamples * sizeof(*aiBins));
       error = BinFeature(
-         static_cast<IntEbmType>(cSamples),
+         static_cast<IntEbm>(cSamples),
          featureVals + cRemoveLow,
          cCuts,
          cutsLowerBoundInclusive,
@@ -104,20 +104,20 @@ TEST_CASE("BinFeature, increasing lengths") {
       CHECK(Error_None == error);
 
       for(size_t iCutPoint = 0; iCutPoint < cCutsEnd; ++iCutPoint) {
-         CHECK(aiBins[11 * iCutPoint + 0] == IntEbmType { 1 });
-         CHECK(aiBins[11 * iCutPoint + 1] == IntEbmType { 0 });
+         CHECK(aiBins[11 * iCutPoint + 0] == IntEbm { 1 });
+         CHECK(aiBins[11 * iCutPoint + 1] == IntEbm { 0 });
 
-         CHECK(aiBins[11 * iCutPoint + 2] == IntEbmType { 1 });
-         CHECK(aiBins[11 * iCutPoint + 3] == (size_t { 0 } == cCuts ? IntEbmType { 1 } : IntEbmType { 2 }));
+         CHECK(aiBins[11 * iCutPoint + 2] == IntEbm { 1 });
+         CHECK(aiBins[11 * iCutPoint + 3] == (size_t { 0 } == cCuts ? IntEbm { 1 } : IntEbm { 2 }));
 
-         CHECK(aiBins[11 * iCutPoint + 4] == IntEbmType { 1 } + static_cast<IntEbmType>(std::min(iCutPoint, cCuts)));
-         CHECK(aiBins[11 * iCutPoint + 5] == IntEbmType { 1 } + static_cast<IntEbmType>(std::min(iCutPoint + 1, cCuts)));
-         CHECK(aiBins[11 * iCutPoint + 6] == IntEbmType { 1 } + static_cast<IntEbmType>(std::min(iCutPoint + 1, cCuts)));
-         CHECK(aiBins[11 * iCutPoint + 7] == IntEbmType { 1 } + static_cast<IntEbmType>(cCuts));
-         CHECK(aiBins[11 * iCutPoint + 8] == IntEbmType { 1 } + static_cast<IntEbmType>(cCuts));
+         CHECK(aiBins[11 * iCutPoint + 4] == IntEbm { 1 } + static_cast<IntEbm>(std::min(iCutPoint, cCuts)));
+         CHECK(aiBins[11 * iCutPoint + 5] == IntEbm { 1 } + static_cast<IntEbm>(std::min(iCutPoint + 1, cCuts)));
+         CHECK(aiBins[11 * iCutPoint + 6] == IntEbm { 1 } + static_cast<IntEbm>(std::min(iCutPoint + 1, cCuts)));
+         CHECK(aiBins[11 * iCutPoint + 7] == IntEbm { 1 } + static_cast<IntEbm>(cCuts));
+         CHECK(aiBins[11 * iCutPoint + 8] == IntEbm { 1 } + static_cast<IntEbm>(cCuts));
 
-         CHECK(aiBins[11 * iCutPoint + 9] == IntEbmType { 0 });
-         CHECK(aiBins[11 * iCutPoint + 10] == IntEbmType { 1 });
+         CHECK(aiBins[11 * iCutPoint + 9] == IntEbm { 0 });
+         CHECK(aiBins[11 * iCutPoint + 10] == IntEbm { 1 });
       }
    }
 

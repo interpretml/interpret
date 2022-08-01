@@ -23,11 +23,11 @@ namespace DEFINED_ZONE_NAME {
 static int g_cLogEnterGenerateGaussianRandom = 25;
 static int g_cLogExitGenerateGaussianRandom = 25;
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
-   BoolEbmType isDeterministic,
-   SeedEbmType seed,
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateGaussianRandom(
+   BoolEbm isDeterministic,
+   SeedEbm seed,
    double stddev,
-   IntEbmType count,
+   IntEbm count,
    double * randomOut
 ) {
    LOG_COUNTED_N(
@@ -36,9 +36,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
       Trace_Verbose,
       "Entered GenerateGaussianRandom: "
       "isDeterministic=%s, "
-      "seed=%" SeedEbmTypePrintf ", "
+      "seed=%" SeedEbmPrintf ", "
       "stddev=%le, "
-      "count=%" IntEbmTypePrintf ", "
+      "count=%" IntEbmPrintf ", "
       "randomOut=%p"
       ,
       ObtainTruth(isDeterministic),
@@ -48,9 +48,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
       static_cast<const void *>(randomOut)
    );
 
-   if(UNLIKELY(count <= IntEbmType { 0 })) {
-      if(UNLIKELY(count < IntEbmType { 0 })) {
-         LOG_0(Trace_Error, "ERROR GenerateGaussianRandom count < IntEbmType { 0 }");
+   if(UNLIKELY(count <= IntEbm { 0 })) {
+      if(UNLIKELY(count < IntEbm { 0 })) {
+         LOG_0(Trace_Error, "ERROR GenerateGaussianRandom count < IntEbm { 0 }");
          return Error_IllegalParamValue;
       } else {
          LOG_COUNTED_0(

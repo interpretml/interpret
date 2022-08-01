@@ -184,7 +184,7 @@ public:
    WARNING_PUSH
    WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 
-   static ErrorEbmType Func(
+   static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
       const size_t cSamplesLeafMin,
@@ -196,7 +196,7 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
 
-      ErrorEbmType error;
+      ErrorEbm error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
@@ -788,14 +788,14 @@ public:
 
       // there were no good splits found
 #ifndef NDEBUG
-      const ErrorEbmType errorDebug1 =
+      const ErrorEbm errorDebug1 =
 #endif // NDEBUG
          pInnerTermUpdate->SetCountSplits(iDimension1, 0);
       // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split array at all
       EBM_ASSERT(Error_None == errorDebug1);
 
 #ifndef NDEBUG
-      const ErrorEbmType errorDebug2 =
+      const ErrorEbm errorDebug2 =
 #endif // NDEBUG
          pInnerTermUpdate->SetCountSplits(iDimension2, 0);
       // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split array at all
@@ -847,7 +847,7 @@ public:
 
    PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static ErrorEbmType Func(
+   INLINE_ALWAYS static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
       const size_t cSamplesLeafMin,
@@ -897,7 +897,7 @@ public:
 
    PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static ErrorEbmType Func(
+   INLINE_ALWAYS static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
       const size_t cSamplesLeafMin,
@@ -925,7 +925,7 @@ public:
    }
 };
 
-extern ErrorEbmType PartitionTwoDimensionalBoosting(
+extern ErrorEbm PartitionTwoDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
    const size_t cSamplesLeafMin,

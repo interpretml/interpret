@@ -526,8 +526,8 @@ TEST_CASE("weights totals equivalence, boosting, multiclass") {
 TEST_CASE("one leavesMax, boosting, regression") {
    // TODO : add classification binary and multiclass versions of this
 
-   static const std::vector<IntEbmType> k_leavesMax = {
-      IntEbmType { 1 }
+   static const std::vector<IntEbm> k_leavesMax = {
+      IntEbm { 1 }
    };
 
    TestApi test = TestApi(k_learningTypeRegression);
@@ -1190,8 +1190,8 @@ TEST_CASE("3 dimensional term with one dimension reduced in different ways, boos
 }
 
 TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
-   static const std::vector<IntEbmType> k_leavesMax = {
-      IntEbmType { 3 }
+   static const std::vector<IntEbm> k_leavesMax = {
+      IntEbm { 3 }
    };
 
    TestApi test = TestApi(3);
@@ -1225,8 +1225,8 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
 }
 
 TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
-   static const std::vector<IntEbmType> k_leavesMax = {
-      IntEbmType { 3 }
+   static const std::vector<IntEbm> k_leavesMax = {
+      IntEbm { 3 }
    };
 
    TestApi test = TestApi(3);
@@ -1263,19 +1263,19 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
 }
 
 TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
-   constexpr IntEbmType cStates = 7;
-   static const std::vector<IntEbmType> k_leavesMax = {
-      IntEbmType { 3 },
-      IntEbmType { 3 },
-      IntEbmType { 3 }
+   constexpr IntEbm cStates = 7;
+   static const std::vector<IntEbm> k_leavesMax = {
+      IntEbm { 3 },
+      IntEbm { 3 },
+      IntEbm { 3 }
    };
 
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(cStates), FeatureTest(1), FeatureTest(cStates) });
    test.AddTerms({ { 0, 1, 2 } });
    std::vector<TestSample> samples;
-   for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
-      for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
+   for(IntEbm i0 = 0; i0 < cStates; ++i0) {
+      for(IntEbm i2 = 0; i2 < cStates; ++i2) {
          // create a few zero spaces where we have no data
          if(i0 != i2) {
             if(i0 < i2) {
@@ -1300,8 +1300,8 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
 
    CHECK(validationMetric <= 0.00017711094447544644 * 1.1);
 
-   for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
-      for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
+   for(IntEbm i0 = 0; i0 < cStates; ++i0) {
+      for(IntEbm i2 = 0; i2 < cStates; ++i2) {
 #if false
          std::cout << std::endl;
          std::cout << i0 << ' ' << '0' << ' ' << i2 << std::endl;
@@ -1320,20 +1320,20 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
 }
 
 TEST_CASE("Random splitting, pure tripples, multiclass") {
-   constexpr IntEbmType cStates = 7;
-   static const std::vector<IntEbmType> k_leavesMax = {
-      IntEbmType { 3 },
-      IntEbmType { 3 },
-      IntEbmType { 3 }
+   constexpr IntEbm cStates = 7;
+   static const std::vector<IntEbm> k_leavesMax = {
+      IntEbm { 3 },
+      IntEbm { 3 },
+      IntEbm { 3 }
    };
 
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(cStates), FeatureTest(cStates), FeatureTest(cStates) });
    test.AddTerms({ { 0, 1, 2 } });
    std::vector<TestSample> samples;
-   for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
-      for(IntEbmType i1 = 0; i1 < cStates; ++i1) {
-         for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
+   for(IntEbm i0 = 0; i0 < cStates; ++i0) {
+      for(IntEbm i1 = 0; i1 < cStates; ++i1) {
+         for(IntEbm i2 = 0; i2 < cStates; ++i2) {
             if(i0 == i1 && i0 == i2) {
                samples.push_back(TestSample({ i0, i1, i2 }, 0));
             } else if(i0 < i1) {
@@ -1357,9 +1357,9 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
    }
    CHECK(validationMetric <= 0.0091562298922079986 * 1.4);
 
-   for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
-      for(IntEbmType i1 = 0; i1 < cStates; ++i1) {
-         for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
+   for(IntEbm i0 = 0; i0 < cStates; ++i0) {
+      for(IntEbm i1 = 0; i1 < cStates; ++i1) {
+         for(IntEbm i2 = 0; i2 < cStates; ++i2) {
 #if false
             std::cout << std::endl;
             std::cout << i0 << ' ' << i1 << ' ' << i2 << std::endl;
@@ -1379,20 +1379,20 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
 }
 
 TEST_CASE("Random splitting, pure tripples, regression") {
-   constexpr IntEbmType cStates = 7;
-   static const std::vector<IntEbmType> k_leavesMax = {
-      IntEbmType { 3 },
-      IntEbmType { 3 },
-      IntEbmType { 3 }
+   constexpr IntEbm cStates = 7;
+   static const std::vector<IntEbm> k_leavesMax = {
+      IntEbm { 3 },
+      IntEbm { 3 },
+      IntEbm { 3 }
    };
 
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(cStates), FeatureTest(cStates), FeatureTest(cStates) });
    test.AddTerms({ { 0, 1, 2 } });
    std::vector<TestSample> samples;
-   for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
-      for(IntEbmType i1 = 0; i1 < cStates; ++i1) {
-         for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
+   for(IntEbm i0 = 0; i0 < cStates; ++i0) {
+      for(IntEbm i1 = 0; i1 < cStates; ++i1) {
+         for(IntEbm i2 = 0; i2 < cStates; ++i2) {
             if(i0 == i1 && i0 == i2) {
                samples.push_back(TestSample({ i0, i1, i2 }, -10));
             } else if(i0 < i1) {
@@ -1417,9 +1417,9 @@ TEST_CASE("Random splitting, pure tripples, regression") {
 
    CHECK_APPROX(validationMetric, 1.4656199141470665);
 
-   for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
-      for(IntEbmType i1 = 0; i1 < cStates; ++i1) {
-         for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
+   for(IntEbm i0 = 0; i0 < cStates; ++i0) {
+      for(IntEbm i1 = 0; i1 < cStates; ++i1) {
+         for(IntEbm i2 = 0; i2 < cStates; ++i2) {
 #if false
             std::cout << std::endl;
             std::cout << i0 << ' ' << i1 << ' ' << i2 << std::endl;
@@ -1433,21 +1433,21 @@ TEST_CASE("Random splitting, pure tripples, regression") {
 }
 
 TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
-   constexpr IntEbmType k_cStates = 7;
-   constexpr IntEbmType k_minSamplesLeaf = 1;
-   static const std::vector<IntEbmType> k_leavesMax = {
-      IntEbmType { 1 },
-      IntEbmType { 1 },
-      IntEbmType { 1 }
+   constexpr IntEbm k_cStates = 7;
+   constexpr IntEbm k_minSamplesLeaf = 1;
+   static const std::vector<IntEbm> k_leavesMax = {
+      IntEbm { 1 },
+      IntEbm { 1 },
+      IntEbm { 1 }
    };
 
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(k_cStates), FeatureTest(k_cStates), FeatureTest(k_cStates) });
    test.AddTerms({ { 0, 1, 2 } });
    std::vector<TestSample> samples;
-   for(IntEbmType i0 = 0; i0 < k_cStates; ++i0) {
-      for(IntEbmType i1 = 0; i1 < k_cStates; ++i1) {
-         for(IntEbmType i2 = 0; i2 < k_cStates; ++i2) {
+   for(IntEbm i0 = 0; i0 < k_cStates; ++i0) {
+      for(IntEbm i1 = 0; i1 < k_cStates; ++i1) {
+         for(IntEbm i2 = 0; i2 < k_cStates; ++i2) {
             if(i0 == i1 && i0 == i2) {
                samples.push_back(TestSample({ i0, i1, i2 }, 0));
             } else if(i0 < i1) {
@@ -1480,9 +1480,9 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
    CHECK(validationMetric <= 0.73616339235889672 * 1.1);
    CHECK(0.73616339235889672 / 1.1 <= validationMetric);
 
-   for(IntEbmType i0 = 0; i0 < k_cStates; ++i0) {
-      for(IntEbmType i1 = 0; i1 < k_cStates; ++i1) {
-         for(IntEbmType i2 = 0; i2 < k_cStates; ++i2) {
+   for(IntEbm i0 = 0; i0 < k_cStates; ++i0) {
+      for(IntEbm i1 = 0; i1 < k_cStates; ++i1) {
+         for(IntEbm i2 = 0; i2 < k_cStates; ++i2) {
 #if false
             std::cout << std::endl;
             std::cout << i0 << ' ' << i1 << ' ' << i2 << std::endl;
@@ -1502,8 +1502,8 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
 }
 
 TEST_CASE("Random splitting, no splits, binary, sums") {
-   static const std::vector<IntEbmType> k_leavesMax = {
-      IntEbmType { 3 }
+   static const std::vector<IntEbm> k_leavesMax = {
+      IntEbm { 3 }
    };
 
    TestApi test = TestApi(2);

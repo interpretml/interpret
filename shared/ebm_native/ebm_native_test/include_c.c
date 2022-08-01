@@ -8,10 +8,10 @@
 // include this AFTER ebm_native.h to test that ebm_native.h can stand alone
 #include <stdio.h>
 
-static void EBM_CALLING_CONVENTION LogCallback(TraceEbmType traceLevel, const char * message) {
+static void EBM_CALLING_CONVENTION LogCallback(TraceEbm traceLevel, const char * message) {
    char buffer[1000];
    const size_t cBytesBuffer = sizeof(buffer) / sizeof(buffer[0]);
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf ".%s\n", traceLevel, message);
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf ".%s\n", traceLevel, message);
 }
 
 extern void TestCHeaderConstructs() {
@@ -24,38 +24,38 @@ extern void TestCHeaderConstructs() {
    InteractionHandle interactionHandle = NULL;
    snprintf(buffer, cBytesBuffer, "%p\n", interactionHandle);
 
-   IntEbmType testInt = -123;
-   snprintf(buffer, cBytesBuffer, "%" IntEbmTypePrintf "\n", testInt);
+   IntEbm testInt = -123;
+   snprintf(buffer, cBytesBuffer, "%" IntEbmPrintf "\n", testInt);
 
-   UIntEbmType testUInt = 123;
-   snprintf(buffer, cBytesBuffer, "%" UIntEbmTypePrintf "\n", testUInt);
+   UIntEbm testUInt = 123;
+   snprintf(buffer, cBytesBuffer, "%" UIntEbmPrintf "\n", testUInt);
 
-   SeedEbmType testSeed = -123;
-   snprintf(buffer, cBytesBuffer, "%" SeedEbmTypePrintf "\n", testSeed);
+   SeedEbm testSeed = -123;
+   snprintf(buffer, cBytesBuffer, "%" SeedEbmPrintf "\n", testSeed);
 
-   BoolEbmType testBoolTrue = EBM_TRUE;
-   snprintf(buffer, cBytesBuffer, "%" BoolEbmTypePrintf "\n", testBoolTrue);
+   BoolEbm testBoolTrue = EBM_TRUE;
+   snprintf(buffer, cBytesBuffer, "%" BoolEbmPrintf "\n", testBoolTrue);
 
-   BoolEbmType testBoolFalse = EBM_FALSE;
-   snprintf(buffer, cBytesBuffer, "%" BoolEbmTypePrintf "\n", testBoolFalse);
+   BoolEbm testBoolFalse = EBM_FALSE;
+   snprintf(buffer, cBytesBuffer, "%" BoolEbmPrintf "\n", testBoolFalse);
 
-   TraceEbmType testTraceOff = Trace_Off;
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceOff);
+   TraceEbm testTraceOff = Trace_Off;
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf "\n", testTraceOff);
 
-   TraceEbmType testTraceError = Trace_Error;
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceError);
+   TraceEbm testTraceError = Trace_Error;
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf "\n", testTraceError);
 
-   TraceEbmType testTraceWarning = Trace_Warning;
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceWarning);
+   TraceEbm testTraceWarning = Trace_Warning;
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf "\n", testTraceWarning);
 
-   TraceEbmType testTraceInfo = Trace_Info;
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceInfo);
+   TraceEbm testTraceInfo = Trace_Info;
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf "\n", testTraceInfo);
 
-   TraceEbmType testTraceVerbose = Trace_Verbose;
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceVerbose);
+   TraceEbm testTraceVerbose = Trace_Verbose;
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf "\n", testTraceVerbose);
 
-   TraceEbmType testTraceIllegal = 9999;
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceIllegal);
+   TraceEbm testTraceIllegal = 9999;
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf "\n", testTraceIllegal);
 
    snprintf(buffer, cBytesBuffer, "%s\n", GetTraceLevelString(testTraceOff));
    snprintf(buffer, cBytesBuffer, "%s\n", GetTraceLevelString(testTraceError));
@@ -64,6 +64,6 @@ extern void TestCHeaderConstructs() {
    snprintf(buffer, cBytesBuffer, "%s\n", GetTraceLevelString(testTraceVerbose));
    snprintf(buffer, cBytesBuffer, "%s\n", GetTraceLevelString(testTraceIllegal));
 
-   LOG_CALLBACK logCallback = &LogCallback;
+   LogCallbackFunc logCallback = &LogCallback;
    (*logCallback)(Trace_Verbose, "I am a test.  What are you?");
 }

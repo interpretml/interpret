@@ -62,7 +62,7 @@ extern void TensorTotalsBuild(
 #endif // NDEBUG
 );
 
-extern ErrorEbmType PartitionOneDimensionalBoosting(
+extern ErrorEbm PartitionOneDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const size_t cBins,
    const size_t cSamplesTotal,
@@ -73,7 +73,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
    double * const pTotalGain
 );
 
-extern ErrorEbmType PartitionTwoDimensionalBoosting(
+extern ErrorEbm PartitionTwoDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
    const size_t cSamplesLeafMin,
@@ -84,18 +84,18 @@ extern ErrorEbmType PartitionTwoDimensionalBoosting(
 #endif // NDEBUG
 );
 
-extern ErrorEbmType PartitionRandomBoosting(
+extern ErrorEbm PartitionRandomBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
-   const BoostFlagsType flags,
-   const IntEbmType * const aLeavesMax,
+   const BoostFlags flags,
+   const IntEbm * const aLeavesMax,
    double * const pTotalGain
 );
 
-static ErrorEbmType BoostZeroDimensional(
+static ErrorEbm BoostZeroDimensional(
    BoosterShell * const pBoosterShell, 
    const SamplingSet * const pTrainingSet,
-   const BoostFlagsType flags
+   const BoostFlags flags
 ) {
    LOG_0(Trace_Verbose, "Entered BoostZeroDimensional");
 
@@ -210,23 +210,23 @@ static ErrorEbmType BoostZeroDimensional(
    return Error_None;
 }
 
-static ErrorEbmType BoostSingleDimensional(
+static ErrorEbm BoostSingleDimensional(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
    const size_t cBins,
    const SamplingSet * const pTrainingSet,
    const size_t iDimension,
    const size_t cSamplesLeafMin,
-   const IntEbmType countLeavesMax,
+   const IntEbm countLeavesMax,
    double * const pTotalGain
 ) {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    LOG_0(Trace_Verbose, "Entered BoostSingleDimensional");
 
    EBM_ASSERT(1 == pTerm->GetCountSignificantDimensions());
 
-   EBM_ASSERT(IntEbmType { 2 } <= countLeavesMax); // otherwise we would have called BoostZeroDimensional
+   EBM_ASSERT(IntEbm { 2 } <= countLeavesMax); // otherwise we would have called BoostZeroDimensional
    size_t cLeavesMax = static_cast<size_t>(countLeavesMax);
    if(IsConvertError<size_t>(countLeavesMax)) {
       // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we were going to overflow because it will generate 
@@ -334,7 +334,7 @@ static ErrorEbmType BoostSingleDimensional(
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the hessian isn't required (yet) in order to make decisions about
 //   where to split.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the gradients and then 
 //    go back to our original tensor after splits to determine the hessian
-static ErrorEbmType BoostMultiDimensional(
+static ErrorEbm BoostMultiDimensional(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
    const SamplingSet * const pTrainingSet,
@@ -346,7 +346,7 @@ static ErrorEbmType BoostMultiDimensional(
    EBM_ASSERT(2 <= pTerm->GetCountDimensions());
    EBM_ASSERT(2 <= pTerm->GetCountSignificantDimensions());
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    size_t cAuxillaryBinsForBuildFastTotals = 0;
    size_t cTotalBinsMainSpace = 1;
@@ -620,19 +620,19 @@ static ErrorEbmType BoostMultiDimensional(
    return Error_None;
 }
 
-static ErrorEbmType BoostRandom(
+static ErrorEbm BoostRandom(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
    const SamplingSet * const pTrainingSet,
-   const BoostFlagsType flags,
-   const IntEbmType * const aLeavesMax,
+   const BoostFlags flags,
+   const IntEbm * const aLeavesMax,
    double * const pTotalGain
 ) {
    // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
    LOG_0(Trace_Verbose, "Entered BoostRandom");
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    const size_t cDimensions = pTerm->GetCountDimensions();
    EBM_ASSERT(1 <= cDimensions);
@@ -731,16 +731,16 @@ static ErrorEbmType BoostRandom(
    return Error_None;
 }
 
-static ErrorEbmType GenerateTermUpdateInternal(
+static ErrorEbm GenerateTermUpdateInternal(
    BoosterShell * const pBoosterShell,
    const size_t iTerm,
-   const BoostFlagsType flags,
+   const BoostFlags flags,
    const double learningRate,
    const size_t cSamplesLeafMin,
-   const IntEbmType * const aLeavesMax, 
+   const IntEbm * const aLeavesMax, 
    double * const pGainAvgOut
 ) {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
@@ -754,7 +754,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
    const size_t cDimensions = pTerm->GetCountDimensions();
 
    // TODO: we can probably eliminate lastDimensionLeavesMax and cSignificantBinCount and just fetch them from iDimensionImportant afterwards
-   IntEbmType lastDimensionLeavesMax = IntEbmType { 0 };
+   IntEbm lastDimensionLeavesMax = IntEbm { 0 };
    // this initialization isn't required, but this variable ends up touching a lot of downstream state
    // and g++ seems to warn about all of that usage, even in other downstream functions!
    size_t cSignificantBinCount = size_t { 0 };
@@ -764,7 +764,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
    } else {
       if(0 != cSignificantDimensions) {
          size_t iDimensionInit = 0;
-         const IntEbmType * pLeavesMax = aLeavesMax;
+         const IntEbm * pLeavesMax = aLeavesMax;
          const TermEntry * pTermEntry = pTerm->GetTermEntries();
          EBM_ASSERT(1 <= cDimensions);
          const TermEntry * const pTermEntriesEnd = pTermEntry + cDimensions;
@@ -772,13 +772,13 @@ static ErrorEbmType GenerateTermUpdateInternal(
             const Feature * pFeature = pTermEntry->m_pFeature;
             const size_t cBins = pFeature->GetCountBins();
             if(size_t { 1 } < cBins) {
-               EBM_ASSERT(size_t { 2 } <= cSignificantDimensions || IntEbmType { 0 } == lastDimensionLeavesMax);
+               EBM_ASSERT(size_t { 2 } <= cSignificantDimensions || IntEbm { 0 } == lastDimensionLeavesMax);
 
                iDimensionImportant = iDimensionInit;
                cSignificantBinCount = cBins;
                EBM_ASSERT(nullptr != pLeavesMax);
-               const IntEbmType countLeavesMax = *pLeavesMax;
-               if(countLeavesMax <= IntEbmType { 1 }) {
+               const IntEbm countLeavesMax = *pLeavesMax;
+               if(countLeavesMax <= IntEbm { 1 }) {
                   LOG_0(Trace_Warning, "WARNING GenerateTermUpdateInternal countLeavesMax is 1 or less.");
                } else {
                   // keep iteration even once we find this so that we output logs for any bins of 1
@@ -815,7 +815,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
       double gainAvg = 0;
       do {
          const SamplingSet * const pSamplingSet = *ppSamplingSet;
-         if(UNLIKELY(IntEbmType { 0 } == lastDimensionLeavesMax)) {
+         if(UNLIKELY(IntEbm { 0 } == lastDimensionLeavesMax)) {
             LOG_0(Trace_Warning, "WARNING GenerateTermUpdateInternal boosting zero dimensional");
             error = BoostZeroDimensional(pBoosterShell, pSamplingSet, flags);
             if(Error_None != error) {
@@ -850,7 +850,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
                }
             } else if(1 == cSignificantDimensions) {
                EBM_ASSERT(nullptr != aLeavesMax); // otherwise we'd use BoostZeroDimensional above
-               EBM_ASSERT(IntEbmType { 2 } <= lastDimensionLeavesMax); // otherwise we'd use BoostZeroDimensional above
+               EBM_ASSERT(IntEbm { 2 } <= lastDimensionLeavesMax); // otherwise we'd use BoostZeroDimensional above
                EBM_ASSERT(size_t { 2 } <= cSignificantBinCount); // otherwise we'd use BoostZeroDimensional above
 
                error = BoostSingleDimensional(
@@ -1016,13 +1016,13 @@ static ErrorEbmType GenerateTermUpdateInternal(
 static int g_cLogGenerateTermUpdate = 10;
 
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    BoosterHandle boosterHandle,
-   IntEbmType indexTerm,
-   BoostFlagsType flags,
+   IntEbm indexTerm,
+   BoostFlags flags,
    double learningRate,
-   IntEbmType minSamplesLeaf,
-   const IntEbmType * leavesMax,
+   IntEbm minSamplesLeaf,
+   const IntEbm * leavesMax,
    double * avgGainOut
 ) {
    LOG_COUNTED_N(
@@ -1031,23 +1031,23 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       Trace_Verbose,
       "GenerateTermUpdate: "
       "boosterHandle=%p, "
-      "indexTerm=%" IntEbmTypePrintf ", "
-      "flags=0x%" UBoostFlagsTypePrintf ", "
+      "indexTerm=%" IntEbmPrintf ", "
+      "flags=0x%" UBoostFlagsPrintf ", "
       "learningRate=%le, "
-      "minSamplesLeaf=%" IntEbmTypePrintf ", "
+      "minSamplesLeaf=%" IntEbmPrintf ", "
       "leavesMax=%p, "
       "avgGainOut=%p"
       ,
       static_cast<void *>(boosterHandle),
       indexTerm,
-      static_cast<UBoostFlagsType>(flags), // signed to unsigned conversion is defined behavior in C++
+      static_cast<UBoostFlags>(flags), // signed to unsigned conversion is defined behavior in C++
       learningRate,
       minSamplesLeaf,
       static_cast<const void *>(leavesMax),
       static_cast<void *>(avgGainOut)
    );
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
@@ -1097,7 +1097,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       "Entered GenerateTermUpdate"
    );
 
-   // TODO : test if our BoostFlagsType flags flags only include flags that we use
+   // TODO : test if our BoostFlags flags flags only include flags that we use
 
    if(std::isnan(learningRate)) {
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate learningRate is NaN");
@@ -1110,7 +1110,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
    }
 
    size_t cSamplesLeafMin = size_t { 1 }; // this is the min value
-   if(IntEbmType { 1 } <= minSamplesLeaf) {
+   if(IntEbm { 1 } <= minSamplesLeaf) {
       cSamplesLeafMin = static_cast<size_t>(minSamplesLeaf);
       if(IsConvertError<size_t>(minSamplesLeaf)) {
          // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to overflow because it will generate 
@@ -1151,7 +1151,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
       avgGainOut
    );
    if(Error_None != error) {
-      LOG_N(Trace_Warning, "WARNING GenerateTermUpdate: return=%" ErrorEbmTypePrintf, error);
+      LOG_N(Trace_Warning, "WARNING GenerateTermUpdate: return=%" ErrorEbmPrintf, error);
       if(LIKELY(nullptr != avgGainOut)) {
          *avgGainOut = double { 0 };
       }

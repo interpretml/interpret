@@ -37,10 +37,10 @@ void TestQuantileBinning(
    const std::vector<double> featureVals,
    const std::vector<double> expectedCuts
 ) {
-   ErrorEbmType error;
+   ErrorEbm error;
 
-   const IntEbmType countCutsMax = cCutsMax;
-   const IntEbmType minSamplesBin = cSamplesBinMin;
+   const IntEbm countCutsMax = cCutsMax;
+   const IntEbm minSamplesBin = cSamplesBinMin;
 
    constexpr double illegalVal = double { -888.88 };
    std::vector<double> cutsLowerBoundInclusive(cCutsMax + 2, illegalVal); // allocate values at ends
@@ -50,7 +50,7 @@ void TestQuantileBinning(
    std::transform(featureVals2.begin(), featureVals2.end(), featureVals2.begin(), 
       [](double & val) { return -val; });
 
-   IntEbmType countCuts = countCutsMax;
+   IntEbm countCuts = countCutsMax;
    error = CutQuantile(
       featureVals1.size(),
       0 == featureVals1.size() ? nullptr : &featureVals1[0],
@@ -1200,7 +1200,7 @@ TEST_CASE("CutQuantile, stress test the guarantee of one cut per CuttingRange, b
 }
 
 TEST_CASE("CutQuantile, randomized fairness check") {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    RandomStreamTest randomStream(k_seed);
    if(!randomStream.IsSuccess()) {
@@ -1208,13 +1208,13 @@ TEST_CASE("CutQuantile, randomized fairness check") {
    }
 
    constexpr bool bSmart = true;
-   constexpr IntEbmType minSamplesBin = 1;
-   constexpr IntEbmType countSamples = 100;
+   constexpr IntEbm minSamplesBin = 1;
+   constexpr IntEbm countSamples = 100;
    double featureVals[countSamples]; // preserve these for debugging purposes
    double featureValsForward[countSamples];
    double featureValsReversed[countSamples];
 
-   constexpr IntEbmType randomMaxMax = countSamples - 1; // this doesn't need to be exactly countSamples - 1, but this number gives us chunky sets
+   constexpr IntEbm randomMaxMax = countSamples - 1; // this doesn't need to be exactly countSamples - 1, but this number gives us chunky sets
    size_t cutHistogram[randomMaxMax];
    constexpr size_t cCutHistogram = sizeof(cutHistogram) / sizeof(cutHistogram[0]);
    // our random numbers can be any numbers from 0 to randomMaxMax (inclusive), which gives us randomMaxMax - 1 possible cut points between them
@@ -1246,7 +1246,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
 
          memcpy(featureValsForward, featureVals, sizeof(featureVals[0]) * countSamples);
 
-         IntEbmType countCutsForward = static_cast<IntEbmType>(cCuts);
+         IntEbm countCutsForward = static_cast<IntEbm>(cCuts);
          error = CutQuantile(
             countSamples,
             featureValsForward,
@@ -1272,7 +1272,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
          std::transform(featureVals, featureVals + countSamples, featureValsReversed,
             [](double & val) { return -val; });
 
-         IntEbmType countCutsReversed = static_cast<IntEbmType>(cCuts);
+         IntEbm countCutsReversed = static_cast<IntEbm>(cCuts);
          error = CutQuantile(
             countSamples,
             featureValsReversed,
@@ -1334,7 +1334,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
 }
 
 TEST_CASE("CutQuantile, chunky randomized check") {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    RandomStreamTest randomStream(k_seed);
    if(!randomStream.IsSuccess()) {
@@ -1346,8 +1346,8 @@ TEST_CASE("CutQuantile, chunky randomized check") {
    constexpr size_t cSamplesMax = 250;
    constexpr size_t cCutsMin = 1;
    constexpr size_t cCutsMax = 70;
-   constexpr IntEbmType minSamplesBinMin = 1;
-   constexpr IntEbmType minSamplesBinMax = 3;
+   constexpr IntEbm minSamplesBinMin = 1;
+   constexpr IntEbm minSamplesBinMax = 3;
 
    constexpr size_t randomValMax = 70; // the min is 1 since the value doesn't really matter
 
@@ -1361,7 +1361,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
    for(size_t iIteration = 0; iIteration < 30000; ++iIteration) {
       const size_t cSamples = randomStream.Next(cSamplesMax - cSamplesMin + 1) + cSamplesMin;
       const size_t cCuts = randomStream.Next(cCutsMax - cCutsMin + 1) + cCutsMin;
-      const IntEbmType minSamplesBin = randomStream.Next(minSamplesBinMax - minSamplesBinMin + 1) + minSamplesBinMin;
+      const IntEbm minSamplesBin = randomStream.Next(minSamplesBinMax - minSamplesBinMin + 1) + minSamplesBinMin;
 
       const size_t denominator = cCuts + size_t { 1 };
       const size_t cLongBinLength = static_cast<size_t>(
@@ -1404,11 +1404,11 @@ TEST_CASE("CutQuantile, chunky randomized check") {
          ++pFeatureVal;
       }
 
-      const IntEbmType countSamples = static_cast<IntEbmType>(cSamples);
+      const IntEbm countSamples = static_cast<IntEbm>(cSamples);
 
       memcpy(featureValsForward, featureVals, sizeof(featureVals[0]) * cSamples);
 
-      IntEbmType countCutsForward = static_cast<IntEbmType>(cCuts);
+      IntEbm countCutsForward = static_cast<IntEbm>(cCuts);
       error = CutQuantile(
          countSamples,
          featureValsForward,
@@ -1422,7 +1422,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
       std::transform(featureVals, featureVals + countSamples, featureValsReversed,
          [](double & val) { return -val; });
 
-      IntEbmType countCutsReversed = static_cast<IntEbmType>(cCuts);
+      IntEbm countCutsReversed = static_cast<IntEbm>(cCuts);
       error = CutQuantile(
          countSamples,
          featureValsReversed,

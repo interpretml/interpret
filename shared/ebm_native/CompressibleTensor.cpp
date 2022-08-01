@@ -116,7 +116,7 @@ void Tensor::Reset() {
    m_bExpanded = false;
 }
 
-ErrorEbmType Tensor::SetCountSplits(const size_t iDimension, const size_t cSplits) {
+ErrorEbm Tensor::SetCountSplits(const size_t iDimension, const size_t cSplits) {
    EBM_ASSERT(iDimension < m_cDimensions);
    DimensionInfo * const pDimension = &GetDimensions()[iDimension];
    // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
@@ -152,7 +152,7 @@ ErrorEbmType Tensor::SetCountSplits(const size_t iDimension, const size_t cSplit
    return Error_None;
 }
 
-ErrorEbmType Tensor::EnsureTensorScoreCapacity(const size_t cTensorScores) {
+ErrorEbm Tensor::EnsureTensorScoreCapacity(const size_t cTensorScores) {
    if(UNLIKELY(m_cTensorScoreCapacity < cTensorScores)) {
       EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
@@ -182,10 +182,10 @@ ErrorEbmType Tensor::EnsureTensorScoreCapacity(const size_t cTensorScores) {
    return Error_None;
 }
 
-ErrorEbmType Tensor::Copy(const Tensor & rhs) {
+ErrorEbm Tensor::Copy(const Tensor & rhs) {
    EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
    const DimensionInfo * pRhsDimensionInfo = rhs.GetDimensions();
@@ -243,12 +243,12 @@ bool Tensor::MultiplyAndCheckForIssues(const double v) {
    return !!bBad;
 }
 
-ErrorEbmType Tensor::Expand(const Term * const pTerm) {
+ErrorEbm Tensor::Expand(const Term * const pTerm) {
    // checking the max isn't really the best here, but doing this right seems pretty complicated
    static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<ActiveDataType>::max() &&
       0 == std::numeric_limits<ActiveDataType>::min(), "bad AcitveDataType size");
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    LOG_0(Trace_Verbose, "Entered Expand");
 
@@ -469,8 +469,8 @@ void Tensor::AddExpandedWithBadValueProtection(const FloatFast * const aFromScor
    } while(pToScoresEnd != pToScore);
 }
 
-ErrorEbmType Tensor::Add(const Tensor & rhs) {
-   ErrorEbmType error;
+ErrorEbm Tensor::Add(const Tensor & rhs) {
+   ErrorEbm error;
 
    DimensionInfoStack dimensionStack[k_cDimensionsMax];
 

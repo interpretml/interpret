@@ -451,7 +451,7 @@ public:
 
    PartitionOneDimensionalBoostingInternal() = delete; // this is a static class.  Do not construct
 
-   static ErrorEbmType Func(
+   static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const size_t cBins,
       const size_t cSamplesTotal,
@@ -463,7 +463,7 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
 
-      ErrorEbmType error;
+      ErrorEbm error;
 
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
       const auto * const aBins = 
@@ -907,7 +907,7 @@ public:
    }
 };
 
-extern ErrorEbmType PartitionOneDimensionalBoosting(
+extern ErrorEbm PartitionOneDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const size_t cBins,
    const size_t cSamplesTotal,
@@ -919,7 +919,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
 ) {
    LOG_0(Trace_Verbose, "Entered PartitionOneDimensionalBoosting");
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();

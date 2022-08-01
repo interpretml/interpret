@@ -18,7 +18,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-INLINE_ALWAYS static ErrorEbmType GetLoss(
+INLINE_ALWAYS static ErrorEbm GetLoss(
    const Config * const pConfig,
    const char * sLoss,
    LossWrapper * const pLossWrapperOut
@@ -39,14 +39,14 @@ INLINE_ALWAYS static ErrorEbmType GetLoss(
    }
    const char * const sLossEnd = SkipEndWhitespaceWhenGuaranteedNonWhitespace(sLoss + strlen(sLoss));
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    error = CreateLoss_Cpu_64(pConfig, sLoss, sLossEnd, pLossWrapperOut);
 
    return error;
 }
 
-INLINE_ALWAYS static ErrorEbmType GetMetrics(
+INLINE_ALWAYS static ErrorEbm GetMetrics(
    const Config * const pConfig,
    const char * sMetric
 //   MetricWrapper * const aMetricWrapperOut
@@ -71,7 +71,7 @@ INLINE_ALWAYS static ErrorEbmType GetMetrics(
          // we allow empty registrations like ",,,something_legal,,,  something_else  , " since the intent is clear
 
          const char * const sMetricEnd = SkipEndWhitespaceWhenGuaranteedNonWhitespace(sMetricSeparator);
-         ErrorEbmType error;
+         ErrorEbm error;
 
          error = CreateMetric_Cpu_64(pConfig, sMetric, sMetricEnd);
          if(Error_None != error) {

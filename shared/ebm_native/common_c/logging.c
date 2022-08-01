@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "ebm_native.h" // LOG_CALLBACK
+#include "ebm_native.h" // LogCallbackFunc
 #include "logging.h"
 
 #ifdef __cplusplus
@@ -21,8 +21,8 @@ const char g_sFalse[] = "false";
 static const char g_sAssertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";
 static const char g_sLoggingParamError[] = "Error in vsnprintf parameters for logging.";
 
-TraceEbmType g_traceLevel = Trace_Off;
-static LOG_CALLBACK g_pLogCallback = NULL;
+TraceEbm g_traceLevel = Trace_Off;
+static LogCallbackFunc g_pLogCallback = NULL;
 
 static const char g_sTraceOff[] = "OFF";
 static const char g_sTraceError[] = "ERROR";
@@ -31,7 +31,7 @@ static const char g_sTraceInfo[] = "INFO";
 static const char g_sTraceVerbose[] = "VERBOSE";
 static const char g_sTraceIllegal[] = "ILLEGAL";
 
-EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbmType traceLevel) {
+EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm traceLevel) {
    switch(traceLevel) {
    case Trace_Off:
       return g_sTraceOff;
@@ -48,7 +48,7 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbmTyp
    }
 }
 
-EBM_API_BODY void EBM_CALLING_CONVENTION SetLogCallback(LOG_CALLBACK logCallback) {
+EBM_API_BODY void EBM_CALLING_CONVENTION SetLogCallback(LogCallbackFunc logCallback) {
    assert(NULL != logCallback);
    assert(NULL == g_pLogCallback); /* SetLogCallback should only be called once */
    assert(Trace_Off == g_traceLevel);
@@ -69,7 +69,7 @@ static const char sStartLogInfo[] = "Native logging set to INFO in " COMPILE_MOD
 static const char sStartLogVerbose[] = "Native logging set to VERBOSE in " COMPILE_MODE " build.";
 static const char sStartLogIllegal[] = "Native logging set to ILLEGAL in " COMPILE_MODE " build.";
 
-EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel) {
+EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbm traceLevel) {
    const char * sMessage;
    switch(traceLevel) {
    case Trace_Off:
@@ -114,7 +114,7 @@ EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel) 
    g_traceLevel = traceLevel;
 }
 
-extern void InteralLogWithArguments(const TraceEbmType traceLevel, const char * const sMessage, ...) {
+extern void InteralLogWithArguments(const TraceEbm traceLevel, const char * const sMessage, ...) {
    assert(NULL != g_pLogCallback);
    // it is illegal for g_pLogCallback to be NULL at this point, but in the interest of not crashing check it
    if(NULL != g_pLogCallback) {
@@ -143,7 +143,7 @@ extern void InteralLogWithArguments(const TraceEbmType traceLevel, const char * 
    }
 }
 
-extern void InteralLogWithoutArguments(const TraceEbmType traceLevel, const char * const sMessage) {
+extern void InteralLogWithoutArguments(const TraceEbm traceLevel, const char * const sMessage) {
    assert(NULL != g_pLogCallback);
    // it is illegal for g_pLogCallback to be NULL at this point, but in the interest of not crashing check it
    if(NULL != g_pLogCallback) {

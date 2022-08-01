@@ -34,10 +34,10 @@ static int g_cLogEnterCutWinsorized = 25;
 static int g_cLogExitCutWinsorized = 25;
 
 // TODO: add this as a python/R option "winsorized"
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
-   IntEbmType countSamples,
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutWinsorized(
+   IntEbm countSamples,
    const double * featureVals,
-   IntEbmType * countCutsInOut,
+   IntEbm * countCutsInOut,
    double * cutsLowerBoundInclusiveOut
 ) {
    LOG_COUNTED_N(
@@ -45,7 +45,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
       Trace_Info,
       Trace_Verbose,
       "Entered CutWinsorized: "
-      "countSamples=%" IntEbmTypePrintf ", "
+      "countSamples=%" IntEbmPrintf ", "
       "featureVals=%p, "
       "countCutsInOut=%p, "
       "cutsLowerBoundInclusiveOut=%p"
@@ -56,19 +56,19 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
       static_cast<void *>(cutsLowerBoundInclusiveOut)
    );
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
-   IntEbmType countCutsRet = IntEbmType { 0 };
+   IntEbm countCutsRet = IntEbm { 0 };
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
       LOG_0(Trace_Error, "ERROR CutWinsorized nullptr == countCutsInOut");
       error = Error_IllegalParamValue;
    } else {
-      if(UNLIKELY(countSamples <= IntEbmType { 1 })) {
+      if(UNLIKELY(countSamples <= IntEbm { 1 })) {
          // can't cut 1 sample
          error = Error_None;
-         if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-            LOG_0(Trace_Error, "ERROR CutWinsorized countSamples < IntEbmType { 0 }");
+         if(UNLIKELY(countSamples < IntEbm { 0 })) {
+            LOG_0(Trace_Error, "ERROR CutWinsorized countSamples < IntEbm { 0 }");
             error = Error_IllegalParamValue;
          }
       } else {
@@ -110,12 +110,12 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
          // or if there was only 1 non-missing value
          if(LIKELY(size_t { 1 } < cSamples)) {
             EBM_ASSERT(nullptr != countCutsInOut);
-            const IntEbmType countCuts = *countCutsInOut;
+            const IntEbm countCuts = *countCutsInOut;
 
-            if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
+            if(UNLIKELY(countCuts <= IntEbm { 0 })) {
                free(aFeatureVals);
                error = Error_None;
-               if(UNLIKELY(countCuts < IntEbmType { 0 })) {
+               if(UNLIKELY(countCuts < IntEbm { 0 })) {
                   LOG_0(Trace_Error, "ERROR CutWinsorized countCuts can't be negative.");
                   error = Error_IllegalParamValue;
                }
@@ -187,7 +187,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
 
                   const double avg = ArithmeticMean(lowCur, highCur);
                   *cutsLowerBoundInclusiveOut = avg;
-                  countCutsRet = IntEbmType { 1 };
+                  countCutsRet = IntEbm { 1 };
                }
             } else {
                // we check that cCuts can be multiplied with sizeof(*cutsLowerBoundInclusiveOut), and since
@@ -279,7 +279,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
                      EBM_ASSERT(lowOuterVal < highOuterVal);
                      const double avg = ArithmeticMean(lowOuterVal, highOuterVal);
                      *cutsLowerBoundInclusiveOut = avg;
-                     countCutsRet = IntEbmType { 1 };
+                     countCutsRet = IntEbm { 1 };
                   } else {
                      double highInnerVal;
                      do {
@@ -306,7 +306,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
                         const double avg2 = ArithmeticMean(valCenter, highOuterVal);
                         cutsLowerBoundInclusiveOut[1] = avg2;
 
-                        countCutsRet = IntEbmType { 2 };
+                        countCutsRet = IntEbm { 2 };
                      } else {
                         // move one up from the highVal since if we put a cut exactly there the high-low value will
                         // be included in the highest bin, and we don't want that
@@ -386,8 +386,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
                            pCutsLowerBoundInclusive - cutsLowerBoundInclusiveOut + size_t { 1 };
 
                         // this conversion is guaranteed to work since the number of cut points can't exceed the number our user
-                        // specified, and that value came to us as an IntEbmType
-                        countCutsRet = static_cast<IntEbmType>(cCutsRet);
+                        // specified, and that value came to us as an IntEbm
+                        countCutsRet = static_cast<IntEbm>(cCutsRet);
                         EBM_ASSERT(countCutsRet <= countCuts);
                      }
                   }
@@ -409,8 +409,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
       Trace_Info,
       Trace_Verbose,
       "Exited CutWinsorized: "
-      "countCuts=%" IntEbmTypePrintf ", "
-      "return=%" ErrorEbmTypePrintf
+      "countCuts=%" IntEbmPrintf ", "
+      "return=%" ErrorEbmPrintf
       ,
       countCutsRet,
       error

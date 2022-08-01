@@ -23,7 +23,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-ErrorEbmType Loss::CreateLoss(
+ErrorEbm Loss::CreateLoss(
    const REGISTER_LOSSES_FUNCTION registerLossesFunction,
    const Config * const pConfig,
    const char * const sLoss,
@@ -47,7 +47,7 @@ ErrorEbmType Loss::CreateLoss(
    LOG_0(Trace_Info, "Entered Loss::CreateLoss");
 
    void * const pFunctionPointersCpp = malloc(sizeof(FunctionPointersCpp));
-   ErrorEbmType error = Error_OutOfMemory;
+   ErrorEbm error = Error_OutOfMemory;
    if(nullptr != pFunctionPointersCpp) {
       pLossWrapperOut->m_pFunctionPointersCpp = pFunctionPointersCpp;
       try {

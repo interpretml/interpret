@@ -91,7 +91,7 @@ public:
 
    static void Free(BoosterShell * const pBoosterShell);
    static BoosterShell * Create();
-   ErrorEbmType FillAllocations();
+   ErrorEbm FillAllocations();
 
    static INLINE_ALWAYS BoosterShell * GetBoosterShellFromHandle(const BoosterHandle boosterHandle) {
       if(nullptr == boosterHandle) {
@@ -158,7 +158,7 @@ public:
       return m_aThreadByteBuffer1Big;
    }
 
-   ErrorEbmType GrowThreadByteBuffer2(const size_t cByteBoundaries);
+   ErrorEbm GrowThreadByteBuffer2(const size_t cByteBoundaries);
 
    INLINE_ALWAYS void * GetThreadByteBuffer2() {
       return m_aThreadByteBuffer2;

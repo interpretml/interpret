@@ -47,15 +47,15 @@ public:
 
    void Destruct();
 
-   ErrorEbmType Initialize(
+   ErrorEbm Initialize(
       const ptrdiff_t cClasses,
       const bool bAllocateGradients,
       const bool bAllocateHessians,
       const bool bAllocateSampleScores,
       const bool bAllocateTargetData,
       const unsigned char * const pDataSetShared,
-      const BagEbmType direction,
-      const BagEbmType * const aBag,
+      const BagEbm direction,
+      const BagEbm * const aBag,
       const double * const aInitScores,
       const size_t cSetSamples,
       const size_t cTerms,

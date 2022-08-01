@@ -377,10 +377,10 @@ static void LockDataSetShared(unsigned char * const pFillMem) {
    pHeaderDataSetShared->m_id = k_sharedDataSetDoneId; // signal that we finished construction of the data set
 }
 
-static IntEbmType AppendHeader(
-   const IntEbmType countFeatures,
-   const IntEbmType countWeights,
-   const IntEbmType countTargets,
+static IntEbm AppendHeader(
+   const IntEbm countFeatures,
+   const IntEbm countWeights,
+   const IntEbm countTargets,
    const size_t cBytesAllocated,
    unsigned char * const pFillMem
 ) {
@@ -389,9 +389,9 @@ static IntEbmType AppendHeader(
    LOG_N(
       Trace_Info,
       "Entered AppendHeader: "
-      "countFeatures=%" IntEbmTypePrintf ", "
-      "countWeights=%" IntEbmTypePrintf ", "
-      "countTargets=%" IntEbmTypePrintf ", "
+      "countFeatures=%" IntEbmPrintf ", "
+      "countWeights=%" IntEbmPrintf ", "
+      "countTargets=%" IntEbmPrintf ", "
       "cBytesAllocated=%zu, "
       "pFillMem=%p"
       ,
@@ -485,14 +485,14 @@ static IntEbmType AppendHeader(
       }
       return Error_None;
    }
-   if(IsConvertError<IntEbmType>(cBytesHeader)) {
-      LOG_0(Trace_Error, "ERROR AppendHeader IsConvertError<IntEbmType>(cBytesHeader)");
+   if(IsConvertError<IntEbm>(cBytesHeader)) {
+      LOG_0(Trace_Error, "ERROR AppendHeader IsConvertError<IntEbm>(cBytesHeader)");
       return Error_OutOfMemory;
    }
    return cBytesHeader;
 }
 
-static bool DecideIfSparse(const size_t cSamples, const IntEbmType * binIndexes) {
+static bool DecideIfSparse(const size_t cSamples, const IntEbm * binIndexes) {
    // For sparsity in the data set shared memory the only thing that matters is compactness since we don't use
    // this memory in any high performance loops
 
@@ -503,13 +503,13 @@ static bool DecideIfSparse(const size_t cSamples, const IntEbmType * binIndexes)
    return false;
 }
 
-static IntEbmType AppendFeature(
-   const IntEbmType countBins,
-   const BoolEbmType isMissing,
-   const BoolEbmType isUnknown,
-   const BoolEbmType isNominal,
-   const IntEbmType countSamples,
-   const IntEbmType * binIndexes,
+static IntEbm AppendFeature(
+   const IntEbm countBins,
+   const BoolEbm isMissing,
+   const BoolEbm isUnknown,
+   const BoolEbm isNominal,
+   const IntEbm countSamples,
+   const IntEbm * binIndexes,
    const size_t cBytesAllocated,
    unsigned char * const pFillMem
 ) {
@@ -519,11 +519,11 @@ static IntEbmType AppendFeature(
    LOG_N(
       Trace_Info,
       "Entered AppendFeature: "
-      "countBins=%" IntEbmTypePrintf ", "
+      "countBins=%" IntEbmPrintf ", "
       "isMissing=%s, "
       "isUnknown=%s, "
       "isNominal=%s, "
-      "countSamples=%" IntEbmTypePrintf ", "
+      "countSamples=%" IntEbmPrintf ", "
       "binIndexes=%p, "
       "cBytesAllocated=%zu, "
       "pFillMem=%p"
@@ -643,12 +643,12 @@ static IntEbmType AppendFeature(
                LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(binIndexes[0]), cSamples)");
                goto return_bad;
             }
-            const IntEbmType * pBinIndex = binIndexes;
-            const IntEbmType * const pBinIndexsEnd = binIndexes + cSamples;
+            const IntEbm * pBinIndex = binIndexes;
+            const IntEbm * const pBinIndexsEnd = binIndexes + cSamples;
             SharedStorageDataType * pFillData = reinterpret_cast<SharedStorageDataType *>(pFillMem + iByteCur);
             do {
-               const IntEbmType indexBin = *pBinIndex;
-               if(indexBin < IntEbmType { 0 }) {
+               const IntEbm indexBin = *pBinIndex;
+               if(indexBin < IntEbm { 0 }) {
                   LOG_0(Trace_Error, "ERROR AppendFeature indexBin can't be negative");
                   goto return_bad;
                }
@@ -697,7 +697,7 @@ static IntEbmType AppendFeature(
             }
 
             if(IsConvertError<SharedStorageDataType>(iOffset)) {
-               LOG_0(Trace_Error, "ERROR AppendFeature IsConvertError<IntEbmType>(iOffset)");
+               LOG_0(Trace_Error, "ERROR AppendFeature IsConvertError<IntEbm>(iOffset)");
                goto return_bad;
             }
             if(IsConvertError<SharedStorageDataType>(iByteCur)) {
@@ -711,11 +711,11 @@ static IntEbmType AppendFeature(
          }
          return Error_None;
       }
-      if(IsConvertError<IntEbmType>(iByteCur)) {
-         LOG_0(Trace_Error, "ERROR AppendFeature IsConvertError<IntEbmType>(iByteCur)");
+      if(IsConvertError<IntEbm>(iByteCur)) {
+         LOG_0(Trace_Error, "ERROR AppendFeature IsConvertError<IntEbm>(iByteCur)");
          goto return_bad;
       }
-      return static_cast<IntEbmType>(iByteCur);
+      return static_cast<IntEbm>(iByteCur);
    }
 
 return_bad:;
@@ -727,8 +727,8 @@ return_bad:;
    return Error_IllegalParamValue;
 }
 
-static IntEbmType AppendWeight(
-   const IntEbmType countSamples,
+static IntEbm AppendWeight(
+   const IntEbm countSamples,
    const double * aWeights,
    const size_t cBytesAllocated,
    unsigned char * const pFillMem
@@ -739,7 +739,7 @@ static IntEbmType AppendWeight(
    LOG_N(
       Trace_Info,
       "Entered AppendWeight: "
-      "countSamples=%" IntEbmTypePrintf ", "
+      "countSamples=%" IntEbmPrintf ", "
       "aWeights=%p, "
       "cBytesAllocated=%zu, "
       "pFillMem=%p"
@@ -859,7 +859,7 @@ static IntEbmType AppendWeight(
             }
 
             if(IsConvertError<SharedStorageDataType>(iOffset)) {
-               LOG_0(Trace_Error, "ERROR AppendWeight IsConvertError<IntEbmType>(iOffset)");
+               LOG_0(Trace_Error, "ERROR AppendWeight IsConvertError<IntEbm>(iOffset)");
                goto return_bad;
             }
             if(IsConvertError<SharedStorageDataType>(iByteCur)) {
@@ -873,11 +873,11 @@ static IntEbmType AppendWeight(
          }
          return Error_None;
       }
-      if(IsConvertError<IntEbmType>(iByteCur)) {
-         LOG_0(Trace_Error, "ERROR AppendWeight IsConvertError<IntEbmType>(iByteCur)");
+      if(IsConvertError<IntEbm>(iByteCur)) {
+         LOG_0(Trace_Error, "ERROR AppendWeight IsConvertError<IntEbm>(iByteCur)");
          goto return_bad;
       }
-      return static_cast<IntEbmType>(iByteCur);
+      return static_cast<IntEbm>(iByteCur);
    }
 
 return_bad:;
@@ -889,10 +889,10 @@ return_bad:;
    return Error_IllegalParamValue;
 }
 
-static IntEbmType AppendTarget(
+static IntEbm AppendTarget(
    const bool bClassification,
-   const IntEbmType countClasses,
-   const IntEbmType countSamples,
+   const IntEbm countClasses,
+   const IntEbm countSamples,
    const void * aTargets,
    const size_t cBytesAllocated,
    unsigned char * const pFillMem
@@ -904,8 +904,8 @@ static IntEbmType AppendTarget(
       Trace_Info,
       "Entered AppendTarget: "
       "bClassification=%s, "
-      "countClasses=%" IntEbmTypePrintf ", "
-      "countSamples=%" IntEbmTypePrintf ", "
+      "countClasses=%" IntEbmPrintf ", "
+      "countSamples=%" IntEbmPrintf ", "
       "aTargets=%p, "
       "cBytesAllocated=%zu, "
       "pFillMem=%p"
@@ -987,8 +987,8 @@ static IntEbmType AppendTarget(
 
          size_t cBytesAllSamples;
          if(bClassification) {
-            if(IsMultiplyError(EbmMax(sizeof(IntEbmType), sizeof(SharedStorageDataType)), cSamples)) {
-               LOG_0(Trace_Error, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(IntEbmType), sizeof(SharedStorageDataType)), cSamples)");
+            if(IsMultiplyError(EbmMax(sizeof(IntEbm), sizeof(SharedStorageDataType)), cSamples)) {
+               LOG_0(Trace_Error, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(IntEbm), sizeof(SharedStorageDataType)), cSamples)");
                goto return_bad;
             }
             cBytesAllSamples = sizeof(SharedStorageDataType) * cSamples;
@@ -1010,16 +1010,16 @@ static IntEbmType AppendTarget(
                goto return_bad;
             }
             if(bClassification) {
-               const IntEbmType * pTarget = reinterpret_cast<const IntEbmType *>(aTargets);
+               const IntEbm * pTarget = reinterpret_cast<const IntEbm *>(aTargets);
                if(IsMultiplyError(sizeof(pTarget[0]), cSamples)) {
                   LOG_0(Trace_Error, "ERROR AppendTarget IsMultiplyError(sizeof(SharedStorageDataType), cSamples)");
                   goto return_bad;
                }
-               const IntEbmType * const pTargetsEnd = pTarget + cSamples;
+               const IntEbm * const pTargetsEnd = pTarget + cSamples;
                SharedStorageDataType * pFillData = reinterpret_cast<SharedStorageDataType *>(pFillMem + iByteCur);
                do {
-                  const IntEbmType target = *pTarget;
-                  if(target < IntEbmType { 0 }) {
+                  const IntEbm target = *pTarget;
+                  if(target < IntEbm { 0 }) {
                      LOG_0(Trace_Error, "ERROR AppendTarget classification target can't be negative");
                      goto return_bad;
                   }
@@ -1071,7 +1071,7 @@ static IntEbmType AppendTarget(
                goto return_bad;
             }
             if(IsConvertError<SharedStorageDataType>(iOffset)) {
-               LOG_0(Trace_Error, "ERROR AppendTarget IsConvertError<IntEbmType>(iOffset)");
+               LOG_0(Trace_Error, "ERROR AppendTarget IsConvertError<IntEbm>(iOffset)");
                goto return_bad;
             }
             if(IsConvertError<SharedStorageDataType>(iByteCur)) {
@@ -1085,11 +1085,11 @@ static IntEbmType AppendTarget(
          }
          return Error_None;
       }
-      if(IsConvertError<IntEbmType>(iByteCur)) {
-         LOG_0(Trace_Error, "ERROR AppendTarget IsConvertError<IntEbmType>(iByteCur)");
+      if(IsConvertError<IntEbm>(iByteCur)) {
+         LOG_0(Trace_Error, "ERROR AppendTarget IsConvertError<IntEbm>(iByteCur)");
          goto return_bad;
       }
-      return static_cast<IntEbmType>(iByteCur);
+      return static_cast<IntEbm>(iByteCur);
    }
 
 return_bad:;
@@ -1101,19 +1101,19 @@ return_bad:;
    return Error_IllegalParamValue;
 }
 
-EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeDataSetHeader(
-   IntEbmType countFeatures,
-   IntEbmType countWeights,
-   IntEbmType countTargets
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION SizeDataSetHeader(
+   IntEbm countFeatures,
+   IntEbm countWeights,
+   IntEbm countTargets
 ) {
    return AppendHeader(countFeatures, countWeights, countTargets, 0, nullptr);
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillDataSetHeader(
-   IntEbmType countFeatures,
-   IntEbmType countWeights,
-   IntEbmType countTargets,
-   IntEbmType countBytesAllocated,
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillDataSetHeader(
+   IntEbm countFeatures,
+   IntEbm countWeights,
+   IntEbm countTargets,
+   IntEbm countBytesAllocated,
    void * fillMem
 ) {
    if(nullptr == fillMem) {
@@ -1128,23 +1128,23 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillDataSetHeader(
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
-   const IntEbmType ret = AppendHeader(
+   const IntEbm ret = AppendHeader(
       countFeatures, 
       countWeights, 
       countTargets, 
       cBytesAllocated, 
       static_cast<unsigned char *>(fillMem)
    );
-   return static_cast<ErrorEbmType>(ret);
+   return static_cast<ErrorEbm>(ret);
 }
 
-EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeFeature(
-   IntEbmType countBins,
-   BoolEbmType isMissing,
-   BoolEbmType isUnknown,
-   BoolEbmType isNominal,
-   IntEbmType countSamples,
-   const IntEbmType * binIndexes
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION SizeFeature(
+   IntEbm countBins,
+   BoolEbm isMissing,
+   BoolEbm isUnknown,
+   BoolEbm isNominal,
+   IntEbm countSamples,
+   const IntEbm * binIndexes
 ) {
    return AppendFeature(
       countBins,
@@ -1158,14 +1158,14 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeFeature(
    );
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillFeature(
-   IntEbmType countBins,
-   BoolEbmType isMissing,
-   BoolEbmType isUnknown,
-   BoolEbmType isNominal,
-   IntEbmType countSamples,
-   const IntEbmType * binIndexes,
-   IntEbmType countBytesAllocated,
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillFeature(
+   IntEbm countBins,
+   BoolEbm isMissing,
+   BoolEbm isUnknown,
+   BoolEbm isNominal,
+   IntEbm countSamples,
+   const IntEbm * binIndexes,
+   IntEbm countBytesAllocated,
    void * fillMem
 ) {
    if(nullptr == fillMem) {
@@ -1193,7 +1193,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillFeature(
       return Error_IllegalParamValue;
    }
 
-   const IntEbmType ret = AppendFeature(
+   const IntEbm ret = AppendFeature(
       countBins,
       isMissing,
       isUnknown,
@@ -1203,11 +1203,11 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillFeature(
       cBytesAllocated,
       static_cast<unsigned char *>(fillMem)
    );
-   return static_cast<ErrorEbmType>(ret);
+   return static_cast<ErrorEbm>(ret);
 }
 
-EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeWeight(
-   IntEbmType countSamples,
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION SizeWeight(
+   IntEbm countSamples,
    const double * weights
 ) {
    return AppendWeight(
@@ -1218,10 +1218,10 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeWeight(
    );
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillWeight(
-   IntEbmType countSamples,
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillWeight(
+   IntEbm countSamples,
    const double * weights,
-   IntEbmType countBytesAllocated,
+   IntEbm countBytesAllocated,
    void * fillMem
 ) {
    if(nullptr == fillMem) {
@@ -1249,19 +1249,19 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillWeight(
       return Error_IllegalParamValue;
    }
 
-   const IntEbmType ret = AppendWeight(
+   const IntEbm ret = AppendWeight(
       countSamples,
       weights,
       cBytesAllocated,
       static_cast<unsigned char *>(fillMem)
    );
-   return static_cast<ErrorEbmType>(ret);
+   return static_cast<ErrorEbm>(ret);
 }
 
-EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeClassificationTarget(
-   IntEbmType countClasses,
-   IntEbmType countSamples,
-   const IntEbmType * targets
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION SizeClassificationTarget(
+   IntEbm countClasses,
+   IntEbm countSamples,
+   const IntEbm * targets
 ) {
    return AppendTarget(
       true,
@@ -1273,11 +1273,11 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeClassificationTarget(
    );
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillClassificationTarget(
-   IntEbmType countClasses,
-   IntEbmType countSamples,
-   const IntEbmType * targets,
-   IntEbmType countBytesAllocated,
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillClassificationTarget(
+   IntEbm countClasses,
+   IntEbm countSamples,
+   const IntEbm * targets,
+   IntEbm countBytesAllocated,
    void * fillMem
 ) {
    if(nullptr == fillMem) {
@@ -1305,7 +1305,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillClassificationTarget(
       return Error_IllegalParamValue;
    }
 
-   const IntEbmType ret = AppendTarget(
+   const IntEbm ret = AppendTarget(
       true,
       countClasses,
       countSamples,
@@ -1313,11 +1313,11 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillClassificationTarget(
       cBytesAllocated,
       static_cast<unsigned char *>(fillMem)
    );
-   return static_cast<ErrorEbmType>(ret);
+   return static_cast<ErrorEbm>(ret);
 }
 
-EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeRegressionTarget(
-   IntEbmType countSamples,
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION SizeRegressionTarget(
+   IntEbm countSamples,
    const double * targets
 ) {
    return AppendTarget(
@@ -1330,10 +1330,10 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeRegressionTarget(
    );
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillRegressionTarget(
-   IntEbmType countSamples,
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillRegressionTarget(
+   IntEbm countSamples,
    const double * targets,
-   IntEbmType countBytesAllocated,
+   IntEbm countBytesAllocated,
    void * fillMem
 ) {
    if(nullptr == fillMem) {
@@ -1361,7 +1361,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillRegressionTarget(
       return Error_IllegalParamValue;
    }
 
-   const IntEbmType ret = AppendTarget(
+   const IntEbm ret = AppendTarget(
       false,
       0,
       countSamples,
@@ -1369,10 +1369,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillRegressionTarget(
       cBytesAllocated,
       static_cast<unsigned char *>(fillMem)
    );
-   return static_cast<ErrorEbmType>(ret);
+   return static_cast<ErrorEbm>(ret);
 }
 
-extern ErrorEbmType GetDataSetSharedHeader(
+extern ErrorEbm GetDataSetSharedHeader(
    const unsigned char * const pDataSetShared,
    size_t * const pcSamplesOut,
    size_t * const pcFeaturesOut,
@@ -1526,14 +1526,14 @@ extern ErrorEbmType GetDataSetSharedHeader(
    return Error_None;
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractDataSetHeader(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractDataSetHeader(
    const void * dataSet,
-   IntEbmType * countSamplesOut,
-   IntEbmType * countFeaturesOut,
-   IntEbmType * countWeightsOut,
-   IntEbmType * countTargetsOut
+   IntEbm * countSamplesOut,
+   IntEbm * countFeaturesOut,
+   IntEbm * countWeightsOut,
+   IntEbm * countTargetsOut
 ) {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    if(nullptr == dataSet) {
       LOG_0(Trace_Error, "ERROR ExtractDataSetHeader nullptr == dataSet");
@@ -1557,38 +1557,38 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractDataSetHeader(
       return error;
    }
 
-   if(IsConvertError<IntEbmType>(cSamples)) {
-      // cSamples should have originally came to us as an IntEbmType, but check in case of corruption
-      LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cSamples)");
+   if(IsConvertError<IntEbm>(cSamples)) {
+      // cSamples should have originally came to us as an IntEbm, but check in case of corruption
+      LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbm>(cSamples)");
       return Error_IllegalParamValue;
    }
-   if(IsConvertError<IntEbmType>(cFeatures)) {
-      // cFeatures should have originally came to us as an IntEbmType, but check in case of corruption
-      LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cFeatures)");
+   if(IsConvertError<IntEbm>(cFeatures)) {
+      // cFeatures should have originally came to us as an IntEbm, but check in case of corruption
+      LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbm>(cFeatures)");
       return Error_IllegalParamValue;
    }
-   if(IsConvertError<IntEbmType>(cWeights)) {
-      // cWeights should have originally came to us as an IntEbmType, but check in case of corruption
-      LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cWeights)");
+   if(IsConvertError<IntEbm>(cWeights)) {
+      // cWeights should have originally came to us as an IntEbm, but check in case of corruption
+      LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbm>(cWeights)");
       return Error_IllegalParamValue;
    }
-   if(IsConvertError<IntEbmType>(cTargets)) {
-      // cTargets should have originally came to us as an IntEbmType, but check in case of corruption
-      LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cTargets)");
+   if(IsConvertError<IntEbm>(cTargets)) {
+      // cTargets should have originally came to us as an IntEbm, but check in case of corruption
+      LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbm>(cTargets)");
       return Error_IllegalParamValue;
    }
 
    if(nullptr != countSamplesOut) {
-      *countSamplesOut = static_cast<IntEbmType>(cSamples);
+      *countSamplesOut = static_cast<IntEbm>(cSamples);
    }
    if(nullptr != countFeaturesOut) {
-      *countFeaturesOut = static_cast<IntEbmType>(cFeatures);
+      *countFeaturesOut = static_cast<IntEbm>(cFeatures);
    }
    if(nullptr != countWeightsOut) {
-      *countWeightsOut = static_cast<IntEbmType>(cWeights);
+      *countWeightsOut = static_cast<IntEbm>(cWeights);
    }
    if(nullptr != countTargetsOut) {
-      *countTargetsOut = static_cast<IntEbmType>(cTargets);
+      *countTargetsOut = static_cast<IntEbm>(cTargets);
    }
 
    return Error_None;
@@ -1650,10 +1650,10 @@ extern const void * GetDataSetSharedFeature(
    return pRet;
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractBinCounts(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
    const void * dataSet,
-   IntEbmType countFeaturesVerify,
-   IntEbmType * binCountsOut
+   IntEbm countFeaturesVerify,
+   IntEbm * binCountsOut
 ) {
    if(nullptr == dataSet) {
       LOG_0(Trace_Error, "ERROR ExtractBinCounts nullptr == dataSet");
@@ -1692,8 +1692,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractBinCounts(
       }
 
       const SharedStorageDataType * pOffset = pHeaderDataSetShared->m_offsets;
-      IntEbmType * pcBins = binCountsOut;
-      const IntEbmType * const pcBinsEnd = binCountsOut + cFeatures;
+      IntEbm * pcBins = binCountsOut;
+      const IntEbm * const pcBinsEnd = binCountsOut + cFeatures;
       do {
          const SharedStorageDataType indexOffsetCur = *pOffset;
          ++pOffset;
@@ -1714,12 +1714,12 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractBinCounts(
          }
 
          const SharedStorageDataType countBins = pFeatureDataSetShared->m_cBins;
-         if(IsConvertError<IntEbmType>(countBins)) {
-            LOG_0(Trace_Error, "ERROR ExtractBinCounts IsConvertError<IntEbmType>(countBins)");
+         if(IsConvertError<IntEbm>(countBins)) {
+            LOG_0(Trace_Error, "ERROR ExtractBinCounts IsConvertError<IntEbm>(countBins)");
             return Error_IllegalParamValue;
          }
 
-         *pcBins = static_cast<IntEbmType>(countBins);
+         *pcBins = static_cast<IntEbm>(countBins);
          ++pcBins;
       } while(pcBinsEnd != pcBins);
    }
@@ -1809,10 +1809,10 @@ extern const void * GetDataSetSharedTarget(
    return pRet;
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractTargetClasses(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
    const void * dataSet,
-   IntEbmType countTargetsVerify,
-   IntEbmType * classCountsOut
+   IntEbm countTargetsVerify,
+   IntEbm * classCountsOut
 ) {
    if(nullptr == dataSet) {
       LOG_0(Trace_Error, "ERROR ExtractTargetClasses nullptr == dataSet");
@@ -1866,8 +1866,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractTargetClasses(
       }
 
       const SharedStorageDataType * pOffset = &pHeaderDataSetShared->m_offsets[cFeatures + cWeights];
-      IntEbmType * pcClasses = classCountsOut;
-      const IntEbmType * const pcClassesEnd = classCountsOut + cTargets;
+      IntEbm * pcClasses = classCountsOut;
+      const IntEbm * const pcClassesEnd = classCountsOut + cTargets;
       do {
          const SharedStorageDataType indexOffsetCur = *pOffset;
          ++pOffset;
@@ -1887,21 +1887,21 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractTargetClasses(
             return Error_IllegalParamValue;
          }
 
-         IntEbmType countClasses = IntEbmType { -1 };
+         IntEbm countClasses = IntEbm { -1 };
          if(IsClassificationTarget(id)) {
             const ClassificationTargetDataSetShared * const pClassificationTargetDataSetShared =
                reinterpret_cast<const ClassificationTargetDataSetShared *>(pTargetDataSetShared + 1);
 
             const SharedStorageDataType cClasses = pClassificationTargetDataSetShared->m_cClasses;
 
-            if(IsConvertError<IntEbmType>(cClasses)) {
-               LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<IntEbmType>(cClasses)");
+            if(IsConvertError<IntEbm>(cClasses)) {
+               LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<IntEbm>(cClasses)");
                return Error_IllegalParamValue;
             }
 
-            countClasses = static_cast<IntEbmType>(cClasses);
-            if(countClasses < IntEbmType { 0 }) {
-               LOG_0(Trace_Error, "ERROR ExtractTargetClasses countClasses < IntEbmType { 0 }");
+            countClasses = static_cast<IntEbm>(cClasses);
+            if(countClasses < IntEbm { 0 }) {
+               LOG_0(Trace_Error, "ERROR ExtractTargetClasses countClasses < IntEbm { 0 }");
                return Error_IllegalParamValue;
             }
          }

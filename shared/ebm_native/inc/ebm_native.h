@@ -81,28 +81,28 @@ extern "C" {
 #define PRIu64 "llu"
 #endif // PRIu64
 
-typedef int64_t IntEbmType;
-#define IntEbmTypePrintf PRId64
-typedef uint64_t UIntEbmType;
-#define UIntEbmTypePrintf PRIu64
-typedef int32_t SeedEbmType;
-#define SeedEbmTypePrintf PRId32
-typedef int8_t BagEbmType;
-#define BagEbmTypePrintf PRId8
-typedef int32_t TraceEbmType;
-#define TraceEbmTypePrintf PRId32
-typedef int32_t BoolEbmType;
-#define BoolEbmTypePrintf PRId32
-typedef int32_t ErrorEbmType;
-#define ErrorEbmTypePrintf PRId32
-typedef int32_t BoostFlagsType;
+typedef int64_t IntEbm;
+#define IntEbmPrintf PRId64
+typedef uint64_t UIntEbm;
+#define UIntEbmPrintf PRIu64
+typedef int32_t SeedEbm;
+#define SeedEbmPrintf PRId32
+typedef int8_t BagEbm;
+#define BagEbmPrintf PRId8
+typedef int32_t TraceEbm;
+#define TraceEbmPrintf PRId32
+typedef int32_t BoolEbm;
+#define BoolEbmPrintf PRId32
+typedef int32_t ErrorEbm;
+#define ErrorEbmPrintf PRId32
+typedef int32_t BoostFlags;
 // printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
-typedef uint32_t UBoostFlagsType;
-#define UBoostFlagsTypePrintf PRIx32
-typedef int32_t InteractionFlagsType;
+typedef uint32_t UBoostFlags;
+#define UBoostFlagsPrintf PRIx32
+typedef int32_t InteractionFlags;
 // printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
-typedef uint32_t UInteractionFlagsType;
-#define UInteractionFlagsTypePrintf PRIx32
+typedef uint32_t UInteractionFlags;
+#define UInteractionFlagsPrintf PRIx32
 
 typedef struct _BoosterHandle {
    uint32_t handleVerification; // should be 10995 if ok. Do not use size_t since that requires an additional header.
@@ -112,11 +112,11 @@ typedef struct _InteractionHandle {
    uint32_t handleVerification; // should be 21773 if ok. Do not use size_t since that requires an additional header.
 } * InteractionHandle;
 
-#define BOOL_CAST(val)                             (STATIC_CAST(BoolEbmType, (val)))
-#define ERROR_CAST(val)                            (STATIC_CAST(ErrorEbmType, (val)))
-#define TRACE_CAST(val)                            (STATIC_CAST(TraceEbmType, (val)))
-#define BOOST_FLAGS_CAST(val)                      (STATIC_CAST(BoostFlagsType, (val)))
-#define INTERACTION_FLAGS_CAST(val)                (STATIC_CAST(InteractionFlagsType, (val)))
+#define BOOL_CAST(val)                             (STATIC_CAST(BoolEbm, (val)))
+#define ERROR_CAST(val)                            (STATIC_CAST(ErrorEbm, (val)))
+#define BOOST_FLAGS_CAST(val)                      (STATIC_CAST(BoostFlags, (val)))
+#define INTERACTION_FLAGS_CAST(val)                (STATIC_CAST(InteractionFlags, (val)))
+#define TRACE_CAST(val)                            (STATIC_CAST(TraceEbm, (val)))
 
 // TODO: look through our code for places where SAFE_FLOAT64_AS_INT64_MAX or FLOAT64_TO_INT64_MAX would be useful
 
@@ -183,55 +183,55 @@ typedef struct _InteractionHandle {
 #define Trace_Verbose                              (TRACE_CAST(4))
 
 // All our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
-typedef void (EBM_CALLING_CONVENTION * LOG_CALLBACK)(TraceEbmType traceLevel, const char * message);
+typedef void (EBM_CALLING_CONVENTION * LogCallbackFunc)(TraceEbm traceLevel, const char * message);
 
 // SetLogCallback does not need to be called if the level is left at Trace_Off
-EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetLogCallback(LOG_CALLBACK logCallback);
-EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel);
-EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbmType traceLevel);
+EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetLogCallback(LogCallbackFunc logCallback);
+EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbm traceLevel);
+EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm traceLevel);
 
-EBM_API_INCLUDE void EBM_CALLING_CONVENTION CleanFloats(IntEbmType count, double * valsInOut);
+EBM_API_INCLUDE void EBM_CALLING_CONVENTION CleanFloats(IntEbm count, double * valsInOut);
 
-EBM_API_INCLUDE SeedEbmType EBM_CALLING_CONVENTION GenerateSeed(
-   SeedEbmType seed,
-   SeedEbmType randomMix
+EBM_API_INCLUDE SeedEbm EBM_CALLING_CONVENTION GenerateSeed(
+   SeedEbm seed,
+   SeedEbm randomMix
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
-   BoolEbmType isDeterministic,
-   SeedEbmType seed,
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateGaussianRandom(
+   BoolEbm isDeterministic,
+   SeedEbm seed,
    double stddev,
-   IntEbmType count,
+   IntEbm count,
    double * randomOut
 );
 
-EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
-   IntEbmType countSamples,
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION GetHistogramCutCount(
+   IntEbm countSamples,
    const double * featureVals
 );
 
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
-   IntEbmType countSamples,
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
+   IntEbm countSamples,
    const double * featureVals,
-   IntEbmType minSamplesBin,
-   BoolEbmType isRounded,
-   IntEbmType * countCutsInOut,
+   IntEbm minSamplesBin,
+   BoolEbm isRounded,
+   IntEbm * countCutsInOut,
    double * cutsLowerBoundInclusiveOut
 );
-EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION CutUniform(
-   IntEbmType countSamples,
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION CutUniform(
+   IntEbm countSamples,
    const double * featureVals,
-   IntEbmType countDesiredCuts,
+   IntEbm countDesiredCuts,
    double * cutsLowerBoundInclusiveOut
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
-   IntEbmType countSamples,
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CutWinsorized(
+   IntEbm countSamples,
    const double * featureVals,
-   IntEbmType * countCutsInOut,
+   IntEbm * countCutsInOut,
    double * cutsLowerBoundInclusiveOut
 );
 
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
-   IntEbmType countCuts,
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SuggestGraphBounds(
+   IntEbm countCuts,
    double lowestCut,
    double highestCut,
    double minFeatureVal,
@@ -240,195 +240,195 @@ EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
    double * highGraphBoundOut
 );
 
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
-   IntEbmType countSamples,
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION BinFeature(
+   IntEbm countSamples,
    const double * featureVals,
-   IntEbmType countCuts,
+   IntEbm countCuts,
    const double * cutsLowerBoundInclusive,
-   IntEbmType * binIndexesOut
+   IntEbm * binIndexesOut
 );
 
-EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION SizeDataSetHeader(
-   IntEbmType countFeatures,
-   IntEbmType countWeights,
-   IntEbmType countTargets
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION SizeDataSetHeader(
+   IntEbm countFeatures,
+   IntEbm countWeights,
+   IntEbm countTargets
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION FillDataSetHeader(
-   IntEbmType countFeatures,
-   IntEbmType countWeights,
-   IntEbmType countTargets,
-   IntEbmType countBytesAllocated,
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillDataSetHeader(
+   IntEbm countFeatures,
+   IntEbm countWeights,
+   IntEbm countTargets,
+   IntEbm countBytesAllocated,
    void * fillMem
 );
 
-EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION SizeFeature(
-   IntEbmType countBins,
-   BoolEbmType isMissing,
-   BoolEbmType isUnknown,
-   BoolEbmType isNominal,
-   IntEbmType countSamples,
-   const IntEbmType * binIndexes
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION SizeFeature(
+   IntEbm countBins,
+   BoolEbm isMissing,
+   BoolEbm isUnknown,
+   BoolEbm isNominal,
+   IntEbm countSamples,
+   const IntEbm * binIndexes
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION FillFeature(
-   IntEbmType countBins,
-   BoolEbmType isMissing,
-   BoolEbmType isUnknown,
-   BoolEbmType isNominal,
-   IntEbmType countSamples,
-   const IntEbmType * binIndexes,
-   IntEbmType countBytesAllocated,
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillFeature(
+   IntEbm countBins,
+   BoolEbm isMissing,
+   BoolEbm isUnknown,
+   BoolEbm isNominal,
+   IntEbm countSamples,
+   const IntEbm * binIndexes,
+   IntEbm countBytesAllocated,
    void * fillMem
 );
 
-EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION SizeWeight(
-   IntEbmType countSamples,
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION SizeWeight(
+   IntEbm countSamples,
    const double * weights
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION FillWeight(
-   IntEbmType countSamples,
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillWeight(
+   IntEbm countSamples,
    const double * weights,
-   IntEbmType countBytesAllocated,
+   IntEbm countBytesAllocated,
    void * fillMem
 );
 
-EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION SizeClassificationTarget(
-   IntEbmType countClasses,
-   IntEbmType countSamples,
-   const IntEbmType * targets
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION SizeClassificationTarget(
+   IntEbm countClasses,
+   IntEbm countSamples,
+   const IntEbm * targets
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION FillClassificationTarget(
-   IntEbmType countClasses,
-   IntEbmType countSamples,
-   const IntEbmType * targets,
-   IntEbmType countBytesAllocated,
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillClassificationTarget(
+   IntEbm countClasses,
+   IntEbm countSamples,
+   const IntEbm * targets,
+   IntEbm countBytesAllocated,
    void * fillMem
 );
 
-EBM_API_INCLUDE IntEbmType EBM_CALLING_CONVENTION SizeRegressionTarget(
-   IntEbmType countSamples,
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION SizeRegressionTarget(
+   IntEbm countSamples,
    const double * targets
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION FillRegressionTarget(
-   IntEbmType countSamples,
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillRegressionTarget(
+   IntEbm countSamples,
    const double * targets,
-   IntEbmType countBytesAllocated,
+   IntEbm countBytesAllocated,
    void * fillMem
 );
 
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION ExtractDataSetHeader(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ExtractDataSetHeader(
    const void * dataSet,
-   IntEbmType * countSamplesOut,
-   IntEbmType * countFeaturesOut,
-   IntEbmType * countWeightsOut,
-   IntEbmType * countTargetsOut
+   IntEbm * countSamplesOut,
+   IntEbm * countFeaturesOut,
+   IntEbm * countWeightsOut,
+   IntEbm * countTargetsOut
 );
 
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION ExtractBinCounts(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
    const void * dataSet,
-   IntEbmType countFeaturesVerify,
-   IntEbmType * binCountsOut
+   IntEbm countFeaturesVerify,
+   IntEbm * binCountsOut
 );
 
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION ExtractTargetClasses(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
    const void * dataSet,
-   IntEbmType countTargetsVerify,
-   IntEbmType * classCountsOut
+   IntEbm countTargetsVerify,
+   IntEbm * classCountsOut
 );
 
 
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
-   BoolEbmType isDeterministic,
-   SeedEbmType seed,
-   IntEbmType countTrainingSamples,
-   IntEbmType countValidationSamples,
-   BagEbmType * bagOut
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
+   BoolEbm isDeterministic,
+   SeedEbm seed,
+   IntEbm countTrainingSamples,
+   IntEbm countValidationSamples,
+   BagEbm * bagOut
 );
 
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
-   BoolEbmType isDeterministic,
-   SeedEbmType seed,
-   IntEbmType countClasses,
-   IntEbmType countTrainingSamples,
-   IntEbmType countValidationSamples,
-   IntEbmType * targets,
-   BagEbmType * bagOut
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
+   BoolEbm isDeterministic,
+   SeedEbm seed,
+   IntEbm countClasses,
+   IntEbm countTrainingSamples,
+   IntEbm countValidationSamples,
+   IntEbm * targets,
+   BagEbm * bagOut
 );
 
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
-   BoolEbmType isDeterministic,
-   SeedEbmType seed,
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
+   BoolEbm isDeterministic,
+   SeedEbm seed,
    const void * dataSet,
-   const BagEbmType * bag,
+   const BagEbm * bag,
    const double * initScores, // only samples with non-zeros in the bag are included
-   IntEbmType countTerms,
-   const IntEbmType * dimensionCounts,
-   const IntEbmType * featureIndexes,
-   IntEbmType countInnerBags,
+   IntEbm countTerms,
+   const IntEbm * dimensionCounts,
+   const IntEbm * featureIndexes,
+   IntEbm countInnerBags,
    const double * experimentalParams,
    BoosterHandle * boosterHandleOut
 );
 // TODO: we might need a function to set the booster's internal seed so that a booster view 
 // can either use the same seed as the original booster, or diverge on some new random sequence path
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CreateBoosterView(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBoosterView(
    BoosterHandle boosterHandle,
    BoosterHandle * boosterHandleViewOut
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    BoosterHandle boosterHandle,
-   IntEbmType indexTerm,
-   BoostFlagsType flags, 
+   IntEbm indexTerm,
+   BoostFlags flags, 
    double learningRate, 
-   IntEbmType minSamplesLeaf, 
-   const IntEbmType * leavesMax, 
+   IntEbm minSamplesLeaf, 
+   const IntEbm * leavesMax, 
    double * avgGainOut
 );
 // GetTermUpdateSplits must be called before calls to GetTermUpdate/SetTermUpdate
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
    BoosterHandle boosterHandle,
-   IntEbmType indexDimension,
-   IntEbmType * countSplitsInOut,
-   IntEbmType * splitIndexesOut
+   IntEbm indexDimension,
+   IntEbm * countSplitsInOut,
+   IntEbm * splitIndexesOut
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdate(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(
    BoosterHandle boosterHandle,
    double * updateScoresTensorOut
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdate(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
    BoosterHandle boosterHandle,
-   IntEbmType indexTerm,
+   IntEbm indexTerm,
    double * updateScoresTensor
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
    BoosterHandle boosterHandle,
    double * validationMetricOut
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
    BoosterHandle boosterHandle, 
-   IntEbmType indexTerm,
+   IntEbm indexTerm,
    double * termScoresTensorOut
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
    BoosterHandle boosterHandle,
-   IntEbmType indexTerm,
+   IntEbm indexTerm,
    double * termScoresTensorOut
 );
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION FreeBooster(
    BoosterHandle boosterHandle
 );
 
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CreateInteractionDetector(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
-   const BagEbmType * bag,
+   const BagEbm * bag,
    const double * initScores, // only samples with non-zeros in the bag are included
    const double * experimentalParams,
    InteractionHandle * interactionHandleOut
 );
-EBM_API_INCLUDE ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    InteractionHandle interactionHandle, 
-   IntEbmType countDimensions,
-   const IntEbmType * featureIndexes,
-   InteractionFlagsType flags,
-   IntEbmType minSamplesLeaf,
+   IntEbm countDimensions,
+   const IntEbm * featureIndexes,
+   InteractionFlags flags,
+   IntEbm minSamplesLeaf,
    double * avgInteractionStrengthOut
 );
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION FreeInteractionDetector(

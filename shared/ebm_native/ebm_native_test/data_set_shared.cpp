@@ -10,9 +10,9 @@
 static const TestPriority k_filePriority = TestPriority::DataSetShared;
 
 TEST_CASE("data_set_shared, zero features, zero samples, regression") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
 
    part = SizeDataSetHeader(0, 0, 1);
    CHECK(0 <= part);
@@ -34,11 +34,11 @@ TEST_CASE("data_set_shared, zero features, zero samples, regression") {
 }
 
 TEST_CASE("data_set_shared, zero features, three samples, regression") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
 
-   constexpr IntEbmType k_cSamples = 3;
+   constexpr IntEbm k_cSamples = 3;
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
    part = SizeDataSetHeader(0, 0, 1);
@@ -62,9 +62,9 @@ TEST_CASE("data_set_shared, zero features, three samples, regression") {
 
 
 TEST_CASE("data_set_shared, two features, zero samples, regression") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
 
    part = SizeDataSetHeader(2, 0, 1);
    CHECK(0 <= part);
@@ -98,11 +98,11 @@ TEST_CASE("data_set_shared, two features, zero samples, regression") {
 }
 
 TEST_CASE("data_set_shared, two features, 3 samples, regression") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
-   constexpr IntEbmType k_cSamples = 3;
-   IntEbmType binIndexes[k_cSamples] { 2, 1, 0 };
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
+   constexpr IntEbm k_cSamples = 3;
+   IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
    part = SizeDataSetHeader(2, 0, 1);
@@ -137,9 +137,9 @@ TEST_CASE("data_set_shared, two features, 3 samples, regression") {
 }
 
 TEST_CASE("data_set_shared, zero features, zero samples, classification") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
 
    part = SizeDataSetHeader(0, 0, 1);
    CHECK(0 <= part);
@@ -161,12 +161,12 @@ TEST_CASE("data_set_shared, zero features, zero samples, classification") {
 }
 
 TEST_CASE("data_set_shared, zero features, three samples, classification") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
 
-   constexpr IntEbmType k_cSamples = 3;
-   IntEbmType targets[k_cSamples] { 2, 1, 0 };
+   constexpr IntEbm k_cSamples = 3;
+   IntEbm targets[k_cSamples] { 2, 1, 0 };
 
    part = SizeDataSetHeader(0, 0, 1);
    CHECK(0 <= part);
@@ -188,9 +188,9 @@ TEST_CASE("data_set_shared, zero features, three samples, classification") {
 }
 
 TEST_CASE("data_set_shared, two features, zero samples, classification") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
 
    part = SizeDataSetHeader(2, 0, 1);
    CHECK(0 <= part);
@@ -224,12 +224,12 @@ TEST_CASE("data_set_shared, two features, zero samples, classification") {
 }
 
 TEST_CASE("data_set_shared, two features, 3 samples, classification") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
-   constexpr IntEbmType k_cSamples = 3;
-   IntEbmType binIndexes[k_cSamples] { 2, 1, 0 };
-   IntEbmType targets[k_cSamples] { 2, 1, 0 };
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
+   constexpr IntEbm k_cSamples = 3;
+   IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
+   IntEbm targets[k_cSamples] { 2, 1, 0 };
 
    part = SizeDataSetHeader(2, 0, 1);
    CHECK(0 <= part);
@@ -266,9 +266,9 @@ TEST_CASE("data_set_shared, two features, 3 samples, classification") {
 // weights 
 
 TEST_CASE("data_set_shared, zero features, zero samples, weights, regression") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
 
    part = SizeDataSetHeader(0, 1, 1);
    CHECK(0 <= part);
@@ -296,11 +296,11 @@ TEST_CASE("data_set_shared, zero features, zero samples, weights, regression") {
 }
 
 TEST_CASE("data_set_shared, zero features, three samples, weights, regression") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
 
-   constexpr IntEbmType k_cSamples = 3;
+   constexpr IntEbm k_cSamples = 3;
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
@@ -331,9 +331,9 @@ TEST_CASE("data_set_shared, zero features, three samples, weights, regression") 
 
 
 TEST_CASE("data_set_shared, two features, zero samples, weights, regression") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
 
    part = SizeDataSetHeader(2, 1, 1);
    CHECK(0 <= part);
@@ -373,11 +373,11 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, regression") {
 }
 
 TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
-   constexpr IntEbmType k_cSamples = 3;
-   IntEbmType binIndexes[k_cSamples] { 2, 1, 0 };
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
+   constexpr IntEbm k_cSamples = 3;
+   IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
@@ -419,9 +419,9 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
 }
 
 TEST_CASE("data_set_shared, zero features, zero samples, weights, classification") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
 
    part = SizeDataSetHeader(0, 1, 1);
    CHECK(0 <= part);
@@ -449,13 +449,13 @@ TEST_CASE("data_set_shared, zero features, zero samples, weights, classification
 }
 
 TEST_CASE("data_set_shared, zero features, three samples, weights, classification") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
 
-   constexpr IntEbmType k_cSamples = 3;
+   constexpr IntEbm k_cSamples = 3;
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
-   IntEbmType targets[k_cSamples] { 2, 1, 0 };
+   IntEbm targets[k_cSamples] { 2, 1, 0 };
 
    part = SizeDataSetHeader(0, 1, 1);
    CHECK(0 <= part);
@@ -483,9 +483,9 @@ TEST_CASE("data_set_shared, zero features, three samples, weights, classificatio
 }
 
 TEST_CASE("data_set_shared, two features, zero samples, weights, classification") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
 
    part = SizeDataSetHeader(2, 1, 1);
    CHECK(0 <= part);
@@ -525,13 +525,13 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, classification"
 }
 
 TEST_CASE("data_set_shared, two features, 3 samples, weights, classification") {
-   IntEbmType sum = 0;
-   IntEbmType part;
-   ErrorEbmType error;
-   constexpr IntEbmType k_cSamples = 3;
-   IntEbmType binIndexes[k_cSamples] { 2, 1, 0 };
+   IntEbm sum = 0;
+   IntEbm part;
+   ErrorEbm error;
+   constexpr IntEbm k_cSamples = 3;
+   IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
-   IntEbmType targets[k_cSamples] { 2, 1, 0 };
+   IntEbm targets[k_cSamples] { 2, 1, 0 };
 
    part = SizeDataSetHeader(2, 1, 1);
    CHECK(0 <= part);

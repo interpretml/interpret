@@ -18,7 +18,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-typedef UIntEbmType SharedStorageDataType;
+typedef UIntEbm SharedStorageDataType;
 
 struct SparseFeatureDataSetSharedEntry {
    SharedStorageDataType m_iSample;
@@ -29,7 +29,7 @@ static_assert(std::is_standard_layout<SparseFeatureDataSetSharedEntry>::value,
 static_assert(std::is_trivial<SparseFeatureDataSetSharedEntry>::value,
    "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 
-extern ErrorEbmType GetDataSetSharedHeader(
+extern ErrorEbm GetDataSetSharedHeader(
    const unsigned char * const pDataSetShared,
    size_t * const pcSamplesOut,
    size_t * const pcFeaturesOut,

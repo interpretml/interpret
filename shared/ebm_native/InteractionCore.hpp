@@ -86,10 +86,10 @@ public:
    }
 
    static void Free(InteractionCore * const pInteractionCore);
-   static ErrorEbmType Create(
+   static ErrorEbm Create(
       InteractionShell * const pInteractionShell,
       const unsigned char * const pDataSetShared,
-      const BagEbmType * const aBag,
+      const BagEbm * const aBag,
       const double * const aInitScores,
       const double * const experimentalParams
    );

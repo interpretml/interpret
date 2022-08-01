@@ -36,11 +36,11 @@ public:
 
    PartitionRandomBoostingInternal() = delete; // this is a static class.  Do not construct
 
-   static ErrorEbmType Func(
+   static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const BoostFlagsType flags,
-      const IntEbmType * const aLeavesMax,
+      const BoostFlags flags,
+      const IntEbm * const aLeavesMax,
       double * const pTotalGain
    ) {
       // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
@@ -55,7 +55,7 @@ public:
       // TODO: accept 0 == minSamplesLeaf as a minimum number of items so that we can always choose to allow a tensor split (for DP)
       // TODO: move most of this code out of this function into a non-templated place
 
-      ErrorEbmType error;
+      ErrorEbm error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(
@@ -76,7 +76,7 @@ public:
       Tensor * const pInnerTermUpdate =
          pBoosterShell->GetInnerTermUpdate();
 
-      const IntEbmType * pLeavesMax1 = aLeavesMax;
+      const IntEbm * pLeavesMax1 = aLeavesMax;
       const TermEntry * pTermEntry1 = pTerm->GetTermEntries();
       const TermEntry * const pTermEntriesEnd = pTermEntry1 + pTerm->GetCountDimensions();
       size_t cSlicesTotal = 0;
@@ -87,9 +87,9 @@ public:
          if(nullptr == pLeavesMax1) {
             cLeavesMax = size_t { 1 };
          } else {
-            const IntEbmType countLeavesMax = *pLeavesMax1;
+            const IntEbm countLeavesMax = *pLeavesMax1;
             ++pLeavesMax1;
-            if(countLeavesMax <= IntEbmType { 1 }) {
+            if(countLeavesMax <= IntEbm { 1 }) {
                cLeavesMax = size_t { 1 };
             } else {
                cLeavesMax = static_cast<size_t>(countLeavesMax);
@@ -167,7 +167,7 @@ public:
       }
       size_t * const acItemsInNextSliceOrBytesInCurrentSlice = reinterpret_cast<size_t *>(pBuffer);
 
-      const IntEbmType * pLeavesMax2 = aLeavesMax;
+      const IntEbm * pLeavesMax2 = aLeavesMax;
       RandomDeterministic * const pRandomDeterministic = pBoosterShell->GetRandomDeterministic();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       const TermEntry * pTermEntry2 = pTerm->GetTermEntries();
@@ -176,9 +176,9 @@ public:
          if(nullptr == pLeavesMax2) {
             cTreeSplitsMax = size_t { 0 };
          } else {
-            const IntEbmType countLeavesMax = *pLeavesMax2;
+            const IntEbm countLeavesMax = *pLeavesMax2;
             ++pLeavesMax2;
-            if(countLeavesMax <= IntEbmType { 1 }) {
+            if(countLeavesMax <= IntEbm { 1 }) {
                cTreeSplitsMax = size_t { 0 };
             } else {
                cTreeSplitsMax = static_cast<size_t>(countLeavesMax) - size_t { 1 };
@@ -229,7 +229,7 @@ public:
          ++pTermEntry2;
       } while(pTermEntriesEnd != pTermEntry2);
 
-      const IntEbmType * pLeavesMax3 = aLeavesMax;
+      const IntEbm * pLeavesMax3 = aLeavesMax;
       const size_t * pcBytesInSliceEnd;
       const TermEntry * pTermEntry3 = pTerm->GetTermEntries();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice3 = acItemsInNextSliceOrBytesInCurrentSlice;
@@ -241,9 +241,9 @@ public:
          if(nullptr == pLeavesMax3) {
             cLeavesMax = size_t { 1 };
          } else {
-            const IntEbmType countLeavesMax = *pLeavesMax3;
+            const IntEbm countLeavesMax = *pLeavesMax3;
             ++pLeavesMax3;
-            if(countLeavesMax <= IntEbmType { 1 }) {
+            if(countLeavesMax <= IntEbm { 1 }) {
                cLeavesMax = size_t { 1 };
             } else {
                cLeavesMax = static_cast<size_t>(countLeavesMax);
@@ -298,9 +298,9 @@ public:
          if(nullptr == pLeavesMax3) {
             cLeavesMax = size_t { 1 };
          } else {
-            const IntEbmType countLeavesMax = *pLeavesMax3;
+            const IntEbm countLeavesMax = *pLeavesMax3;
             ++pLeavesMax3;
-            if(countLeavesMax <= IntEbmType { 1 }) {
+            if(countLeavesMax <= IntEbm { 1 }) {
                cLeavesMax = size_t { 1 };
             } else {
                cLeavesMax = static_cast<size_t>(countLeavesMax);
@@ -610,11 +610,11 @@ public:
 
    PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static ErrorEbmType Func(
+   INLINE_ALWAYS static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const BoostFlagsType flags,
-      const IntEbmType * const aLeavesMax,
+      const BoostFlags flags,
+      const IntEbm * const aLeavesMax,
       double * const pTotalGain
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
@@ -651,11 +651,11 @@ public:
 
    PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static ErrorEbmType Func(
+   INLINE_ALWAYS static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const BoostFlagsType flags,
-      const IntEbmType * const aLeavesMax,
+      const BoostFlags flags,
+      const IntEbm * const aLeavesMax,
       double * const pTotalGain
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
@@ -673,11 +673,11 @@ public:
    }
 };
 
-extern ErrorEbmType PartitionRandomBoosting(
+extern ErrorEbm PartitionRandomBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
-   const BoostFlagsType flags,
-   const IntEbmType * const aLeavesMax,
+   const BoostFlags flags,
+   const IntEbm * const aLeavesMax,
    double * const pTotalGain
 ) {
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();

@@ -35,15 +35,15 @@ namespace DEFINED_ZONE_NAME {
 // an init function and just use a single function that modifies the 16 character string?
 // We need to also provide utilities to generate normal distributions using the random number
 
-EBM_API_BODY SeedEbmType EBM_CALLING_CONVENTION GenerateSeed(
-   SeedEbmType seed,
-   SeedEbmType randomMix
+EBM_API_BODY SeedEbm EBM_CALLING_CONVENTION GenerateSeed(
+   SeedEbm seed,
+   SeedEbm randomMix
 ) {
    RandomDeterministic randomDeterministic;
    // this is a bit inefficient in that we go through a complete regeneration of the internal state,
    // but it gives us a simple interface
    randomDeterministic.InitializeSigned(seed, randomMix);
-   SeedEbmType ret = randomDeterministic.NextSeed();
+   SeedEbm ret = randomDeterministic.NextSeed();
    return ret;
 }
 
@@ -51,12 +51,12 @@ EBM_API_BODY SeedEbmType EBM_CALLING_CONVENTION GenerateSeed(
 static int g_cLogEnterSampleWithoutReplacement = 5;
 static int g_cLogExitSampleWithoutReplacement = 5;
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
-   BoolEbmType isDeterministic,
-   SeedEbmType seed,
-   IntEbmType countTrainingSamples,
-   IntEbmType countValidationSamples,
-   BagEbmType * bagOut
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
+   BoolEbm isDeterministic,
+   SeedEbm seed,
+   IntEbm countTrainingSamples,
+   IntEbm countValidationSamples,
+   BagEbm * bagOut
 ) {
    LOG_COUNTED_N(
       &g_cLogEnterSampleWithoutReplacement,
@@ -64,9 +64,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
       Trace_Verbose,
       "Entered SampleWithoutReplacement: "
       "isDeterministic=%s, "
-      "seed=%" SeedEbmTypePrintf ", "
-      "countTrainingSamples=%" IntEbmTypePrintf ", "
-      "countValidationSamples=%" IntEbmTypePrintf ", "
+      "seed=%" SeedEbmPrintf ", "
+      "countTrainingSamples=%" IntEbmPrintf ", "
+      "countValidationSamples=%" IntEbmPrintf ", "
       "bagOut=%p"
       ,
       ObtainTruth(isDeterministic),
@@ -81,8 +81,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
       return Error_IllegalParamValue;
    }
 
-   if(UNLIKELY(countTrainingSamples < IntEbmType { 0 })) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement countTrainingSamples < IntEbmType { 0 }");
+   if(UNLIKELY(countTrainingSamples < IntEbm { 0 })) {
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement countTrainingSamples < IntEbm { 0 }");
       return Error_IllegalParamValue;
    }
    if(UNLIKELY(IsConvertError<size_t>(countTrainingSamples))) {
@@ -91,8 +91,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
    }
    const size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
 
-   if(UNLIKELY(countValidationSamples < IntEbmType { 0 })) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement countValidationSamples < IntEbmType { 0 }");
+   if(UNLIKELY(countValidationSamples < IntEbm { 0 })) {
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement countValidationSamples < IntEbm { 0 }");
       return Error_IllegalParamValue;
    }
    if(UNLIKELY(IsConvertError<size_t>(countValidationSamples))) {
@@ -117,7 +117,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
 
    size_t cTrainingRemaining = cTrainingSamples;
 
-   BagEbmType * pSampleReplicationOut = bagOut;
+   BagEbm * pSampleReplicationOut = bagOut;
    if(EBM_FALSE != isDeterministic) {
       RandomDeterministic randomGenerator;
       randomGenerator.InitializeUnsigned(seed, k_samplingWithoutReplacementRandomizationMix);
@@ -125,7 +125,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
          const size_t iRandom = randomGenerator.NextFast(cSamplesRemaining);
          const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
          cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
-         *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbmType { 1 } : BagEbmType { -1 };
+         *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbm { 1 } : BagEbm { -1 };
          ++pSampleReplicationOut;
          --cSamplesRemaining;
       } while(0 != cSamplesRemaining);
@@ -136,7 +136,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
             const size_t iRandom = randomGenerator.NextFast(cSamplesRemaining);
             const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
             cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
-            *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbmType { 1 } : BagEbmType { -1 };
+            *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbm { 1 } : BagEbm { -1 };
             ++pSampleReplicationOut;
             --cSamplesRemaining;
          } while(0 != cSamplesRemaining);
@@ -166,14 +166,14 @@ static int g_cLogExitSampleWithoutReplacementStratified = 5;
 WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
-   BoolEbmType isDeterministic,
-   SeedEbmType seed,
-   IntEbmType countClasses,
-   IntEbmType countTrainingSamples,
-   IntEbmType countValidationSamples,
-   IntEbmType * targets,
-   BagEbmType * bagOut
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
+   BoolEbm isDeterministic,
+   SeedEbm seed,
+   IntEbm countClasses,
+   IntEbm countTrainingSamples,
+   IntEbm countValidationSamples,
+   IntEbm * targets,
+   BagEbm * bagOut
 ) {
    struct TargetSamplingCounts {
       size_t m_cTraining;
@@ -186,10 +186,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
       Trace_Verbose,
       "Entered SampleWithoutReplacementStratified: "
       "isDeterministic=%s, "
-      "seed=%" SeedEbmTypePrintf ", "
-      "countClasses=%" IntEbmTypePrintf ", "
-      "countTrainingSamples=%" IntEbmTypePrintf ", "
-      "countValidationSamples=%" IntEbmTypePrintf ", "
+      "seed=%" SeedEbmPrintf ", "
+      "countClasses=%" IntEbmPrintf ", "
+      "countTrainingSamples=%" IntEbmPrintf ", "
+      "countValidationSamples=%" IntEbmPrintf ", "
       "targets=%p, "
       "bagOut=%p"
       ,
@@ -212,8 +212,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
       return Error_IllegalParamValue;
    }
 
-   if (UNLIKELY(countTrainingSamples < IntEbmType{ 0 })) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified countTrainingSamples < IntEbmType{ 0 }");
+   if (UNLIKELY(countTrainingSamples < IntEbm{ 0 })) {
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified countTrainingSamples < IntEbm{ 0 }");
       return Error_IllegalParamValue;
    }
    if (UNLIKELY(IsConvertError<size_t>(countTrainingSamples))) {
@@ -222,8 +222,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
    }
    const size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
 
-   if (UNLIKELY(countValidationSamples < IntEbmType{ 0 })) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified countValidationSamples < IntEbmType{ 0 }");
+   if (UNLIKELY(countValidationSamples < IntEbm{ 0 })) {
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified countValidationSamples < IntEbm{ 0 }");
       return Error_IllegalParamValue;
    }
    if (UNLIKELY(IsConvertError<size_t>(countValidationSamples))) {
@@ -298,7 +298,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
 
    // calculate number of samples per label in the target
    for (size_t i = 0; i < cSamples; i++) {
-      IntEbmType label = targets[i];
+      IntEbm label = targets[i];
 
       if (UNLIKELY(label < 0 || label >= countClasses)) {
          LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified label >= cClasses");
@@ -449,10 +449,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
 
       if (UNPREDICTABLE(bTrainingSample)) {
          --pTargetSample->m_cTraining;
-         bagOut[iSample] = BagEbmType{ 1 };
+         bagOut[iSample] = BagEbm{ 1 };
       }
       else {
-         bagOut[iSample] = BagEbmType{ -1 };
+         bagOut[iSample] = BagEbm{ -1 };
       }
 
       --pTargetSample->m_cTotalRemaining;
@@ -481,9 +481,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacementStratif
 }
 WARNING_POP
 
-extern ErrorEbmType Unbag(
+extern ErrorEbm Unbag(
    const size_t cSamples,
-   const BagEbmType * const aBag,
+   const BagEbm * const aBag,
    size_t * const pcTrainingSamplesOut,
    size_t * const pcValidationSamplesOut
 ) {
@@ -495,11 +495,11 @@ extern ErrorEbmType Unbag(
    if(nullptr != aBag) {
       cTrainingSamples = 0;
       if(0 != cSamples) {
-         const BagEbmType * pSampleReplication = aBag;
-         const BagEbmType * const pSampleReplicationEnd = aBag + cSamples;
+         const BagEbm * pSampleReplication = aBag;
+         const BagEbm * const pSampleReplicationEnd = aBag + cSamples;
          do {
-            const BagEbmType replication = *pSampleReplication;
-            if(replication < BagEbmType { 0 }) {
+            const BagEbm replication = *pSampleReplication;
+            if(replication < BagEbm { 0 }) {
                if(IsConvertError<ptrdiff_t>(replication)) {
                   LOG_0(Trace_Error, "ERROR Unbag IsConvertError<ptrdiff_t>(replication)");
                   return Error_IllegalParamValue;
@@ -540,27 +540,27 @@ extern ErrorEbmType Unbag(
 }
 
 INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
-   const BagEbmType direction,
+   const BagEbm direction,
    const size_t cAllSamples,
-   const BagEbmType * const aBag,
+   const BagEbm * const aBag,
    const FloatFast * pWeights
 ) {
-   EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
+   EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
    EBM_ASSERT(1 <= cAllSamples);
    EBM_ASSERT(nullptr != pWeights);
 
    FloatFast firstWeight = std::numeric_limits<FloatFast>::quiet_NaN();
    const FloatFast * const pWeightsEnd = pWeights + cAllSamples;
-   const bool isLoopTraining = BagEbmType { 0 } < direction;
-   const BagEbmType * pSampleReplication = aBag;
+   const bool isLoopTraining = BagEbm { 0 } < direction;
+   const BagEbm * pSampleReplication = aBag;
    do {
-      BagEbmType replication = 1;
+      BagEbm replication = 1;
       if(nullptr != pSampleReplication) {
          replication = *pSampleReplication;
          ++pSampleReplication;
       }
-      if(BagEbmType { 0 } != replication) {
-         const bool isItemTraining = BagEbmType { 0 } < replication;
+      if(BagEbm { 0 } != replication) {
+         const bool isItemTraining = BagEbm { 0 } < replication;
          if(isLoopTraining == isItemTraining) {
             const FloatFast weight = *pWeights;
             // this relies on the property that NaN is not equal to everything, including NaN
@@ -579,16 +579,16 @@ INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
    return true;
 }
 
-extern ErrorEbmType ExtractWeights(
+extern ErrorEbm ExtractWeights(
    const unsigned char * const pDataSetShared,
-   const BagEbmType direction,
+   const BagEbm direction,
    const size_t cAllSamples,
-   const BagEbmType * const aBag,
+   const BagEbm * const aBag,
    const size_t cSetSamples,
    FloatFast ** ppWeightsOut
 ) {
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
+   EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
    EBM_ASSERT(0 < cSetSamples);
    EBM_ASSERT(cSetSamples <= cAllSamples);
    EBM_ASSERT(0 < cAllSamples); // from the previous two rules
@@ -606,19 +606,19 @@ extern ErrorEbmType ExtractWeights(
       }
       *ppWeightsOut = aRet;
 
-      const BagEbmType * pSampleReplication = aBag;
+      const BagEbm * pSampleReplication = aBag;
       const FloatFast * pWeightFrom = aWeights;
       FloatFast * pWeightTo = aRet;
       FloatFast * pWeightToEnd = aRet + cSetSamples;
-      const bool isLoopTraining = BagEbmType { 0 } < direction;
+      const bool isLoopTraining = BagEbm { 0 } < direction;
       do {
-         BagEbmType replication = 1;
+         BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
             replication = *pSampleReplication;
             ++pSampleReplication;
          }
-         if(BagEbmType { 0 } != replication) {
-            const bool isItemTraining = BagEbmType { 0 } < replication;
+         if(BagEbm { 0 } != replication) {
+            const bool isItemTraining = BagEbm { 0 } < replication;
             if(isLoopTraining == isItemTraining) {
                const FloatFast weight = *pWeightFrom;
                do {
@@ -626,7 +626,7 @@ extern ErrorEbmType ExtractWeights(
                   *pWeightTo = weight;
                   ++pWeightTo;
                   replication -= direction;
-               } while(BagEbmType { 0 } != replication);
+               } while(BagEbm { 0 } != replication);
             }
          }
          ++pWeightFrom;

@@ -40,27 +40,27 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern ErrorEbmType InitializeGradientsAndHessians(
+extern ErrorEbm InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
-   const BagEbmType direction,
-   const BagEbmType * const aBag,
+   const BagEbm direction,
+   const BagEbm * const aBag,
    const double * const aInitScores,
    const size_t cSetSamples,
    FloatFast * const aGradientAndHessian
 );
 
-extern ErrorEbmType Unbag(
+extern ErrorEbm Unbag(
    const size_t cSamples,
-   const BagEbmType * const aBag,
+   const BagEbm * const aBag,
    size_t * const pcTrainingSamplesOut,
    size_t * const pcValidationSamplesOut
 );
 
-extern ErrorEbmType ExtractWeights(
+extern ErrorEbm ExtractWeights(
    const unsigned char * const pDataSetShared,
-   const BagEbmType direction,
+   const BagEbm direction,
    const size_t cAllSamples,
-   const BagEbmType * const aBag,
+   const BagEbm * const aBag,
    const size_t cSetSamples,
    FloatFast ** ppWeightsOut
 );
@@ -86,7 +86,7 @@ void BoosterCore::DeleteTensors(const size_t cTerms, Tensor ** const apTensors) 
    LOG_0(Trace_Info, "Exited DeleteTensors");
 }
 
-ErrorEbmType BoosterCore::InitializeTensors(
+ErrorEbm BoosterCore::InitializeTensors(
    const size_t cTerms, 
    const Term * const * const apTerms, 
    const size_t cScores,
@@ -100,7 +100,7 @@ ErrorEbmType BoosterCore::InitializeTensors(
    EBM_ASSERT(nullptr != papTensorsOut);
    EBM_ASSERT(nullptr == *papTensorsOut);
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    Tensor ** const apTensors = EbmMalloc<Tensor *>(cTerms);
    if(UNLIKELY(nullptr == apTensors)) {
@@ -165,15 +165,15 @@ void BoosterCore::Free(BoosterCore * const pBoosterCore) {
 //   g_TODO_removeThisThreadTest = 1;
 //}
 
-ErrorEbmType BoosterCore::Create(
+ErrorEbm BoosterCore::Create(
    BoosterShell * const pBoosterShell,
    const size_t cTerms,
    const size_t cSamplingSets,
    const double * const experimentalParams,
-   const IntEbmType * const acTermDimensions,
-   const IntEbmType * const aiTermFeatures, 
+   const IntEbm * const acTermDimensions,
+   const IntEbm * const aiTermFeatures, 
    const unsigned char * const pDataSetShared,
-   const BagEbmType * const aBag,
+   const BagEbm * const aBag,
    const double * const aInitScores
 ) {
    // experimentalParams isn't used by default.  It's meant to provide an easy way for python or other higher
@@ -184,7 +184,7 @@ ErrorEbmType BoosterCore::Create(
 
    EBM_ASSERT(nullptr != pBoosterShell);
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    //try {
    //   // TODO: eliminate this code I added to test that threads are available on the majority of our systems
@@ -325,15 +325,15 @@ ErrorEbmType BoosterCore::Create(
       }
       const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cScores);
 
-      const IntEbmType * piTermFeature = aiTermFeatures;
+      const IntEbm * piTermFeature = aiTermFeatures;
       size_t iTerm = 0;
       do {
-         const IntEbmType countDimensions = acTermDimensions[iTerm];
-         if(countDimensions < IntEbmType { 0 }) {
+         const IntEbm countDimensions = acTermDimensions[iTerm];
+         if(countDimensions < IntEbm { 0 }) {
             LOG_0(Trace_Error, "ERROR BoosterCore::Create countDimensions cannot be negative");
             return Error_IllegalParamValue;
          }
-         if(IntEbmType { k_cDimensionsMax } < countDimensions) {
+         if(IntEbm { k_cDimensionsMax } < countDimensions) {
             LOG_0(Trace_Error, "WARNING BoosterCore::Create countDimensions too large and would cause out of memory condition");
             return Error_OutOfMemory;
          }
@@ -360,7 +360,7 @@ ErrorEbmType BoosterCore::Create(
             TermEntry * pTermEntry = pTerm->GetTermEntries();
             TermEntry * pTermEntriesEnd = pTermEntry + cDimensions;
             do {
-               const IntEbmType indexFeature = *piTermFeature;
+               const IntEbm indexFeature = *piTermFeature;
                if(indexFeature < 0) {
                   LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures value cannot be negative");
                   return Error_IllegalParamValue;
@@ -457,7 +457,7 @@ ErrorEbmType BoosterCore::Create(
       bClassification,
       bClassification,
       pDataSetShared,
-      BagEbmType { 1 },
+      BagEbm { 1 },
       aBag,
       aInitScores,
       cTrainingSamples,
@@ -476,7 +476,7 @@ ErrorEbmType BoosterCore::Create(
       bClassification,
       bClassification,
       pDataSetShared,
-      BagEbmType { -1 },
+      BagEbm { -1 },
       aBag,
       aInitScores,
       cValidationSamples,
@@ -494,7 +494,7 @@ ErrorEbmType BoosterCore::Create(
       if(0 != cWeights) {
          error = ExtractWeights(
             pDataSetShared,
-            BagEbmType { 1 },
+            BagEbm { 1 },
             cSamples, 
             aBag, 
             cTrainingSamples,
@@ -525,7 +525,7 @@ ErrorEbmType BoosterCore::Create(
    if(0 != cWeights && 0 != cValidationSamples) {
       error = ExtractWeights(
          pDataSetShared,
-         BagEbmType { -1 },
+         BagEbm { -1 },
          cSamples, 
          aBag, 
          cValidationSamples,
@@ -552,7 +552,7 @@ ErrorEbmType BoosterCore::Create(
       if(0 != cTrainingSamples) {
          error = InitializeGradientsAndHessians(
             pDataSetShared,
-            BagEbmType { 1 },
+            BagEbm { 1 },
             aBag,
             aInitScores,
             cTrainingSamples,
@@ -567,11 +567,11 @@ ErrorEbmType BoosterCore::Create(
       EBM_ASSERT(IsRegression(cClasses));
       if(0 != cTrainingSamples) {
 #ifndef NDEBUG
-         const ErrorEbmType errorDebug =
+         const ErrorEbm errorDebug =
 #endif // NDEBUG
          InitializeGradientsAndHessians(
             pDataSetShared,
-            BagEbmType { 1 },
+            BagEbm { 1 },
             aBag,
             aInitScores,
             cTrainingSamples,
@@ -581,11 +581,11 @@ ErrorEbmType BoosterCore::Create(
       }
       if(0 != cValidationSamples) {
 #ifndef NDEBUG
-         const ErrorEbmType errorDebug =
+         const ErrorEbm errorDebug =
 #endif // NDEBUG
          InitializeGradientsAndHessians(
             pDataSetShared,
-            BagEbmType { -1 },
+            BagEbm { -1 },
             aBag,
             aInitScores,
             cValidationSamples,

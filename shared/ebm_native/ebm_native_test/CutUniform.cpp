@@ -19,17 +19,17 @@ constexpr double illegalVal = double { -888.88 };
 static double * const pIllegal = reinterpret_cast<double *>(1);
 
 TEST_CASE("CutUniform, zero cuts") {
-   IntEbmType countCuts = CutUniform(100, pIllegal, 0, pIllegal);
+   IntEbm countCuts = CutUniform(100, pIllegal, 0, pIllegal);
    CHECK(0 == countCuts);
 }
 
 TEST_CASE("CutUniform, 0 samples") {
-   IntEbmType countCuts = CutUniform(0, pIllegal, 10, pIllegal);
+   IntEbm countCuts = CutUniform(0, pIllegal, 10, pIllegal);
    CHECK(countCuts == 0);
 }
 
 TEST_CASE("CutUniform, 1 sample") {
-   IntEbmType countCuts = CutUniform(0, pIllegal, 10, pIllegal);
+   IntEbm countCuts = CutUniform(0, pIllegal, 10, pIllegal);
    CHECK(countCuts == 0);
 }
 
@@ -38,7 +38,7 @@ TEST_CASE("CutUniform, only missing") {
       std::numeric_limits<double>::quiet_NaN(), 
       std::numeric_limits<double>::quiet_NaN(),
    };
-   IntEbmType countCuts = CutUniform(featureVals.size(), &featureVals[0], 3, pIllegal);
+   IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], 3, pIllegal);
    CHECK(0 == countCuts);
 }
 
@@ -47,7 +47,7 @@ TEST_CASE("CutUniform, only -inf") {
       -std::numeric_limits<double>::infinity(),
       -std::numeric_limits<double>::infinity(),
    };
-   IntEbmType countCuts = CutUniform(featureVals.size(), &featureVals[0], 3, pIllegal);
+   IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], 3, pIllegal);
    CHECK(0 == countCuts);
 }
 
@@ -56,13 +56,13 @@ TEST_CASE("CutUniform, only +inf") {
       std::numeric_limits<double>::infinity(),
       std::numeric_limits<double>::infinity(),
    };
-   IntEbmType countCuts = CutUniform(featureVals.size(), &featureVals[0], 3, pIllegal);
+   IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], 3, pIllegal);
    CHECK(0 == countCuts);
 }
 
 TEST_CASE("CutUniform, identical values + missing") {
    std::vector<double> featureVals { 1, 1, std::numeric_limits<double>::quiet_NaN(), 1 };
-   IntEbmType countCuts = CutUniform(featureVals.size(), &featureVals[0], 10, pIllegal);
+   IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], 10, pIllegal);
    CHECK(0 == countCuts);
 }
 
@@ -80,7 +80,7 @@ TEST_CASE("CutUniform, exactly sufficient floting point range for all cuts") {
 
    std::vector<double> cuts(featureVals.size() - 1, illegalVal);
 
-   IntEbmType countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
+   IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -108,7 +108,7 @@ TEST_CASE("CutUniform, exactly sufficient floting point range for all cuts, cros
 
    std::vector<double> cuts(featureVals.size() - 1, illegalVal);
 
-   IntEbmType countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
+   IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -133,7 +133,7 @@ TEST_CASE("CutUniform, marginally sufficient floting point range for all cuts, c
 
    std::vector<double> cuts(featureVals.size() - 2, illegalVal);
 
-   IntEbmType countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
+   IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(cuts.size() == cCuts);
@@ -153,7 +153,7 @@ TEST_CASE("CutUniform, insufficient floting point range for all cuts") {
 
    std::vector<double> cuts(featureVals.size(), illegalVal);
 
-   IntEbmType countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
+   IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -171,7 +171,7 @@ TEST_CASE("CutUniform, one cut, -infinity and +infinity") {
    };
    std::vector<double> cuts(1, illegalVal);
 
-   IntEbmType countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
+   IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
 
    CHECK(1 == countCuts);
    CHECK(0 == cuts[0]);
@@ -184,13 +184,13 @@ TEST_CASE("CutUniform, mid-point overflow if not special cased") {
    };
    std::vector<double> cuts(13, illegalVal);
 
-   IntEbmType countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
+   IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
 
    CHECK(13 == countCuts);
 }
 
 TEST_CASE("CutUniform, infinite diff, even cuts") {
-   IntEbmType countCuts = 2;
+   IntEbm countCuts = 2;
 
    std::vector<double> featureVals {
       std::numeric_limits<double>::max(),
@@ -212,7 +212,7 @@ TEST_CASE("CutUniform, infinite diff, even cuts") {
 }
 
 TEST_CASE("CutUniform, infinite diff, odd cuts") {
-   IntEbmType countCuts = 3;
+   IntEbm countCuts = 3;
 
    std::vector<double> featureVals {
       std::numeric_limits<double>::lowest(),
@@ -234,7 +234,7 @@ TEST_CASE("CutUniform, infinite diff, odd cuts") {
 }
 
 TEST_CASE("CutUniform, min and max at interior positions") {
-   IntEbmType countCuts = 9;
+   IntEbm countCuts = 9;
 
    std::vector<double> featureVals { 1, 2, 3, 4, 5, 0, 10, 6, 7, 8, 9 };
    const std::vector<double> expectedCuts { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
@@ -271,7 +271,7 @@ TEST_CASE("CutUniform, low start, hit float resolution before end") {
    // have just 1 hole in the middle
    std::vector<double> cuts(featureVals.size() - 2, illegalVal);
 
-   IntEbmType countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
+   IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
 
    CHECK(cuts.size() == static_cast<size_t>(countCuts));
 }
@@ -295,23 +295,23 @@ TEST_CASE("CutUniform, high start, hit float resolution before end") {
    // have just 1 hole in the middle
    std::vector<double> cuts(featureVals.size() - 2, illegalVal);
 
-   IntEbmType countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
+   IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], cuts.size(), &cuts[0]);
 
    CHECK(cuts.size() == static_cast<size_t>(countCuts));
 }
 
 TEST_CASE("CutUniform, stress test reproducible") {
    size_t iTest;
-   IntEbmType iCut;
-   IntEbmType countCuts;
+   IntEbm iCut;
+   IntEbm countCuts;
 
    double lowTest;
    double highTest;
    double oneCut;
 
-   IntEbmType testVal;
-   IntEbmType checkVal;
-   IntEbmType iTick;
+   IntEbm testVal;
+   IntEbm checkVal;
+   IntEbm iTick;
 
    double result = 0.0;
    double seed = 64906263;
@@ -347,7 +347,7 @@ TEST_CASE("CutUniform, stress test reproducible") {
    for(iTest = 0; iTest < 20000; ++iTest) {
       seed = floor((seed * seed) / 11.0);
       seed = seed - floor(seed / 94906263) * 94906263; // floor(sqrt(SAFE_FLOAT64_AS_INT64_MAX))
-      testVal = static_cast<IntEbmType>(seed);
+      testVal = static_cast<IntEbm>(seed);
 
       checkVal = testVal % cInteresting;
       lowTest = interestingVals[checkVal];

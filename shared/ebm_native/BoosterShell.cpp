@@ -67,7 +67,7 @@ BoosterShell * BoosterShell::Create() {
    return pNew;
 }
 
-ErrorEbmType BoosterShell::FillAllocations() {
+ErrorEbm BoosterShell::FillAllocations() {
    EBM_ASSERT(nullptr != m_pBoosterCore);
 
    LOG_0(Trace_Info, "Entered BoosterShell::FillAllocations");
@@ -155,7 +155,7 @@ BinBase * BoosterShell::GetBinBaseBig(size_t cBytesRequired) {
    return aBuffer;
 }
 
-ErrorEbmType BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
+ErrorEbm BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
    // by adding cByteBoundaries and shifting our existing size, we do 2 things:
    //   1) we ensure that if we have zero size, we'll get some size that we'll get a non-zero size after the shift
    //   2) we'll always get back an odd number of items, which is good because we always have an odd number of TreeNodeChilden
@@ -178,16 +178,16 @@ ErrorEbmType BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
    return Error_None;
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
-   BoolEbmType isDeterministic,
-   SeedEbmType seed,
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
+   BoolEbm isDeterministic,
+   SeedEbm seed,
    const void * dataSet,
-   const BagEbmType * bag,
+   const BagEbm * bag,
    const double * initScores,
-   IntEbmType countTerms,
-   const IntEbmType * dimensionCounts,
-   const IntEbmType * featureIndexes,
-   IntEbmType countInnerBags,
+   IntEbm countTerms,
+   const IntEbm * dimensionCounts,
+   const IntEbm * featureIndexes,
+   IntEbm countInnerBags,
    const double * experimentalParams,
    BoosterHandle * boosterHandleOut
 ) {
@@ -195,14 +195,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
       Trace_Info,
       "Entered CreateBooster: "
       "isDeterministic=%s, "
-      "seed=%" SeedEbmTypePrintf ", "
+      "seed=%" SeedEbmPrintf ", "
       "dataSet=%p, "
       "bag=%p, "
       "initScores=%p, "
-      "countTerms=%" IntEbmTypePrintf ", "
+      "countTerms=%" IntEbmPrintf ", "
       "dimensionCounts=%p, "
       "featureIndexes=%p, "
-      "countInnerBags=%" IntEbmTypePrintf ", "
+      "countInnerBags=%" IntEbmPrintf ", "
       "experimentalParams=%p, "
       "boosterHandleOut=%p"
       ,
@@ -219,7 +219,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
       static_cast<const void *>(boosterHandleOut)
    );
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    if(nullptr == boosterHandleOut) {
       LOG_0(Trace_Error, "ERROR CreateBooster nullptr == boosterHandleOut");
@@ -232,18 +232,18 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
       return Error_IllegalParamValue;
    }
 
-   if(countTerms < IntEbmType { 0 }) {
+   if(countTerms < IntEbm { 0 }) {
       LOG_0(Trace_Error, "ERROR CreateBooster countTerms must be positive");
       return Error_IllegalParamValue;
    }
-   if(IntEbmType { 0 } != countTerms && nullptr == dimensionCounts) {
+   if(IntEbm { 0 } != countTerms && nullptr == dimensionCounts) {
       LOG_0(Trace_Error, "ERROR CreateBooster dimensionCounts cannot be null if 0 < countTerms");
       return Error_IllegalParamValue;
    }
    // it's legal for featureIndexes to be null if there are no features indexed by our feature groups
    // dimensionCounts can have zero features, so it could be legal for this to be null even if 0 < countTerms
 
-   if(countInnerBags < IntEbmType { 0 }) {
+   if(countInnerBags < IntEbm { 0 }) {
       // 0 means use the full set. 1 means make a single bag which is useless, but allowed for comparison purposes
       LOG_0(Trace_Error, "ERROR CreateBooster countInnerBags cannot be negative");
       return Error_UserParamValue;
@@ -326,7 +326,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
    return Error_None;
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBoosterView(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBoosterView(
    BoosterHandle boosterHandle,
    BoosterHandle * boosterHandleViewOut
 ) {
@@ -340,7 +340,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBoosterView(
       static_cast<void *>(boosterHandleViewOut)
    );
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    if(UNLIKELY(nullptr == boosterHandleViewOut)) {
       LOG_0(Trace_Warning, "WARNING CreateBooster nullptr == boosterHandleViewOut");
@@ -379,16 +379,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBoosterView(
    return Error_None;
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
    BoosterHandle boosterHandle,
-   IntEbmType indexTerm,
+   IntEbm indexTerm,
    double * termScoresTensorOut
 ) {
    LOG_N(
       Trace_Info,
       "Entered GetBestTermScores: "
       "boosterHandle=%p, "
-      "indexTerm=%" IntEbmTypePrintf ", "
+      "indexTerm=%" IntEbmPrintf ", "
       "termScoresTensorOut=%p, "
       ,
       static_cast<void *>(boosterHandle),
@@ -471,16 +471,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
    return Error_None;
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
    BoosterHandle boosterHandle,
-   IntEbmType indexTerm,
+   IntEbm indexTerm,
    double * termScoresTensorOut
 ) {
    LOG_N(
       Trace_Info,
       "Entered GetCurrentTermScores: "
       "boosterHandle=%p, "
-      "indexTerm=%" IntEbmTypePrintf ", "
+      "indexTerm=%" IntEbmPrintf ", "
       "termScoresTensorOut=%p, "
       ,
       static_cast<void *>(boosterHandle),

@@ -128,9 +128,9 @@ namespace DEFINED_ZONE_NAME {
 //       transpose_8192 = 6.26907
 //       transpose_16384 = 7.73406
 
-EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION BinFeatureOneSample(
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION BinFeatureOneSample(
    const double featureVal,
-   IntEbmType countCuts,
+   IntEbm countCuts,
    const double * cutsLowerBoundInclusive
 ) {
    // unlike all of our other public interfaces we don't check our inputs for validity.  The caller is expected
@@ -139,12 +139,12 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION BinFeatureOneSample(
 
    EBM_ASSERT(nullptr != cutsLowerBoundInclusive);
 
-   EBM_ASSERT(IntEbmType { 0 } <= countCuts);
-   // IntEbmType::max should be the maximum number of bins that we allow.  This prevents our caller from accidentally
+   EBM_ASSERT(IntEbm { 0 } <= countCuts);
+   // IntEbm::max should be the maximum number of bins that we allow.  This prevents our caller from accidentally
    // overflowing when using either the count (eg: 255) or the index (eg: 0-254).  The 0th bin is the special missing
    // bin, so we have max-1 normal bins.  We have 1 less cuts than we have bins (1 cut means 2 bins), so we can
    // have a maximum of max - 2 cuts.
-   EBM_ASSERT(countCuts <= std::numeric_limits<IntEbmType>::max() - IntEbmType { 2 });
+   EBM_ASSERT(countCuts <= std::numeric_limits<IntEbm>::max() - IntEbm { 2 });
    // cutsLowerBoundInclusive needs to hold all the cuts, so we should be able to at least convert countCuts to size_t
    EBM_ASSERT(!IsConvertError<size_t>(countCuts));
    // cutsLowerBoundInclusive needs to hold all the cuts, so all the bytes need to be addressable
@@ -164,10 +164,10 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION BinFeatureOneSample(
    EBM_ASSERT(static_cast<size_t>(countCuts) <= std::numeric_limits<size_t>::max() / size_t { 2 } + size_t { 1 });
 
    if(PREDICTABLE(std::isnan(featureVal))) {
-      return IntEbmType { 0 };
+      return IntEbm { 0 };
    }
-   if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
-      return IntEbmType { 1 };
+   if(UNLIKELY(countCuts <= IntEbm { 0 })) {
+      return IntEbm { 1 };
    }
 
    size_t middle;
@@ -210,20 +210,20 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION BinFeatureOneSample(
    EBM_ASSERT(size_t { 0 } <= middle && middle < static_cast<size_t>(countCuts));
    middle = UNPREDICTABLE(midVal <= featureVal) ? middle + size_t { 2 } : middle + size_t { 1 };
    EBM_ASSERT(size_t { 1 } <= middle && middle <= size_t { 1 } + static_cast<size_t>(countCuts));
-   EBM_ASSERT(!IsConvertError<IntEbmType>(middle));
-   return static_cast<IntEbmType>(middle);
+   EBM_ASSERT(!IsConvertError<IntEbm>(middle));
+   return static_cast<IntEbm>(middle);
 }
 
 // don't bother using a lock here.  We don't care if an extra log message is written out due to thread parallism
 static int g_cLogEnterBinFeature = 25;
 static int g_cLogExitBinFeature = 25;
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
-   IntEbmType countSamples,
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
+   IntEbm countSamples,
    const double * featureVals,
-   IntEbmType countCuts,
+   IntEbm countCuts,
    const double * cutsLowerBoundInclusive,
-   IntEbmType * binIndexesOut
+   IntEbm * binIndexesOut
 ) {
    // make the 0th bin always the missing value.  This makes cutting mains easier, since we always know where the 
    // missing bin will be, and also the first non-missing bin.  We can also increment the pointer to the histogram
@@ -254,9 +254,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
    //         constexpr the biggest of the maxes that we care about, and then make one comparison
    //         for all these conditions.  We might have code that differentiates the results if we trigger
    //         an error return
-   //       - we have comparisons to both size_t and IntEbmType max values, which we can collapse into
+   //       - we have comparisons to both size_t and IntEbm max values, which we can collapse into
    //         just a single max value comparison.  If the max unsigned size_t is bigger than the max unsigned
-   //         UIntEbmType then do the comparison in the bigger domain.
+   //         UIntEbm then do the comparison in the bigger domain.
    //       - we can write a constexpr function that takes the value we have, and the max value in
    //         the same type and the max value in annother type and does all the right things to compare
    //         them properly.  Use SINAFE to have 2 functions (one where the initial value type is lower
@@ -276,9 +276,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
       Trace_Info,
       Trace_Verbose,
       "Entered BinFeature: "
-      "countSamples=%" IntEbmTypePrintf ", "
+      "countSamples=%" IntEbmPrintf ", "
       "featureVals=%p, "
-      "countCuts=%" IntEbmTypePrintf ", "
+      "countCuts=%" IntEbmPrintf ", "
       "cutsLowerBoundInclusive=%p, "
       "binIndexesOut=%p"
       ,
@@ -289,15 +289,15 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
       static_cast<void *>(binIndexesOut)
    );
 
-   ErrorEbmType error;
+   ErrorEbm error;
    
-   if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
-      if(UNLIKELY(countSamples < IntEbmType { 0 })) {
+   if(UNLIKELY(countSamples <= IntEbm { 0 })) {
+      if(UNLIKELY(countSamples < IntEbm { 0 })) {
          LOG_0(Trace_Error, "ERROR BinFeature countSamples cannot be negative");
          error = Error_IllegalParamValue;
          goto exit_with_log;
       } else {
-         EBM_ASSERT(IntEbmType { 0 } == countSamples);
+         EBM_ASSERT(IntEbm { 0 } == countSamples);
          error = Error_None;
          goto exit_with_log;
       }
@@ -337,20 +337,20 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
       const double * pVal = featureVals;
       const double * const pValsEnd = featureVals + cSamples;
-      IntEbmType * piBin = binIndexesOut;
+      IntEbm * piBin = binIndexesOut;
 
-      if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
-         if(UNLIKELY(countCuts < IntEbmType { 0 })) {
+      if(UNLIKELY(countCuts <= IntEbm { 0 })) {
+         if(UNLIKELY(countCuts < IntEbm { 0 })) {
             LOG_0(Trace_Error, "ERROR BinFeature countCuts cannot be negative");
             error = Error_IllegalParamValue;
             goto exit_with_log;
          }
-         EBM_ASSERT(IntEbmType { 0 } == countCuts);
+         EBM_ASSERT(IntEbm { 0 } == countCuts);
 
          do {
             const double val = *pVal;
-            IntEbmType iBin;
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : IntEbmType { 1 };
+            IntEbm iBin;
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : IntEbm { 1 };
             EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
             *piBin = iBin;
             ++piBin;
@@ -386,14 +386,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
       }
 # endif // NDEBUG
 
-      if(PREDICTABLE(IntEbmType { 1 } == countCuts)) {
+      if(PREDICTABLE(IntEbm { 1 } == countCuts)) {
          const double cut0 = cutsLowerBoundInclusive[0];
          do {
             const double val = *pVal;
-            IntEbmType iBin;
+            IntEbm iBin;
 
-            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : iBin;
+            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm { 2 } : IntEbm { 1 };
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
 
             EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -405,16 +405,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          goto exit_with_log;
       }
 
-      if(PREDICTABLE(IntEbmType { 2 } == countCuts)) {
+      if(PREDICTABLE(IntEbm { 2 } == countCuts)) {
          const double cut0 = cutsLowerBoundInclusive[0];
          const double cut1 = cutsLowerBoundInclusive[1];
          do {
             const double val = *pVal;
-            IntEbmType iBin;
+            IntEbm iBin;
 
-            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
-            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 3 } : iBin;
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : iBin;
+            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm { 2 } : IntEbm { 1 };
+            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm { 3 } : iBin;
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
 
             EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -426,18 +426,18 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          goto exit_with_log;
       }
 
-      if(PREDICTABLE(IntEbmType { 3 } == countCuts)) {
+      if(PREDICTABLE(IntEbm { 3 } == countCuts)) {
          const double cut0 = cutsLowerBoundInclusive[0];
          const double cut1 = cutsLowerBoundInclusive[1];
          const double cut2 = cutsLowerBoundInclusive[2];
          do {
             const double val = *pVal;
-            IntEbmType iBin;
+            IntEbm iBin;
 
-            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
-            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 3 } : iBin;
-            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 4 } : iBin;
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : iBin;
+            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm { 2 } : IntEbm { 1 };
+            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm { 3 } : iBin;
+            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbm { 4 } : iBin;
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
 
             EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -449,20 +449,20 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          goto exit_with_log;
       }
 
-      if(PREDICTABLE(IntEbmType { 4 } == countCuts)) {
+      if(PREDICTABLE(IntEbm { 4 } == countCuts)) {
          const double cut0 = cutsLowerBoundInclusive[0];
          const double cut1 = cutsLowerBoundInclusive[1];
          const double cut2 = cutsLowerBoundInclusive[2];
          const double cut3 = cutsLowerBoundInclusive[3];
          do {
             const double val = *pVal;
-            IntEbmType iBin;
+            IntEbm iBin;
 
-            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
-            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 3 } : iBin;
-            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 4 } : iBin;
-            iBin = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 5 } : iBin;
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : iBin;
+            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm { 2 } : IntEbm { 1 };
+            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm { 3 } : iBin;
+            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbm { 4 } : iBin;
+            iBin = UNPREDICTABLE(cut3 <= val) ? IntEbm { 5 } : iBin;
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
 
             EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -474,7 +474,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          goto exit_with_log;
       }
 
-      if(PREDICTABLE(IntEbmType { 5 } == countCuts)) {
+      if(PREDICTABLE(IntEbm { 5 } == countCuts)) {
          const double cut0 = cutsLowerBoundInclusive[0];
          const double cut1 = cutsLowerBoundInclusive[1];
          const double cut2 = cutsLowerBoundInclusive[2];
@@ -482,14 +482,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          const double cut4 = cutsLowerBoundInclusive[4];
          do {
             const double val = *pVal;
-            IntEbmType iBin;
+            IntEbm iBin;
 
-            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
-            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 3 } : iBin;
-            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 4 } : iBin;
-            iBin = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 5 } : iBin;
-            iBin = UNPREDICTABLE(cut4 <= val) ? IntEbmType { 6 } : iBin;
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : iBin;
+            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm { 2 } : IntEbm { 1 };
+            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm { 3 } : iBin;
+            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbm { 4 } : iBin;
+            iBin = UNPREDICTABLE(cut3 <= val) ? IntEbm { 5 } : iBin;
+            iBin = UNPREDICTABLE(cut4 <= val) ? IntEbm { 6 } : iBin;
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
 
             EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -501,7 +501,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          goto exit_with_log;
       }
 
-      if(PREDICTABLE(IntEbmType { 6 } == countCuts)) {
+      if(PREDICTABLE(IntEbm { 6 } == countCuts)) {
          const double cut0 = cutsLowerBoundInclusive[0];
          const double cut1 = cutsLowerBoundInclusive[1];
          const double cut2 = cutsLowerBoundInclusive[2];
@@ -510,15 +510,15 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          const double cut5 = cutsLowerBoundInclusive[5];
          do {
             const double val = *pVal;
-            IntEbmType iBin;
+            IntEbm iBin;
 
-            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
-            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 3 } : iBin;
-            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 4 } : iBin;
-            iBin = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 5 } : iBin;
-            iBin = UNPREDICTABLE(cut4 <= val) ? IntEbmType { 6 } : iBin;
-            iBin = UNPREDICTABLE(cut5 <= val) ? IntEbmType { 7 } : iBin;
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : iBin;
+            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm { 2 } : IntEbm { 1 };
+            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm { 3 } : iBin;
+            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbm { 4 } : iBin;
+            iBin = UNPREDICTABLE(cut3 <= val) ? IntEbm { 5 } : iBin;
+            iBin = UNPREDICTABLE(cut4 <= val) ? IntEbm { 6 } : iBin;
+            iBin = UNPREDICTABLE(cut5 <= val) ? IntEbm { 7 } : iBin;
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
 
             EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -538,7 +538,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
       // it's always legal in C++ to convert a signed value to unsigned.  We check below for out of bounds if needed
       const size_t cCuts = static_cast<size_t>(countCuts);
 
-      if(PREDICTABLE(countCuts <= IntEbmType { 14 })) {
+      if(PREDICTABLE(countCuts <= IntEbm { 14 })) {
          constexpr size_t cPower = 16;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
@@ -574,16 +574,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbmType>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
-               *piBin = static_cast<IntEbmType>(iBin);
+               *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
                ++pVal;
             } while(LIKELY(pValsEnd != pVal));
             error = Error_None;
             goto exit_with_log;
          }
-      } else if(PREDICTABLE(countCuts <= IntEbmType { 30 })) {
+      } else if(PREDICTABLE(countCuts <= IntEbm { 30 })) {
          constexpr size_t cPower = 32;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
@@ -620,16 +620,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbmType>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
-               *piBin = static_cast<IntEbmType>(iBin);
+               *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
                ++pVal;
             } while(LIKELY(pValsEnd != pVal));
             error = Error_None;
             goto exit_with_log;
          }
-      } else if(PREDICTABLE(countCuts <= IntEbmType { 62 })) {
+      } else if(PREDICTABLE(countCuts <= IntEbm { 62 })) {
          constexpr size_t cPower = 64;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
@@ -667,16 +667,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbmType>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
-               *piBin = static_cast<IntEbmType>(iBin);
+               *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
                ++pVal;
             } while(LIKELY(pValsEnd != pVal));
             error = Error_None;
             goto exit_with_log;
          }
-      } else if(PREDICTABLE(countCuts <= IntEbmType { 126 })) {
+      } else if(PREDICTABLE(countCuts <= IntEbm { 126 })) {
          constexpr size_t cPower = 128;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
@@ -715,16 +715,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbmType>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
-               *piBin = static_cast<IntEbmType>(iBin);
+               *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
                ++pVal;
             } while(LIKELY(pValsEnd != pVal));
             error = Error_None;
             goto exit_with_log;
          }
-      } else if(PREDICTABLE(countCuts <= IntEbmType { 254 })) {
+      } else if(PREDICTABLE(countCuts <= IntEbm { 254 })) {
          constexpr size_t cPower = 256;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
@@ -764,16 +764,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbmType>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
-               *piBin = static_cast<IntEbmType>(iBin);
+               *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
                ++pVal;
             } while(LIKELY(pValsEnd != pVal));
             error = Error_None;
             goto exit_with_log;
          }
-      } else if(PREDICTABLE(countCuts <= IntEbmType { 510 })) {
+      } else if(PREDICTABLE(countCuts <= IntEbm { 510 })) {
          constexpr size_t cPower = 512;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
@@ -814,16 +814,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbmType>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
-               *piBin = static_cast<IntEbmType>(iBin);
+               *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
                ++pVal;
             } while(LIKELY(pValsEnd != pVal));
             error = Error_None;
             goto exit_with_log;
          }
-      } else if(PREDICTABLE(countCuts <= IntEbmType { 1022 })) {
+      } else if(PREDICTABLE(countCuts <= IntEbm { 1022 })) {
          constexpr size_t cPower = 1024;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 == sizeof(cutsLowerBoundInclusiveCopy) /
@@ -865,9 +865,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbmType>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
-               *piBin = static_cast<IntEbmType>(iBin);
+               *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
                ++pVal;
             } while(LIKELY(pValsEnd != pVal));
@@ -890,8 +890,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
          goto exit_with_log;
       }
 
-      if(UNLIKELY(std::numeric_limits<IntEbmType>::max() - IntEbmType { 2 } < countCuts)) {
-         // IntEbmType::max should be the maximum number of bins that we allow.  This prevents our caller from accidentally
+      if(UNLIKELY(std::numeric_limits<IntEbm>::max() - IntEbm { 2 } < countCuts)) {
+         // IntEbm::max should be the maximum number of bins that we allow.  This prevents our caller from accidentally
          // overflowing when using either the count (eg: 255) or the index (eg: 0-254).  The 0th bin is the special missing
          // bin, so we have max - 1 normal bins.  We have 1 less cuts than we have bins (1 cut means 2 bins), so we can
          // have a maximum of max - 2 cuts.
@@ -1001,8 +1001,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION BinFeature(
             middle = UNPREDICTABLE(midVal <= val) ? middle + size_t { 2 } : middle + size_t { 1 };
             EBM_ASSERT(size_t { 1 } <= middle && middle <= size_t { 1 } + cCuts);
          }
-         EBM_ASSERT(!IsConvertError<IntEbmType>(middle));
-         const IntEbmType iBin = static_cast<IntEbmType>(middle);
+         EBM_ASSERT(!IsConvertError<IntEbm>(middle));
+         const IntEbm iBin = static_cast<IntEbm>(middle);
 
          EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -1020,7 +1020,7 @@ exit_with_log:;
       Trace_Info,
       Trace_Verbose,
       "Exited BinFeature: "
-      "return=%" ErrorEbmTypePrintf
+      "return=%" ErrorEbmPrintf
       ,
       error
    );

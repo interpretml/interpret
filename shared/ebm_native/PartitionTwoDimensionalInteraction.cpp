@@ -38,7 +38,7 @@ public:
    static double Func(
       InteractionCore * const pInteractionCore,
       const Term * const pTerm,
-      const InteractionFlagsType flags,
+      const InteractionFlags flags,
       const size_t cSamplesLeafMin,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
@@ -393,7 +393,7 @@ public:
    INLINE_ALWAYS static double Func(
       InteractionCore * const pInteractionCore,
       const Term * const pTerm,
-      const InteractionFlagsType flags,
+      const InteractionFlags flags,
       const size_t cSamplesLeafMin,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
@@ -448,7 +448,7 @@ public:
    INLINE_ALWAYS static double Func(
       InteractionCore * const pInteractionCore,
       const Term * const pTerm,
-      const InteractionFlagsType flags,
+      const InteractionFlags flags,
       const size_t cSamplesLeafMin,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
@@ -480,7 +480,7 @@ public:
 extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
    const Term * const pTerm,
-   const InteractionFlagsType flags,
+   const InteractionFlags flags,
    const size_t cSamplesLeafMin,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase

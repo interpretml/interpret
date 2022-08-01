@@ -13,12 +13,12 @@
 extern "C" {
 #endif // __cplusplus
 
-INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbmType MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining)(
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining)(
    const LossWrapper * const pLossWrapper,
    ApplyTrainingData * const pData
 );
 
-INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbmType MAKE_ZONED_C_FUNCTION_NAME(ApplyValidation)(
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyValidation)(
    const LossWrapper * const pLossWrapper,
    ApplyValidationData * const pData
 );

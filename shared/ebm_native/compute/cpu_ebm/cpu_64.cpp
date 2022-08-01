@@ -92,7 +92,7 @@ public:
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
+   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
       ExecuteApplyTraining<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>(
          pLoss, 
@@ -103,7 +103,7 @@ public:
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
+   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
       ExecuteApplyValidation<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>(
          pLoss, 
@@ -131,7 +131,7 @@ static INLINE_ALWAYS std::shared_ptr<const Registration> RegisterLoss(const char
 // now include all our special loss registrations which will use the RegisterLoss function we defined above!
 #include "loss_registrations.hpp"
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateLoss_Cpu_64(
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateLoss_Cpu_64(
    const Config * const pConfig,
    const char * const sLoss,
    const char * const sLossEnd,
@@ -140,7 +140,7 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateLoss_Cpu_64(
    return Loss::CreateLoss(&RegisterLosses, pConfig, sLoss, sLossEnd, pLossWrapperOut);
 }
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateMetric_Cpu_64(
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateMetric_Cpu_64(
    const Config * const pConfig,
    const char * const sMetric,
    const char * const sMetricEnd

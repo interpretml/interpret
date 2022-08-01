@@ -47,11 +47,11 @@ public:
       m_weightTotal = 0;
    }
 
-   ErrorEbmType Initialize(
+   ErrorEbm Initialize(
       const bool bAllocateHessians,
       const unsigned char * const pDataSetShared,
       const size_t cAllSamples,
-      const BagEbmType * const aBag,
+      const BagEbm * const aBag,
       const double * const aInitScores,
       const size_t cSetSamples,
       const size_t cWeights,

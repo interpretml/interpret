@@ -11,27 +11,27 @@
 static const TestPriority k_filePriority = TestPriority::RandomNumbers;
 
 TEST_CASE("GenerateSeed, 0 0") {
-   SeedEbmType ret = GenerateSeed(0, 0);
+   SeedEbm ret = GenerateSeed(0, 0);
    CHECK(1557540150 == ret);
 }
 
 TEST_CASE("GenerateSeed, 1 3 (it gives us a negative return value)") {
-   SeedEbmType ret = GenerateSeed(1, 3);
+   SeedEbm ret = GenerateSeed(1, 3);
    CHECK(-1784761967 == ret);
 }
 
 TEST_CASE("GenerateSeed, -1 0") {
-   SeedEbmType ret = GenerateSeed(-1, 0);
+   SeedEbm ret = GenerateSeed(-1, 0);
    CHECK(237524772 == ret);
 }
 
 TEST_CASE("GenerateSeed, max") {
-   SeedEbmType ret = GenerateSeed(std::numeric_limits<SeedEbmType>::max(), 0);
+   SeedEbm ret = GenerateSeed(std::numeric_limits<SeedEbm>::max(), 0);
    CHECK(1266972904 == ret);
 }
 
 TEST_CASE("GenerateSeed, lowest") {
-   SeedEbmType ret = GenerateSeed(std::numeric_limits<SeedEbmType>::lowest(), 0);
+   SeedEbm ret = GenerateSeed(std::numeric_limits<SeedEbm>::lowest(), 0);
    CHECK(879100963 == ret);
 }
 
@@ -39,10 +39,10 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
    constexpr size_t cSamples = 500;
    constexpr size_t cClasses = 10;
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
-   IntEbmType targets[cSamples];
-   BagEbmType sampleCounts[cSamples];
+   IntEbm targets[cSamples];
+   BagEbm sampleCounts[cSamples];
    size_t trainingCount[cClasses];
    size_t valCount[cClasses];
    size_t classCount[cClasses];
@@ -52,9 +52,9 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
       exit(1);
    }
 
-   SeedEbmType seed = k_seed;
+   SeedEbm seed = k_seed;
 
-   for(IntEbmType iRun = 0; iRun < 10000; ++iRun) {
+   for(IntEbm iRun = 0; iRun < 10000; ++iRun) {
       size_t cRandomSamples = randomStream.Next(cSamples + 1);
       size_t cClassSize = randomStream.Next(cClasses) + 1;
       size_t cTrainingSamples = randomStream.Next(cRandomSamples + size_t { 1 });
@@ -68,7 +68,7 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
 
       for(size_t iSample = 0; iSample < cRandomSamples; ++iSample) {
          size_t iRandom = randomStream.Next(cClassSize);
-         IntEbmType targetClass = static_cast<IntEbmType>(iRandom);
+         IntEbm targetClass = static_cast<IntEbm>(iRandom);
          targets[iSample] = targetClass;
          ++classCount[targetClass];
       }
@@ -88,8 +88,8 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
       size_t cTrainingSamplesVerified = 0;
       size_t cValidationSamplesVerified = 0;
       for(size_t i = 0; i < cRandomSamples; ++i) {
-         const IntEbmType targetClass = targets[i];
-         const BagEbmType val = sampleCounts[i];
+         const IntEbm targetClass = targets[i];
+         const BagEbm val = sampleCounts[i];
          CHECK(-1 == val || 1 == val);
          if(val == 1) {
             ++cTrainingSamplesVerified;
@@ -177,30 +177,30 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
 }
 
 TEST_CASE("SampleWithoutReplacement, stress test") {
-   ErrorEbmType error;
+   ErrorEbm error;
 
    for(int iBool = 0; iBool < 2; ++iBool) {
       constexpr size_t cSamples = 1000;
-      BagEbmType samples[cSamples];
+      BagEbm samples[cSamples];
 
       RandomStreamTest randomStream(k_seed);
       if(!randomStream.IsSuccess()) {
          exit(1);
       }
 
-      SeedEbmType seed = k_seed;
+      SeedEbm seed = k_seed;
 
-      for(IntEbmType iRun = 0; iRun < 10000; ++iRun) {
+      for(IntEbm iRun = 0; iRun < 10000; ++iRun) {
          size_t cRandomSamples = randomStream.Next(cSamples + 1);
          size_t cTrainingSamples = randomStream.Next(cRandomSamples + size_t { 1 });
          size_t cValidationSamples = cRandomSamples - cTrainingSamples;
 
          ++seed;
          error = SampleWithoutReplacement(
-            static_cast<BoolEbmType>(iBool), 
+            static_cast<BoolEbm>(iBool), 
             seed,
-            static_cast<IntEbmType>(cTrainingSamples),
-            static_cast<IntEbmType>(cValidationSamples),
+            static_cast<IntEbm>(cTrainingSamples),
+            static_cast<IntEbm>(cValidationSamples),
             samples
          );
          CHECK(Error_None == error);
@@ -208,7 +208,7 @@ TEST_CASE("SampleWithoutReplacement, stress test") {
          size_t cTrainingSamplesVerified = 0;
          size_t cValidationSamplesVerified = 0;
          for(size_t i = 0; i < cRandomSamples; ++i) {
-            const BagEbmType val = samples[i];
+            const BagEbm val = samples[i];
             CHECK(-1 == val || 1 == val);
             if(0 < val) {
                ++cTrainingSamplesVerified;
@@ -266,7 +266,7 @@ TEST_CASE("GenerateGaussianRandom") {
       double stddev = 10.0;
       for(int i = 0; i < cIterations; ++i) {
          double result;
-         GenerateGaussianRandom(static_cast<BoolEbmType>(iBool), static_cast<SeedEbmType>(i + offset), stddev, 1, &result);
+         GenerateGaussianRandom(static_cast<BoolEbm>(iBool), static_cast<SeedEbm>(i + offset), stddev, 1, &result);
          if(result < 0) {
             ++cNegative;
          }

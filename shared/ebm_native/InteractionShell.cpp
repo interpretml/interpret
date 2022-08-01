@@ -85,9 +85,9 @@ BinBase * InteractionShell::GetBinBaseBig(size_t cBytesRequired) {
    return aBuffer;
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateInteractionDetector(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
-   const BagEbmType * bag,
+   const BagEbm * bag,
    const double * initScores, // only samples with non-zeros in the bag are included
    const double * experimentalParams,
    InteractionHandle * interactionHandleOut
@@ -106,7 +106,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateInteractionDetector(
       static_cast<const void *>(interactionHandleOut)
    );
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    if(nullptr == interactionHandleOut) {
       LOG_0(Trace_Error, "ERROR CreateInteractionDetector nullptr == interactionHandleOut");

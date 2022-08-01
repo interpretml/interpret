@@ -88,13 +88,13 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS void InitializeSigned(const SeedEbmType seed, const SeedEbmType randomMix) {
+   INLINE_ALWAYS void InitializeSigned(const SeedEbm seed, const SeedEbm randomMix) {
       // the C++ standard guarantees that the unsigned result of this 
       // conversion is 2^64 + seed if seed is negative
       Initialize(static_cast<uint64_t>(seed) ^ static_cast<uint64_t>(randomMix));
    }
 
-   INLINE_ALWAYS void InitializeUnsigned(const SeedEbmType seed, const uint64_t randomMix) {
+   INLINE_ALWAYS void InitializeUnsigned(const SeedEbm seed, const uint64_t randomMix) {
       // the C++ standard guarantees that the unsigned result of this 
       // conversion is 2^64 + seed if seed is negative
       Initialize(static_cast<uint64_t>(seed) ^ randomMix);
@@ -106,30 +106,30 @@ public:
       m_stateSeedConst = other.m_stateSeedConst;
    }
 
-   INLINE_ALWAYS SeedEbmType NextSeed() {
-      static_assert(std::numeric_limits<SeedEbmType>::lowest() < SeedEbmType { 0 },
-         "SeedEbmType must be signed");
+   INLINE_ALWAYS SeedEbm NextSeed() {
+      static_assert(std::numeric_limits<SeedEbm>::lowest() < SeedEbm { 0 },
+         "SeedEbm must be signed");
 
       // this is meant to result in a positive value that is of the negation of 
-      // std::numeric_limits<SeedEbmType>::lowest(), so -std::numeric_limits<SeedEbmType>::lowest().
+      // std::numeric_limits<SeedEbm>::lowest(), so -std::numeric_limits<SeedEbm>::lowest().
       // but the pitfall is that for numbers expressed in twos complement, there is one more
       // negative number than there are positive numbers, so we subtract one (adding to a negated number), then add 
       // one to keep the numbers in bounds.  If the compiler is using some non-twos complement
       // representation, then we'll get a compile error in the static_asserts below or in the initialization
       // of uint32_t below
       constexpr uint32_t negativeOfLowest = 
-         uint32_t { -(std::numeric_limits<SeedEbmType>::lowest() + SeedEbmType { 1 }) } + uint32_t { 1 };
+         uint32_t { -(std::numeric_limits<SeedEbm>::lowest() + SeedEbm { 1 }) } + uint32_t { 1 };
 
-      static_assert(uint32_t { std::numeric_limits<SeedEbmType>::max() } ==
+      static_assert(uint32_t { std::numeric_limits<SeedEbm>::max() } ==
          negativeOfLowest - uint32_t { 1 }, "max must == lowestInUnsigned - 1");
 
       const uint32_t randomNumber = static_cast<uint32_t>(Rand32());
       // adding negativeOfLowest and then adding lowest are a no-op as far as affecting the value of randomNumber
       // but since adding randomNumber + negativeOfLowest (two unsigned values) is legal in C++, and since we'll
-      // always end up with a value that can be expressed as an SeedEbmType after that addition we don't have
+      // always end up with a value that can be expressed as an SeedEbm after that addition we don't have
       // and undefined behavior here.  The compiler should be smart enough to eliminate this operation.
-      const SeedEbmType ret = randomNumber < negativeOfLowest ? static_cast<SeedEbmType>(randomNumber) :
-         static_cast<SeedEbmType>(randomNumber + negativeOfLowest) + std::numeric_limits<SeedEbmType>::lowest();
+      const SeedEbm ret = randomNumber < negativeOfLowest ? static_cast<SeedEbm>(randomNumber) :
+         static_cast<SeedEbm>(randomNumber + negativeOfLowest) + std::numeric_limits<SeedEbm>::lowest();
 
       return ret;
    }

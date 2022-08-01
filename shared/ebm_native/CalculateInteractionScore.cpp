@@ -46,7 +46,7 @@ extern void TensorTotalsBuild(
 extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
    const Term * const pTerm,
-   const InteractionFlagsType flags,
+   const InteractionFlags flags,
    const size_t cSamplesLeafMin,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
@@ -56,11 +56,11 @@ extern double PartitionTwoDimensionalInteraction(
 #endif // NDEBUG
 );
 
-static ErrorEbmType CalcInteractionStrengthInternal(
+static ErrorEbm CalcInteractionStrengthInternal(
    InteractionShell * const pInteractionShell,
    InteractionCore * const pInteractionCore,
    const Term * const pTerm,
-   const InteractionFlagsType flags,
+   const InteractionFlags flags,
    const size_t cSamplesLeafMin,
    double * const pInteractionStrengthAvgOut
 ) {
@@ -275,12 +275,12 @@ static ErrorEbmType CalcInteractionStrengthInternal(
 // race then it just doesn't get decremented as quickly, which we can live with
 static int g_cLogCalcInteractionStrength = 10;
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    InteractionHandle interactionHandle,
-   IntEbmType countDimensions,
-   const IntEbmType * featureIndexes,
-   InteractionFlagsType flags,
-   IntEbmType minSamplesLeaf,
+   IntEbm countDimensions,
+   const IntEbm * featureIndexes,
+   InteractionFlags flags,
+   IntEbm minSamplesLeaf,
    double * avgInteractionStrengthOut
 ) {
    LOG_COUNTED_N(
@@ -289,16 +289,16 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       Trace_Verbose,
       "CalcInteractionStrength: "
       "interactionHandle=%p, "
-      "countDimensions=%" IntEbmTypePrintf ", "
+      "countDimensions=%" IntEbmPrintf ", "
       "featureIndexes=%p, "
-      "flags=0x%" UInteractionFlagsTypePrintf ", "
-      "minSamplesLeaf=%" IntEbmTypePrintf ", "
+      "flags=0x%" UInteractionFlagsPrintf ", "
+      "minSamplesLeaf=%" IntEbmPrintf ", "
       "avgInteractionStrengthOut=%p"
       ,
       static_cast<void *>(interactionHandle),
       countDimensions,
       static_cast<const void *>(featureIndexes),
-      static_cast<UInteractionFlagsType>(flags), // signed to unsigned conversion is defined behavior in C++
+      static_cast<UInteractionFlags>(flags), // signed to unsigned conversion is defined behavior in C++
       minSamplesLeaf,
       static_cast<void *>(avgInteractionStrengthOut)
    );
@@ -307,7 +307,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       *avgInteractionStrengthOut = k_illegalGainDouble;
    }
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromHandle(interactionHandle);
    if(nullptr == pInteractionShell) {
@@ -321,14 +321,14 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       "Entered CalcInteractionStrength"
    );
 
-   if(0 != (static_cast<UInteractionFlagsType>(flags) & ~(
-      static_cast<UInteractionFlagsType>(InteractionFlags_Pure)
+   if(0 != (static_cast<UInteractionFlags>(flags) & ~(
+      static_cast<UInteractionFlags>(InteractionFlags_Pure)
       ))) {
       LOG_0(Trace_Error, "ERROR CalcInteractionStrength flags contains unknown flags. Ignoring extras.");
    }
 
    size_t cSamplesLeafMin = size_t { 1 }; // this is the min value
-   if(IntEbmType { 1 } <= minSamplesLeaf) {
+   if(IntEbm { 1 } <= minSamplesLeaf) {
       cSamplesLeafMin = static_cast<size_t>(minSamplesLeaf);
       if(IsConvertError<size_t>(minSamplesLeaf)) {
          // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to 
@@ -339,8 +339,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength minSamplesLeaf can't be less than 1. Adjusting to 1.");
    }
 
-   if(countDimensions <= IntEbmType { 0 }) {
-      if(IntEbmType { 0 } == countDimensions) {
+   if(countDimensions <= IntEbm { 0 }) {
+      if(IntEbm { 0 } == countDimensions) {
          LOG_0(Trace_Info, "INFO CalcInteractionStrength empty feature list");
          if(LIKELY(nullptr != avgInteractionStrengthOut)) {
             *avgInteractionStrengthOut = 0.0;
@@ -355,7 +355,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       LOG_0(Trace_Error, "ERROR CalcInteractionStrength featureIndexes cannot be nullptr if 0 < countDimensions");
       return Error_IllegalParamValue;
    }
-   if(IntEbmType { k_cDimensionsMax } < countDimensions) {
+   if(IntEbm { k_cDimensionsMax } < countDimensions) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength countDimensions too large and would cause out of memory condition");
       return Error_OutOfMemory;
    }
@@ -365,18 +365,18 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
    TermEntry * pTermEntry = term.GetTermEntries();
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
    const Feature * const aFeatures = pInteractionCore->GetFeatures();
-   const IntEbmType * piFeature = featureIndexes;
-   const IntEbmType * const piFeaturesEnd = featureIndexes + cDimensions;
+   const IntEbm * piFeature = featureIndexes;
+   const IntEbm * const piFeaturesEnd = featureIndexes + cDimensions;
    size_t cTensorBins = 1;
    do {
       // TODO: merge this loop with the one below inside the internal function
 
-      const IntEbmType indexFeature = *piFeature;
-      if(indexFeature < IntEbmType { 0 }) {
+      const IntEbm indexFeature = *piFeature;
+      if(indexFeature < IntEbm { 0 }) {
          LOG_0(Trace_Error, "ERROR CalcInteractionStrength featureIndexes value cannot be negative");
          return Error_IllegalParamValue;
       }
-      if(static_cast<IntEbmType>(pInteractionCore->GetCountFeatures()) <= indexFeature) {
+      if(static_cast<IntEbm>(pInteractionCore->GetCountFeatures()) <= indexFeature) {
          LOG_0(Trace_Error, "ERROR CalcInteractionStrength featureIndexes value must be less than the number of features");
          return Error_IllegalParamValue;
       }
@@ -434,7 +434,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
       avgInteractionStrengthOut
    );
    if(Error_None != error) {
-      LOG_N(Trace_Warning, "WARNING CalcInteractionStrength: return=%" ErrorEbmTypePrintf, error);
+      LOG_N(Trace_Warning, "WARNING CalcInteractionStrength: return=%" ErrorEbmPrintf, error);
       return error;
    }
 

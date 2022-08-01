@@ -806,7 +806,7 @@ static void BuildNeighbourhoodPlan(
    EBM_ASSERT(!pCutCur->IsCut());
 }
 
-static ErrorEbmType CutCuttingRange(
+static ErrorEbm CutCuttingRange(
    std::set<CutPoint *, CompareCutPoint> * const pBestCuts,
 
    const size_t cSamples,
@@ -1492,7 +1492,7 @@ static ErrorEbmType CutCuttingRange(
    return Error_None;
 }
 
-static ErrorEbmType TreeSearchCutSegment(
+static ErrorEbm TreeSearchCutSegment(
    std::set<CutPoint *, CompareCutPoint> * pBestCuts,
 
    const size_t cSamples,
@@ -1688,7 +1688,7 @@ static ErrorEbmType TreeSearchCutSegment(
    );
 }
 
-INLINE_RELEASE_UNTEMPLATED static ErrorEbmType TradeCutSegment(
+INLINE_RELEASE_UNTEMPLATED static ErrorEbm TradeCutSegment(
    std::set<CutPoint *, CompareCutPoint> * const pBestCuts,
 
    const size_t cSamples,
@@ -2451,28 +2451,28 @@ INLINE_RELEASE_UNTEMPLATED static size_t GetUncuttableRangeLengthMin(
 static int g_cLogEnterCutQuantile = 25;
 static int g_cLogExitCutQuantile = 25;
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
-   IntEbmType countSamples,
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
+   IntEbm countSamples,
    const double * featureVals,
-   IntEbmType minSamplesBin,
-   BoolEbmType isRounded,
-   IntEbmType * countCutsInOut,
+   IntEbm minSamplesBin,
+   BoolEbm isRounded,
+   IntEbm * countCutsInOut,
    double * cutsLowerBoundInclusiveOut
 ) {
    // don't expose this random seed.  It's used to settle tiebreakers and will only make 
    // marginal changes to where the cuts are placed.  Exposing it just means we need to 
    // use the same value in every language that we support, and any preprocessors then need to
    // take a random number to be useful, which would be odd for a preprocessor.
-   const SeedEbmType seed = SeedEbmType { 1260428135 };
+   const SeedEbm seed = SeedEbm { 1260428135 };
 
    LOG_COUNTED_N(
       &g_cLogEnterCutQuantile,
       Trace_Info,
       Trace_Verbose,
       "Entered CutQuantile: "
-      "countSamples=%" IntEbmTypePrintf ", "
+      "countSamples=%" IntEbmPrintf ", "
       "featureVals=%p, "
-      "minSamplesBin=%" IntEbmTypePrintf ", "
+      "minSamplesBin=%" IntEbmPrintf ", "
       "isRounded=%s, "
       "countCutsInOut=%p, "
       "cutsLowerBoundInclusiveOut=%p"
@@ -2485,28 +2485,28 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
       static_cast<void *>(cutsLowerBoundInclusiveOut)
    );
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
-   IntEbmType countCutsRet;
+   IntEbm countCutsRet;
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
       LOG_0(Trace_Error, "ERROR CutQuantile nullptr == countCutsInOut");
-      countCutsRet = IntEbmType { 0 };
+      countCutsRet = IntEbm { 0 };
       error = Error_IllegalParamValue;
    } else {
-      if(UNLIKELY(countSamples <= IntEbmType { 1 })) {
+      if(UNLIKELY(countSamples <= IntEbm { 1 })) {
          // can't cut 1 sample
-         countCutsRet = IntEbmType { 0 };
+         countCutsRet = IntEbm { 0 };
          error = Error_None;
-         if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-            LOG_0(Trace_Error, "ERROR CutQuantile countSamples < IntEbmType { 0 }");
+         if(UNLIKELY(countSamples < IntEbm { 0 })) {
+            LOG_0(Trace_Error, "ERROR CutQuantile countSamples < IntEbm { 0 }");
             error = Error_IllegalParamValue;
          }
       } else {
          if(UNLIKELY(nullptr == featureVals)) {
             LOG_0(Trace_Error, "ERROR CutQuantile nullptr == featureVals");
 
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_IllegalParamValue;
             goto exit_with_log;
          }
@@ -2514,7 +2514,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
             LOG_0(Trace_Warning, "WARNING CutQuantile IsConvertError<size_t>(countSamples)");
 
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_IllegalParamValue;
             goto exit_with_log;
          }
@@ -2525,7 +2525,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          if(UNLIKELY(nullptr == aFeatureVals)) {
             LOG_0(Trace_Error, "ERROR CutQuantile nullptr == aFeatureVals");
 
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
@@ -2544,19 +2544,19 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
             free(aFeatureVals);
             // we can't really cut 0 or 1 samples.  Now that we know our min, max, etc values, we can exit
             // or if there was only 1 non-missing value
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_None;
             goto exit_with_log;
          }
 
          EBM_ASSERT(nullptr != countCutsInOut);
-         const IntEbmType countCuts = *countCutsInOut;
+         const IntEbm countCuts = *countCutsInOut;
 
-         if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
+         if(UNLIKELY(countCuts <= IntEbm { 0 })) {
             free(aFeatureVals);
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_None;
-            if(UNLIKELY(countCuts < IntEbmType { 0 })) {
+            if(UNLIKELY(countCuts < IntEbm { 0 })) {
                LOG_0(Trace_Error, "ERROR CutQuantile countCuts can't be negative.");
                error = Error_IllegalParamValue;
             }
@@ -2568,27 +2568,27 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
             LOG_0(Trace_Error, "ERROR CutQuantile nullptr == cutsLowerBoundInclusiveOut");
 
             free(aFeatureVals);
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_IllegalParamValue;
 
             goto exit_with_log;
          }
 
-         if(UNLIKELY(minSamplesBin <= IntEbmType { 0 })) {
+         if(UNLIKELY(minSamplesBin <= IntEbm { 0 })) {
             LOG_0(Trace_Warning,
                "WARNING CutQuantile minSamplesBin shouldn't be zero or negative.  Setting to 1");
 
-            minSamplesBin = IntEbmType { 1 };
+            minSamplesBin = IntEbm { 1 };
          }
 
-         EBM_ASSERT(!IsConvertError<IntEbmType>(cSamples)); // since it came from an IntEbmType originally
-         if(UNLIKELY(static_cast<IntEbmType>(cSamples >> 1) < minSamplesBin)) {
+         EBM_ASSERT(!IsConvertError<IntEbm>(cSamples)); // since it came from an IntEbm originally
+         if(UNLIKELY(static_cast<IntEbm>(cSamples >> 1) < minSamplesBin)) {
             // each bin needs at least minSamplesBin samples, so we need two sets of minSamplesBin
             // in order to make any cuts.  Anything less and we should just return now.
             // We also use this as a comparison to ensure that minSamplesBin is convertible to a size_t
 
             free(aFeatureVals);
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_None;
             goto exit_with_log;
          }
@@ -2606,15 +2606,15 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          // alrady be cSamplesBinMin apart in the regions that are cutable.
          const size_t cBinsMaxInitial = cSamples / cSamplesBinMin;
 
-         // otherwise we'd have failed the check "static_cast<IntEbmType>(cSamples >> 1) < minSamplesBin"
+         // otherwise we'd have failed the check "static_cast<IntEbm>(cSamples >> 1) < minSamplesBin"
          EBM_ASSERT(size_t { 2 } <= cBinsMaxInitial);
          const size_t cCutsMaxInitial = cBinsMaxInitial - size_t { 1 };
 
-         // cSamples fit into an IntEbmType, and since cCutsMaxInitial is less than cSamples, 
-         // we should be able to convert it back to an IntEbmType
+         // cSamples fit into an IntEbm, and since cCutsMaxInitial is less than cSamples, 
+         // we should be able to convert it back to an IntEbm
          EBM_ASSERT(cCutsMaxInitial < cSamples);
-         EBM_ASSERT(!IsConvertError<IntEbmType>(cCutsMaxInitial));
-         const size_t cCutsMax = static_cast<IntEbmType>(cCutsMaxInitial) < countCuts ?
+         EBM_ASSERT(!IsConvertError<IntEbm>(cCutsMaxInitial));
+         const size_t cCutsMax = static_cast<IntEbm>(cCutsMaxInitial) < countCuts ?
             cCutsMaxInitial : static_cast<size_t>(countCuts);
 
          EBM_ASSERT(size_t { 1 } <= cCutsMax); // we won't eliminate to less than 1, and we had at least 1 before
@@ -2624,7 +2624,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          if(UNLIKELY(IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(double *)), cCutsMax))) {
             LOG_0(Trace_Warning, "WARNING CutQuantile IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(double *)), cCutsMax)");
             free(aFeatureVals);
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
@@ -2651,7 +2651,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          EBM_ASSERT(cCuttingRanges <= cCutsMax + size_t { 1 });
          if(UNLIKELY(size_t { 0 } == cCuttingRanges)) {
             free(aFeatureVals);
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_None;
             goto exit_with_log;
          }
@@ -2659,7 +2659,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          if(UNLIKELY(IsMultiplyError(sizeof(NeighbourJump), cSamples))) {
             LOG_0(Trace_Warning, "WARNING CutQuantile IsMultiplyError(sizeof(NeighbourJump), cSamples)");
             free(aFeatureVals);
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
@@ -2679,7 +2679,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          if(UNLIKELY(IsMultiplyError(sizeof(CutPoint), cCutsWithEndpointsMax))) {
             LOG_0(Trace_Warning, "WARNING CutQuantile IsMultiplyError(sizeof(CutPoint), cCutsWithEndpointsMax)");
             free(aFeatureVals);
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
@@ -2688,7 +2688,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          if(UNLIKELY(IsMultiplyError(sizeof(CuttingRange), cCuttingRanges))) {
             LOG_0(Trace_Warning, "WARNING CutQuantile IsMultiplyError(sizeof(CuttingRange), cCuttingRanges)");
             free(aFeatureVals);
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
@@ -2701,7 +2701,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          if(UNLIKELY(IsAddError(cBytesToValCutPointers, cBytesValCutPointers))) {
             LOG_0(Trace_Warning, "WARNING CutQuantile IsAddError(cBytesToValCutPointers, cBytesValCutPointers))");
             free(aFeatureVals);
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
@@ -2710,7 +2710,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          if(UNLIKELY(IsAddError(cBytesToCuts, cBytesCuts))) {
             LOG_0(Trace_Warning, "WARNING CutQuantile IsAddError(cBytesToCuts, cBytesCuts))");
             free(aFeatureVals);
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
@@ -2719,7 +2719,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          if(UNLIKELY(IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))) {
             LOG_0(Trace_Warning, "WARNING CutQuantile IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))");
             free(aFeatureVals);
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
@@ -2729,7 +2729,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          if(UNLIKELY(nullptr == pMem)) {
             LOG_0(Trace_Warning, "WARNING CutQuantile nullptr == pMem");
             free(aFeatureVals);
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
@@ -2842,7 +2842,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
                      free(pMem);
                      free(aFeatureVals);
 
-                     countCutsRet = IntEbmType { 0 };
+                     countCutsRet = IntEbm { 0 };
                      goto exit_with_log;
                   }
 
@@ -2997,7 +2997,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
             free(pMem);
             free(aFeatureVals);
 
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_OutOfMemory;
             goto exit_with_log;
          } catch(...) {
@@ -3006,7 +3006,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
             free(pMem);
             free(aFeatureVals);
 
-            countCutsRet = IntEbmType { 0 };
+            countCutsRet = IntEbm { 0 };
             error = Error_UnexpectedInternal;
             goto exit_with_log;
          }
@@ -3163,7 +3163,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
                   // cut though from the previous inner cut.  We want to move outwards from the scaleHighLow and
                   // scaleLowHigh values, which should be half a cut inwards (not exactly but in spirit), so we
                   // divide by two, which is the same as multiplying the divisor by 2, which is the right shift below
-                  EBM_ASSERT(IntEbmType { 3 } <= countCuts);
+                  EBM_ASSERT(IntEbm { 3 } <= countCuts);
                   const size_t denominator = (cCutsLimited - size_t { 2 }) << 1;
                   EBM_ASSERT(size_t { 0 } < denominator);
                   const double movementFromEnds = scaleMin / static_cast<double>(denominator);
@@ -3213,8 +3213,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
          }
 
          // this conversion is guaranteed to work since the number of cut points can't exceed the number our user
-         // specified, and that value came to us as an IntEbmType
-         countCutsRet = static_cast<IntEbmType>(cCutsRet);
+         // specified, and that value came to us as an IntEbm
+         countCutsRet = static_cast<IntEbm>(cCutsRet);
          EBM_ASSERT(countCutsRet <= countCuts);
 
          free(pMem);
@@ -3234,8 +3234,8 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
       Trace_Info,
       Trace_Verbose,
       "Exited CutQuantile: "
-      "countCuts=%" IntEbmTypePrintf ", "
-      "return=%" ErrorEbmTypePrintf
+      "countCuts=%" IntEbmPrintf ", "
+      "return=%" ErrorEbmPrintf
       ,
       countCutsRet,
       error

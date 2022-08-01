@@ -39,7 +39,7 @@ class RandomStreamTest final {
 public:
    // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of handling 
    // exception in initialization
-   RandomStreamTest(const IntEbmType seed) try
+   RandomStreamTest(const IntEbm seed) try
       : m_bSuccess(false)
       , randomRemainingMax(0)
       , randomRemaining(0)

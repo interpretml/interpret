@@ -27,7 +27,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining) (
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining) (
    const LossWrapper * const pLossWrapper,
    ApplyTrainingData * const pData
 ) {
@@ -37,7 +37,7 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType MAKE_ZONED_C_FUNCTION_NAME(ApplyTrainin
    return (*pApplyTrainingCpp)(pLoss, pData);
 }
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType MAKE_ZONED_C_FUNCTION_NAME(ApplyValidation) (
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyValidation) (
    const LossWrapper * const pLossWrapper,
    ApplyValidationData * const pData
 ) {

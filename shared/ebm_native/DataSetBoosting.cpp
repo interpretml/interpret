@@ -45,15 +45,15 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructGradientsAndHessians(cons
 
 INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
    const size_t cScores,
-   const BagEbmType direction,
-   const BagEbmType * const aBag,
+   const BagEbm direction,
+   const BagEbm * const aBag,
    const double * const aInitScores,
    const size_t cSetSamples
 ) {
    LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructSampleScores");
 
    EBM_ASSERT(0 < cScores);
-   EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
+   EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
    EBM_ASSERT(0 < cSetSamples);
 
    if(IsMultiplyError(cScores, cSetSamples)) {
@@ -70,19 +70,19 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
 
    const size_t cBytesPerItem = sizeof(*aSampleScores) * cScores;
 
-   const BagEbmType * pSampleReplication = aBag;
+   const BagEbm * pSampleReplication = aBag;
    FloatFast * pSampleScore = aSampleScores;
    const FloatFast * const pSampleScoresEnd = aSampleScores + cScores * cSetSamples;
    const double * pInitScore = aInitScores;
-   const bool isLoopTraining = BagEbmType { 0 } < direction;
+   const bool isLoopTraining = BagEbm { 0 } < direction;
    do {
-      BagEbmType replication = 1;
+      BagEbm replication = 1;
       if(nullptr != pSampleReplication) {
          replication = *pSampleReplication;
          ++pSampleReplication;
       }
-      if(BagEbmType { 0 } != replication) {
-         const bool isItemTraining = BagEbmType { 0 } < replication;
+      if(BagEbm { 0 } != replication) {
+         const bool isItemTraining = BagEbm { 0 } < replication;
          if(isLoopTraining == isItemTraining) {
             do {
                EBM_ASSERT(pSampleScore < aSampleScores + cScores * cSetSamples);
@@ -95,7 +95,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
                }
                pSampleScore += cScores;
                replication -= direction;
-            } while(BagEbmType { 0 } != replication);
+            } while(BagEbm { 0 } != replication);
          }
          if(nullptr != pInitScore) {
             pInitScore += cScores;
@@ -127,14 +127,14 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
    const unsigned char * const pDataSetShared,
-   const BagEbmType direction,
-   const BagEbmType * const aBag,
+   const BagEbm direction,
+   const BagEbm * const aBag,
    const size_t cSetSamples
 ) {
    LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructTargetData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
+   EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
    EBM_ASSERT(0 < cSetSamples);
 
    ptrdiff_t cClasses;
@@ -150,19 +150,19 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
       return nullptr;
    }
 
-   const BagEbmType * pSampleReplication = aBag;
+   const BagEbm * pSampleReplication = aBag;
    const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargets);
    StorageDataType * pTargetTo = aTargetData;
    StorageDataType * pTargetToEnd = aTargetData + cSetSamples;
-   const bool isLoopTraining = BagEbmType { 0 } < direction;
+   const bool isLoopTraining = BagEbm { 0 } < direction;
    do {
-      BagEbmType replication = 1;
+      BagEbm replication = 1;
       if(nullptr != pSampleReplication) {
          replication = *pSampleReplication;
          ++pSampleReplication;
       }
-      if(BagEbmType { 0 } != replication) {
-         const bool isItemTraining = BagEbmType { 0 } < replication;
+      if(BagEbm { 0 } != replication) {
+         const bool isItemTraining = BagEbm { 0 } < replication;
          if(isLoopTraining == isItemTraining) {
             const SharedStorageDataType data = *pTargetFrom;
             EBM_ASSERT(!IsConvertError<size_t>(data));
@@ -184,7 +184,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
                *pTargetTo = iData;
                ++pTargetTo;
                replication -= direction;
-            } while(BagEbmType { 0 } != replication);
+            } while(BagEbm { 0 } != replication);
          }
       }
       ++pTargetFrom;
@@ -213,8 +213,8 @@ static_assert(std::is_pod<InputDataPointerAndCountBins>::value,
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const unsigned char * const pDataSetShared,
-   const BagEbmType direction,
-   const BagEbmType * const aBag,
+   const BagEbm direction,
+   const BagEbm * const aBag,
    const size_t cSetSamples,
    const size_t cTerms,
    const Term * const * const apTerms
@@ -222,7 +222,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructInputData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
+   EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
    EBM_ASSERT(0 < cSetSamples);
    EBM_ASSERT(0 < cTerms);
    EBM_ASSERT(nullptr != apTerms);
@@ -233,7 +233,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       return nullptr;
    }
 
-   const bool isLoopTraining = BagEbmType { 0 } < direction;
+   const bool isLoopTraining = BagEbm { 0 } < direction;
 
    StorageDataType ** paInputDataTo = aaInputDataTo;
    const Term * const * ppTerm = apTerms;
@@ -309,8 +309,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          } while(pTermEntriesEnd != pTermEntry);
          EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pTerm->GetCountSignificantDimensions()]);
 
-         const BagEbmType * pSampleReplication = aBag;
-         BagEbmType replication = 0;
+         const BagEbm * pSampleReplication = aBag;
+         BagEbm replication = 0;
          size_t tensorIndex = 0;
 
          size_t shiftEnd = cBitsPerItemMax * cItemsPerBitPack;
@@ -321,7 +321,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             StorageDataType bits = 0;
             size_t shift = 0;
             do {
-               if(BagEbmType { 0 } == replication) {
+               if(BagEbm { 0 } == replication) {
                   while(true) {
                      tensorIndex = 0;
                      size_t tensorMultiple = 1;
@@ -353,8 +353,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                         replication = *pSampleReplication;
                         ++pSampleReplication;
                      }
-                     if(BagEbmType { 0 } != replication) {
-                        const bool isItemTraining = BagEbmType { 0 } < replication;
+                     if(BagEbm { 0 } != replication) {
+                        const bool isItemTraining = BagEbm { 0 } < replication;
                         if(isLoopTraining == isItemTraining) {
                            break;
                         }
@@ -402,22 +402,22 @@ free_all:
    return nullptr;
 }
 
-ErrorEbmType DataSetBoosting::Initialize(
+ErrorEbm DataSetBoosting::Initialize(
    const ptrdiff_t cClasses,
    const bool bAllocateGradients,
    const bool bAllocateHessians,
    const bool bAllocateSampleScores,
    const bool bAllocateTargetData,
    const unsigned char * const pDataSetShared,
-   const BagEbmType direction,
-   const BagEbmType * const aBag,
+   const BagEbm direction,
+   const BagEbm * const aBag,
    const double * const aInitScores,
    const size_t cSetSamples,
    const size_t cTerms,
    const Term * const * const apTerms
 ) {
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
+   EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
 
    EBM_ASSERT(nullptr == m_aGradientsAndHessians);
    EBM_ASSERT(nullptr == m_aSampleScores);

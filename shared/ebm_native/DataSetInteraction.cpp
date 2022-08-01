@@ -26,29 +26,29 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern ErrorEbmType InitializeGradientsAndHessians(
+extern ErrorEbm InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
-   const BagEbmType direction,
-   const BagEbmType * const aBag,
+   const BagEbm direction,
+   const BagEbm * const aBag,
    const double * const aInitScores,
    const size_t cSetSamples,
    FloatFast * const aGradientAndHessian
 );
 
-extern ErrorEbmType ExtractWeights(
+extern ErrorEbm ExtractWeights(
    const unsigned char * const pDataSetShared,
-   const BagEbmType direction,
+   const BagEbm direction,
    const size_t cAllSamples,
-   const BagEbmType * const aBag,
+   const BagEbm * const aBag,
    const size_t cSetSamples,
    FloatFast ** ppWeightsOut
 );
 
-INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
+INLINE_RELEASE_UNTEMPLATED static ErrorEbm ConstructGradientsAndHessians(
    const ptrdiff_t cClasses,
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
-   const BagEbmType * const aBag,
+   const BagEbm * const aBag,
    const double * const aInitScores,
    const size_t cSetSamples,
    FloatFast ** paGradientsAndHessiansOut
@@ -62,7 +62,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
    EBM_ASSERT(nullptr != paGradientsAndHessiansOut);
    EBM_ASSERT(nullptr == *paGradientsAndHessiansOut);
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    const size_t cScores = GetCountScores(cClasses);
    EBM_ASSERT(1 <= cScores);
@@ -83,7 +83,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
 
    error = InitializeGradientsAndHessians(
       pDataSetShared,
-      BagEbmType { 1 },
+      BagEbm { 1 },
       aBag,
       aInitScores,
       cSetSamples,
@@ -100,7 +100,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const unsigned char * const pDataSetShared,
-   const BagEbmType * const aBag,
+   const BagEbm * const aBag,
    const size_t cSetSamples,
    const size_t cFeatures
 ) {
@@ -148,14 +148,14 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
       ++iFeature;
 
-      const BagEbmType * pSampleReplication = aBag;
-      BagEbmType replication = 0;
+      const BagEbm * pSampleReplication = aBag;
+      BagEbm replication = 0;
       size_t iData = 0;
 
       const SharedStorageDataType * pInputDataFrom = static_cast<const SharedStorageDataType *>(aInputDataFrom);
       const StorageDataType * pInputDataToEnd = &pInputDataTo[cSetSamples];
       do {
-         while(replication <= BagEbmType { 0 }) {
+         while(replication <= BagEbm { 0 }) {
             const SharedStorageDataType inputData = *pInputDataFrom;
             ++pInputDataFrom;
 
@@ -222,11 +222,11 @@ void DataSetInteraction::Destruct() {
 }
 WARNING_POP
 
-ErrorEbmType DataSetInteraction::Initialize(
+ErrorEbm DataSetInteraction::Initialize(
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
    const size_t cAllSamples,
-   const BagEbmType * const aBag,
+   const BagEbm * const aBag,
    const double * const aInitScores,
    const size_t cSetSamples,
    const size_t cWeights,
@@ -241,7 +241,7 @@ ErrorEbmType DataSetInteraction::Initialize(
 
    LOG_0(Trace_Info, "Entered DataSetInteraction::Initialize");
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    ptrdiff_t cClasses;
    GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
@@ -258,7 +258,7 @@ ErrorEbmType DataSetInteraction::Initialize(
       if(0 != cWeights) {
          error = ExtractWeights(
             pDataSetShared,
-            BagEbmType { 1 },
+            BagEbm { 1 },
             cAllSamples,
             aBag,
             cSetSamples,

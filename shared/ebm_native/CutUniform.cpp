@@ -314,7 +314,7 @@ TEST_CASE("FloatTickIncrementInternal and FloatTickDecrementInternal") {
 
 #endif // UNDEFINED_TEST_TICK_HIGHER
 
-EBM_API_BODY void EBM_CALLING_CONVENTION CleanFloats(IntEbmType count, double * valsInOut) {
+EBM_API_BODY void EBM_CALLING_CONVENTION CleanFloats(IntEbm count, double * valsInOut) {
    // this function converts extended precision values, if they are present, into non-extended precision values by 
    // virtue of passing them in via arrays stored in memory, and it also converts subnormal values into zero, 
    // per EBM spec requirements.  It also converts negative zeros into zeros.
@@ -340,10 +340,10 @@ EBM_API_BODY void EBM_CALLING_CONVENTION CleanFloats(IntEbmType count, double * 
    }
 }
 
-EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
-   IntEbmType countSamples,
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION CutUniform(
+   IntEbm countSamples,
    const double * featureVals,
-   IntEbmType countDesiredCuts,
+   IntEbm countDesiredCuts,
    double * cutsLowerBoundInclusiveOut
 ) {
    // DO NOT CHANGE THIS FUNCTION'S ALGORITHM.  IT IS PART OF THE EBM HISTOGRAM SPEC
@@ -534,7 +534,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
       walkVal = FloatTickIncrement(walkVal);
       cutsLowerBoundInclusiveOut[iCut] = walkVal;
       if(walkVal == valMax) {
-         return static_cast<IntEbmType>(iCut + 1);
+         return static_cast<IntEbm>(iCut + 1);
       }
    }
    EBM_ASSERT(walkVal < valMax);

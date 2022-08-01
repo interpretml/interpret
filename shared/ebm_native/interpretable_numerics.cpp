@@ -303,20 +303,20 @@ static bool FloatToFullString(const double val, char * const str) noexcept {
 // between float64 and integers when numbers can be represented as unique integers.  WE should convert the float
 // 4.0 therefore to "4" for any number that meets the criteria: "floor(x) == x && abs(x) <= SAFE_FLOAT64_AS_INT64_MAX"
 
-extern IntEbmType GetCountCharactersPerFloat() {
+extern IntEbm GetCountCharactersPerFloat() {
    // for calling FloatsToStrings the caller needs to allocate this many bytes per float in the string buffer
    // after every float is either a space separator or a null-terminator
    return k_cCharsFloatPrint;
 }
 
-extern ErrorEbmType FloatsToString(IntEbmType count, const double * vals, char * str) {
+extern ErrorEbm FloatsToString(IntEbm count, const double * vals, char * str) {
    // TODO: implement this:
    // 
    // This code takes an array of floats and converts them to a single string separated by spaces and a null-terminator
    // at the end
 }
 
-extern ErrorEbmType StringToFloats(const char * str, double * vals) {
+extern ErrorEbm StringToFloats(const char * str, double * vals) {
    // TODO: implement this:
    //
    // This code takes a single string with the floats separated by spaces and a null-terminator at the end
@@ -862,8 +862,8 @@ extern size_t RemoveMissingValsAndReplaceInfinities(const size_t cSamples, doubl
    return cSamplesWithoutMissing;
 }
 
-EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
-   IntEbmType countCuts,
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SuggestGraphBounds(
+   IntEbm countCuts,
    double lowestCut,
    double highestCut,
    double minFeatureVal,
@@ -1082,9 +1082,9 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
       return Error_IllegalParamValue;
    }
 
-   if(countCuts <= IntEbmType { 0 }) {
-      if(countCuts < IntEbmType { 0 }) {
-         LOG_0(Trace_Error, "ERROR SuggestGraphBounds countCuts < IntEbmType { 0 }");
+   if(countCuts <= IntEbm { 0 }) {
+      if(countCuts < IntEbm { 0 }) {
+         LOG_0(Trace_Error, "ERROR SuggestGraphBounds countCuts < IntEbm { 0 }");
          *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
          *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
          return Error_IllegalParamValue;
@@ -1134,7 +1134,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
    }
 
    // we're going to be checking lowestCut and highestCut, so we should check that they have valid values
-   if(IntEbmType { 1 } == countCuts) {
+   if(IntEbm { 1 } == countCuts) {
       if(lowestCut != highestCut) {
          LOG_0(Trace_Error,
             "ERROR SuggestGraphBounds when 1 == countCuts, then lowestCut and highestCut should be identical");
@@ -1181,7 +1181,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
       // we handled zero cuts above, and if there were two cuts they'd have to have unique increasing values
       // so the only way we can have the low and high graph bounds the same is if we have one cut and both the
       // minFeatureVal and maxFeatureVal are the same as that cut, or they are illegal, or they are missing (NaN)
-      EBM_ASSERT(IntEbmType { 1 } == countCuts);
+      EBM_ASSERT(IntEbm { 1 } == countCuts);
 
       // if the regular binning code was kept and the min/max value wasn't removed from the model, then we should
       // not be able to get here, since minFeatureVal == maxFeatureVal can only happen if there is only one value, and if there
@@ -1195,7 +1195,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
    // limit the amount of dillution allowed for the tails by capping the relevant cCutPointRet value
    // to 1/32, which means we leave about 3% of the visible area to tail bounds (1.5% on the left and
    // 1.5% on the right)
-   const size_t cCutsLimited = static_cast<size_t>(EbmMin(IntEbmType { 32 }, countCuts));
+   const size_t cCutsLimited = static_cast<size_t>(EbmMin(IntEbm { 32 }, countCuts));
    EBM_ASSERT(size_t { 1 } <= cCutsLimited);
    const size_t denominator = cCutsLimited << 1;
    EBM_ASSERT(size_t { 2 } <= denominator);
@@ -1331,8 +1331,8 @@ static double Mean(const size_t cSamples, const double * const aFeatureVals, con
 static int g_cLogEnterGetHistogramCutCount = 25;
 static int g_cLogExitGetHistogramCutCount = 25;
 
-EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
-   IntEbmType countSamples,
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION GetHistogramCutCount(
+   IntEbm countSamples,
    const double * featureVals
 ) {
    LOG_COUNTED_N(
@@ -1340,7 +1340,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
       Trace_Info,
       Trace_Verbose,
       "Entered GetHistogramCutCount: "
-      "countSamples=%" IntEbmTypePrintf ", "
+      "countSamples=%" IntEbmPrintf ", "
       "featureVals=%p"
       ,
       countSamples,
@@ -1360,7 +1360,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
    const size_t cSamples = static_cast<size_t>(countSamples);
    const size_t cNormal = CountNormal(cSamples, featureVals);
 
-   IntEbmType ret = 0;
+   IntEbm ret = 0;
    if(size_t { 3 } <= cNormal) {
       const double stddev = Stddev(cSamples, featureVals, cNormal);
       if(double { 0 } < stddev) {
@@ -1390,7 +1390,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
             // use Sturges' formula if we have a numeracy issue with our data. countSturgesBins pretty much can't fail
             countBins = std::ceil(countSturgesBins);
          }
-         ret = double { FLOAT64_TO_INT64_MAX } < countBins ? IntEbmType { FLOAT64_TO_INT64_MAX } : static_cast<IntEbmType>(countBins);
+         ret = double { FLOAT64_TO_INT64_MAX } < countBins ? IntEbm { FLOAT64_TO_INT64_MAX } : static_cast<IntEbm>(countBins);
          EBM_ASSERT(1 <= ret); // since our formula started from 1 and added
          --ret; // # of cuts is one less than the number of bins
       }
@@ -1401,7 +1401,7 @@ EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
       Trace_Info,
       Trace_Verbose,
       "Exited GetHistogramCutCount: "
-      "return=%" IntEbmTypePrintf
+      "return=%" IntEbmPrintf
       ,
       ret
    );

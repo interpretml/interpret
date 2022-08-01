@@ -21,26 +21,26 @@ extern "C" {
 #define INTERNAL_IMPORT_EXPORT_INCLUDE extern
 
 typedef size_t StorageDataType;
-typedef UIntEbmType ActiveDataType;
+typedef UIntEbm ActiveDataType;
 
 struct ApplyTrainingData {
    ptrdiff_t m_cRuntimeScores;
    ptrdiff_t m_cRuntimePack;
-   BoolEbmType m_bHessianNeeded;
+   BoolEbm m_bHessianNeeded;
 };
 
 struct ApplyValidationData {
    ptrdiff_t m_cRuntimeScores;
    ptrdiff_t m_cRuntimePack;
-   BoolEbmType m_bHessianNeeded;
+   BoolEbm m_bHessianNeeded;
    double m_metricOut;
 };
 
 struct LossWrapper;
 
 // these are extern "C" function pointers so we can't call anything other than an extern "C" function with them
-typedef ErrorEbmType (* APPLY_TRAINING_C)(const LossWrapper * const pLossWrapper, ApplyTrainingData * const pData);
-typedef ErrorEbmType (* APPLY_VALIDATION_C)(const LossWrapper * const pLossWrapper, ApplyValidationData * const pData);
+typedef ErrorEbm (* APPLY_TRAINING_C)(const LossWrapper * const pLossWrapper, ApplyTrainingData * const pData);
+typedef ErrorEbm (* APPLY_VALIDATION_C)(const LossWrapper * const pLossWrapper, ApplyValidationData * const pData);
 
 struct LossWrapper {
    APPLY_TRAINING_C m_pApplyTrainingC;
@@ -53,8 +53,8 @@ struct LossWrapper {
    // https://stackoverflow.com/questions/755305/empty-structure-in-c?rq=1
    void * m_pLoss;
    double m_updateMultiple;
-   BoolEbmType m_bLossHasHessian;
-   BoolEbmType m_bSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies;
+   BoolEbm m_bLossHasHessian;
+   BoolEbm m_bSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies;
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface
    void * m_pFunctionPointersCpp;
 };
@@ -74,21 +74,21 @@ struct Config {
    size_t cOutputs;
 };
 
-INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbmType CreateLoss_Cpu_64(
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateLoss_Cpu_64(
    const Config * const pConfig,
    const char * const sLoss,
    const char * const sLossEnd,
    LossWrapper * const pLossWrapperOut
 );
 
-INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbmType CreateLoss_Cuda_32(
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateLoss_Cuda_32(
    const Config * const pConfig,
    const char * const sLoss,
    const char * const sLossEnd,
    LossWrapper * const pLossWrapperOut
 );
 
-INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbmType CreateMetric_Cpu_64(
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateMetric_Cpu_64(
    const Config * const pConfig,
    const char * const sMetric,
    const char * const sMetricEnd

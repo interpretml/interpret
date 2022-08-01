@@ -31,9 +31,9 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern ErrorEbmType Unbag(
+extern ErrorEbm Unbag(
    const size_t cSamples,
-   const BagEbmType * const aBag,
+   const BagEbm * const aBag,
    size_t * const pcTrainingSamplesOut,
    size_t * const pcValidationSamplesOut
 );
@@ -64,10 +64,10 @@ void InteractionCore::Free(InteractionCore * const pInteractionCore) {
    LOG_0(Trace_Info, "Exited InteractionCore::Free");
 }
 
-ErrorEbmType InteractionCore::Create(
+ErrorEbm InteractionCore::Create(
    InteractionShell * const pInteractionShell,
    const unsigned char * const pDataSetShared,
-   const BagEbmType * const aBag,
+   const BagEbm * const aBag,
    const double * const aInitScores,
    const double * const experimentalParams
 ) {
@@ -80,7 +80,7 @@ ErrorEbmType InteractionCore::Create(
    EBM_ASSERT(nullptr != pInteractionShell);
    EBM_ASSERT(nullptr != pDataSetShared);
 
-   ErrorEbmType error;
+   ErrorEbm error;
 
    InteractionCore * pRet;
    try {
