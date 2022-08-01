@@ -111,11 +111,11 @@ ErrorEbm InteractionCore::Create(
    }
    if(size_t { 1 } < cWeights) {
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create size_t { 1 } < cWeights");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(size_t { 1 } != cTargets) {
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create 1 != cTargets");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    ptrdiff_t cClasses;
@@ -161,7 +161,7 @@ ErrorEbm InteractionCore::Create(
          );
          if(0 == cBins && 0 != cSamples) {
             LOG_0(Trace_Error, "ERROR InteractionCore::Allocate countBins cannot be zero if 0 < cSamples");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
          if(0 == cBins) {
             // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins

@@ -64,6 +64,6 @@ extern void TestCHeaderConstructs() {
    snprintf(buffer, cBytesBuffer, "%s\n", GetTraceLevelString(testTraceVerbose));
    snprintf(buffer, cBytesBuffer, "%s\n", GetTraceLevelString(testTraceIllegal));
 
-   LogCallbackFunc logCallback = &LogCallback;
-   (*logCallback)(Trace_Verbose, "I am a test.  What are you?");
+   LogCallbackFunction logCallbackFunction = &LogCallback;
+   (*logCallbackFunction)(Trace_Verbose, "I am a test.  What are you?");
 }

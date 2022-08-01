@@ -22,12 +22,12 @@ struct PseudoHuberRegressionLoss : public RegressionLoss {
       }
 
       if(delta.IsAnyEqual(TFloat(0)) || delta.IsAnyNaN() || delta.IsAnyInf()) {
-         throw ParamValueOutOfRangeException();
+         throw ParamValOutOfRangeException();
       }
 
       TFloat deltaInverted = TFloat(1) / delta;
       if(deltaInverted.IsAnyInf()) {
-         throw ParamValueOutOfRangeException();
+         throw ParamValOutOfRangeException();
       }
 
       m_deltaInverted = deltaInverted;

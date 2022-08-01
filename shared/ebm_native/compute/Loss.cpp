@@ -63,10 +63,10 @@ ErrorEbm Loss::CreateLoss(
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(Trace_Info, "Exited Loss::CreateLoss unknown loss");
          error = Error_LossUnknown;
-      } catch(const ParamValueMalformedException &) {
+      } catch(const ParamValMalformedException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamValueMalformedException");
-         error = Error_LossParamValueMalformed;
+         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamValMalformedException");
+         error = Error_LossParamValMalformed;
       } catch(const ParamUnknownException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamUnknownException");
@@ -75,10 +75,10 @@ ErrorEbm Loss::CreateLoss(
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(Trace_Warning, "WARNING Loss::CreateLoss RegistrationConstructorException");
          error = Error_LossConstructorException;
-      } catch(const ParamValueOutOfRangeException &) {
+      } catch(const ParamValOutOfRangeException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamValueOutOfRangeException");
-         error = Error_LossParamValueOutOfRange;
+         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamValOutOfRangeException");
+         error = Error_LossParamValOutOfRange;
       } catch(const ParamMismatchWithConfigException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamMismatchWithConfigException");

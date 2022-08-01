@@ -51,7 +51,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateGaussianRandom(
    if(UNLIKELY(count <= IntEbm { 0 })) {
       if(UNLIKELY(count < IntEbm { 0 })) {
          LOG_0(Trace_Error, "ERROR GenerateGaussianRandom count < IntEbm { 0 }");
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       } else {
          LOG_COUNTED_0(
             &g_cLogExitGenerateGaussianRandom,
@@ -63,32 +63,32 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateGaussianRandom(
    }
    if(UNLIKELY(IsConvertError<size_t>(count))) {
       LOG_0(Trace_Error, "ERROR GenerateGaussianRandom IsConvertError<size_t>(count)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t c = static_cast<size_t>(count);
    if(UNLIKELY(IsMultiplyError(sizeof(*randomOut), c))) {
       LOG_0(Trace_Error, "ERROR GenerateGaussianRandom IsMultiplyError(sizeof(*randomOut), c)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(UNLIKELY(nullptr == randomOut)) {
       LOG_0(Trace_Error, "ERROR GenerateGaussianRandom nullptr == randomOut");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(UNLIKELY(std::isnan(stddev))) {
       LOG_0(Trace_Error, "ERROR GenerateGaussianRandom stddev cannot be NaN");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(UNLIKELY(std::isinf(stddev))) {
       LOG_0(Trace_Error, "ERROR GenerateGaussianRandom stddev cannot be +-infinity");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(UNLIKELY(stddev < 0)) {
       // TODO: do we handle 0?  We would write out all zeros..
 
       LOG_0(Trace_Error, "ERROR GenerateGaussianRandom stddev <= 0");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    GaussianDistribution gaussian(stddev);

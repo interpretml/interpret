@@ -2492,7 +2492,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
    if(UNLIKELY(nullptr == countCutsInOut)) {
       LOG_0(Trace_Error, "ERROR CutQuantile nullptr == countCutsInOut");
       countCutsRet = IntEbm { 0 };
-      error = Error_IllegalParamValue;
+      error = Error_IllegalParamVal;
    } else {
       if(UNLIKELY(countSamples <= IntEbm { 1 })) {
          // can't cut 1 sample
@@ -2500,14 +2500,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
          error = Error_None;
          if(UNLIKELY(countSamples < IntEbm { 0 })) {
             LOG_0(Trace_Error, "ERROR CutQuantile countSamples < IntEbm { 0 }");
-            error = Error_IllegalParamValue;
+            error = Error_IllegalParamVal;
          }
       } else {
          if(UNLIKELY(nullptr == featureVals)) {
             LOG_0(Trace_Error, "ERROR CutQuantile nullptr == featureVals");
 
             countCutsRet = IntEbm { 0 };
-            error = Error_IllegalParamValue;
+            error = Error_IllegalParamVal;
             goto exit_with_log;
          }
 
@@ -2515,7 +2515,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
             LOG_0(Trace_Warning, "WARNING CutQuantile IsConvertError<size_t>(countSamples)");
 
             countCutsRet = IntEbm { 0 };
-            error = Error_IllegalParamValue;
+            error = Error_IllegalParamVal;
             goto exit_with_log;
          }
 
@@ -2558,7 +2558,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
             error = Error_None;
             if(UNLIKELY(countCuts < IntEbm { 0 })) {
                LOG_0(Trace_Error, "ERROR CutQuantile countCuts can't be negative.");
-               error = Error_IllegalParamValue;
+               error = Error_IllegalParamVal;
             }
             goto exit_with_log;
          }
@@ -2569,7 +2569,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
 
             free(aFeatureVals);
             countCutsRet = IntEbm { 0 };
-            error = Error_IllegalParamValue;
+            error = Error_IllegalParamVal;
 
             goto exit_with_log;
          }

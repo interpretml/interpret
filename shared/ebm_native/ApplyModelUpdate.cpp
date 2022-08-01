@@ -164,7 +164,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
          *validationMetricOut = 0.0;
       }
       // already logged
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    const size_t iTerm = pBoosterShell->GetTermIndex();
@@ -173,7 +173,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
          *validationMetricOut = 0.0;
       }
       LOG_0(Trace_Error, "ERROR ApplyTermUpdate bad internal state.  No Term index set");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(nullptr != pBoosterCore);
@@ -270,21 +270,21 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
 
    if(nullptr == countSplitsInOut) {
       LOG_0(Trace_Error, "ERROR GetTermUpdateSplits countSplitsInOut cannot be nullptr");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       *countSplitsInOut = IntEbm { 0 };
       // already logged
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    const size_t iTerm = pBoosterShell->GetTermIndex();
    if(BoosterShell::k_illegalTermIndex == iTerm) {
       *countSplitsInOut = IntEbm { 0 };
       LOG_0(Trace_Error, "ERROR GetTermUpdateSplits bad internal state.  No Term index set");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(nullptr != pBoosterCore);
@@ -295,12 +295,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
    if(indexDimension < 0) {
       *countSplitsInOut = IntEbm { 0 };
       LOG_0(Trace_Error, "ERROR GetTermUpdateSplits indexDimension must be positive");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(static_cast<IntEbm>(pTerm->GetCountDimensions()) <= indexDimension) {
       *countSplitsInOut = IntEbm { 0 };
       LOG_0(Trace_Error, "ERROR GetTermUpdateSplits indexDimension above the number of dimensions that we have");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t iDimension = static_cast<size_t>(indexDimension);
 
@@ -309,7 +309,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
    if(*countSplitsInOut != static_cast<IntEbm>(cBins - size_t { 1 })) {
       *countSplitsInOut = IntEbm { 0 };
       LOG_0(Trace_Error, "ERROR GetTermUpdateSplits bad split array length");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    const size_t cSplits = pBoosterShell->GetTermUpdate()->GetCountSplits(iDimension);
@@ -318,7 +318,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
       if(nullptr == splitIndexesOut) {
          *countSplitsInOut = IntEbm { 0 };
          LOG_0(Trace_Error, "ERROR GetTermUpdateSplits splitIndexesOut cannot be nullptr");
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
 
       const ActiveDataType * pSplitIndexesFrom = pBoosterShell->GetTermUpdate()->GetSplitPointer(iDimension);
@@ -368,13 +368,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    const size_t iTerm = pBoosterShell->GetTermIndex();
    if(BoosterShell::k_illegalTermIndex == iTerm) {
       LOG_0(Trace_Error, "ERROR GetTermUpdate bad internal state.  No Term index set");
-      return Error_IllegalParamValue; // technically we're in an illegal state, but why split hairs
+      return Error_IllegalParamVal; // technically we're in an illegal state, but why split hairs
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(nullptr != pBoosterCore);
@@ -443,7 +443,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -452,19 +452,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
    if(indexTerm < 0) {
       pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
       LOG_0(Trace_Error, "ERROR SetTermUpdate indexTerm must be positive");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(IsConvertError<size_t>(indexTerm)) {
       pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(Trace_Error, "ERROR SetTermUpdate indexTerm is too high to index");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t iTerm = static_cast<size_t>(indexTerm);
    if(pBoosterCore->GetCountTerms() <= iTerm) {
       pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
       LOG_0(Trace_Error, "ERROR SetTermUpdate indexTerm above the number of feature groups that we have");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    // pBoosterCore->GetTerms() can be null if 0 == pBoosterCore->m_cTerms, but we checked that condition above
    EBM_ASSERT(nullptr != pBoosterCore->GetTerms());

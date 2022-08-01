@@ -223,22 +223,22 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
 
    if(nullptr == boosterHandleOut) {
       LOG_0(Trace_Error, "ERROR CreateBooster nullptr == boosterHandleOut");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    *boosterHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
    if(nullptr == dataSet) {
       LOG_0(Trace_Error, "ERROR CreateBooster nullptr == dataSet");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(countTerms < IntEbm { 0 }) {
       LOG_0(Trace_Error, "ERROR CreateBooster countTerms must be positive");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(IntEbm { 0 } != countTerms && nullptr == dimensionCounts) {
       LOG_0(Trace_Error, "ERROR CreateBooster dimensionCounts cannot be null if 0 < countTerms");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    // it's legal for featureIndexes to be null if there are no features indexed by our feature groups
    // dimensionCounts can have zero features, so it could be legal for this to be null even if 0 < countTerms
@@ -246,13 +246,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    if(countInnerBags < IntEbm { 0 }) {
       // 0 means use the full set. 1 means make a single bag which is useless, but allowed for comparison purposes
       LOG_0(Trace_Error, "ERROR CreateBooster countInnerBags cannot be negative");
-      return Error_UserParamValue;
+      return Error_UserParamVal;
    }
 
    if(IsConvertError<size_t>(countTerms)) {
       // the caller should not have been able to allocate memory for dimensionCounts if this wasn't fittable in size_t
       LOG_0(Trace_Error, "ERROR CreateBooster IsConvertError<size_t>(countTerms)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(IsConvertError<size_t>(countInnerBags)) {
       // this is just a warning since the caller doesn't pass us anything material, but if it's this high
@@ -344,14 +344,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBoosterView(
 
    if(UNLIKELY(nullptr == boosterHandleViewOut)) {
       LOG_0(Trace_Warning, "WARNING CreateBooster nullptr == boosterHandleViewOut");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    *boosterHandleViewOut = nullptr; // set this as soon as possible so our caller doesn't end up freeing garbage
 
    BoosterShell * const pBoosterShellOriginal = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShellOriginal) {
       // already logged
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    BoosterShell * const pBoosterShellNew = BoosterShell::Create();
@@ -399,24 +399,24 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(indexTerm < 0) {
       LOG_0(Trace_Error, "ERROR GetBestTermScores indexTerm must be positive");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(IsConvertError<size_t>(indexTerm)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(Trace_Error, "ERROR GetBestTermScores indexTerm is too high to index");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    size_t iTerm = static_cast<size_t>(indexTerm);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountTerms() <= iTerm) {
       LOG_0(Trace_Error, "ERROR GetBestTermScores indexTerm above the number of feature groups that we have");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
@@ -429,7 +429,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
 
    if(nullptr == termScoresTensorOut) {
       LOG_0(Trace_Error, "ERROR GetBestTermScores termScoresTensorOut cannot be nullptr");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    // if pBoosterCore->GetTerms() is nullptr, then m_cTerms was 0, but we checked above that 
@@ -491,24 +491,24 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(indexTerm < 0) {
       LOG_0(Trace_Error, "ERROR GetCurrentTermScores indexTerm must be positive");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(IsConvertError<size_t>(indexTerm)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(Trace_Error, "ERROR GetCurrentTermScores indexTerm is too high to index");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    size_t iTerm = static_cast<size_t>(indexTerm);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountTerms() <= iTerm) {
       LOG_0(Trace_Error, "ERROR GetCurrentTermScores indexTerm above the number of feature groups that we have");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
@@ -521,7 +521,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
 
    if(nullptr == termScoresTensorOut) {
       LOG_0(Trace_Error, "ERROR GetCurrentTermScores termScoresTensorOut cannot be nullptr");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    // if pBoosterCore->GetTerms() is nullptr, then m_cTerms was 0, but we checked above that 

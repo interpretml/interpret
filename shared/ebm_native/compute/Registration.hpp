@@ -135,14 +135,14 @@ protected:
                sRegistration = sNext + 1;
                sRegistration = ConvertStringToRegistrationType(sRegistration, &paramVal);
                if(nullptr == sRegistration) {
-                  throw ParamValueMalformedException();
+                  throw ParamValMalformedException();
                }
                if(sRegistrationEnd <= sRegistration) {
                   // if there are trailing spaces we can blow past the sRegistrationEnd which has spaces removed
                   break;
                }
                if(k_paramSeparator != *sRegistration) {
-                  throw ParamValueMalformedException();
+                  throw ParamValMalformedException();
                }
                ++sRegistration;
                continue;
@@ -237,8 +237,8 @@ class RegistrationPack final : public Registration {
             static_assert(std::is_standard_layout<TRegistrable<TFloat>>::value,
                "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 #if !(defined(__GNUC__) && __GNUC__ < 5)
-         static_assert(std::is_trivially_copyable<TRegistrable<TFloat>>::value,
-            "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+            static_assert(std::is_trivially_copyable<TRegistrable<TFloat>>::value,
+               "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 #endif // !(defined(__GNUC__) && __GNUC__ < 5)
 
             // use the in-place constructor to constrct our specialized Loss/Metric function in our pre-reserved memory
@@ -252,7 +252,7 @@ class RegistrationPack final : public Registration {
          } catch(const SkipRegistrationException &) {
             free(pRegistrableMemory);
             return true;
-         } catch(const ParamValueOutOfRangeException &) {
+         } catch(const ParamValOutOfRangeException &) {
             free(pRegistrableMemory);
             throw;
          } catch(const ParamMismatchWithConfigException &) {

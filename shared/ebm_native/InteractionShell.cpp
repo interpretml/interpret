@@ -110,13 +110,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
 
    if(nullptr == interactionHandleOut) {
       LOG_0(Trace_Error, "ERROR CreateInteractionDetector nullptr == interactionHandleOut");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    *interactionHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
    if(nullptr == dataSet) {
       LOG_0(Trace_Error, "ERROR CreateInteractionDetector nullptr == dataSet");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    InteractionShell * const pInteractionShell = InteractionShell::Create();

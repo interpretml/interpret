@@ -146,16 +146,16 @@ typedef struct _InteractionHandle {
 #define Error_OutOfMemory                          (ERROR_CAST(-1))
 // errors occuring entirely within the C/C++ code
 #define Error_UnexpectedInternal                   (ERROR_CAST(-2))
-// input parameters received that are clearly due to bugs in the higher level caller
-#define Error_IllegalParamValue                    (ERROR_CAST(-3))
-// input parameters received from the end user that are illegal.  These should have been filtered by our caller
-#define Error_UserParamValue                       (ERROR_CAST(-4))
+// bad input values that are due to bugs in the higher level caller
+#define Error_IllegalParamVal                      (ERROR_CAST(-3))
+// bad input values that are from the end user. These should have been filtered out by our higher level caller
+#define Error_UserParamVal                         (ERROR_CAST(-4))
 #define Error_ThreadStartFailed                    (ERROR_CAST(-5))
 
 #define Error_LossConstructorException             (ERROR_CAST(-10))
 #define Error_LossParamUnknown                     (ERROR_CAST(-11))
-#define Error_LossParamValueMalformed              (ERROR_CAST(-12))
-#define Error_LossParamValueOutOfRange             (ERROR_CAST(-13))
+#define Error_LossParamValMalformed                (ERROR_CAST(-12))
+#define Error_LossParamValOutOfRange               (ERROR_CAST(-13))
 #define Error_LossParamMismatchWithConfig          (ERROR_CAST(-14))
 #define Error_LossUnknown                          (ERROR_CAST(-15))
 #define Error_LossIllegalRegistrationName          (ERROR_CAST(-16))
@@ -183,10 +183,10 @@ typedef struct _InteractionHandle {
 #define Trace_Verbose                              (TRACE_CAST(4))
 
 // All our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
-typedef void (EBM_CALLING_CONVENTION * LogCallbackFunc)(TraceEbm traceLevel, const char * message);
+typedef void (EBM_CALLING_CONVENTION * LogCallbackFunction)(TraceEbm traceLevel, const char * message);
 
 // SetLogCallback does not need to be called if the level is left at Trace_Off
-EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetLogCallback(LogCallbackFunc logCallback);
+EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetLogCallback(LogCallbackFunction logCallbackFunction);
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbm traceLevel);
 EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm traceLevel);
 
@@ -217,6 +217,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
    IntEbm * countCutsInOut,
    double * cutsLowerBoundInclusiveOut
 );
+// CutUniform does not fail with valid inputs, so we return the number of cuts generated
 EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION CutUniform(
    IntEbm countSamples,
    const double * featureVals,

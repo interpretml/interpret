@@ -78,32 +78,32 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
 
    if(UNLIKELY(nullptr == bagOut)) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacement nullptr == bagOut");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(UNLIKELY(countTrainingSamples < IntEbm { 0 })) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacement countTrainingSamples < IntEbm { 0 }");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(UNLIKELY(IsConvertError<size_t>(countTrainingSamples))) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacement IsConvertError<size_t>(countTrainingSamples)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
 
    if(UNLIKELY(countValidationSamples < IntEbm { 0 })) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacement countValidationSamples < IntEbm { 0 }");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(UNLIKELY(IsConvertError<size_t>(countValidationSamples))) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacement IsConvertError<size_t>(countValidationSamples)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
 
    if(UNLIKELY(IsAddError(cTrainingSamples, cValidationSamples))) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacement IsAddError(cTrainingSamples, cValidationSamples)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    size_t cSamplesRemaining = cTrainingSamples + cValidationSamples;
    if(UNLIKELY(size_t { 0 } == cSamplesRemaining)) {
@@ -112,7 +112,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
    }
    if(UNLIKELY(IsMultiplyError(sizeof(*bagOut), cSamplesRemaining))) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacement IsMultiplyError(sizeof(*bagOut), cSamplesRemaining)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    size_t cTrainingRemaining = cTrainingSamples;
@@ -204,37 +204,37 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
 
    if (UNLIKELY(nullptr == targets)) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified nullptr == targets");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if (UNLIKELY(nullptr == bagOut)) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified nullptr == bagOut");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if (UNLIKELY(countTrainingSamples < IntEbm{ 0 })) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified countTrainingSamples < IntEbm{ 0 }");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if (UNLIKELY(IsConvertError<size_t>(countTrainingSamples))) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsConvertError<size_t>(countTrainingSamples)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
 
    if (UNLIKELY(countValidationSamples < IntEbm{ 0 })) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified countValidationSamples < IntEbm{ 0 }");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if (UNLIKELY(IsConvertError<size_t>(countValidationSamples))) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsConvertError<size_t>(countValidationSamples)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
 
    if (UNLIKELY(IsAddError(cTrainingSamples, cValidationSamples))) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsAddError(countTrainingSamples, countValidationSamples))");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    size_t cSamples = cTrainingSamples + cValidationSamples;
@@ -245,17 +245,17 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
 
    if (countClasses <= 0) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified countClasses can't be negative or zero");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if (IsConvertError<size_t>(countClasses)) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsConvertError<size_t>(countClasses)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cClasses = static_cast<size_t>(countClasses);
 
    if (UNLIKELY(IsMultiplyError(sizeof(*bagOut), cSamples))) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsMultiplyError(sizeof(*bagOut), cSamples)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if (UNLIKELY(IsMultiplyError(sizeof(TargetSamplingCounts), cClasses))) {
@@ -303,7 +303,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
       if (UNLIKELY(label < 0 || label >= countClasses)) {
          LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified label >= cClasses");
          free(pTargetSamplingCounts);
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
 
       (pTargetSamplingCounts + label)->m_cTotalRemaining++;
@@ -502,31 +502,31 @@ extern ErrorEbm Unbag(
             if(replication < BagEbm { 0 }) {
                if(IsConvertError<ptrdiff_t>(replication)) {
                   LOG_0(Trace_Error, "ERROR Unbag IsConvertError<ptrdiff_t>(replication)");
-                  return Error_IllegalParamValue;
+                  return Error_IllegalParamVal;
                }
                ptrdiff_t replicationSigned = static_cast<ptrdiff_t>(replication);
                // by creating a ptrdiff_t with "ptrdiff_t { ... }" the compiler is suposed to give us an 
                // error if for some reason the negation of the max fails
                if(replicationSigned < ptrdiff_t { -std::numeric_limits<ptrdiff_t>::max() }) {
                   LOG_0(Trace_Error, "ERROR Unbag replicationSigned < ptrdiff_t { -std::numeric_limits<ptrdiff_t>::max() }");
-                  return Error_IllegalParamValue;
+                  return Error_IllegalParamVal;
                }
                replicationSigned = -replicationSigned;
                const size_t replicationUnsigned = static_cast<size_t>(replicationSigned);
                if(IsAddError(cValidationSamples, replicationUnsigned)) {
                   LOG_0(Trace_Error, "ERROR Unbag IsAddError(cValidationSamples, replicationUnsigned)");
-                  return Error_IllegalParamValue;
+                  return Error_IllegalParamVal;
                }
                cValidationSamples += replicationUnsigned;
             } else {
                if(IsConvertError<size_t>(replication)) {
                   LOG_0(Trace_Error, "ERROR Unbag IsConvertError<size_t>(replication)");
-                  return Error_IllegalParamValue;
+                  return Error_IllegalParamVal;
                }
                const size_t replicationUnsigned = static_cast<size_t>(replication);
                if(IsAddError(cTrainingSamples, replicationUnsigned)) {
                   LOG_0(Trace_Error, "ERROR Unbag IsAddError(cTrainingSamples, replicationUnsigned)");
-                  return Error_IllegalParamValue;
+                  return Error_IllegalParamVal;
                }
                cTrainingSamples += replicationUnsigned;
             }

@@ -404,56 +404,56 @@ static IntEbm AppendHeader(
 
    if(IsConvertErrorDual<size_t, SharedStorageDataType>(countFeatures)) {
       LOG_0(Trace_Error, "ERROR AppendHeader countFeatures is outside the range of a valid index");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cFeatures = static_cast<size_t>(countFeatures);
 
    if(IsConvertErrorDual<size_t, SharedStorageDataType>(countWeights)) {
       LOG_0(Trace_Error, "ERROR AppendHeader countWeights is outside the range of a valid index");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cWeights = static_cast<size_t>(countWeights);
 
    if(IsConvertErrorDual<size_t, SharedStorageDataType>(countTargets)) {
       LOG_0(Trace_Error, "ERROR AppendHeader countTargets is outside the range of a valid index");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cTargets = static_cast<size_t>(countTargets);
 
    if(IsAddError(cFeatures, cWeights, cTargets)) {
       LOG_0(Trace_Error, "ERROR AppendHeader IsAddError(cFeatures, cWeights, cTargets)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cOffsets = cFeatures + cWeights + cTargets;
 
    if(IsMultiplyError(sizeof(HeaderDataSetShared::m_offsets[0]), cOffsets)) {
       LOG_0(Trace_Error, "ERROR AppendHeader IsMultiplyError(sizeof(HeaderDataSetShared::m_offsets[0]), cOffsets)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cBytesOffsets = sizeof(HeaderDataSetShared::m_offsets[0]) * cOffsets;
 
    if(IsAddError(k_cBytesHeaderNoOffset, cBytesOffsets)) {
       LOG_0(Trace_Error, "ERROR AppendHeader IsAddError(k_cBytesHeaderNoOffset, cBytesOffsets)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cBytesHeader = k_cBytesHeaderNoOffset + cBytesOffsets;
 
    if(IsConvertError<SharedStorageDataType>(cBytesHeader)) {
       LOG_0(Trace_Error, "ERROR AppendHeader cBytesHeader is outside the range of a valid size");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(nullptr != pFillMem) {
       if(size_t { 0 } == cOffsets) {
          if(cBytesAllocated != cBytesHeader) {
             LOG_0(Trace_Error, "ERROR AppendHeader buffer size and fill size do not agree");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
       } else {
          if(cBytesAllocated - sizeof(SharedStorageDataType) < cBytesHeader) {
             LOG_0(Trace_Error, "ERROR AppendHeader cBytesAllocated - sizeof(SharedStorageDataType) < cBytesHeader");
             // don't set the header to bad if we don't have enough memory for the header itself
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
       }
 
@@ -724,7 +724,7 @@ return_bad:;
       HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
       pHeaderDataSetShared->m_id = k_sharedDataSetErrorId;
    }
-   return Error_IllegalParamValue;
+   return Error_IllegalParamVal;
 }
 
 static IntEbm AppendWeight(
@@ -886,7 +886,7 @@ return_bad:;
       HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
       pHeaderDataSetShared->m_id = k_sharedDataSetErrorId;
    }
-   return Error_IllegalParamValue;
+   return Error_IllegalParamVal;
 }
 
 static IntEbm AppendTarget(
@@ -1098,7 +1098,7 @@ return_bad:;
       HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
       pHeaderDataSetShared->m_id = k_sharedDataSetErrorId;
    }
-   return Error_IllegalParamValue;
+   return Error_IllegalParamVal;
 }
 
 EBM_API_BODY IntEbm EBM_CALLING_CONVENTION SizeDataSetHeader(
@@ -1118,13 +1118,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillDataSetHeader(
 ) {
    if(nullptr == fillMem) {
       LOG_0(Trace_Error, "ERROR FillDataSetHeader nullptr == fillMem");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(IsConvertError<size_t>(countBytesAllocated)) {
       LOG_0(Trace_Error, "ERROR FillDataSetHeader countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
@@ -1170,27 +1170,27 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillFeature(
 ) {
    if(nullptr == fillMem) {
       LOG_0(Trace_Error, "ERROR FillFeature nullptr == fillMem");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(IsConvertError<size_t>(countBytesAllocated)) {
       LOG_0(Trace_Error, "ERROR FillFeature countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
    if(cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)) {
       LOG_0(Trace_Error, "ERROR FillFeature cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
       // don't set the header to bad if we don't have enough memory for the header itself
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(fillMem);
    if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR FillFeature k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
       // don't set the header to bad since it's already set to something invalid and we don't know why
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    const IntEbm ret = AppendFeature(
@@ -1226,27 +1226,27 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillWeight(
 ) {
    if(nullptr == fillMem) {
       LOG_0(Trace_Error, "ERROR FillWeight nullptr == fillMem");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(IsConvertError<size_t>(countBytesAllocated)) {
       LOG_0(Trace_Error, "ERROR FillWeight countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
    if(cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)) {
       LOG_0(Trace_Error, "ERROR FillWeight cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
       // don't set the header to bad if we don't have enough memory for the header itself
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(fillMem);
    if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR FillWeight k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
       // don't set the header to bad since it's already set to something invalid and we don't know why
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    const IntEbm ret = AppendWeight(
@@ -1282,27 +1282,27 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillClassificationTarget(
 ) {
    if(nullptr == fillMem) {
       LOG_0(Trace_Error, "ERROR FillClassificationTarget nullptr == fillMem");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(IsConvertError<size_t>(countBytesAllocated)) {
       LOG_0(Trace_Error, "ERROR FillClassificationTarget countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
    if(cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)) {
       LOG_0(Trace_Error, "ERROR FillClassificationTarget cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
       // don't set the header to bad if we don't have enough memory for the header itself
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(fillMem);
    if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR FillClassificationTarget k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
       // don't set the header to bad since it's already set to something invalid and we don't know why
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    const IntEbm ret = AppendTarget(
@@ -1338,27 +1338,27 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillRegressionTarget(
 ) {
    if(nullptr == fillMem) {
       LOG_0(Trace_Error, "ERROR FillRegressionTarget nullptr == fillMem");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(IsConvertError<size_t>(countBytesAllocated)) {
       LOG_0(Trace_Error, "ERROR FillRegressionTarget countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
    if(cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)) {
       LOG_0(Trace_Error, "ERROR FillRegressionTarget cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
       // don't set the header to bad if we don't have enough memory for the header itself
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(fillMem);
    if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR FillRegressionTarget k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
       // don't set the header to bad since it's already set to something invalid and we don't know why
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    const IntEbm ret = AppendTarget(
@@ -1384,13 +1384,13 @@ extern ErrorEbm GetDataSetSharedHeader(
    
    if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    const SharedStorageDataType countSamples = pHeaderDataSetShared->m_cSamples;
    if(IsConvertError<size_t>(countSamples)) {
       LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countSamples)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cSamples = static_cast<size_t>(countSamples);
    *pcSamplesOut = cSamples;
@@ -1398,7 +1398,7 @@ extern ErrorEbm GetDataSetSharedHeader(
    const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
    if(IsConvertError<size_t>(countFeatures)) {
       LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countFeatures)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    size_t cFeatures = static_cast<size_t>(countFeatures);
    *pcFeaturesOut = cFeatures;
@@ -1406,7 +1406,7 @@ extern ErrorEbm GetDataSetSharedHeader(
    const SharedStorageDataType countWeights = pHeaderDataSetShared->m_cWeights;
    if(IsConvertError<size_t>(countWeights)) {
       LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countWeights)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    size_t cWeights = static_cast<size_t>(countWeights);
    *pcWeightsOut = cWeights;
@@ -1414,25 +1414,25 @@ extern ErrorEbm GetDataSetSharedHeader(
    const SharedStorageDataType countTargets = pHeaderDataSetShared->m_cTargets;
    if(IsConvertError<size_t>(countTargets)) {
       LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countTargets)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    size_t cTargets = static_cast<size_t>(countTargets);
    *pcTargetsOut = cTargets;
 
    if(IsAddError(cFeatures, cWeights, cTargets)) {
       LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsAddError(cFeatures, cWeights, cTargets)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cOffsets = cFeatures + cWeights + cTargets;
 
    if(IsMultiplyError(cOffsets, sizeof(pHeaderDataSetShared->m_offsets[0]))) {
       LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(cOffsets, sizeof(pHeaderDataSetShared->m_offsets[0]))");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    size_t iOffsetNext = cOffsets * sizeof(pHeaderDataSetShared->m_offsets[0]);
    if(IsAddError(k_cBytesHeaderNoOffset, iOffsetNext)) {
       LOG_0(Trace_Error, "ERROR IsHeaderError IsAddError(k_cBytesHeaderNoOffset, iOffsetNext)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    iOffsetNext += k_cBytesHeaderNoOffset;
 
@@ -1441,19 +1441,19 @@ extern ErrorEbm GetDataSetSharedHeader(
       const SharedStorageDataType indexOffsetCur = *pOffset;
       if(IsConvertError<size_t>(indexOffsetCur)) {
          LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(indexOffsetCur)");
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
       const size_t iOffsetCur = static_cast<size_t>(indexOffsetCur);
 
       if(iOffsetNext != iOffsetCur) {
          LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader iOffsetNext != offsetCur");
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
       ++pOffset;
 
       if(IsAddError(iOffsetNext, sizeof(FeatureDataSetShared))) {
          LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, sizeof(FeatureDataSetShared))");
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
       const FeatureDataSetShared * pFeatureDataSetShared =
          reinterpret_cast<const FeatureDataSetShared *>(pDataSetShared + iOffsetNext);
@@ -1462,20 +1462,20 @@ extern ErrorEbm GetDataSetSharedHeader(
       const SharedStorageDataType id = pFeatureDataSetShared->m_id;
       if(!IsFeature(id)) {
          LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader !IsFeature(id)");
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
 
       const SharedStorageDataType countBins = pFeatureDataSetShared->m_cBins;
       if(IsConvertError<size_t>(countBins)) {
          LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countBins)");
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
       if(IsSparseFeature(id)) {
          const size_t cBytesSparseHeaderNoOffset = offsetof(SparseFeatureDataSetShared, m_nonDefaults);
 
          if(IsAddError(iOffsetNext, cBytesSparseHeaderNoOffset)) {
             LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cBytesSparseHeaderNoOffset)");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
          const SparseFeatureDataSetShared * const pSparseFeatureDataSetShared =
             reinterpret_cast<const SparseFeatureDataSetShared *>(pDataSetShared + iOffsetNext);
@@ -1485,36 +1485,36 @@ extern ErrorEbm GetDataSetSharedHeader(
          //const SharedStorageDataType defaultVal = pSparseFeatureDataSetShared->m_defaultVal;
          //if(IsConvertError<size_t>(defaultVal)) {
          //   LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(defaultVal)");
-         //   return Error_IllegalParamValue;
+         //   return Error_IllegalParamVal;
          //}
 
          const SharedStorageDataType countNonDefaults = pSparseFeatureDataSetShared->m_cNonDefaults;
          if(IsConvertError<size_t>(countNonDefaults)) {
             LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countNonDefaults)");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
          const size_t cNonDefaults = static_cast<size_t>(countNonDefaults);
 
          if(IsMultiplyError(cNonDefaults, sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]))) {
             LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(cNonDefaults, sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]))");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
          const size_t cTotalNonDefaults = cNonDefaults * sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]);
          if(IsAddError(iOffsetNext, cTotalNonDefaults)) {
             LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cTotalNonDefaults)");
-               return Error_IllegalParamValue;
+               return Error_IllegalParamVal;
          }
          iOffsetNext += cTotalNonDefaults;
       } else {
          if(IsMultiplyError(cSamples, sizeof(SharedStorageDataType))) {
             LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(cSamples, sizeof(SharedStorageDataType))");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
          const size_t cTotalMem = cSamples * sizeof(SharedStorageDataType);
 
          if(IsAddError(iOffsetNext, cTotalMem)) {
             LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cTotalMem)");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
          iOffsetNext += cTotalMem;
       }
@@ -1537,7 +1537,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractDataSetHeader(
 
    if(nullptr == dataSet) {
       LOG_0(Trace_Error, "ERROR ExtractDataSetHeader nullptr == dataSet");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    size_t cSamples;
@@ -1560,22 +1560,22 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractDataSetHeader(
    if(IsConvertError<IntEbm>(cSamples)) {
       // cSamples should have originally came to us as an IntEbm, but check in case of corruption
       LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbm>(cSamples)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(IsConvertError<IntEbm>(cFeatures)) {
       // cFeatures should have originally came to us as an IntEbm, but check in case of corruption
       LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbm>(cFeatures)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(IsConvertError<IntEbm>(cWeights)) {
       // cWeights should have originally came to us as an IntEbm, but check in case of corruption
       LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbm>(cWeights)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(IsConvertError<IntEbm>(cTargets)) {
       // cTargets should have originally came to us as an IntEbm, but check in case of corruption
       LOG_0(Trace_Error, "ERROR ExtractDataSetHeader IsConvertError<IntEbm>(cTargets)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(nullptr != countSamplesOut) {
@@ -1657,12 +1657,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
 ) {
    if(nullptr == dataSet) {
       LOG_0(Trace_Error, "ERROR ExtractBinCounts nullptr == dataSet");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(IsConvertError<size_t>(countFeaturesVerify)) {
       LOG_0(Trace_Error, "ERROR ExtractBinCounts IsConvertError<size_t>(countFeaturesVerify)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cFeaturesVerify = static_cast<size_t>(countFeaturesVerify);
 
@@ -1671,24 +1671,24 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
 
    if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR ExtractBinCounts k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
    if(IsConvertError<size_t>(countFeatures)) {
       LOG_0(Trace_Error, "ERROR ExtractBinCounts IsConvertError<size_t>(countFeatures)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    size_t cFeatures = static_cast<size_t>(countFeatures);
 
    if(cFeatures != cFeaturesVerify) {
       LOG_0(Trace_Error, "ERROR ExtractBinCounts cFeatures != cFeaturesVerify");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(size_t { 0 } != cFeatures) {
       if(nullptr == binCountsOut) {
          LOG_0(Trace_Error, "ERROR ExtractBinCounts nullptr == binCountsOut");
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
 
       const SharedStorageDataType * pOffset = pHeaderDataSetShared->m_offsets;
@@ -1700,7 +1700,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
 
          if(IsConvertError<size_t>(indexOffsetCur)) {
             LOG_0(Trace_Error, "ERROR ExtractBinCounts IsConvertError<size_t>(indexOffsetCur)");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
          const size_t iOffsetCur = static_cast<size_t>(indexOffsetCur);
 
@@ -1710,13 +1710,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
          const SharedStorageDataType id = pFeatureDataSetShared->m_id;
          if(!IsFeature(id)) {
             LOG_0(Trace_Error, "ERROR ExtractBinCounts !IsFeature(id)");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
 
          const SharedStorageDataType countBins = pFeatureDataSetShared->m_cBins;
          if(IsConvertError<IntEbm>(countBins)) {
             LOG_0(Trace_Error, "ERROR ExtractBinCounts IsConvertError<IntEbm>(countBins)");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
 
          *pcBins = static_cast<IntEbm>(countBins);
@@ -1816,12 +1816,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
 ) {
    if(nullptr == dataSet) {
       LOG_0(Trace_Error, "ERROR ExtractTargetClasses nullptr == dataSet");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(IsConvertError<size_t>(countTargetsVerify)) {
       LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<size_t>(countTargetsVerify)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    const size_t cTargetsVerify = static_cast<size_t>(countTargetsVerify);
 
@@ -1830,39 +1830,39 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
 
    if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR ExtractTargetClasses k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
    if(IsConvertError<size_t>(countFeatures)) {
       LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<size_t>(countFeatures)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    size_t cFeatures = static_cast<size_t>(countFeatures);
 
    const SharedStorageDataType countWeights = pHeaderDataSetShared->m_cWeights;
    if(IsConvertError<size_t>(countWeights)) {
       LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<size_t>(countWeights)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    size_t cWeights = static_cast<size_t>(countWeights);
 
    const SharedStorageDataType countTargets = pHeaderDataSetShared->m_cTargets;
    if(IsConvertError<size_t>(countTargets)) {
       LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<size_t>(countTargets)");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    size_t cTargets = static_cast<size_t>(countTargets);
 
    if(cTargets != cTargetsVerify) {
       LOG_0(Trace_Error, "ERROR ExtractTargetClasses cTargets != cTargetsVerify");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(size_t { 0 } != cTargets) {
       if(nullptr == classCountsOut) {
          LOG_0(Trace_Error, "ERROR ExtractTargetClasses nullptr == classCountsOut");
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
 
       const SharedStorageDataType * pOffset = &pHeaderDataSetShared->m_offsets[cFeatures + cWeights];
@@ -1874,7 +1874,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
 
          if(IsConvertError<size_t>(indexOffsetCur)) {
             LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<size_t>(indexOffsetCur)");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
          const size_t iOffsetCur = static_cast<size_t>(indexOffsetCur);
 
@@ -1884,7 +1884,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
          const SharedStorageDataType id = pTargetDataSetShared->m_id;
          if(!IsTarget(id)) {
             LOG_0(Trace_Error, "ERROR ExtractTargetClasses !IsTarget(id)");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
 
          IntEbm countClasses = IntEbm { -1 };
@@ -1896,13 +1896,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
 
             if(IsConvertError<IntEbm>(cClasses)) {
                LOG_0(Trace_Error, "ERROR ExtractTargetClasses IsConvertError<IntEbm>(cClasses)");
-               return Error_IllegalParamValue;
+               return Error_IllegalParamVal;
             }
 
             countClasses = static_cast<IntEbm>(cClasses);
             if(countClasses < IntEbm { 0 }) {
                LOG_0(Trace_Error, "ERROR ExtractTargetClasses countClasses < IntEbm { 0 }");
-               return Error_IllegalParamValue;
+               return Error_IllegalParamVal;
             }
          }
 

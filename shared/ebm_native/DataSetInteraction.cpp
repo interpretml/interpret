@@ -272,7 +272,7 @@ ErrorEbm DataSetInteraction::Initialize(
             const FloatBig total = AddPositiveFloatsSafeBig(cSetSamples, m_aWeights);
             if(std::isnan(total) || std::isinf(total) || total <= 0) {
                LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= 0");
-               return Error_UserParamValue;
+               return Error_UserParamVal;
             }
             // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
             // to zero though so check it after checking for negative

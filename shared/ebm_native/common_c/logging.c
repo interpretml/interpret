@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "ebm_native.h" // LogCallbackFunc
+#include "ebm_native.h" // LogCallbackFunction
 #include "logging.h"
 
 #ifdef __cplusplus
@@ -22,7 +22,7 @@ static const char g_sAssertLogMessage[] = "ASSERT ERROR on line %llu of file \"%
 static const char g_sLoggingParamError[] = "Error in vsnprintf parameters for logging.";
 
 TraceEbm g_traceLevel = Trace_Off;
-static LogCallbackFunc g_pLogCallback = NULL;
+static LogCallbackFunction g_pLogCallbackFunction = NULL;
 
 static const char g_sTraceOff[] = "OFF";
 static const char g_sTraceError[] = "ERROR";
@@ -48,12 +48,12 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm tr
    }
 }
 
-EBM_API_BODY void EBM_CALLING_CONVENTION SetLogCallback(LogCallbackFunc logCallback) {
-   assert(NULL != logCallback);
-   assert(NULL == g_pLogCallback); /* SetLogCallback should only be called once */
+EBM_API_BODY void EBM_CALLING_CONVENTION SetLogCallback(LogCallbackFunction logCallbackFunction) {
+   assert(NULL != logCallbackFunction);
+   assert(NULL == g_pLogCallbackFunction); /* SetLogCallback should only be called once */
    assert(Trace_Off == g_traceLevel);
 
-   g_pLogCallback = logCallback;
+   g_pLogCallbackFunction = logCallbackFunction;
 }
 
 #ifndef NDEBUG
@@ -94,7 +94,7 @@ EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbm traceLevel) {
       traceLevel = Trace_Off;
    }
 
-   if(NULL == g_pLogCallback) {
+   if(NULL == g_pLogCallbackFunction) {
       assert(Trace_Off == traceLevel && Trace_Off == g_traceLevel);
       traceLevel = Trace_Off;
       sMessage = NULL;
@@ -115,9 +115,9 @@ EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbm traceLevel) {
 }
 
 extern void InteralLogWithArguments(const TraceEbm traceLevel, const char * const sMessage, ...) {
-   assert(NULL != g_pLogCallback);
-   // it is illegal for g_pLogCallback to be NULL at this point, but in the interest of not crashing check it
-   if(NULL != g_pLogCallback) {
+   assert(NULL != g_pLogCallbackFunction);
+   // it is illegal for g_pLogCallbackFunction to be NULL at this point, but in the interest of not crashing check it
+   if(NULL != g_pLogCallbackFunction) {
       // this function is here largely to clip the stack memory needed for messageSpace.  If we put the below functionality directly into a MACRO or an 
       // inline function then the memory gets reserved on the stack of the function which calls our logging MACRO.  The reserved memory will be held when 
       // our calling function calls any children functions.  By putting the buffer insdie this purposely separated function we allocate it on the stack, 
@@ -134,20 +134,20 @@ extern void InteralLogWithArguments(const TraceEbm traceLevel, const char * cons
       // turn off clang-tidy warning about insecurity of vsnprintf
       // NOLINTNEXTLINE
       if(vsnprintf(messageSpace, sizeof(messageSpace) / sizeof(messageSpace[0]), sMessage, args) < 0) {
-         (*g_pLogCallback)(traceLevel, g_sLoggingParamError);
+         (*g_pLogCallbackFunction)(traceLevel, g_sLoggingParamError);
       } else {
          // if messageSpace overflows, we clip the message, but it's still legal
-         (*g_pLogCallback)(traceLevel, messageSpace);
+         (*g_pLogCallbackFunction)(traceLevel, messageSpace);
       }
       va_end(args);
    }
 }
 
 extern void InteralLogWithoutArguments(const TraceEbm traceLevel, const char * const sMessage) {
-   assert(NULL != g_pLogCallback);
-   // it is illegal for g_pLogCallback to be NULL at this point, but in the interest of not crashing check it
-   if(NULL != g_pLogCallback) {
-      (*g_pLogCallback)(traceLevel, sMessage);
+   assert(NULL != g_pLogCallbackFunction);
+   // it is illegal for g_pLogCallbackFunction to be NULL at this point, but in the interest of not crashing check it
+   if(NULL != g_pLogCallbackFunction) {
+      (*g_pLogCallbackFunction)(traceLevel, sMessage);
    }
 }
 

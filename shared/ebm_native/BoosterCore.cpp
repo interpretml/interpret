@@ -234,11 +234,11 @@ ErrorEbm BoosterCore::Create(
    }
    if(size_t { 1 } < cWeights) {
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create size_t { 1 } < cWeights");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(size_t { 1 } != cTargets) {
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create 1 != cTargets");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    ptrdiff_t cClasses;
@@ -285,7 +285,7 @@ ErrorEbm BoosterCore::Create(
          );
          if(0 == cBins && (0 != cTrainingSamples || 0 != cValidationSamples)) {
             LOG_0(Trace_Error, "ERROR BoosterCore::Create countBins cannot be zero if either 0 < cTrainingSamples OR 0 < cValidationSamples");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
          if(0 == cBins) {
             // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
@@ -331,7 +331,7 @@ ErrorEbm BoosterCore::Create(
          const IntEbm countDimensions = acTermDimensions[iTerm];
          if(countDimensions < IntEbm { 0 }) {
             LOG_0(Trace_Error, "ERROR BoosterCore::Create countDimensions cannot be negative");
-            return Error_IllegalParamValue;
+            return Error_IllegalParamVal;
          }
          if(IntEbm { k_cDimensionsMax } < countDimensions) {
             LOG_0(Trace_Error, "WARNING BoosterCore::Create countDimensions too large and would cause out of memory condition");
@@ -354,7 +354,7 @@ ErrorEbm BoosterCore::Create(
          } else {
             if(nullptr == piTermFeature) {
                LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures is null when there are Terms with non-zero numbers of features");
-               return Error_IllegalParamValue;
+               return Error_IllegalParamVal;
             }
             size_t cEquivalentSplits = 1;
             TermEntry * pTermEntry = pTerm->GetTermEntries();
@@ -363,17 +363,17 @@ ErrorEbm BoosterCore::Create(
                const IntEbm indexFeature = *piTermFeature;
                if(indexFeature < 0) {
                   LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures value cannot be negative");
-                  return Error_IllegalParamValue;
+                  return Error_IllegalParamVal;
                }
                if(IsConvertError<size_t>(indexFeature)) {
                   LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures value too big to reference memory");
-                  return Error_IllegalParamValue;
+                  return Error_IllegalParamVal;
                }
                const size_t iFeature = static_cast<size_t>(indexFeature);
 
                if(cFeatures <= iFeature) {
                   LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures value must be less than the number of features");
-                  return Error_IllegalParamValue;
+                  return Error_IllegalParamVal;
                }
 
                EBM_ASSERT(1 <= cFeatures);
@@ -539,7 +539,7 @@ ErrorEbm BoosterCore::Create(
          const FloatBig total = AddPositiveFloatsSafeBig(cValidationSamples, pBoosterCore->m_aValidationWeights);
          if(std::isnan(total) || std::isinf(total) || total <= 0) {
             LOG_0(Trace_Warning, "WARNING BoosterCore::Create std::isnan(total) || std::isinf(total) || total <= 0");
-            return Error_UserParamValue;
+            return Error_UserParamVal;
          }
          // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
          // to zero though so check it after checking for negative

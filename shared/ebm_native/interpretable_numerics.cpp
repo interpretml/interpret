@@ -1068,18 +1068,18 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SuggestGraphBounds(
 
    if(nullptr == lowGraphBoundOut) {
       LOG_0(Trace_Error, "ERROR SuggestGraphBounds nullptr == lowGraphBoundOut");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(nullptr == highGraphBoundOut) {
       LOG_0(Trace_Error, "ERROR SuggestGraphBounds nullptr == highGraphBoundOut");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(maxFeatureVal < minFeatureVal) {
       // silly caller, these should be reversed.  If either or both are NaN this won't execute, which is good
       LOG_0(Trace_Error, "ERROR SuggestGraphBounds maxFeatureVal < minFeatureVal");
       *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
       *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    if(countCuts <= IntEbm { 0 }) {
@@ -1087,7 +1087,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SuggestGraphBounds(
          LOG_0(Trace_Error, "ERROR SuggestGraphBounds countCuts < IntEbm { 0 }");
          *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
          *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
 
       // countCuts was zero, so the only information we have to go on are the minFeatureVal and maxFeatureVal..
@@ -1130,7 +1130,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SuggestGraphBounds(
       LOG_0(Trace_Error, "ERROR SuggestGraphBounds std::isnan(lowestCut) || std::isinf(lowestCut) || std::isnan(highestCut) || std::isinf(highestCut)");
       *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
       *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    // we're going to be checking lowestCut and highestCut, so we should check that they have valid values
@@ -1140,7 +1140,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SuggestGraphBounds(
             "ERROR SuggestGraphBounds when 1 == countCuts, then lowestCut and highestCut should be identical");
          *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
          *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
    } else {
       if(highestCut <= lowestCut) {
@@ -1148,7 +1148,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SuggestGraphBounds(
             "ERROR SuggestGraphBounds highestCut <= lowestCut");
          *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
          *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
    }
 

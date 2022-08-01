@@ -62,27 +62,27 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutWinsorized(
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
       LOG_0(Trace_Error, "ERROR CutWinsorized nullptr == countCutsInOut");
-      error = Error_IllegalParamValue;
+      error = Error_IllegalParamVal;
    } else {
       if(UNLIKELY(countSamples <= IntEbm { 1 })) {
          // can't cut 1 sample
          error = Error_None;
          if(UNLIKELY(countSamples < IntEbm { 0 })) {
             LOG_0(Trace_Error, "ERROR CutWinsorized countSamples < IntEbm { 0 }");
-            error = Error_IllegalParamValue;
+            error = Error_IllegalParamVal;
          }
       } else {
          if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
             LOG_0(Trace_Warning, "WARNING CutWinsorized IsConvertError<size_t>(countSamples)");
 
-            error = Error_IllegalParamValue;
+            error = Error_IllegalParamVal;
             goto exit_with_log;
          }
 
          if(UNLIKELY(nullptr == featureVals)) {
             LOG_0(Trace_Error, "ERROR CutWinsorized nullptr == featureVals");
 
-            error = Error_IllegalParamValue;
+            error = Error_IllegalParamVal;
             goto exit_with_log;
          }
 
@@ -117,7 +117,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutWinsorized(
                error = Error_None;
                if(UNLIKELY(countCuts < IntEbm { 0 })) {
                   LOG_0(Trace_Error, "ERROR CutWinsorized countCuts can't be negative.");
-                  error = Error_IllegalParamValue;
+                  error = Error_IllegalParamVal;
                }
                goto exit_with_log;
             }
@@ -125,7 +125,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutWinsorized(
             if(UNLIKELY(IsConvertError<size_t>(countCuts))) {
                LOG_0(Trace_Warning, "WARNING CutWinsorized IsConvertError<size_t>(countCuts)");
                free(aFeatureVals);
-               error = Error_IllegalParamValue;
+               error = Error_IllegalParamVal;
                goto exit_with_log;
             }
             const size_t cCuts = static_cast<size_t>(countCuts);
@@ -133,7 +133,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutWinsorized(
             if(UNLIKELY(IsMultiplyError(sizeof(*cutsLowerBoundInclusiveOut), cCuts))) {
                LOG_0(Trace_Error, "ERROR CutWinsorized countCuts was too large to fit into cutsLowerBoundInclusiveOut");
                free(aFeatureVals);
-               error = Error_IllegalParamValue;
+               error = Error_IllegalParamVal;
                goto exit_with_log;
             }
 
@@ -141,7 +141,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutWinsorized(
                // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
                LOG_0(Trace_Error, "ERROR CutWinsorized nullptr == cutsLowerBoundInclusiveOut");
                free(aFeatureVals);
-               error = Error_IllegalParamValue;
+               error = Error_IllegalParamVal;
                goto exit_with_log;
             }
 

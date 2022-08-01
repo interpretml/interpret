@@ -1055,7 +1055,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          *avgGainOut = double { 0 };
       }
       // already logged
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
 
    // set this to illegal so if we exit with an error we have an invalid index
@@ -1069,7 +1069,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          *avgGainOut = double { 0 };
       }
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate indexTerm must be positive");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(IsConvertError<size_t>(indexTerm)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
@@ -1077,7 +1077,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          *avgGainOut = double { 0 };
       }
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate indexTerm is too high to index");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    size_t iTerm = static_cast<size_t>(indexTerm);
    if(pBoosterCore->GetCountTerms() <= iTerm) {
@@ -1085,7 +1085,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          *avgGainOut = double { 0 };
       }
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate indexTerm above the number of feature groups that we have");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    // this is true because 0 < pBoosterCore->m_cTerms since our caller needs to pass in a valid indexTerm to this function
    EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
@@ -1097,7 +1097,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       "Entered GenerateTermUpdate"
    );
 
-   // TODO : test if our BoostFlags flags flags only include flags that we use
+   if(0 != (static_cast<UBoostFlags>(flags) & ~(
+      static_cast<UBoostFlags>(BoostFlags_DisableNewtonGain) |
+      static_cast<UBoostFlags>(BoostFlags_DisableNewtonUpdate) |
+      static_cast<UBoostFlags>(BoostFlags_GradientSums) |
+      static_cast<UBoostFlags>(BoostFlags_RandomSplits)
+      ))) {
+      LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains unknown flags. Ignoring extras.");
+   }
 
    if(std::isnan(learningRate)) {
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate learningRate is NaN");

@@ -7,7 +7,7 @@
 
 #include <assert.h>
 
-#include "ebm_native.h" // LogCallbackFunc
+#include "ebm_native.h" // TraceEbm
 
 #ifdef __cplusplus
 extern "C" {

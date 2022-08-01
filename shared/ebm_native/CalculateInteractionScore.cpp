@@ -312,7 +312,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromHandle(interactionHandle);
    if(nullptr == pInteractionShell) {
       // already logged
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    LOG_COUNTED_0(
       pInteractionShell->GetPointerCountLogEnterMessages(), 
@@ -348,12 +348,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          return Error_None;
       } else {
          LOG_0(Trace_Error, "ERROR CalcInteractionStrength countDimensions must be positive");
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
    }
    if(nullptr == featureIndexes) {
       LOG_0(Trace_Error, "ERROR CalcInteractionStrength featureIndexes cannot be nullptr if 0 < countDimensions");
-      return Error_IllegalParamValue;
+      return Error_IllegalParamVal;
    }
    if(IntEbm { k_cDimensionsMax } < countDimensions) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength countDimensions too large and would cause out of memory condition");
@@ -374,11 +374,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       const IntEbm indexFeature = *piFeature;
       if(indexFeature < IntEbm { 0 }) {
          LOG_0(Trace_Error, "ERROR CalcInteractionStrength featureIndexes value cannot be negative");
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
       if(static_cast<IntEbm>(pInteractionCore->GetCountFeatures()) <= indexFeature) {
          LOG_0(Trace_Error, "ERROR CalcInteractionStrength featureIndexes value must be less than the number of features");
-         return Error_IllegalParamValue;
+         return Error_IllegalParamVal;
       }
       const size_t iFeature = static_cast<size_t>(indexFeature);
       const Feature * const pFeature = &aFeatures[iFeature];

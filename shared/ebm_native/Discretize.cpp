@@ -294,7 +294,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
    if(UNLIKELY(countSamples <= IntEbm { 0 })) {
       if(UNLIKELY(countSamples < IntEbm { 0 })) {
          LOG_0(Trace_Error, "ERROR BinFeature countSamples cannot be negative");
-         error = Error_IllegalParamValue;
+         error = Error_IllegalParamVal;
          goto exit_with_log;
       } else {
          EBM_ASSERT(IntEbm { 0 } == countSamples);
@@ -305,7 +305,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
       if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
          // this needs to point to real memory, otherwise it's invalid
          LOG_0(Trace_Error, "ERROR BinFeature countSamples was too large to fit into memory");
-         error = Error_IllegalParamValue;
+         error = Error_IllegalParamVal;
          goto exit_with_log;
       }
 
@@ -313,25 +313,25 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
 
       if(IsMultiplyError(sizeof(*featureVals), cSamples)) {
          LOG_0(Trace_Error, "ERROR BinFeature countSamples was too large to fit into featureVals");
-         error = Error_IllegalParamValue;
+         error = Error_IllegalParamVal;
          goto exit_with_log;
       }
 
       if(IsMultiplyError(sizeof(*binIndexesOut), cSamples)) {
          LOG_0(Trace_Error, "ERROR BinFeature countSamples was too large to fit into binIndexesOut");
-         error = Error_IllegalParamValue;
+         error = Error_IllegalParamVal;
          goto exit_with_log;
       }
 
       if(UNLIKELY(nullptr == featureVals)) {
          LOG_0(Trace_Error, "ERROR BinFeature featureVals cannot be null");
-         error = Error_IllegalParamValue;
+         error = Error_IllegalParamVal;
          goto exit_with_log;
       }
 
       if(UNLIKELY(nullptr == binIndexesOut)) {
          LOG_0(Trace_Error, "ERROR BinFeature binIndexesOut cannot be null");
-         error = Error_IllegalParamValue;
+         error = Error_IllegalParamVal;
          goto exit_with_log;
       }
 
@@ -342,7 +342,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
       if(UNLIKELY(countCuts <= IntEbm { 0 })) {
          if(UNLIKELY(countCuts < IntEbm { 0 })) {
             LOG_0(Trace_Error, "ERROR BinFeature countCuts cannot be negative");
-            error = Error_IllegalParamValue;
+            error = Error_IllegalParamVal;
             goto exit_with_log;
          }
          EBM_ASSERT(IntEbm { 0 } == countCuts);
@@ -362,7 +362,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
 
       if(UNLIKELY(nullptr == cutsLowerBoundInclusive)) {
          LOG_0(Trace_Error, "ERROR BinFeature cutsLowerBoundInclusive cannot be null");
-         error = Error_IllegalParamValue;
+         error = Error_IllegalParamVal;
          goto exit_with_log;
       }
 
@@ -879,14 +879,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
       if(UNLIKELY(IsConvertError<size_t>(countCuts))) {
          // this needs to point to real memory, otherwise it's invalid
          LOG_0(Trace_Error, "ERROR BinFeature countCuts was too large to fit into memory");
-         error = Error_IllegalParamValue; // the cutsLowerBoundInclusive wouldn't be possible
+         error = Error_IllegalParamVal; // the cutsLowerBoundInclusive wouldn't be possible
          goto exit_with_log;
       }
 
       if(IsMultiplyError(sizeof(*cutsLowerBoundInclusive), cCuts)) {
          LOG_0(Trace_Error,
             "ERROR BinFeature countCuts was too large to fit into cutsLowerBoundInclusive");
-         error = Error_IllegalParamValue; // the cutsLowerBoundInclusive array wouldn't be possible
+         error = Error_IllegalParamVal; // the cutsLowerBoundInclusive array wouldn't be possible
          goto exit_with_log;
       }
 

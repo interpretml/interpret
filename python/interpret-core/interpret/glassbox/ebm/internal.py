@@ -541,7 +541,7 @@ class Native:
         self._unsafe = ct.cdll.LoadLibrary(Native._get_ebm_lib_path(debug=is_debug))
 
         self._unsafe.SetLogCallback.argtypes = [
-            # void (* fn)(int32 traceLevel, const char * message) logCallback
+            # void (* LogCallbackFunction)(int32_t traceLevel, const char * message) logCallbackFunction
             self._LogCallbackType
         ]
         self._unsafe.SetLogCallback.restype = None

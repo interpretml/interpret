@@ -20,9 +20,9 @@ public:
    SkipRegistrationException() = default;
 };
 
-class ParamValueOutOfRangeException final : public std::exception {
+class ParamValOutOfRangeException final : public std::exception {
 public:
-   ParamValueOutOfRangeException() = default;
+   ParamValOutOfRangeException() = default;
 };
 
 class ParamMismatchWithConfigException final : public std::exception {
@@ -30,10 +30,10 @@ public:
    ParamMismatchWithConfigException() = default;
 };
 
-class ParamValueMalformedException final : public std::exception {
+class ParamValMalformedException final : public std::exception {
    // this should not be thrown from the Registrable constructor
 public:
-   ParamValueMalformedException() = default;
+   ParamValMalformedException() = default;
 };
 
 class ParamUnknownException final : public std::exception {
