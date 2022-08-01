@@ -61,15 +61,15 @@ extern "C" {
 #endif // _WIN64
 
 #else // compiler type
-#error compiler not recognized
+#error unsupported compiler type
 #endif // compiler type
 
 typedef struct _BoosterHandle {
-   uint32_t handleVerification; // should be 25077 if ok
+   uint32_t handleVerification; // should be 10995 if ok. Do not use size_t since that requires an additional header.
 } * BoosterHandle;
 
 typedef struct _InteractionHandle {
-   uint32_t handleVerification; // should be 27917 if ok
+   uint32_t handleVerification; // should be 21773 if ok. Do not use size_t since that requires an additional header.
 } * InteractionHandle;
 
 #ifndef PRId32
@@ -120,8 +120,8 @@ typedef int8_t BagEbmType;
 #define BagEbmTypePrintf PRId8
 typedef int32_t TraceEbmType;
 #define TraceEbmTypePrintf PRId32
-typedef int64_t BoolEbmType;
-#define BoolEbmTypePrintf PRId64
+typedef int32_t BoolEbmType;
+#define BoolEbmTypePrintf PRId32
 typedef int32_t ErrorEbmType;
 #define ErrorEbmTypePrintf PRId32
 typedef int64_t BoostFlagsType;

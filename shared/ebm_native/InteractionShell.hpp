@@ -23,7 +23,7 @@ struct BinBase;
 class InteractionCore;
 
 class InteractionShell final {
-   static constexpr size_t k_handleVerificationOk = 27917; // random 15 bit number
+   static constexpr size_t k_handleVerificationOk = 21773; // random 15 bit number
    static constexpr size_t k_handleVerificationFreed = 27913; // random 15 bit number
    size_t m_handleVerification; // this needs to be at the top and make it pointer sized to keep best alignment
 

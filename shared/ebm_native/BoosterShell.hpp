@@ -26,7 +26,7 @@ struct BinBase;
 class BoosterCore;
 
 class BoosterShell final {
-   static constexpr size_t k_handleVerificationOk = 25077; // random 15 bit number
+   static constexpr size_t k_handleVerificationOk = 10995; // random 15 bit number
    static constexpr size_t k_handleVerificationFreed = 25073; // random 15 bit number
    size_t m_handleVerification; // this needs to be at the top and make it pointer sized to keep best alignment
 

@@ -201,8 +201,6 @@ class Native:
         random_state = 0 if random_state is None else random_state
 
         count_samples = count_training_samples + count_validation_samples
-        count_training_samples = ct.c_int64(count_training_samples)
-        count_validation_samples = ct.c_int64(count_validation_samples)
 
         bag = np.empty(count_samples, dtype=np.int8, order="C")
 
@@ -234,10 +232,6 @@ class Native:
 
         if len(targets) != count_samples:
             raise ValueError("count_training_samples + count_validation_samples should be equal to len(targets)")
-
-        n_classes = ct.c_int64(n_classes)
-        count_training_samples = ct.c_int64(count_training_samples)
-        count_validation_samples = ct.c_int64(count_validation_samples)
 
         bag = np.empty(count_samples, dtype=np.int8, order="C")
 
@@ -575,8 +569,8 @@ class Native:
         self._unsafe.GenerateSeed.restype = ct.c_int32
 
         self._unsafe.GenerateGaussianRandom.argtypes = [
-            # int64_t isDeterministic
-            ct.c_int64,
+            # int32_t isDeterministic
+            ct.c_int32,
             # int32_t seed
             ct.c_int32,
             # double stddev
@@ -589,8 +583,8 @@ class Native:
         self._unsafe.GenerateGaussianRandom.restype = ct.c_int32
 
         self._unsafe.SampleWithoutReplacement.argtypes = [
-            # int64_t isDeterministic
-            ct.c_int64,
+            # int32_t isDeterministic
+            ct.c_int32,
             # int32_t seed
             ct.c_int32,
             # int64_t countTrainingSamples
@@ -603,8 +597,8 @@ class Native:
         self._unsafe.SampleWithoutReplacement.restype = ct.c_int32
 
         self._unsafe.SampleWithoutReplacementStratified.argtypes = [
-            # int64_t isDeterministic
-            ct.c_int64,
+            # int32_t isDeterministic
+            ct.c_int32,
             # int32_t seed
             ct.c_int32,
             # int64_t countClasses
@@ -635,8 +629,8 @@ class Native:
             ct.c_void_p,
             # int64_t minSamplesBin
             ct.c_int64,
-            # int64_t isRounded
-            ct.c_int64,
+            # int32_t isRounded
+            ct.c_int32,
             # int64_t * countCutsInOut
             ct.POINTER(ct.c_int64),
             # double * cutsLowerBoundInclusiveOut
@@ -730,12 +724,12 @@ class Native:
         self._unsafe.SizeFeature.argtypes = [
             # int64_t countBins
             ct.c_int64,
-            # int64_t isMissing
-            ct.c_int64,
-            # int64_t isUnknown
-            ct.c_int64,
-            # int64_t isNominal
-            ct.c_int64,
+            # int32_t isMissing
+            ct.c_int32,
+            # int32_t isUnknown
+            ct.c_int32,
+            # int32_t isNominal
+            ct.c_int32,
             # int64_t countSamples
             ct.c_int64,
             # int64_t * binIndexes
@@ -746,12 +740,12 @@ class Native:
         self._unsafe.FillFeature.argtypes = [
             # int64_t countBins
             ct.c_int64,
-            # int64_t isMissing
-            ct.c_int64,
-            # int64_t isUnknown
-            ct.c_int64,
-            # int64_t isNominal
-            ct.c_int64,
+            # int32_t isMissing
+            ct.c_int32,
+            # int32_t isUnknown
+            ct.c_int32,
+            # int32_t isNominal
+            ct.c_int32,
             # int64_t countSamples
             ct.c_int64,
             # int64_t * binIndexes
@@ -863,8 +857,8 @@ class Native:
 
 
         self._unsafe.CreateBooster.argtypes = [
-            # int64_t isDeterministic
-            ct.c_int64,
+            # int32_t isDeterministic
+            ct.c_int32,
             # int32_t seed
             ct.c_int32,
             # void * dataSet

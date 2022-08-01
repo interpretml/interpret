@@ -903,14 +903,14 @@ static IntEbmType AppendTarget(
    LOG_N(
       Trace_Info,
       "Entered AppendTarget: "
-      "bClassification=%" BoolEbmTypePrintf ", "
+      "bClassification=%s, "
       "countClasses=%" IntEbmTypePrintf ", "
       "countSamples=%" IntEbmTypePrintf ", "
       "aTargets=%p, "
       "cBytesAllocated=%zu, "
       "pFillMem=%p"
       ,
-      bClassification ? EBM_TRUE : EBM_FALSE,
+      ObtainTruth(bClassification ? EBM_TRUE : EBM_FALSE),
       countClasses,
       countSamples,
       static_cast<const void *>(aTargets),
