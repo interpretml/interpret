@@ -15,15 +15,15 @@ log = logging.getLogger(__name__)
 class Native:
 
     # BoostFlagsType
-    BoostFlags_Default              = 0x0000000000000000
-    BoostFlags_DisableNewtonGain    = 0x0000000000000001
-    BoostFlags_DisableNewtonUpdate  = 0x0000000000000002
-    BoostFlags_GradientSums         = 0x0000000000000004
-    BoostFlags_RandomSplits         = 0x0000000000000008
+    BoostFlags_Default              = 0x00000000
+    BoostFlags_DisableNewtonGain    = 0x00000001
+    BoostFlags_DisableNewtonUpdate  = 0x00000002
+    BoostFlags_GradientSums         = 0x00000004
+    BoostFlags_RandomSplits         = 0x00000008
 
     # InteractionFlagsType
-    InteractionFlags_Default        = 0x0000000000000000
-    InteractionFlags_Pure           = 0x0000000000000001
+    InteractionFlags_Default        = 0x00000000
+    InteractionFlags_Pure           = 0x00000001
 
     # TraceLevel
     _Trace_Off = 0
@@ -888,7 +888,7 @@ class Native:
             # int64_t indexTerm
             ct.c_int64,
             # BoostFlagsType flags 
-            ct.c_int64,
+            ct.c_int32,
             # double learningRate
             ct.c_double,
             # int64_t minSamplesLeaf
@@ -987,7 +987,7 @@ class Native:
             # int64_t * featureIndexes
             ct.c_void_p,
             # InteractionFlagsType flags 
-            ct.c_int64,
+            ct.c_int32,
             # int64_t minSamplesLeaf
             ct.c_int64,
             # double * avgInteractionStrengthOut

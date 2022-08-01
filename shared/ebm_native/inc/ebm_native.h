@@ -5,7 +5,7 @@
 #ifndef EBM_NATIVE_H
 #define EBM_NATIVE_H
 
-#include <inttypes.h> // fixed sized integer types and printf strings.  Includes stdint.h
+#include <inttypes.h> // Fixed sized integer types and printf strings. The C99 standard says it includes stdint.h
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,51 +64,22 @@ extern "C" {
 #error unsupported compiler type
 #endif // compiler type
 
-typedef struct _BoosterHandle {
-   uint32_t handleVerification; // should be 10995 if ok. Do not use size_t since that requires an additional header.
-} * BoosterHandle;
-
-typedef struct _InteractionHandle {
-   uint32_t handleVerification; // should be 21773 if ok. Do not use size_t since that requires an additional header.
-} * InteractionHandle;
-
+// some compilers do not define these PRI macros (MinGW for R)
+#ifndef PRId8
+#define PRId8 "d"
+#endif // PRId8
 #ifndef PRId32
-// this should really be defined, but some compilers aren't compliant
 #define PRId32 "d"
 #endif // PRId32
+#ifndef PRIx32
+#define PRIx32 "x"
+#endif // PRIx32
 #ifndef PRId64
-// this should really be defined, but some compilers aren't compliant
 #define PRId64 "lld"
 #endif // PRId64
 #ifndef PRIu64
-// this should really be defined, but some compilers aren't compliant
 #define PRIu64 "llu"
 #endif // PRIu64
-#ifndef PRIx64
-// this should really be defined, but some compilers aren't compliant
-#define PRIx64 "llx"
-#endif // PRIx64
-
-// Smaller integers can safely roundtrip to double values and back, but this breaks down at exactly 2^53.
-// 2^53 will convert exactly from an integer to a double and back, but the double 2^53 + 1 will round
-// down to the integer 2^53 in IEEE-754 where banker's rounding is used.  So, if we had an integer of
-// 9007199254740992 we would be safe to convert it to to a double and back, but if we see a double of
-// 9007199254740992.0 we don't know if it was originally the integer 9007199254740992 or 9007199254740993, so
-// 9007199254740992 is unsafe if checking as a double.
-// https://stackoverflow.com/questions/1848700/biggest-integer-that-can-be-stored-in-a-double
-// R has a lower maximum index of 4503599627370496 (R_XLEN_T_MAX) probably to store a bit somewhere.
-#define SAFE_FLOAT64_AS_INT64_MAX   9007199254740991
-
-// The maximum signed int64 value is 9223372036854775807, but doubles above 9223372036854775295 round in IEEE-754
-// to a number above that, so if we're converting from a float64 to an int64, the maximum safe number is 
-// 9223372036854775295. When we convert 9223372036854775295 to a float64 though, we loose precision and if we output 
-// it with 17 decimal digits, which is the universal round trip format for float64 in IEEE-754, then we get 
-// 9.2233720368547748e+18.  When you accurately round that biggest representable float64 to the closest integer, 
-// you get 9223372036854774784, which having 19 digits is legal as an exact IEEE-754 representation since it's 
-// within the 17-20 digits that is required by IEEE-754 to give a universally reproducible float value
-#define FLOAT64_TO_INT64_MAX   9223372036854774784
-
-// TODO: look through our code for places where SAFE_FLOAT64_AS_INT64_MAX or FLOAT64_TO_INT64_MAX would be useful
 
 typedef int64_t IntEbmType;
 #define IntEbmTypePrintf PRId64
@@ -124,23 +95,52 @@ typedef int32_t BoolEbmType;
 #define BoolEbmTypePrintf PRId32
 typedef int32_t ErrorEbmType;
 #define ErrorEbmTypePrintf PRId32
-typedef int64_t BoostFlagsType;
-// technically printf hexidecimals are unsigned, so convert it first to unsigned before calling printf
-typedef uint64_t UBoostFlagsType;
-#define UBoostFlagsTypePrintf PRIx64
-typedef int64_t InteractionFlagsType;
-// technically printf hexidecimals are unsigned, so convert it first to unsigned before calling printf
-typedef uint64_t UInteractionFlagsType;
-#define UInteractionFlagsTypePrintf PRIx64
+typedef int32_t BoostFlagsType;
+// printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
+typedef uint32_t UBoostFlagsType;
+#define UBoostFlagsTypePrintf PRIx32
+typedef int32_t InteractionFlagsType;
+// printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
+typedef uint32_t UInteractionFlagsType;
+#define UInteractionFlagsTypePrintf PRIx32
 
-#define BOOL_CAST(val)                 (STATIC_CAST(BoolEbmType, (val)))
-#define ERROR_CAST(val)                (STATIC_CAST(ErrorEbmType, (val)))
-#define TRACE_CAST(val)                (STATIC_CAST(TraceEbmType, (val)))
-#define BOOST_FLAGS_CAST(val)          (STATIC_CAST(BoostFlagsType, (val)))
-#define INTERACTION_FLAGS_CAST(val)    (STATIC_CAST(InteractionFlagsType, (val)))
+typedef struct _BoosterHandle {
+   uint32_t handleVerification; // should be 10995 if ok. Do not use size_t since that requires an additional header.
+} * BoosterHandle;
 
-#define EBM_FALSE          (BOOL_CAST(0))
-#define EBM_TRUE           (BOOL_CAST(1))
+typedef struct _InteractionHandle {
+   uint32_t handleVerification; // should be 21773 if ok. Do not use size_t since that requires an additional header.
+} * InteractionHandle;
+
+#define BOOL_CAST(val)                             (STATIC_CAST(BoolEbmType, (val)))
+#define ERROR_CAST(val)                            (STATIC_CAST(ErrorEbmType, (val)))
+#define TRACE_CAST(val)                            (STATIC_CAST(TraceEbmType, (val)))
+#define BOOST_FLAGS_CAST(val)                      (STATIC_CAST(BoostFlagsType, (val)))
+#define INTERACTION_FLAGS_CAST(val)                (STATIC_CAST(InteractionFlagsType, (val)))
+
+// TODO: look through our code for places where SAFE_FLOAT64_AS_INT64_MAX or FLOAT64_TO_INT64_MAX would be useful
+
+// Smaller integers can safely roundtrip to double values and back, but this breaks down at exactly 2^53.
+// 2^53 will convert exactly from an integer to a double and back, but the double 2^53 + 1 will round
+// down to the integer 2^53 in IEEE-754 where banker rounding is used.  So, if we had an integer of
+// 9007199254740992 we would be safe to convert it to to a double and back, but if we see a double of
+// 9007199254740992.0 we don't know if it was originally the integer 9007199254740992 or 9007199254740993, so
+// 9007199254740992 is unsafe if checking as a double.
+// https://stackoverflow.com/questions/1848700/biggest-integer-that-can-be-stored-in-a-double
+// R has a lower maximum index of 4503599627370496 (R_XLEN_T_MAX) probably to store a bit somewhere.
+#define SAFE_FLOAT64_AS_INT64_MAX                  9007199254740991
+
+// The maximum signed int64 value is 9223372036854775807, but doubles above 9223372036854775295 round in IEEE-754
+// to a number above that, so if we're converting from a float64 to an int64, the maximum safe number is 
+// 9223372036854775295. When we convert 9223372036854775295 to a float64 though, we loose precision and if we output 
+// it with 17 decimal digits, which is the universal round trip format for float64 in IEEE-754, then we get 
+// 9.2233720368547748e+18.  When you accurately round that biggest representable float64 to the closest integer, 
+// you get 9223372036854774784, which having 19 digits is legal as an exact IEEE-754 representation since it is 
+// within the 17-20 digits that is required by IEEE-754 to give a universally reproducible float value
+#define FLOAT64_TO_INT64_MAX                       9223372036854774784
+
+#define EBM_FALSE                                  (BOOL_CAST(0))
+#define EBM_TRUE                                   (BOOL_CAST(1))
 
 #define Error_None                                 (ERROR_CAST(0))
 #define Error_OutOfMemory                          (ERROR_CAST(-1))
@@ -162,25 +162,25 @@ typedef uint64_t UInteractionFlagsType;
 #define Error_LossIllegalParamName                 (ERROR_CAST(-17))
 #define Error_LossDuplicateParamName               (ERROR_CAST(-18))
 
-#define BoostFlags_Default                         (BOOST_FLAGS_CAST(0x0000000000000000))
-#define BoostFlags_DisableNewtonGain               (BOOST_FLAGS_CAST(0x0000000000000001))
-#define BoostFlags_DisableNewtonUpdate             (BOOST_FLAGS_CAST(0x0000000000000002))
-#define BoostFlags_GradientSums                    (BOOST_FLAGS_CAST(0x0000000000000004))
-#define BoostFlags_RandomSplits                    (BOOST_FLAGS_CAST(0x0000000000000008))
+#define BoostFlags_Default                         (BOOST_FLAGS_CAST(0x00000000))
+#define BoostFlags_DisableNewtonGain               (BOOST_FLAGS_CAST(0x00000001))
+#define BoostFlags_DisableNewtonUpdate             (BOOST_FLAGS_CAST(0x00000002))
+#define BoostFlags_GradientSums                    (BOOST_FLAGS_CAST(0x00000004))
+#define BoostFlags_RandomSplits                    (BOOST_FLAGS_CAST(0x00000008))
 
-#define InteractionFlags_Default                   (INTERACTION_FLAGS_CAST(0x0000000000000000))
-#define InteractionFlags_Pure                      (INTERACTION_FLAGS_CAST(0x0000000000000001))
+#define InteractionFlags_Default                   (INTERACTION_FLAGS_CAST(0x00000000))
+#define InteractionFlags_Pure                      (INTERACTION_FLAGS_CAST(0x00000001))
 
 // No messages will be logged. This is the default.
-#define Trace_Off      (TRACE_CAST(0))
+#define Trace_Off                                  (TRACE_CAST(0))
 // Invalid inputs to the C interface, internal errors, or assert failures before exiting. Cannot continue afterwards.
-#define Trace_Error    (TRACE_CAST(1))
+#define Trace_Error                                (TRACE_CAST(1))
 // Out of memory or other conditions that are unexpected or odd. Can either return with an error, or continue.
-#define Trace_Warning  (TRACE_CAST(2))
+#define Trace_Warning                              (TRACE_CAST(2))
 // Important informational messages such as entering important functions. Should be reasonable for production systems.
-#define Trace_Info     (TRACE_CAST(3))
+#define Trace_Info                                 (TRACE_CAST(3))
 // All messages logged. Useful for tracing execution in detail. Might log too much detail for production systems.
-#define Trace_Verbose  (TRACE_CAST(4))
+#define Trace_Verbose                              (TRACE_CAST(4))
 
 // All our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void (EBM_CALLING_CONVENTION * LOG_CALLBACK)(TraceEbmType traceLevel, const char * message);
