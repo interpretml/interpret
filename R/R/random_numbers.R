@@ -37,8 +37,5 @@ generate_seed <- function(random_state, random_mix) {
    random_mix <- as.integer(random_mix)
 
    ret <- .Call(GenerateSeed_R, random_state, random_mix)
-   if(is.null(ret)) {
-      stop("error in GenerateSeed_R")
-   }
    return(ret)
 }

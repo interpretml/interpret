@@ -87,9 +87,6 @@ generate_term_update <- function(
       count_samples_required_for_child_split_min, 
       max_leaves
    )
-   if(is.null(avg_gain)) {
-      stop("error in GenerateTermUpdate_R")
-   }
    return(avg_gain)
 }
 
@@ -98,13 +95,7 @@ apply_term_update <- function(
 ) {
    stopifnot(class(booster_handle) == "externalptr")
 
-   validation_metric <- .Call(
-      ApplyTermUpdate_R, 
-      booster_handle
-   )
-   if(is.null(validation_metric)) {
-      stop("error in BoostingStep_R")
-   }
+   validation_metric <- .Call(ApplyTermUpdate_R, booster_handle)
    return(validation_metric)
 }
 
@@ -113,9 +104,6 @@ get_best_term_scores <- function(booster_handle, index_term) {
    index_term <- as.double(index_term)
 
    term_scores <- .Call(GetBestTermScores_R, booster_handle, index_term)
-   if(is.null(term_scores)) {
-      stop("error in GetBestTermScores_R")
-   }
    return(term_scores)
 }
 
@@ -124,9 +112,6 @@ get_current_term_scores <- function(booster_handle, index_term) {
    index_term <- as.double(index_term)
 
    term_scores <- .Call(GetCurrentTermScores_R, booster_handle, index_term)
-   if(is.null(term_scores)) {
-      stop("error in GetCurrentTermScores_R")
-   }
    return(term_scores)
 }
 

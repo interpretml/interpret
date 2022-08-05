@@ -20,9 +20,6 @@ cut_quantile <- function(
       is_rounded, 
       count_cuts
    )
-   if(is.null(cuts_lower_bound_inclusive)) {
-      stop("error in CutQuantile_R")
-   }
    return(cuts_lower_bound_inclusive)
 }
 
@@ -37,8 +34,5 @@ bin_feature <- function(X_col, cuts_lower_bound_inclusive, bin_indexes_out) {
    # we modify bin_indexes_out to avoid extra allocations in the future where we might allocate a large vector
    # and fill it in prior to passing it into our InitializeBoosting functions
    result <- .Call(BinFeature_R, X_col, cuts_lower_bound_inclusive, bin_indexes_out)
-   if(is.null(result)) {
-      stop("error in BinFeature_R")
-   }
    return(NULL)
 }

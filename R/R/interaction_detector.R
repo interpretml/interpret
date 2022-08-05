@@ -39,8 +39,5 @@ calc_interaction_strength <- function(interaction_handle, feature_indexes, count
       feature_indexes, 
       count_samples_required_for_child_split_min
    )
-   if(is.null(interaction_strength)) {
-      stop("error in CalcInteractionStrength_R")
-   }
    return(interaction_strength)
 }

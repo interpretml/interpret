@@ -77,16 +77,40 @@ INLINE_ALWAYS static const T * ArrayToPointer(const T * const a) noexcept {
 }
 
 // TODO : replace all std::min and std::max and similar comparions that get the min/max with this function
-// unlike std::min, our version has explicit noexcept semantics
+// unlike std::min/std::max, our version has explicit noexcept semantics, constexpr, and is variadic
 template<typename T>
 INLINE_ALWAYS constexpr static T EbmMin(T v1, T v2) noexcept {
    return UNPREDICTABLE(v1 < v2) ? v1 : v2;
 }
-// unlike std::max, our version has explicit noexcept semantics
 template<typename T>
 INLINE_ALWAYS constexpr static T EbmMax(T v1, T v2) noexcept {
    return UNPREDICTABLE(v1 < v2) ? v2 : v1;
 }
+
+template<typename T, typename... Args>
+INLINE_ALWAYS constexpr static T EbmMin(const T v1, const T v2, const Args...args) noexcept {
+   return EbmMin(EbmMin(v1, v2), args...);
+}
+
+template<typename T, typename... Args>
+INLINE_ALWAYS constexpr static T EbmMax(const T v1, const T v2, const Args...args) noexcept {
+   return EbmMax(EbmMax(v1, v2), args...);
+}
+
+static_assert(EbmMin(1.25, 2.5) == 1.25, "automated test with compiler");
+static_assert(EbmMin(2.5, 1.25) == 1.25, "automated test with compiler");
+
+static_assert(EbmMax(1.25, 2.5) == 2.5, "automated test with compiler");
+static_assert(EbmMax(2.5, 1.25) == 2.5, "automated test with compiler");
+
+static_assert(EbmMin(1.25, 2.5, 3.75) == 1.25, "automated test with compiler");
+static_assert(EbmMin(2.5, 1.25, 3.75) == 1.25, "automated test with compiler");
+static_assert(EbmMin(3.75, 2.5, 1.25) == 1.25, "automated test with compiler");
+
+static_assert(EbmMax(3.75, 2.5, 1.25) == 3.75, "automated test with compiler");
+static_assert(EbmMax(2.5, 3.75, 1.25) == 3.75, "automated test with compiler");
+static_assert(EbmMax(1.25, 2.5, 3.75) == 3.75, "automated test with compiler");
+
 
 // use SFINAE to compile time specialize IsConvertError
 // https://www.fluentcpp.com/2019/08/23/how-to-make-sfinae-pretty-and-robust/

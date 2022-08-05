@@ -14,8 +14,5 @@ sample_without_replacement <- function(random_state, count_training_samples, cou
    # we modify bag_out to avoid extra allocations in the future where we might repeatedly reuse that
    # memory to fill in new samples.  This function is not meant to be used outside of this package
    result <- .Call(SampleWithoutReplacement_R, random_state, count_training_samples, count_validation_samples, bag_out)
-   if(is.null(result)) {
-      stop("error in SampleWithoutReplacement_R")
-   }
    return(NULL)
 }
