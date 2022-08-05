@@ -2,17 +2,6 @@
 # Licensed under the MIT license.
 # Author: Paul Koch <code@koch.ninja>
 
-create_dataset <- function(n_bytes) {
-   n_bytes <- as.double(n_bytes)
-   dataset <- .Call(CreateDataSet_R, n_bytes)
-   return(dataset)
-}
-
-free_dataset <- function(dataset) {
-   .Call(FreeDataSet_R, dataset)
-   return(NULL)
-}
-
 measure_dataset_header <- function(n_features, n_weights, n_targets) {
    n_features <- as.double(n_features)
    n_weights <- as.double(n_weights)
@@ -21,18 +10,6 @@ measure_dataset_header <- function(n_features, n_weights, n_targets) {
    n_bytes <- .Call(MeasureDataSetHeader_R, n_features, n_weights, n_targets)
 
    return(n_bytes)
-}
-
-fill_dataset_header <- function(n_features, n_weights, n_targets, n_bytes_allocated, incomplete_dataset) {
-   n_features <- as.double(n_features)
-   n_weights <- as.double(n_weights)
-   n_targets <- as.double(n_targets)
-   n_bytes_allocated <- as.double(n_bytes_allocated)
-   stopifnot(class(incomplete_dataset) == "externalptr")
-
-   .Call(FillDataSetHeader_R, n_features, n_weights, n_targets, n_bytes_allocated, incomplete_dataset)
-   
-   return(NULL)
 }
 
 measure_feature <- function(n_bins, is_missing, is_unknown, is_nominal, bin_indexes) {
@@ -47,6 +24,38 @@ measure_feature <- function(n_bins, is_missing, is_unknown, is_nominal, bin_inde
    return(n_bytes)
 }
 
+measure_classification_target <- function(n_classes, targets) {
+   n_classes <- as.double(n_classes)
+   targets <- as.double(targets)
+
+   n_bytes <- .Call(MeasureClassificationTarget_R, n_classes, targets)
+
+   return(n_bytes)
+}
+
+create_dataset <- function(n_bytes) {
+   n_bytes <- as.double(n_bytes)
+   dataset <- .Call(CreateDataSet_R, n_bytes)
+   return(dataset)
+}
+
+free_dataset <- function(dataset) {
+   .Call(FreeDataSet_R, dataset)
+   return(NULL)
+}
+
+fill_dataset_header <- function(n_features, n_weights, n_targets, n_bytes_allocated, incomplete_dataset) {
+   n_features <- as.double(n_features)
+   n_weights <- as.double(n_weights)
+   n_targets <- as.double(n_targets)
+   n_bytes_allocated <- as.double(n_bytes_allocated)
+   stopifnot(class(incomplete_dataset) == "externalptr")
+
+   .Call(FillDataSetHeader_R, n_features, n_weights, n_targets, n_bytes_allocated, incomplete_dataset)
+   
+   return(NULL)
+}
+
 fill_feature <- function(n_bins, is_missing, is_unknown, is_nominal, bin_indexes, n_bytes_allocated, incomplete_dataset) {
    n_bins <- as.double(n_bins)
    is_missing <- as.logical(is_missing)
@@ -59,15 +68,6 @@ fill_feature <- function(n_bins, is_missing, is_unknown, is_nominal, bin_indexes
    .Call(FillFeature_R, n_bins, is_missing, is_unknown, is_nominal, bin_indexes, n_bytes_allocated, incomplete_dataset)
 
    return(NULL)
-}
-
-measure_classification_target <- function(n_classes, targets) {
-   n_classes <- as.double(n_classes)
-   targets <- as.double(targets)
-
-   n_bytes <- .Call(MeasureClassificationTarget_R, n_classes, targets)
-
-   return(n_bytes)
 }
 
 fill_classification_target <- function(n_classes, targets, n_bytes_allocated, incomplete_dataset) {

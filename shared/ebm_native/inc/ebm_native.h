@@ -208,6 +208,13 @@ EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION GetHistogramCutCount(
    IntEbm countSamples,
    const double * featureVals
 );
+// CutUniform does not fail with valid inputs, so we return the number of cuts generated
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION CutUniform(
+   IntEbm countSamples,
+   const double * featureVals,
+   IntEbm countDesiredCuts,
+   double * cutsLowerBoundInclusiveOut
+);
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
    IntEbm countSamples,
@@ -215,13 +222,6 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
    IntEbm minSamplesBin,
    BoolEbm isRounded,
    IntEbm * countCutsInOut,
-   double * cutsLowerBoundInclusiveOut
-);
-// CutUniform does not fail with valid inputs, so we return the number of cuts generated
-EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION CutUniform(
-   IntEbm countSamples,
-   const double * featureVals,
-   IntEbm countDesiredCuts,
    double * cutsLowerBoundInclusiveOut
 );
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CutWinsorized(
@@ -254,14 +254,6 @@ EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureDataSetHeader(
    IntEbm countWeights,
    IntEbm countTargets
 );
-EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillDataSetHeader(
-   IntEbm countFeatures,
-   IntEbm countWeights,
-   IntEbm countTargets,
-   IntEbm countBytesAllocated,
-   void * fillMem
-);
-
 EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureFeature(
    IntEbm countBins,
    BoolEbm isMissing,
@@ -269,6 +261,27 @@ EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureFeature(
    BoolEbm isNominal,
    IntEbm countSamples,
    const IntEbm * binIndexes
+);
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureWeight(
+   IntEbm countSamples,
+   const double * weights
+);
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureClassificationTarget(
+   IntEbm countClasses,
+   IntEbm countSamples,
+   const IntEbm * targets
+);
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureRegressionTarget(
+   IntEbm countSamples,
+   const double * targets
+);
+
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillDataSetHeader(
+   IntEbm countFeatures,
+   IntEbm countWeights,
+   IntEbm countTargets,
+   IntEbm countBytesAllocated,
+   void * fillMem
 );
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillFeature(
    IntEbm countBins,
@@ -280,22 +293,11 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillFeature(
    IntEbm countBytesAllocated,
    void * fillMem
 );
-
-EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureWeight(
-   IntEbm countSamples,
-   const double * weights
-);
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillWeight(
    IntEbm countSamples,
    const double * weights,
    IntEbm countBytesAllocated,
    void * fillMem
-);
-
-EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureClassificationTarget(
-   IntEbm countClasses,
-   IntEbm countSamples,
-   const IntEbm * targets
 );
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillClassificationTarget(
    IntEbm countClasses,
@@ -303,11 +305,6 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillClassificationTarget(
    const IntEbm * targets,
    IntEbm countBytesAllocated,
    void * fillMem
-);
-
-EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureRegressionTarget(
-   IntEbm countSamples,
-   const double * targets
 );
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillRegressionTarget(
    IntEbm countSamples,
@@ -323,19 +320,16 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ExtractDataSetHeader(
    IntEbm * countWeightsOut,
    IntEbm * countTargetsOut
 );
-
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
    const void * dataSet,
    IntEbm countFeaturesVerify,
    IntEbm * binCountsOut
 );
-
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
    const void * dataSet,
    IntEbm countTargetsVerify,
    IntEbm * classCountsOut
 );
-
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
    BoolEbm isDeterministic,
@@ -344,7 +338,6 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
    IntEbm countValidationSamples,
    BagEbm * bagOut
 );
-
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    BoolEbm isDeterministic,
    SeedEbm seed,
@@ -373,6 +366,9 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBoosterView(
    BoosterHandle boosterHandle,
    BoosterHandle * boosterHandleViewOut
+);
+EBM_API_INCLUDE void EBM_CALLING_CONVENTION FreeBooster(
+   BoosterHandle boosterHandle
 );
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    BoosterHandle boosterHandle,
@@ -413,9 +409,6 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
    IntEbm indexTerm,
    double * termScoresTensorOut
 );
-EBM_API_INCLUDE void EBM_CALLING_CONVENTION FreeBooster(
-   BoosterHandle boosterHandle
-);
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
@@ -424,6 +417,9 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    const double * experimentalParams,
    InteractionHandle * interactionHandleOut
 );
+EBM_API_INCLUDE void EBM_CALLING_CONVENTION FreeInteractionDetector(
+   InteractionHandle interactionHandle
+);
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    InteractionHandle interactionHandle, 
    IntEbm countDimensions,
@@ -431,9 +427,6 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    InteractionFlags flags,
    IntEbm minSamplesLeaf,
    double * avgInteractionStrengthOut
-);
-EBM_API_INCLUDE void EBM_CALLING_CONVENTION FreeInteractionDetector(
-   InteractionHandle interactionHandle
 );
 
 #ifdef __cplusplus

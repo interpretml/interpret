@@ -61,6 +61,11 @@ create_booster <- function(
    return(booster_handle)
 }
 
+free_booster <- function(booster_handle) {
+   .Call(FreeBooster_R, booster_handle)
+   return(NULL)
+}
+
 generate_term_update <- function(
    booster_handle, 
    index_term, 
@@ -123,11 +128,6 @@ get_current_term_scores <- function(booster_handle, index_term) {
       stop("error in GetCurrentTermScores_R")
    }
    return(term_scores)
-}
-
-free_booster <- function(booster_handle) {
-   .Call(FreeBooster_R, booster_handle)
-   return(NULL)
 }
 
 get_best_model <- function(booster) {

@@ -4,21 +4,33 @@ EXPORTS
   SetLogCallback
   SetTraceLevel
   GetTraceLevelString
+  CleanFloats
+  GenerateSeed
+  GenerateGaussianRandom
+  GetHistogramCutCount
+  CutUniform
+  CutQuantile
+  CutWinsorized
+  SuggestGraphBounds
+  BinFeature
   MeasureDataSetHeader
-  FillDataSetHeader
   MeasureFeature
-  FillFeature
   MeasureWeight
-  FillWeight
   MeasureClassificationTarget
-  FillClassificationTarget
   MeasureRegressionTarget
+  FillDataSetHeader
+  FillFeature
+  FillWeight
+  FillClassificationTarget
   FillRegressionTarget
   ExtractDataSetHeader
   ExtractBinCounts
   ExtractTargetClasses
+  SampleWithoutReplacement
+  SampleWithoutReplacementStratified
   CreateBooster
   CreateBoosterView
+  FreeBooster
   GenerateTermUpdate
   GetTermUpdateSplits
   GetTermUpdate
@@ -26,18 +38,6 @@ EXPORTS
   ApplyTermUpdate
   GetBestTermScores
   GetCurrentTermScores
-  FreeBooster
   CreateInteractionDetector
-  CalcInteractionStrength
   FreeInteractionDetector
-  GetHistogramCutCount
-  CutQuantile
-  CutWinsorized
-  CutUniform
-  BinFeature
-  SuggestGraphBounds
-  CleanFloats
-  GenerateSeed
-  GenerateGaussianRandom
-  SampleWithoutReplacement
-  SampleWithoutReplacementStratified
+  CalcInteractionStrength

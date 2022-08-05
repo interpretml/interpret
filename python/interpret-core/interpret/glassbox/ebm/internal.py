@@ -191,67 +191,21 @@ class Native:
 
         return random_numbers
 
-    def sample_without_replacement(
-        self, 
-        random_state, 
-        count_training_samples,
-        count_validation_samples
-    ):
-        is_deterministic = random_state is not None
-        random_state = 0 if random_state is None else random_state
-
-        count_samples = count_training_samples + count_validation_samples
-
-        bag = np.empty(count_samples, dtype=np.int8, order="C")
-
-        return_code = self._unsafe.SampleWithoutReplacement(
-            is_deterministic,
-            random_state,
-            count_training_samples,
-            count_validation_samples,
-            Native._make_pointer(bag, np.int8),
-        )
-
-        if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "SampleWithoutReplacement")
-
-        return bag
-
-    def sample_without_replacement_stratified(
-        self, 
-        random_state, 
-        n_classes,
-        count_training_samples,
-        count_validation_samples,
-        targets
-    ):
-        is_deterministic = random_state is not None
-        random_state = 0 if random_state is None else random_state
-
-        count_samples = count_training_samples + count_validation_samples
-
-        if len(targets) != count_samples:
-            raise ValueError("count_training_samples + count_validation_samples should be equal to len(targets)")
-
-        bag = np.empty(count_samples, dtype=np.int8, order="C")
-
-        return_code = self._unsafe.SampleWithoutReplacementStratified(
-            is_deterministic,
-            random_state,
-            n_classes,
-            count_training_samples,
-            count_validation_samples,
-            Native._make_pointer(targets, np.int64),
-            Native._make_pointer(bag, np.int8),
-        )
-
-        if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "SampleWithoutReplacementStratified")
-
-        return bag
-
     def get_histogram_cut_count(self, X_col):
         return self._unsafe.GetHistogramCutCount(X_col.shape[0], Native._make_pointer(X_col, np.float64))
+
+    def cut_uniform(self, X_col, max_cuts):
+        if max_cuts < 0:
+            raise Exception(f"max_cuts can't be negative: {max_cuts}.")
+
+        cuts = np.empty(max_cuts, dtype=np.float64, order="C")
+        count_cuts = self._unsafe.CutUniform(
+            X_col.shape[0],
+            Native._make_pointer(X_col, np.float64),
+            max_cuts,
+            Native._make_pointer(cuts, np.float64),
+        )
+        return cuts[:count_cuts]
 
     def cut_quantile(self, X_col, min_samples_bin, is_rounded, max_cuts):
         if max_cuts < 0:
@@ -271,19 +225,6 @@ class Native:
             raise Native._get_native_exception(return_code, "CutQuantile")
 
         return cuts[:count_cuts.value]
-
-    def cut_uniform(self, X_col, max_cuts):
-        if max_cuts < 0:
-            raise Exception(f"max_cuts can't be negative: {max_cuts}.")
-
-        cuts = np.empty(max_cuts, dtype=np.float64, order="C")
-        count_cuts = self._unsafe.CutUniform(
-            X_col.shape[0],
-            Native._make_pointer(X_col, np.float64),
-            max_cuts,
-            Native._make_pointer(cuts, np.float64),
-        )
-        return cuts[:count_cuts]
 
     def cut_winsorized(self, X_col, max_cuts):
         if max_cuts < 0:
@@ -347,23 +288,11 @@ class Native:
 
         return bin_indexes
 
-
     def measure_dataset_header(self, n_features, n_weights, n_targets):
         n_bytes = self._unsafe.MeasureDataSetHeader(n_features, n_weights, n_targets)
         if n_bytes < 0:  # pragma: no cover
             raise Native._get_native_exception(n_bytes, "MeasureDataSetHeader")
         return n_bytes
-
-    def fill_dataset_header(self, n_features, n_weights, n_targets, dataset):
-        return_code = self._unsafe.FillDataSetHeader(
-            n_features, 
-            n_weights, 
-            n_targets, 
-            dataset.nbytes,
-            Native._make_pointer(dataset, np.ubyte),
-        )
-        if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "FillDataSetHeader")
 
     def measure_feature(self, n_bins, is_missing, is_unknown, is_nominal, bin_indexes):
         n_bytes = self._unsafe.MeasureFeature(
@@ -377,6 +306,45 @@ class Native:
         if n_bytes < 0:  # pragma: no cover
             raise Native._get_native_exception(n_bytes, "MeasureFeature")
         return n_bytes
+
+    def measure_weight(self, weights):
+        n_bytes = self._unsafe.MeasureWeight(
+            len(weights), 
+            Native._make_pointer(weights, np.float64),
+        )
+        if n_bytes < 0:  # pragma: no cover
+            raise Native._get_native_exception(n_bytes, "MeasureWeight")
+        return n_bytes
+
+    def measure_classification_target(self, n_classes, targets):
+        n_bytes = self._unsafe.MeasureClassificationTarget(
+            n_classes, 
+            len(targets), 
+            Native._make_pointer(targets, np.int64),
+        )
+        if n_bytes < 0:  # pragma: no cover
+            raise Native._get_native_exception(n_bytes, "MeasureClassificationTarget")
+        return n_bytes
+
+    def measure_regression_target(self, targets):
+        n_bytes = self._unsafe.MeasureRegressionTarget(
+            len(targets), 
+            Native._make_pointer(targets, np.float64),
+        )
+        if n_bytes < 0:  # pragma: no cover
+            raise Native._get_native_exception(n_bytes, "MeasureRegressionTarget")
+        return n_bytes
+
+    def fill_dataset_header(self, n_features, n_weights, n_targets, dataset):
+        return_code = self._unsafe.FillDataSetHeader(
+            n_features, 
+            n_weights, 
+            n_targets, 
+            dataset.nbytes,
+            Native._make_pointer(dataset, np.ubyte),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "FillDataSetHeader")
 
     def fill_feature(self, n_bins, is_missing, is_unknown, is_nominal, bin_indexes, dataset):
         return_code = self._unsafe.FillFeature(
@@ -392,15 +360,6 @@ class Native:
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillFeature")
 
-    def measure_weight(self, weights):
-        n_bytes = self._unsafe.MeasureWeight(
-            len(weights), 
-            Native._make_pointer(weights, np.float64),
-        )
-        if n_bytes < 0:  # pragma: no cover
-            raise Native._get_native_exception(n_bytes, "MeasureWeight")
-        return n_bytes
-
     def fill_weight(self, weights, dataset):
         return_code = self._unsafe.FillWeight(
             len(weights), 
@@ -410,16 +369,6 @@ class Native:
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillWeight")
-
-    def measure_classification_target(self, n_classes, targets):
-        n_bytes = self._unsafe.MeasureClassificationTarget(
-            n_classes, 
-            len(targets), 
-            Native._make_pointer(targets, np.int64),
-        )
-        if n_bytes < 0:  # pragma: no cover
-            raise Native._get_native_exception(n_bytes, "MeasureClassificationTarget")
-        return n_bytes
 
     def fill_classification_target(self, n_classes, targets, dataset):
         return_code = self._unsafe.FillClassificationTarget(
@@ -431,15 +380,6 @@ class Native:
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillClassificationTarget")
-
-    def measure_regression_target(self, targets):
-        n_bytes = self._unsafe.MeasureRegressionTarget(
-            len(targets), 
-            Native._make_pointer(targets, np.float64),
-        )
-        if n_bytes < 0:  # pragma: no cover
-            raise Native._get_native_exception(n_bytes, "MeasureRegressionTarget")
-        return n_bytes
 
     def fill_regression_target(self, targets, dataset):
         return_code = self._unsafe.FillRegressionTarget(
@@ -494,6 +434,65 @@ class Native:
             raise Native._get_native_exception(return_code, "ExtractTargetClasses")
 
         return class_counts
+
+    def sample_without_replacement(
+        self, 
+        random_state, 
+        count_training_samples,
+        count_validation_samples
+    ):
+        is_deterministic = random_state is not None
+        random_state = 0 if random_state is None else random_state
+
+        count_samples = count_training_samples + count_validation_samples
+
+        bag = np.empty(count_samples, dtype=np.int8, order="C")
+
+        return_code = self._unsafe.SampleWithoutReplacement(
+            is_deterministic,
+            random_state,
+            count_training_samples,
+            count_validation_samples,
+            Native._make_pointer(bag, np.int8),
+        )
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "SampleWithoutReplacement")
+
+        return bag
+
+    def sample_without_replacement_stratified(
+        self, 
+        random_state, 
+        n_classes,
+        count_training_samples,
+        count_validation_samples,
+        targets
+    ):
+        is_deterministic = random_state is not None
+        random_state = 0 if random_state is None else random_state
+
+        count_samples = count_training_samples + count_validation_samples
+
+        if len(targets) != count_samples:
+            raise ValueError("count_training_samples + count_validation_samples should be equal to len(targets)")
+
+        bag = np.empty(count_samples, dtype=np.int8, order="C")
+
+        return_code = self._unsafe.SampleWithoutReplacementStratified(
+            is_deterministic,
+            random_state,
+            n_classes,
+            count_training_samples,
+            count_validation_samples,
+            Native._make_pointer(targets, np.int64),
+            Native._make_pointer(bag, np.int8),
+        )
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "SampleWithoutReplacementStratified")
+
+        return bag
 
 
     @staticmethod
@@ -582,38 +581,6 @@ class Native:
         ]
         self._unsafe.GenerateGaussianRandom.restype = ct.c_int32
 
-        self._unsafe.SampleWithoutReplacement.argtypes = [
-            # int32_t isDeterministic
-            ct.c_int32,
-            # int32_t seed
-            ct.c_int32,
-            # int64_t countTrainingSamples
-            ct.c_int64,
-            # int64_t countValidationSamples
-            ct.c_int64,
-            # int8_t * bagOut
-            ct.c_void_p,
-        ]
-        self._unsafe.SampleWithoutReplacement.restype = ct.c_int32
-
-        self._unsafe.SampleWithoutReplacementStratified.argtypes = [
-            # int32_t isDeterministic
-            ct.c_int32,
-            # int32_t seed
-            ct.c_int32,
-            # int64_t countClasses
-            ct.c_int64,
-            # int64_t countTrainingSamples
-            ct.c_int64,
-            # int64_t countValidationSamples
-            ct.c_int64,
-            # int64_t * targets
-            ct.c_void_p,
-            # int8_t * bagOut
-            ct.c_void_p,
-        ]
-        self._unsafe.SampleWithoutReplacementStratified.restype = ct.c_int32
-
         self._unsafe.GetHistogramCutCount.argtypes = [
             # int64_t countSamples
             ct.c_int64,
@@ -621,6 +588,18 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.GetHistogramCutCount.restype = ct.c_int64
+
+        self._unsafe.CutUniform.argtypes = [
+            # int64_t countSamples
+            ct.c_int64,
+            # double * featureVals
+            ct.c_void_p,
+            # int64_t countDesiredCuts
+            ct.c_int64,
+            # double * cutsLowerBoundInclusiveOut
+            ct.c_void_p,
+        ]
+        self._unsafe.CutUniform.restype = ct.c_int64
 
         self._unsafe.CutQuantile.argtypes = [
             # int64_t countSamples
@@ -637,18 +616,6 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.CutQuantile.restype = ct.c_int32
-
-        self._unsafe.CutUniform.argtypes = [
-            # int64_t countSamples
-            ct.c_int64,
-            # double * featureVals
-            ct.c_void_p,
-            # int64_t countDesiredCuts
-            ct.c_int64,
-            # double * cutsLowerBoundInclusiveOut
-            ct.c_void_p,
-        ]
-        self._unsafe.CutUniform.restype = ct.c_int64
 
         self._unsafe.CutWinsorized.argtypes = [
             # int64_t countSamples
@@ -707,20 +674,6 @@ class Native:
         ]
         self._unsafe.MeasureDataSetHeader.restype = ct.c_int64
 
-        self._unsafe.FillDataSetHeader.argtypes = [
-            # int64_t countFeatures
-            ct.c_int64,
-            # int64_t countWeights
-            ct.c_int64,
-            # int64_t countTargets
-            ct.c_int64,
-            # int64_t countBytesAllocated
-            ct.c_int64,
-            # void * fillMem
-            ct.c_void_p,
-        ]
-        self._unsafe.FillDataSetHeader.restype = ct.c_int32
-
         self._unsafe.MeasureFeature.argtypes = [
             # int64_t countBins
             ct.c_int64,
@@ -736,6 +689,47 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.MeasureFeature.restype = ct.c_int64
+
+        self._unsafe.MeasureWeight.argtypes = [
+            # int64_t countSamples
+            ct.c_int64,
+            # double * weights
+            ct.c_void_p,
+        ]
+        self._unsafe.MeasureWeight.restype = ct.c_int64
+
+        self._unsafe.MeasureClassificationTarget.argtypes = [
+            # int64_t countClasses
+            ct.c_int64,
+            # int64_t countSamples
+            ct.c_int64,
+            # int64_t * targets
+            ct.c_void_p,
+        ]
+        self._unsafe.MeasureClassificationTarget.restype = ct.c_int64
+
+        self._unsafe.MeasureRegressionTarget.argtypes = [
+            # int64_t countSamples
+            ct.c_int64,
+            # double * targets
+            ct.c_void_p,
+        ]
+        self._unsafe.MeasureRegressionTarget.restype = ct.c_int64
+
+
+        self._unsafe.FillDataSetHeader.argtypes = [
+            # int64_t countFeatures
+            ct.c_int64,
+            # int64_t countWeights
+            ct.c_int64,
+            # int64_t countTargets
+            ct.c_int64,
+            # int64_t countBytesAllocated
+            ct.c_int64,
+            # void * fillMem
+            ct.c_void_p,
+        ]
+        self._unsafe.FillDataSetHeader.restype = ct.c_int32
 
         self._unsafe.FillFeature.argtypes = [
             # int64_t countBins
@@ -757,14 +751,6 @@ class Native:
         ]
         self._unsafe.FillFeature.restype = ct.c_int32
 
-        self._unsafe.MeasureWeight.argtypes = [
-            # int64_t countSamples
-            ct.c_int64,
-            # double * weights
-            ct.c_void_p,
-        ]
-        self._unsafe.MeasureWeight.restype = ct.c_int64
-
         self._unsafe.FillWeight.argtypes = [
             # int64_t countSamples
             ct.c_int64,
@@ -776,16 +762,6 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.FillWeight.restype = ct.c_int32
-
-        self._unsafe.MeasureClassificationTarget.argtypes = [
-            # int64_t countClasses
-            ct.c_int64,
-            # int64_t countSamples
-            ct.c_int64,
-            # int64_t * targets
-            ct.c_void_p,
-        ]
-        self._unsafe.MeasureClassificationTarget.restype = ct.c_int64
 
         self._unsafe.FillClassificationTarget.argtypes = [
             # int64_t countClasses
@@ -800,14 +776,6 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.FillClassificationTarget.restype = ct.c_int32
-
-        self._unsafe.MeasureRegressionTarget.argtypes = [
-            # int64_t countSamples
-            ct.c_int64,
-            # double * targets
-            ct.c_void_p,
-        ]
-        self._unsafe.MeasureRegressionTarget.restype = ct.c_int64
 
         self._unsafe.FillRegressionTarget.argtypes = [
             # int64_t countSamples
@@ -856,6 +824,39 @@ class Native:
         self._unsafe.ExtractTargetClasses.restype = ct.c_int32
 
 
+        self._unsafe.SampleWithoutReplacement.argtypes = [
+            # int32_t isDeterministic
+            ct.c_int32,
+            # int32_t seed
+            ct.c_int32,
+            # int64_t countTrainingSamples
+            ct.c_int64,
+            # int64_t countValidationSamples
+            ct.c_int64,
+            # int8_t * bagOut
+            ct.c_void_p,
+        ]
+        self._unsafe.SampleWithoutReplacement.restype = ct.c_int32
+
+        self._unsafe.SampleWithoutReplacementStratified.argtypes = [
+            # int32_t isDeterministic
+            ct.c_int32,
+            # int32_t seed
+            ct.c_int32,
+            # int64_t countClasses
+            ct.c_int64,
+            # int64_t countTrainingSamples
+            ct.c_int64,
+            # int64_t countValidationSamples
+            ct.c_int64,
+            # int64_t * targets
+            ct.c_void_p,
+            # int8_t * bagOut
+            ct.c_void_p,
+        ]
+        self._unsafe.SampleWithoutReplacementStratified.restype = ct.c_int32
+
+
         self._unsafe.CreateBooster.argtypes = [
             # int32_t isDeterministic
             ct.c_int32,
@@ -881,6 +882,12 @@ class Native:
             ct.POINTER(ct.c_void_p),
         ]
         self._unsafe.CreateBooster.restype = ct.c_int32
+
+        self._unsafe.FreeBooster.argtypes = [
+            # void * boosterHandle
+            ct.c_void_p
+        ]
+        self._unsafe.FreeBooster.restype = None
 
         self._unsafe.GenerateTermUpdate.argtypes = [
             # void * boosterHandle
@@ -958,12 +965,6 @@ class Native:
         ]
         self._unsafe.GetCurrentTermScores.restype = ct.c_int32
 
-        self._unsafe.FreeBooster.argtypes = [
-            # void * boosterHandle
-            ct.c_void_p
-        ]
-        self._unsafe.FreeBooster.restype = None
-
 
         self._unsafe.CreateInteractionDetector.argtypes = [
             # void * dataSet
@@ -978,6 +979,12 @@ class Native:
             ct.POINTER(ct.c_void_p),
         ]
         self._unsafe.CreateInteractionDetector.restype = ct.c_int32
+
+        self._unsafe.FreeInteractionDetector.argtypes = [
+            # void * interactionHandle
+            ct.c_void_p
+        ]
+        self._unsafe.FreeInteractionDetector.restype = None
 
         self._unsafe.CalcInteractionStrength.argtypes = [
             # void * interactionHandle
@@ -994,12 +1001,6 @@ class Native:
             ct.POINTER(ct.c_double),
         ]
         self._unsafe.CalcInteractionStrength.restype = ct.c_int32
-
-        self._unsafe.FreeInteractionDetector.argtypes = [
-            # void * interactionHandle
-            ct.c_void_p
-        ]
-        self._unsafe.FreeInteractionDetector.restype = None
 
 class Booster(AbstractContextManager):
     """Lightweight wrapper for EBM C boosting code.

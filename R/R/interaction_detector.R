@@ -23,6 +23,11 @@ create_interaction_detector <- function(
    return(interaction_handle)
 }
 
+free_interaction_detector <- function(interaction_handle) {
+   .Call(FreeInteractionDetector_R, interaction_handle)
+   return(NULL)
+}
+
 calc_interaction_strength <- function(interaction_handle, feature_indexes, count_samples_required_for_child_split_min) {
    stopifnot(class(interaction_handle) == "externalptr")
    feature_indexes <- as.double(feature_indexes)

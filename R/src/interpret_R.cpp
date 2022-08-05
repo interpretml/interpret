@@ -202,10 +202,7 @@ IntEbm CountDoubles(const SEXP items) {
    return static_cast<IntEbm>(countItemsR);
 }
 
-SEXP GenerateSeed_R(
-   SEXP seed,
-   SEXP randomMix
-) {
+SEXP GenerateSeed_R(SEXP seed, SEXP randomMix) {
    EBM_ASSERT(nullptr != seed);
    EBM_ASSERT(nullptr != randomMix);
 
@@ -229,12 +226,7 @@ SEXP GenerateSeed_R(
    return ret;
 }
 
-SEXP CutQuantile_R(
-   SEXP featureVals,
-   SEXP minSamplesBin,
-   SEXP isRounded,
-   SEXP countCuts
-) {
+SEXP CutQuantile_R(SEXP featureVals, SEXP minSamplesBin, SEXP isRounded, SEXP countCuts) {
    EBM_ASSERT(nullptr != featureVals);
    EBM_ASSERT(nullptr != minSamplesBin);
    EBM_ASSERT(nullptr != isRounded);
@@ -316,11 +308,7 @@ SEXP CutQuantile_R(
    return ret;
 }
 
-SEXP BinFeature_R(
-   SEXP featureVals,
-   SEXP cutsLowerBoundInclusive,
-   SEXP binIndexesOut
-) {
+SEXP BinFeature_R(SEXP featureVals, SEXP cutsLowerBoundInclusive, SEXP binIndexesOut) {
    EBM_ASSERT(nullptr != featureVals);
    EBM_ASSERT(nullptr != cutsLowerBoundInclusive);
    EBM_ASSERT(nullptr != binIndexesOut);
@@ -388,36 +376,6 @@ SEXP BinFeature_R(
    return ret;
 }
 
-SEXP CreateDataSet_R(SEXP countBytes) {
-   EBM_ASSERT(nullptr != countBytes);
-
-   if(!IsSingleDoubleVector(countBytes)) {
-      error("CreateDataSet_R !IsSingleDoubleVector(countBytes)");
-   }
-   const double countBytesDouble = REAL(countBytes)[0];
-   if(!IsDoubleToIntEbmIndexValid(countBytesDouble)) {
-      error("CreateDataSet_R !IsDoubleToIntEbmIndexValid(countBytesDouble)");
-   }
-   const size_t cBytes = static_cast<size_t>(countBytesDouble);
-
-   void * dataSetHandle = malloc(cBytes);
-
-   SEXP dataSetHandleWrapped = R_MakeExternalPtr(dataSetHandle, R_NilValue, R_NilValue); // makes an EXTPTRSXP
-   PROTECT(dataSetHandleWrapped);
-
-   R_RegisterCFinalizerEx(dataSetHandleWrapped, &DataSetFinalizer, Rboolean::TRUE);
-
-   UNPROTECT(1);
-   return dataSetHandleWrapped;
-}
-
-SEXP FreeDataSet_R(SEXP dataSetHandleWrapped) {
-   EBM_ASSERT(nullptr != dataSetHandleWrapped);
-
-   DataSetFinalizer(dataSetHandleWrapped);
-   return R_NilValue;
-}
-
 SEXP MeasureDataSetHeader_R(
    SEXP countFeatures,
    SEXP countWeights,
@@ -470,6 +428,133 @@ SEXP MeasureDataSetHeader_R(
    REAL(ret)[0] = static_cast<double>(countBytes);
    UNPROTECT(1);
    return ret;
+}
+
+SEXP MeasureFeature_R(
+   SEXP countBins,
+   SEXP isMissing,
+   SEXP isUnknown,
+   SEXP isNominal,
+   SEXP binIndexes
+) {
+   EBM_ASSERT(nullptr != countBins);
+   EBM_ASSERT(nullptr != isMissing);
+   EBM_ASSERT(nullptr != isUnknown);
+   EBM_ASSERT(nullptr != isNominal);
+   EBM_ASSERT(nullptr != binIndexes);
+
+   if(!IsSingleDoubleVector(countBins)) {
+      error("MeasureFeature_R !IsSingleDoubleVector(countBins)");
+   }
+   const double countBinsDouble = REAL(countBins)[0];
+   if(!IsDoubleToIntEbmIndexValid(countBinsDouble)) {
+      error("MeasureFeature_R !IsDoubleToIntEbmIndexValid(countBinsDouble)");
+   }
+   const IntEbm countBinsIntEbm = static_cast<IntEbm>(countBinsDouble);
+
+   BoolEbm bMissing = ConvertBool(isMissing);
+   BoolEbm bUnknown = ConvertBool(isUnknown);
+   BoolEbm bNominal = ConvertBool(isNominal);
+
+   size_t cSamples;
+   const IntEbm * aiBins;
+   if(ConvertDoublesToIndexes(binIndexes, &cSamples, &aiBins)) {
+      error("MeasureFeature_R ConvertDoublesToIndexes(binIndexes, &cSamples, &aiBins)");
+   }
+   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
+   const IntEbm countSamples = static_cast<IntEbm>(cSamples);
+
+   const IntEbm countBytes = MeasureFeature(
+      countBinsIntEbm,
+      bMissing,
+      bUnknown,
+      bNominal,
+      countSamples,
+      aiBins
+   );
+   if(countBytes < 0) {
+      error("MeasureFeature_R MeasureFeature returned error code: %" ErrorEbmPrintf, static_cast<ErrorEbm>(countBytes));
+   }
+   if(SAFE_FLOAT64_AS_INT64_MAX < countBytes) {
+      error("MeasureFeature_R SAFE_FLOAT64_AS_INT64_MAX < countBytes");
+   }
+
+   const SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   REAL(ret)[0] = static_cast<double>(countBytes);
+   UNPROTECT(1);
+   return ret;
+}
+
+SEXP MeasureClassificationTarget_R(
+   SEXP countClasses,
+   SEXP targets
+) {
+   EBM_ASSERT(nullptr != countClasses);
+   EBM_ASSERT(nullptr != targets);
+
+   if(!IsSingleDoubleVector(countClasses)) {
+      error("MeasureClassificationTarget_R !IsSingleDoubleVector(countClasses)");
+   }
+   const double countClassesDouble = REAL(countClasses)[0];
+   if(!IsDoubleToIntEbmIndexValid(countClassesDouble)) {
+      error("MeasureClassificationTarget_R !IsDoubleToIntEbmIndexValid(countClassesDouble)");
+   }
+   const IntEbm countClassesIntEbm = static_cast<IntEbm>(countClassesDouble);
+
+   size_t cSamples;
+   const IntEbm * aTargets;
+   if(ConvertDoublesToIndexes(targets, &cSamples, &aTargets)) {
+      error("MeasureClassificationTarget_R ConvertDoublesToIndexes(targets, &cSamples, &aTargets)");
+   }
+   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
+   const IntEbm countSamples = static_cast<IntEbm>(cSamples);
+
+   const IntEbm countBytes = MeasureClassificationTarget(
+      countClassesIntEbm,
+      countSamples,
+      aTargets
+   );
+   if(countBytes < 0) {
+      error("MeasureClassificationTarget_R MeasureClassificationTarget returned error code: %" ErrorEbmPrintf, static_cast<ErrorEbm>(countBytes));
+   }
+   if(SAFE_FLOAT64_AS_INT64_MAX < countBytes) {
+      error("MeasureClassificationTarget_R SAFE_FLOAT64_AS_INT64_MAX < countBytes");
+   }
+
+   const SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   REAL(ret)[0] = static_cast<double>(countBytes);
+   UNPROTECT(1);
+   return ret;
+}
+
+SEXP CreateDataSet_R(SEXP countBytes) {
+   EBM_ASSERT(nullptr != countBytes);
+
+   if(!IsSingleDoubleVector(countBytes)) {
+      error("CreateDataSet_R !IsSingleDoubleVector(countBytes)");
+   }
+   const double countBytesDouble = REAL(countBytes)[0];
+   if(!IsDoubleToIntEbmIndexValid(countBytesDouble)) {
+      error("CreateDataSet_R !IsDoubleToIntEbmIndexValid(countBytesDouble)");
+   }
+   const size_t cBytes = static_cast<size_t>(countBytesDouble);
+
+   void * dataSetHandle = malloc(cBytes);
+
+   SEXP dataSetHandleWrapped = R_MakeExternalPtr(dataSetHandle, R_NilValue, R_NilValue); // makes an EXTPTRSXP
+   PROTECT(dataSetHandleWrapped);
+
+   R_RegisterCFinalizerEx(dataSetHandleWrapped, &DataSetFinalizer, Rboolean::TRUE);
+
+   UNPROTECT(1);
+   return dataSetHandleWrapped;
+}
+
+SEXP FreeDataSet_R(SEXP dataSetHandleWrapped) {
+   EBM_ASSERT(nullptr != dataSetHandleWrapped);
+
+   DataSetFinalizer(dataSetHandleWrapped);
+   return R_NilValue;
 }
 
 SEXP FillDataSetHeader_R(
@@ -538,61 +623,6 @@ SEXP FillDataSetHeader_R(
    }
 
    return R_NilValue;
-}
-
-SEXP MeasureFeature_R(
-   SEXP countBins,
-   SEXP isMissing,
-   SEXP isUnknown,
-   SEXP isNominal,
-   SEXP binIndexes
-) {
-   EBM_ASSERT(nullptr != countBins);
-   EBM_ASSERT(nullptr != isMissing);
-   EBM_ASSERT(nullptr != isUnknown);
-   EBM_ASSERT(nullptr != isNominal);
-   EBM_ASSERT(nullptr != binIndexes);
-
-   if(!IsSingleDoubleVector(countBins)) {
-      error("MeasureFeature_R !IsSingleDoubleVector(countBins)");
-   }
-   const double countBinsDouble = REAL(countBins)[0];
-   if(!IsDoubleToIntEbmIndexValid(countBinsDouble)) {
-      error("MeasureFeature_R !IsDoubleToIntEbmIndexValid(countBinsDouble)");
-   }
-   const IntEbm countBinsIntEbm = static_cast<IntEbm>(countBinsDouble);
-
-   BoolEbm bMissing = ConvertBool(isMissing);
-   BoolEbm bUnknown = ConvertBool(isUnknown);
-   BoolEbm bNominal = ConvertBool(isNominal);
-
-   size_t cSamples;
-   const IntEbm * aiBins;
-   if(ConvertDoublesToIndexes(binIndexes, &cSamples, &aiBins)) {
-      error("MeasureFeature_R ConvertDoublesToIndexes(binIndexes, &cSamples, &aiBins)");
-   }
-   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbm countSamples = static_cast<IntEbm>(cSamples);
-
-   const IntEbm countBytes = MeasureFeature(
-      countBinsIntEbm,
-      bMissing,
-      bUnknown,
-      bNominal,
-      countSamples,
-      aiBins
-   );
-   if(countBytes < 0) {
-      error("MeasureFeature_R MeasureFeature returned error code: %" ErrorEbmPrintf, static_cast<ErrorEbm>(countBytes));
-   }
-   if(SAFE_FLOAT64_AS_INT64_MAX < countBytes) {
-      error("MeasureFeature_R SAFE_FLOAT64_AS_INT64_MAX < countBytes");
-   }
-
-   const SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(countBytes);
-   UNPROTECT(1);
-   return ret;
 }
 
 SEXP FillFeature_R(
@@ -664,54 +694,7 @@ SEXP FillFeature_R(
    return R_NilValue;
 }
 
-SEXP MeasureClassificationTarget_R(
-   SEXP countClasses,
-   SEXP targets
-) {
-   EBM_ASSERT(nullptr != countClasses);
-   EBM_ASSERT(nullptr != targets);
-
-   if(!IsSingleDoubleVector(countClasses)) {
-      error("MeasureClassificationTarget_R !IsSingleDoubleVector(countClasses)");
-   }
-   const double countClassesDouble = REAL(countClasses)[0];
-   if(!IsDoubleToIntEbmIndexValid(countClassesDouble)) {
-      error("MeasureClassificationTarget_R !IsDoubleToIntEbmIndexValid(countClassesDouble)");
-   }
-   const IntEbm countClassesIntEbm = static_cast<IntEbm>(countClassesDouble);
-
-   size_t cSamples;
-   const IntEbm * aTargets;
-   if(ConvertDoublesToIndexes(targets, &cSamples, &aTargets)) {
-      error("MeasureClassificationTarget_R ConvertDoublesToIndexes(targets, &cSamples, &aTargets)");
-   }
-   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbm countSamples = static_cast<IntEbm>(cSamples);
-
-   const IntEbm countBytes = MeasureClassificationTarget(
-      countClassesIntEbm,
-      countSamples,
-      aTargets
-   );
-   if(countBytes < 0) {
-      error("MeasureClassificationTarget_R MeasureClassificationTarget returned error code: %" ErrorEbmPrintf, static_cast<ErrorEbm>(countBytes));
-   }
-   if(SAFE_FLOAT64_AS_INT64_MAX < countBytes) {
-      error("MeasureClassificationTarget_R SAFE_FLOAT64_AS_INT64_MAX < countBytes");
-   }
-
-   const SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(countBytes);
-   UNPROTECT(1);
-   return ret;
-}
-
-SEXP FillClassificationTarget_R(
-   SEXP countClasses,
-   SEXP targets,
-   SEXP countBytesAllocated,
-   SEXP fillMemWrapped
-) {
+SEXP FillClassificationTarget_R(SEXP countClasses, SEXP targets, SEXP countBytesAllocated, SEXP fillMemWrapped) {
    EBM_ASSERT(nullptr != countClasses);
    EBM_ASSERT(nullptr != targets);
    EBM_ASSERT(nullptr != countBytesAllocated);
@@ -762,12 +745,7 @@ SEXP FillClassificationTarget_R(
    return R_NilValue;
 }
 
-SEXP SampleWithoutReplacement_R(
-   SEXP seed,
-   SEXP countTrainingSamples,
-   SEXP countValidationSamples,
-   SEXP bagOut
-) {
+SEXP SampleWithoutReplacement_R(SEXP seed, SEXP countTrainingSamples, SEXP countValidationSamples, SEXP bagOut) {
    EBM_ASSERT(nullptr != seed);
    EBM_ASSERT(nullptr != countTrainingSamples);
    EBM_ASSERT(nullptr != countValidationSamples);
@@ -1024,6 +1002,11 @@ SEXP CreateBooster_R(
    return boosterHandleWrapped;
 }
 
+SEXP FreeBooster_R(SEXP boosterHandleWrapped) {
+   BoostingFinalizer(boosterHandleWrapped);
+   return R_NilValue;
+}
+
 SEXP GenerateTermUpdate_R(
    SEXP boosterHandleWrapped,
    SEXP indexTerm,
@@ -1121,9 +1104,7 @@ SEXP GenerateTermUpdate_R(
    return ret;
 }
 
-SEXP ApplyTermUpdate_R(
-   SEXP boosterHandleWrapped
-) {
+SEXP ApplyTermUpdate_R(SEXP boosterHandleWrapped) {
    EBM_ASSERT(nullptr != boosterHandleWrapped);
 
    ErrorEbm err;
@@ -1148,10 +1129,7 @@ SEXP ApplyTermUpdate_R(
    return ret;
 }
 
-SEXP GetBestTermScores_R(
-   SEXP boosterHandleWrapped,
-   SEXP indexTerm
-) {
+SEXP GetBestTermScores_R(SEXP boosterHandleWrapped, SEXP indexTerm) {
    EBM_ASSERT(nullptr != boosterHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != indexTerm); // shouldn't be possible
 
@@ -1215,10 +1193,7 @@ SEXP GetBestTermScores_R(
    return ret;
 }
 
-SEXP GetCurrentTermScores_R(
-   SEXP boosterHandleWrapped,
-   SEXP indexTerm
-) {
+SEXP GetCurrentTermScores_R(SEXP boosterHandleWrapped, SEXP indexTerm) {
    EBM_ASSERT(nullptr != boosterHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != indexTerm); // shouldn't be possible
 
@@ -1282,18 +1257,7 @@ SEXP GetCurrentTermScores_R(
    return ret;
 }
 
-SEXP FreeBooster_R(
-   SEXP boosterHandleWrapped
-) {
-   BoostingFinalizer(boosterHandleWrapped);
-   return R_NilValue;
-}
-
-SEXP CreateInteractionDetector_R(
-   SEXP dataSetWrapped,
-   SEXP bag,
-   SEXP initScores
-) {
+SEXP CreateInteractionDetector_R(SEXP dataSetWrapped, SEXP bag, SEXP initScores) {
    EBM_ASSERT(nullptr != dataSetWrapped);
    EBM_ASSERT(nullptr != bag);
    EBM_ASSERT(nullptr != initScores);
@@ -1388,11 +1352,12 @@ SEXP CreateInteractionDetector_R(
    return interactionHandleWrapped;
 }
 
-SEXP CalcInteractionStrength_R(
-   SEXP interactionHandleWrapped,
-   SEXP featureIndexes,
-   SEXP minSamplesLeaf
-) {
+SEXP FreeInteractionDetector_R(SEXP interactionHandleWrapped) {
+   InteractionFinalizer(interactionHandleWrapped);
+   return R_NilValue;
+}
+
+SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexes, SEXP minSamplesLeaf) {
    EBM_ASSERT(nullptr != interactionHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != featureIndexes); // shouldn't be possible
    EBM_ASSERT(nullptr != minSamplesLeaf);
@@ -1442,11 +1407,6 @@ SEXP CalcInteractionStrength_R(
    REAL(ret)[0] = static_cast<double>(avgInteractionStrength);
    UNPROTECT(1);
    return ret;
-}
-
-SEXP FreeInteractionDetector_R(SEXP interactionHandleWrapped) {
-   InteractionFinalizer(interactionHandleWrapped);
-   return R_NilValue;
 }
 
 static const R_CallMethodDef g_exposedFunctions[] = {
