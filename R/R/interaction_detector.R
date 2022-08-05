@@ -2,74 +2,24 @@
 # Licensed under the MIT license.
 # Author: Paul Koch <code@koch.ninja>
 
-create_classification_interaction_detector <- function(
-   count_classes, 
-   features_categorical,
-   features_bin_count,
-   bin_indexes, 
-   targets, 
-   weights, 
-   predictor_scores
+create_interaction_detector <- function(
+   dataset_handle,
+   bag,
+   init_scores
 ) {
-   count_classes <- as.double(count_classes)
-   features_categorical <- as.logical(features_categorical)
-   features_bin_count <- as.double(features_bin_count)
-   bin_indexes <- as.double(bin_indexes)
-   targets <- as.double(targets)
-   if(!is.null(weights)) {
-      weights <- as.double(weights)
+   stopifnot(class(dataset_handle) == "externalptr")
+   if(!is.null(bag)) {
+      bag <- as.integer(bag)
    }
-   if(!is.null(predictor_scores)) {
-      predictor_scores <- as.double(predictor_scores)
+   if(!is.null(init_scores)) {
+      init_scores <- as.double(init_scores)
    }
-
    interaction_handle <- .Call(
-      CreateClassificationInteractionDetector_R, 
-      count_classes, 
-      features_categorical,
-      features_bin_count,
-      bin_indexes, 
-      targets, 
-      weights, 
-      predictor_scores
+      CreateInteractionDetector_R, 
+      dataset_handle,
+      bag,
+      init_scores
    )
-   if(is.null(interaction_handle)) {
-      stop("error in CreateClassificationInteractionDetector_R")
-   }
-   return(interaction_handle)
-}
-
-create_regression_interaction_detector <- function(
-   features_categorical,
-   features_bin_count,
-   bin_indexes, 
-   targets, 
-   weights, 
-   predictor_scores
-) {
-   features_categorical <- as.logical(features_categorical)
-   features_bin_count <- as.double(features_bin_count)
-   bin_indexes <- as.double(bin_indexes)
-   targets <- as.double(targets)
-   if(!is.null(weights)) {
-      weights <- as.double(weights)
-   }
-   if(!is.null(predictor_scores)) {
-      predictor_scores <- as.double(predictor_scores)
-   }
-
-   interaction_handle <- .Call(
-      CreateRegressionInteractionDetector_R, 
-      features_categorical,
-      features_bin_count,
-      bin_indexes, 
-      targets, 
-      weights, 
-      predictor_scores
-   )
-   if(is.null(interaction_handle)) {
-      stop("error in CreateRegressionInteractionDetector_R")
-   }
    return(interaction_handle)
 }
 

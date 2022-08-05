@@ -25,130 +25,39 @@ convert_terms_to_c <- function(terms) {
    return(list(feature_counts = feature_counts, feature_indexes = feature_indexes))
 }
 
-create_classification_booster <- function(
+create_booster <- function(
    random_state,
-   count_classes, 
-   features_categorical,
-   features_bin_count,
-   feature_counts, 
-   feature_indexes, 
-   training_bin_indexes, 
-   training_targets, 
-   training_weights, 
-   training_init_scores, 
-   validation_bin_indexes, 
-   validation_targets, 
-   validation_weights, 
-   validation_init_scores, 
+   dataset_handle,
+   bag,
+   init_scores,
+   dimension_counts,
+   feature_indexes,
    count_inner_bags
 ) {
-   random_state <- as.integer(random_state)
-   count_classes <- as.double(count_classes)
-   features_categorical <- as.logical(features_categorical)
-   features_bin_count <- as.double(features_bin_count)
-   feature_counts <- as.double(feature_counts)
+   if(!is.null(random_state)) {
+      random_state <- as.integer(random_state)
+   }
+   stopifnot(class(dataset_handle) == "externalptr")
+   if(!is.null(bag)) {
+      bag <- as.integer(bag)
+   }
+   if(!is.null(init_scores)) {
+      init_scores <- as.double(init_scores)
+   }
+   dimension_counts <- as.double(dimension_counts)
    feature_indexes <- as.double(feature_indexes)
-   training_bin_indexes <- as.double(training_bin_indexes)
-   training_targets <- as.double(training_targets)
-   if(!is.null(training_weights)) {
-      training_weights <- as.double(training_weights)
-   }
-   if(!is.null(training_init_scores)) {
-      training_init_scores <- as.double(training_init_scores)
-   }
-   validation_bin_indexes <- as.double(validation_bin_indexes)
-   validation_targets <- as.double(validation_targets)
-   if(!is.null(validation_weights)) {
-      validation_weights <- as.double(validation_weights)
-   }
-   if(!is.null(validation_init_scores)) {
-      validation_init_scores <- as.double(validation_init_scores)
-   }
-   count_inner_bags <- as.integer(count_inner_bags)
+   count_inner_bags <- as.double(count_inner_bags)
 
    booster_handle <- .Call(
-      CreateClassificationBooster_R, 
+      CreateBooster_R, 
       random_state,
-      count_classes, 
-      features_categorical,
-      features_bin_count,
-      feature_counts, 
-      feature_indexes, 
-      training_bin_indexes, 
-      training_targets, 
-      training_weights, 
-      training_init_scores, 
-      validation_bin_indexes, 
-      validation_targets, 
-      validation_weights, 
-      validation_init_scores, 
+      dataset_handle,
+      bag,
+      init_scores,
+      dimension_counts,
+      feature_indexes,
       count_inner_bags
    )
-   if(is.null(booster_handle)) {
-      stop("Error in CreateClassificationBooster")
-   }
-   return(booster_handle)
-}
-
-create_regression_booster <- function(
-   random_state,
-   features_categorical,
-   features_bin_count,
-   feature_counts, 
-   feature_indexes, 
-   training_bin_indexes, 
-   training_targets, 
-   training_weights, 
-   training_init_scores, 
-   validation_bin_indexes, 
-   validation_targets, 
-   validation_weights, 
-   validation_init_scores, 
-   count_inner_bags
-) {
-   random_state <- as.integer(random_state)
-   features_categorical <- as.logical(features_categorical)
-   features_bin_count <- as.double(features_bin_count)
-   feature_counts <- as.double(feature_counts)
-   feature_indexes <- as.double(feature_indexes)
-   training_bin_indexes <- as.double(training_bin_indexes)
-   training_targets <- as.double(training_targets)
-   if(!is.null(training_weights)) {
-      training_weights <- as.double(training_weights)
-   }
-   if(!is.null(training_init_scores)) {
-      training_init_scores <- as.double(training_init_scores)
-   }
-   validation_bin_indexes <- as.double(validation_bin_indexes)
-   validation_targets <- as.double(validation_targets)
-   if(!is.null(validation_weights)) {
-      validation_weights <- as.double(validation_weights)
-   }
-   if(!is.null(validation_init_scores)) {
-      validation_init_scores <- as.double(validation_init_scores)
-   }
-   count_inner_bags <- as.integer(count_inner_bags)
-
-   booster_handle <- .Call(
-      CreateRegressionBooster_R, 
-      random_state,
-      features_categorical,
-      features_bin_count,
-      feature_counts, 
-      feature_indexes, 
-      training_bin_indexes, 
-      training_targets, 
-      training_weights, 
-      training_init_scores, 
-      validation_bin_indexes, 
-      validation_targets, 
-      validation_weights, 
-      validation_init_scores, 
-      count_inner_bags
-   )
-   if(is.null(booster_handle)) {
-      stop("Error in CreateRegressionBooster")
-   }
    return(booster_handle)
 }
 
@@ -216,7 +125,7 @@ get_current_term_scores <- function(booster_handle, index_term) {
    return(term_scores)
 }
 
-free_boosting <- function(booster_handle) {
+free_booster <- function(booster_handle) {
    .Call(FreeBooster_R, booster_handle)
    return(NULL)
 }
@@ -240,60 +149,24 @@ get_current_model <- function(booster) {
 booster <- function(
    model_type,
    n_classes,
-   features_categorical,
-   features_bin_count,
+   dataset_handle,
+   bag,
+   init_scores,
    terms,
-   X_train,
-   y_train,
-   weights_train, 
-   init_scores_train,
-   X_val,
-   y_val,
-   weights_val, 
-   init_scores_val,
    inner_bags,
    random_state
 ) {
    c_structs <- convert_terms_to_c(terms)
 
-   if(model_type == "classification") {
-      booster_handle <- create_classification_booster(
-         random_state,
-         n_classes, 
-         features_categorical,
-         features_bin_count,
-         c_structs$feature_counts, 
-         c_structs$feature_indexes, 
-         X_train, 
-         y_train, 
-         weights_train, 
-         init_scores_train, 
-         X_val, 
-         y_val, 
-         weights_val, 
-         init_scores_val, 
-         inner_bags
-      )
-   } else if(model_type == "regression") {
-      booster_handle <- create_regression_booster(
-         random_state,
-         features_categorical,
-         features_bin_count,
-         c_structs$feature_counts, 
-         c_structs$feature_indexes, 
-         X_train, 
-         y_train, 
-         weights_train, 
-         init_scores_train, 
-         X_val, 
-         y_val, 
-         weights_val, 
-         init_scores_val, 
-         inner_bags
-      )
-   } else {
-      stop("Unrecognized model_type")
-   }
+   booster_handle <- create_booster(
+      random_state,
+      dataset_handle,
+      bag,
+      init_scores,
+      c_structs$feature_counts,
+      c_structs$feature_indexes,
+      inner_bags
+   )
 
    self <- structure(list(
       model_type = model_type, 
@@ -301,23 +174,17 @@ booster <- function(
       terms = terms, 
       booster_handle = booster_handle
    ), class = "booster")
+
    return(self)
 }
 
 cyclic_gradient_boost <- function(
    model_type,
    n_classes,
-   features_categorical,
-   features_bin_count,
+   dataset_handle,
+   bag,
+   init_scores,
    terms,
-   X_train,
-   y_train,
-   weights_train, 
-   init_scores_train,
-   X_val,
-   y_val,
-   weights_val, 
-   init_scores_val,
    inner_bags,
    learning_rate,
    min_samples_leaf, 
@@ -330,20 +197,15 @@ cyclic_gradient_boost <- function(
    min_metric <- Inf
    episode_index <- 0
 
+   c_structs <- convert_terms_to_c(terms)
+
    ebm_booster <- booster(
       model_type,
       n_classes,
-      features_categorical,
-      features_bin_count,
+      dataset_handle,
+      bag,
+      init_scores,
       terms,
-      X_train,
-      y_train,
-      weights_train, 
-      init_scores_train,
-      X_val,
-      y_val,
-      weights_val, 
-      init_scores_val,
       inner_bags,
       random_state
    )
@@ -386,7 +248,7 @@ cyclic_gradient_boost <- function(
 
       return(list(model_update = model_update, min_metric = min_metric, episode_index = episode_index))
    }, finally = {
-      free_boosting(ebm_booster$booster_handle)
+      free_booster(ebm_booster$booster_handle)
    })
    return(result_list)
 }

@@ -16,6 +16,10 @@ normalize_initial_seed <- function(seed) {
    # negative numbers, so take the negative before the modulo if the number is negative.
    # https://torstencurdt.com/tech/posts/modulo-of-negative-numbers
 
+   if(is.null(seed)) {
+      return(NULL)
+   }
+
    if(2147483647 <= seed) {
       return(seed %% 2147483647)
    }
@@ -26,6 +30,9 @@ normalize_initial_seed <- function(seed) {
 }
 
 generate_seed <- function(random_state, random_mix) {
+   if(is.null(random_state)) {
+      return(NULL)
+   }
    random_state <- as.integer(random_state)
    random_mix <- as.integer(random_mix)
 

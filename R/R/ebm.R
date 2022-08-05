@@ -55,109 +55,70 @@ ebm_classify <- function(
 ) {
    min_samples_bin <- 5
    is_rounded <- FALSE # TODO this should be it's own binning type 'rounded_quantile' eventually
+   n_classes <- 2 # only binary classification for now
 
-   stopifnot(nrow(X) == length(y))
-   stopifnot(!any(is.na(X)))
+   n_features <- ncol(X)
+   n_samples <- nrow(X)
+
+   stopifnot(n_samples == length(y))
    stopifnot(!any(is.na(y)))
-   y <- as.logical(y) # for now we just support binary classification
+   # TODO: add missing value support for X
+   stopifnot(!any(is.na(X)))
 
    random_state <- normalize_initial_seed(random_state)
    
-   n_features <- ncol(X)
    col_names <- colnames(X)
    if(is.null(col_names)) {
+      # TODO: should we accept feature names from our caller, and what if those do not match the colum names of X?
       col_names <- 1:n_features
    }
 
-   cuts <- vector("list")
-
-   features_categorical <- vector("logical", n_features)
-   features_bin_count <- vector("numeric", n_features)
-
-   # byrow = FALSE to ensure this matrix is column-major (FORTRAN ordered), which is the fastest memory ordering for us
-   X_binned <- matrix(nrow = nrow(X), ncol = ncol(X), byrow = FALSE)
-   bin_indexes <- vector("numeric", length(y))
-   for(i_feature in 1:n_features) {
-      X_col <- X[, i_feature] # if our originator X matrix is byrow, pay the transpose cost once
-      feature_cuts <- cut_quantile(
-         X_col, 
-         min_samples_bin, 
-         is_rounded, 
-         max_bins
-      )
-      col_name <- col_names[i_feature]
-      cuts[[col_name]] <- feature_cuts
-
-      features_categorical[[i_feature]] <- FALSE
-      # one more bin than cuts plus one more for the missing value
-      features_bin_count[[i_feature]] <- length(feature_cuts) + 2
-
-      # WARNING: bin_indexes is modified in-place
-      bin_feature(X_col, feature_cuts, bin_indexes)
-      X_binned[, i_feature] <- bin_indexes
-   }
+   data = make_dataset(n_classes, X, y, max_bins, col_names)
+   dataset = data$dataset
+   cuts = data$cuts
 
    # create the terms for the mains
    terms <- lapply(1:n_features, function(i) { ebm_term(i) })
 
    term_scores <- vector("list")
-   for(col_name in col_names) {
-      term_scores[[col_name]] <- vector("numeric", length(cuts[[col_name]]) + 1)
-   }
+   bag <- vector("integer", n_samples)
 
-   bag <- vector("integer", length(y))
-
-   n_classes <- 2 # only binary classification for now
    num_scores <- get_count_scores_c(n_classes)
 
-   validation_size <- ceiling(length(y) * validation_size)
-   train_size <- length(y) - validation_size
-
-   init_scores_train <- vector("numeric", num_scores * train_size)
-   init_scores_val <- vector("numeric", num_scores * validation_size)
+   validation_size <- ceiling(n_samples * validation_size)
+   train_size <- n_samples - validation_size
 
    for(i_outer_bag in 1:outer_bags) {
       random_state <- generate_seed(random_state, 1416147523)
       # WARNING: bag is modified in-place
       sample_without_replacement(random_state, train_size, validation_size, bag)
 
-      X_train <- X_binned[0 < bag, ]
-      y_train <- y[0 < bag]
-      X_val <- X_binned[bag < 0, ]
-      y_val <- y[bag < 0] 
-
       result_list <- cyclic_gradient_boost(
          "classification",
          n_classes,
-         features_categorical,
-         features_bin_count,
+         dataset,
+         bag,
+         NULL,
          terms,
-         X_train,
-         y_train,
-         NULL,
-         init_scores_train,
-         X_val,
-         y_val,
-         NULL,
-         init_scores_val,
          inner_bags,
          learning_rate,
          min_samples_leaf, 
          max_leaves, 
-         early_stopping_rounds,
+         early_stopping_rounds, 
          early_stopping_tolerance,
-         max_rounds,
+         max_rounds, 
          random_state
       )
       for(i_feature in 1:n_features) {
-         term_scores[[col_names[i_feature]]] <- 
-            term_scores[[col_names[i_feature]]] + result_list$model_update[[i_feature]]
+         term_scores[[col_names[i_feature]]] <- result_list$model_update[[i_feature]]
       }
    }
    for(col_name in col_names) {
       term_scores[[col_name]] <- term_scores[[col_name]] / outer_bags
       # for now, zero all missing values
-      term_scores[[col_name]][0] = 0
+      term_scores[[col_name]][1] <- 0
+      # for now, zero all unknown values
+      term_scores[[col_name]][length(term_scores[[col_name]])] <- 0
    }
 
    # TODO PK : we're going to need to modify this structure in the future to handle interaction terms by making
@@ -213,6 +174,9 @@ ebm_show <- function (model, name) {
       if(0 == cuts[1]) {
          low_val <- -1
          high_val <- 1
+      } else if(cuts[1] < 0) {
+         low_val <- cuts[1] * 1.1
+         high_val <- cuts[1] * 0.9
       } else {
          low_val <- cuts[1] * 0.9
          high_val <- cuts[1] * 1.1
@@ -224,8 +188,8 @@ ebm_show <- function (model, name) {
    }
 
    x <- append(append(low_val, rep(cuts, each = 2)), high_val)
-   # remove the missing bin at the start
-   y <- rep(term_scores[2:length(term_scores)], each = 2)
+   # remove the missing bin at the start and remove the unknown bin at the end
+   y <- rep(term_scores[2:(length(term_scores) - 1)], each = 2)
 
    graphics::plot(x, y, type = "l", lty = 1, main = name, xlab="", ylab="score")
 }

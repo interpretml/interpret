@@ -26,8 +26,9 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-// when R compiles this library, on some systems it can generate a "NOTE installed size is.." meaning the C++ compiled into a library produces too big a
-// library.  We would want to disable the -g flag (with -g0), but according to this, it's not possible currently:
+// when R compiles this library, on some systems it can generate a "NOTE installed size is.." meaning the C++ 
+// compiled into a library produces too big a library.  
+// We would want to disable the -g flag (with -g0), but according to this, it's not possible currently:
 // https://stat.ethz.ch/pipermail/r-devel/2016-October/073273.html
 
 // TODO: switch logging to use the R logging infrastructure when invoked from R, BUT calling error or warning will generate longjumps, which 
@@ -54,30 +55,48 @@ INLINE_ALWAYS bool IsSingleIntVector(const SEXP sexp) {
    return true;
 }
 
-INLINE_ALWAYS bool IsSingleBoolVector(const SEXP sexp) {
+INLINE_ALWAYS BoolEbm ConvertBool(const SEXP sexp) {
    if(LGLSXP != TYPEOF(sexp)) {
-      return false;
+      error("ConvertBool LGLSXP != TYPEOF(sexp)");
    }
    if(R_xlen_t { 1 } != xlength(sexp)) {
-      return false;
+      error("ConvertBool R_xlen_t { 1 } != xlength(sexp)");
    }
-   return true;
+   const Rboolean val = static_cast<Rboolean>(LOGICAL(sexp)[0]);
+   if(Rboolean::FALSE == val) {
+      return EBM_FALSE;
+   }
+   if(Rboolean::TRUE == val) {
+      return EBM_TRUE;
+   }
+   error("ConvertBool val not a bool");
 }
 
 INLINE_ALWAYS bool IsDoubleToIntEbmIndexValid(const double val) {
    if(std::isnan(val)) {
       return false;
    }
-   static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
    if(val < double { 0 }) {
       return false;
    }
-   double maxValid = std::min(static_cast<double>(std::numeric_limits<size_t>::max()),
-      std::min(double { R_XLEN_T_MAX }, static_cast<double>(std::numeric_limits<IntEbm>::max())));
+   const double maxValid = std::min(std::min(double { R_XLEN_T_MAX }, double { SAFE_FLOAT64_AS_INT64_MAX }),
+      std::min(static_cast<double>(std::numeric_limits<size_t>::max()), 
+      static_cast<double>(std::numeric_limits<IntEbm>::max())));
    if(maxValid < val) {
       return false;
    }
    return true;
+}
+
+void DataSetFinalizer(SEXP dataSetHandleWrapped) {
+   EBM_ASSERT(nullptr != dataSetHandleWrapped); // shouldn't be possible
+   if(EXTPTRSXP == TYPEOF(dataSetHandleWrapped)) {
+      void * const dataSetHandle = R_ExternalPtrAddr(dataSetHandleWrapped);
+      if(nullptr != dataSetHandle) {
+         R_ClearExternalPtr(dataSetHandleWrapped);
+         free(dataSetHandle);
+      }
+   }
 }
 
 void BoostingFinalizer(SEXP boosterHandleWrapped) {
@@ -85,8 +104,8 @@ void BoostingFinalizer(SEXP boosterHandleWrapped) {
    if(EXTPTRSXP == TYPEOF(boosterHandleWrapped)) {
       const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
       if(nullptr != boosterHandle) {
-         FreeBooster(boosterHandle);
          R_ClearExternalPtr(boosterHandleWrapped);
+         FreeBooster(boosterHandle);
       }
    }
 }
@@ -96,8 +115,8 @@ void InteractionFinalizer(SEXP interactionHandleWrapped) {
    if(EXTPTRSXP == TYPEOF(interactionHandleWrapped)) {
       const InteractionHandle interactionHandle = static_cast<InteractionHandle>(R_ExternalPtrAddr(interactionHandleWrapped));
       if(nullptr != interactionHandle) {
-         FreeInteractionDetector(interactionHandle);
          R_ClearExternalPtr(interactionHandleWrapped);
+         FreeInteractionDetector(interactionHandle);
       }
    }
 }
@@ -125,44 +144,6 @@ size_t CountTotalDimensions(const size_t cTerms, const IntEbm * const acTermDime
       } while(pcTermDimensionsEnd != pcTermDimensions);
    }
    return cTotalDimensions;
-}
-
-bool ConvertLogicalsToBools(const SEXP items, size_t * const pcItems, const BoolEbm ** const pRet) {
-   EBM_ASSERT(nullptr != items);
-   EBM_ASSERT(nullptr != pcItems);
-   EBM_ASSERT(nullptr != pRet);
-   if(LGLSXP != TYPEOF(items)) {
-      LOG_0(Trace_Error, "ERROR ConvertLogicalsToBools LGLSXP != TYPEOF(items)");
-      return true;
-   }
-   const R_xlen_t countItemsR = xlength(items);
-   if(IsConvertError<size_t>(countItemsR)) {
-      LOG_0(Trace_Error, "ERROR ConvertLogicalsToBools IsConvertError<size_t>(countItemsR)");
-      return true;
-   }
-   const size_t cItems = static_cast<size_t>(countItemsR);
-   if(IsConvertError<IntEbm>(cItems)) {
-      LOG_0(Trace_Error, "ERROR ConvertLogicalsToBools IsConvertError<IntEbm>(cItems)");
-      return true;
-   }
-   *pcItems = cItems;
-
-   BoolEbm * aItems = nullptr;
-   if(0 != cItems) {
-      aItems = reinterpret_cast<BoolEbm *>(R_alloc(cItems, static_cast<int>(sizeof(BoolEbm))));
-      EBM_ASSERT(nullptr != aItems); // R_alloc doesn't return nullptr, so we don't need to check aItems
-      BoolEbm * pItem = aItems;
-      const BoolEbm * const pItemEnd = aItems + cItems;
-      const int * pOriginal = LOGICAL(items);
-      do {
-         const Rboolean val = static_cast<Rboolean>(*pOriginal);
-         *pItem = Rboolean::FALSE != val ? EBM_TRUE : EBM_FALSE;
-         ++pOriginal;
-         ++pItem;
-      } while(pItemEnd != pItem);
-   }
-   *pRet = aItems;
-   return false;
 }
 
 bool ConvertDoublesToIndexes(const SEXP items, size_t * const pcItems, const IntEbm ** const pRet) {
@@ -259,7 +240,7 @@ SEXP CutQuantile_R(
    EBM_ASSERT(nullptr != isRounded);
    EBM_ASSERT(nullptr != countCuts);
 
-   ErrorEbm error;
+   ErrorEbm err;
 
    const IntEbm countSamples = CountDoubles(featureVals);
    if(countSamples < 0) {
@@ -279,17 +260,7 @@ SEXP CutQuantile_R(
    }
    const IntEbm minSamplesBinIntEbm = static_cast<IntEbm>(minSamplesBinDouble);
 
-   if(!IsSingleBoolVector(isRounded)) {
-      LOG_0(Trace_Error, "ERROR CutQuantile_R !IsSingleBoolVector(isRounded)");
-      return R_NilValue;
-   }
-
-   const Rboolean isRoundedR = static_cast<Rboolean>(LOGICAL(isRounded)[0]);
-   if(Rboolean::FALSE != isRoundedR && Rboolean::TRUE != isRoundedR) {
-      LOG_0(Trace_Error, "ERROR CutQuantile_R Rboolean::FALSE != isRoundedR && Rboolean::TRUE != isRoundedR");
-      return R_NilValue;
-   }
-   const bool bRounded = Rboolean::FALSE != isRoundedR;
+   BoolEbm bRounded = ConvertBool(isRounded);
 
    if(!IsSingleDoubleVector(countCuts)) {
       LOG_0(Trace_Error, "ERROR CutQuantile_R !IsSingleDoubleVector(countCuts)");
@@ -308,32 +279,23 @@ SEXP CutQuantile_R(
       R_alloc(static_cast<size_t>(countCutsIntEbm), static_cast<int>(sizeof(double))));
    EBM_ASSERT(nullptr != aCutsLowerBoundInclusive); // R_alloc doesn't return nullptr, so we don't need to check aItems
 
-   error = CutQuantile(
+   err = CutQuantile(
       countSamples,
       aFeatureVals,
       minSamplesBinIntEbm,
-      bRounded ? EBM_TRUE : EBM_FALSE,
+      bRounded,
       &countCutsIntEbm,
-      aCutsLowerBoundInclusive,
-      nullptr,
-      nullptr,
-      nullptr,
-      nullptr,
-      nullptr
+      aCutsLowerBoundInclusive
    );
 
-   if(Error_None != error) {
+   if(Error_None != err) {
       return R_NilValue;
    }
 
-   if(IsConvertError<R_xlen_t>(countCutsIntEbm)) {
-      return R_NilValue;
-   }
-   if(IsConvertError<size_t>(countCutsIntEbm)) {
+   if(IsConvertErrorDual<R_xlen_t, size_t>(countCutsIntEbm)) {
       return R_NilValue;
    }
    const SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(countCutsIntEbm)));
-
    const size_t cCutsIntEbm = static_cast<size_t>(countCutsIntEbm);
 
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
@@ -394,8 +356,7 @@ SEXP BinFeature_R(
    }
 
    if(0 != cSamples) {
-      IntEbm * const aiBins = 
-         reinterpret_cast<IntEbm *>(R_alloc(cSamples, static_cast<int>(sizeof(IntEbm))));
+      IntEbm * const aiBins = reinterpret_cast<IntEbm *>(R_alloc(cSamples, static_cast<int>(sizeof(IntEbm))));
       EBM_ASSERT(nullptr != aiBins); // this can't be nullptr since R_alloc uses R error handling
 
       if(Error_None != BinFeature(
@@ -427,6 +388,380 @@ SEXP BinFeature_R(
    return ret;
 }
 
+SEXP CreateDataSet_R(SEXP countBytes) {
+   EBM_ASSERT(nullptr != countBytes);
+
+   if(!IsSingleDoubleVector(countBytes)) {
+      error("CreateDataSet_R !IsSingleDoubleVector(countBytes)");
+   }
+   const double countBytesDouble = REAL(countBytes)[0];
+   if(!IsDoubleToIntEbmIndexValid(countBytesDouble)) {
+      error("CreateDataSet_R !IsDoubleToIntEbmIndexValid(countBytesDouble)");
+   }
+   const size_t cBytes = static_cast<size_t>(countBytesDouble);
+
+   void * dataSetHandle = malloc(cBytes);
+
+   SEXP dataSetHandleWrapped = R_MakeExternalPtr(dataSetHandle, R_NilValue, R_NilValue); // makes an EXTPTRSXP
+   PROTECT(dataSetHandleWrapped);
+
+   R_RegisterCFinalizerEx(dataSetHandleWrapped, &DataSetFinalizer, Rboolean::TRUE);
+
+   UNPROTECT(1);
+   return dataSetHandleWrapped;
+}
+
+SEXP FreeDataSet_R(SEXP dataSetHandleWrapped) {
+   EBM_ASSERT(nullptr != dataSetHandleWrapped);
+
+   DataSetFinalizer(dataSetHandleWrapped);
+   return R_NilValue;
+}
+
+SEXP MeasureDataSetHeader_R(
+   SEXP countFeatures,
+   SEXP countWeights,
+   SEXP countTargets
+) {
+   EBM_ASSERT(nullptr != countFeatures);
+   EBM_ASSERT(nullptr != countWeights);
+   EBM_ASSERT(nullptr != countTargets);
+
+   if(!IsSingleDoubleVector(countFeatures)) {
+      error("MeasureDataSetHeader_R !IsSingleDoubleVector(countFeatures)");
+   }
+   const double countFeaturesDouble = REAL(countFeatures)[0];
+   if(!IsDoubleToIntEbmIndexValid(countFeaturesDouble)) {
+      error("MeasureDataSetHeader_R !IsDoubleToIntEbmIndexValid(countFeaturesDouble)");
+   }
+   const IntEbm countFeaturesIntEbm = static_cast<IntEbm>(countFeaturesDouble);
+
+   if(!IsSingleDoubleVector(countWeights)) {
+      error("MeasureDataSetHeader_R !IsSingleDoubleVector(countWeights)");
+   }
+   const double countWeightsDouble = REAL(countWeights)[0];
+   if(!IsDoubleToIntEbmIndexValid(countWeightsDouble)) {
+      error("MeasureDataSetHeader_R !IsDoubleToIntEbmIndexValid(countWeightsDouble)");
+   }
+   const IntEbm countWeightsIntEbm = static_cast<IntEbm>(countWeightsDouble);
+
+   if(!IsSingleDoubleVector(countTargets)) {
+      error("!IsSingleDoubleVector(countTargets)");
+   }
+   const double countTargetsDouble = REAL(countTargets)[0];
+   if(!IsDoubleToIntEbmIndexValid(countTargetsDouble)) {
+      error("MeasureDataSetHeader_R !IsDoubleToIntEbmIndexValid(countTargetsDouble)");
+   }
+   const IntEbm countTargetsIntEbm = static_cast<IntEbm>(countTargetsDouble);
+
+   const IntEbm countBytes = MeasureDataSetHeader(
+      countFeaturesIntEbm,
+      countWeightsIntEbm,
+      countTargetsIntEbm
+   );
+   if(countBytes < 0) {
+      error("MeasureDataSetHeader_R MeasureDataSetHeader returned error code: %" ErrorEbmPrintf, static_cast<ErrorEbm>(countBytes));
+   }
+   if(SAFE_FLOAT64_AS_INT64_MAX < countBytes) {
+      error("MeasureDataSetHeader_R SAFE_FLOAT64_AS_INT64_MAX < countBytes");
+   }
+
+   const SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   REAL(ret)[0] = static_cast<double>(countBytes);
+   UNPROTECT(1);
+   return ret;
+}
+
+SEXP FillDataSetHeader_R(
+   SEXP countFeatures,
+   SEXP countWeights,
+   SEXP countTargets,
+   SEXP countBytesAllocated,
+   SEXP fillMemWrapped
+) {
+   EBM_ASSERT(nullptr != countFeatures);
+   EBM_ASSERT(nullptr != countWeights);
+   EBM_ASSERT(nullptr != countTargets);
+   EBM_ASSERT(nullptr != countBytesAllocated);
+   EBM_ASSERT(nullptr != fillMemWrapped);
+
+   if(!IsSingleDoubleVector(countFeatures)) {
+      error("FillDataSetHeader_R !IsSingleDoubleVector(countFeatures)");
+   }
+   const double countFeaturesDouble = REAL(countFeatures)[0];
+   if(!IsDoubleToIntEbmIndexValid(countFeaturesDouble)) {
+      error("FillDataSetHeader_R !IsDoubleToIntEbmIndexValid(countFeaturesDouble)");
+   }
+   const IntEbm countFeaturesIntEbm = static_cast<IntEbm>(countFeaturesDouble);
+
+   if(!IsSingleDoubleVector(countWeights)) {
+      error("FillDataSetHeader_R !IsSingleDoubleVector(countWeights)");
+   }
+   const double countWeightsDouble = REAL(countWeights)[0];
+   if(!IsDoubleToIntEbmIndexValid(countWeightsDouble)) {
+      error("FillDataSetHeader_R !IsDoubleToIntEbmIndexValid(countWeightsDouble)");
+   }
+   const IntEbm countWeightsIntEbm = static_cast<IntEbm>(countWeightsDouble);
+
+   if(!IsSingleDoubleVector(countTargets)) {
+      error("FillDataSetHeader_R !IsSingleDoubleVector(countTargets)");
+   }
+   const double countTargetsDouble = REAL(countTargets)[0];
+   if(!IsDoubleToIntEbmIndexValid(countTargetsDouble)) {
+      error("FillDataSetHeader_R !IsDoubleToIntEbmIndexValid(countTargetsDouble)");
+   }
+   const IntEbm countTargetsIntEbm = static_cast<IntEbm>(countTargetsDouble);
+
+   if(!IsSingleDoubleVector(countBytesAllocated)) {
+      error("FillDataSetHeader_R !IsSingleDoubleVector(countBytesAllocated)");
+   }
+   const double countBytesAllocatedDouble = REAL(countBytesAllocated)[0];
+   if(!IsDoubleToIntEbmIndexValid(countBytesAllocatedDouble)) {
+      error("FillDataSetHeader_R !IsDoubleToIntEbmIndexValid(countBytesAllocatedDouble)");
+   }
+   const IntEbm countBytesAllocatedIntEbm = static_cast<IntEbm>(countBytesAllocatedDouble);
+
+   if(EXTPTRSXP != TYPEOF(fillMemWrapped)) {
+      error("FillDataSetHeader_R EXTPTRSXP != TYPEOF(fillMemWrapped)");
+   }
+   void * const pDataset = R_ExternalPtrAddr(fillMemWrapped);
+
+   const ErrorEbm err = FillDataSetHeader(
+      countFeaturesIntEbm,
+      countWeightsIntEbm,
+      countTargetsIntEbm,
+      countBytesAllocatedIntEbm,
+      pDataset
+   );
+   if(Error_None != err) {
+      error("FillDataSetHeader_R FillDataSetHeader returned error code: %" ErrorEbmPrintf, err);
+   }
+
+   return R_NilValue;
+}
+
+SEXP MeasureFeature_R(
+   SEXP countBins,
+   SEXP isMissing,
+   SEXP isUnknown,
+   SEXP isNominal,
+   SEXP binIndexes
+) {
+   EBM_ASSERT(nullptr != countBins);
+   EBM_ASSERT(nullptr != isMissing);
+   EBM_ASSERT(nullptr != isUnknown);
+   EBM_ASSERT(nullptr != isNominal);
+   EBM_ASSERT(nullptr != binIndexes);
+
+   if(!IsSingleDoubleVector(countBins)) {
+      error("MeasureFeature_R !IsSingleDoubleVector(countBins)");
+   }
+   const double countBinsDouble = REAL(countBins)[0];
+   if(!IsDoubleToIntEbmIndexValid(countBinsDouble)) {
+      error("MeasureFeature_R !IsDoubleToIntEbmIndexValid(countBinsDouble)");
+   }
+   const IntEbm countBinsIntEbm = static_cast<IntEbm>(countBinsDouble);
+
+   BoolEbm bMissing = ConvertBool(isMissing);
+   BoolEbm bUnknown = ConvertBool(isUnknown);
+   BoolEbm bNominal = ConvertBool(isNominal);
+
+   size_t cSamples;
+   const IntEbm * aiBins;
+   if(ConvertDoublesToIndexes(binIndexes, &cSamples, &aiBins)) {
+      error("MeasureFeature_R ConvertDoublesToIndexes(binIndexes, &cSamples, &aiBins)");
+   }
+   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
+   const IntEbm countSamples = static_cast<IntEbm>(cSamples);
+
+   const IntEbm countBytes = MeasureFeature(
+      countBinsIntEbm,
+      bMissing,
+      bUnknown,
+      bNominal,
+      countSamples,
+      aiBins
+   );
+   if(countBytes < 0) {
+      error("MeasureFeature_R MeasureFeature returned error code: %" ErrorEbmPrintf, static_cast<ErrorEbm>(countBytes));
+   }
+   if(SAFE_FLOAT64_AS_INT64_MAX < countBytes) {
+      error("MeasureFeature_R SAFE_FLOAT64_AS_INT64_MAX < countBytes");
+   }
+
+   const SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   REAL(ret)[0] = static_cast<double>(countBytes);
+   UNPROTECT(1);
+   return ret;
+}
+
+SEXP FillFeature_R(
+   SEXP countBins,
+   SEXP isMissing,
+   SEXP isUnknown,
+   SEXP isNominal,
+   SEXP binIndexes,
+   SEXP countBytesAllocated,
+   SEXP fillMemWrapped
+) {
+   EBM_ASSERT(nullptr != countBins);
+   EBM_ASSERT(nullptr != isMissing);
+   EBM_ASSERT(nullptr != isUnknown);
+   EBM_ASSERT(nullptr != isNominal);
+   EBM_ASSERT(nullptr != binIndexes);
+   EBM_ASSERT(nullptr != countBytesAllocated);
+   EBM_ASSERT(nullptr != fillMemWrapped);
+
+   if(!IsSingleDoubleVector(countBins)) {
+      error("FillFeature_R !IsSingleDoubleVector(countBins)");
+   }
+   const double countBinsDouble = REAL(countBins)[0];
+   if(!IsDoubleToIntEbmIndexValid(countBinsDouble)) {
+      error("FillFeature_R !IsDoubleToIntEbmIndexValid(countBinsDouble)");
+   }
+   const IntEbm countBinsIntEbm = static_cast<IntEbm>(countBinsDouble);
+
+   BoolEbm bMissing = ConvertBool(isMissing);
+   BoolEbm bUnknown = ConvertBool(isUnknown);
+   BoolEbm bNominal = ConvertBool(isNominal);
+
+   size_t cSamples;
+   const IntEbm * aiBins;
+   if(ConvertDoublesToIndexes(binIndexes, &cSamples, &aiBins)) {
+      error("FillFeature_R ConvertDoublesToIndexes(binIndexes, &cSamples, &aiBins)");
+   }
+   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
+   const IntEbm countSamples = static_cast<IntEbm>(cSamples);
+
+   if(!IsSingleDoubleVector(countBytesAllocated)) {
+      error("FillFeature_R !IsSingleDoubleVector(countBytesAllocated)");
+   }
+   const double countBytesAllocatedDouble = REAL(countBytesAllocated)[0];
+   if(!IsDoubleToIntEbmIndexValid(countBytesAllocatedDouble)) {
+      error("FillFeature_R !IsDoubleToIntEbmIndexValid(countBytesAllocatedDouble)");
+   }
+   const IntEbm countBytesAllocatedIntEbm = static_cast<IntEbm>(countBytesAllocatedDouble);
+
+   if(EXTPTRSXP != TYPEOF(fillMemWrapped)) {
+      error("FillFeature_R EXTPTRSXP != TYPEOF(fillMemWrapped)");
+   }
+   void * const pDataset = R_ExternalPtrAddr(fillMemWrapped);
+
+   const ErrorEbm err = FillFeature(
+      countBinsIntEbm,
+      bMissing,
+      bUnknown,
+      bNominal,
+      countSamples,
+      aiBins,
+      countBytesAllocatedIntEbm,
+      pDataset
+   );
+   if(Error_None != err) {
+      error("FillFeature_R FillFeature returned error code: %" ErrorEbmPrintf, err);
+   }
+
+   return R_NilValue;
+}
+
+SEXP MeasureClassificationTarget_R(
+   SEXP countClasses,
+   SEXP targets
+) {
+   EBM_ASSERT(nullptr != countClasses);
+   EBM_ASSERT(nullptr != targets);
+
+   if(!IsSingleDoubleVector(countClasses)) {
+      error("MeasureClassificationTarget_R !IsSingleDoubleVector(countClasses)");
+   }
+   const double countClassesDouble = REAL(countClasses)[0];
+   if(!IsDoubleToIntEbmIndexValid(countClassesDouble)) {
+      error("MeasureClassificationTarget_R !IsDoubleToIntEbmIndexValid(countClassesDouble)");
+   }
+   const IntEbm countClassesIntEbm = static_cast<IntEbm>(countClassesDouble);
+
+   size_t cSamples;
+   const IntEbm * aTargets;
+   if(ConvertDoublesToIndexes(targets, &cSamples, &aTargets)) {
+      error("MeasureClassificationTarget_R ConvertDoublesToIndexes(targets, &cSamples, &aTargets)");
+   }
+   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
+   const IntEbm countSamples = static_cast<IntEbm>(cSamples);
+
+   const IntEbm countBytes = MeasureClassificationTarget(
+      countClassesIntEbm,
+      countSamples,
+      aTargets
+   );
+   if(countBytes < 0) {
+      error("MeasureClassificationTarget_R MeasureClassificationTarget returned error code: %" ErrorEbmPrintf, static_cast<ErrorEbm>(countBytes));
+   }
+   if(SAFE_FLOAT64_AS_INT64_MAX < countBytes) {
+      error("MeasureClassificationTarget_R SAFE_FLOAT64_AS_INT64_MAX < countBytes");
+   }
+
+   const SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   REAL(ret)[0] = static_cast<double>(countBytes);
+   UNPROTECT(1);
+   return ret;
+}
+
+SEXP FillClassificationTarget_R(
+   SEXP countClasses,
+   SEXP targets,
+   SEXP countBytesAllocated,
+   SEXP fillMemWrapped
+) {
+   EBM_ASSERT(nullptr != countClasses);
+   EBM_ASSERT(nullptr != targets);
+   EBM_ASSERT(nullptr != countBytesAllocated);
+   EBM_ASSERT(nullptr != fillMemWrapped);
+
+   if(!IsSingleDoubleVector(countClasses)) {
+      error("FillClassificationTarget_R !IsSingleDoubleVector(countClasses)");
+   }
+   const double countClassesDouble = REAL(countClasses)[0];
+   if(!IsDoubleToIntEbmIndexValid(countClassesDouble)) {
+      error("FillClassificationTarget_R !IsDoubleToIntEbmIndexValid(countClassesDouble)");
+   }
+   const IntEbm countClassesIntEbm = static_cast<IntEbm>(countClassesDouble);
+
+   size_t cSamples;
+   const IntEbm * aTargets;
+   if(ConvertDoublesToIndexes(targets, &cSamples, &aTargets)) {
+      error("FillClassificationTarget_R ConvertDoublesToIndexes(targets, &cSamples, &aTargets)");
+   }
+   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
+   const IntEbm countSamples = static_cast<IntEbm>(cSamples);
+
+   if(!IsSingleDoubleVector(countBytesAllocated)) {
+      error("FillClassificationTarget_R !IsSingleDoubleVector(countBytesAllocated)");
+   }
+   const double countBytesAllocatedDouble = REAL(countBytesAllocated)[0];
+   if(!IsDoubleToIntEbmIndexValid(countBytesAllocatedDouble)) {
+      error("FillClassificationTarget_R !IsDoubleToIntEbmIndexValid(countBytesAllocatedDouble)");
+   }
+   const IntEbm countBytesAllocatedIntEbm = static_cast<IntEbm>(countBytesAllocatedDouble);
+
+   if(EXTPTRSXP != TYPEOF(fillMemWrapped)) {
+      error("FillClassificationTarget_R EXTPTRSXP != TYPEOF(fillMemWrapped)");
+   }
+   void * const pDataset = R_ExternalPtrAddr(fillMemWrapped);
+
+   const ErrorEbm err = FillClassificationTarget(
+      countClassesIntEbm,
+      countSamples,
+      aTargets,
+      countBytesAllocatedIntEbm,
+      pDataset
+   );
+   if(Error_None != err) {
+      error("FillClassificationTarget_R FillClassificationTarget returned error code: %" ErrorEbmPrintf, err);
+   }
+
+   return R_NilValue;
+}
+
 SEXP SampleWithoutReplacement_R(
    SEXP seed,
    SEXP countTrainingSamples,
@@ -438,13 +773,21 @@ SEXP SampleWithoutReplacement_R(
    EBM_ASSERT(nullptr != countValidationSamples);
    EBM_ASSERT(nullptr != bagOut);
 
-   ErrorEbm error;
+   ErrorEbm err;
 
-   if(!IsSingleIntVector(seed)) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacement_R !IsSingleIntVector(seed)");
-      return R_NilValue;
+   BoolEbm bDeterministic;
+   SeedEbm seedLocal;
+   if(NILSXP == TYPEOF(seed)) {
+      seedLocal = 0;
+      bDeterministic = EBM_FALSE;
+   } else {
+      if(!IsSingleIntVector(seed)) {
+         LOG_0(Trace_Error, "ERROR SampleWithoutReplacement_R !IsSingleIntVector(seed)");
+         return R_NilValue;
+      }
+      seedLocal = INTEGER(seed)[0];
+      bDeterministic = EBM_TRUE;
    }
-   const SeedEbm seedLocal = INTEGER(seed)[0];
 
    if(!IsSingleDoubleVector(countTrainingSamples)) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacement_R !IsSingleDoubleVector(countTrainingSamples)");
@@ -486,26 +829,28 @@ SEXP SampleWithoutReplacement_R(
    }
 
    if(0 != cSamples) {
-      BagEbm * const aBag =
-         reinterpret_cast<BagEbm *>(R_alloc(cSamples, static_cast<int>(sizeof(BagEbm))));
+      BagEbm * const aBag = reinterpret_cast<BagEbm *>(R_alloc(cSamples, static_cast<int>(sizeof(BagEbm))));
       EBM_ASSERT(nullptr != aBag); // this can't be nullptr since R_alloc uses R error handling
 
-      error = SampleWithoutReplacement(
+      err = SampleWithoutReplacement(
+         bDeterministic,
          seedLocal,
          countTrainingSamplesIntEbm,
          countValidationSamplesIntEbm,
          aBag
       );
-
-      if(Error_None != error) {
+      if(Error_None != err) {
          return R_NilValue;
       }
 
-      int32_t * pSampleReplicationOut = INT(bagOut);
+      int32_t * pSampleReplicationOut = INTEGER(bagOut);
       const BagEbm * pSampleReplication = aBag;
       const BagEbm * const pSampleReplicationEnd = aBag + cSamples;
       do {
          const BagEbm replication = *pSampleReplication;
+         if(IsConvertError<int32_t>(replication)) {
+            error("SampleWithoutReplacement_R IsConvertError<int32_t>(replication)");
+         }
          *pSampleReplicationOut = static_cast<int32_t>(replication);
          ++pSampleReplicationOut;
          ++pSampleReplication;
@@ -519,89 +864,110 @@ SEXP SampleWithoutReplacement_R(
    return ret;
 }
 
-SEXP CreateClassificationBooster_R(
+SEXP CreateBooster_R(
    SEXP seed,
-   SEXP countClasses,
-   SEXP featuresCategorical,
-   SEXP featuresBinCount,
+   SEXP dataSetWrapped,
+   SEXP bag,
+   SEXP initScores,
    SEXP dimensionCounts,
    SEXP featureIndexes,
-   SEXP trainingBinIndexes,
-   SEXP trainingTargets,
-   SEXP trainingWeights,
-   SEXP trainingInitScores,
-   SEXP validationBinIndexes,
-   SEXP validationTargets,
-   SEXP validationWeights,
-   SEXP validationInitScores,
    SEXP countInnerBags
 ) {
    EBM_ASSERT(nullptr != seed);
-   EBM_ASSERT(nullptr != countClasses);
-   EBM_ASSERT(nullptr != featuresCategorical);
-   EBM_ASSERT(nullptr != featuresBinCount);
+   EBM_ASSERT(nullptr != dataSetWrapped);
+   EBM_ASSERT(nullptr != bag);
+   EBM_ASSERT(nullptr != initScores);
    EBM_ASSERT(nullptr != dimensionCounts);
    EBM_ASSERT(nullptr != featureIndexes);
-   EBM_ASSERT(nullptr != trainingBinIndexes);
-   EBM_ASSERT(nullptr != trainingTargets);
-   EBM_ASSERT(nullptr != trainingWeights);
-   EBM_ASSERT(nullptr != trainingInitScores);
-   EBM_ASSERT(nullptr != validationBinIndexes);
-   EBM_ASSERT(nullptr != validationTargets);
-   EBM_ASSERT(nullptr != validationWeights);
-   EBM_ASSERT(nullptr != validationInitScores);
    EBM_ASSERT(nullptr != countInnerBags);
 
-   ErrorEbm error;
+   ErrorEbm err;
 
-   if(!IsSingleIntVector(seed)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R !IsSingleIntVector(seed)");
-      return R_NilValue;
+   BoolEbm bDeterministic;
+   SeedEbm seedLocal;
+   if(NILSXP == TYPEOF(seed)) {
+      seedLocal = 0;
+      bDeterministic = EBM_FALSE;
+   } else {
+      if(!IsSingleIntVector(seed)) {
+         error("CreateBooster_R !IsSingleIntVector(seed)");
+      }
+      seedLocal = INTEGER(seed)[0];
+      bDeterministic = EBM_TRUE;
    }
-   const SeedEbm seedLocal = INTEGER(seed)[0];
 
-   if(!IsSingleDoubleVector(countClasses)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R !IsSingleDoubleVector(countClasses)");
-      return R_NilValue;
+   if(EXTPTRSXP != TYPEOF(dataSetWrapped)) {
+      error("CreateBooster_R EXTPTRSXP != TYPEOF(dataSetWrapped)");
    }
-   double countClassesDouble = REAL(countClasses)[0];
-   if(!IsDoubleToIntEbmIndexValid(countClassesDouble)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R !IsDoubleToIntEbmIndexValid(countClassesDouble)");
-      return R_NilValue;
-   }
-   EBM_ASSERT(!IsConvertError<size_t>(countClassesDouble)); // IsDoubleToIntEbmIndexValid checks this
-   const size_t cClasses = static_cast<size_t>(countClassesDouble);
-   if(IsConvertError<ptrdiff_t>(cClasses)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R IsConvertError<ptrdiff_t>(cClasses)");
-      return R_NilValue;
-   }
-   const size_t cScores = GetCountScores(static_cast<ptrdiff_t>(cClasses));
+   const void * pDataSet = R_ExternalPtrAddr(dataSetWrapped);
 
-   size_t cFeatures;
-   const BoolEbm * aFeaturesCategorical;
-   if(ConvertLogicalsToBools(featuresCategorical, &cFeatures, &aFeaturesCategorical)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbm countFeatures = static_cast<IntEbm>(cFeatures);
+   IntEbm countSamples;
+   IntEbm unused1;
+   IntEbm unused2;
+   IntEbm unused3;
 
-   size_t cFeaturesFromBinCount;
-   const IntEbm * aFeaturesBinCount;
-   if(ConvertDoublesToIndexes(featuresBinCount, &cFeaturesFromBinCount, &aFeaturesBinCount)) {
-      // we've already logged any errors
-      return R_NilValue;
+   err = ExtractDataSetHeader(pDataSet, &countSamples, &unused1, &unused2, &unused3);
+   if(Error_None != err) {
+      error("CreateBooster_R ExtractDataSetHeader failed with error code: %" ErrorEbmPrintf, err);
    }
-   if(cFeatures != cFeaturesFromBinCount) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R cFeatures != cFeaturesFromBinCount");
-      return R_NilValue;
+   const size_t cSamples = static_cast<size_t>(countSamples); // we trust our internal code that this is convertible
+
+   BagEbm * aBag = nullptr;
+   size_t cExpectedInitScores = cSamples;
+   if(NILSXP != TYPEOF(bag)) {
+      if(INTSXP != TYPEOF(bag)) {
+         error("CreateBooster_R INTSXP != TYPEOF(bag)");
+      }
+      const R_xlen_t countSamplesVerify = xlength(bag);
+      if(IsConvertError<size_t>(countSamplesVerify)) {
+         error("CreateBooster_R IsConvertError<size_t>(countSamplesVerify)");
+      }
+      const size_t cSamplesVerify = static_cast<size_t>(countSamplesVerify);
+      if(cSamples != cSamplesVerify) {
+         error("CreateBooster_R cSamples != cSamplesVerify");
+      }
+
+      aBag = reinterpret_cast<BagEbm *>(R_alloc(cSamples, static_cast<int>(sizeof(BagEbm))));
+      EBM_ASSERT(nullptr != aBag); // this can't be nullptr since R_alloc uses R error handling
+
+      cExpectedInitScores = 0;
+
+      const int32_t * pSampleReplicationR = INTEGER(bag);
+      BagEbm * pSampleReplication = aBag;
+      const BagEbm * const pSampleReplicationEnd = aBag + cSamples;
+      do {
+         const int32_t replication = *pSampleReplicationR;
+         if(IsConvertError<BagEbm>(replication)) {
+            error("CreateBooster_R IsConvertError<BagEbm>(replication)");
+         }
+         if(0 != replication) {
+            ++cExpectedInitScores;
+         }
+         *pSampleReplication = static_cast<BagEbm>(replication);
+         ++pSampleReplicationR;
+         ++pSampleReplication;
+      } while(pSampleReplicationEnd != pSampleReplication);
+   }
+
+   const double * aInitScores = nullptr;
+   if(NILSXP != TYPEOF(initScores)) {
+      const IntEbm countInitScores = CountDoubles(initScores);
+      if(countInitScores < 0) {
+         // we've already logged any errors
+         error("CreateBooster_R countInitScores < 0");
+      }
+      size_t cInitScores = static_cast<size_t>(countInitScores);
+      if(cInitScores != cExpectedInitScores) {
+         error("CreateBooster_R cInitScores != cExpectedInitScores");
+      }
+      aInitScores = REAL(initScores);
    }
 
    size_t cTerms;
    const IntEbm * acTermDimensions;
    if(ConvertDoublesToIndexes(dimensionCounts, &cTerms, &acTermDimensions)) {
       // we've already logged any errors
-      return R_NilValue;
+      error("CreateBooster_R ConvertDoublesToIndexes(dimensionCounts, &cTerms, &acTermDimensions)");
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
    const IntEbm countTerms = static_cast<IntEbm>(cTerms);
@@ -609,411 +975,44 @@ SEXP CreateClassificationBooster_R(
    const size_t cTotalDimensionsCheck = CountTotalDimensions(cTerms, acTermDimensions);
    if(SIZE_MAX == cTotalDimensionsCheck) {
       // we've already logged any errors
-      return R_NilValue;
+      error("CreateBooster_R SIZE_MAX == cTotalDimensionsCheck");
    }
 
    size_t cTotalDimensionsActual;
    const IntEbm * aiTermFeatures;
    if(ConvertDoublesToIndexes(featureIndexes, &cTotalDimensionsActual, &aiTermFeatures)) {
       // we've already logged any errors
-      return R_NilValue;
+      error("CreateBooster_R ConvertDoublesToIndexes(featureIndexes, &cTotalDimensionsActual, &aiTermFeatures)");
    }
    if(cTotalDimensionsActual != cTotalDimensionsCheck) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R cTotalDimensionsActual != cTotalDimensionsCheck");
-      return R_NilValue;
+      error("CreateBooster_R cTotalDimensionsActual != cTotalDimensionsCheck");
    }
 
-   size_t cTrainingBinIndexes;
-   const IntEbm * aTrainingBinIndexes;
-   if(ConvertDoublesToIndexes(trainingBinIndexes, &cTrainingBinIndexes, &aTrainingBinIndexes)) {
-      // we've already logged any errors
-      return R_NilValue;
+   if(!IsSingleDoubleVector(countInnerBags)) {
+      error("CreateBooster_R !IsSingleDoubleVector(countInnerBags)");
    }
-
-   size_t cTrainingSamples;
-   const IntEbm * aTrainingTargets;
-   if(ConvertDoublesToIndexes(trainingTargets, &cTrainingSamples, &aTrainingTargets)) {
-      // we've already logged any errors
-      return R_NilValue;
+   const double countInnerBagsDouble = REAL(countInnerBags)[0];
+   if(!IsDoubleToIntEbmIndexValid(countInnerBagsDouble)) {
+      error("CreateBooster_R !IsDoubleToIntEbmIndexValid(countInnerBagsDouble)");
    }
-   const IntEbm countTrainingSamples = static_cast<IntEbm>(cTrainingSamples);
-   if(IsMultiplyError(cTrainingSamples, cFeatures)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R IsMultiplyError(cTrainingSamples, cFeatures)");
-      return R_NilValue;
-   }
-   if(cTrainingSamples * cFeatures != cTrainingBinIndexes) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R cTrainingSamples * cFeatures != cTrainingBinIndexes");
-      return R_NilValue;
-   }
-
-   const IntEbm countTrainingInitScores = CountDoubles(trainingInitScores);
-   if(countTrainingInitScores < 0) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   const size_t cTrainingInitScores = static_cast<size_t>(countTrainingInitScores);
-   if(IsMultiplyError(cScores, cTrainingSamples)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R IsMultiplyError(cScores, cTrainingSamples)");
-      return R_NilValue;
-   }
-   if(cScores * cTrainingSamples != cTrainingInitScores) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R cScores * cTrainingSamples != cTrainingInitScores");
-      return R_NilValue;
-   }
-   const double * const aTrainingInitScores = REAL(trainingInitScores);
-
-   size_t cValidationBinIndexes;
-   const IntEbm * aValidationBinIndexes;
-   if(ConvertDoublesToIndexes(validationBinIndexes, &cValidationBinIndexes, &aValidationBinIndexes)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-
-   size_t cValidationSamples;
-   const IntEbm * aValidationTargets;
-   if(ConvertDoublesToIndexes(validationTargets, &cValidationSamples, &aValidationTargets)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   const IntEbm countValidationSamples = static_cast<IntEbm>(cValidationSamples);
-
-   if(IsMultiplyError(cValidationSamples, cFeatures)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R IsMultiplyError(cValidationSamples, cFeatures)");
-      return R_NilValue;
-   }
-   if(cValidationSamples * cFeatures != cValidationBinIndexes) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R cValidationSamples * cFeatures != cValidationBinIndexes");
-      return R_NilValue;
-   }
-
-   const IntEbm countValidationInitScores = CountDoubles(validationInitScores);
-   if(countValidationInitScores < 0) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   const size_t cValidationInitScores = static_cast<size_t>(countValidationInitScores);
-   if(IsMultiplyError(cScores, cValidationSamples)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R IsMultiplyError(cScores, cValidationSamples)");
-      return R_NilValue;
-   }
-   if(cScores * cValidationSamples != cValidationInitScores) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R cScores * cValidationSamples != cValidationInitScores");
-      return R_NilValue;
-   }
-   const double * const aValidationInitScores = REAL(validationInitScores);
-
-   if(!IsSingleIntVector(countInnerBags)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R !IsSingleIntVector(countInnerBags)");
-      return R_NilValue;
-   }
-   int countInnerBagsInt = INTEGER(countInnerBags)[0];
-   if(IsConvertError<IntEbm>(countInnerBagsInt)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R IsConvertError<IntEbm>(countInnerBagsInt)");
-      return nullptr;
-   }
-   IntEbm countInnerBagsLocal = static_cast<IntEbm>(countInnerBagsInt);
-
-   double * pTrainingWeights = nullptr;
-   double * pValidationWeights = nullptr;
-   if(NILSXP != TYPEOF(trainingWeights) || NILSXP != TYPEOF(validationWeights)) {
-      if(REALSXP != TYPEOF(trainingWeights)) {
-         LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R REALSXP != TYPEOF(trainingWeights)");
-         return R_NilValue;
-      }
-      R_xlen_t trainingWeightsLength = xlength(trainingWeights);
-      if(IsConvertError<size_t>(trainingWeightsLength)) {
-         LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R IsConvertError<size_t>(trainingWeightsLength)");
-         return R_NilValue;
-      }
-      size_t cTrainingWeights = static_cast<size_t>(trainingWeightsLength);
-      if(cTrainingWeights != cTrainingSamples) {
-         LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R cTrainingWeights != cTrainingSamples");
-         return R_NilValue;
-      }
-      pTrainingWeights = REAL(trainingWeights);
-
-      if(REALSXP != TYPEOF(validationWeights)) {
-         LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R REALSXP != TYPEOF(validationWeights)");
-         return R_NilValue;
-      }
-      R_xlen_t validationWeightsLength = xlength(validationWeights);
-      if(IsConvertError<size_t>(validationWeightsLength)) {
-         LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R IsConvertError<size_t>(validationWeightsLength)");
-         return R_NilValue;
-      }
-      size_t cValidationWeights = static_cast<size_t>(validationWeightsLength);
-      if(cValidationWeights != cValidationSamples) {
-         LOG_0(Trace_Error, "ERROR CreateClassificationBooster_R cValidationWeights != cValidationSamples");
-         return R_NilValue;
-      }
-      pValidationWeights = REAL(validationWeights);
-   }
+   const IntEbm countInnerBagsIntEbm = static_cast<IntEbm>(countInnerBagsDouble);
 
    BoosterHandle boosterHandle;
-   error = CreateClassificationBooster(
+   err = CreateBooster(
+      bDeterministic,
       seedLocal,
-      static_cast<IntEbm>(cClasses),
-      countFeatures, 
-      aFeaturesCategorical,
-      aFeaturesBinCount,
-      countTerms, 
-      acTermDimensions,
-      aiTermFeatures,
-      countTrainingSamples, 
-      aTrainingBinIndexes, 
-      aTrainingTargets, 
-      pTrainingWeights,
-      aTrainingInitScores,
-      countValidationSamples, 
-      aValidationBinIndexes, 
-      aValidationTargets, 
-      pValidationWeights,
-      aValidationInitScores,
-      countInnerBagsLocal, 
-      nullptr,
-      &boosterHandle
-   );
-
-   if(Error_None != error || nullptr == boosterHandle) {
-      return R_NilValue;
-   }
-
-   SEXP boosterHandleWrapped = R_MakeExternalPtr(static_cast<void *>(boosterHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-   PROTECT(boosterHandleWrapped);
-
-   R_RegisterCFinalizerEx(boosterHandleWrapped, &BoostingFinalizer, Rboolean::TRUE);
-
-   UNPROTECT(1);
-   return boosterHandleWrapped;
-}
-
-SEXP CreateRegressionBooster_R(
-   SEXP seed,
-   SEXP featuresCategorical,
-   SEXP featuresBinCount,
-   SEXP dimensionCounts,
-   SEXP featureIndexes,
-   SEXP trainingBinIndexes,
-   SEXP trainingTargets,
-   SEXP trainingWeights,
-   SEXP trainingInitScores,
-   SEXP validationBinIndexes,
-   SEXP validationTargets,
-   SEXP validationWeights,
-   SEXP validationInitScores,
-   SEXP countInnerBags
-) {
-   EBM_ASSERT(nullptr != seed);
-   EBM_ASSERT(nullptr != featuresCategorical);
-   EBM_ASSERT(nullptr != featuresBinCount);
-   EBM_ASSERT(nullptr != dimensionCounts);
-   EBM_ASSERT(nullptr != featureIndexes);
-   EBM_ASSERT(nullptr != trainingBinIndexes);
-   EBM_ASSERT(nullptr != trainingTargets);
-   EBM_ASSERT(nullptr != trainingWeights);
-   EBM_ASSERT(nullptr != trainingInitScores);
-   EBM_ASSERT(nullptr != validationBinIndexes);
-   EBM_ASSERT(nullptr != validationTargets);
-   EBM_ASSERT(nullptr != validationWeights);
-   EBM_ASSERT(nullptr != validationInitScores);
-   EBM_ASSERT(nullptr != countInnerBags);
-
-   ErrorEbm error;
-
-   if(!IsSingleIntVector(seed)) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R !IsSingleIntVector(seed)");
-      return R_NilValue;
-   }
-   const SeedEbm seedLocal = INTEGER(seed)[0];
-
-   size_t cFeatures;
-   const BoolEbm * aFeaturesCategorical;
-   if(ConvertLogicalsToBools(featuresCategorical, &cFeatures, &aFeaturesCategorical)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbm countFeatures = static_cast<IntEbm>(cFeatures);
-
-   size_t cFeaturesFromBinCount;
-   const IntEbm * aFeaturesBinCount;
-   if(ConvertDoublesToIndexes(featuresBinCount, &cFeaturesFromBinCount, &aFeaturesBinCount)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   if(cFeatures != cFeaturesFromBinCount) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R cFeatures != cFeaturesFromBinCount");
-      return R_NilValue;
-   }
-
-   size_t cTerms;
-   const IntEbm * acTermDimensions;
-   if(ConvertDoublesToIndexes(dimensionCounts, &cTerms, &acTermDimensions)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbm countTerms = static_cast<IntEbm>(cTerms);
-
-   const size_t cTotalDimensionsCheck = CountTotalDimensions(cTerms, acTermDimensions);
-   if(SIZE_MAX == cTotalDimensionsCheck) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-
-   size_t cTotalDimensionsActual;
-   const IntEbm * aiTermFeatures;
-   if(ConvertDoublesToIndexes(featureIndexes, &cTotalDimensionsActual, &aiTermFeatures)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   if(cTotalDimensionsActual != cTotalDimensionsCheck) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R cTotalDimensionsActual != cTotalDimensionsCheck");
-      return R_NilValue;
-   }
-
-   size_t cTrainingBinIndexes;
-   const IntEbm * aTrainingBinIndexes;
-   if(ConvertDoublesToIndexes(trainingBinIndexes, &cTrainingBinIndexes, &aTrainingBinIndexes)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-
-   const IntEbm countTrainingSamples = CountDoubles(trainingTargets);
-   if(countTrainingSamples < 0) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
-   if(IsMultiplyError(cTrainingSamples, cFeatures)) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R IsMultiplyError(cTrainingSamples, cFeatures)");
-      return R_NilValue;
-   }
-   if(cTrainingSamples * cFeatures != cTrainingBinIndexes) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R cTrainingSamples * cFeatures != cTrainingBinIndexes");
-      return R_NilValue;
-   }
-   const double * const aTrainingTargets = REAL(trainingTargets);
-
-   const IntEbm countTrainingInitScores = CountDoubles(trainingInitScores);
-   if(countTrainingInitScores < 0) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   size_t cTrainingInitScores = static_cast<size_t>(countTrainingInitScores);
-   if(cTrainingSamples != cTrainingInitScores) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R cTrainingSamples != cTrainingInitScores");
-      return R_NilValue;
-   }
-   const double * const aTrainingInitScores = REAL(trainingInitScores);
-
-   size_t cValidationBinIndexes;
-   const IntEbm * aValidationBinIndexes;
-   if(ConvertDoublesToIndexes(validationBinIndexes, &cValidationBinIndexes, &aValidationBinIndexes)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-
-   const IntEbm countValidationSamples = CountDoubles(validationTargets);
-   if(countValidationSamples < 0) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
-   if(IsMultiplyError(cValidationSamples, cFeatures)) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R IsMultiplyError(cValidationSamples, cFeatures)");
-      return R_NilValue;
-   }
-   if(cValidationSamples * cFeatures != cValidationBinIndexes) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R cValidationSamples * cFeatures != cValidationBinIndexes");
-      return R_NilValue;
-   }
-   const double * const aValidationTargets = REAL(validationTargets);
-
-   const IntEbm countValidationInitScores = CountDoubles(validationInitScores);
-   if(countValidationInitScores < 0) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   size_t cValidationInitScores = static_cast<size_t>(countValidationInitScores);
-   if(cValidationSamples != cValidationInitScores) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R cValidationSamples != cValidationInitScores");
-      return R_NilValue;
-   }
-   const double * const aValidationInitScores = REAL(validationInitScores);
-
-   if(!IsSingleIntVector(countInnerBags)) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R !IsSingleIntVector(countInnerBags)");
-      return R_NilValue;
-   }
-   int countInnerBagsInt = INTEGER(countInnerBags)[0];
-   if(IsConvertError<IntEbm>(countInnerBagsInt)) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R IsConvertError<IntEbm>(countInnerBagsInt)");
-      return nullptr;
-   }
-   IntEbm countInnerBagsLocal = static_cast<IntEbm>(countInnerBagsInt);
-
-   double * pTrainingWeights = nullptr;
-   double * pValidationWeights = nullptr;
-   if(NILSXP != TYPEOF(trainingWeights) || NILSXP != TYPEOF(validationWeights)) {
-      if(REALSXP != TYPEOF(trainingWeights)) {
-         LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R REALSXP != TYPEOF(trainingWeights)");
-         return R_NilValue;
-      }
-      R_xlen_t trainingWeightsLength = xlength(trainingWeights);
-      if(IsConvertError<size_t>(trainingWeightsLength)) {
-         LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R IsConvertError<size_t>(trainingWeightsLength)");
-         return R_NilValue;
-      }
-      size_t cTrainingWeights = static_cast<size_t>(trainingWeightsLength);
-      if(cTrainingWeights != cTrainingSamples) {
-         LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R cTrainingWeights != cTrainingSamples");
-         return R_NilValue;
-      }
-      pTrainingWeights = REAL(trainingWeights);
-
-      if(REALSXP != TYPEOF(validationWeights)) {
-         LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R REALSXP != TYPEOF(validationWeights)");
-         return R_NilValue;
-      }
-      R_xlen_t validationWeightsLength = xlength(validationWeights);
-      if(IsConvertError<size_t>(validationWeightsLength)) {
-         LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R IsConvertError<size_t>(validationWeightsLength)");
-         return R_NilValue;
-      }
-      size_t cValidationWeights = static_cast<size_t>(validationWeightsLength);
-      if(cValidationWeights != cValidationSamples) {
-         LOG_0(Trace_Error, "ERROR CreateRegressionBooster_R cValidationWeights != cValidationSamples");
-         return R_NilValue;
-      }
-      pValidationWeights = REAL(validationWeights);
-   }
-
-   BoosterHandle boosterHandle;
-   error = CreateRegressionBooster(
-      seedLocal,
-      countFeatures,
-      aFeaturesCategorical,
-      aFeaturesBinCount,
+      pDataSet,
+      aBag,
+      aInitScores,
       countTerms,
       acTermDimensions,
       aiTermFeatures,
-      countTrainingSamples, 
-      aTrainingBinIndexes, 
-      aTrainingTargets, 
-      pTrainingWeights, 
-      aTrainingInitScores,
-      countValidationSamples, 
-      aValidationBinIndexes, 
-      aValidationTargets, 
-      pValidationWeights, 
-      aValidationInitScores,
-      countInnerBagsLocal, 
+      countInnerBagsIntEbm,
       nullptr,
       &boosterHandle
    );
-   if(Error_None != error || nullptr == boosterHandle) {
-      return R_NilValue;
+   if(Error_None != err || nullptr == boosterHandle) {
+      error("CreateBooster_R error in call to CreateBooster: %" ErrorEbmPrintf, err);
    }
 
    SEXP boosterHandleWrapped = R_MakeExternalPtr(static_cast<void *>(boosterHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
@@ -1038,7 +1037,7 @@ SEXP GenerateTermUpdate_R(
    EBM_ASSERT(nullptr != minSamplesLeaf);
    EBM_ASSERT(nullptr != leavesMax);
 
-   ErrorEbm error;
+   ErrorEbm err;
 
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
@@ -1102,7 +1101,7 @@ SEXP GenerateTermUpdate_R(
 
    double avgGain;
 
-   error = GenerateTermUpdate(
+   err = GenerateTermUpdate(
       boosterHandle,
       static_cast<IntEbm>(iTerm),
       BoostFlags_Default,
@@ -1111,7 +1110,7 @@ SEXP GenerateTermUpdate_R(
       aLeavesMax,
       &avgGain
    );
-   if(Error_None != error) {
+   if(Error_None != err) {
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate_R BoostingStep returned error code");
       return R_NilValue;
    }
@@ -1127,7 +1126,7 @@ SEXP ApplyTermUpdate_R(
 ) {
    EBM_ASSERT(nullptr != boosterHandleWrapped);
 
-   ErrorEbm error;
+   ErrorEbm err;
 
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
       LOG_0(Trace_Error, "ERROR ApplyTermUpdate_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
@@ -1137,14 +1136,14 @@ SEXP ApplyTermUpdate_R(
    // we don't use boosterHandle in this function, so let ApplyTermUpdate check if it's null or invalid
 
    double validationMetric;
-   error = ApplyTermUpdate(boosterHandle, &validationMetric);
-   if(Error_None != error) {
+   err = ApplyTermUpdate(boosterHandle, &validationMetric);
+   if(Error_None != err) {
       LOG_0(Trace_Warning, "WARNING ApplyTermUpdate_R ApplyTermUpdate returned error code");
       return R_NilValue;
    }
 
    SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(validationMetricOut);
+   REAL(ret)[0] = static_cast<double>(validationMetric);
    UNPROTECT(1);
    return ret;
 }
@@ -1156,7 +1155,7 @@ SEXP GetBestTermScores_R(
    EBM_ASSERT(nullptr != boosterHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != indexTerm); // shouldn't be possible
 
-   ErrorEbm error;
+   ErrorEbm err;
 
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
       LOG_0(Trace_Error, "ERROR GetBestTermScores_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
@@ -1205,12 +1204,12 @@ SEXP GetBestTermScores_R(
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cTensorScores)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cTensorScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
-   error = GetBestTermScores(boosterHandle, static_cast<IntEbm>(iTerm), REAL(ret));
+   err = GetBestTermScores(boosterHandle, static_cast<IntEbm>(iTerm), REAL(ret));
 
    UNPROTECT(1);
 
-   if(Error_None != error) {
-      LOG_0(Trace_Warning, "WARNING GetBestTermScores_R IntEbm { 0 } != error");
+   if(Error_None != err) {
+      LOG_0(Trace_Warning, "WARNING GetBestTermScores_R IntEbm { 0 } != err");
       return R_NilValue;
    }
    return ret;
@@ -1223,7 +1222,7 @@ SEXP GetCurrentTermScores_R(
    EBM_ASSERT(nullptr != boosterHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != indexTerm); // shouldn't be possible
 
-   ErrorEbm error;
+   ErrorEbm err;
 
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
       LOG_0(Trace_Error, "ERROR GetCurrentTermScores_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
@@ -1272,12 +1271,12 @@ SEXP GetCurrentTermScores_R(
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cTensorScores)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cTensorScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
-   error = GetCurrentTermScores(boosterHandle, static_cast<IntEbm>(iTerm), REAL(ret));
+   err = GetCurrentTermScores(boosterHandle, static_cast<IntEbm>(iTerm), REAL(ret));
 
    UNPROTECT(1);
 
-   if(Error_None != error) {
-      LOG_0(Trace_Warning, "WARNING GetCurrentTermScores_R IntEbm { 0 } != error");
+   if(Error_None != err) {
+      LOG_0(Trace_Warning, "WARNING GetCurrentTermScores_R IntEbm { 0 } != err");
       return R_NilValue;
    }
    return ret;
@@ -1290,256 +1289,94 @@ SEXP FreeBooster_R(
    return R_NilValue;
 }
 
-
-SEXP CreateClassificationInteractionDetector_R(
-   SEXP countClasses,
-   SEXP featuresCategorical,
-   SEXP featuresBinCount,
-   SEXP binIndexes,
-   SEXP targets,
-   SEXP weights,
+SEXP CreateInteractionDetector_R(
+   SEXP dataSetWrapped,
+   SEXP bag,
    SEXP initScores
 ) {
-   EBM_ASSERT(nullptr != countClasses);
-   EBM_ASSERT(nullptr != featuresCategorical);
-   EBM_ASSERT(nullptr != featuresBinCount);
-   EBM_ASSERT(nullptr != binIndexes);
-   EBM_ASSERT(nullptr != targets);
-   EBM_ASSERT(nullptr != weights);
+   EBM_ASSERT(nullptr != dataSetWrapped);
+   EBM_ASSERT(nullptr != bag);
    EBM_ASSERT(nullptr != initScores);
 
-   ErrorEbm error;
+   ErrorEbm err;
 
-   if(!IsSingleDoubleVector(countClasses)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationInteractionDetector_R !IsSingleDoubleVector(countClasses)");
-      return R_NilValue;
+   if(EXTPTRSXP != TYPEOF(dataSetWrapped)) {
+      error("CreateInteractionDetector_R EXTPTRSXP != TYPEOF(dataSetWrapped)");
    }
-   double countClassesDouble = REAL(countClasses)[0];
-   if(!IsDoubleToIntEbmIndexValid(countClassesDouble)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationInteractionDetector_R !IsDoubleToIntEbmIndexValid(countClassesDouble)");
-      return R_NilValue;
-   }
-   const size_t cClasses = static_cast<size_t>(countClassesDouble);
-   if(IsConvertError<ptrdiff_t>(cClasses)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationInteractionDetector_R IsConvertError<ptrdiff_t>(cClasses)");
-      return R_NilValue;
-   }
-   const size_t cScores = GetCountScores(static_cast<ptrdiff_t>(cClasses));
+   const void * pDataSet = R_ExternalPtrAddr(dataSetWrapped);
 
-   size_t cFeatures;
-   const BoolEbm * aFeaturesCategorical;
-   if(ConvertLogicalsToBools(featuresCategorical, &cFeatures, &aFeaturesCategorical)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbm countFeatures = static_cast<IntEbm>(cFeatures);
+   IntEbm countSamples;
+   IntEbm unused1;
+   IntEbm unused2;
+   IntEbm unused3;
 
-   size_t cFeaturesFromBinCount;
-   const IntEbm * aFeaturesBinCount;
-   if(ConvertDoublesToIndexes(featuresBinCount, &cFeaturesFromBinCount, &aFeaturesBinCount)) {
-      // we've already logged any errors
-      return R_NilValue;
+   err = ExtractDataSetHeader(pDataSet, &countSamples, &unused1, &unused2, &unused3);
+   if(Error_None != err) {
+      error("CreateInteractionDetector_R ExtractDataSetHeader failed with error code: %" ErrorEbmPrintf, err);
    }
-   if(cFeatures != cFeaturesFromBinCount) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationInteractionDetector_R cFeatures != cFeaturesFromBinCount");
-      return R_NilValue;
-   }
+   const size_t cSamples = static_cast<size_t>(countSamples); // we trust our internal code that this is convertible
 
-   size_t cBinIndexes;
-   const IntEbm * aBinIndexes;
-   if(ConvertDoublesToIndexes(binIndexes, &cBinIndexes, &aBinIndexes)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-
-   size_t cSamples;
-   const IntEbm * aTargets;
-   if(ConvertDoublesToIndexes(targets, &cSamples, &aTargets)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   const IntEbm countSamples = static_cast<IntEbm>(cSamples);
-
-   if(IsMultiplyError(cSamples, cFeatures)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationInteractionDetector_R IsMultiplyError(cSamples, cFeatures)");
-      return R_NilValue;
-   }
-   if(cSamples * cFeatures != cBinIndexes) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationInteractionDetector_R cSamples * cFeatures != cBinIndexes");
-      return R_NilValue;
-   }
-
-   const IntEbm countInitScores = CountDoubles(initScores);
-   if(countInitScores < 0) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   size_t cInitScores = static_cast<size_t>(countInitScores);
-   if(IsMultiplyError(cScores, cSamples)) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationInteractionDetector_R IsMultiplyError(cScores, cSamples)");
-      return R_NilValue;
-   }
-   if(cScores * cSamples != cInitScores) {
-      LOG_0(Trace_Error, "ERROR CreateClassificationInteractionDetector_R cScores * cSamples != cInitScores");
-      return R_NilValue;
-   }
-   const double * const aInitScores = REAL(initScores);
-
-   double * pWeights = nullptr;
-   if(NILSXP != TYPEOF(weights)) {
-      if(REALSXP != TYPEOF(weights)) {
-         LOG_0(Trace_Error, "ERROR CreateClassificationInteractionDetector_R REALSXP != TYPEOF(weights)");
-         return R_NilValue;
+   BagEbm * aBag = nullptr;
+   size_t cExpectedInitScores = cSamples;
+   if(NILSXP != TYPEOF(bag)) {
+      if(INTSXP != TYPEOF(bag)) {
+         error("CreateInteractionDetector_R INTSXP != TYPEOF(bag)");
       }
-      const R_xlen_t weightsLength = xlength(weights);
-      if(IsConvertError<size_t>(weightsLength)) {
-         LOG_0(Trace_Error, "ERROR CreateClassificationInteractionDetector_R IsConvertError<size_t>(weightsLength)");
-         return R_NilValue;
+      const R_xlen_t countSamplesVerify = xlength(bag);
+      if(IsConvertError<size_t>(countSamplesVerify)) {
+         error("CreateInteractionDetector_R IsConvertError<size_t>(countSamplesVerify)");
       }
-      const size_t cWeights = static_cast<size_t>(weightsLength);
-      if(cWeights != cSamples) {
-         LOG_0(Trace_Error, "ERROR CreateClassificationInteractionDetector_R cWeights != cSamples");
-         return R_NilValue;
+      const size_t cSamplesVerify = static_cast<size_t>(countSamplesVerify);
+      if(cSamples != cSamplesVerify) {
+         error("CreateInteractionDetector_R cSamples != cSamplesVerify");
       }
-      pWeights = REAL(weights);
+
+      aBag = reinterpret_cast<BagEbm *>(R_alloc(cSamples, static_cast<int>(sizeof(BagEbm))));
+      EBM_ASSERT(nullptr != aBag); // this can't be nullptr since R_alloc uses R error handling
+
+      cExpectedInitScores = 0;
+
+      const int32_t * pSampleReplicationR = INTEGER(bag);
+      BagEbm * pSampleReplication = aBag;
+      const BagEbm * const pSampleReplicationEnd = aBag + cSamples;
+      do {
+         const int32_t replication = *pSampleReplicationR;
+         if(IsConvertError<BagEbm>(replication)) {
+            error("CreateInteractionDetector_R IsConvertError<BagEbm>(replication)");
+         }
+         if(0 != replication) {
+            ++cExpectedInitScores;
+         }
+         *pSampleReplication = static_cast<BagEbm>(replication);
+         ++pSampleReplicationR;
+         ++pSampleReplication;
+      } while(pSampleReplicationEnd != pSampleReplication);
+   }
+
+   const double * aInitScores = nullptr;
+   if(NILSXP != TYPEOF(initScores)) {
+      const IntEbm countInitScores = CountDoubles(initScores);
+      if(countInitScores < 0) {
+         // we've already logged any errors
+         error("CreateInteractionDetector_R countInitScores < 0");
+      }
+      size_t cInitScores = static_cast<size_t>(countInitScores);
+      if(cInitScores != cExpectedInitScores) {
+         error("CreateInteractionDetector_R cInitScores != cExpectedInitScores");
+      }
+      aInitScores = REAL(initScores);
    }
 
    InteractionHandle interactionHandle;
-   error = CreateClassificationInteractionDetector(
-      static_cast<IntEbm>(cClasses),
-      countFeatures,
-      aFeaturesCategorical,
-      aFeaturesBinCount,
-      countSamples,
-      aBinIndexes,
-      aTargets,
-      pWeights,
+   err = CreateInteractionDetector(
+      pDataSet,
+      aBag,
       aInitScores,
       nullptr,
       &interactionHandle
    );
-
-   if(Error_None != error || nullptr == interactionHandle) {
-      return R_NilValue;
-   }
-
-   SEXP interactionHandleWrapped = R_MakeExternalPtr(static_cast<void *>(interactionHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-   PROTECT(interactionHandleWrapped);
-
-   R_RegisterCFinalizerEx(interactionHandleWrapped, &InteractionFinalizer, Rboolean::TRUE);
-
-   UNPROTECT(1);
-   return interactionHandleWrapped;
-}
-
-SEXP CreateRegressionInteractionDetector_R(
-   SEXP featuresCategorical,
-   SEXP featuresBinCount,
-   SEXP binIndexes,
-   SEXP targets,
-   SEXP weights,
-   SEXP initScores
-) {
-   EBM_ASSERT(nullptr != featuresCategorical);
-   EBM_ASSERT(nullptr != featuresBinCount);
-   EBM_ASSERT(nullptr != binIndexes);
-   EBM_ASSERT(nullptr != targets);
-   EBM_ASSERT(nullptr != weights);
-   EBM_ASSERT(nullptr != initScores);
-
-   ErrorEbm error;
-
-   size_t cFeatures;
-   const BoolEbm * aFeaturesCategorical;
-   if(ConvertLogicalsToBools(featuresCategorical, &cFeatures, &aFeaturesCategorical)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbm countFeatures = static_cast<IntEbm>(cFeatures);
-
-   size_t cFeaturesFromBinCount;
-   const IntEbm * aFeaturesBinCount;
-   if(ConvertDoublesToIndexes(featuresBinCount, &cFeaturesFromBinCount, &aFeaturesBinCount)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   if(cFeatures != cFeaturesFromBinCount) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionInteractionDetector_R cFeatures != cFeaturesFromBinCount");
-      return R_NilValue;
-   }
-
-   size_t cBinIndexes;
-   const IntEbm * aBinIndexes;
-   if(ConvertDoublesToIndexes(binIndexes, &cBinIndexes, &aBinIndexes)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-
-   const IntEbm countSamples = CountDoubles(targets);
-   if(countSamples < 0) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   size_t cSamples = static_cast<size_t>(countSamples);
-   if(IsMultiplyError(cSamples, cFeatures)) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionInteractionDetector_R IsMultiplyError(cSamples, cFeatures)");
-      return R_NilValue;
-   }
-   if(cSamples * cFeatures != cBinIndexes) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionInteractionDetector_R cSamples * cFeatures != cBinIndexes");
-      return R_NilValue;
-   }
-   const double * const aTargets = REAL(targets);
-
-   const IntEbm countInitScores = CountDoubles(initScores);
-   if(countInitScores < 0) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   size_t cInitScores = static_cast<size_t>(countInitScores);
-   if(cSamples != cInitScores) {
-      LOG_0(Trace_Error, "ERROR CreateRegressionInteractionDetector_R cSamples != cInitScores");
-      return R_NilValue;
-   }
-   const double * const aInitScores = REAL(initScores);
-
-   double * pWeights = nullptr;
-   if(NILSXP != TYPEOF(weights)) {
-      if(REALSXP != TYPEOF(weights)) {
-         LOG_0(Trace_Error, "ERROR CreateRegressionInteractionDetector_R REALSXP != TYPEOF(weights)");
-         return R_NilValue;
-      }
-      const R_xlen_t weightsLength = xlength(weights);
-      if(IsConvertError<size_t>(weightsLength)) {
-         LOG_0(Trace_Error, "ERROR CreateRegressionInteractionDetector_R IsConvertError<size_t>(weightsLength)");
-         return R_NilValue;
-      }
-      const size_t cWeights = static_cast<size_t>(weightsLength);
-      if(cWeights != cSamples) {
-         LOG_0(Trace_Error, "ERROR CreateRegressionInteractionDetector_R cWeights != cSamples");
-         return R_NilValue;
-      }
-      pWeights = REAL(weights);
-   }
-
-   InteractionHandle interactionHandle;
-   error = CreateRegressionInteractionDetector(
-      countFeatures, 
-      aFeaturesCategorical,
-      aFeaturesBinCount,
-      countSamples,
-      aBinIndexes, 
-      aTargets, 
-      pWeights,
-      aInitScores,
-      nullptr,
-      &interactionHandle
-   );
-
-   if(Error_None != error || nullptr == interactionHandle) {
-      return R_NilValue;
+   if(Error_None != err || nullptr == interactionHandle) {
+      error("CreateInteractionDetector_R error in call to CreateInteractionDetector: %" ErrorEbmPrintf, err);
    }
 
    SEXP interactionHandleWrapped = R_MakeExternalPtr(static_cast<void *>(interactionHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
@@ -1596,7 +1433,7 @@ SEXP CalcInteractionStrength_R(
    }
 
    double avgInteractionStrength;
-   if(Error_None != CalcInteractionStrength(interactionHandle, countDimensions, aFeatureIndexes, minSamplesLeafEbm, &avgInteractionStrength)) {
+   if(Error_None != CalcInteractionStrength(interactionHandle, countDimensions, aFeatureIndexes, InteractionFlags_Default, minSamplesLeafEbm, &avgInteractionStrength)) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength_R CalcInteractionStrength returned error code");
       return R_NilValue;
    }
@@ -1607,9 +1444,7 @@ SEXP CalcInteractionStrength_R(
    return ret;
 }
 
-SEXP FreeInteractionDetector_R(
-   SEXP interactionHandleWrapped
-) {
+SEXP FreeInteractionDetector_R(SEXP interactionHandleWrapped) {
    InteractionFinalizer(interactionHandleWrapped);
    return R_NilValue;
 }
@@ -1618,18 +1453,24 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "GenerateSeed_R", (DL_FUNC)&GenerateSeed_R, 2 },
    { "CutQuantile_R", (DL_FUNC)&CutQuantile_R, 4 },
    { "BinFeature_R", (DL_FUNC)&BinFeature_R, 3 },
+   { "MeasureDataSetHeader_R", (DL_FUNC)&MeasureDataSetHeader_R, 3 },
+   { "MeasureFeature_R", (DL_FUNC)&MeasureFeature_R, 5 },
+   { "MeasureClassificationTarget_R", (DL_FUNC)&MeasureClassificationTarget_R, 2 },
+   { "CreateDataSet_R", (DL_FUNC)&CreateDataSet_R, 1 },
+   { "FreeDataSet_R", (DL_FUNC)&FreeDataSet_R, 1 },
+   { "FillDataSetHeader_R", (DL_FUNC)&FillDataSetHeader_R, 5 },
+   { "FillFeature_R", (DL_FUNC)&FillFeature_R, 7 },
+   { "FillClassificationTarget_R", (DL_FUNC)&FillClassificationTarget_R, 4 },
    { "SampleWithoutReplacement_R", (DL_FUNC)&SampleWithoutReplacement_R, 4 },
-   { "CreateClassificationBooster_R", (DL_FUNC)&CreateClassificationBooster_R, 15 },
-   { "CreateRegressionBooster_R", (DL_FUNC)&CreateRegressionBooster_R, 14 },
+   { "CreateBooster_R", (DL_FUNC)&CreateBooster_R, 7 },
+   { "FreeBooster_R", (DL_FUNC)&FreeBooster_R, 1 },
    { "GenerateTermUpdate_R", (DL_FUNC)&GenerateTermUpdate_R, 5 },
    { "ApplyTermUpdate_R", (DL_FUNC)&ApplyTermUpdate_R, 1 },
    { "GetBestTermScores_R", (DL_FUNC)&GetBestTermScores_R, 2 },
-   { "GetCurrentTermScores_R", (DL_FUNC)& GetCurrentTermScores_R, 2 },
-   { "FreeBooster_R", (DL_FUNC)& FreeBooster_R, 1 },
-   { "CreateClassificationInteractionDetector_R", (DL_FUNC)&CreateClassificationInteractionDetector_R, 7 },
-   { "CreateRegressionInteractionDetector_R", (DL_FUNC)&CreateRegressionInteractionDetector_R, 6 },
-   { "CalcInteractionStrength_R", (DL_FUNC)&CalcInteractionStrength_R, 3 },
+   { "GetCurrentTermScores_R", (DL_FUNC)&GetCurrentTermScores_R, 2 },
+   { "CreateInteractionDetector_R", (DL_FUNC)&CreateInteractionDetector_R, 3 },
    { "FreeInteractionDetector_R", (DL_FUNC)&FreeInteractionDetector_R, 1 },
+   { "CalcInteractionStrength_R", (DL_FUNC)&CalcInteractionStrength_R, 3 },
    { NULL, NULL, 0 }
 };
 
