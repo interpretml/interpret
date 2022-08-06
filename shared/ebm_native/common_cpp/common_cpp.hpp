@@ -80,11 +80,11 @@ INLINE_ALWAYS static const T * ArrayToPointer(const T * const a) noexcept {
 // unlike std::min/std::max, our version has explicit noexcept semantics, constexpr, and is variadic
 template<typename T>
 INLINE_ALWAYS constexpr static T EbmMin(T v1, T v2) noexcept {
-   return UNPREDICTABLE(v1 < v2) ? v1 : v2;
+   return v1 < v2 ? v1 : v2;
 }
 template<typename T>
 INLINE_ALWAYS constexpr static T EbmMax(T v1, T v2) noexcept {
-   return UNPREDICTABLE(v1 < v2) ? v2 : v1;
+   return v1 < v2 ? v2 : v1;
 }
 
 template<typename T, typename... Args>
