@@ -145,10 +145,10 @@ We also build on top of many great packages. Please check them out!
 <details open>
   <summary><strong>InterpretML</strong></summary>
   <hr/>
+
   <details open>
     <summary>
-      <em>"InterpretML: A Unified Framework for Machine Learning Interpretability" (H. Nori, S. Jenkins, P. Koch, and R.
-        Caruana 2019)</em>
+      <em>"InterpretML: A Unified Framework for Machine Learning Interpretability" (H. Nori, S. Jenkins, P. Koch, and R. Caruana 2019)</em>
     </summary>
     <br/>
     <pre>
@@ -158,19 +158,20 @@ We also build on top of many great packages. Please check them out!
   journal={arXiv preprint arXiv:1909.09223},
   year={2019}
 }
-</pre>
+    </pre>
     <a href="https://arxiv.org/pdf/1909.09223.pdf">Paper link</a>
   </details>
+
   <hr/>
 </details>
 
 <details>
   <summary><strong>Explainable Boosting</strong></summary>
   <hr/>
+
   <details>
     <summary>
-      <em>"Intelligible models for healthcare: Predicting pneumonia risk and hospital 30-day readmission" (R. Caruana,
-        Y. Lou, J. Gehrke, P. Koch, M. Sturm, and N. Elhadad 2015)</em>
+      <em>"Intelligible models for healthcare: Predicting pneumonia risk and hospital 30-day readmission" (R. Caruana, Y. Lou, J. Gehrke, P. Koch, M. Sturm, and N. Elhadad 2015)</em>
     </summary>
     <br/>
     <pre>
@@ -182,14 +183,13 @@ We also build on top of many great packages. Please check them out!
   year={2015},
   organization={ACM}
 }
-</pre>
+    </pre>
     <a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2017/06/KDD2015FinalDraftIntelligibleModels4HealthCare_igt143e-caruanaA.pdf">Paper link</a>
   </details>
 
   <details>
     <summary>
-      <em>"Accurate intelligible models with pairwise interactions" (Y. Lou, R. Caruana, J. Gehrke, and G. Hooker
-        2013)</em>
+      <em>"Accurate intelligible models with pairwise interactions" (Y. Lou, R. Caruana, J. Gehrke, and G. Hooker 2013)</em>
     </summary>
     <br/>
     <pre>
@@ -201,9 +201,10 @@ We also build on top of many great packages. Please check them out!
   year={2013},
   organization={ACM}
 }
-</pre>
+    </pre>
     <a href="http://www.cs.cornell.edu/~yinlou/papers/lou-kdd13.pdf">Paper link</a>
   </details>
+
   <details>
     <summary>
       <em>"Intelligible models for classification and regression" (Y. Lou, R. Caruana, and J. Gehrke 2012)</em>
@@ -218,9 +219,24 @@ We also build on top of many great packages. Please check them out!
   year={2012},
   organization={ACM}
 }
-
-</pre>
+    </pre>
     <a href="https://www.cs.cornell.edu/~yinlou/papers/lou-kdd12.pdf">Paper link</a>
+  </details>
+
+  <details>
+    <summary>
+      <em>"Interpretability, Then What? Editing Machine Learning Models to Reflect Human Knowledge and Values" (Zijie J. Wang, Alex Kale, Harsha Nori, Peter Stella, Mark E. Nunnally, Duen Horng Chau, Mihaela Vorvoreanu, Jennifer Wortman Vaughan, Rich Caruana 2022)</em>
+    </summary>
+    <br/>
+    <pre>
+@article{wang2022interpretability,
+  title={Interpretability, Then What? Editing Machine Learning Models to Reflect Human Knowledge and Values},
+  author={Wang, Zijie J and Kale, Alex and Nori, Harsha and Stella, Peter and Nunnally, Mark E and Chau, Duen Horng and Vorvoreanu, Mihaela and Vaughan, Jennifer Wortman and Caruana, Rich},
+  journal={arXiv preprint arXiv:2206.15465},
+  year={2022}
+}
+    </pre>
+    <a href="https://arxiv.org/pdf/2206.15465.pdf">Paper link</a>
   </details>
 
   <details>
@@ -237,7 +253,7 @@ We also build on top of many great packages. Please check them out!
   year={2019},
   organization={ACM}
 }
-</pre>
+    </pre>
     <a href="https://arxiv.org/pdf/1810.09092.pdf">Paper link</a>
   </details>
 
@@ -255,7 +271,7 @@ We also build on top of many great packages. Please check them out!
   year={2018},
   organization={ACM}
 }
-</pre>
+    </pre>
     <a href="https://arxiv.org/pdf/1710.06169">Paper link</a>
   </details>
 
@@ -271,7 +287,7 @@ We also build on top of many great packages. Please check them out!
   journal={arXiv preprint arXiv:1911.04974},
   year={2019}
 }
-</pre>
+    </pre>
     <a href="https://arxiv.org/pdf/1911.04974.pdf">Paper link</a>
   </details>
 
@@ -288,7 +304,7 @@ We also build on top of many great packages. Please check them out!
   pages={1--14},
   year={2020}
 }
-</pre>
+    </pre>
     <a href="http://www-personal.umich.edu/~harmank/Papers/CHI2020_Interpretability.pdf">Paper link</a>
   </details>
 
@@ -304,7 +320,7 @@ We also build on top of many great packages. Please check them out!
   journal={arXiv preprint arXiv:2006.06466},
   year={2020}
 }
-</pre>
+    </pre>
     <a href="https://arxiv.org/pdf/2006.06466.pdf">Paper link</a>
   </details>
 
@@ -314,6 +330,7 @@ We also build on top of many great packages. Please check them out!
 <details>
   <summary><strong>Differential Privacy</strong></summary>
   <hr/>
+
   <details>
     <summary>
       <em>"Accuracy, Interpretability, and Differential Privacy via Explainable Boosting" (H. Nori, R. Caruana, Z. Bu, J. Shen, J. Kulkarni 2021)</em>
@@ -330,15 +347,17 @@ We also build on top of many great packages. Please check them out!
   series = 	 {Proceedings of Machine Learning Research},
   publisher =    {PMLR}
 }
-</pre>
+    </pre>
     <a href="http://proceedings.mlr.press/v139/nori21a/nori21a.pdf">Paper link</a>
   </details>
+
   <hr/>
 </details>
 
 <details>
   <summary><strong>LIME</strong></summary>
   <hr/>
+
   <details>
     <summary>
       <em>"Why should i trust you?: Explaining the predictions of any classifier" (M. T. Ribeiro, S. Singh, and C. Guestrin 2016)</em>
@@ -353,15 +372,17 @@ We also build on top of many great packages. Please check them out!
   year={2016},
   organization={ACM}
 }
-</pre>
+    </pre>
     <a href="https://arxiv.org/pdf/1602.04938.pdf">Paper link</a>
   </details>
+
   <hr/>
 </details>
 
 <details>
   <summary><strong>SHAP</strong></summary>
   <hr/>
+
   <details>
     <summary>
       <em>"A Unified Approach to Interpreting Model Predictions" (S. M. Lundberg and S.-I. Lee 2017)</em>
@@ -378,9 +399,10 @@ We also build on top of many great packages. Please check them out!
  publisher = {Curran Associates, Inc.},
  url = {http://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions.pdf}
 }
-</pre>
+    </pre>
     <a href="http://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions.pdf">Paper link</a>
   </details>
+
   <details>
     <summary>
       <em>"Consistent individualized feature attribution for tree ensembles" (Lundberg, Scott M and Erion, Gabriel G and Lee, Su-In 2018)</em>
@@ -393,9 +415,10 @@ We also build on top of many great packages. Please check them out!
   journal={arXiv preprint arXiv:1802.03888},
   year={2018}
 }
-</pre>
+    </pre>
     <a href="https://arxiv.org/pdf/1802.03888">Paper link</a>
   </details>
+
   <details>
     <summary>
       <em>"Explainable machine-learning predictions for the prevention of hypoxaemia during surgery" (S. M. Lundberg et al. 2018)</em>
@@ -412,15 +435,17 @@ We also build on top of many great packages. Please check them out!
   year={2018},
   publisher={Nature Publishing Group}
 }
-</pre>
+    </pre>
     <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6467492/pdf/nihms-1505578.pdf">Paper link</a>
   </details>
+
   <hr/>
 </details>
 
 <details>
   <summary><strong>Sensitivity Analysis</strong></summary>
   <hr/>
+
   <details>
     <summary>
       <em>"SALib: An open-source Python library for Sensitivity Analysis" (J. D. Herman and W. Usher 2017)</em>
@@ -436,9 +461,10 @@ We also build on top of many great packages. Please check them out!
   pages={97},
   year={2017}
 }
-</pre>
+    </pre>
     <a href="https://www.researchgate.net/profile/Will_Usher/publication/312204236_SALib_An_open-source_Python_library_for_Sensitivity_Analysis/links/5ac732d64585151e80a39547/SALib-An-open-source-Python-library-for-Sensitivity-Analysis.pdf?origin=publication_detail">Paper link</a>
   </details>
+
   <details>
     <summary>
       <em>"Factorial sampling plans for preliminary computational experiments" (M. D. Morris 1991)</em>
@@ -455,15 +481,17 @@ We also build on top of many great packages. Please check them out!
   year={1991},
   publisher={Taylor \& Francis Group}
 }
-</pre>
+    </pre>
     <a href="https://abe.ufl.edu/Faculty/jjones/ABE_5646/2010/Morris.1991%20SA%20paper.pdf">Paper link</a>
   </details>
+
   <hr/>
 </details>
 
 <details>
   <summary><strong>Partial Dependence</strong></summary>
   <hr/>
+
   <details>
     <summary>
       <em>"Greedy function approximation: a gradient boosting machine" (J. H. Friedman 2001)</em>
@@ -481,14 +509,14 @@ We also build on top of many great packages. Please check them out!
     </pre>
     <a href="https://projecteuclid.org/download/pdf_1/euclid.aos/1013203451">Paper link</a>
   </details>
+
   <hr/>
 </details>
-
-
 
 <details>
   <summary><strong>Open Source Software</strong></summary>
   <hr/>
+
   <details>
     <summary>
       <em>"Scikit-learn: Machine learning in Python" (F. Pedregosa et al. 2011)</em>
@@ -504,10 +532,11 @@ We also build on top of many great packages. Please check them out!
   pages={2825--2830},
   year={2011}
 }
-</pre>
+    </pre>
     <a href="http://www.jmlr.org/papers/volume12/pedregosa11a/pedregosa11a.pdf">Paper link</a>
   </details>
-<details>
+
+  <details>
     <summary>
       <em>"Collaborative data science" (Plotly Technologies Inc. 2015)</em>
     </summary>
@@ -519,11 +548,13 @@ We also build on top of many great packages. Please check them out!
   publisher = {Plotly Technologies Inc.}, 
   address = {Montreal, QC}, 
   year = {2015}, 
-  url = {https://plot.ly} }
-  </pre>
+  url = {https://plot.ly}
+}
+    </pre>
     <a href="https://plot.ly">Link</a>
-</details>
-<details>
+  </details>
+  
+  <details>
     <summary>
       <em>"Joblib: running python function as pipeline jobs" (G. Varoquaux and O. Grisel 2009)</em>
     </summary>
@@ -535,10 +566,9 @@ We also build on top of many great packages. Please check them out!
   journal={packages. python. org/joblib},
   year={2009}
 }
-  </pre>
+    </pre>
     <a href="https://joblib.readthedocs.io/en/latest/">Link</a>
-</details>
-  
+  </details>
   
   <hr/>
 </details>
@@ -576,6 +606,9 @@ We also build on top of many great packages. Please check them out!
 - [Explainable Boosting Machines for Slope Failure Spatial Predictive Modeling](https://www.mdpi.com/2072-4292/13/24/4991/htm)
 - [Micromodels for Efficient, Explainable, and Reusable Systems: A Case Study on Mental Health](https://arxiv.org/pdf/2109.13770.pdf)
 - [Identifying main and interaction effects of risk factors to predict intensive care admission in patients hospitalized with COVID-19](https://www.medrxiv.org/content/10.1101/2020.06.30.20143651v1.full.pdf)
+- [Comparing the interpretability of machine learning classifiers for brain tumour survival prediction](https://deliverypdf.ssrn.com/delivery.php?ID=760122118067103094108090123091079011028032009009023085005014014002123105085114025022024005047078031019089073120012025117073002064031071072113006066035001068125027021087087083085026100009018045107092063001023068071002124070107120120007014102094103069089119026110104107005031095001092090&EXT=pdf&INDEX=TRUE)
+- [Using Interpretable Machine Learning to Predict Maternal and Fetal Outcomes](https://arxiv.org/pdf/2207.05322.pdf)
+- [Calibrate: Interactive Analysis of Probabilistic Model Output](https://arxiv.org/pdf/2207.13770.pdf)
 - [Neural Additive Models: Interpretable Machine Learning with Neural Nets](https://arxiv.org/pdf/2004.13912.pdf)
 - [NODE-GAM: Neural Generalized Additive Model for Interpretable Deep Learning](https://arxiv.org/pdf/2106.01613.pdf)
 - [Scalable Interpretability via Polynomials](https://arxiv.org/pdf/2205.14108v1.pdf)
