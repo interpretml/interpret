@@ -39,7 +39,7 @@ namespace DEFINED_ZONE_NAME {
 extern void BinSumsBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
-   const SamplingSet * const pTrainingSet
+   const InnerBag * const pInnerBag
 );
 
 extern void SumAllBins(
@@ -94,7 +94,7 @@ extern ErrorEbm PartitionRandomBoosting(
 
 static ErrorEbm BoostZeroDimensional(
    BoosterShell * const pBoosterShell, 
-   const SamplingSet * const pTrainingSet,
+   const InnerBag * const pInnerBag,
    const BoostFlags flags
 ) {
    LOG_0(Trace_Verbose, "Entered BoostZeroDimensional");
@@ -126,7 +126,7 @@ static ErrorEbm BoostZeroDimensional(
    BinSumsBoosting(
       pBoosterShell,
       nullptr,
-      pTrainingSet
+      pInnerBag
    );
 
    const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
@@ -214,7 +214,7 @@ static ErrorEbm BoostSingleDimensional(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
    const size_t cBins,
-   const SamplingSet * const pTrainingSet,
+   const InnerBag * const pInnerBag,
    const size_t iDimension,
    const size_t cSamplesLeafMin,
    const IntEbm countLeavesMax,
@@ -269,7 +269,7 @@ static ErrorEbm BoostSingleDimensional(
    BinSumsBoosting(
       pBoosterShell,
       pTerm,
-      pTrainingSet
+      pInnerBag
    );
 
    const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
@@ -307,14 +307,14 @@ static ErrorEbm BoostSingleDimensional(
       pBoosterShell,
       cBins
 #ifndef NDEBUG
-      , pTrainingSet->GetTotalCountSampleOccurrences()
-      , pTrainingSet->GetWeightTotal()
+      , pBoosterCore->GetTrainingSet()->GetCountSamples()
+      , pInnerBag->GetWeightTotal()
 #endif // NDEBUG
    );
 
-   const size_t cSamplesTotal = pTrainingSet->GetTotalCountSampleOccurrences();
+   const size_t cSamplesTotal = pBoosterCore->GetTrainingSet()->GetCountSamples();
    EBM_ASSERT(1 <= cSamplesTotal);
-   const FloatBig weightTotal = pTrainingSet->GetWeightTotal();
+   const FloatBig weightTotal = pInnerBag->GetWeightTotal();
 
    error = PartitionOneDimensionalBoosting(
       pBoosterShell,
@@ -337,7 +337,7 @@ static ErrorEbm BoostSingleDimensional(
 static ErrorEbm BoostMultiDimensional(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
-   const SamplingSet * const pTrainingSet,
+   const InnerBag * const pInnerBag,
    const size_t cSamplesLeafMin,
    double * const pTotalGain
 ) {
@@ -408,7 +408,7 @@ static ErrorEbm BoostMultiDimensional(
    BinSumsBoosting(
       pBoosterShell,
       pTerm,
-      pTrainingSet
+      pInnerBag
    );
 
    // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20 at max, so we need 24
@@ -623,7 +623,7 @@ static ErrorEbm BoostMultiDimensional(
 static ErrorEbm BoostRandom(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
-   const SamplingSet * const pTrainingSet,
+   const InnerBag * const pInnerBag,
    const BoostFlags flags,
    const IntEbm * const aLeavesMax,
    double * const pTotalGain
@@ -682,7 +682,7 @@ static ErrorEbm BoostRandom(
    BinSumsBoosting(
       pBoosterShell,
       pTerm,
-      pTrainingSet
+      pInnerBag
    );
 
    const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
@@ -748,7 +748,8 @@ static ErrorEbm GenerateTermUpdateInternal(
 
    LOG_0(Trace_Verbose, "Entered GenerateTermUpdateInternal");
 
-   const size_t cSamplingSetsAfterZero = (0 == pBoosterCore->GetCountSamplingSets()) ? 1 : pBoosterCore->GetCountSamplingSets();
+   const size_t cInnerBagsAfterZero = 
+      (0 == pBoosterCore->GetCountInnerBags()) ? size_t { 1 } : pBoosterCore->GetCountInnerBags();
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
    const size_t cSignificantDimensions = pTerm->GetCountSignificantDimensions();
    const size_t cDimensions = pTerm->GetCountDimensions();
@@ -797,27 +798,26 @@ static ErrorEbm GenerateTermUpdateInternal(
    pBoosterShell->GetTermUpdate()->SetCountDimensions(cDimensions);
    pBoosterShell->GetTermUpdate()->Reset();
 
-   // if pBoosterCore->m_apSamplingSets is nullptr, then we should have zero training samples
+   // if pBoosterCore->m_apInnerBags is nullptr, then we should have zero training samples
    // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
 
    double gainAvgOut = 0.0;
-   const SamplingSet * const * ppSamplingSet = pBoosterCore->GetSamplingSets();
-   if(nullptr != ppSamplingSet) {
+   const InnerBag * const * ppInnerBag = pBoosterCore->GetInnerBags();
+   if(nullptr != ppInnerBag) {
       pBoosterShell->GetInnerTermUpdate()->SetCountDimensions(cDimensions);
       // if we have ignored dimensions, set the splits count to zero!
       // we only need to do this once instead of per-loop since any dimensions with 1 bin 
       // are going to remain having 0 splits.
       pBoosterShell->GetInnerTermUpdate()->Reset();
 
-      EBM_ASSERT(1 <= cSamplingSetsAfterZero);
-      const SamplingSet * const * const ppSamplingSetEnd = &ppSamplingSet[cSamplingSetsAfterZero];
-      const double invertedSampleCount = 1.0 / cSamplingSetsAfterZero;
+      EBM_ASSERT(1 <= cInnerBagsAfterZero);
+      const InnerBag * const * const ppInnerBagsEnd = &ppInnerBag[cInnerBagsAfterZero];
       double gainAvg = 0;
       do {
-         const SamplingSet * const pSamplingSet = *ppSamplingSet;
+         const InnerBag * const pInnerBag = *ppInnerBag;
          if(UNLIKELY(IntEbm { 0 } == lastDimensionLeavesMax)) {
             LOG_0(Trace_Warning, "WARNING GenerateTermUpdateInternal boosting zero dimensional");
-            error = BoostZeroDimensional(pBoosterShell, pSamplingSet, flags);
+            error = BoostZeroDimensional(pBoosterShell, pInnerBag, flags);
             if(Error_None != error) {
                if(LIKELY(nullptr != pGainAvgOut)) {
                   *pGainAvgOut = double { 0 };
@@ -837,7 +837,7 @@ static ErrorEbm GenerateTermUpdateInternal(
                error = BoostRandom(
                   pBoosterShell,
                   pTerm,
-                  pSamplingSet,
+                  pInnerBag,
                   flags,
                   aLeavesMax,
                   &gain
@@ -857,7 +857,7 @@ static ErrorEbm GenerateTermUpdateInternal(
                   pBoosterShell,
                   pTerm,
                   cSignificantBinCount,
-                  pSamplingSet,
+                  pInnerBag,
                   iDimensionImportant,
                   cSamplesLeafMin,
                   lastDimensionLeavesMax,
@@ -873,7 +873,7 @@ static ErrorEbm GenerateTermUpdateInternal(
                error = BoostMultiDimensional(
                   pBoosterShell,
                   pTerm,
-                  pSamplingSet,
+                  pInnerBag,
                   cSamplesLeafMin,
                   &gain
                );
@@ -889,13 +889,12 @@ static ErrorEbm GenerateTermUpdateInternal(
             EBM_ASSERT(!std::isnan(gain));
             EBM_ASSERT(0 <= gain);
 
-            const double weightTotal = static_cast<double>(pSamplingSet->GetWeightTotal());
+            const double weightTotal = static_cast<double>(pInnerBag->GetWeightTotal());
             EBM_ASSERT(0 < weightTotal); // if all are zeros we assume there are no weights and use the count
 
             // this could re-promote gain to be +inf again if weightTotal < 1.0
             // do the sample count inversion here in case adding all the avgeraged gains pushes us into +inf
-            EBM_ASSERT(invertedSampleCount <= 1);
-            gain = gain * invertedSampleCount / weightTotal;
+            gain = gain / cInnerBagsAfterZero / weightTotal;
             gainAvg += gain;
             EBM_ASSERT(!std::isnan(gainAvg));
             EBM_ASSERT(0 <= gainAvg);
@@ -910,8 +909,8 @@ static ErrorEbm GenerateTermUpdateInternal(
             }
             return error;
          }
-         ++ppSamplingSet;
-      } while(ppSamplingSetEnd != ppSamplingSet);
+         ++ppInnerBag;
+      } while(ppInnerBagsEnd != ppInnerBag);
 
       // gainAvg is +inf on overflow. It cannot be NaN, but check for that anyways since it's free
       EBM_ASSERT(!std::isnan(gainAvg));
@@ -940,7 +939,7 @@ static ErrorEbm GenerateTermUpdateInternal(
       LOG_0(Trace_Verbose, "GenerateTermUpdateInternal done sampling set loop");
 
       double multiple = 1.0; // TODO: get this from the loss function
-      multiple /= cSamplingSetsAfterZero;
+      multiple /= cInnerBagsAfterZero;
       multiple *= learningRate;
 
       bool bBad;
@@ -960,14 +959,14 @@ static ErrorEbm GenerateTermUpdateInternal(
          //       pBoosterCore->m_cClasses here to keep learning rates as equivalent as possible..  
          //       Actually, I think the real solution here is that 
          //   pBoosterCore->m_pTermUpdate->Multiply(
-         //      learningRateFloat * invertedSampleCount * (pBoosterCore->m_cClasses - 1) / 
+         //      learningRateFloat / cInnerBagsAfterZero * (pBoosterCore->m_cClasses - 1) / 
          //      pBoosterCore->m_cClasses
          //   );
          //} else {
          //   // TODO : for classification, is our learning rate essentially being inflated as 
          //        pBoosterCore->m_cClasses goes up?  If so, maybe we should divide by 
          //        pBoosterCore->m_cClasses here to keep learning rates equivalent as possible
-         //   pBoosterCore->m_pTermUpdate->Multiply(learningRateFloat * invertedSampleCount);
+         //   pBoosterCore->m_pTermUpdate->Multiply(learningRateFloat / cInnerBagsAfterZero);
          //}
 
          // TODO: When NewtonBoosting is enabled, we need to multiply our rate by (K - 1)/K (see above), per:

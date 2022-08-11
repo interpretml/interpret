@@ -37,7 +37,7 @@ public:
 
    static void Func(
       BoosterShell * const pBoosterShell,
-      const SamplingSet * const pTrainingSet
+      const InnerBag * const pInnerBag
    ) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
 
@@ -56,17 +56,17 @@ public:
       const size_t cScores = GetCountScores(cClasses);
       EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
 
-      const size_t cSamples = pTrainingSet->GetDataSetBoosting()->GetCountSamples();
+      const size_t cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
-      const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
-      const FloatFast * pWeight = pTrainingSet->GetWeights();
+      const size_t * pCountOccurrences = pInnerBag->GetCountOccurrences();
+      const FloatFast * pWeight = pInnerBag->GetWeights();
       EBM_ASSERT(nullptr != pWeight);
 #ifndef NDEBUG
       FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
-      const FloatFast * pGradientAndHessian = pTrainingSet->GetDataSetBoosting()->GetGradientsAndHessiansPointer();
+      const FloatFast * pGradientAndHessian = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
       // this shouldn't overflow since we're accessing existing memory
       const FloatFast * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
 
@@ -113,8 +113,8 @@ public:
 #endif // NDEBUG
             pGradientPair[iScore].m_sumGradients += gradient * weight;
             if(bClassification) {
-               // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the 
-               //   SamplingSet sets would have this value, but I would need to store the computation in a new memory place, and it might make 
+               // TODO : this code gets executed for each InnerBag set.  I could probably execute it once and then all the 
+               //   InnerBag sets would have this value, but I would need to store the computation in a new memory place, and it might make 
                //   more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a 
                //   MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the computation if 
                //   not necssary and access it through an accessor so that we can make the change entirely via macro
@@ -137,8 +137,8 @@ public:
       } while(pGradientAndHessiansEnd != pGradientAndHessian);
       
       EBM_ASSERT(0 < weightTotalDebug);
-      EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pTrainingSet->GetWeightTotal() &&
-         pTrainingSet->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
+      EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pInnerBag->GetWeightTotal() &&
+         pInnerBag->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
 
       LOG_0(Trace_Verbose, "Exited BinSumsBoostingZeroDimensions");
    }
@@ -152,7 +152,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
-      const SamplingSet * const pTrainingSet
+      const InnerBag * const pInnerBag
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
@@ -165,12 +165,12 @@ public:
       if(cPossibleClasses == cRuntimeClasses) {
          BinSumsBoostingZeroDimensions<cPossibleClasses>::Func(
             pBoosterShell,
-            pTrainingSet
+            pInnerBag
          );
       } else {
          BinSumsBoostingZeroDimensionsTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
-            pTrainingSet
+            pInnerBag
          );
       }
    }
@@ -184,7 +184,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
-      const SamplingSet * const pTrainingSet
+      const InnerBag * const pInnerBag
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
@@ -193,7 +193,7 @@ public:
 
       BinSumsBoostingZeroDimensions<k_dynamicClassification>::Func(
          pBoosterShell,
-         pTrainingSet
+         pInnerBag
       );
    }
 };
@@ -207,7 +207,7 @@ public:
    static void Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const SamplingSet * const pTrainingSet
+      const InnerBag * const pInnerBag
    ) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
 
@@ -235,18 +235,18 @@ public:
       EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
 
-      const size_t cSamples = pTrainingSet->GetDataSetBoosting()->GetCountSamples();
+      const size_t cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
-      const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
-      const FloatFast * pWeight = pTrainingSet->GetWeights();
+      const size_t * pCountOccurrences = pInnerBag->GetCountOccurrences();
+      const FloatFast * pWeight = pInnerBag->GetWeights();
       EBM_ASSERT(nullptr != pWeight);
 #ifndef NDEBUG
       FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
-      const StorageDataType * pInputData = pTrainingSet->GetDataSetBoosting()->GetInputDataPointer(pTerm);
-      const FloatFast * pGradientAndHessian = pTrainingSet->GetDataSetBoosting()->GetGradientsAndHessiansPointer();
+      const StorageDataType * pInputData = pBoosterCore->GetTrainingSet()->GetInputDataPointer(pTerm);
+      const FloatFast * pGradientAndHessian = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatFast * const pGradientAndHessiansTrueEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
@@ -319,8 +319,8 @@ public:
 #endif // NDEBUG
                pGradientPair[iScore].m_sumGradients += gradient * weight;
                if(bClassification) {
-                  // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the
-                  //   SamplingSet sets would have this value, but I would need to store the computation in a new memory place, and it might 
+                  // TODO : this code gets executed for each InnerBag set.  I could probably execute it once and then all the
+                  //   InnerBag sets would have this value, but I would need to store the computation in a new memory place, and it might 
                   //   make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be 
                   //   done in a MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the 
                   //   computation if not necssary and access it through an accessor so that we can make the change entirely via macro
@@ -362,8 +362,8 @@ public:
       }
 
       EBM_ASSERT(0 < weightTotalDebug);
-      EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pTrainingSet->GetWeightTotal() &&
-         pTrainingSet->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
+      EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pInnerBag->GetWeightTotal() &&
+         pInnerBag->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
 
       LOG_0(Trace_Verbose, "Exited BinSumsBoostingInternal");
    }
@@ -378,7 +378,7 @@ public:
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const SamplingSet * const pTrainingSet
+      const InnerBag * const pInnerBag
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
@@ -392,13 +392,13 @@ public:
          BinSumsBoostingInternal<cPossibleClasses, k_cItemsPerBitPackDynamic>::Func(
             pBoosterShell,
             pTerm,
-            pTrainingSet
+            pInnerBag
          );
       } else {
          BinSumsBoostingNormalTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
             pTerm,
-            pTrainingSet
+            pInnerBag
          );
       }
    }
@@ -413,7 +413,7 @@ public:
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const SamplingSet * const pTrainingSet
+      const InnerBag * const pInnerBag
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
@@ -423,7 +423,7 @@ public:
       BinSumsBoostingInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
          pTerm,
-         pTrainingSet
+         pInnerBag
       );
    }
 };
@@ -437,7 +437,7 @@ public:
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const SamplingSet * const pTrainingSet
+      const InnerBag * const pInnerBag
    ) {
       const ptrdiff_t runtimeBitPack = pTerm->GetBitPack();
 
@@ -448,7 +448,7 @@ public:
          BinSumsBoostingInternal<cCompilerClasses, compilerBitPack>::Func(
             pBoosterShell,
             pTerm,
-            pTrainingSet
+            pInnerBag
          );
       } else {
          BinSumsBoostingSIMDPacking<
@@ -457,7 +457,7 @@ public:
          >::Func(
             pBoosterShell,
             pTerm,
-            pTrainingSet
+            pInnerBag
          );
       }
    }
@@ -472,14 +472,14 @@ public:
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const SamplingSet * const pTrainingSet
+      const InnerBag * const pInnerBag
    ) {
       EBM_ASSERT(ptrdiff_t { 1 } <= pTerm->GetBitPack());
       EBM_ASSERT(pTerm->GetBitPack() <= ptrdiff_t { k_cBitsForStorageType });
       BinSumsBoostingInternal<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
          pTerm,
-         pTrainingSet
+         pInnerBag
       );
    }
 };
@@ -493,7 +493,7 @@ public:
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const SamplingSet * const pTrainingSet
+      const InnerBag * const pInnerBag
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
@@ -510,13 +510,13 @@ public:
          >::Func(
             pBoosterShell,
             pTerm,
-            pTrainingSet
+            pInnerBag
          );
       } else {
          BinSumsBoostingSIMDTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
             pTerm,
-            pTrainingSet
+            pInnerBag
          );
       }
    }
@@ -531,7 +531,7 @@ public:
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const SamplingSet * const pTrainingSet
+      const InnerBag * const pInnerBag
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
@@ -541,7 +541,7 @@ public:
       BinSumsBoostingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackMax>::Func(
          pBoosterShell,
          pTerm,
-         pTrainingSet
+         pInnerBag
       );
    }
 };
@@ -549,7 +549,7 @@ public:
 extern void BinSumsBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
-   const SamplingSet * const pTrainingSet
+   const InnerBag * const pInnerBag
 ) {
    LOG_0(Trace_Verbose, "Entered BinSumsBoosting");
 
@@ -560,13 +560,13 @@ extern void BinSumsBoosting(
       if(IsClassification(cRuntimeClasses)) {
          BinSumsBoostingZeroDimensionsTarget<2>::Func(
             pBoosterShell,
-            pTrainingSet
+            pInnerBag
          );
       } else {
          EBM_ASSERT(IsRegression(cRuntimeClasses));
          BinSumsBoostingZeroDimensions<k_regression>::Func(
             pBoosterShell,
-            pTrainingSet
+            pInnerBag
          );
       }
    } else {
@@ -588,14 +588,14 @@ extern void BinSumsBoosting(
             BinSumsBoostingSIMDTarget<2>::Func(
                pBoosterShell,
                pTerm,
-               pTrainingSet
+               pInnerBag
             );
          } else {
             EBM_ASSERT(IsRegression(cRuntimeClasses));
             BinSumsBoostingSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
                pBoosterShell,
                pTerm,
-               pTrainingSet
+               pInnerBag
             );
          }
       } else {
@@ -609,14 +609,14 @@ extern void BinSumsBoosting(
             BinSumsBoostingNormalTarget<2>::Func(
                pBoosterShell,
                pTerm,
-               pTrainingSet
+               pInnerBag
             );
          } else {
             EBM_ASSERT(IsRegression(cRuntimeClasses));
             BinSumsBoostingInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
                pBoosterShell,
                pTerm,
-               pTrainingSet
+               pInnerBag
             );
          }
       }

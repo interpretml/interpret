@@ -168,7 +168,7 @@ void BoosterCore::Free(BoosterCore * const pBoosterCore) {
 ErrorEbm BoosterCore::Create(
    BoosterShell * const pBoosterShell,
    const size_t cTerms,
-   const size_t cSamplingSets,
+   const size_t cInnerBags,
    const double * const experimentalParams,
    const IntEbm * const acTermDimensions,
    const IntEbm * const aiTermFeatures, 
@@ -488,7 +488,7 @@ ErrorEbm BoosterCore::Create(
       return error;
    }
 
-   EBM_ASSERT(nullptr == pBoosterCore->m_apSamplingSets);
+   EBM_ASSERT(nullptr == pBoosterCore->m_apInnerBags);
    if(0 != cTrainingSamples) {
       FloatFast * aWeights = nullptr;
       if(0 != cWeights) {
@@ -505,17 +505,17 @@ ErrorEbm BoosterCore::Create(
             return error;
          }
       }
-      pBoosterCore->m_cSamplingSets = cSamplingSets;
-      // TODO: we could steal the aWeights in GenerateSamplingSets for flat sampling sets
-      pBoosterCore->m_apSamplingSets = SamplingSet::GenerateSamplingSets(
+      pBoosterCore->m_cInnerBags = cInnerBags;
+      // TODO: we could steal the aWeights in GenerateInnerBags for flat sampling sets
+      pBoosterCore->m_apInnerBags = InnerBag::GenerateInnerBags(
          pBoosterShell->GetRandomDeterministic(),
          &pBoosterCore->m_trainingSet, 
          aWeights, 
-         cSamplingSets
+         cInnerBags
       );
       free(aWeights);
-      if(UNLIKELY(nullptr == pBoosterCore->m_apSamplingSets)) {
-         LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == m_apSamplingSets");
+      if(UNLIKELY(nullptr == pBoosterCore->m_apInnerBags)) {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == m_apInnerBags");
          return Error_OutOfMemory;
       }
    }

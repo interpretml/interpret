@@ -331,11 +331,17 @@ EBM_API_BODY void EBM_CALLING_CONVENTION CleanFloats(IntEbm count, double * vals
    while(0 != c) {
       --c;
       const double val = valsInOut[c];
-      if(-k_minNonSubnormal < val && val < k_minNonSubnormal) {
-         // val is in the subnormal range, so force it to zero.  
-         // DO NOT COMPARE WITH ZERO SINCE SOME CPUs INDICATE TRUE WHEN COMPARING 0.0 TO A SUBNORMAL
-         // if the environment violates IEEE-754 with "denormals-are-zero" ("subnormals-are-zero")
-         valsInOut[c] = 0.0;
+      // Use this check for NaN for cross-language portability.  It is not technically needed 
+      // if IEEE-754 is followed, since "anything < NaN" and "NaN < anything" are false
+      if(!std::isnan(val)) {
+         // Don't use the trick of adding and subtracting 1.0020841800044864e-292 since the results could
+         // be inconsitent across platforms if subnormals are rounded or not
+         if(-k_minNonSubnormal < val && val < k_minNonSubnormal) {
+            // val is in the subnormal range, so force it to zero.  
+            // DO NOT COMPARE WITH ZERO SINCE SOME CPUs INDICATE TRUE WHEN COMPARING 0.0 TO A SUBNORMAL
+            // if the environment violates IEEE-754 with "denormals-are-zero" ("subnormals-are-zero")
+            valsInOut[c] = 0.0;
+         }
       }
    }
 }

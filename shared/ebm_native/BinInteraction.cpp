@@ -134,11 +134,6 @@ public:
                   -1 - k_epsilonGradient <= gradient && gradient <= 1
                   );
 
-               // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the SamplingSet
-               //   sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this 
-               //   values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to 
-               //   hold the gradient and this computation from that value and then comment out the computation if not necssary and access it through an 
-               //   accessor so that we can make the change entirely via macro
                const FloatFast hessian = *(pGradientAndHessian + 1);
                EBM_ASSERT(
                   std::isnan(hessian) ||

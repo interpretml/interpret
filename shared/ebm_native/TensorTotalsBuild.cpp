@@ -978,8 +978,8 @@ extern void TensorTotalsBuild(
 
 
 //template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
-//bool BoostMultiDimensionalPaulAlgorithm(BoosterShell<IsClassification(cCompilerClasses)> * const pThreadState, const FeatureInternal * const pTargetFeature, SamplingSet const * const pTrainingSet, const Term * const pTerm, SegmentedRegion<ActiveDataType, FloatBig> * const pInnerTermUpdate) {
-//   Bin<IsClassification(cCompilerClasses)> * const aBins = BinDataSet<cCompilerClasses>(pThreadState, pTerm, pTrainingSet, pTargetFeature);
+//bool BoostMultiDimensionalPaulAlgorithm(BoosterShell<IsClassification(cCompilerClasses)> * const pThreadState, const FeatureInternal * const pTargetFeature, InnerBag const * const pInnerBag, const Term * const pTerm, SegmentedRegion<ActiveDataType, FloatBig> * const pInnerTermUpdate) {
+//   Bin<IsClassification(cCompilerClasses)> * const aBins = BinDataSet<cCompilerClasses>(pThreadState, pTerm, pInnerBag, pTargetFeature);
 //   if(UNLIKELY(nullptr == aBins)) {
 //      return true;
 //   }

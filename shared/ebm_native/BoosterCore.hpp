@@ -50,8 +50,8 @@ class BoosterCore final {
    size_t m_cTerms;
    Term ** m_apTerms;
 
-   size_t m_cSamplingSets;
-   SamplingSet ** m_apSamplingSets;
+   size_t m_cInnerBags;
+   InnerBag ** m_apInnerBags;
    FloatBig m_validationWeightTotal;
    FloatFast * m_aValidationWeights;
 
@@ -80,7 +80,7 @@ class BoosterCore final {
       m_trainingSet.Destruct();
       m_validationSet.Destruct();
 
-      SamplingSet::FreeSamplingSets(m_cSamplingSets, m_apSamplingSets);
+      InnerBag::FreeInnerBags(m_cInnerBags, m_apInnerBags);
       free(m_aValidationWeights);
 
       Term::FreeTerms(m_cTerms, m_apTerms);
@@ -100,8 +100,8 @@ class BoosterCore final {
       m_aFeatures(nullptr),
       m_cTerms(0),
       m_apTerms(nullptr),
-      m_cSamplingSets(0),
-      m_apSamplingSets(nullptr),
+      m_cInnerBags(0),
+      m_apInnerBags(nullptr),
       m_validationWeightTotal(0),
       m_aValidationWeights(nullptr),
       m_apCurrentTermTensors(nullptr),
@@ -147,12 +147,12 @@ public:
       return &m_validationSet;
    }
 
-   INLINE_ALWAYS size_t GetCountSamplingSets() const {
-      return m_cSamplingSets;
+   INLINE_ALWAYS size_t GetCountInnerBags() const {
+      return m_cInnerBags;
    }
 
-   INLINE_ALWAYS const SamplingSet * const * GetSamplingSets() const {
-      return m_apSamplingSets;
+   INLINE_ALWAYS const InnerBag * const * GetInnerBags() const {
+      return m_apInnerBags;
    }
 
    INLINE_ALWAYS FloatBig GetValidationWeightTotal() const {
@@ -184,7 +184,7 @@ public:
    static ErrorEbm Create(
       BoosterShell * const pBoosterShell,
       const size_t cTerms,
-      const size_t cSamplingSets,
+      const size_t cInnerBags,
       const double * const experimentalParams,
       const IntEbm * const acTermDimensions,
       const IntEbm * const aiTermFeatures,
