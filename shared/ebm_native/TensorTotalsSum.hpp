@@ -29,40 +29,40 @@ namespace DEFINED_ZONE_NAME {
 template<bool bClassification>
 void TensorTotalsSumDebugSlow(
    const ptrdiff_t cClasses,
-   const Term * const pTerm,
+   const size_t cSignificantDimensions,
+   const size_t * const acBins,
    const Bin<FloatBig, bClassification> * const aBins,
    const size_t * const aiStart,
    const size_t * const aiLast,
    Bin<FloatBig, bClassification> * const pRet
 ) {
-   EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions()); // why bother getting totals if we just have 1 bin
+   EBM_ASSERT(1 <= cSignificantDimensions); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
 
    size_t iTensorBin = 0;
    size_t valMultipleInitialize = 1;
    size_t iDimensionInitialize = 0;
 
-   const TermEntry * pTermEntryInit = pTerm->GetTermEntries();
-   const TermEntry * const pTermEntriesEnd = pTermEntryInit + pTerm->GetCountDimensions();
+   const size_t * pcBinsInit = acBins;
+   const size_t * const pcBinsInitEnd = &acBins[cSignificantDimensions];
    do {
-      const size_t cBins = pTermEntryInit->m_pFeature->GetCountBins();
+      const size_t cBins = *pcBinsInit;
       // cBins can only be 0 if there are zero training and zero validation samples
       // we don't boost or allow interaction updates if there are zero training samples
-      EBM_ASSERT(size_t { 1 } <= cBins);
-      if(size_t { 1 } < cBins) {
-         EBM_ASSERT(aiStart[iDimensionInitialize] < cBins);
-         EBM_ASSERT(aiLast[iDimensionInitialize] < cBins);
-         EBM_ASSERT(aiStart[iDimensionInitialize] <= aiLast[iDimensionInitialize]);
-         // aiStart[iDimensionInitialize] is less than cBins, so this should multiply
-         EBM_ASSERT(!IsMultiplyError(valMultipleInitialize, aiStart[iDimensionInitialize]));
-         iTensorBin += valMultipleInitialize * aiStart[iDimensionInitialize];
-         EBM_ASSERT(!IsMultiplyError(valMultipleInitialize, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         valMultipleInitialize *= cBins;
-         aiDimensions[iDimensionInitialize] = aiStart[iDimensionInitialize];
-         ++iDimensionInitialize;
-      }
-      ++pTermEntryInit;
-   } while(pTermEntriesEnd != pTermEntryInit);
+      EBM_ASSERT(size_t { 2 } <= cBins);
+      EBM_ASSERT(aiStart[iDimensionInitialize] < cBins);
+      EBM_ASSERT(aiLast[iDimensionInitialize] < cBins);
+      EBM_ASSERT(aiStart[iDimensionInitialize] <= aiLast[iDimensionInitialize]);
+      // aiStart[iDimensionInitialize] is less than cBins, so this should multiply
+      EBM_ASSERT(!IsMultiplyError(valMultipleInitialize, aiStart[iDimensionInitialize]));
+      iTensorBin += valMultipleInitialize * aiStart[iDimensionInitialize];
+      EBM_ASSERT(!IsMultiplyError(valMultipleInitialize, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+      valMultipleInitialize *= cBins;
+      aiDimensions[iDimensionInitialize] = aiStart[iDimensionInitialize];
+      ++iDimensionInitialize;
+
+      ++pcBinsInit;
+   } while(pcBinsInitEnd != pcBinsInit);
 
    const size_t cScores = GetCountScores(cClasses);
    // we've allocated this, so it should fit
@@ -70,38 +70,30 @@ void TensorTotalsSumDebugSlow(
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
    pRet->Zero(cBytesPerBin);
 
-   const size_t cSignficantDimensions = pTerm->GetCountSignificantDimensions();
-
    while(true) {
-      const auto * const pBin =
-         IndexBin(cBytesPerBin, aBins, iTensorBin);
+      const auto * const pBin = IndexBin(cBytesPerBin, aBins, iTensorBin);
 
       pRet->Add(*pBin, cScores);
 
       size_t iDimension = 0;
       size_t valMultipleLoop = 1;
-      const TermEntry * pTermEntry = pTerm->GetTermEntries();
+      const size_t * pcBins = acBins;
       while(aiDimensions[iDimension] == aiLast[iDimension]) {
          EBM_ASSERT(aiStart[iDimension] <= aiLast[iDimension]);
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(valMultipleLoop, aiLast[iDimension] - aiStart[iDimension]));
          iTensorBin -= valMultipleLoop * (aiLast[iDimension] - aiStart[iDimension]);
 
-         size_t cBins;
-         do {
-            cBins = pTermEntry->m_pFeature->GetCountBins();
-            // cBins can only be 0 if there are zero training and zero validation samples
-            // we don't boost or allow interaction updates if there are zero training samples
-            EBM_ASSERT(size_t { 1 } <= cBins);
-            ++pTermEntry;
-         } while(cBins <= size_t { 1 }); // skip anything with 1 bin
+         const size_t cBins = *pcBins;
+         EBM_ASSERT(size_t { 2 } <= cBins);
+         ++pcBins;
 
          EBM_ASSERT(!IsMultiplyError(valMultipleLoop, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          valMultipleLoop *= cBins;
 
          aiDimensions[iDimension] = aiStart[iDimension];
          ++iDimension;
-         if(iDimension == cSignficantDimensions) {
+         if(iDimension == cSignificantDimensions) {
             return;
          }
       }
@@ -113,7 +105,8 @@ void TensorTotalsSumDebugSlow(
 template<bool bClassification>
 void TensorTotalsCompareDebug(
    const Bin<FloatBig, bClassification> * const aBins,
-   const Term * const pTerm,
+   const size_t cSignificantDimensions,
+   const size_t * const acBins,
    const size_t * const aiPoint,
    const size_t directionVector,
    const ptrdiff_t cClasses,
@@ -127,35 +120,34 @@ void TensorTotalsCompareDebug(
    size_t aiLast[k_cDimensionsMax];
    size_t directionVectorDestroy = directionVector;
 
-   const TermEntry * pTermEntry = pTerm->GetTermEntries();
-   const TermEntry * const pTermEntriesEnd = pTermEntry + pTerm->GetCountDimensions();
+   const size_t * pcBins = acBins;
+   const size_t * const pcBinsEnd = &acBins[cSignificantDimensions];
 
    size_t iDimensionDebug = 0;
    do {
-      const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
+      const size_t cBins = *pcBins;
       // cBins can only be 0 if there are zero training and zero validation samples
       // we don't boost or allow interaction updates if there are zero training samples
-      EBM_ASSERT(size_t { 1 } <= cBins);
-      if(size_t { 1 } < cBins) {
-         if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
-            aiStart[iDimensionDebug] = aiPoint[iDimensionDebug] + 1;
-            aiLast[iDimensionDebug] = cBins - 1;
-         } else {
-            aiStart[iDimensionDebug] = 0;
-            aiLast[iDimensionDebug] = aiPoint[iDimensionDebug];
-         }
-         directionVectorDestroy >>= 1;
-         ++iDimensionDebug;
+      EBM_ASSERT(size_t { 2 } <= cBins);
+      if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
+         aiStart[iDimensionDebug] = aiPoint[iDimensionDebug] + 1;
+         aiLast[iDimensionDebug] = cBins - 1;
+      } else {
+         aiStart[iDimensionDebug] = 0;
+         aiLast[iDimensionDebug] = aiPoint[iDimensionDebug];
       }
-      ++pTermEntry;
-   } while(pTermEntriesEnd != pTermEntry);
+      directionVectorDestroy >>= 1;
+      ++iDimensionDebug;
+      ++pcBins;
+   } while(pcBinsEnd != pcBins);
 
    auto * const pComparison2 = EbmMalloc<Bin<FloatBig, bClassification>>(1, cBytesPerBin);
    if(nullptr != pComparison2) {
       // if we can't obtain the memory, then don't do the comparison and exit
       TensorTotalsSumDebugSlow<bClassification>(
          cClasses,
-         pTerm,
+         cSignificantDimensions,
+         acBins,
          aBins,
          aiStart,
          aiLast,
@@ -172,7 +164,8 @@ void TensorTotalsCompareDebug(
 template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
 void TensorTotalsSum(
    const ptrdiff_t cRuntimeClasses,
-   const Term * const pTerm,
+   const size_t cSignificantDimensions,
+   const size_t * const acBins,
    const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
    const size_t * const aiPoint,
    const size_t directionVector,
@@ -197,42 +190,37 @@ void TensorTotalsSum(
    //       in an if statement), and tripples (only 8 options in an if statement) and then keep this more general one 
    //       for higher dimensions
 
-   const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-      cCompilerClasses,
-      cRuntimeClasses
-   );
+   const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
    const size_t cScores = GetCountScores(cClasses);
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
+   const size_t * pcBins = acBins;
+   const size_t * pcBinsEnd = &acBins[cSignificantDimensions];
+   EBM_ASSERT(1 <= cSignificantDimensions);
+
    size_t multipleTotalInitialize = 1;
    size_t startingOffset = 0;
-   const TermEntry * pTermEntry = pTerm->GetTermEntries();
-   EBM_ASSERT(1 <= pTerm->GetCountDimensions());
-   const TermEntry * const pTermEntriesEnd = &pTermEntry[pTerm->GetCountDimensions()];
    const size_t * piPointInitialize = aiPoint;
 
    if(0 == directionVector) {
       // we would require a check in our inner loop below to handle the case of zero TermEntry items, so let's handle it separetly here instead
       do {
-         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
+         const size_t cBins = *pcBins;
          // cBins can only be 0 if there are zero training and zero validation samples
          // we don't boost or allow interaction updates if there are zero training samples
-         EBM_ASSERT(size_t { 1 } <= cBins);
-         if(size_t { 1 } < cBins) {
-            EBM_ASSERT(*piPointInitialize < cBins);
-            EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
-            const size_t addVal = multipleTotalInitialize * (*piPointInitialize);
-            EBM_ASSERT(!IsAddError(startingOffset, addVal)); // we're accessing allocated memory, so this needs to add
-            startingOffset += addVal;
-            EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, cBins)); // we're accessing allocated memory, so this needs to multiply
-            multipleTotalInitialize *= cBins;
-            ++piPointInitialize;
-         }
-         ++pTermEntry;
-      } while(LIKELY(pTermEntriesEnd != pTermEntry));
-      const auto * const pBin = 
-         IndexBin(cBytesPerBin, aBins, startingOffset);
+         EBM_ASSERT(size_t { 2 } <= cBins);
+         EBM_ASSERT(*piPointInitialize < cBins);
+         EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
+         const size_t addVal = multipleTotalInitialize * (*piPointInitialize);
+         EBM_ASSERT(!IsAddError(startingOffset, addVal)); // we're accessing allocated memory, so this needs to add
+         startingOffset += addVal;
+         EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, cBins)); // we're accessing allocated memory, so this needs to multiply
+         multipleTotalInitialize *= cBins;
+         ++piPointInitialize;
+         ++pcBins;
+      } while(LIKELY(pcBinsEnd != pcBins));
+      const auto * const pBin = IndexBin(cBytesPerBin, aBins, startingOffset);
       ASSERT_BIN_OK(cBytesPerBin, pRet, pBinsEndDebug);
       ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
       pRet->Copy(*pBin, cScores);
@@ -255,31 +243,29 @@ void TensorTotalsSum(
    {
       size_t directionVectorDestroy = directionVector;
       do {
-         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
+         const size_t cBins = *pcBins;
          // cBins can only be 0 if there are zero training and zero validation samples
          // we don't boost or allow interaction updates if there are zero training samples
-         EBM_ASSERT(size_t { 1 } <= cBins);
-         if(size_t { 1 } < cBins) {
-            if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
-               EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, cBins - 1)); // we're accessing allocated memory, so this needs to multiply
-               size_t cLast = multipleTotalInitialize * (cBins - 1);
-               EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
-               pTotalsDimensionEnd->m_cIncrement = multipleTotalInitialize * (*piPointInitialize);
-               pTotalsDimensionEnd->m_cLast = cLast;
-               multipleTotalInitialize += cLast;
-               ++pTotalsDimensionEnd;
-            } else {
-               EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
-               const size_t addVal = multipleTotalInitialize * (*piPointInitialize);
-               EBM_ASSERT(!IsAddError(startingOffset, addVal)); // we're accessing allocated memory, so this needs to add
-               startingOffset += addVal;
-               multipleTotalInitialize *= cBins;
-            }
-            ++piPointInitialize;
-            directionVectorDestroy >>= 1;
+         EBM_ASSERT(size_t { 2 } <= cBins);
+         if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
+            EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, cBins - 1)); // we're accessing allocated memory, so this needs to multiply
+            size_t cLast = multipleTotalInitialize * (cBins - 1);
+            EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
+            pTotalsDimensionEnd->m_cIncrement = multipleTotalInitialize * (*piPointInitialize);
+            pTotalsDimensionEnd->m_cLast = cLast;
+            multipleTotalInitialize += cLast;
+            ++pTotalsDimensionEnd;
+         } else {
+            EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
+            const size_t addVal = multipleTotalInitialize * (*piPointInitialize);
+            EBM_ASSERT(!IsAddError(startingOffset, addVal)); // we're accessing allocated memory, so this needs to add
+            startingOffset += addVal;
+            multipleTotalInitialize *= cBins;
          }
-         ++pTermEntry;
-      } while(LIKELY(pTermEntriesEnd != pTermEntry));
+         ++piPointInitialize;
+         directionVectorDestroy >>= 1;
+         ++pcBins;
+      } while(LIKELY(pcBinsEnd != pcBins));
    }
    const unsigned int cAllBits = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
    EBM_ASSERT(cAllBits < k_cBitsForSizeT);
@@ -325,7 +311,8 @@ void TensorTotalsSum(
    if(nullptr != aBinsDebugCopy) {
       TensorTotalsCompareDebug<bClassification>(
          aBinsDebugCopy,
-         pTerm,
+         cSignificantDimensions,
+         acBins,
          aiPoint,
          directionVector,
          cClasses,

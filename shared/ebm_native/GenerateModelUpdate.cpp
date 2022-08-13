@@ -53,7 +53,8 @@ extern void SumAllBins(
 
 extern void TensorTotalsBuild(
    const ptrdiff_t cClasses,
-   const Term * const pTerm,
+   const size_t cSignificantDimensions,
+   const size_t * const acBins,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
 #ifndef NDEBUG
@@ -76,6 +77,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
 extern ErrorEbm PartitionTwoDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
+   const size_t * const acBins,
    const size_t cSamplesLeafMin,
    BinBase * aAuxiliaryBinsBase,
    double * const pTotalGain
@@ -351,12 +353,18 @@ static ErrorEbm BoostMultiDimensional(
    size_t cAuxillaryBinsForBuildFastTotals = 0;
    size_t cTotalBinsMainSpace = 1;
 
+   size_t acBins[k_cDimensionsMax];
+   size_t * pcBins = acBins;
+
    const TermEntry * pTermEntry = pTerm->GetTermEntries();
    const TermEntry * const pTermEntriesEnd = pTermEntry + pTerm->GetCountDimensions();
    do {
       const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
       EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
       if(size_t { 1 } < cBins) {
+         *pcBins = cBins;
+         ++pcBins;
+
          // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace) at runtime
          EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTotalBinsMainSpace);
          // since cBins must be 2 or more, cAuxillaryBinsForBuildFastTotals must grow slower than cTotalBinsMainSpace, and we checked at 
@@ -472,7 +480,8 @@ static ErrorEbm BoostMultiDimensional(
 
    TensorTotalsBuild(
       cClasses,
-      pTerm,
+      pTerm->GetCountSignificantDimensions(),
+      acBins,
       aAuxiliaryBins,
       aBinsBig
 #ifndef NDEBUG
@@ -581,6 +590,7 @@ static ErrorEbm BoostMultiDimensional(
       error = PartitionTwoDimensionalBoosting(
          pBoosterShell,
          pTerm,
+         acBins,
          cSamplesLeafMin,
          aAuxiliaryBins,
          pTotalGain

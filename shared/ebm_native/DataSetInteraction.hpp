@@ -69,12 +69,10 @@ public:
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
    }
-   // TODO: we can change this to take the m_iFeatureData value directly, which we get from a loop index
-   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const Feature * const pFeature) const {
-      EBM_ASSERT(nullptr != pFeature);
-      EBM_ASSERT(pFeature->GetIndexFeatureData() < m_cFeatures);
+   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const size_t iFeature) const {
+      EBM_ASSERT(iFeature < m_cFeatures);
       EBM_ASSERT(nullptr != m_aaInputData);
-      return m_aaInputData[pFeature->GetIndexFeatureData()];
+      return m_aaInputData[iFeature];
    }
    INLINE_ALWAYS size_t GetCountSamples() const {
       return m_cSamples;

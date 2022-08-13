@@ -87,7 +87,7 @@ static_assert(
    "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would "
    "output model files with two values instead of our special case 1");
 
-constexpr static size_t k_cCompilerOptimizedCountDimensionsMax = 2;
+constexpr static size_t k_cCompilerOptimizedCountDimensionsMax = 3;
 
 static_assert(1 <= k_cCompilerOptimizedCountDimensionsMax,
    "k_cCompilerOptimizedCountDimensionsMax can be 1 if we want to turn off dimension optimization, but 0 or less is disallowed.");

@@ -35,7 +35,8 @@ namespace DEFINED_ZONE_NAME {
 template<ptrdiff_t cCompilerClasses>
 static FloatBig SweepMultiDimensional(
    const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
-   const Term * const pTerm,
+   const size_t cSignificantDimensions,
+   const size_t * const acBins,
    size_t * const aiPoint,
    const size_t directionVectorLow,
    const unsigned int iDimensionSweep,
@@ -55,8 +56,8 @@ static FloatBig SweepMultiDimensional(
 
    // TODO : optimize this function
 
-   EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
-   EBM_ASSERT(iDimensionSweep < pTerm->GetCountSignificantDimensions());
+   EBM_ASSERT(1 <= cSignificantDimensions);
+   EBM_ASSERT(iDimensionSweep < cSignificantDimensions);
    EBM_ASSERT(0 == (directionVectorLow & (size_t { 1 } << iDimensionSweep)));
 
    const ptrdiff_t cClasses = GET_COUNT_CLASSES(
@@ -90,10 +91,11 @@ static FloatBig SweepMultiDimensional(
    do {
       *piBin = iBin;
 
-      EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+      EBM_ASSERT(2 == cSignificantDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
       TensorTotalsSum<cCompilerClasses, 2>(
          cRuntimeClasses,
-         pTerm,
+         cSignificantDimensions,
+         acBins,
          aBins,
          aiPoint,
          directionVectorLow,
@@ -104,10 +106,11 @@ static FloatBig SweepMultiDimensional(
 #endif // NDEBUG
          );
       if(LIKELY(cSamplesLeafMin <= pTotalsLow->GetCountSamples())) {
-         EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+         EBM_ASSERT(2 == cSignificantDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
          TensorTotalsSum<cCompilerClasses, 2>(
             cRuntimeClasses,
-            pTerm,
+            cSignificantDimensions,
+            acBins,
             aBins,
             aiPoint,
             directionVectorHigh,
@@ -187,6 +190,7 @@ public:
    static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
+      const size_t * const acBins,
       const size_t cSamplesLeafMin,
       BinBase * aAuxiliaryBinsBase,
       double * const pTotalGain
@@ -200,15 +204,11 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
-      Tensor * const pInnerTermUpdate =
-         pBoosterShell->GetInnerTermUpdate();
+      Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-         cCompilerClasses,
-         cRuntimeClasses
-      );
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
 
       const size_t cScores = GetCountScores(cClasses);
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
@@ -272,7 +272,8 @@ public:
          auto * pTotals2LowHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 5);
          const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses>(
             aBins,
-            pTerm,
+            pTerm->GetCountSignificantDimensions(),
+            acBins,
             aiStart,
             0x0,
             1,
@@ -295,7 +296,8 @@ public:
             auto * pTotals2HighHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 9);
             const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses>(
                aBins,
-               pTerm,
+               pTerm->GetCountSignificantDimensions(),
+               acBins,
                aiStart,
                0x1,
                1,
@@ -363,7 +365,8 @@ public:
          auto * pTotals1LowHighBestInner = IndexBin(cBytesPerBin, aAuxiliaryBins, 17);
          const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses>(
             aBins,
-            pTerm,
+            pTerm->GetCountSignificantDimensions(),
+            acBins,
             aiStart,
             0x0,
             0,
@@ -386,7 +389,8 @@ public:
             auto * pTotals1HighHighBestInner = IndexBin(cBytesPerBin, aAuxiliaryBins, 21);
             const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses>(
                aBins,
-               pTerm,
+               pTerm->GetCountSignificantDimensions(),
+               acBins,
                aiStart,
                0x2,
                0,
@@ -850,6 +854,7 @@ public:
    INLINE_ALWAYS static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
+      const size_t * const acBins,
       const size_t cSamplesLeafMin,
       BinBase * aAuxiliaryBinsBase,
       double * const pTotalGain
@@ -869,6 +874,7 @@ public:
          return PartitionTwoDimensionalBoostingInternal<cPossibleClasses>::Func(
             pBoosterShell,
             pTerm,
+            acBins,
             cSamplesLeafMin,
             aAuxiliaryBinsBase,
             pTotalGain
@@ -880,6 +886,7 @@ public:
          return PartitionTwoDimensionalBoostingTarget<cPossibleClasses + 1>::Func(
             pBoosterShell,
             pTerm,
+            acBins,
             cSamplesLeafMin,
             aAuxiliaryBinsBase,
             pTotalGain
@@ -900,6 +907,7 @@ public:
    INLINE_ALWAYS static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
+      const size_t * const acBins,
       const size_t cSamplesLeafMin,
       BinBase * aAuxiliaryBinsBase,
       double * const pTotalGain
@@ -915,6 +923,7 @@ public:
       return PartitionTwoDimensionalBoostingInternal<k_dynamicClassification>::Func(
          pBoosterShell,
          pTerm,
+         acBins,
          cSamplesLeafMin,
          aAuxiliaryBinsBase,
          pTotalGain
@@ -928,6 +937,7 @@ public:
 extern ErrorEbm PartitionTwoDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
+   const size_t * const acBins,
    const size_t cSamplesLeafMin,
    BinBase * aAuxiliaryBinsBase,
    double * const pTotalGain
@@ -942,6 +952,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(
       return PartitionTwoDimensionalBoostingTarget<2>::Func(
          pBoosterShell,
          pTerm,
+         acBins,
          cSamplesLeafMin,
          aAuxiliaryBinsBase,
          pTotalGain
@@ -954,6 +965,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(
       return PartitionTwoDimensionalBoostingInternal<k_regression>::Func(
          pBoosterShell,
          pTerm,
+         acBins,
          cSamplesLeafMin,
          aAuxiliaryBinsBase,
          pTotalGain

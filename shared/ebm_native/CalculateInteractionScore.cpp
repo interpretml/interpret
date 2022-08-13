@@ -30,11 +30,17 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void BinSumsInteraction(InteractionShell * const pInteractionShell, const Term * const pTerm);
+extern void BinSumsInteraction(
+   InteractionShell * const pInteractionShell,
+   const size_t cSignificantDimensions,
+   const size_t * const aiFeatures,
+   const size_t * const acBins
+);
 
 extern void TensorTotalsBuild(
    const ptrdiff_t cClasses,
-   const Term * const pTerm,
+   const size_t cSignificantDimensions,
+   const size_t * const acBins,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
 #ifndef NDEBUG
@@ -45,7 +51,8 @@ extern void TensorTotalsBuild(
 
 extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
-   const Term * const pTerm,
+   const size_t cSignificantDimensions,
+   const size_t * const acBins,
    const InteractionFlags flags,
    const size_t cSamplesLeafMin,
    BinBase * aAuxiliaryBinsBase,
@@ -58,8 +65,9 @@ extern double PartitionTwoDimensionalInteraction(
 
 static ErrorEbm CalcInteractionStrengthInternal(
    InteractionShell * const pInteractionShell,
-   InteractionCore * const pInteractionCore,
-   const Term * const pTerm,
+   const size_t cSignificantDimensions,
+   const size_t * const aiFeatures,
+   const size_t * const acBins,
    const InteractionFlags flags,
    const size_t cSamplesLeafMin,
    double * const pInteractionStrengthAvgOut
@@ -68,22 +76,22 @@ static ErrorEbm CalcInteractionStrengthInternal(
    // it, and it's taking up precious memory.  We should eliminate the hessian term HERE in our datastructures OR we should think whether we can 
    // use the hessian as part of the gain function!!!
 
+   InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
    const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
    const bool bClassification = IsClassification(cClasses);
 
    LOG_0(Trace_Verbose, "Entered CalcInteractionStrengthInternal");
 
    // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
-   EBM_ASSERT(1 <= pTerm->GetCountDimensions());
-   EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
-   EBM_ASSERT(pTerm->GetCountDimensions() == pTerm->GetCountSignificantDimensions());
+   EBM_ASSERT(1 <= cSignificantDimensions);
+
+   const size_t * pcBins = acBins;
+   const size_t * const pcBinsEnd = &acBins[cSignificantDimensions];
 
    size_t cAuxillaryBinsForBuildFastTotals = 0;
    size_t cTotalBinsMainSpace = 1;
-   const TermEntry * pTermEntry = pTerm->GetTermEntries();
-   const TermEntry * const pTermEntriesEnd = pTermEntry + pTerm->GetCountDimensions();
    do {
-      const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
+      const size_t cBins = *pcBins;
       // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
       // our tensor code strips out features with 1 bin, and we'd need to do that here too if cBins was 1
       EBM_ASSERT(size_t { 2 } <= cBins);
@@ -106,8 +114,8 @@ static ErrorEbm CalcInteractionStrengthInternal(
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace) at runtime
       EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTotalBinsMainSpace);
 
-      ++pTermEntry;
-   } while(pTermEntriesEnd != pTermEntry);
+      ++pcBins;
+   } while(pcBinsEnd != pcBins);
 
    const size_t cScores = GetCountScores(cClasses);
 
@@ -140,7 +148,7 @@ static ErrorEbm CalcInteractionStrengthInternal(
    pInteractionShell->SetBinsFastEndDebug(pBinsFastEndDebug);
 #endif // NDEBUG
 
-   BinSumsInteraction(pInteractionShell, pTerm);
+   BinSumsInteraction(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
 
    const size_t cAuxillaryBinsForSplitting = 4;
    const size_t cAuxillaryBins =
@@ -194,7 +202,8 @@ static ErrorEbm CalcInteractionStrengthInternal(
 
    TensorTotalsBuild(
       cClasses,
-      pTerm,
+      cSignificantDimensions,
+      acBins,
       aAuxiliaryBins,
       aBinsBig
 #ifndef NDEBUG
@@ -203,12 +212,13 @@ static ErrorEbm CalcInteractionStrengthInternal(
 #endif // NDEBUG
    );
 
-   if(2 == pTerm->GetCountSignificantDimensions()) {
+   if(2 == cSignificantDimensions) {
       LOG_0(Trace_Verbose, "CalcInteractionStrengthInternal Starting bin sweep loop");
 
       double bestGain = PartitionTwoDimensionalInteraction(
          pInteractionCore,
-         pTerm,
+         cSignificantDimensions,
+         acBins,
          flags,
          cSamplesLeafMin,
          aAuxiliaryBins,
@@ -253,7 +263,7 @@ static ErrorEbm CalcInteractionStrengthInternal(
       }
    } else {
       EBM_ASSERT(false); // we only support pairs currently
-      LOG_0(Trace_Warning, "WARNING CalcInteractionStrengthInternal 2 != pTerm->GetCountSignificantDimensions()");
+      LOG_0(Trace_Warning, "WARNING CalcInteractionStrengthInternal 2 != cSignificantDimensions");
 
       // TODO: handle this better
       if(nullptr != pInteractionStrengthAvgOut) {
@@ -361,17 +371,17 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    }
    size_t cDimensions = static_cast<size_t>(countDimensions);
 
-   Term term;
-   TermEntry * pTermEntry = term.GetTermEntries();
+   size_t aiFeatures[k_cDimensionsMax];
+   size_t acBins[k_cDimensionsMax];
+
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
    const Feature * const aFeatures = pInteractionCore->GetFeatures();
-   const IntEbm * piFeature = featureIndexes;
-   const IntEbm * const piFeaturesEnd = featureIndexes + cDimensions;
    size_t cTensorBins = 1;
+   size_t iDimension = 0;
    do {
       // TODO: merge this loop with the one below inside the internal function
 
-      const IntEbm indexFeature = *piFeature;
+      const IntEbm indexFeature = featureIndexes[iDimension];
       if(indexFeature < IntEbm { 0 }) {
          LOG_0(Trace_Error, "ERROR CalcInteractionStrength featureIndexes value cannot be negative");
          return Error_IllegalParamVal;
@@ -394,16 +404,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cTensorBins, cBins)");
          return Error_OutOfMemory;
       }
-      cTensorBins *= cBins;
+      cTensorBins *= cBins; // TODO: Do I need this?  Maybe we just use it as a check for overflow, but then shouldn't we be calculating the total memory bytes?
 
-      pTermEntry->m_pFeature = pFeature;
-      ++pTermEntry;
+      aiFeatures[iDimension] = iFeature;
+      acBins[iDimension] = cBins;
 
-      ++piFeature;
-   } while(piFeaturesEnd != piFeature);
-   term.Initialize(cDimensions, 0);
-   term.SetCountTensorBins(cTensorBins);
-   term.SetCountSignificantFeatures(cDimensions); // if we get past the loop below this will be true
+      ++iDimension;
+   } while(cDimensions != iDimension);
 
    if(size_t { 0 } == pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
       // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
@@ -424,11 +431,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       return Error_None;
    }
 
-   // TODO: remove the pInteractionCore object here.  pInteractionShell contains pInteractionCore
    error = CalcInteractionStrengthInternal(
       pInteractionShell,
-      pInteractionCore,
-      &term,
+      cDimensions,
+      aiFeatures,
+      acBins,
       flags,
       cSamplesLeafMin,
       avgInteractionStrengthOut

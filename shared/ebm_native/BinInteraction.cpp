@@ -35,7 +35,12 @@ public:
 
    BinSumsInteractionInternal() = delete; // this is a static class.  Do not construct
 
-   static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
+   static void Func(
+      InteractionShell * const pInteractionShell, 
+      const size_t cRuntimeSignificantDimensions,
+      const size_t * const aiFeatures,
+      const size_t * const acBins
+   ) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       LOG_0(Trace_Verbose, "Entered BinSumsInteractionInternal");
@@ -46,10 +51,7 @@ public:
       InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
       const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-         cCompilerClasses,
-         cRuntimeClasses
-      );
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
       EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
@@ -60,13 +62,27 @@ public:
 
       const FloatFast * pWeight = pDataSet->GetWeights();
 
-      EBM_ASSERT(pTerm->GetCountDimensions() == pTerm->GetCountSignificantDimensions()); // for interactions, we just return 0 for interactions with zero features
-      const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountSignificantDimensions());
-      EBM_ASSERT(1 <= cDimensions); // for interactions, we just return 0 for interactions with zero features
+      const size_t cSignificantDimensions = GET_DIMENSIONS(cCompilerDimensions, cRuntimeSignificantDimensions);
+      EBM_ASSERT(1 <= cSignificantDimensions); // for interactions, we just return 0 for interactions with zero features
 
 #ifndef NDEBUG
       FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
+
+      struct DimensionalData {
+         const StorageDataType * pData;
+         size_t cBins;
+      };
+
+      // this is on the stack and the compiler should be able to optimize these as if they were variables or registers
+      DimensionalData aDimensionalData[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+      size_t iDimensionInit = 0;
+      do {
+         DimensionalData * const pDimensionalData = &aDimensionalData[iDimensionInit];
+         pDimensionalData->pData = pDataSet->GetInputDataPointer(aiFeatures[iDimensionInit]);
+         pDimensionalData->cBins = acBins[iDimensionInit];
+         ++iDimensionInit;
+      } while(cSignificantDimensions != iDimensionInit);
 
       for(size_t iSample = 0; pGradientsAndHessiansEnd != pGradientAndHessian; ++iSample) {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
@@ -83,29 +99,33 @@ public:
          // TODO : we can elminate the inner vector loop for regression at least, and also if we add a templated bool for binary class.  Propegate this change 
          //   to all places that we loop on the vector
 
-         size_t cTensorBins = 1;
-         size_t iTensorBin = 0;
+         size_t cTensorBytes = cBytesPerBin;
+         size_t iTensorBytes = 0;
          size_t iDimension = 0;
          do {
-            const Feature * const pInputFeature = pTerm->GetTermEntries()[iDimension].m_pFeature;
-            const size_t cBins = pInputFeature->GetCountBins();
+            DimensionalData * const pDimensionalData = &aDimensionalData[iDimension];
+
+            const StorageDataType * const pInputData = pDimensionalData->pData;
+            const StorageDataType iBinOriginal = *pInputData;
+            pDimensionalData->pData = pInputData + 1;
+            EBM_ASSERT(!IsConvertError<size_t>(iBinOriginal));
+            const size_t iBin = static_cast<size_t>(iBinOriginal);
+            
+            const size_t cBins = pDimensionalData->cBins;
             // interactions return interaction score of zero earlier on any useless dimensions
             // we strip dimensions from the tensors with 1 bin, so if 1 bin was accepted here, we'd need to strip
             // the bin too
             EBM_ASSERT(size_t { 2 } <= cBins);
-            const StorageDataType * pInputData = pDataSet->GetInputDataPointer(pInputFeature);
-            pInputData += iSample;
-            StorageDataType iBinOriginal = *pInputData;
-            EBM_ASSERT(!IsConvertError<size_t>(iBinOriginal));
-            size_t iBin = static_cast<size_t>(iBinOriginal);
-            EBM_ASSERT(iBin < cBins);
-            iTensorBin += cTensorBins * iBin;
-            cTensorBins *= cBins;
-            ++iDimension;
-         } while(iDimension < cDimensions);
 
-         auto * pBin = 
-            IndexBin(cBytesPerBin, aBins, iTensorBin);
+            EBM_ASSERT(iBin < cBins);
+
+            iTensorBytes += cTensorBytes * iBin;
+            cTensorBytes *= cBins;
+          
+            ++iDimension;
+         } while(iDimension < cSignificantDimensions);
+
+         auto * pBin = IndexBin(iTensorBytes, aBins, 1);
          ASSERT_BIN_OK(cBytesPerBin, pBin, pInteractionShell->GetBinsFastEndDebug());
          pBin->SetCountSamples(pBin->GetCountSamples() + 1);
          FloatFast weight = 1;
@@ -118,14 +138,16 @@ public:
          }
          pBin->SetWeight(pBin->GetWeight() + weight);
 
-         auto * const pGradientPair = pBin->GetGradientPairs();
+         auto * const aGradientPair = pBin->GetGradientPairs();
 
-         for(size_t iScore = 0; iScore < cScores; ++iScore) {
+         size_t iScore = 0;
+         do {
+            auto * const pGradientPair = &aGradientPair[iScore];
             const FloatFast gradient = *pGradientAndHessian;
             // gradient could be NaN
             // for classification, gradient can be anything from -1 to +1 (it cannot be infinity!)
             // for regression, gradient can be anything from +infinity or -infinity
-            pGradientPair[iScore].m_sumGradients += gradient * weight;
+            pGradientPair->m_sumGradients += gradient * weight;
             // m_sumGradients could be NaN, or anything from +infinity or -infinity in the case of regression
             if(bClassification) {
                EBM_ASSERT(
@@ -140,17 +162,18 @@ public:
                   !std::isinf(hessian) && -k_epsilonGradient <= hessian && hessian <= FloatFast { 0.25 }
                ); // since any one hessian is limited to 0 <= hessian <= 0.25, the sum must be representable by a 64 bit number, 
 
-               const FloatFast oldHessian = pGradientPair[iScore].GetSumHessians();
+               const FloatFast oldHessian = pGradientPair->GetSumHessians();
                // since any one hessian is limited to 0 <= gradient <= 0.25, the sum must be representable by a 64 bit number, 
                EBM_ASSERT(std::isnan(oldHessian) || !std::isinf(oldHessian) && -k_epsilonGradient <= oldHessian);
                const FloatFast newHessian = oldHessian + hessian * weight;
                // since any one hessian is limited to 0 <= hessian <= 0.25, the sum must be representable by a 64 bit number, 
                EBM_ASSERT(std::isnan(newHessian) || !std::isinf(newHessian) && -k_epsilonGradient <= newHessian);
                // which will always be representable by a float or double, so we can't overflow to inifinity or -infinity
-               pGradientPair[iScore].SetSumHessians(newHessian);
+               pGradientPair->SetSumHessians(newHessian);
             }
             pGradientAndHessian += bClassification ? 2 : 1;
-         }
+            ++iScore;
+         } while(iScore < cScores);
       }
       EBM_ASSERT(0 < pDataSet->GetWeightTotal());
       EBM_ASSERT(nullptr == pWeight || static_cast<FloatBig>(weightTotalDebug * 0.999) <= pDataSet->GetWeightTotal() && 
@@ -168,18 +191,21 @@ public:
 
    BinSumsInteractionDimensions() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
+   INLINE_ALWAYS static void Func(
+      InteractionShell * const pInteractionShell, 
+      const size_t cSignificantDimensions,
+      const size_t * const aiFeatures,
+      const size_t * const acBins
+   ) {
       static_assert(1 <= cCompilerDimensionsPossible, "can't have less than 1 dimension for interactions");
       static_assert(cCompilerDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
 
-      const size_t cRuntimeDimensions = pTerm->GetCountSignificantDimensions();
-
-      EBM_ASSERT(1 <= cRuntimeDimensions);
-      EBM_ASSERT(cRuntimeDimensions <= k_cDimensionsMax);
-      if(cCompilerDimensionsPossible == cRuntimeDimensions) {
-         BinSumsInteractionInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(pInteractionShell, pTerm);
+      EBM_ASSERT(1 <= cSignificantDimensions);
+      EBM_ASSERT(cSignificantDimensions <= k_cDimensionsMax);
+      if(cCompilerDimensionsPossible == cSignificantDimensions) {
+         BinSumsInteractionInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
       } else {
-         BinSumsInteractionDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pInteractionShell, pTerm);
+         BinSumsInteractionDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
       }
    }
 };
@@ -190,10 +216,15 @@ public:
 
    BinSumsInteractionDimensions() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
-      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
-      EBM_ASSERT(pTerm->GetCountSignificantDimensions() <= k_cDimensionsMax);
-      BinSumsInteractionInternal<cCompilerClasses, k_dynamicDimensions>::Func(pInteractionShell, pTerm);
+   INLINE_ALWAYS static void Func(
+      InteractionShell * const pInteractionShell, 
+      const size_t cSignificantDimensions,
+      const size_t * const aiFeatures,
+      const size_t * const acBins
+   ) {
+      EBM_ASSERT(1 <= cSignificantDimensions);
+      EBM_ASSERT(cSignificantDimensions <= k_cDimensionsMax);
+      BinSumsInteractionInternal<cCompilerClasses, k_dynamicDimensions>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
    }
 };
 
@@ -203,7 +234,12 @@ public:
 
    BinSumsInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
+   INLINE_ALWAYS static void Func(
+      InteractionShell * const pInteractionShell, 
+      const size_t cSignificantDimensions,
+      const size_t * const aiFeatures,
+      const size_t * const acBins
+   ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
@@ -213,9 +249,9 @@ public:
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
       if(cPossibleClasses == cRuntimeClasses) {
-         BinSumsInteractionDimensions<cPossibleClasses, 2>::Func(pInteractionShell, pTerm);
+         BinSumsInteractionDimensions<cPossibleClasses, 2>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
       } else {
-         BinSumsInteractionTarget<cPossibleClasses + 1>::Func(pInteractionShell, pTerm);
+         BinSumsInteractionTarget<cPossibleClasses + 1>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
       }
    }
 };
@@ -226,25 +262,35 @@ public:
 
    BinSumsInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
+   INLINE_ALWAYS static void Func(
+      InteractionShell * const pInteractionShell, 
+      const size_t cSignificantDimensions,
+      const size_t * const aiFeatures,
+      const size_t * const acBins
+   ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
       EBM_ASSERT(IsClassification(pInteractionShell->GetInteractionCore()->GetCountClasses()));
       EBM_ASSERT(k_cCompilerClassesMax < pInteractionShell->GetInteractionCore()->GetCountClasses());
 
-      BinSumsInteractionDimensions<k_dynamicClassification, 2>::Func(pInteractionShell, pTerm);
+      BinSumsInteractionDimensions<k_dynamicClassification, 2>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
    }
 };
 
-extern void BinSumsInteraction(InteractionShell * const pInteractionShell, const Term * const pTerm) {
+extern void BinSumsInteraction(
+   InteractionShell * const pInteractionShell,
+   const size_t cSignificantDimensions,
+   const size_t * const aiFeatures,
+   const size_t * const acBins
+) {
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
    const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
 
    if(IsClassification(cRuntimeClasses)) {
-      BinSumsInteractionTarget<2>::Func(pInteractionShell, pTerm);
+      BinSumsInteractionTarget<2>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
    } else {
       EBM_ASSERT(IsRegression(cRuntimeClasses));
-      BinSumsInteractionDimensions<k_regression, 2>::Func(pInteractionShell, pTerm);
+      BinSumsInteractionDimensions<k_regression, 2>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
    }
 }
 
