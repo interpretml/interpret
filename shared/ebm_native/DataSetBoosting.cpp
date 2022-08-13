@@ -216,6 +216,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const BagEbm direction,
    const BagEbm * const aBag,
    const size_t cSetSamples,
+   const IntEbm * const aiTermFeatures,
    const size_t cTerms,
    const Term * const * const apTerms
 ) {
@@ -235,6 +236,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
    const bool isLoopTraining = BagEbm { 0 } < direction;
 
+   const IntEbm * piTermFeatures = aiTermFeatures;
+
    StorageDataType ** paInputDataTo = aaInputDataTo;
    const Term * const * ppTerm = apTerms;
    const Term * const * const ppTermsEnd = apTerms + cTerms;
@@ -242,6 +245,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       const Term * const pTerm = *ppTerm;
       EBM_ASSERT(nullptr != pTerm);
       if(0 == pTerm->GetCountSignificantDimensions()) {
+         piTermFeatures += pTerm->GetCountDimensions();
          *paInputDataTo = nullptr; // free will skip over these later
          ++paInputDataTo;
       } else {
@@ -279,6 +283,10 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             const size_t cBins = pFeature->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we don't construct datasets on empty training sets
             if(size_t { 1 } < cBins) {
+               const IntEbm indexFeature = *piTermFeatures;
+               EBM_ASSERT(!IsConvertError<size_t>(indexFeature)); // we converted it previously
+               const size_t iFeature = static_cast<size_t>(indexFeature);
+
                size_t cBinsUnused;
                bool bMissing;
                bool bUnknown;
@@ -288,7 +296,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                size_t cNonDefaultsSparse;
                const void * pInputDataFrom = GetDataSetSharedFeature(
                   pDataSetShared,
-                  pFeature->GetIndexFeatureData(),
+                  iFeature,
                   &cBinsUnused,
                   &bMissing,
                   &bUnknown,
@@ -305,6 +313,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                pDimensionInfoInit->m_cBins = cBins;
                ++pDimensionInfoInit;
             }
+            ++piTermFeatures;
             ++pTermEntry;
          } while(pTermEntriesEnd != pTermEntry);
          EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pTerm->GetCountSignificantDimensions()]);
@@ -413,6 +422,7 @@ ErrorEbm DataSetBoosting::Initialize(
    const BagEbm * const aBag,
    const double * const aInitScores,
    const size_t cSetSamples,
+   const IntEbm * const aiTermFeatures,
    const size_t cTerms,
    const Term * const * const apTerms
 ) {
@@ -471,6 +481,7 @@ ErrorEbm DataSetBoosting::Initialize(
             direction,
             aBag,
             cSetSamples,
+            aiTermFeatures,
             cTerms,
             apTerms
          );

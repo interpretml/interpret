@@ -19,7 +19,6 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class Feature final {
-   size_t m_iFeatureData;
    size_t m_cBins;
    bool m_bMissing;
    bool m_bUnknown;
@@ -33,21 +32,15 @@ public:
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    INLINE_ALWAYS void Initialize(
-      const size_t iFeatureData, 
       const size_t cBins, 
       const bool bMissing, 
       const bool bUnknown, 
       const bool bNominal
    ) noexcept {
-      m_iFeatureData = iFeatureData;
       m_cBins = cBins;
       m_bMissing = bMissing;
       m_bUnknown = bUnknown;
       m_bNominal = bNominal;
-   }
-
-   INLINE_ALWAYS size_t GetIndexFeatureData() const noexcept {
-      return m_iFeatureData;
    }
 
    INLINE_ALWAYS size_t GetCountBins() const noexcept {

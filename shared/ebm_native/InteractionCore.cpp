@@ -173,7 +173,7 @@ ErrorEbm InteractionCore::Create(
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
             LOG_0(Trace_Info, "INFO InteractionCore::Allocate feature with 1 value");
          }
-         aFeatures[iFeatureInitialize].Initialize(iFeatureInitialize, cBins, bMissing, bUnknown, bNominal);
+         aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnknown, bNominal);
 
          ++iFeatureInitialize;
       } while(cFeatures != iFeatureInitialize);

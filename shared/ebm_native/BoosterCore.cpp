@@ -297,7 +297,7 @@ ErrorEbm BoosterCore::Create(
             // the user can specify interactions, so we handle them anyways in a consistent way by boosting on them
             LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 1 value");
          }
-         pBoosterCore->m_aFeatures[iFeatureInitialize].Initialize(iFeatureInitialize, cBins, bMissing, bUnknown, bNominal);
+         pBoosterCore->m_aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnknown, bNominal);
 
          ++iFeatureInitialize;
       } while(cFeatures != iFeatureInitialize);
@@ -461,6 +461,7 @@ ErrorEbm BoosterCore::Create(
       aBag,
       aInitScores,
       cTrainingSamples,
+      aiTermFeatures,
       cTerms,
       pBoosterCore->m_apTerms
    );
@@ -480,6 +481,7 @@ ErrorEbm BoosterCore::Create(
       aBag,
       aInitScores,
       cValidationSamples,
+      aiTermFeatures,
       cTerms,
       pBoosterCore->m_apTerms
    );
