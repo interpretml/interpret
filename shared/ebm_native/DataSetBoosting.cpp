@@ -272,14 +272,14 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          const StorageDataType * const pInputDataToLast = pInputDataTo + cDataUnits - 1;
          EBM_ASSERT(pInputDataTo <= pInputDataToLast); // we have 1 item or more, and therefore the last one can't be before the first item
 
-         const TermEntry * pTermEntry = pTerm->GetTermEntries();
+         const Feature * const * ppFeature = pTerm->GetFeatures();
          EBM_ASSERT(1 <= pTerm->GetCountDimensions());
-         const TermEntry * const pTermEntriesEnd = pTermEntry + pTerm->GetCountDimensions();
+         const Feature * const * const ppFeaturesEnd = &ppFeature[pTerm->GetCountDimensions()];
 
          InputDataPointerAndCountBins dimensionInfo[k_cDimensionsMax];
          InputDataPointerAndCountBins * pDimensionInfoInit = &dimensionInfo[0];
          do {
-            const Feature * const pFeature = pTermEntry->m_pFeature;
+            const Feature * const pFeature = *ppFeature;
             const size_t cBins = pFeature->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we don't construct datasets on empty training sets
             if(size_t { 1 } < cBins) {
@@ -314,8 +314,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                ++pDimensionInfoInit;
             }
             ++piTermFeatures;
-            ++pTermEntry;
-         } while(pTermEntriesEnd != pTermEntry);
+            ++ppFeature;
+         } while(ppFeaturesEnd != ppFeature);
          EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pTerm->GetCountSignificantDimensions()]);
 
          const BagEbm * pSampleReplication = aBag;

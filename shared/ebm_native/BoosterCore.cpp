@@ -357,8 +357,8 @@ ErrorEbm BoosterCore::Create(
                return Error_IllegalParamVal;
             }
             size_t cEquivalentSplits = 1;
-            TermEntry * pTermEntry = pTerm->GetTermEntries();
-            TermEntry * pTermEntriesEnd = pTermEntry + cDimensions;
+            const Feature ** ppFeature = pTerm->GetFeatures();
+            const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
             do {
                const IntEbm indexFeature = *piTermFeature;
                if(indexFeature < 0) {
@@ -380,7 +380,7 @@ ErrorEbm BoosterCore::Create(
                EBM_ASSERT(nullptr != pBoosterCore->m_aFeatures);
 
                Feature * const pInputFeature = &pBoosterCore->m_aFeatures[iFeature];
-               pTermEntry->m_pFeature = pInputFeature;
+               *ppFeature = pInputFeature;
 
                const size_t cBins = pInputFeature->GetCountBins();
                if(LIKELY(size_t { 1 } < cBins)) {
@@ -399,8 +399,8 @@ ErrorEbm BoosterCore::Create(
                }
 
                ++piTermFeature;
-               ++pTermEntry;
-            } while(pTermEntriesEnd != pTermEntry);
+               ++ppFeature;
+            } while(ppFeaturesEnd != ppFeature);
 
             if(LIKELY(0 != cSignificantDimensions)) {
                EBM_ASSERT(1 < cTensorBins);

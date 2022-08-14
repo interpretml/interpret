@@ -440,15 +440,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
    const size_t cDimensions = pTerm->GetCountDimensions();
    size_t cTensorScores = GetCountScores(pBoosterCore->GetCountClasses());
    if(0 != cDimensions) {
-      const TermEntry * pTermEntry = pTerm->GetTermEntries();
-      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
+      const Feature * const * ppFeature = pTerm->GetFeatures();
+      const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
       do {
-         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
+         const Feature * const pFeature = *ppFeature;
+         const size_t cBins = pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins));
          cTensorScores *= cBins;
-         ++pTermEntry;
-      } while(pTermEntriesEnd != pTermEntry);
+         ++ppFeature;
+      } while(ppFeaturesEnd != ppFeature);
    }
 
    // if pBoosterCore->GetBestModel() is nullptr, then either:
@@ -532,15 +533,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
    const size_t cDimensions = pTerm->GetCountDimensions();
    size_t cTensorScores = GetCountScores(pBoosterCore->GetCountClasses());
    if(0 != cDimensions) {
-      const TermEntry * pTermEntry = pTerm->GetTermEntries();
-      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
+      const Feature * const * ppFeature = pTerm->GetFeatures();
+      const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
       do {
-         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
+         const Feature * const pFeature = *ppFeature;
+         const size_t cBins = pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins));
          cTensorScores *= cBins;
-         ++pTermEntry;
-      } while(pTermEntriesEnd != pTermEntry);
+         ++ppFeature;
+      } while(ppFeaturesEnd != ppFeature);
    }
 
    // if pBoosterCore->GetCurrentModel() is nullptr, then either:

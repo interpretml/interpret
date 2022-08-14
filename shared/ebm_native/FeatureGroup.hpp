@@ -20,22 +20,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-struct TermEntry final {
-   TermEntry() = default; // preserve our POD status
-   ~TermEntry() = default; // preserve our POD status
-   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-   void operator delete (void *) = delete; // we only use malloc/free in this library
-
-   // TODO : we can put the entire Feature data into this location instead of using a pointer
-   const Feature * m_pFeature;
-};
-static_assert(std::is_standard_layout<TermEntry>::value,
-   "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<TermEntry>::value,
-   "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<TermEntry>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
-
 class Term final {
    ptrdiff_t m_cItemsPerBitPack;
    size_t m_cDimensions;
@@ -46,11 +30,11 @@ class Term final {
    int m_cLogExitApplyTermUpdateMessages;
 
    // use the "struct hack" since Flexible array member method is not available in C++
-   // m_TermEntry must be the last item in this struct
+   // m_apFeature must be the last item in this struct
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   TermEntry m_TermEntry[k_cDimensionsMax];
+   const Feature * m_apFeature[k_cDimensionsMax];
 
 public:
 
@@ -60,7 +44,7 @@ public:
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    INLINE_ALWAYS static constexpr size_t GetTermCountBytes(const size_t cFeatures) noexcept {
-      return sizeof(Term) - sizeof(Term::m_TermEntry) + sizeof(TermEntry) * cFeatures;
+      return sizeof(Term) - sizeof(Term::m_apFeature) + sizeof(Term::m_apFeature[0]) * cFeatures;
    }
 
    INLINE_ALWAYS static void Free(Term * const pTerm) noexcept {
@@ -104,11 +88,11 @@ public:
       m_cSignificantDimensions = cSignificantDimensions;
    }
 
-   INLINE_ALWAYS const TermEntry * GetTermEntries() const noexcept {
-      return ArrayToPointer(m_TermEntry);
+   INLINE_ALWAYS const Feature * const * GetFeatures() const noexcept {
+      return ArrayToPointer(m_apFeature);
    }
-   INLINE_ALWAYS TermEntry * GetTermEntries() noexcept {
-      return ArrayToPointer(m_TermEntry);
+   INLINE_ALWAYS const Feature ** GetFeatures() noexcept {
+      return ArrayToPointer(m_apFeature);
    }
 
    INLINE_ALWAYS int * GetPointerCountLogEnterGenerateTermUpdateMessages() noexcept {

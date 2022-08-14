@@ -228,10 +228,11 @@ public:
       size_t iDimension2 = 0;
       size_t cBinsDimension1 = 0;
       size_t cBinsDimension2 = 0;
-      const TermEntry * pTermEntry = pTerm->GetTermEntries();
-      const TermEntry * const pTermEntriesEnd = pTermEntry + pTerm->GetCountDimensions();
+      const Feature * const * ppFeature = pTerm->GetFeatures();
+      const Feature * const * const ppFeaturesEnd = &ppFeature[pTerm->GetCountDimensions()];
       do {
-         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
+         const Feature * const pFeature = *ppFeature;
+         const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          if(size_t { 1 } < cBins) {
             EBM_ASSERT(0 == cBinsDimension2);
@@ -244,8 +245,8 @@ public:
             }
          }
          ++iDimensionLoop;
-         ++pTermEntry;
-      } while(pTermEntriesEnd != pTermEntry);
+         ++ppFeature;
+      } while(ppFeaturesEnd != ppFeature);
       EBM_ASSERT(2 <= cBinsDimension1);
       EBM_ASSERT(2 <= cBinsDimension2);
 

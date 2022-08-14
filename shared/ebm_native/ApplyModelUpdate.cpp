@@ -304,7 +304,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
    }
    const size_t iDimension = static_cast<size_t>(indexDimension);
 
-   const size_t cBins = pTerm->GetTermEntries()[iDimension].m_pFeature->GetCountBins();
+   const size_t cBins = pTerm->GetFeatures()[iDimension]->GetCountBins();
    // cBins started from IntEbm, so we should be able to convert back safely
    if(*countSplitsInOut != static_cast<IntEbm>(cBins - size_t { 1 })) {
       *countSplitsInOut = IntEbm { 0 };
@@ -394,15 +394,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(
    const size_t cDimensions = pTerm->GetCountDimensions();
    size_t cTensorScores = GetCountScores(pBoosterCore->GetCountClasses());
    if(0 != cDimensions) {
-      const TermEntry * pTermEntry = pTerm->GetTermEntries();
-      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
+      const Feature * const * ppFeature = pTerm->GetFeatures();
+      const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
       do {
-         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
+         const Feature * const pFeature = *ppFeature;
+         const size_t cBins = pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins));
          cTensorScores *= cBins;
-         ++pTermEntry;
-      } while(pTermEntriesEnd != pTermEntry);
+         ++ppFeature;
+      } while(ppFeaturesEnd != ppFeature);
    }
    const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
@@ -486,15 +487,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
    const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
    size_t cTensorScores = cScores;
    if(0 != cDimensions) {
-      const TermEntry * pTermEntry = pTerm->GetTermEntries();
-      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
+      const Feature * const * ppFeature = pTerm->GetFeatures();
+      const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
       do {
-         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
+         const Feature * const pFeature = *ppFeature;
+         const size_t cBins = pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins));
          cTensorScores *= cBins;
-         ++pTermEntry;
-      } while(pTermEntriesEnd != pTermEntry);
+         ++ppFeature;
+      } while(ppFeaturesEnd != ppFeature);
    }
    FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
    EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cTensorScores));

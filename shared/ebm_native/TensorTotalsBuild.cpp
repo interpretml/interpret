@@ -554,7 +554,7 @@ extern void TensorTotalsBuild(
 //   // make a copy of the original bins for debugging purposes
 //   size_t cTotalBinsDebug = 1;
 //   for(size_t iDimensionDebug = 0; iDimensionDebug < pTerm->GetCountDimensions(); ++iDimensionDebug) {
-//      const size_t cBins = pTerm->GetTermEntries()[iDimensionDebug].m_pFeature->m_cBins;
+//      const size_t cBins = pTerm->GetFeatures()[iDimensionDebug].m_pFeature->m_cBins;
 //      EBM_ASSERT(IsMultiplyError(cTotalBinsDebug, cBins)); // we're accessing allocated memory, so this should work
 //      cTotalBinsDebug *= cBins;
 //   }
@@ -575,7 +575,7 @@ extern void TensorTotalsBuild(
 //
 //   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
 //   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
-//   const TermEntry * pTermEntry = pTerm->GetTermEntries();
+//   const TermEntry * pTermEntry = pTerm->GetFeatures();
 //   for(CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins; pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize; ++pCurrentIndexAndCountBinsInitialize, ++pTermEntry) {
 //      pCurrentIndexAndCountBinsInitialize->m_iCur = 0;
 //      EBM_ASSERT(2 <= pTermEntry->m_pFeature->m_cBins);
@@ -683,7 +683,7 @@ extern void TensorTotalsBuild(
 //   // make a copy of the original bins for debugging purposes
 //   size_t cTotalBinsDebug = 1;
 //   for(size_t iDimensionDebug = 0; iDimensionDebug < pTerm->GetCountDimensions(); ++iDimensionDebug) {
-//      const size_t cBins = pTerm->GetTermEntries()[iDimensionDebug].m_pFeature->m_cBins;
+//      const size_t cBins = pTerm->GetFeatures()[iDimensionDebug].m_pFeature->m_cBins;
 //      EBM_ASSERT(IsMultiplyError(cTotalBinsDebug, cBins)); // we're accessing allocated memory, so this should work
 //      cTotalBinsDebug *= cBins;
 //   }
@@ -704,7 +704,7 @@ extern void TensorTotalsBuild(
 //
 //   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
 //   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
-//   const TermEntry * pTermEntry = pTerm->GetTermEntries();
+//   const TermEntry * pTermEntry = pTerm->GetFeatures();
 //   ptrdiff_t multipleTotalInitialize = -1;
 //   for(CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins; pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize; ++pCurrentIndexAndCountBinsInitialize, ++pTermEntry) {
 //      pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
@@ -829,7 +829,7 @@ extern void TensorTotalsBuild(
 //   ptrdiff_t multipleTotalInitialize = -1;
 //   {
 //      CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins;
-//      const TermEntry * pTermEntry = pTerm->GetTermEntries();
+//      const TermEntry * pTermEntry = pTerm->GetFeatures();
 //      EBM_ASSERT(1 <= cDimensions);
 //      do {
 //         pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
@@ -998,8 +998,8 @@ extern void TensorTotalsBuild(
 //      DO: somehow avoid having a malloc here, either by allocating these when we allocate our big chunck of memory, or as part of pThreadState
 //      Bin<IsClassification(cCompilerClasses)> * aDynamicBins = static_cast<Bin<IsClassification(cCompilerClasses)> *>(malloc(cBytesPerBin * ));
 //
-//      const size_t cBinsDimension1 = pTerm->GetTermEntries()[0].m_pFeature->m_cBins;
-//      const size_t cBinsDimension2 = pTerm->GetTermEntries()[1].m_pFeature->m_cBins;
+//      const size_t cBinsDimension1 = pTerm->GetFeatures()[0].m_pFeature->m_cBins;
+//      const size_t cBinsDimension2 = pTerm->GetFeatures()[1].m_pFeature->m_cBins;
 //
 //      FloatBig bestSplittingScore = FloatBig { -std::numeric_limits<FloatBig>::infinity() };
 //

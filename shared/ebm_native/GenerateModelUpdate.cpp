@@ -363,10 +363,11 @@ static ErrorEbm BoostMultiDimensional(
    size_t acBins[k_cDimensionsMax];
    size_t * pcBins = acBins;
 
-   const TermEntry * pTermEntry = pTerm->GetTermEntries();
-   const TermEntry * const pTermEntriesEnd = pTermEntry + pTerm->GetCountDimensions();
+   const Feature * const * ppFeature = pTerm->GetFeatures();
+   const Feature * const * const ppFeaturesEnd = &ppFeature[pTerm->GetCountDimensions()];
    do {
-      const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
+      const Feature * pFeature = *ppFeature;
+      const size_t cBins = pFeature->GetCountBins();
       EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
       if(size_t { 1 } < cBins) {
          *pcBins = cBins;
@@ -384,8 +385,8 @@ static ErrorEbm BoostMultiDimensional(
          // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace) at runtime
          EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTotalBinsMainSpace);
       }
-      ++pTermEntry;
-   } while(pTermEntriesEnd != pTermEntry);
+      ++ppFeature;
+   } while(ppFeaturesEnd != ppFeature);
 
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
    const bool bClassification = IsClassification(cClasses);
@@ -579,7 +580,7 @@ static ErrorEbm BoostMultiDimensional(
    //      while(true) {
    //         ++aiDimension[iDimension];
    //         if(aiDimension[iDimension] != 
-   //               pTerms->GetTermEntries()[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
+   //               pTerms->GetFeatures()[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
    //            break;
    //         }
    //         aiDimension[iDimension] = 0;
@@ -659,7 +660,7 @@ static ErrorEbm BoostRandom(
 
    size_t cTotalBins = 1;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      const size_t cBins = pTerm->GetTermEntries()[iDimension].m_pFeature->GetCountBins();
+      const size_t cBins = pTerm->GetFeatures()[iDimension]->GetCountBins();
       EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
       // we check for simple multiplication overflow from m_cBins in BoosterCore::Initialize when we unpack featureIndexes
       EBM_ASSERT(!IsMultiplyError(cTotalBins, cBins));
@@ -785,11 +786,11 @@ static ErrorEbm GenerateTermUpdateInternal(
       if(0 != cSignificantDimensions) {
          size_t iDimensionInit = 0;
          const IntEbm * pLeavesMax = aLeavesMax;
-         const TermEntry * pTermEntry = pTerm->GetTermEntries();
+         const Feature * const * ppFeature = pTerm->GetFeatures();
          EBM_ASSERT(1 <= cDimensions);
-         const TermEntry * const pTermEntriesEnd = pTermEntry + cDimensions;
+         const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
          do {
-            const Feature * pFeature = pTermEntry->m_pFeature;
+            const Feature * const pFeature = *ppFeature;
             const size_t cBins = pFeature->GetCountBins();
             if(size_t { 1 } < cBins) {
                EBM_ASSERT(size_t { 2 } <= cSignificantDimensions || IntEbm { 0 } == lastDimensionLeavesMax);
@@ -807,8 +808,8 @@ static ErrorEbm GenerateTermUpdateInternal(
             }
             ++iDimensionInit;
             ++pLeavesMax;
-            ++pTermEntry;
-         } while(pTermEntriesEnd != pTermEntry);
+            ++ppFeature;
+         } while(ppFeaturesEnd != ppFeature);
          
          EBM_ASSERT(size_t { 2 } <= cSignificantBinCount);
       }

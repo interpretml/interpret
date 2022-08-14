@@ -261,8 +261,8 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
    EBM_ASSERT(nullptr != pTerm);
    const size_t cDimensions = pTerm->GetCountDimensions();
    if(size_t { 0 } != cDimensions) {
-      const TermEntry * pTermEntry1 = pTerm->GetTermEntries();
-      const TermEntry * const pTermEntriesEnd = pTermEntry1 + cDimensions;
+      const Feature * const * ppFeature1 = pTerm->GetFeatures();
+      const Feature * const * const ppFeaturesEnd = &ppFeature1[cDimensions];
       DimensionInfoStackExpand aDimensionInfoStackExpand[k_cDimensionsMax];
       DimensionInfoStackExpand * pDimensionInfoStackFirst = aDimensionInfoStackExpand;
       const DimensionInfo * pDimensionFirst1 = GetDimensions();
@@ -271,7 +271,8 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
 
       // first, get basic counts of how many splits and scores we'll have in our final result
       do {
-         const size_t cBins = pTermEntry1->m_pFeature->GetCountBins();
+         const Feature * const pFeature = *ppFeature1;
+         const size_t cBins = pFeature->GetCountBins();
 
          // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack 
          // featureIndexes and in CalcInteractionStrength for interactions
@@ -291,8 +292,8 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
 
          ++pDimensionFirst1;
          ++pDimensionInfoStackFirst;
-         ++pTermEntry1;
-      } while(pTermEntriesEnd != pTermEntry1);
+         ++ppFeature1;
+      } while(ppFeaturesEnd != ppFeature1);
       
       if(size_t { 0 } == cNewTensorScores) {
          // there's a really degenerate case where we have zero training and zero validation samples, and the user 
@@ -395,10 +396,11 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
          EBM_ASSERT(pTensorScoreTop == m_aTensorScores);
          EBM_ASSERT(pTensorScore1 == m_aTensorScores + m_cScores);
 
-         const TermEntry * pTermEntry2 = pTerm->GetTermEntries();
+         const Feature * const * ppFeature2 = pTerm->GetFeatures();
          size_t iDimension = 0;
          do {
-            const size_t cBins = pTermEntry2->m_pFeature->GetCountBins();
+            const Feature * const pFeature = *ppFeature2;
+            const size_t cBins = pFeature->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we exited above on tensors with zero bins in any dimension
             const size_t cSplits = cBins - size_t { 1 };
             const DimensionInfo * const pDimension = &aDimension1[iDimension];
@@ -420,8 +422,8 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
                } while(cSplits != iSplit);
             }
             ++iDimension;
-            ++pTermEntry2;
-         } while(pTermEntriesEnd != pTermEntry2);
+            ++ppFeature2;
+         } while(ppFeaturesEnd != ppFeature2);
       }
    }
    m_bExpanded = true;

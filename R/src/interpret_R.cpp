@@ -860,14 +860,15 @@ SEXP GetBestTermScores_R(SEXP boosterHandleWrapped, SEXP indexTerm) {
    const Term * const pTerm = pBoosterCore->GetTerms()[static_cast<size_t>(iTerm)];
    const size_t cDimensions = pTerm->GetCountDimensions();
    if(0 != cDimensions) {
-      const TermEntry * pTermEntry = pTerm->GetTermEntries();
-      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
+      const Feature * const * ppFeature = pTerm->GetFeatures();
+      const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
       do {
-         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
+         const Feature * const pFeature = *ppFeature;
+         const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          cTensorScores *= cBins;
-         ++pTermEntry;
-      } while(pTermEntriesEnd != pTermEntry);
+         ++ppFeature;
+      } while(ppFeaturesEnd != ppFeature);
    }
    if(IsConvertError<R_xlen_t>(cTensorScores)) {
       error("GetBestTermScores_R IsConvertError<R_xlen_t>(cTensorScores)");
@@ -909,14 +910,15 @@ SEXP GetCurrentTermScores_R(SEXP boosterHandleWrapped, SEXP indexTerm) {
    const Term * const pTerm = pBoosterCore->GetTerms()[static_cast<size_t>(iTerm)];
    const size_t cDimensions = pTerm->GetCountDimensions();
    if(0 != cDimensions) {
-      const TermEntry * pTermEntry = pTerm->GetTermEntries();
-      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
+      const Feature * const * ppFeature = pTerm->GetFeatures();
+      const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
       do {
-         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
+         const Feature * const pFeature = *ppFeature;
+         const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          cTensorScores *= cBins;
-         ++pTermEntry;
-      } while(pTermEntriesEnd != pTermEntry);
+         ++ppFeature;
+      } while(ppFeaturesEnd != ppFeature);
    }
    if(IsConvertError<R_xlen_t>(cTensorScores)) {
       error("GetCurrentTermScores_R IsConvertError<R_xlen_t>(cTensorScores)");

@@ -204,7 +204,7 @@ void TensorTotalsSum(
    const size_t * piPointInitialize = aiPoint;
 
    if(0 == directionVector) {
-      // we would require a check in our inner loop below to handle the case of zero TermEntry items, so let's handle it separetly here instead
+      // we would require a check in our inner loop below to handle the case of zero Features, so let's handle it separetly here instead
       do {
          const size_t cBins = *pcBins;
          // cBins can only be 0 if there are zero training and zero validation samples
