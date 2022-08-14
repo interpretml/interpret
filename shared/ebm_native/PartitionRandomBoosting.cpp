@@ -70,7 +70,7 @@ public:
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
       auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
 
-      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
+      EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
 
       Tensor * const pInnerTermUpdate =
@@ -368,7 +368,7 @@ public:
             cBytesCollapsedTensor3);
 
       // we special case the first dimension, so drop it by subtracting
-      EBM_ASSERT(&randomSplitState[pTerm->GetCountSignificantDimensions() - size_t { 1 }] == pStateInit);
+      EBM_ASSERT(&randomSplitState[pTerm->GetCountRealDimensions() - size_t { 1 }] == pStateInit);
 
       const auto * pBin = aBins;
       auto * pCollapsedBin1 = aCollapsedBins;

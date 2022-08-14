@@ -23,7 +23,7 @@ namespace DEFINED_ZONE_NAME {
 class Term final {
    ptrdiff_t m_cItemsPerBitPack;
    size_t m_cDimensions;
-   size_t m_cSignificantDimensions;
+   size_t m_cRealDimensions;
    int m_cLogEnterGenerateTermUpdateMessages;
    int m_cLogExitGenerateTermUpdateMessages;
    int m_cLogEnterApplyTermUpdateMessages;
@@ -75,17 +75,17 @@ public:
    }
 
    INLINE_ALWAYS size_t GetCountDimensions() const noexcept {
-      EBM_ASSERT(m_cSignificantDimensions <= m_cDimensions);
+      EBM_ASSERT(m_cRealDimensions <= m_cDimensions);
       return m_cDimensions;
    }
 
-   INLINE_ALWAYS size_t GetCountSignificantDimensions() const noexcept {
-      EBM_ASSERT(m_cSignificantDimensions <= m_cDimensions);
-      return m_cSignificantDimensions;
+   INLINE_ALWAYS size_t GetCountRealDimensions() const noexcept {
+      EBM_ASSERT(m_cRealDimensions <= m_cDimensions);
+      return m_cRealDimensions;
    }
 
-   INLINE_ALWAYS void SetCountSignificantDimensions(const size_t cSignificantDimensions) noexcept {
-      m_cSignificantDimensions = cSignificantDimensions;
+   INLINE_ALWAYS void SetCountRealDimensions(const size_t cRealDimensions) noexcept {
+      m_cRealDimensions = cRealDimensions;
    }
 
    INLINE_ALWAYS const Feature * const * GetFeatures() const noexcept {

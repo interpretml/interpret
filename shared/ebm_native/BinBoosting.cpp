@@ -576,7 +576,7 @@ extern void BinSumsBoosting(
       }
    } else {
       EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-      EBM_ASSERT(1 <= pBoosterCore->GetTerms()[iTerm]->GetCountSignificantDimensions());
+      EBM_ASSERT(1 <= pBoosterCore->GetTerms()[iTerm]->GetCountRealDimensions());
       if(k_bUseSIMD) {
          // TODO : enable SIMD(AVX-512) to work
 

@@ -262,7 +262,7 @@ public:
       const size_t cScores = GetCountScores(cClasses);
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
+      EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pTerm->GetBitPack());
       EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -383,7 +383,7 @@ public:
 
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
+      EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -469,7 +469,7 @@ public:
 
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
+      EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -710,7 +710,7 @@ extern void ApplyTermUpdateTraining(
    EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
 
-   if(0 == pTerm->GetCountSignificantDimensions()) {
+   if(0 == pTerm->GetCountRealDimensions()) {
       if(IsClassification(cRuntimeClasses)) {
          ApplyTermUpdateTrainingZeroFeaturesTarget<2>::Func(pBoosterShell);
       } else {

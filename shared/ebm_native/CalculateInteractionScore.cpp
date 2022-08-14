@@ -32,14 +32,14 @@ namespace DEFINED_ZONE_NAME {
 
 extern void BinSumsInteraction(
    InteractionShell * const pInteractionShell,
-   const size_t cSignificantDimensions,
+   const size_t cRealDimensions,
    const size_t * const aiFeatures,
    const size_t * const acBins
 );
 
 extern void TensorTotalsBuild(
    const ptrdiff_t cClasses,
-   const size_t cSignificantDimensions,
+   const size_t cRealDimensions,
    const size_t * const acBins,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
@@ -51,7 +51,7 @@ extern void TensorTotalsBuild(
 
 extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
-   const size_t cSignificantDimensions,
+   const size_t cRealDimensions,
    const size_t * const acBins,
    const InteractionFlags flags,
    const size_t cSamplesLeafMin,
@@ -65,7 +65,7 @@ extern double PartitionTwoDimensionalInteraction(
 
 static ErrorEbm CalcInteractionStrengthInternal(
    InteractionShell * const pInteractionShell,
-   const size_t cSignificantDimensions,
+   const size_t cRealDimensions,
    const size_t * const aiFeatures,
    const size_t * const acBins,
    const InteractionFlags flags,
@@ -83,10 +83,10 @@ static ErrorEbm CalcInteractionStrengthInternal(
    LOG_0(Trace_Verbose, "Entered CalcInteractionStrengthInternal");
 
    // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
-   EBM_ASSERT(1 <= cSignificantDimensions);
+   EBM_ASSERT(1 <= cRealDimensions);
 
    const size_t * pcBins = acBins;
-   const size_t * const pcBinsEnd = &acBins[cSignificantDimensions];
+   const size_t * const pcBinsEnd = &acBins[cRealDimensions];
 
    size_t cAuxillaryBinsForBuildFastTotals = 0;
    size_t cTotalBinsMainSpace = 1;
@@ -148,7 +148,7 @@ static ErrorEbm CalcInteractionStrengthInternal(
    pInteractionShell->SetBinsFastEndDebug(pBinsFastEndDebug);
 #endif // NDEBUG
 
-   BinSumsInteraction(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
+   BinSumsInteraction(pInteractionShell, cRealDimensions, aiFeatures, acBins);
 
    const size_t cAuxillaryBinsForSplitting = 4;
    const size_t cAuxillaryBins =
@@ -202,7 +202,7 @@ static ErrorEbm CalcInteractionStrengthInternal(
 
    TensorTotalsBuild(
       cClasses,
-      cSignificantDimensions,
+      cRealDimensions,
       acBins,
       aAuxiliaryBins,
       aBinsBig
@@ -212,12 +212,12 @@ static ErrorEbm CalcInteractionStrengthInternal(
 #endif // NDEBUG
    );
 
-   if(2 == cSignificantDimensions) {
+   if(2 == cRealDimensions) {
       LOG_0(Trace_Verbose, "CalcInteractionStrengthInternal Starting bin sweep loop");
 
       double bestGain = PartitionTwoDimensionalInteraction(
          pInteractionCore,
-         cSignificantDimensions,
+         cRealDimensions,
          acBins,
          flags,
          cSamplesLeafMin,
@@ -263,7 +263,7 @@ static ErrorEbm CalcInteractionStrengthInternal(
       }
    } else {
       EBM_ASSERT(false); // we only support pairs currently
-      LOG_0(Trace_Warning, "WARNING CalcInteractionStrengthInternal 2 != cSignificantDimensions");
+      LOG_0(Trace_Warning, "WARNING CalcInteractionStrengthInternal 2 != cRealDimensions");
 
       // TODO: handle this better
       if(nullptr != pInteractionStrengthAvgOut) {

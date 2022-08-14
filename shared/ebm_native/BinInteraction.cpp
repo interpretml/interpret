@@ -37,7 +37,7 @@ public:
 
    static void Func(
       InteractionShell * const pInteractionShell, 
-      const size_t cRuntimeSignificantDimensions,
+      const size_t cRuntimeRealDimensions,
       const size_t * const aiFeatures,
       const size_t * const acBins
    ) {
@@ -62,8 +62,8 @@ public:
 
       const FloatFast * pWeight = pDataSet->GetWeights();
 
-      const size_t cSignificantDimensions = GET_DIMENSIONS(cCompilerDimensions, cRuntimeSignificantDimensions);
-      EBM_ASSERT(1 <= cSignificantDimensions); // for interactions, we just return 0 for interactions with zero features
+      const size_t cRealDimensions = GET_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
+      EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
 
 #ifndef NDEBUG
       FloatFast weightTotalDebug = 0;
@@ -82,7 +82,7 @@ public:
          pDimensionalData->pData = pDataSet->GetInputDataPointer(aiFeatures[iDimensionInit]);
          pDimensionalData->cBins = acBins[iDimensionInit];
          ++iDimensionInit;
-      } while(cSignificantDimensions != iDimensionInit);
+      } while(cRealDimensions != iDimensionInit);
 
       for(size_t iSample = 0; pGradientsAndHessiansEnd != pGradientAndHessian; ++iSample) {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
@@ -123,7 +123,7 @@ public:
             cTensorBytes *= cBins;
           
             ++iDimension;
-         } while(iDimension < cSignificantDimensions);
+         } while(cRealDimensions != iDimension);
 
          auto * pBin = IndexBin(iTensorBytes, aBins, 1);
          ASSERT_BIN_OK(cBytesPerBin, pBin, pInteractionShell->GetBinsFastEndDebug());
@@ -173,7 +173,7 @@ public:
             }
             pGradientAndHessian += bClassification ? 2 : 1;
             ++iScore;
-         } while(iScore < cScores);
+         } while(cScores != iScore);
       }
       EBM_ASSERT(0 < pDataSet->GetWeightTotal());
       EBM_ASSERT(nullptr == pWeight || static_cast<FloatBig>(weightTotalDebug * 0.999) <= pDataSet->GetWeightTotal() && 
@@ -193,19 +193,19 @@ public:
 
    INLINE_ALWAYS static void Func(
       InteractionShell * const pInteractionShell, 
-      const size_t cSignificantDimensions,
+      const size_t cRealDimensions,
       const size_t * const aiFeatures,
       const size_t * const acBins
    ) {
       static_assert(1 <= cCompilerDimensionsPossible, "can't have less than 1 dimension for interactions");
       static_assert(cCompilerDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
 
-      EBM_ASSERT(1 <= cSignificantDimensions);
-      EBM_ASSERT(cSignificantDimensions <= k_cDimensionsMax);
-      if(cCompilerDimensionsPossible == cSignificantDimensions) {
-         BinSumsInteractionInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
+      EBM_ASSERT(1 <= cRealDimensions);
+      EBM_ASSERT(cRealDimensions <= k_cDimensionsMax);
+      if(cCompilerDimensionsPossible == cRealDimensions) {
+         BinSumsInteractionInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
       } else {
-         BinSumsInteractionDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
+         BinSumsInteractionDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
       }
    }
 };
@@ -218,13 +218,13 @@ public:
 
    INLINE_ALWAYS static void Func(
       InteractionShell * const pInteractionShell, 
-      const size_t cSignificantDimensions,
+      const size_t cRealDimensions,
       const size_t * const aiFeatures,
       const size_t * const acBins
    ) {
-      EBM_ASSERT(1 <= cSignificantDimensions);
-      EBM_ASSERT(cSignificantDimensions <= k_cDimensionsMax);
-      BinSumsInteractionInternal<cCompilerClasses, k_dynamicDimensions>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
+      EBM_ASSERT(1 <= cRealDimensions);
+      EBM_ASSERT(cRealDimensions <= k_cDimensionsMax);
+      BinSumsInteractionInternal<cCompilerClasses, k_dynamicDimensions>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
    }
 };
 
@@ -236,7 +236,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       InteractionShell * const pInteractionShell, 
-      const size_t cSignificantDimensions,
+      const size_t cRealDimensions,
       const size_t * const aiFeatures,
       const size_t * const acBins
    ) {
@@ -249,9 +249,9 @@ public:
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
       if(cPossibleClasses == cRuntimeClasses) {
-         BinSumsInteractionDimensions<cPossibleClasses, 2>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
+         BinSumsInteractionDimensions<cPossibleClasses, 2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
       } else {
-         BinSumsInteractionTarget<cPossibleClasses + 1>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
+         BinSumsInteractionTarget<cPossibleClasses + 1>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
       }
    }
 };
@@ -264,7 +264,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       InteractionShell * const pInteractionShell, 
-      const size_t cSignificantDimensions,
+      const size_t cRealDimensions,
       const size_t * const aiFeatures,
       const size_t * const acBins
    ) {
@@ -273,13 +273,13 @@ public:
       EBM_ASSERT(IsClassification(pInteractionShell->GetInteractionCore()->GetCountClasses()));
       EBM_ASSERT(k_cCompilerClassesMax < pInteractionShell->GetInteractionCore()->GetCountClasses());
 
-      BinSumsInteractionDimensions<k_dynamicClassification, 2>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
+      BinSumsInteractionDimensions<k_dynamicClassification, 2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
    }
 };
 
 extern void BinSumsInteraction(
    InteractionShell * const pInteractionShell,
-   const size_t cSignificantDimensions,
+   const size_t cRealDimensions,
    const size_t * const aiFeatures,
    const size_t * const acBins
 ) {
@@ -287,10 +287,10 @@ extern void BinSumsInteraction(
    const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
 
    if(IsClassification(cRuntimeClasses)) {
-      BinSumsInteractionTarget<2>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
+      BinSumsInteractionTarget<2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
    } else {
       EBM_ASSERT(IsRegression(cRuntimeClasses));
-      BinSumsInteractionDimensions<k_regression, 2>::Func(pInteractionShell, cSignificantDimensions, aiFeatures, acBins);
+      BinSumsInteractionDimensions<k_regression, 2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
    }
 }
 

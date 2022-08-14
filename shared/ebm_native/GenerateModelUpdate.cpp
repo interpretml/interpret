@@ -53,7 +53,7 @@ extern void SumAllBins(
 
 extern void TensorTotalsBuild(
    const ptrdiff_t cClasses,
-   const size_t cSignificantDimensions,
+   const size_t cRealDimensions,
    const size_t * const acBins,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
@@ -238,7 +238,7 @@ static ErrorEbm BoostSingleDimensional(
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
    EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-   EBM_ASSERT(1 == pBoosterCore->GetTerms()[iTerm]->GetCountSignificantDimensions());
+   EBM_ASSERT(1 == pBoosterCore->GetTerms()[iTerm]->GetCountRealDimensions());
 
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
    const bool bClassification = IsClassification(cClasses);
@@ -353,7 +353,7 @@ static ErrorEbm BoostMultiDimensional(
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
 
    EBM_ASSERT(2 <= pTerm->GetCountDimensions());
-   EBM_ASSERT(2 <= pTerm->GetCountSignificantDimensions());
+   EBM_ASSERT(2 <= pTerm->GetCountRealDimensions());
 
    ErrorEbm error;
 
@@ -487,7 +487,7 @@ static ErrorEbm BoostMultiDimensional(
 
    TensorTotalsBuild(
       cClasses,
-      pTerm->GetCountSignificantDimensions(),
+      pTerm->GetCountRealDimensions(),
       acBins,
       aAuxiliaryBins,
       aBinsBig
@@ -593,7 +593,7 @@ static ErrorEbm BoostMultiDimensional(
    //   move_next_permutation:
    //} while(std::next_permutation(aiDimensionPermutation, &aiDimensionPermutation[cDimensions]));
 
-   if(2 == pTerm->GetCountSignificantDimensions()) {
+   if(2 == pTerm->GetCountRealDimensions()) {
       error = PartitionTwoDimensionalBoosting(
          pBoosterShell,
          pTerm,
@@ -771,7 +771,7 @@ static ErrorEbm GenerateTermUpdateInternal(
    const size_t cInnerBagsAfterZero = 
       (0 == pBoosterCore->GetCountInnerBags()) ? size_t { 1 } : pBoosterCore->GetCountInnerBags();
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-   const size_t cSignificantDimensions = pTerm->GetCountSignificantDimensions();
+   const size_t cRealDimensions = pTerm->GetCountRealDimensions();
    const size_t cDimensions = pTerm->GetCountDimensions();
 
    // TODO: we can probably eliminate lastDimensionLeavesMax and cSignificantBinCount and just fetch them from iDimensionImportant afterwards
@@ -783,7 +783,7 @@ static ErrorEbm GenerateTermUpdateInternal(
    if(nullptr == aLeavesMax) {
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdateInternal aLeavesMax was null, so there won't be any splits");
    } else {
-      if(0 != cSignificantDimensions) {
+      if(0 != cRealDimensions) {
          size_t iDimensionInit = 0;
          const IntEbm * pLeavesMax = aLeavesMax;
          const Feature * const * ppFeature = pTerm->GetFeatures();
@@ -793,7 +793,7 @@ static ErrorEbm GenerateTermUpdateInternal(
             const Feature * const pFeature = *ppFeature;
             const size_t cBins = pFeature->GetCountBins();
             if(size_t { 1 } < cBins) {
-               EBM_ASSERT(size_t { 2 } <= cSignificantDimensions || IntEbm { 0 } == lastDimensionLeavesMax);
+               EBM_ASSERT(size_t { 2 } <= cRealDimensions || IntEbm { 0 } == lastDimensionLeavesMax);
 
                iDimensionImportant = iDimensionInit;
                cSignificantBinCount = cBins;
@@ -846,7 +846,7 @@ static ErrorEbm GenerateTermUpdateInternal(
             }
          } else {
             double gain;
-            if(0 != (BoostFlags_RandomSplits & flags) || 2 < cSignificantDimensions) {
+            if(0 != (BoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {
                if(size_t { 1 } != cSamplesLeafMin) {
                   LOG_0(Trace_Warning,
                      "WARNING GenerateTermUpdateInternal cSamplesLeafMin is ignored when doing random splitting"
@@ -868,7 +868,7 @@ static ErrorEbm GenerateTermUpdateInternal(
                   }
                   return error;
                }
-            } else if(1 == cSignificantDimensions) {
+            } else if(1 == cRealDimensions) {
                EBM_ASSERT(nullptr != aLeavesMax); // otherwise we'd use BoostZeroDimensional above
                EBM_ASSERT(IntEbm { 2 } <= lastDimensionLeavesMax); // otherwise we'd use BoostZeroDimensional above
                EBM_ASSERT(size_t { 2 } <= cSignificantBinCount); // otherwise we'd use BoostZeroDimensional above

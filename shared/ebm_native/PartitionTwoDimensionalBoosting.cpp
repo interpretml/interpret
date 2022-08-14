@@ -35,7 +35,7 @@ namespace DEFINED_ZONE_NAME {
 template<ptrdiff_t cCompilerClasses>
 static FloatBig SweepMultiDimensional(
    const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
-   const size_t cSignificantDimensions,
+   const size_t cRealDimensions,
    const size_t * const acBins,
    size_t * const aiPoint,
    const size_t directionVectorLow,
@@ -56,8 +56,8 @@ static FloatBig SweepMultiDimensional(
 
    // TODO : optimize this function
 
-   EBM_ASSERT(1 <= cSignificantDimensions);
-   EBM_ASSERT(iDimensionSweep < cSignificantDimensions);
+   EBM_ASSERT(1 <= cRealDimensions);
+   EBM_ASSERT(iDimensionSweep < cRealDimensions);
    EBM_ASSERT(0 == (directionVectorLow & (size_t { 1 } << iDimensionSweep)));
 
    const ptrdiff_t cClasses = GET_COUNT_CLASSES(
@@ -91,10 +91,10 @@ static FloatBig SweepMultiDimensional(
    do {
       *piBin = iBin;
 
-      EBM_ASSERT(2 == cSignificantDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+      EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
       TensorTotalsSum<cCompilerClasses, 2>(
          cRuntimeClasses,
-         cSignificantDimensions,
+         cRealDimensions,
          acBins,
          aBins,
          aiPoint,
@@ -106,10 +106,10 @@ static FloatBig SweepMultiDimensional(
 #endif // NDEBUG
          );
       if(LIKELY(cSamplesLeafMin <= pTotalsLow->GetCountSamples())) {
-         EBM_ASSERT(2 == cSignificantDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+         EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
          TensorTotalsSum<cCompilerClasses, 2>(
             cRuntimeClasses,
-            cSignificantDimensions,
+            cRealDimensions,
             acBins,
             aBins,
             aiPoint,
@@ -222,7 +222,7 @@ public:
 
       size_t aiStart[k_cDimensionsMax];
 
-      EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions());
+      EBM_ASSERT(2 == pTerm->GetCountRealDimensions());
       size_t iDimensionLoop = 0;
       size_t iDimension1 = 0;
       size_t iDimension2 = 0;
@@ -273,7 +273,7 @@ public:
          auto * pTotals2LowHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 5);
          const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses>(
             aBins,
-            pTerm->GetCountSignificantDimensions(),
+            pTerm->GetCountRealDimensions(),
             acBins,
             aiStart,
             0x0,
@@ -297,7 +297,7 @@ public:
             auto * pTotals2HighHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 9);
             const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses>(
                aBins,
-               pTerm->GetCountSignificantDimensions(),
+               pTerm->GetCountRealDimensions(),
                acBins,
                aiStart,
                0x1,
@@ -366,7 +366,7 @@ public:
          auto * pTotals1LowHighBestInner = IndexBin(cBytesPerBin, aAuxiliaryBins, 17);
          const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses>(
             aBins,
-            pTerm->GetCountSignificantDimensions(),
+            pTerm->GetCountRealDimensions(),
             acBins,
             aiStart,
             0x0,
@@ -390,7 +390,7 @@ public:
             auto * pTotals1HighHighBestInner = IndexBin(cBytesPerBin, aAuxiliaryBins, 21);
             const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses>(
                aBins,
-               pTerm->GetCountSignificantDimensions(),
+               pTerm->GetCountRealDimensions(),
                acBins,
                aiStart,
                0x2,

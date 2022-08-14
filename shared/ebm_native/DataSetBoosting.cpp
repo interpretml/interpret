@@ -244,7 +244,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    do {
       const Term * const pTerm = *ppTerm;
       EBM_ASSERT(nullptr != pTerm);
-      if(0 == pTerm->GetCountSignificantDimensions()) {
+      if(0 == pTerm->GetCountRealDimensions()) {
          piTermFeatures += pTerm->GetCountDimensions();
          *paInputDataTo = nullptr; // free will skip over these later
          ++paInputDataTo;
@@ -316,7 +316,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             ++piTermFeatures;
             ++ppFeature;
          } while(ppFeaturesEnd != ppFeature);
-         EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pTerm->GetCountSignificantDimensions()]);
+         EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pTerm->GetCountRealDimensions()]);
 
          const BagEbm * pSampleReplication = aBag;
          BagEbm replication = 0;

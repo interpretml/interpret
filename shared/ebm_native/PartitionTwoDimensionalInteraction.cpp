@@ -37,7 +37,7 @@ public:
 
    static double Func(
       InteractionCore * const pInteractionCore,
-      const size_t cSignificantDimensions,
+      const size_t cRealDimensions,
       const size_t * const acBins,
       const InteractionFlags flags,
       const size_t cSamplesLeafMin,
@@ -72,7 +72,7 @@ public:
       auto * const pTotals11 = IndexBin(cBytesPerBin, aAuxiliaryBins, 3);
 
       // for interactions we return an interaction score of 0 if any of the dimensions are useless
-      EBM_ASSERT(2 == cSignificantDimensions);
+      EBM_ASSERT(2 == cRealDimensions);
 
       // we return an interaction score of 0 if any features are useless before calling here
       const size_t cBinsDimension1 = acBins[0];
@@ -102,10 +102,10 @@ public:
          do {
             aiStart[1] = iBin2;
 
-            EBM_ASSERT(2 == cSignificantDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+            EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
             TensorTotalsSum<cCompilerClasses, 2>(
                cClasses,
-               cSignificantDimensions,
+               cRealDimensions,
                acBins,
                aBins,
                aiStart,
@@ -117,10 +117,10 @@ public:
 #endif // NDEBUG
                );
             if(LIKELY(cSamplesLeafMin <= pTotals00->GetCountSamples())) {
-               EBM_ASSERT(2 == cSignificantDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+               EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                TensorTotalsSum<cCompilerClasses, 2>(
                   cClasses,
-                  cSignificantDimensions,
+                  cRealDimensions,
                   acBins,
                   aBins,
                   aiStart,
@@ -132,10 +132,10 @@ public:
 #endif // NDEBUG
                   );
                if(LIKELY(cSamplesLeafMin <= pTotals01->GetCountSamples())) {
-                  EBM_ASSERT(2 == cSignificantDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+                  EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                   TensorTotalsSum<cCompilerClasses, 2>(
                      cClasses,
-                     cSignificantDimensions,
+                     cRealDimensions,
                      acBins,
                      aBins,
                      aiStart,
@@ -147,10 +147,10 @@ public:
 #endif // NDEBUG
                      );
                   if(LIKELY(cSamplesLeafMin <= pTotals10->GetCountSamples())) {
-                     EBM_ASSERT(2 == cSignificantDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+                     EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                      TensorTotalsSum<cCompilerClasses, 2>(
                         cClasses,
-                        cSignificantDimensions,
+                        cRealDimensions,
                         acBins,
                         aBins,
                         aiStart,
@@ -395,7 +395,7 @@ public:
 
    INLINE_ALWAYS static double Func(
       InteractionCore * const pInteractionCore,
-      const size_t cSignificantDimensions,
+      const size_t cRealDimensions,
       const size_t * const acBins,
       const InteractionFlags flags,
       const size_t cSamplesLeafMin,
@@ -416,7 +416,7 @@ public:
       if(cPossibleClasses == cRuntimeClasses) {
          return PartitionTwoDimensionalInteractionInternal<cPossibleClasses>::Func(
             pInteractionCore,
-            cSignificantDimensions,
+            cRealDimensions,
             acBins,
             flags,
             cSamplesLeafMin,
@@ -430,7 +430,7 @@ public:
       } else {
          return PartitionTwoDimensionalInteractionTarget<cPossibleClasses + 1>::Func(
             pInteractionCore,
-            cSignificantDimensions,
+            cRealDimensions,
             acBins,
             flags,
             cSamplesLeafMin,
@@ -453,7 +453,7 @@ public:
 
    INLINE_ALWAYS static double Func(
       InteractionCore * const pInteractionCore,
-      const size_t cSignificantDimensions,
+      const size_t cRealDimensions,
       const size_t * const acBins,
       const InteractionFlags flags,
       const size_t cSamplesLeafMin,
@@ -471,7 +471,7 @@ public:
 
       return PartitionTwoDimensionalInteractionInternal<k_dynamicClassification>::Func(
          pInteractionCore,
-         cSignificantDimensions,
+         cRealDimensions,
          acBins,
          flags,
          cSamplesLeafMin,
@@ -487,7 +487,7 @@ public:
 
 extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
-   const size_t cSignificantDimensions,
+   const size_t cRealDimensions,
    const size_t * const acBins,
    const InteractionFlags flags,
    const size_t cSamplesLeafMin,
@@ -503,7 +503,7 @@ extern double PartitionTwoDimensionalInteraction(
    if(IsClassification(cRuntimeClasses)) {
       return PartitionTwoDimensionalInteractionTarget<2>::Func(
          pInteractionCore,
-         cSignificantDimensions,
+         cRealDimensions,
          acBins,
          flags,
          cSamplesLeafMin,
@@ -518,7 +518,7 @@ extern double PartitionTwoDimensionalInteraction(
       EBM_ASSERT(IsRegression(cRuntimeClasses));
       return PartitionTwoDimensionalInteractionInternal<k_regression>::Func(
          pInteractionCore,
-         cSignificantDimensions,
+         cRealDimensions,
          acBins,
          flags,
          cSamplesLeafMin,

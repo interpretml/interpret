@@ -346,7 +346,7 @@ ErrorEbm BoosterCore::Create(
          // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
          pBoosterCore->m_apTerms[iTerm] = pTerm;
 
-         size_t cSignificantDimensions = 0;
+         size_t cRealDimensions = 0;
          ptrdiff_t cItemsPerBitPack = k_cItemsPerBitPackNone;
          size_t cTensorBins = 1;
          if(UNLIKELY(0 == cDimensions)) {
@@ -386,7 +386,7 @@ ErrorEbm BoosterCore::Create(
                if(LIKELY(size_t { 1 } < cBins)) {
                   // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is 
                   // otherwise indistinquishable from the original data
-                  ++cSignificantDimensions;
+                  ++cRealDimensions;
                   if(IsMultiplyError(cTensorBins, cBins)) {
                      // if this overflows, we definetly won't be able to allocate it
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cTensorStates, cBins)");
@@ -402,11 +402,11 @@ ErrorEbm BoosterCore::Create(
                ++ppFeature;
             } while(ppFeaturesEnd != ppFeature);
 
-            if(LIKELY(0 != cSignificantDimensions)) {
+            if(LIKELY(0 != cRealDimensions)) {
                EBM_ASSERT(1 < cTensorBins);
 
                size_t cBytesArrayEquivalentSplit;
-               if(1 == cSignificantDimensions) {
+               if(1 == cRealDimensions) {
                   if(IsMultiplyError(cBytesPerTreeSweep, cEquivalentSplits)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerTreeSweep, cEquivalentSplits)");
                      return Error_OutOfMemory;
@@ -426,7 +426,7 @@ ErrorEbm BoosterCore::Create(
                cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked(cBitsRequiredMin));
             }
          }
-         pTerm->SetCountSignificantDimensions(cSignificantDimensions);
+         pTerm->SetCountRealDimensions(cRealDimensions);
          pTerm->SetBitPack(cItemsPerBitPack);
 
          ++iTerm;

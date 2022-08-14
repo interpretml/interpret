@@ -29,14 +29,14 @@ namespace DEFINED_ZONE_NAME {
 template<bool bClassification>
 void TensorTotalsSumDebugSlow(
    const ptrdiff_t cClasses,
-   const size_t cSignificantDimensions,
+   const size_t cRealDimensions,
    const size_t * const acBins,
    const Bin<FloatBig, bClassification> * const aBins,
    const size_t * const aiStart,
    const size_t * const aiLast,
    Bin<FloatBig, bClassification> * const pRet
 ) {
-   EBM_ASSERT(1 <= cSignificantDimensions); // why bother getting totals if we just have 1 bin
+   EBM_ASSERT(1 <= cRealDimensions); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
 
    size_t iTensorBin = 0;
@@ -44,7 +44,7 @@ void TensorTotalsSumDebugSlow(
    size_t iDimensionInitialize = 0;
 
    const size_t * pcBinsInit = acBins;
-   const size_t * const pcBinsInitEnd = &acBins[cSignificantDimensions];
+   const size_t * const pcBinsInitEnd = &acBins[cRealDimensions];
    do {
       const size_t cBins = *pcBinsInit;
       // cBins can only be 0 if there are zero training and zero validation samples
@@ -93,7 +93,7 @@ void TensorTotalsSumDebugSlow(
 
          aiDimensions[iDimension] = aiStart[iDimension];
          ++iDimension;
-         if(iDimension == cSignificantDimensions) {
+         if(iDimension == cRealDimensions) {
             return;
          }
       }
@@ -105,7 +105,7 @@ void TensorTotalsSumDebugSlow(
 template<bool bClassification>
 void TensorTotalsCompareDebug(
    const Bin<FloatBig, bClassification> * const aBins,
-   const size_t cSignificantDimensions,
+   const size_t cRealDimensions,
    const size_t * const acBins,
    const size_t * const aiPoint,
    const size_t directionVector,
@@ -121,7 +121,7 @@ void TensorTotalsCompareDebug(
    size_t directionVectorDestroy = directionVector;
 
    const size_t * pcBins = acBins;
-   const size_t * const pcBinsEnd = &acBins[cSignificantDimensions];
+   const size_t * const pcBinsEnd = &acBins[cRealDimensions];
 
    size_t iDimensionDebug = 0;
    do {
@@ -146,7 +146,7 @@ void TensorTotalsCompareDebug(
       // if we can't obtain the memory, then don't do the comparison and exit
       TensorTotalsSumDebugSlow<bClassification>(
          cClasses,
-         cSignificantDimensions,
+         cRealDimensions,
          acBins,
          aBins,
          aiStart,
@@ -164,7 +164,7 @@ void TensorTotalsCompareDebug(
 template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
 void TensorTotalsSum(
    const ptrdiff_t cRuntimeClasses,
-   const size_t cSignificantDimensions,
+   const size_t cRealDimensions,
    const size_t * const acBins,
    const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
    const size_t * const aiPoint,
@@ -196,8 +196,8 @@ void TensorTotalsSum(
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
    const size_t * pcBins = acBins;
-   const size_t * pcBinsEnd = &acBins[cSignificantDimensions];
-   EBM_ASSERT(1 <= cSignificantDimensions);
+   const size_t * pcBinsEnd = &acBins[cRealDimensions];
+   EBM_ASSERT(1 <= cRealDimensions);
 
    size_t multipleTotalInitialize = 1;
    size_t startingOffset = 0;
@@ -311,7 +311,7 @@ void TensorTotalsSum(
    if(nullptr != aBinsDebugCopy) {
       TensorTotalsCompareDebug<bClassification>(
          aBinsDebugCopy,
-         cSignificantDimensions,
+         cRealDimensions,
          acBins,
          aiPoint,
          directionVector,

@@ -154,7 +154,7 @@ public:
 
    static void Func(
       const ptrdiff_t cRuntimeClasses,
-      const size_t cRuntimeSignificantDimensions,
+      const size_t cRuntimeRealDimensions,
       const size_t * const acBins,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
@@ -183,8 +183,8 @@ public:
       //       based and then having a stack based pointer system like the RandomSplitState class in PartitionRandomBoostingInternal
       //       to handle any dimensions at the 3rd level and above.  We'll never need to make any additional checks 
       //       on main memory until we reach the 3rd dimension which should be enough for any performance geek
-      const size_t cSignificantDimensions = GET_DIMENSIONS(cCompilerDimensions, cRuntimeSignificantDimensions);
-      EBM_ASSERT(1 <= cSignificantDimensions);
+      const size_t cRealDimensions = GET_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
+      EBM_ASSERT(1 <= cRealDimensions);
 
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
@@ -196,7 +196,7 @@ public:
       FastTotalState * pFastTotalStateInitialize = fastTotalState;
       {
          const size_t * pcBins = acBins;
-         const size_t * const pcBinsEnd = &acBins[cRuntimeSignificantDimensions];
+         const size_t * const pcBinsEnd = &acBins[cRuntimeRealDimensions];
          size_t multiply = 1;
          do {
             ASSERT_BIN_OK(cBytesPerBin, pAuxiliaryBin, pBinsEndDebug);
@@ -215,7 +215,7 @@ public:
             pAuxiliaryBin = IndexBin(cBytesPerBin, pAuxiliaryBin, multiply);
 
 #ifndef NDEBUG
-            if(&fastTotalState[cSignificantDimensions] == pFastTotalStateInitialize + 1) {
+            if(&fastTotalState[cRealDimensions] == pFastTotalStateInitialize + 1) {
                // this is the last iteration, so pAuxiliaryBin should normally point to the memory address one byte past the legal buffer 
                // (normally pBinsEndDebug), BUT in rare cases we allocate more memory for the BinAuxiliaryBuildZone than we use in this 
                // function, so the only thing that we can guarantee is that we're equal or less than pBinsEndDebug
@@ -241,7 +241,7 @@ public:
             ++pcBins;
          } while(LIKELY(pcBinsEnd != pcBins));
       }
-      EBM_ASSERT(pFastTotalStateInitialize == &fastTotalState[cSignificantDimensions]);
+      EBM_ASSERT(pFastTotalStateInitialize == &fastTotalState[cRealDimensions]);
 
 #ifndef NDEBUG
 
@@ -257,7 +257,7 @@ public:
          ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
 
          auto * pAddPrev = pBin;
-         size_t iDimension = cSignificantDimensions;
+         size_t iDimension = cRealDimensions;
          do {
             --iDimension;
             auto * pAddTo = fastTotalState[iDimension].m_pDimensionalCur;
@@ -275,13 +275,13 @@ public:
          if(nullptr != aBinsDebugCopy && nullptr != pDebugBin) {
             size_t aiStart[k_cDimensionsMax];
             size_t aiLast[k_cDimensionsMax];
-            for(size_t iDebugDimension = 0; iDebugDimension < cSignificantDimensions; ++iDebugDimension) {
+            for(size_t iDebugDimension = 0; iDebugDimension < cRealDimensions; ++iDebugDimension) {
                aiStart[iDebugDimension] = 0;
                aiLast[iDebugDimension] = fastTotalState[iDebugDimension].m_iCur;
             }
             TensorTotalsSumDebugSlow<bClassification>(
                cClasses,
-               cSignificantDimensions,
+               cRealDimensions,
                acBins,
                aBinsDebugCopy,
                aiStart,
@@ -333,7 +333,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       const ptrdiff_t cRuntimeClasses,
-      const size_t cSignificantDimensions,
+      const size_t cRealDimensions,
       const size_t * const acBins,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
@@ -345,12 +345,12 @@ public:
       static_assert(1 <= cCompilerDimensionsPossible, "can't have less than 1 dimension");
       static_assert(cCompilerDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
 
-      EBM_ASSERT(1 <= cSignificantDimensions);
-      EBM_ASSERT(cSignificantDimensions <= k_cDimensionsMax);
-      if(cCompilerDimensionsPossible == cSignificantDimensions) {
+      EBM_ASSERT(1 <= cRealDimensions);
+      EBM_ASSERT(cRealDimensions <= k_cDimensionsMax);
+      if(cCompilerDimensionsPossible == cRealDimensions) {
          TensorTotalsBuildInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(
             cRuntimeClasses,
-            cSignificantDimensions,
+            cRealDimensions,
             acBins,
             aAuxiliaryBinsBase,
             aBinsBase
@@ -362,7 +362,7 @@ public:
       } else {
          TensorTotalsBuildDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(
             cRuntimeClasses,
-            cSignificantDimensions,
+            cRealDimensions,
             acBins,
             aAuxiliaryBinsBase,
             aBinsBase
@@ -383,7 +383,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       const ptrdiff_t cRuntimeClasses,
-      const size_t cSignificantDimensions,
+      const size_t cRealDimensions,
       const size_t * const acBins,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
@@ -392,11 +392,11 @@ public:
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      EBM_ASSERT(1 <= cSignificantDimensions);
-      EBM_ASSERT(cSignificantDimensions <= k_cDimensionsMax);
+      EBM_ASSERT(1 <= cRealDimensions);
+      EBM_ASSERT(cRealDimensions <= k_cDimensionsMax);
       TensorTotalsBuildInternal<cCompilerClasses, k_dynamicDimensions>::Func(
          cRuntimeClasses,
-         cSignificantDimensions,
+         cRealDimensions,
          acBins,
          aAuxiliaryBinsBase,
          aBinsBase
@@ -416,7 +416,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       const ptrdiff_t cRuntimeClasses,
-      const size_t cSignificantDimensions,
+      const size_t cRealDimensions,
       const size_t * const acBins,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
@@ -434,7 +434,7 @@ public:
       if(cPossibleClasses == cRuntimeClasses) {
          TensorTotalsBuildDimensions<cPossibleClasses, 2>::Func(
             cRuntimeClasses,
-            cSignificantDimensions,
+            cRealDimensions,
             acBins,
             aAuxiliaryBinsBase,
             aBinsBase
@@ -446,7 +446,7 @@ public:
       } else {
          TensorTotalsBuildTarget<cPossibleClasses + 1>::Func(
             cRuntimeClasses,
-            cSignificantDimensions,
+            cRealDimensions,
             acBins,
             aAuxiliaryBinsBase,
             aBinsBase
@@ -467,7 +467,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       const ptrdiff_t cRuntimeClasses,
-      const size_t cSignificantDimensions,
+      const size_t cRealDimensions,
       const size_t * const acBins,
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
@@ -483,7 +483,7 @@ public:
 
       TensorTotalsBuildDimensions<k_dynamicClassification, 2>::Func(
          cRuntimeClasses,
-         cSignificantDimensions,
+         cRealDimensions,
          acBins,
          aAuxiliaryBinsBase,
          aBinsBase
@@ -497,7 +497,7 @@ public:
 
 extern void TensorTotalsBuild(
    const ptrdiff_t cClasses,
-   const size_t cSignificantDimensions,
+   const size_t cRealDimensions,
    const size_t * const acBins,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
@@ -509,7 +509,7 @@ extern void TensorTotalsBuild(
    if(IsClassification(cClasses)) {
       TensorTotalsBuildTarget<2>::Func(
          cClasses,
-         cSignificantDimensions,
+         cRealDimensions,
          acBins,
          aAuxiliaryBinsBase,
          aBinsBase
@@ -522,7 +522,7 @@ extern void TensorTotalsBuild(
       EBM_ASSERT(IsRegression(cClasses));
       TensorTotalsBuildDimensions<k_regression, 2>::Func(
          cClasses,
-         cSignificantDimensions,
+         cRealDimensions,
          acBins,
          aAuxiliaryBinsBase,
          aBinsBase
