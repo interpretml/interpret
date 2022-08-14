@@ -26,12 +26,12 @@ namespace DEFINED_ZONE_NAME {
 
 extern void ApplyTermUpdateTraining(
    BoosterShell * const pBoosterShell,
-   const Term * const pTerm
+   const size_t iTerm
 );
 
 extern double ApplyTermUpdateValidation(
    BoosterShell * const pBoosterShell,
-   const Term * const pTerm
+   const size_t iTerm
 );
 
 static ErrorEbm ApplyTermUpdateInternal(
@@ -79,7 +79,7 @@ static ErrorEbm ApplyTermUpdateInternal(
    pBoosterCore->GetCurrentModel()[iTerm]->AddExpandedWithBadValueProtection(aUpdateScores);
 
    if(0 != pBoosterCore->GetTrainingSet()->GetCountSamples()) {
-      ApplyTermUpdateTraining(pBoosterShell, pTerm);
+      ApplyTermUpdateTraining(pBoosterShell, iTerm);
    }
 
    double modelMetric = 0.0;
@@ -95,7 +95,7 @@ static ErrorEbm ApplyTermUpdateInternal(
       // but it isn't guaranteed, so let's check for zero samples in the validation set this better way
       // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
-      modelMetric = ApplyTermUpdateValidation(pBoosterShell, pTerm);
+      modelMetric = ApplyTermUpdateValidation(pBoosterShell, iTerm);
 
       EBM_ASSERT(!std::isnan(modelMetric)); // NaNs can happen, but we should have converted them
       EBM_ASSERT(!std::isinf(modelMetric)); // +infinity can happen, but we should have converted it

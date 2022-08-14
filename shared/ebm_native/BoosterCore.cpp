@@ -338,7 +338,7 @@ ErrorEbm BoosterCore::Create(
             return Error_OutOfMemory;
          }
          const size_t cDimensions = static_cast<size_t>(countDimensions);
-         Term * const pTerm = Term::Allocate(cDimensions, iTerm);
+         Term * const pTerm = Term::Allocate(cDimensions);
          if(nullptr == pTerm) {
             LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == pTerm");
             return Error_OutOfMemory;
@@ -426,8 +426,7 @@ ErrorEbm BoosterCore::Create(
                cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked(cBitsRequiredMin));
             }
          }
-         pTerm->SetCountTensorBins(cTensorBins);
-         pTerm->SetCountSignificantFeatures(cSignificantDimensions);
+         pTerm->SetCountSignificantDimensions(cSignificantDimensions);
          pTerm->SetBitPack(cItemsPerBitPack);
 
          ++iTerm;

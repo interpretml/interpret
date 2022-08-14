@@ -290,12 +290,15 @@ public:
 
    static double Func(
       BoosterShell * const pBoosterShell,
-      const Term * const pTerm
+      const size_t iTerm
    ) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+      EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
+      const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+
       const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
@@ -325,7 +328,7 @@ public:
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
       FloatFast sumLogLoss = 0;
-      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pTerm);
+      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(iTerm);
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
       FloatFast * pSampleScore = pValidationSet->GetSampleScores();
 
@@ -426,9 +429,12 @@ public:
 
    static double Func(
       BoosterShell * const pBoosterShell,
-      const Term * const pTerm
+      const size_t iTerm
    ) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+      EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
+      const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+
       const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
@@ -452,7 +458,7 @@ public:
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
       FloatFast sumLogLoss = 0;
-      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pTerm);
+      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(iTerm);
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
       FloatFast * pSampleScore = pValidationSet->GetSampleScores();
 
@@ -531,9 +537,12 @@ public:
 
    static double Func(
       BoosterShell * const pBoosterShell,
-      const Term * const pTerm
+      const size_t iTerm
    ) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+      EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
+      const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+
       const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
@@ -559,7 +568,7 @@ public:
       FloatFast sumSquareError = 0;
       // no hessians for regression
       FloatFast * pGradient = pValidationSet->GetGradientsAndHessiansPointer();
-      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pTerm);
+      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(iTerm);
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatFast * const pGradientsTrueEnd = pGradient + cSamples;
@@ -631,7 +640,7 @@ public:
 
    INLINE_ALWAYS static double Func(
       BoosterShell * const pBoosterShell,
-      const Term * const pTerm
+      const size_t iTerm
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
@@ -644,14 +653,14 @@ public:
       if(cPossibleClasses == cRuntimeClasses) {
          return ApplyTermUpdateValidationInternal<cPossibleClasses, k_cItemsPerBitPackDynamic>::Func(
             pBoosterShell,
-            pTerm
+            iTerm
          );
       } else {
          return ApplyTermUpdateValidationNormalTarget<
             cPossibleClasses + 1
          >::Func(
             pBoosterShell,
-            pTerm
+            iTerm
          );
       }
    }
@@ -665,7 +674,7 @@ public:
 
    INLINE_ALWAYS static double Func(
       BoosterShell * const pBoosterShell,
-      const Term * const pTerm
+      const size_t iTerm
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
@@ -674,7 +683,7 @@ public:
 
       return ApplyTermUpdateValidationInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
-         pTerm
+         iTerm
       );
    }
 };
@@ -687,8 +696,11 @@ public:
 
    INLINE_ALWAYS static double Func(
       BoosterShell * const pBoosterShell,
-      const Term * const pTerm
+      const size_t iTerm
    ) {
+      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+      EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
+      const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
       const size_t runtimeBitPack = pTerm->GetBitPack();
 
       EBM_ASSERT(1 <= runtimeBitPack);
@@ -697,7 +709,7 @@ public:
       if(compilerBitPack == runtimeBitPack) {
          return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack>::Func(
             pBoosterShell,
-            pTerm
+            iTerm
          );
       } else {
          return ApplyTermUpdateValidationSIMDPacking<
@@ -705,7 +717,7 @@ public:
             GetNextCountItemsBitPacked(compilerBitPack)
          >::Func(
             pBoosterShell,
-            pTerm
+            iTerm
          );
       }
    }
@@ -719,16 +731,17 @@ public:
 
    INLINE_ALWAYS static double Func(
       BoosterShell * const pBoosterShell,
-      const Term * const pTerm
+      const size_t iTerm
    ) {
-      EBM_ASSERT(1 <= pTerm->GetBitPack());
-      EBM_ASSERT(pTerm->GetBitPack() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
+      EBM_ASSERT(iTerm < pBoosterShell->GetBoosterCore()->GetCountTerms());
+      EBM_ASSERT(1 <= pBoosterShell->GetBoosterCore()->GetTerms()[iTerm]->GetBitPack());
+      EBM_ASSERT(pBoosterShell->GetBoosterCore()->GetTerms()[iTerm]->GetBitPack() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
       return ApplyTermUpdateValidationInternal<
          cCompilerClasses, 
          k_cItemsPerBitPackDynamic
       >::Func(
          pBoosterShell,
-         pTerm
+         iTerm
       );
    }
 };
@@ -741,7 +754,7 @@ public:
 
    INLINE_ALWAYS static double Func(
       BoosterShell * const pBoosterShell,
-      const Term * const pTerm
+      const size_t iTerm
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
@@ -757,14 +770,14 @@ public:
             k_cItemsPerBitPackMax
          >::Func(
             pBoosterShell,
-            pTerm
+            iTerm
          );
       } else {
          return ApplyTermUpdateValidationSIMDTarget<
             cPossibleClasses + 1
          >::Func(
             pBoosterShell,
-            pTerm
+            iTerm
          );
       }
    }
@@ -778,7 +791,7 @@ public:
 
    INLINE_ALWAYS static double Func(
       BoosterShell * const pBoosterShell,
-      const Term * const pTerm
+      const size_t iTerm
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
@@ -790,18 +803,21 @@ public:
          k_cItemsPerBitPackMax
       >::Func(
          pBoosterShell,
-         pTerm
+         iTerm
       );
    }
 };
 
 extern double ApplyTermUpdateValidation(
    BoosterShell * const pBoosterShell, 
-   const Term * const pTerm
+   const size_t iTerm
 ) {
    LOG_0(Trace_Verbose, "Entered ApplyTermUpdateValidation");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+
    const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
    double ret;
@@ -829,13 +845,13 @@ extern double ApplyTermUpdateValidation(
          if(IsClassification(cRuntimeClasses)) {
             ret = ApplyTermUpdateValidationSIMDTarget<2>::Func(
                pBoosterShell,
-               pTerm
+               iTerm
             );
          } else {
             EBM_ASSERT(IsRegression(cRuntimeClasses));
             ret = ApplyTermUpdateValidationSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
                pBoosterShell,
-               pTerm
+               iTerm
             );
          }
       } else {
@@ -848,13 +864,13 @@ extern double ApplyTermUpdateValidation(
          if(IsClassification(cRuntimeClasses)) {
             ret = ApplyTermUpdateValidationNormalTarget<2>::Func(
                pBoosterShell,
-               pTerm
+               iTerm
             );
          } else {
             EBM_ASSERT(IsRegression(cRuntimeClasses));
             ret = ApplyTermUpdateValidationInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
                pBoosterShell,
-               pTerm
+               iTerm
             );
          }
       }

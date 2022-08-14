@@ -38,7 +38,7 @@ namespace DEFINED_ZONE_NAME {
 
 extern void BinSumsBoosting(
    BoosterShell * const pBoosterShell,
-   const Term * const pTerm,
+   const size_t iTerm,
    const InnerBag * const pInnerBag
 );
 
@@ -127,7 +127,7 @@ static ErrorEbm BoostZeroDimensional(
 
    BinSumsBoosting(
       pBoosterShell,
-      nullptr,
+      BoosterShell::k_illegalTermIndex,
       pInnerBag
    );
 
@@ -214,7 +214,7 @@ static ErrorEbm BoostZeroDimensional(
 
 static ErrorEbm BoostSingleDimensional(
    BoosterShell * const pBoosterShell,
-   const Term * const pTerm,
+   const size_t iTerm,
    const size_t cBins,
    const InnerBag * const pInnerBag,
    const size_t iDimension,
@@ -226,7 +226,6 @@ static ErrorEbm BoostSingleDimensional(
 
    LOG_0(Trace_Verbose, "Entered BoostSingleDimensional");
 
-   EBM_ASSERT(1 == pTerm->GetCountSignificantDimensions());
 
    EBM_ASSERT(IntEbm { 2 } <= countLeavesMax); // otherwise we would have called BoostZeroDimensional
    size_t cLeavesMax = static_cast<size_t>(countLeavesMax);
@@ -237,6 +236,10 @@ static ErrorEbm BoostSingleDimensional(
    }
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+
+   EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
+   EBM_ASSERT(1 == pBoosterCore->GetTerms()[iTerm]->GetCountSignificantDimensions());
+
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
    const bool bClassification = IsClassification(cClasses);
    const size_t cScores = GetCountScores(cClasses);
@@ -270,7 +273,7 @@ static ErrorEbm BoostSingleDimensional(
 
    BinSumsBoosting(
       pBoosterShell,
-      pTerm,
+      iTerm,
       pInnerBag
    );
 
@@ -338,12 +341,16 @@ static ErrorEbm BoostSingleDimensional(
 //    go back to our original tensor after splits to determine the hessian
 static ErrorEbm BoostMultiDimensional(
    BoosterShell * const pBoosterShell,
-   const Term * const pTerm,
+   const size_t iTerm,
    const InnerBag * const pInnerBag,
    const size_t cSamplesLeafMin,
    double * const pTotalGain
 ) {
    LOG_0(Trace_Verbose, "Entered BoostMultiDimensional");
+
+   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
 
    EBM_ASSERT(2 <= pTerm->GetCountDimensions());
    EBM_ASSERT(2 <= pTerm->GetCountSignificantDimensions());
@@ -380,7 +387,6 @@ static ErrorEbm BoostMultiDimensional(
       ++pTermEntry;
    } while(pTermEntriesEnd != pTermEntry);
 
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
    const bool bClassification = IsClassification(cClasses);
    const size_t cScores = GetCountScores(cClasses);
@@ -415,7 +421,7 @@ static ErrorEbm BoostMultiDimensional(
 
    BinSumsBoosting(
       pBoosterShell,
-      pTerm,
+      iTerm,
       pInnerBag
    );
 
@@ -632,7 +638,7 @@ static ErrorEbm BoostMultiDimensional(
 
 static ErrorEbm BoostRandom(
    BoosterShell * const pBoosterShell,
-   const Term * const pTerm,
+   const size_t iTerm,
    const InnerBag * const pInnerBag,
    const BoostFlags flags,
    const IntEbm * const aLeavesMax,
@@ -643,6 +649,10 @@ static ErrorEbm BoostRandom(
    LOG_0(Trace_Verbose, "Entered BoostRandom");
 
    ErrorEbm error;
+
+   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
 
    const size_t cDimensions = pTerm->GetCountDimensions();
    EBM_ASSERT(1 <= cDimensions);
@@ -656,7 +666,6 @@ static ErrorEbm BoostRandom(
       cTotalBins *= cBins;
    }
 
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
    const bool bClassification = IsClassification(cClasses);
    const size_t cScores = GetCountScores(cClasses);
@@ -691,7 +700,7 @@ static ErrorEbm BoostRandom(
 
    BinSumsBoosting(
       pBoosterShell,
-      pTerm,
+      iTerm,
       pInnerBag
    );
 
@@ -846,7 +855,7 @@ static ErrorEbm GenerateTermUpdateInternal(
 
                error = BoostRandom(
                   pBoosterShell,
-                  pTerm,
+                  iTerm,
                   pInnerBag,
                   flags,
                   aLeavesMax,
@@ -865,7 +874,7 @@ static ErrorEbm GenerateTermUpdateInternal(
 
                error = BoostSingleDimensional(
                   pBoosterShell,
-                  pTerm,
+                  iTerm,
                   cSignificantBinCount,
                   pInnerBag,
                   iDimensionImportant,
@@ -882,7 +891,7 @@ static ErrorEbm GenerateTermUpdateInternal(
             } else {
                error = BoostMultiDimensional(
                   pBoosterShell,
-                  pTerm,
+                  iTerm,
                   pInnerBag,
                   cSamplesLeafMin,
                   &gain

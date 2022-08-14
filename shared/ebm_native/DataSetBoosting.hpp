@@ -79,12 +79,10 @@ public:
       EBM_ASSERT(nullptr != m_aTargetData);
       return m_aTargetData;
    }
-   // TODO: we can change this to take the GetIndexTerm() value directly, which we get from a loop index
-   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const Term * const pTerm) const {
-      EBM_ASSERT(nullptr != pTerm);
-      EBM_ASSERT(pTerm->GetIndexTerm() < m_cTerms);
+   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const size_t iTerm) const {
+      EBM_ASSERT(iTerm < m_cTerms);
       EBM_ASSERT(nullptr != m_aaInputData);
-      return m_aaInputData[pTerm->GetIndexTerm()];
+      return m_aaInputData[iTerm];
    }
    INLINE_ALWAYS size_t GetCountSamples() const {
       return m_cSamples;

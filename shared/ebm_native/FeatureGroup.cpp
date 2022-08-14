@@ -20,14 +20,14 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-Term * Term::Allocate(const size_t cFeatures, const size_t iTerm) noexcept {
+Term * Term::Allocate(const size_t cFeatures) noexcept {
    const size_t cBytes = GetTermCountBytes(cFeatures);
    EBM_ASSERT(0 < cBytes);
    Term * const pTerm = static_cast<Term *>(EbmMalloc<void>(cBytes));
    if(UNLIKELY(nullptr == pTerm)) {
       return nullptr;
    }
-   pTerm->Initialize(cFeatures, iTerm);
+   pTerm->Initialize(cFeatures);
    return pTerm;
 }
 

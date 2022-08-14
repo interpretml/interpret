@@ -40,8 +40,6 @@ class Term final {
    ptrdiff_t m_cItemsPerBitPack;
    size_t m_cDimensions;
    size_t m_cSignificantDimensions;
-   size_t m_iTerm;
-   size_t m_cTensorBins;
    int m_cLogEnterGenerateTermUpdateMessages;
    int m_cLogExitGenerateTermUpdateMessages;
    int m_cLogEnterApplyTermUpdateMessages;
@@ -69,16 +67,15 @@ public:
       free(pTerm);
    }
 
-   INLINE_ALWAYS void Initialize(const size_t cFeatures, const size_t iTerm) noexcept {
+   INLINE_ALWAYS void Initialize(const size_t cFeatures) noexcept {
       m_cDimensions = cFeatures;
-      m_iTerm = iTerm;
       m_cLogEnterGenerateTermUpdateMessages = 2;
       m_cLogExitGenerateTermUpdateMessages = 2;
       m_cLogEnterApplyTermUpdateMessages = 2;
       m_cLogExitApplyTermUpdateMessages = 2;
    }
 
-   static Term * Allocate(const size_t cFeatures, const size_t iTerm) noexcept;
+   static Term * Allocate(const size_t cFeatures) noexcept;
    static Term ** AllocateTerms(const size_t cTerms) noexcept;
    static void FreeTerms(const size_t cTerms, Term ** apTerms) noexcept;
 
@@ -93,18 +90,6 @@ public:
       return m_cItemsPerBitPack;
    }
 
-   INLINE_ALWAYS size_t GetIndexTerm() const noexcept {
-      return m_iTerm;
-   }
-
-   INLINE_ALWAYS void SetCountTensorBins(const size_t cTensorBins) noexcept {
-      m_cTensorBins = cTensorBins;
-   }
-
-   INLINE_ALWAYS size_t GetCountTensorBins() const noexcept {
-      return m_cTensorBins;
-   }
-
    INLINE_ALWAYS size_t GetCountDimensions() const noexcept {
       EBM_ASSERT(m_cSignificantDimensions <= m_cDimensions);
       return m_cDimensions;
@@ -115,7 +100,7 @@ public:
       return m_cSignificantDimensions;
    }
 
-   INLINE_ALWAYS void SetCountSignificantFeatures(const size_t cSignificantDimensions) noexcept {
+   INLINE_ALWAYS void SetCountSignificantDimensions(const size_t cSignificantDimensions) noexcept {
       m_cSignificantDimensions = cSignificantDimensions;
    }
 
