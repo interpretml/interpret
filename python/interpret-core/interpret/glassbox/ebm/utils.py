@@ -3,7 +3,7 @@
 
 # TODO: Test EBMUtils
 
-from math import ceil, isnan, isinf, exp, log
+from math import ceil, floor, isnan, isinf, exp, log
 from .internal import Native, Booster
 
 # from scipy.special import expit
@@ -981,6 +981,16 @@ class EBMUtils:
         if seed <= -2147483647:
             return -((-seed) % 2147483647)
         return seed
+
+    @staticmethod
+    def increment_seed(seed):
+        # in places where we need to pass seeds, and we want user repetability, like the EBMPreprocessor
+        # we can increment the seed instead of generating a random and human-unpredictable seed
+        if seed is None:
+            return None
+        if seed == 2147483647:
+            return -2147483648
+        return seed + 1
 
     # NOTE: Interval / cut conversions are future work. Not registered for code coverage.
     @staticmethod

@@ -96,7 +96,7 @@ uint_fast64_t RandomDeterministic::GetOneTimePadConversion(uint_fast64_t seed) {
    uint_fast64_t result = uint_fast64_t { 0x6b79a38fd52c4e71 };
    const uint_fast64_t * pRandom = k_oneTimePadSeed;
    do {
-      if(UNPREDICTABLE(0 != (uint_fast64_t { 1 } &seed))) {
+      if(UNPREDICTABLE(0 != (uint_fast64_t { 1 } & seed))) {
          result ^= *pRandom;
       }
       ++pRandom;
@@ -106,7 +106,7 @@ uint_fast64_t RandomDeterministic::GetOneTimePadConversion(uint_fast64_t seed) {
 }
 
 void RandomDeterministic::Initialize(const uint64_t seed) {
-   constexpr uint_fast64_t initializeSeed = { 0xa75f138b4a162cfd };
+   constexpr uint64_t initializeSeed = uint64_t { 0xa75f138b4a162cfd };
 
    m_state1 = initializeSeed;
    m_state2 = initializeSeed;
@@ -117,7 +117,7 @@ void RandomDeterministic::Initialize(const uint64_t seed) {
 
    uint_fast64_t randomBits = originalRandomBits;
    // the lowest bit of our result needs to be 1 to make our number odd (per the paper)
-   uint_fast64_t sanitizedSeed = (uint_fast64_t { 0xF } &randomBits) | uint_fast64_t { 1 };
+   uint_fast64_t sanitizedSeed = (uint_fast64_t { 0xF } & randomBits) | uint_fast64_t { 1 };
    randomBits >>= 4; // remove the bits that we used
    // disallow zeros for our hex digits by ORing 1
    const uint_fast16_t disallowMapFuture = (uint_fast16_t { 1 } << sanitizedSeed) | uint_fast16_t { 1 };
@@ -128,7 +128,7 @@ void RandomDeterministic::Initialize(const uint64_t seed) {
    while(true) {
       // we ignore zeros, so use a do loop instead of while
       do {
-         uint_fast64_t randomHexDigit = uint_fast64_t { 0xF } &randomBits;
+         uint_fast64_t randomHexDigit = uint_fast64_t { 0xF } & randomBits;
          const uint_fast16_t indexBit = uint_fast16_t { 1 } << randomHexDigit;
          if(LIKELY(uint_fast16_t { 0 } == (indexBit & disallowMap))) {
             sanitizedSeed |= randomHexDigit << bitShiftCur;
@@ -163,9 +163,33 @@ exit_loop:;
    // is the lowest bit set as it should?
    EBM_ASSERT(uint_fast64_t { 1 } == sanitizedSeed % uint_fast64_t { 2 });
 
-   m_state1 = sanitizedSeed;
-   m_state2 = sanitizedSeed;
-   m_stateSeedConst = sanitizedSeed;
+   const uint64_t finalSeed = static_cast<uint64_t>(sanitizedSeed);
+   m_state1 = finalSeed;
+   m_state2 = finalSeed;
+   m_stateSeedConst = finalSeed;
+}
+
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureRNG() {
+   return sizeof(RandomDeterministic);
+}
+
+EBM_API_BODY void EBM_CALLING_CONVENTION InitRNG(SeedEbm seed, void * rngOut) {
+   RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rngOut);
+   pRng->Initialize(seed);
+}
+
+EBM_API_BODY void EBM_CALLING_CONVENTION CopyRNG(void * rng, void * rngOut) {
+   memcpy(rngOut, rng, sizeof(RandomDeterministic));
+}
+
+EBM_API_BODY void EBM_CALLING_CONVENTION BranchRNG(void * rng, void * rngOut) {
+   RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rng);
+   RandomDeterministic * const pRngOut = reinterpret_cast<RandomDeterministic *>(rngOut);
+
+   const uint64_t seed = pRng->Next(std::numeric_limits<uint64_t>::max());
+   // NOTE: it might be better to generate a seed that has all 128 bits of
+   //       our internal state, but 64 bits should be good enough for now
+   pRngOut->Initialize(seed);
 }
 
 } // DEFINED_ZONE_NAME

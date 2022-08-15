@@ -280,6 +280,8 @@ class TestApi {
       InitializedInteraction
    };
 
+   std::vector<unsigned char> m_rng;
+
    Stage m_stage;
    const ptrdiff_t m_cClasses;
    const ptrdiff_t m_iZeroClassificationLogit;

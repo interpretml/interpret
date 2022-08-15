@@ -5,6 +5,10 @@ EXPORTS
   SetTraceLevel
   GetTraceLevelString
   CleanFloats
+  MeasureRNG
+  InitRNG
+  CopyRNG
+  BranchRNG
   GenerateSeed
   GenerateGaussianRandom
   GetHistogramCutCount

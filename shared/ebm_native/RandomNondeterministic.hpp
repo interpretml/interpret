@@ -111,11 +111,10 @@ public:
    }
 
    INLINE_ALWAYS SeedEbm NextSeed() {
-      static_assert(std::numeric_limits<SeedEbm>::lowest() < SeedEbm { 0 },
-         "SeedEbm must be signed");
+      // TODO: I could probably generalize this to make any negative number type
 
-      // we only allow you to generate a seed on uint32_t instanciations
-      EBM_ASSERT(std::numeric_limits<T>::max() == std::numeric_limits<uint32_t>::max());
+      static_assert(std::numeric_limits<SeedEbm>::lowest() < SeedEbm { 0 }, "SeedEbm must be signed");
+      static_assert(std::is_same<USeedEbm, T>::value, "T must be USeedEbm");
 
       // this is meant to result in a positive value that is of the negation of 
       // std::numeric_limits<SeedEbm>::lowest(), so -std::numeric_limits<SeedEbm>::lowest().
@@ -123,14 +122,14 @@ public:
       // negative number than there are positive numbers, so we subtract one (adding to a negated number), then add 
       // one to keep the numbers in bounds.  If the compiler is using some non-twos complement
       // representation, then we'll get a compile error in the static_asserts below or in the initialization
-      // of uint32_t below
-      constexpr uint32_t negativeOfLowest =
-         uint32_t { -(std::numeric_limits<SeedEbm>::lowest() + SeedEbm { 1 }) } + uint32_t { 1 };
+      // of USeedEbm below
+      constexpr USeedEbm negativeOfLowest =
+         USeedEbm { -(std::numeric_limits<SeedEbm>::lowest() + SeedEbm { 1 }) } + USeedEbm { 1 };
 
-      static_assert(uint32_t { std::numeric_limits<SeedEbm>::max() } ==
-         negativeOfLowest - uint32_t { 1 }, "max must == lowestInUnsigned - 1");
+      static_assert(USeedEbm { std::numeric_limits<SeedEbm>::max() } == negativeOfLowest - USeedEbm { 1 }, 
+         "max must == lowestInUnsigned - 1");
 
-      const uint32_t randomNumber = Next();
+      const USeedEbm randomNumber = Next();
       // adding negativeOfLowest and then adding lowest are a no-op as far as affecting the value of randomNumber
       // but since adding randomNumber + negativeOfLowest (two unsigned values) is legal in C++, and since we'll
       // always end up with a value that can be expressed as an SeedEbm after that addition we don't have

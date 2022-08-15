@@ -10,29 +10,43 @@
 
 static const TestPriority k_filePriority = TestPriority::RandomNumbers;
 
-TEST_CASE("GenerateSeed, 0 0") {
-   SeedEbm ret = GenerateSeed(0, 0);
-   CHECK(1557540150 == ret);
+TEST_CASE("InitRNG, 0") {
+   IntEbm cBytes = MeasureRNG();
+   std::vector<unsigned char> rng(static_cast<size_t>(cBytes));
+   InitRNG(0, &rng[0]);
+   CHECK(true); // just check if it crashes
 }
 
-TEST_CASE("GenerateSeed, 1 3 (it gives us a negative return value)") {
-   SeedEbm ret = GenerateSeed(1, 3);
-   CHECK(-1784761967 == ret);
+TEST_CASE("InitRNG, 2147483647") {
+   IntEbm cBytes = MeasureRNG();
+   std::vector<unsigned char> rng(static_cast<size_t>(cBytes));
+   InitRNG(2147483647, &rng[0]);
+   CHECK(true); // just check if it crashes
 }
 
-TEST_CASE("GenerateSeed, -1 0") {
-   SeedEbm ret = GenerateSeed(-1, 0);
-   CHECK(237524772 == ret);
+TEST_CASE("InitRNG, -2147483648") {
+   IntEbm cBytes = MeasureRNG();
+   std::vector<unsigned char> rng(static_cast<size_t>(cBytes));
+   InitRNG(-2147483648, &rng[0]);
+   CHECK(true); // just check if it crashes
 }
 
-TEST_CASE("GenerateSeed, max") {
-   SeedEbm ret = GenerateSeed(std::numeric_limits<SeedEbm>::max(), 0);
-   CHECK(1266972904 == ret);
+TEST_CASE("CopyRNG, 1") {
+   IntEbm cBytes = MeasureRNG();
+   std::vector<unsigned char> rng(static_cast<size_t>(cBytes));
+   InitRNG(1, &rng[0]);
+   std::vector<unsigned char> rngCopy(static_cast<size_t>(cBytes));
+   CopyRNG(&rng[0], &rngCopy[0]);
+   CHECK(true); // just check if it crashes
 }
 
-TEST_CASE("GenerateSeed, lowest") {
-   SeedEbm ret = GenerateSeed(std::numeric_limits<SeedEbm>::lowest(), 0);
-   CHECK(879100963 == ret);
+TEST_CASE("BranchRNG, -1") {
+   IntEbm cBytes = MeasureRNG();
+   std::vector<unsigned char> rng(static_cast<size_t>(cBytes));
+   InitRNG(-1, &rng[0]);
+   std::vector<unsigned char> rngBranch(static_cast<size_t>(cBytes));
+   BranchRNG(&rng[0], &rngBranch[0]);
+   CHECK(true); // just check if it crashes
 }
 
 TEST_CASE("SampleWithoutReplacementStratified, stress test") {

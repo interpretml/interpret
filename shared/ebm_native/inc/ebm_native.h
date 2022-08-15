@@ -86,6 +86,7 @@ typedef int64_t IntEbm;
 typedef uint64_t UIntEbm;
 #define UIntEbmPrintf PRIu64
 typedef int32_t SeedEbm;
+typedef uint32_t USeedEbm;
 #define SeedEbmPrintf PRId32
 typedef int8_t BagEbm;
 #define BagEbmPrintf PRId8
@@ -191,6 +192,11 @@ EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbm traceLevel);
 EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm traceLevel);
 
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION CleanFloats(IntEbm count, double * valsInOut);
+
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureRNG();
+EBM_API_INCLUDE void EBM_CALLING_CONVENTION InitRNG(SeedEbm seed, void * rngOut);
+EBM_API_INCLUDE void EBM_CALLING_CONVENTION CopyRNG(void * rng, void * rngOut);
+EBM_API_INCLUDE void EBM_CALLING_CONVENTION BranchRNG(void * rng, void * rngOut);
 
 EBM_API_INCLUDE SeedEbm EBM_CALLING_CONVENTION GenerateSeed(
    SeedEbm seed,

@@ -15,6 +15,9 @@
 
 #include "ebm_internal.hpp"
 
+#include "RandomStream.hpp"
+#include "RandomNondeterministic.hpp"
+
 #include "CompressibleTensor.hpp"
 #include "ebm_stats.hpp"
 // feature includes

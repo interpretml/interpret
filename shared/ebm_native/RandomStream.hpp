@@ -5,7 +5,7 @@
 #ifndef RANDOM_DETERMINISTIC_HPP
 #define RANDOM_DETERMINISTIC_HPP
 
-#include <inttypes.h> // uint32_t, uint_fast64_t
+#include <inttypes.h> // uint64_t, uint_fast64_t, uint32_t, uint_fast32_t
 #include <stddef.h> // size_t, ptrdiff_t
 #include <type_traits>
 
@@ -58,28 +58,28 @@ class RandomDeterministic final {
    // that detects a cycle and increments to the next valid internal seed.  Then we'd have 2^118 unique random 
    // 64 bit numbers, according to the paper.
 
-   // If we had memcopied RandomDeterministic cross machine we would want these to be uint64_t instead of uint_fast64_t
-   // but we only copy seeds cross machine, so we can leave them as uint_fast64_t
-
-   uint_fast64_t m_state1;
-   uint_fast64_t m_state2;
-   uint_fast64_t m_stateSeedConst;
+   uint64_t m_state1;
+   uint64_t m_state2;
+   uint64_t m_stateSeedConst;
 
    INLINE_ALWAYS uint_fast32_t Rand32() {
       // if this gets properly optimized, it gets converted into 4 machine instructions: imulq, iaddq, iaddq, and rorq
-      m_state1 *= m_state1;
-      m_state2 += m_stateSeedConst;
-      m_state1 += m_state2;
-      const uint64_t state1Shiftable = static_cast<uint64_t>(m_state1);
+      uint64_t state1 = m_state1;
+      uint64_t state2 = m_state2;
+
+      state1 *= state1;
+      state2 += m_stateSeedConst;
+      m_state2 = state2;
+      state1 += state2;
+
       // this should get optimized to a single rorq assembly instruction
-      const uint64_t result = (state1Shiftable >> 32) | (state1Shiftable << 32);
-      m_state1 = static_cast<uint_fast64_t>(result);
+      state1 = (state1 >> 32) | (state1 << 32);
+      m_state1 = state1;
       // chop it to 32 bits if it was given to us with more bits
-      return static_cast<uint_fast32_t>(static_cast<uint32_t>(result));
+      return static_cast<uint_fast32_t>(static_cast<uint32_t>(state1));
    }
 
    static uint_fast64_t GetOneTimePadConversion(uint_fast64_t seed);
-   void Initialize(const uint64_t seed);
 
 public:
 
@@ -88,13 +88,25 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
+   void Initialize(const uint64_t seed);
+
+   INLINE_ALWAYS void Initialize(const SeedEbm seed) {
+      // the C++ standard guarantees that the unsigned result of this 
+      // conversion is the two's complement of the seed if seed is negative
+      Initialize(static_cast<uint64_t>(static_cast<USeedEbm>(seed)));
+   }
+
    INLINE_ALWAYS void InitializeSigned(const SeedEbm seed, const SeedEbm randomMix) {
+      // TODO: REMOVE THIS
+         
       // the C++ standard guarantees that the unsigned result of this 
       // conversion is 2^64 + seed if seed is negative
       Initialize(static_cast<uint64_t>(seed) ^ static_cast<uint64_t>(randomMix));
    }
 
    INLINE_ALWAYS void InitializeUnsigned(const SeedEbm seed, const uint64_t randomMix) {
+      // TODO: REMOVE THIS
+
       // the C++ standard guarantees that the unsigned result of this 
       // conversion is 2^64 + seed if seed is negative
       Initialize(static_cast<uint64_t>(seed) ^ randomMix);
@@ -107,8 +119,9 @@ public:
    }
 
    INLINE_ALWAYS SeedEbm NextSeed() {
-      static_assert(std::numeric_limits<SeedEbm>::lowest() < SeedEbm { 0 },
-         "SeedEbm must be signed");
+      // TODO: I could probably generalize this to make any negative number type
+
+      static_assert(std::numeric_limits<SeedEbm>::lowest() < SeedEbm { 0 }, "SeedEbm must be signed");
 
       // this is meant to result in a positive value that is of the negation of 
       // std::numeric_limits<SeedEbm>::lowest(), so -std::numeric_limits<SeedEbm>::lowest().
@@ -116,14 +129,14 @@ public:
       // negative number than there are positive numbers, so we subtract one (adding to a negated number), then add 
       // one to keep the numbers in bounds.  If the compiler is using some non-twos complement
       // representation, then we'll get a compile error in the static_asserts below or in the initialization
-      // of uint32_t below
-      constexpr uint32_t negativeOfLowest = 
-         uint32_t { -(std::numeric_limits<SeedEbm>::lowest() + SeedEbm { 1 }) } + uint32_t { 1 };
+      // of USeedEbm below
+      constexpr USeedEbm negativeOfLowest =
+         USeedEbm { -(std::numeric_limits<SeedEbm>::lowest() + SeedEbm { 1 }) } + USeedEbm { 1 };
 
-      static_assert(uint32_t { std::numeric_limits<SeedEbm>::max() } ==
-         negativeOfLowest - uint32_t { 1 }, "max must == lowestInUnsigned - 1");
+      static_assert(USeedEbm { std::numeric_limits<SeedEbm>::max() } == negativeOfLowest - USeedEbm { 1 }, 
+         "max must == lowestInUnsigned - 1");
 
-      const uint32_t randomNumber = static_cast<uint32_t>(Rand32());
+      const USeedEbm randomNumber = Next(std::numeric_limits<USeedEbm>::max());
       // adding negativeOfLowest and then adding lowest are a no-op as far as affecting the value of randomNumber
       // but since adding randomNumber + negativeOfLowest (two unsigned values) is legal in C++, and since we'll
       // always end up with a value that can be expressed as an SeedEbm after that addition we don't have

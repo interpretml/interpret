@@ -168,6 +168,43 @@ class Native:
         self._unsafe.CleanFloats(len(val_array), Native._make_pointer(val_array, np.float64))
         return val_array[0]
 
+
+    def create_rng(self, random_state):
+        if random_state is None:
+            return None # non-deterministic
+
+        if random_state < -2147483648 or 2147483647 < random_state:
+            msg = f"random_state of \"{random_state}\" must be cleaned to be a 32-bit signed integer before calling create_rng"
+            log.error(msg)
+            raise Exception(msg)
+
+        n_bytes = self._unsafe.MeasureRNG()
+        rng = np.empty(n_bytes, np.ubyte)
+
+        self._unsafe.InitRNG(random_state, Native._make_pointer(rng, np.ubyte))
+        return rng
+
+    def copy_rng(self, rng):
+        if rng is None:
+            return None # non-deterministic
+
+        n_bytes = self._unsafe.MeasureRNG()
+        rngCopy = np.empty(n_bytes, np.ubyte)
+
+        self._unsafe.CopyRNG(Native._make_pointer(rng, np.ubyte), Native._make_pointer(rngCopy, np.ubyte))
+        return rngCopy
+
+    def branch_rng(self, rng):
+        if rng is None:
+            return None # non-deterministic
+
+        n_bytes = self._unsafe.MeasureRNG()
+        rngBranch = np.empty(n_bytes, np.ubyte)
+
+        self._unsafe.BranchRNG(Native._make_pointer(rng, np.ubyte), Native._make_pointer(rngBranch, np.ubyte))
+        return rngBranch
+
+
     def generate_seed(self, random_state, random_mix):
         if random_state is None:
             return None
@@ -558,6 +595,36 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.CleanFloats.restype = None
+
+
+        self._unsafe.MeasureRNG.argtypes = [
+        ]
+        self._unsafe.MeasureRNG.restype = ct.c_int64
+
+        self._unsafe.InitRNG.argtypes = [
+            # int32_t seed
+            ct.c_int32,
+            # void * rngOut
+            ct.c_void_p,
+        ]
+        self._unsafe.InitRNG.restype = None
+
+        self._unsafe.CopyRNG.argtypes = [
+            # void * rng
+            ct.c_void_p,
+            # void * rngOut
+            ct.c_void_p,
+        ]
+        self._unsafe.CopyRNG.restype = None
+
+        self._unsafe.BranchRNG.argtypes = [
+            # void * rng
+            ct.c_void_p,
+            # void * rngOut
+            ct.c_void_p,
+        ]
+        self._unsafe.BranchRNG.restype = None
+        
 
         self._unsafe.GenerateSeed.argtypes = [
             # int32_t seed

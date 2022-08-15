@@ -240,6 +240,9 @@ TestApi::TestApi(const ptrdiff_t cClasses, const ptrdiff_t iZeroClassificationLo
          exit(1);
       }
    }
+
+   m_rng.resize(static_cast<size_t>(MeasureRNG()));
+   InitRNG(k_seed, &m_rng[0]);
 }
 
 TestApi::~TestApi() {

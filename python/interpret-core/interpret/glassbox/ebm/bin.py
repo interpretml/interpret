@@ -30,7 +30,7 @@ except ImportError:
     _scipy_installed = False
 
 from .internal import Native
-from .utils import DPUtils, _deduplicate_bins
+from .utils import DPUtils, EBMUtils, _deduplicate_bins
 
 # BIG TODO LIST:
 #- review this entire bin.py file
@@ -1862,6 +1862,8 @@ def construct_bins(
                 raise RuntimeError("Mismatched feature_names")
             if feature_types_in != preprocessor.feature_types_in_:
                 raise RuntimeError("Mismatched feature_types")
+            if len(bins) != len(preprocessor.bins_):
+                raise RuntimeError("Mismatched bin lengths")
 
             for bin_levels, feature_bins in zip(bins, preprocessor.bins_):
                 bin_levels.append(feature_bins)
