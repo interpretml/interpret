@@ -166,6 +166,7 @@ void BoosterCore::Free(BoosterCore * const pBoosterCore) {
 //}
 
 ErrorEbm BoosterCore::Create(
+   RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const size_t cTerms,
    const size_t cInnerBags,
@@ -509,7 +510,7 @@ ErrorEbm BoosterCore::Create(
       pBoosterCore->m_cInnerBags = cInnerBags;
       // TODO: we could steal the aWeights in GenerateInnerBags for flat sampling sets
       pBoosterCore->m_apInnerBags = InnerBag::GenerateInnerBags(
-         pBoosterShell->GetRandomDeterministic(),
+         pRng,
          &pBoosterCore->m_trainingSet, 
          aWeights, 
          cInnerBags

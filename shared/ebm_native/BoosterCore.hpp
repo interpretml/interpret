@@ -182,6 +182,7 @@ public:
    static void Free(BoosterCore * const pBoosterCore);
 
    static ErrorEbm Create(
+      RandomDeterministic * const pRng,
       BoosterShell * const pBoosterShell,
       const size_t cTerms,
       const size_t cInnerBags,

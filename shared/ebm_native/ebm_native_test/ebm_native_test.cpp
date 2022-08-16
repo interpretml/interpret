@@ -626,8 +626,7 @@ void TestApi::InitializeBoosting(const IntEbm countInnerBags) {
    allScores.insert(allScores.end(), m_validationInitScores.begin(), m_validationInitScores.end());
 
    error = CreateBooster(
-      EBM_TRUE,
-      k_seed,
+      &m_rng[0],
       pDataSet,
       0 == bag.size() ? nullptr : &bag[0],
       0 == allScores.size() ? nullptr : &allScores[0],
@@ -684,6 +683,7 @@ BoostRet TestApi::Boost(
    double validationMetric = std::numeric_limits<double>::quiet_NaN();
 
    error = GenerateTermUpdate(
+      &m_rng[0],
       m_boosterHandle,
       indexTerm,
       flags,

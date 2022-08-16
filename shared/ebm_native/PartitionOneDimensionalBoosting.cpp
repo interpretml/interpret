@@ -99,6 +99,7 @@ static void Flatten(
 
 template<ptrdiff_t cCompilerClasses>
 static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
+   RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    TreeNode<IsClassification(cCompilerClasses)> * pTreeNode,
    TreeNode<IsClassification(cCompilerClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur,
@@ -349,11 +350,9 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    EBM_ASSERT(!std::isinf(BEST_gain));
    EBM_ASSERT(0 <= BEST_gain);
 
-   RandomDeterministic * const pRandomDeterministic = pBoosterShell->GetRandomDeterministic();
-
    const size_t cSweepItems = CountTreeSweep(pTreeSweepStart, pTreeSweepCur, cBytesPerTreeSweep);
    if(UNLIKELY(1 < cSweepItems)) {
-      const size_t iRandom = pRandomDeterministic->NextFast(cSweepItems);
+      const size_t iRandom = pRng->NextFast(cSweepItems);
       pTreeSweepStart = AddBytesTreeSweep(pTreeSweepStart, cBytesPerTreeSweep * iRandom);
    }
 
@@ -452,6 +451,7 @@ public:
    PartitionOneDimensionalBoostingInternal() = delete; // this is a static class.  Do not construct
 
    static ErrorEbm Func(
+      RandomDeterministic * const pRng,
       BoosterShell * const pBoosterShell,
       const size_t cBins,
       const size_t cSamplesTotal,
@@ -540,6 +540,7 @@ public:
 
       size_t cLeaves;
       const int retExamine = ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<cCompilerClasses>(
+         pRng,
          pBoosterShell,
          pRootTreeNode,
          AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
@@ -766,6 +767,7 @@ public:
                // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED
                // because splitting sets splitGain to a non-illegalGain value
                if(0 == ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<cCompilerClasses>(
+                  pRng,
                   pBoosterShell,
                   pLeftChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
@@ -820,6 +822,7 @@ public:
                // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED 
                // because splitting sets splitGain to a non-NaN value
                if(0 == ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<cCompilerClasses>(
+                  pRng,
                   pBoosterShell,
                   pRightChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
@@ -908,6 +911,7 @@ public:
 };
 
 extern ErrorEbm PartitionOneDimensionalBoosting(
+   RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const size_t cBins,
    const size_t cSamplesTotal,
@@ -927,6 +931,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
    if(IsClassification(cRuntimeClasses)) {
       if(IsBinaryClassification(cRuntimeClasses)) {
          error = PartitionOneDimensionalBoostingInternal<2>::Func(
+            pRng,
             pBoosterShell,
             cBins,
             cSamplesTotal,
@@ -938,6 +943,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
          );
       } else {
          error = PartitionOneDimensionalBoostingInternal<k_dynamicClassification>::Func(
+            pRng,
             pBoosterShell,
             cBins,
             cSamplesTotal,
@@ -951,6 +957,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
    } else {
       EBM_ASSERT(IsRegression(cRuntimeClasses));
       error = PartitionOneDimensionalBoostingInternal<k_regression>::Func(
+         pRng,
          pBoosterShell,
          cBins,
          cSamplesTotal,

@@ -1603,7 +1603,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         zero_val_counts = np.full(n_features, 0, dtype=np.int64)
 
         native = Native.get_native_singleton()
-        random_state = self.random_state
+        rng = native.create_rng(EBMUtils.normalize_initial_seed(self.random_state))
         is_privacy_warning = False
         for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(unify_columns(X, zip(range(n_features), repeat(None)), feature_names_in, self.feature_types, self.min_unique_continuous, False)):
             if n_samples != len(X_col):
@@ -1626,7 +1626,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
 
 
-            random_state = native.generate_seed(random_state, 1786913576)
             feature_types_in[feature_idx] = feature_type_in
             if categories is None:
                 # continuous feature
@@ -1649,7 +1648,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     else:
                         min_feature_val = bounds[0]
                         max_feature_val = bounds[1]
-                    cuts, feature_bin_weights = DPUtils.private_numeric_binning(X_col, sample_weight, noise_scale, max_bins - 1, min_feature_val, max_feature_val, random_state)
+                    cuts, feature_bin_weights = DPUtils.private_numeric_binning(X_col, sample_weight, noise_scale, max_bins - 1, min_feature_val, max_feature_val, rng)
                     feature_bin_weights.append(0)
                     feature_bin_weights = np.array(feature_bin_weights, dtype=np.float64)
                 else:
@@ -1690,7 +1689,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         raise ValueError(msg)
 
                     # TODO: clean up this hack that uses strings of the indexes
-                    keep_bins, old_feature_bin_weights = DPUtils.private_categorical_binning(X_col, sample_weight, noise_scale, max_bins - 1, random_state)
+                    keep_bins, old_feature_bin_weights = DPUtils.private_categorical_binning(X_col, sample_weight, noise_scale, max_bins - 1, rng)
                     unknown_weight = 0
                     if keep_bins[-1] == 'DPOther':
                         unknown_weight = old_feature_bin_weights[-1]
@@ -1829,7 +1828,6 @@ def construct_bins(
     is_mains = True
     native = Native.get_native_singleton()
     for max_bins in max_bins_leveled:
-        random_state = native.generate_seed(random_state, 559276972)
         preprocessor = EBMPreprocessor(
             feature_names_given, 
             feature_types_given, 
@@ -1843,6 +1841,9 @@ def construct_bins(
             privacy_schema,
             random_state,
         )
+
+        random_state = EBMUtils.increment_seed(random_state)
+
         preprocessor.fit(X, None, sample_weight)
         if is_mains:
             is_mains = False

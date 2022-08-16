@@ -961,25 +961,35 @@ class EBMUtils:
     
     @staticmethod
     def normalize_initial_seed(seed):
-        # Some languages do not support 64-bit values.  Other languages do not support unsigned integers.
-        # Almost all languages support signed 32-bit integers, so we standardize on that for our 
-        # random number seed values.  If the caller passes us a number that doesn't fit into a 
-        # 32-bit signed integer, we convert it.  This conversion doesn't need to generate completely 
-        # uniform results provided they are reasonably uniform, since this is just the seed.
+        # We want cross-language seeds, so we cannot use 64-bit integers since those are not supported
+        # on all platforms. Unsigned integers are also not supported on many platforms. Most platforms will
+        # either support 32-bit signed integers, or float64 values. Float64 values can represent all 32-bit integers
+        # exactly, so limiting our seeds to 32-bit integers allows us to support the widest number of platforms.
         # 
+        # If you want cross-platform results, use seeds in the range: -2147483648 <= seed and seed <= 21474836487
+        #
+        # But, if the platform supports 64-bit integers or for languages like python where integers have no limits, 
+        # then we'd rather not throw an exception if something else is provided. We can convert non-portable seeds
+        # into something that fits our API by taking modulos to force them into our cross-platform range
+        #
         # We use a simple conversion because we use the same method in multiple languages, 
         # and we need to keep the results identical between them, so simplicity is key.
         # 
-        # The result of the modulo operator is not standardized accross languages for 
-        # negative numbers, so take the negative before the modulo if the number is negative.
+        # The result of the modulo operator is not standardized accross languages for negative numbers.
+        # We can use rounding on divisions to get standardized modulos, and this will work with float64 inputs too.
         # https://torstencurdt.com/tech/posts/modulo-of-negative-numbers
 
         if seed is None:
-            return None
-        if 2147483647 <= seed:
-            return seed % 2147483647
-        if seed <= -2147483647:
-            return -((-seed) % 2147483647)
+            return None # non-deterministic random numbers
+        if 2147483647 < seed:
+            # we'd like to modulo by 2147483648 but that is not a legal 32-bit signed int
+            # if the user provides 2147483647 exactly then we use it, but otherwise our range is restricted
+            # add one to prevent generating 0 because we generate 0 for the negative multiples of -2147483648
+            return int(round(seed - floor(seed / 2147483647) * 2147483647)) + 1
+        if seed < -2147483648:
+            # we'd like to modulo by -2147483649 but that is not a legal 32-bit signed int
+            # if the user provides -2147483648 exactly then we use it, but otherwise our range is restricted
+            return int(round(seed - floor(seed / -2147483648) * -2147483648))
         return seed
 
     @staticmethod
@@ -1041,7 +1051,7 @@ class EBMUtils:
         return cuts
 
     @staticmethod
-    def make_bag(y, test_size, random_state, is_stratified):
+    def make_bag(y, test_size, rng, is_stratified):
         # all test/train splits should be done with this function to ensure that
         # if we re-generate the train/test splits that they are generated exactly
         # the same as before
@@ -1073,7 +1083,7 @@ class EBMUtils:
                     n_train_samples = n_samples - n_test_samples
 
                 return native.sample_without_replacement_stratified(
-                    random_state,
+                    rng,
                     n_classes,
                     n_train_samples,
                     n_test_samples,
@@ -1081,7 +1091,7 @@ class EBMUtils:
                 )
             else:
                 return native.sample_without_replacement(
-                    random_state,
+                    rng,
                     n_train_samples,
                     n_test_samples
                 )
@@ -1132,7 +1142,7 @@ class EBMUtils:
         max_rounds,
         noise_scale,
         bin_weights,
-        random_state,
+        rng,
         experimental_params=None,
     ):
         min_metric = np.inf
@@ -1143,7 +1153,7 @@ class EBMUtils:
             init_scores,
             term_features,
             n_inner_bags,
-            random_state,
+            rng,
             experimental_params,
         ) as booster:
             no_change_run_length = 0
@@ -1172,13 +1182,15 @@ class EBMUtils:
                         noisy_update_tensor = term_update_tensor.copy()
 
                         splits_iter = [0] + list(splits + 1) + [len(term_update_tensor)] # Make splits iteration friendly
+
+                        n_sections = len(splits_iter) - 1
+                        noises = native.generate_gaussian_random(rng, noise_scale, n_sections)
+
                         # Loop through all random splits and add noise before updating
-                        for f, s in zip(splits_iter[:-1], splits_iter[1:]):
+                        for f, s, noise in zip(splits_iter[:-1], splits_iter[1:], noises):
                             if s == 1: 
                                 continue # Skip cuts that fall on 0th (missing value) bin -- missing values not supported in DP
 
-                            random_state = native.generate_seed(random_state, 1458059807)
-                            noise = native.generate_gaussian_random(random_state, noise_scale, 1)
                             noisy_update_tensor[f:s] = term_update_tensor[f:s] + noise
 
                             # Native code will be returning sums of residuals in slices, not averages.
@@ -1228,7 +1240,7 @@ class EBMUtils:
             else:
                 model_update = booster.get_best_model()
 
-        return model_update, episode_index
+        return model_update, episode_index, rng
 
 
 class DPUtils:
@@ -1265,10 +1277,10 @@ class DPUtils:
         return root_scalar(f, bracket=[0, 500], method='brentq').root
 
     @staticmethod
-    def private_numeric_binning(X_col, sample_weight, noise_scale, max_bins, min_feature_val, max_feature_val, random_state=None):
+    def private_numeric_binning(X_col, sample_weight, noise_scale, max_bins, min_feature_val, max_feature_val, rng=None):
         native = Native.get_native_singleton()
         uniform_weights, uniform_edges = np.histogram(X_col, bins=max_bins*2, range=(min_feature_val, max_feature_val), weights=sample_weight)
-        noisy_weights = uniform_weights + native.generate_gaussian_random(random_state=random_state, stddev=noise_scale, count=uniform_weights.shape[0])
+        noisy_weights = uniform_weights + native.generate_gaussian_random(rng=rng, stddev=noise_scale, count=uniform_weights.shape[0])
         
         # Postprocess to ensure realistic bin values (min=0)
         noisy_weights = np.clip(noisy_weights, 0, None)
@@ -1305,14 +1317,14 @@ class DPUtils:
         return bin_cuts, bin_weights
 
     @staticmethod
-    def private_categorical_binning(X_col, sample_weight, noise_scale, max_bins, random_state=None):
+    def private_categorical_binning(X_col, sample_weight, noise_scale, max_bins, rng=None):
         native = Native.get_native_singleton()
         # Initialize estimate
         X_col = X_col.astype('U')
         uniq_vals, uniq_idxs = np.unique(X_col, return_inverse=True)
         weights = np.bincount(uniq_idxs, weights=sample_weight, minlength=len(uniq_vals))
 
-        weights = weights + native.generate_gaussian_random(random_state=random_state, stddev=noise_scale, count=weights.shape[0])
+        weights = weights + native.generate_gaussian_random(rng=rng, stddev=noise_scale, count=weights.shape[0])
 
         # Postprocess to ensure realistic bin values (min=0)
         weights = np.clip(weights, 0, None)

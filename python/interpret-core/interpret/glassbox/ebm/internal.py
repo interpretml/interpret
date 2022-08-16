@@ -191,7 +191,10 @@ class Native:
         n_bytes = self._unsafe.MeasureRNG()
         rngCopy = np.empty(n_bytes, np.ubyte)
 
-        self._unsafe.CopyRNG(Native._make_pointer(rng, np.ubyte), Native._make_pointer(rngCopy, np.ubyte))
+        self._unsafe.CopyRNG(
+            Native._make_pointer(rng, np.ubyte), 
+            Native._make_pointer(rngCopy, np.ubyte)
+        )
         return rngCopy
 
     def branch_rng(self, rng):
@@ -201,23 +204,28 @@ class Native:
         n_bytes = self._unsafe.MeasureRNG()
         rngBranch = np.empty(n_bytes, np.ubyte)
 
-        self._unsafe.BranchRNG(Native._make_pointer(rng, np.ubyte), Native._make_pointer(rngBranch, np.ubyte))
+        self._unsafe.BranchRNG(
+            Native._make_pointer(rng, np.ubyte), 
+            Native._make_pointer(rngBranch, np.ubyte)
+        )
         return rngBranch
 
+    def generate_seed(self, rng):
+        # Unlike our other functions, this will generate a 32-bit seed even if rng is None
+        seed = ct.c_int32(0)
+        return_code = self._unsafe.GenerateSeed(
+            Native._make_pointer(rng, np.ubyte, is_null_allowed=True), 
+            ct.byref(seed)
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "GenerateSeed")
 
-    def generate_seed(self, random_state, random_mix):
-        if random_state is None:
-            return None
-        return self._unsafe.GenerateSeed(random_state, random_mix)
+        return seed.value
 
-    def generate_gaussian_random(self, random_state, stddev, count):
-        is_deterministic = random_state is not None
-        random_state = 0 if random_state is None else random_state
+    def generate_gaussian_random(self, rng, stddev, count):
         random_numbers = np.empty(count, dtype=np.float64, order="C")
-
         return_code = self._unsafe.GenerateGaussianRandom(
-            is_deterministic,
-            random_state,
+            Native._make_pointer(rng, np.ubyte, is_null_allowed=True),
             stddev,
             count,
             Native._make_pointer(random_numbers, np.float64)
@@ -474,20 +482,16 @@ class Native:
 
     def sample_without_replacement(
         self, 
-        random_state, 
+        rng, 
         count_training_samples,
         count_validation_samples
     ):
-        is_deterministic = random_state is not None
-        random_state = 0 if random_state is None else random_state
-
         count_samples = count_training_samples + count_validation_samples
 
         bag = np.empty(count_samples, dtype=np.int8, order="C")
 
         return_code = self._unsafe.SampleWithoutReplacement(
-            is_deterministic,
-            random_state,
+            Native._make_pointer(rng, np.ubyte, is_null_allowed=True),
             count_training_samples,
             count_validation_samples,
             Native._make_pointer(bag, np.int8),
@@ -500,15 +504,12 @@ class Native:
 
     def sample_without_replacement_stratified(
         self, 
-        random_state, 
+        rng, 
         n_classes,
         count_training_samples,
         count_validation_samples,
         targets
     ):
-        is_deterministic = random_state is not None
-        random_state = 0 if random_state is None else random_state
-
         count_samples = count_training_samples + count_validation_samples
 
         if len(targets) != count_samples:
@@ -517,8 +518,7 @@ class Native:
         bag = np.empty(count_samples, dtype=np.int8, order="C")
 
         return_code = self._unsafe.SampleWithoutReplacementStratified(
-            is_deterministic,
-            random_state,
+            Native._make_pointer(rng, np.ubyte, is_null_allowed=True),
             n_classes,
             count_training_samples,
             count_validation_samples,
@@ -625,20 +625,17 @@ class Native:
         ]
         self._unsafe.BranchRNG.restype = None
         
-
         self._unsafe.GenerateSeed.argtypes = [
-            # int32_t seed
-            ct.c_int32,
-            # int64_t randomMix
-            ct.c_int32,
+            # void * rng
+            ct.c_void_p,
+            # SeedEbm * seedOut
+            ct.POINTER(ct.c_int32),
         ]
         self._unsafe.GenerateSeed.restype = ct.c_int32
 
         self._unsafe.GenerateGaussianRandom.argtypes = [
-            # int32_t isDeterministic
-            ct.c_int32,
-            # int32_t seed
-            ct.c_int32,
+            # void * rng
+            ct.c_void_p,
             # double stddev
             ct.c_double,
             # int64_t count
@@ -647,6 +644,7 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.GenerateGaussianRandom.restype = ct.c_int32
+
 
         self._unsafe.GetHistogramCutCount.argtypes = [
             # int64_t countSamples
@@ -892,10 +890,8 @@ class Native:
 
 
         self._unsafe.SampleWithoutReplacement.argtypes = [
-            # int32_t isDeterministic
-            ct.c_int32,
-            # int32_t seed
-            ct.c_int32,
+            # void * rng
+            ct.c_void_p,
             # int64_t countTrainingSamples
             ct.c_int64,
             # int64_t countValidationSamples
@@ -906,10 +902,8 @@ class Native:
         self._unsafe.SampleWithoutReplacement.restype = ct.c_int32
 
         self._unsafe.SampleWithoutReplacementStratified.argtypes = [
-            # int32_t isDeterministic
-            ct.c_int32,
-            # int32_t seed
-            ct.c_int32,
+            # void * rng
+            ct.c_void_p,
             # int64_t countClasses
             ct.c_int64,
             # int64_t countTrainingSamples
@@ -925,10 +919,8 @@ class Native:
 
 
         self._unsafe.CreateBooster.argtypes = [
-            # int32_t isDeterministic
-            ct.c_int32,
-            # int32_t seed
-            ct.c_int32,
+            # void * rng
+            ct.c_void_p,
             # void * dataSet
             ct.c_void_p,
             # int8_t * bag
@@ -957,6 +949,8 @@ class Native:
         self._unsafe.FreeBooster.restype = None
 
         self._unsafe.GenerateTermUpdate.argtypes = [
+            # void * rng
+            ct.c_void_p,
             # void * boosterHandle
             ct.c_void_p,
             # int64_t indexTerm
@@ -1080,7 +1074,7 @@ class Booster(AbstractContextManager):
         init_scores,
         term_features,
         n_inner_bags,
-        random_state,
+        rng,
         experimental_params,
     ):
 
@@ -1095,7 +1089,7 @@ class Booster(AbstractContextManager):
                 there is one logit.  For multiclass there are n_classes logits
             term_features: List of term feature indexes
             n_inner_bags: number of inner bags.
-            random_state: Random seed as integer.
+            rng: native random number generator
             experimental_params: unused data that can be passed into the native layer for debugging
         """
 
@@ -1104,7 +1098,7 @@ class Booster(AbstractContextManager):
         self.init_scores = init_scores
         self.term_features = term_features
         self.n_inner_bags = n_inner_bags
-        self.random_state = random_state
+        self.rng = rng
         self.experimental_params = experimental_params
 
         # start off with an invalid _term_idx
@@ -1161,14 +1155,10 @@ class Booster(AbstractContextManager):
             if self.init_scores.shape[0] != n_scores:  # pragma: no cover
                 raise ValueError("init_scores should have the same length as the number of non-zero bag entries")
 
-        is_deterministic = self.random_state is not None
-        random_state = 0 if self.random_state is None else self.random_state
-
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateBooster(
-            is_deterministic,
-            random_state,
+            Native._make_pointer(self.rng, np.ubyte, is_null_allowed=True),
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
             Native._make_pointer(self.init_scores, np.float64, 2 if n_class_scores > 1 else 1, True),
@@ -1238,6 +1228,7 @@ class Booster(AbstractContextManager):
         max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
         return_code = native._unsafe.GenerateTermUpdate(
+            Native._make_pointer(self.rng, np.ubyte, is_null_allowed=True),
             self._booster_handle, 
             term_idx,
             boost_flags,

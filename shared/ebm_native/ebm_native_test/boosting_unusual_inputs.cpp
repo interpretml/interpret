@@ -1415,7 +1415,7 @@ TEST_CASE("Random splitting, pure tripples, regression") {
       }
    }
 
-   CHECK_APPROX(validationMetric, 1.4656199141470665);
+   CHECK_APPROX(validationMetric, 1.4542426709976266);
 
    for(IntEbm i0 = 0; i0 < cStates; ++i0) {
       for(IntEbm i1 = 0; i1 < cStates; ++i1) {

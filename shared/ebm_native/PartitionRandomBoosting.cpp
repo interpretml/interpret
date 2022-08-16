@@ -37,6 +37,7 @@ public:
    PartitionRandomBoostingInternal() = delete; // this is a static class.  Do not construct
 
    static ErrorEbm Func(
+      RandomDeterministic * const pRng,
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
       const BoostFlags flags,
@@ -168,7 +169,6 @@ public:
       size_t * const acItemsInNextSliceOrBytesInCurrentSlice = reinterpret_cast<size_t *>(pBuffer);
 
       const IntEbm * pLeavesMax2 = aLeavesMax;
-      RandomDeterministic * const pRandomDeterministic = pBoosterShell->GetRandomDeterministic();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       const Feature * const * ppFeature2 = pTerm->GetFeatures();
       do {
@@ -212,7 +212,7 @@ public:
                EBM_ASSERT(1 <= cSplits);
                const size_t * const pcItemsInNextSliceOrBytesInCurrentSliceEnd = pcItemsInNextSliceOrBytesInCurrentSlice2 + cSplits;
                do {
-                  const size_t iRandom = pRandomDeterministic->NextFast(cPossibleSplitLocations);
+                  const size_t iRandom = pRng->NextFast(cPossibleSplitLocations);
                   size_t * const pRandomSwap = pcItemsInNextSliceOrBytesInCurrentSlice2 + iRandom;
                   const size_t temp = *pRandomSwap;
                   *pRandomSwap = *pcItemsInNextSliceOrBytesInCurrentSlice2;
@@ -613,6 +613,7 @@ public:
    PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static ErrorEbm Func(
+      RandomDeterministic * const pRng,
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
       const BoostFlags flags,
@@ -629,6 +630,7 @@ public:
 
       if(cPossibleClasses == cRuntimeClasses) {
          return PartitionRandomBoostingInternal<cPossibleClasses>::Func(
+            pRng,
             pBoosterShell,
             pTerm,
             flags,
@@ -637,6 +639,7 @@ public:
          );
       } else {
          return PartitionRandomBoostingTarget<cPossibleClasses + 1>::Func(
+            pRng,
             pBoosterShell,
             pTerm,
             flags,
@@ -654,6 +657,7 @@ public:
    PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static ErrorEbm Func(
+      RandomDeterministic * const pRng,
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
       const BoostFlags flags,
@@ -666,6 +670,7 @@ public:
       EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
 
       return PartitionRandomBoostingInternal<k_dynamicClassification>::Func(
+         pRng,
          pBoosterShell,
          pTerm,
          flags,
@@ -676,6 +681,7 @@ public:
 };
 
 extern ErrorEbm PartitionRandomBoosting(
+   RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
    const BoostFlags flags,
@@ -687,6 +693,7 @@ extern ErrorEbm PartitionRandomBoosting(
 
    if(IsClassification(cRuntimeClasses)) {
       return PartitionRandomBoostingTarget<2>::Func(
+         pRng,
          pBoosterShell,
          pTerm,
          flags,
@@ -696,6 +703,7 @@ extern ErrorEbm PartitionRandomBoosting(
    } else {
       EBM_ASSERT(IsRegression(cRuntimeClasses));
       return PartitionRandomBoostingInternal<k_regression>::Func(
+         pRng,
          pBoosterShell,
          pTerm,
          flags,

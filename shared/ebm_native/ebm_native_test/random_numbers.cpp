@@ -49,6 +49,15 @@ TEST_CASE("BranchRNG, -1") {
    CHECK(true); // just check if it crashes
 }
 
+TEST_CASE("GenerateSeed, 99") {
+   IntEbm cBytes = MeasureRNG();
+   std::vector<unsigned char> rng(static_cast<size_t>(cBytes));
+   InitRNG(99, &rng[0]);
+   SeedEbm seed;
+   GenerateSeed(&rng[0], &seed);
+   CHECK(-1237406560 == seed);
+}
+
 TEST_CASE("SampleWithoutReplacementStratified, stress test") {
    constexpr size_t cSamples = 500;
    constexpr size_t cClasses = 10;
@@ -87,9 +96,11 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
          ++classCount[targetClass];
       }
 
+      std::vector<unsigned char> rng(static_cast<size_t>(MeasureRNG()));
+      InitRNG(k_seed, &rng[0]);
+
       error = SampleWithoutReplacementStratified(
-         EBM_TRUE,
-         seed,
+         &rng[0],
          cClassSize,
          cTrainingSamples,
          cValidationSamples,
@@ -202,17 +213,16 @@ TEST_CASE("SampleWithoutReplacement, stress test") {
          exit(1);
       }
 
-      SeedEbm seed = k_seed;
+      std::vector<unsigned char> rng(static_cast<size_t>(MeasureRNG()));
+      InitRNG(k_seed, &rng[0]);
 
       for(IntEbm iRun = 0; iRun < 10000; ++iRun) {
          size_t cRandomSamples = randomStream.Next(cSamples + 1);
          size_t cTrainingSamples = randomStream.Next(cRandomSamples + size_t { 1 });
          size_t cValidationSamples = cRandomSamples - cTrainingSamples;
 
-         ++seed;
          error = SampleWithoutReplacement(
-            static_cast<BoolEbm>(iBool), 
-            seed,
+            0 == iBool ? nullptr : &rng[0],
             static_cast<IntEbm>(cTrainingSamples),
             static_cast<IntEbm>(cValidationSamples),
             samples
@@ -264,12 +274,15 @@ TEST_CASE("test random number generator equivalency") {
    // accross different OSes and C/C++ libraries.  We specificed 2 inner samples, which will use the random generator
    // and if there are any differences between environments then this will catch those
 
-   CHECK_APPROX(termScore, 0.31169469451667819);
+   CHECK_APPROX(termScore, 0.32364558747317862);
 }
 
 TEST_CASE("GenerateGaussianRandom") {
    constexpr int cIterations = 1000;
    constexpr int offset = 0;
+
+   std::vector<unsigned char> rng(static_cast<size_t>(MeasureRNG()));
+   InitRNG(k_seed, &rng[0]);
 
    for(int iBool = 0; iBool < 2; ++iBool) {
       size_t cNegative = 0;
@@ -280,7 +293,7 @@ TEST_CASE("GenerateGaussianRandom") {
       double stddev = 10.0;
       for(int i = 0; i < cIterations; ++i) {
          double result;
-         GenerateGaussianRandom(static_cast<BoolEbm>(iBool), static_cast<SeedEbm>(i + offset), stddev, 1, &result);
+         GenerateGaussianRandom(0 == iBool ? nullptr : &rng[0], stddev, 1, &result);
          if(result < 0) {
             ++cNegative;
          }

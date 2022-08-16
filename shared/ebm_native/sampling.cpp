@@ -19,16 +19,28 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-EBM_API_BODY SeedEbm EBM_CALLING_CONVENTION GenerateSeed(
-   SeedEbm seed,
-   SeedEbm randomMix
-) {
-   RandomDeterministic randomDeterministic;
-   // this is a bit inefficient in that we go through a complete regeneration of the internal state,
-   // but it gives us a simple interface
-   randomDeterministic.InitializeSigned(seed, randomMix);
-   SeedEbm ret = randomDeterministic.NextSeed();
-   return ret;
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateSeed(void * rng, SeedEbm * seedOut) {
+   if(nullptr == seedOut) {
+      LOG_0(Trace_Warning, "WARNING GenerateSeed nullptr == seedOut");
+      return Error_None;
+   }
+   if(nullptr == rng) {
+      try {
+         RandomNondeterministic<USeedEbm> randomGenerator;
+         *seedOut = randomGenerator.NextSeed();
+         return Error_None;
+      } catch(const std::bad_alloc &) {
+         LOG_0(Trace_Warning, "WARNING GenerateSeed Out of memory in std::random_device");
+         return Error_OutOfMemory;
+      } catch(...) {
+         LOG_0(Trace_Warning, "WARNING GenerateSeed Unknown error in std::random_device");
+         return Error_UnexpectedInternal;
+      }
+   } else {
+      RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rng);
+      *seedOut = pRng->NextSeed();
+      return Error_None;
+   }
 }
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
@@ -36,8 +48,7 @@ static int g_cLogEnterSampleWithoutReplacement = 5;
 static int g_cLogExitSampleWithoutReplacement = 5;
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
-   BoolEbm isDeterministic,
-   SeedEbm seed,
+   void * rng,
    IntEbm countTrainingSamples,
    IntEbm countValidationSamples,
    BagEbm * bagOut
@@ -47,14 +58,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
       Trace_Info,
       Trace_Verbose,
       "Entered SampleWithoutReplacement: "
-      "isDeterministic=%s, "
-      "seed=%" SeedEbmPrintf ", "
+      "rng=%p, "
       "countTrainingSamples=%" IntEbmPrintf ", "
       "countValidationSamples=%" IntEbmPrintf ", "
       "bagOut=%p"
       ,
-      ObtainTruth(isDeterministic),
-      seed,
+      rng,
       countTrainingSamples,
       countValidationSamples,
       static_cast<void *>(bagOut)
@@ -102,11 +111,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
    size_t cTrainingRemaining = cTrainingSamples;
 
    BagEbm * pSampleReplicationOut = bagOut;
-   if(EBM_FALSE != isDeterministic) {
-      RandomDeterministic randomGenerator;
-      randomGenerator.InitializeUnsigned(seed, k_samplingWithoutReplacementRandomizationMix);
+   if(nullptr != rng) {
+      RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rng);
       do {
-         const size_t iRandom = randomGenerator.NextFast(cSamplesRemaining);
+         const size_t iRandom = pRng->NextFast(cSamplesRemaining);
          const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
          cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
          *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbm { 1 } : BagEbm { -1 };
@@ -151,8 +159,7 @@ WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
-   BoolEbm isDeterministic,
-   SeedEbm seed,
+   void * rng,
    IntEbm countClasses,
    IntEbm countTrainingSamples,
    IntEbm countValidationSamples,
@@ -169,16 +176,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
       Trace_Info,
       Trace_Verbose,
       "Entered SampleWithoutReplacementStratified: "
-      "isDeterministic=%s, "
-      "seed=%" SeedEbmPrintf ", "
+      "rng=%p, "
       "countClasses=%" IntEbmPrintf ", "
       "countTrainingSamples=%" IntEbmPrintf ", "
       "countValidationSamples=%" IntEbmPrintf ", "
       "targets=%p, "
       "bagOut=%p"
       ,
-      ObtainTruth(isDeterministic),
-      seed,
+      rng,
       countClasses,
       countTrainingSamples,
       countValidationSamples,
@@ -255,12 +260,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
       LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified cValidationSamples < cClasses");
    }
 
-   if(EBM_FALSE == isDeterministic) {
+   RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
+   RandomDeterministic rngInternal;
+   if(nullptr == pRng) {
       // SampleWithoutReplacementStratified is not called when building a differentially private model, so
       // we can use low-quality non-determinism.  Generate a non-deterministic seed
       try {
-         RandomNondeterministic<uint32_t> randomGenerator;
-         seed = randomGenerator.NextSeed();
+         RandomNondeterministic<uint64_t> randomGenerator;
+         const uint64_t seed = randomGenerator.Next(std::numeric_limits<uint64_t>::max());
+         rngInternal.Initialize(seed);
+         pRng = &rngInternal;
       } catch(const std::bad_alloc &) {
          LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified Out of memory in std::random_device");
          return Error_OutOfMemory;
@@ -362,9 +371,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
       return Error_OutOfMemory;
    }
 
-   RandomDeterministic randomDeterministic;
-   randomDeterministic.InitializeUnsigned(seed, k_sampleWithoutReplacementStratifiedRandomizationMix);
-
    for (size_t iLeftover = 0; iLeftover < globalLeftover; iLeftover++) {
       double maxImprovement = std::numeric_limits<double>::lowest();
       size_t mostImprovedClassesSize = 0;
@@ -407,7 +413,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
 
       // If more than one class has the same max improvement, randomly select between the classes
       // to give the leftover to.
-      size_t iRandom = randomDeterministic.NextFast(mostImprovedClassesSize);
+      size_t iRandom = pRng->NextFast(mostImprovedClassesSize);
       size_t classToImprove = *(pMostImprovedClasses + iRandom);
       (pTargetSamplingCounts + classToImprove)->m_cTraining++;
    }
@@ -428,7 +434,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    for (size_t iSample = 0; iSample < cSamples; iSample++) {
       TargetSamplingCounts* pTargetSample = pTargetSamplingCounts + targets[iSample];
       EBM_ASSERT(pTargetSample->m_cTotalRemaining > 0);
-      const size_t iRandom = randomDeterministic.NextFast(pTargetSample->m_cTotalRemaining);
+      const size_t iRandom = pRng->NextFast(pTargetSample->m_cTotalRemaining);
       const bool bTrainingSample = UNPREDICTABLE(iRandom < pTargetSample->m_cTraining);
 
       if (UNPREDICTABLE(bTrainingSample)) {

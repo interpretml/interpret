@@ -67,6 +67,7 @@ extern void TensorTotalsBuild(
 );
 
 extern ErrorEbm PartitionOneDimensionalBoosting(
+   RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const size_t cBins,
    const size_t cSamplesTotal,
@@ -90,6 +91,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(
 );
 
 extern ErrorEbm PartitionRandomBoosting(
+   RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
    const BoostFlags flags,
@@ -216,6 +218,7 @@ static ErrorEbm BoostZeroDimensional(
 }
 
 static ErrorEbm BoostSingleDimensional(
+   RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const size_t iTerm,
    const size_t cBins,
@@ -325,6 +328,7 @@ static ErrorEbm BoostSingleDimensional(
    const FloatBig weightTotal = pInnerBag->GetWeightTotal();
 
    error = PartitionOneDimensionalBoosting(
+      pRng,
       pBoosterShell,
       cBins,
       cSamplesTotal,
@@ -641,6 +645,7 @@ static ErrorEbm BoostMultiDimensional(
 }
 
 static ErrorEbm BoostRandom(
+   RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const size_t iTerm,
    const InnerBag * const pInnerBag,
@@ -736,6 +741,7 @@ static ErrorEbm BoostRandom(
 
 
    error = PartitionRandomBoosting(
+      pRng,
       pBoosterShell,
       pTerm,
       flags,
@@ -755,6 +761,7 @@ static ErrorEbm BoostRandom(
 }
 
 static ErrorEbm GenerateTermUpdateInternal(
+   RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const size_t iTerm,
    const BoostFlags flags,
@@ -858,6 +865,7 @@ static ErrorEbm GenerateTermUpdateInternal(
                // THIS RANDOM SPLIT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
                error = BoostRandom(
+                  pRng,
                   pBoosterShell,
                   iTerm,
                   pInnerBag,
@@ -877,6 +885,7 @@ static ErrorEbm GenerateTermUpdateInternal(
                EBM_ASSERT(size_t { 2 } <= cSignificantBinCount); // otherwise we'd use BoostZeroDimensional above
 
                error = BoostSingleDimensional(
+                  pRng,
                   pBoosterShell,
                   iTerm,
                   cSignificantBinCount,
@@ -1039,6 +1048,7 @@ static int g_cLogGenerateTermUpdate = 10;
 
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
+   void * rng,
    BoosterHandle boosterHandle,
    IntEbm indexTerm,
    BoostFlags flags,
@@ -1052,6 +1062,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       Trace_Info,
       Trace_Verbose,
       "GenerateTermUpdate: "
+      "rng=%p, "
       "boosterHandle=%p, "
       "indexTerm=%" IntEbmPrintf ", "
       "flags=0x%" UBoostFlagsPrintf ", "
@@ -1060,6 +1071,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       "leavesMax=%p, "
       "avgGainOut=%p"
       ,
+      rng,
       static_cast<void *>(boosterHandle),
       indexTerm,
       static_cast<UBoostFlags>(flags), // signed to unsigned conversion is defined behavior in C++
@@ -1170,7 +1182,35 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       return Error_None;
    }
 
+   RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
+   RandomDeterministic rngInternal;
+   if(nullptr == pRng) {
+      // We use the RNG for two things during the boosting update, and none of them requires
+      // a cryptographically secure random number generator. We use the RNG for:
+      //   - Deciding ties in regular boosting, but we use random boosting in DP-EBMs, which doesn't have ties
+      //   - Deciding split points during random boosting. The DP-EBM proof doesn't rely on the perfect 
+      //     randomness of the chosen split points. It only relies on the fact that the splits are
+      //     chosen independently of the data. We could allow an attacker to choose the split points,
+      //     and privacy would be preserved provided the attacker was not able to look at the data when
+      //     choosing the splits.
+      //
+      // Since we do not need high-quality non-determinism, generate a non-deterministic seed
+      try {
+         RandomNondeterministic<uint64_t> randomGenerator;
+         const uint64_t seed = randomGenerator.Next(std::numeric_limits<uint64_t>::max());
+         rngInternal.Initialize(seed);
+         pRng = &rngInternal;
+      } catch(const std::bad_alloc &) {
+         LOG_0(Trace_Warning, "WARNING GenerateTermUpdate Out of memory in std::random_device");
+         return Error_OutOfMemory;
+      } catch(...) {
+         LOG_0(Trace_Warning, "WARNING GenerateTermUpdate Unknown error in std::random_device");
+         return Error_UnexpectedInternal;
+      }
+   }
+
    error = GenerateTermUpdateInternal(
+      pRng,
       pBoosterShell,
       iTerm,
       flags,

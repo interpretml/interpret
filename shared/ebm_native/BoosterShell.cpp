@@ -179,8 +179,7 @@ ErrorEbm BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
-   BoolEbm isDeterministic,
-   SeedEbm seed,
+   void * rng,
    const void * dataSet,
    const BagEbm * bag,
    const double * initScores,
@@ -194,8 +193,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    LOG_N(
       Trace_Info,
       "Entered CreateBooster: "
-      "isDeterministic=%s, "
-      "seed=%" SeedEbmPrintf ", "
+      "rng=%p, "
       "dataSet=%p, "
       "bag=%p, "
       "initScores=%p, "
@@ -206,9 +204,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       "experimentalParams=%p, "
       "boosterHandleOut=%p"
       ,
-      ObtainTruth(isDeterministic),
-      seed,
-      static_cast<const void *>(dataSet),
+      rng,
+      dataSet,
       static_cast<const void *>(bag),
       static_cast<const void *>(initScores),
       countTerms,
@@ -264,22 +261,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    size_t cTerms = static_cast<size_t>(countTerms);
    size_t cInnerBags = static_cast<size_t>(countInnerBags);
 
-   if(EBM_FALSE == isDeterministic) {
-      // We use the seed for three things during boosting, and none of them requires
-      // a cryptographically secure random number generator. We use the seed for:
-      //   - Creating inner bags. Inner bags are not used in DP-EBMs
-      //   - Deciding ties in regular boosting, but we use random boosting in DP-EBMs, which doesn't have ties
-      //   - Deciding split points during random boosting. The DP-EBM proof doesn't rely on the perfect 
-      //     randomness of the chosen split points.It only relies on the fact that the splits are
-      //     chosen independently of the data.We could allow an attacker to choose the split points,
-      //     and privacy would be preserved provided the attacker was not able to look at the data when
-      //     choosing the splits.
-      //
+   RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
+   RandomDeterministic rngInternal;
+   if(nullptr == pRng) {
+      // We use the seed for creating inner bags. Inner bags are not used in DP-EBMs.
       // Since we do not need high-quality non-determinism, generate a non-deterministic seed
-
       try {
-         RandomNondeterministic<uint32_t> randomGenerator;
-         seed = randomGenerator.NextSeed();
+         RandomNondeterministic<uint64_t> randomGenerator;
+         const uint64_t seed = randomGenerator.Next(std::numeric_limits<uint64_t>::max());
+         rngInternal.Initialize(seed);
+         pRng = &rngInternal;
       } catch(const std::bad_alloc &) {
          LOG_0(Trace_Warning, "WARNING CreateBooster Out of memory in std::random_device");
          return Error_OutOfMemory;
@@ -294,9 +285,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       return Error_OutOfMemory;
    }
 
-   pBoosterShell->GetRandomDeterministic()->InitializeUnsigned(seed, k_boosterRandomizationMix);
-
    error = BoosterCore::Create(
+      pRng, 
       pBoosterShell,
       cTerms,
       cInnerBags,
@@ -359,8 +349,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBoosterView(
       LOG_0(Trace_Warning, "WARNING CreateBooster nullptr == pBoosterShellNew");
       return Error_OutOfMemory;
    }
-
-   pBoosterShellNew->GetRandomDeterministic()->Initialize(*pBoosterShellOriginal->GetRandomDeterministic());
 
    BoosterCore * const pBoosterCore = pBoosterShellOriginal->GetBoosterCore();
    pBoosterCore->AddReferenceCount();

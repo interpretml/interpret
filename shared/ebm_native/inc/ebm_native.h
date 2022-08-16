@@ -197,14 +197,9 @@ EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureRNG();
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION InitRNG(SeedEbm seed, void * rngOut);
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION CopyRNG(void * rng, void * rngOut);
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION BranchRNG(void * rng, void * rngOut);
-
-EBM_API_INCLUDE SeedEbm EBM_CALLING_CONVENTION GenerateSeed(
-   SeedEbm seed,
-   SeedEbm randomMix
-);
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateSeed(void * rng, SeedEbm * seedOut);
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateGaussianRandom(
-   BoolEbm isDeterministic,
-   SeedEbm seed,
+   void * rng, 
    double stddev,
    IntEbm count,
    double * randomOut
@@ -338,15 +333,13 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
 );
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
-   BoolEbm isDeterministic,
-   SeedEbm seed,
+   void * rng,
    IntEbm countTrainingSamples,
    IntEbm countValidationSamples,
    BagEbm * bagOut
 );
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
-   BoolEbm isDeterministic,
-   SeedEbm seed,
+   void * rng,
    IntEbm countClasses,
    IntEbm countTrainingSamples,
    IntEbm countValidationSamples,
@@ -355,8 +348,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratifi
 );
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
-   BoolEbm isDeterministic,
-   SeedEbm seed,
+   void * rng,
    const void * dataSet,
    const BagEbm * bag,
    const double * initScores, // only samples with non-zeros in the bag are included
@@ -367,8 +359,6 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    const double * experimentalParams,
    BoosterHandle * boosterHandleOut
 );
-// TODO: we might need a function to set the booster's internal seed so that a booster view 
-// can either use the same seed as the original booster, or diverge on some new random sequence path
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBoosterView(
    BoosterHandle boosterHandle,
    BoosterHandle * boosterHandleViewOut
@@ -377,6 +367,7 @@ EBM_API_INCLUDE void EBM_CALLING_CONVENTION FreeBooster(
    BoosterHandle boosterHandle
 );
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
+   void * rng,
    BoosterHandle boosterHandle,
    IntEbm indexTerm,
    BoostFlags flags, 

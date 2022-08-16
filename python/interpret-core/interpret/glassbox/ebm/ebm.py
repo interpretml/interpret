@@ -319,6 +319,10 @@ class EBMModel(BaseEstimator):
 
         init_random_state = EBMUtils.normalize_initial_seed(self.random_state)
 
+        # after normalizing to a 32-bit signed integer, we pass the random_state into the EBMPreprocessor
+        # exactly as passed to us. This means that we should get the same preprocessed data for the mains
+        # if we create an EBMPreprocessor with the same seed.  For interactions, we increment by one
+        # so it can be replicated without creating an EBM
         binning_result = construct_bins(
             X=X,
             sample_weight=sample_weight,
@@ -389,17 +393,31 @@ class EBMModel(BaseEstimator):
             interactions = self.interactions
 
         native = Native.get_native_singleton()
-        bagged_random_state = init_random_state
+        rng = native.create_rng(init_random_state)
+        rng = native.branch_rng(rng) # branch it so we have no correlation to the binning rng that uses the same seed
+
+        used_seeds = set()
+        rngs = []
         bag_weights = []
         bags = []
         for _ in range(self.outer_bags):
-            bagged_random_state = native.generate_seed(bagged_random_state, 886321150)
+            while True:
+                bagged_rng = native.branch_rng(rng)
+                seed = native.generate_seed(bagged_rng)
+                # we really really do not want identical bags. branch_rng is pretty good but it can lead to 
+                # collisions, so check with a 32-bit seed if we possibly have a collision and regenerate if so
+                if seed not in used_seeds:
+                    break
+            # we do not need used_seeds if the rng is None, but it does not hurt anything
+            used_seeds.add(seed)
+
             bag = EBMUtils.make_bag(
                 y,
                 self.validation_size,
-                bagged_random_state,
+                bagged_rng,
                 is_classifier(self) and not is_differential_privacy
             )
+            rngs.append(bagged_rng) # we bag within the same proces, so bagged_rng will progress inside make_bag
             bags.append(bag)
             if bag is None:
                 if sample_weight is None:
@@ -427,10 +445,8 @@ class EBMModel(BaseEstimator):
             feature_types_in, 
         )
 
-        bagged_random_state = init_random_state
         parallel_args = []
         for idx in range(self.outer_bags):
-            bagged_random_state = native.generate_seed(bagged_random_state, 13098686)
             parallel_args.append(
                 (
                     dataset,
@@ -447,7 +463,7 @@ class EBMModel(BaseEstimator):
                     self.max_rounds,
                     noise_scale,
                     bin_data_weights,
-                    bagged_random_state,
+                    rngs[idx],
                     None,
                 )
             )
@@ -460,9 +476,11 @@ class EBMModel(BaseEstimator):
 
         breakpoint_iteration = [[]]
         models = []
-        for model, bag_breakpoint_iteration in results:
+        rngs = []
+        for model, bag_breakpoint_iteration, bagged_rng in results:
             breakpoint_iteration[-1].append(bag_breakpoint_iteration)
             models.append(after_boosting(term_features, model, main_bin_weights))
+            rngs.append(bagged_rng) # retrieve our rng state since this was used outside of our process
 
         if n_classes > 2:
             if isinstance(interactions, int):
@@ -568,10 +586,8 @@ class EBMModel(BaseEstimator):
                     warn("Interactions with 3 or more terms are not graphed in global explanations. Local explanations are still available and exact.")
 
 
-            bagged_random_state = init_random_state
             parallel_args = []
             for idx in range(self.outer_bags):
-                bagged_random_state = native.generate_seed(bagged_random_state, 521040308)
                 parallel_args.append(
                     (
                         dataset,
@@ -588,7 +604,7 @@ class EBMModel(BaseEstimator):
                         self.max_rounds,
                         noise_scale,
                         bin_data_weights,
-                        bagged_random_state,
+                        rngs[idx],
                         None,
                     )
                 )
@@ -604,6 +620,7 @@ class EBMModel(BaseEstimator):
             for idx in range(self.outer_bags):
                 breakpoint_iteration[-1].append(results[idx][1])
                 models[idx].extend(after_boosting(boost_groups, results[idx][0], main_bin_weights))
+                rngs[idx] = results[idx][2]
 
             term_features.extend(boost_groups)
 

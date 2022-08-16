@@ -36,8 +36,6 @@ class BoosterShell final {
    Tensor * m_pTermUpdate;
    Tensor * m_pInnerTermUpdate;
 
-   RandomDeterministic m_randomDeterministic;
-
    // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
 
    BinBase * m_aThreadByteBuffer1Fast;
@@ -138,10 +136,6 @@ public:
 
    INLINE_ALWAYS Tensor * GetInnerTermUpdate() {
       return m_pInnerTermUpdate;
-   }
-
-   INLINE_ALWAYS RandomDeterministic * GetRandomDeterministic() {
-      return &m_randomDeterministic;
    }
 
    BinBase * GetBinBaseFast(size_t cBytesRequired);

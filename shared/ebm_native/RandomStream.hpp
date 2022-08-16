@@ -20,15 +20,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-// We expose our random number generator, so to ensure that we get
-// different random number streams from what our caller will get, we want to mix in these values
-// in case our caller happens to mistakenly forget to provide a mix in value
-constexpr uint64_t k_quantileRandomizationMix = uint64_t { 5744215463699302938u };
-constexpr uint64_t k_boosterRandomizationMix = uint64_t { 9397611943394063143u };
-constexpr uint64_t k_samplingWithoutReplacementRandomizationMix = uint64_t { 10077040353197036781u };
-constexpr uint64_t k_sampleWithoutReplacementStratifiedRandomizationMix = uint64_t { 8537734853377176632u };
-constexpr uint64_t k_gaussianRandomizationMix = uint64_t { 5329481091937718381u };
-
 class RandomDeterministic final {
    // If the RandomDeterministic object is stored inside a class/struct, and used inside a hotspot loop, to get the best 
    // performance copy this structure to the stack before using it, and then copy it back to the struct/class 
@@ -94,22 +85,6 @@ public:
       // the C++ standard guarantees that the unsigned result of this 
       // conversion is the two's complement of the seed if seed is negative
       Initialize(static_cast<uint64_t>(static_cast<USeedEbm>(seed)));
-   }
-
-   INLINE_ALWAYS void InitializeSigned(const SeedEbm seed, const SeedEbm randomMix) {
-      // TODO: REMOVE THIS
-         
-      // the C++ standard guarantees that the unsigned result of this 
-      // conversion is 2^64 + seed if seed is negative
-      Initialize(static_cast<uint64_t>(seed) ^ static_cast<uint64_t>(randomMix));
-   }
-
-   INLINE_ALWAYS void InitializeUnsigned(const SeedEbm seed, const uint64_t randomMix) {
-      // TODO: REMOVE THIS
-
-      // the C++ standard guarantees that the unsigned result of this 
-      // conversion is 2^64 + seed if seed is negative
-      Initialize(static_cast<uint64_t>(seed) ^ randomMix);
    }
 
    INLINE_ALWAYS void Initialize(const RandomDeterministic & other) {
