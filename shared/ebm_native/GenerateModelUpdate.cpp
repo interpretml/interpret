@@ -365,7 +365,7 @@ static ErrorEbm BoostMultiDimensional(
    ErrorEbm error;
 
    size_t cAuxillaryBinsForBuildFastTotals = 0;
-   size_t cTotalBinsMainSpace = 1;
+   size_t cTensorBins = 1;
 
    size_t acBins[k_cDimensionsMax];
    size_t * pcBins = acBins;
@@ -380,17 +380,17 @@ static ErrorEbm BoostMultiDimensional(
          *pcBins = cBins;
          ++pcBins;
 
-         // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace) at runtime
-         EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTotalBinsMainSpace);
-         // since cBins must be 2 or more, cAuxillaryBinsForBuildFastTotals must grow slower than cTotalBinsMainSpace, and we checked at 
-         // allocation that cTotalBinsMainSpace would not overflow
-         EBM_ASSERT(!IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace));
-         cAuxillaryBinsForBuildFastTotals += cTotalBinsMainSpace;
+         // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins) at runtime
+         EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTensorBins);
+         // since cBins must be 2 or more, cAuxillaryBinsForBuildFastTotals must grow slower than cTensorBins, and we checked at 
+         // allocation that cTensorBins would not overflow
+         EBM_ASSERT(!IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins));
+         cAuxillaryBinsForBuildFastTotals += cTensorBins;
          // we check for simple multiplication overflow from m_cBins in pBoosterCore->Initialize when we unpack featureIndexes
-         EBM_ASSERT(!IsMultiplyError(cTotalBinsMainSpace, cBins));
-         cTotalBinsMainSpace *= cBins;
-         // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace) at runtime
-         EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTotalBinsMainSpace);
+         EBM_ASSERT(!IsMultiplyError(cTensorBins, cBins));
+         cTensorBins *= cBins;
+         // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins) at runtime
+         EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTensorBins);
       }
       ++ppFeature;
    } while(ppFeaturesEnd != ppFeature);
@@ -409,11 +409,11 @@ static ErrorEbm BoostMultiDimensional(
       return Error_OutOfMemory;
    }
    const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
-   if(IsMultiplyError(cBytesPerBinFast, cTotalBinsMainSpace)) {
-      LOG_0(Trace_Warning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerBinFast, cTotalBinsMainSpace)");
+   if(IsMultiplyError(cBytesPerBinFast, cTensorBins)) {
+      LOG_0(Trace_Warning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerBinFast, cTensorBins)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBufferFast = cBytesPerBinFast * cTotalBinsMainSpace;
+   const size_t cBytesBufferFast = cBytesPerBinFast * cTensorBins;
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
    BinBase * const aBinsFast = pBoosterShell->GetBinBaseFast(cBytesBufferFast);
@@ -421,7 +421,7 @@ static ErrorEbm BoostMultiDimensional(
       // already logged
       return Error_OutOfMemory;
    }
-   aBinsFast->Zero(cBytesPerBinFast, cTotalBinsMainSpace);
+   aBinsFast->Zero(cBytesPerBinFast, cTensorBins);
 
 #ifndef NDEBUG
    pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast);
@@ -434,14 +434,14 @@ static ErrorEbm BoostMultiDimensional(
    );
 
    // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20 at max, so we need 24
-   const size_t cAuxillaryBinsForSplitting = 24;
-   const size_t cAuxillaryBins =
-      cAuxillaryBinsForBuildFastTotals < cAuxillaryBinsForSplitting ? cAuxillaryBinsForSplitting : cAuxillaryBinsForBuildFastTotals;
-   if(IsAddError(cTotalBinsMainSpace, cAuxillaryBins)) {
-      LOG_0(Trace_Warning, "WARNING BoostMultiDimensional IsAddError(cTotalBinsMainSpace, cAuxillaryBins)");
+   constexpr size_t cAuxillaryBinsForSplitting = 24;
+   const size_t cAuxillaryBins = EbmMax(cAuxillaryBinsForBuildFastTotals, cAuxillaryBinsForSplitting);
+
+   if(IsAddError(cTensorBins, cAuxillaryBins)) {
+      LOG_0(Trace_Warning, "WARNING BoostMultiDimensional IsAddError(cTensorBins, cAuxillaryBins)");
       return Error_OutOfMemory;
    }
-   const size_t cTotalBinsBig = cTotalBinsMainSpace + cAuxillaryBins;
+   const size_t cTotalBinsBig = cTensorBins + cAuxillaryBins;
 
    const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)) {
@@ -468,7 +468,7 @@ static ErrorEbm BoostMultiDimensional(
 
 
    // we also need to zero the auxillary bins
-   aBinsBig->Zero(cBytesPerBinBig, cAuxillaryBins, cTotalBinsMainSpace);
+   aBinsBig->Zero(cBytesPerBinBig, cAuxillaryBins, cTensorBins);
 
 
    // TODO: we can exit here back to python to allow caller modification to our histograms
@@ -478,10 +478,10 @@ static ErrorEbm BoostMultiDimensional(
    // make a copy of the original bins for debugging purposes
 
    BinBase * const aBinsDebugCopy =
-      EbmMalloc<BinBase>(cTotalBinsMainSpace, cBytesPerBinBig);
+      EbmMalloc<BinBase>(cTensorBins, cBytesPerBinBig);
    if(nullptr != aBinsDebugCopy) {
       // if we can't allocate, don't fail.. just stop checking
-      const size_t cBytesBufferDebug = cTotalBinsMainSpace * cBytesPerBinBig;
+      const size_t cBytesBufferDebug = cTensorBins * cBytesPerBinBig;
       memcpy(aBinsDebugCopy, aBinsBig, cBytesBufferDebug);
    }
 #endif // NDEBUG
@@ -489,7 +489,7 @@ static ErrorEbm BoostMultiDimensional(
    BinBase * aAuxiliaryBins = IndexBin(
       cBytesPerBinBig,
       aBinsBig,
-      cTotalBinsMainSpace
+      cTensorBins
    );
 
    TensorTotalsBuild(

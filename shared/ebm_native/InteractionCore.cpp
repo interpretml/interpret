@@ -19,9 +19,12 @@
 // feature includes
 #include "Feature.hpp"
 #include "FeatureGroup.hpp"
+
 // dataset depends on features
 #include "DataSetInteraction.hpp"
-#include "InteractionShell.hpp"
+
+#include "HistogramTargetEntry.hpp"
+#include "HistogramBucket.hpp"
 
 #include "InteractionCore.hpp"
 #include "InteractionShell.hpp"
@@ -110,16 +113,26 @@ ErrorEbm InteractionCore::Create(
       return error;
    }
    if(size_t { 1 } < cWeights) {
-      LOG_0(Trace_Warning, "WARNING BoosterCore::Create size_t { 1 } < cWeights");
+      LOG_0(Trace_Warning, "WARNING InteractionCore::Create size_t { 1 } < cWeights");
       return Error_IllegalParamVal;
    }
    if(size_t { 1 } != cTargets) {
-      LOG_0(Trace_Warning, "WARNING BoosterCore::Create 1 != cTargets");
+      LOG_0(Trace_Warning, "WARNING InteractionCore::Create 1 != cTargets");
       return Error_IllegalParamVal;
    }
 
    ptrdiff_t cClasses;
    GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
+
+   const size_t cScores = GetCountScores(cClasses);
+   const bool bClassification = IsClassification(cClasses);
+
+   if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)) {
+      LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsOverflowBinSize overflow");
+      return Error_OutOfMemory;
+   }
+
+   pRet->m_cClasses = cClasses;
 
    size_t cTrainingSamples;
    size_t cValidationSamples;
@@ -180,10 +193,8 @@ ErrorEbm InteractionCore::Create(
    }
    LOG_0(Trace_Info, "InteractionCore::Allocate done feature processing");
 
-   pRet->m_cClasses = cClasses;
-
    error = pRet->m_dataFrame.Initialize(
-      IsClassification(cClasses),
+      bClassification,
       pDataSetShared,
       cSamples,
       aBag,
