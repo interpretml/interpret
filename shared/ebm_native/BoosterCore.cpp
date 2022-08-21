@@ -608,7 +608,7 @@ ErrorEbm BoosterCore::Create(
    }
 
    pBoosterCore->m_cClasses = cClasses;
-   pBoosterCore->m_bestModelMetric = std::numeric_limits<double>::max();
+   pBoosterCore->m_bestModelMetric = std::numeric_limits<double>::infinity();
 
    LOG_0(Trace_Info, "Exited BoosterCore::Create");
    return Error_None;

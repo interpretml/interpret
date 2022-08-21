@@ -95,8 +95,8 @@ apply_term_update <- function(
 ) {
    stopifnot(class(booster_handle) == "externalptr")
 
-   validation_metric <- .Call(ApplyTermUpdate_R, booster_handle)
-   return(validation_metric)
+   avg_validation_metric <- .Call(ApplyTermUpdate_R, booster_handle)
+   return(avg_validation_metric)
 }
 
 get_best_term_scores <- function(booster_handle, index_term) {
@@ -208,10 +208,10 @@ cyclic_gradient_boost <- function(
                max_leaves
             )
 
-            validation_metric <- apply_term_update(ebm_booster$booster_handle)
+            avg_validation_metric <- apply_term_update(ebm_booster$booster_handle)
 
-            if(validation_metric < min_metric) {
-               min_metric <- validation_metric
+            if(avg_validation_metric < min_metric) {
+               min_metric <- avg_validation_metric
             }
          }
 

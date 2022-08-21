@@ -680,7 +680,7 @@ BoostRet TestApi::Boost(
    }
 
    double gainAvg = std::numeric_limits<double>::quiet_NaN();
-   double validationMetric = std::numeric_limits<double>::quiet_NaN();
+   double validationMetricAvg = std::numeric_limits<double>::quiet_NaN();
 
    error = GenerateTermUpdate(
       &m_rng[0],
@@ -721,12 +721,12 @@ BoostRet TestApi::Boost(
          exit(1);
       }
    }
-   error = ApplyTermUpdate(m_boosterHandle, &validationMetric);
+   error = ApplyTermUpdate(m_boosterHandle, &validationMetricAvg);
 
    if(Error_None != error) {
       exit(1);
    }
-   return BoostRet { gainAvg, validationMetric };
+   return BoostRet { gainAvg, validationMetricAvg };
 }
 
 double TestApi::GetBestTermScore(

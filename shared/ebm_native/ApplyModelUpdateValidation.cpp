@@ -50,10 +50,7 @@ public:
       FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-         cCompilerClasses,
-         cRuntimeClasses
-      );
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
@@ -112,14 +109,12 @@ public:
          }
          sumLogLoss += sampleLogLoss * weight;
       } while(pSampleScoresEnd != pSampleScore);
-      const FloatBig totalWeight = pBoosterCore->GetValidationWeightTotal();
 
-      EBM_ASSERT(0 < totalWeight);
-      EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
-         weightTotalDebug <= 1.001 * totalWeight);
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == totalWeight);
+      EBM_ASSERT(nullptr == pWeight || pBoosterCore->GetValidationWeightTotal() * 0.999 <= weightTotalDebug &&
+         weightTotalDebug <= 1.001 * pBoosterCore->GetValidationWeightTotal());
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == pBoosterCore->GetValidationWeightTotal());
 
-      return static_cast<double>(sumLogLoss) / static_cast<double>(totalWeight);
+      return static_cast<double>(sumLogLoss);
    }
 };
 
@@ -170,14 +165,12 @@ public:
          }
          sumLogLoss += sampleLogLoss * weight;
       } while(pSampleScoresEnd != pSampleScore);
-      const FloatBig totalWeight = pBoosterCore->GetValidationWeightTotal();
 
-      EBM_ASSERT(0 < totalWeight);
-      EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
-         weightTotalDebug <= 1.001 * totalWeight);
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == totalWeight);
+      EBM_ASSERT(nullptr == pWeight || pBoosterCore->GetValidationWeightTotal() * 0.999 <= weightTotalDebug &&
+         weightTotalDebug <= 1.001 * pBoosterCore->GetValidationWeightTotal());
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == pBoosterCore->GetValidationWeightTotal());
 
-      return static_cast<double>(sumLogLoss) / static_cast<double>(totalWeight);
+      return static_cast<double>(sumLogLoss);
    }
 };
 #endif // EXPAND_BINARY_LOGITS
@@ -226,14 +219,12 @@ public:
          *pGradient = gradient;
          ++pGradient;
       } while(pGradientsEnd != pGradient);
-      const FloatBig totalWeight = pBoosterCore->GetValidationWeightTotal();
 
-      EBM_ASSERT(0 < totalWeight);
-      EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
-         weightTotalDebug <= 1.001 * totalWeight);
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == totalWeight);
+      EBM_ASSERT(nullptr == pWeight || pBoosterCore->GetValidationWeightTotal() * 0.999 <= weightTotalDebug &&
+         weightTotalDebug <= 1.001 * pBoosterCore->GetValidationWeightTotal());
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == pBoosterCore->GetValidationWeightTotal());
 
-      return static_cast<double>(sumSquareError) / static_cast<double>(totalWeight);
+      return static_cast<double>(sumSquareError);
    }
 };
 
@@ -310,10 +301,7 @@ public:
       FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-         cCompilerClasses,
-         cRuntimeClasses
-      );
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
@@ -409,14 +397,12 @@ public:
          pSampleScoresExit = pSampleScoresTrueEnd;
          goto one_last_loop;
       }
-      const FloatBig totalWeight = pBoosterCore->GetValidationWeightTotal();
 
-      EBM_ASSERT(0 < totalWeight);
-      EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
-         weightTotalDebug <= 1.001 * totalWeight);
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == totalWeight);
+      EBM_ASSERT(nullptr == pWeight || pBoosterCore->GetValidationWeightTotal() * 0.999 <= weightTotalDebug &&
+         weightTotalDebug <= 1.001 * pBoosterCore->GetValidationWeightTotal());
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == pBoosterCore->GetValidationWeightTotal());
 
-      return static_cast<double>(sumLogLoss) / static_cast<double>(totalWeight);
+      return static_cast<double>(sumLogLoss);
    }
 };
 
@@ -517,14 +503,12 @@ public:
          pSampleScoresExit = pSampleScoresTrueEnd;
          goto one_last_loop;
       }
-      const FloatBig totalWeight = pBoosterCore->GetValidationWeightTotal();
 
-      EBM_ASSERT(0 < totalWeight);
-      EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
-         weightTotalDebug <= 1.001 * totalWeight);
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == totalWeight);
+      EBM_ASSERT(nullptr == pWeight || pBoosterCore->GetValidationWeightTotal() * 0.999 <= weightTotalDebug &&
+         weightTotalDebug <= 1.001 * pBoosterCore->GetValidationWeightTotal());
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == pBoosterCore->GetValidationWeightTotal());
 
-      return static_cast<double>(sumLogLoss) / static_cast<double>(totalWeight);
+      return static_cast<double>(sumLogLoss);
    }
 };
 #endif // EXPAND_BINARY_LOGITS
@@ -621,14 +605,12 @@ public:
          pGradientsExit = pGradientsTrueEnd;
          goto one_last_loop;
       }
-      const FloatBig totalWeight = pBoosterCore->GetValidationWeightTotal();
 
-      EBM_ASSERT(0 < totalWeight);
-      EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
-         weightTotalDebug <= 1.001 * totalWeight);
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == totalWeight);
+      EBM_ASSERT(nullptr == pWeight || pBoosterCore->GetValidationWeightTotal() * 0.999 <= weightTotalDebug &&
+         weightTotalDebug <= 1.001 * pBoosterCore->GetValidationWeightTotal());
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == pBoosterCore->GetValidationWeightTotal());
 
-      return static_cast<double>(sumSquareError) / static_cast<double>(totalWeight);
+      return static_cast<double>(sumSquareError);
    }
 };
 
@@ -808,10 +790,7 @@ public:
    }
 };
 
-extern double ApplyTermUpdateValidation(
-   BoosterShell * const pBoosterShell, 
-   const size_t iTerm
-) {
+extern double ApplyTermUpdateValidation(BoosterShell * const pBoosterShell, const size_t iTerm) {
    LOG_0(Trace_Verbose, "Entered ApplyTermUpdateValidation");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -877,35 +856,16 @@ extern double ApplyTermUpdateValidation(
    }
 
    EBM_ASSERT(std::isnan(ret) || -k_epsilonLogLoss <= ret);
-   // comparing to max is a good way to check for +infinity without using infinity, which can be problematic on
-   // some compilers with some compiler settings.  Using <= helps avoid optimization away because the compiler
-   // might assume that nothing is larger than max if it thinks there's no +infinity
-   if(UNLIKELY(UNLIKELY(std::isnan(ret)) || UNLIKELY(std::numeric_limits<double>::max() <= ret))) {
-      // set the metric so high that this round of boosting will be rejected.  The worst metric is std::numeric_limits<FloatFast>::max(),
-      // Set it to that so that this round of boosting won't be accepted if our caller is using early stopping
-      ret = std::numeric_limits<double>::max();
-   } else {
-      if(IsClassification(cRuntimeClasses)) {
-         if(UNLIKELY(ret < 0)) {
-            // regression can't be negative since squares are pretty well insulated from ever doing that
+   if(UNLIKELY(/* NaN */ !LIKELY(0.0 <= ret))) {
+      // this also checks for NaN since NaN < anything is FALSE
 
-            // Multiclass can return small negative numbers, so we need to clean up the value retunred so that it isn't negative
+      // if we've overflowed to a NaN, then conver it to +inf since +inf is our general overflow marker
+      // if we've gotten a value that's slightly negative, which can happen for numeracy reasons, clip to zero
 
-            // binary classification can't return a negative number provided the log function
-            // doesn't ever return a negative number for numbers exactly equal to 1 or higher
-            // BUT we're going to be using or trying approximate log functions, and those might not
-            // be guaranteed to return a positive or zero number, so let's just always check for numbers less than zero and round up
-            EBM_ASSERT(IsMulticlass(cRuntimeClasses));
-
-            // because of floating point inexact reasons, ComputeSingleSampleLogLossMulticlass can return a negative number
-            // so correct this before we return.  Any negative numbers were really meant to be zero
-            ret = 0;
-         }
-      }
+      ret = std::isnan(ret) ? std::numeric_limits<double>::infinity() : double { 0 };
    }
    EBM_ASSERT(!std::isnan(ret));
-   EBM_ASSERT(!std::isinf(ret));
-   EBM_ASSERT(0 <= ret);
+   EBM_ASSERT(0.0 <= ret);
 
    LOG_0(Trace_Verbose, "Exited ApplyTermUpdateValidation");
 

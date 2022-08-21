@@ -824,14 +824,14 @@ SEXP ApplyTermUpdate_R(SEXP boosterHandleWrapped) {
    const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
    // we don't use boosterHandle in this function, so let ApplyTermUpdate check if it's null or invalid
 
-   double validationMetric;
-   const ErrorEbm err = ApplyTermUpdate(boosterHandle, &validationMetric);
+   double avgValidationMetric;
+   const ErrorEbm err = ApplyTermUpdate(boosterHandle, &avgValidationMetric);
    if(Error_None != err) {
       error("ApplyTermUpdate returned error code: %" ErrorEbmPrintf, err);
    }
 
    SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(validationMetric);
+   REAL(ret)[0] = static_cast<double>(avgValidationMetric);
    UNPROTECT(1);
    return ret;
 }

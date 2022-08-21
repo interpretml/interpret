@@ -34,23 +34,82 @@ extern double ApplyTermUpdateValidation(
    const size_t iTerm
 );
 
-static ErrorEbm ApplyTermUpdateInternal(
-   BoosterShell * const pBoosterShell,
-   double * const pValidationMetricReturn
-) {
-   LOG_0(Trace_Verbose, "Entered ApplyTermUpdateInternal");
+// we made this a global because if we had put this variable inside the BoosterCore object, then we would need to dereference that before 
+// getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
+// we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
+// times than desired, but we can live with that
+static int g_cLogApplyTermUpdate = 10;
 
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
+   BoosterHandle boosterHandle,
+   double * avgValidationMetricOut
+) {
    ErrorEbm error;
 
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   LOG_COUNTED_N(
+      &g_cLogApplyTermUpdate,
+      Trace_Info,
+      Trace_Verbose,
+      "ApplyTermUpdate: "
+      "boosterHandle=%p, "
+      "avgValidationMetricOut=%p"
+      ,
+      static_cast<void *>(boosterHandle),
+      static_cast<void *>(avgValidationMetricOut)
+   );
+
+   if(LIKELY(nullptr != avgValidationMetricOut)) {
+      // returning +inf means that boosting won't consider this to be an improvement.  After a few cycles
+      // it should exit with the last model that was good if the error was ignored (it shouldn't be ignored though)
+      *avgValidationMetricOut = std::numeric_limits<double>::infinity();
+   }
+
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
+   if(nullptr == pBoosterShell) {
+      // already logged
+      return Error_IllegalParamVal;
+   }
+
    const size_t iTerm = pBoosterShell->GetTermIndex();
-   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   if(BoosterShell::k_illegalTermIndex == iTerm) {
+      LOG_0(Trace_Error, "ERROR ApplyTermUpdate bad internal state.  No Term index set");
+      return Error_IllegalParamVal;
+   }
+
+   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   EBM_ASSERT(nullptr != pBoosterCore);
+   EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
+   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
+
+   pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
+
+   Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+
+   LOG_COUNTED_0(
+      pTerm->GetPointerCountLogEnterApplyTermUpdateMessages(),
+      Trace_Info,
+      Trace_Verbose,
+      "Entered ApplyTermUpdate"
+   );
+
+   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
+      // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  
+      // The term scores are a tensor with zero length array logits, which means for our representation that we 
+      // have zero items in the array total. Since we can predit the output with 100% accuracy, our log loss is 0.
+      if(nullptr != avgValidationMetricOut) {
+         *avgValidationMetricOut = 0.0;
+      }
+      LOG_COUNTED_0(
+         pTerm->GetPointerCountLogExitApplyTermUpdateMessages(),
+         Trace_Info,
+         Trace_Verbose,
+         "Exited ApplyTermUpdate. cClasses <= 1"
+      );
+      return Error_None;
+   }
 
    error = pBoosterShell->GetTermUpdate()->Expand(pTerm);
    if(Error_None != error) {
-      if(nullptr != pValidationMetricReturn) {
-         *pValidationMetricReturn = double { 0 };
-      }
       return error;
    }
 
@@ -82,7 +141,7 @@ static ErrorEbm ApplyTermUpdateInternal(
       ApplyTermUpdateTraining(pBoosterShell, iTerm);
    }
 
-   double modelMetric = 0.0;
+   double validationMetricAvg = 0.0;
    if(0 != pBoosterCore->GetValidationSet()->GetCountSamples()) {
       // if there is no validation set, it's pretty hard to know what the metric we'll get for our validation set
       // we could in theory return anything from zero to infinity or possibly, NaN (probably legally the best), but we return 0 here
@@ -95,18 +154,25 @@ static ErrorEbm ApplyTermUpdateInternal(
       // but it isn't guaranteed, so let's check for zero samples in the validation set this better way
       // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
-      modelMetric = ApplyTermUpdateValidation(pBoosterShell, iTerm);
+      validationMetricAvg = ApplyTermUpdateValidation(pBoosterShell, iTerm);
 
-      EBM_ASSERT(!std::isnan(modelMetric)); // NaNs can happen, but we should have converted them
-      EBM_ASSERT(!std::isinf(modelMetric)); // +infinity can happen, but we should have converted it
-      // both log loss and RMSE need to be above zero.  If we got a negative number due to floating point 
-      // instability we should have previously converted it to zero.
-      EBM_ASSERT(0.0 <= modelMetric);
+      EBM_ASSERT(!std::isnan(validationMetricAvg)); // NaNs can happen, but we should have cleaned them up
+      EBM_ASSERT(0.0 <= validationMetricAvg); // negatives can happen, but we should have cleaned them up
 
-      // modelMetric is either logloss (classification) or mean squared error (mse) (regression).  In either case we want to minimize it.
-      if(LIKELY(modelMetric < pBoosterCore->GetBestModelMetric())) {
+      const double totalWeight = static_cast<double>(pBoosterCore->GetValidationWeightTotal());
+      EBM_ASSERT(!std::isnan(totalWeight));
+      EBM_ASSERT(!std::isinf(totalWeight));
+      EBM_ASSERT(0 < totalWeight);
+      validationMetricAvg /= totalWeight; // if totalWeight < 1.0 then this can overflow to +inf
+
+      EBM_ASSERT(!std::isnan(validationMetricAvg)); // NaNs can happen, but we should have cleaned them up
+      EBM_ASSERT(0.0 <= validationMetricAvg); // negatives can happen, but we should have cleaned them up
+
+      // validationMetricAvg is either logloss (classification) or mean squared error (mse) (regression).  
+      // In either case we want to minimize it.
+      if(LIKELY(validationMetricAvg < pBoosterCore->GetBestModelMetric())) {
          // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
-         pBoosterCore->SetBestModelMetric(modelMetric);
+         pBoosterCore->SetBestModelMetric(validationMetricAvg);
 
          // TODO : in the future don't copy over all Tensors.  We only need to copy the ones that changed, which we can detect if we 
          // use a linked list and array lookup for the same data structure
@@ -115,9 +181,6 @@ static ErrorEbm ApplyTermUpdateInternal(
          do {
             error = pBoosterCore->GetBestModel()[iTermCopy]->Copy(*pBoosterCore->GetCurrentModel()[iTermCopy]);
             if(Error_None != error) {
-               if(nullptr != pValidationMetricReturn) {
-                  *pValidationMetricReturn = double { 0 };
-               }
                LOG_0(Trace_Verbose, "Exited ApplyTermUpdateInternal with memory allocation error in copy");
                return error;
             }
@@ -125,119 +188,22 @@ static ErrorEbm ApplyTermUpdateInternal(
          } while(iTermCopy != iTermCopyEnd);
       }
    }
-   if(nullptr != pValidationMetricReturn) {
-      *pValidationMetricReturn = modelMetric;
+   
+   if(nullptr != avgValidationMetricOut) {
+      *avgValidationMetricOut = validationMetricAvg;
    }
 
-   LOG_0(Trace_Verbose, "Exited ApplyTermUpdateInternal");
-   return Error_None;
-}
-
-// we made this a global because if we had put this variable inside the BoosterCore object, then we would need to dereference that before 
-// getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
-// we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
-// times than desired, but we can live with that
-static int g_cLogApplyTermUpdate = 10;
-
-// TODO: validationMetricOut should be an average
-EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
-   BoosterHandle boosterHandle,
-   double * validationMetricOut
-) {
    LOG_COUNTED_N(
-      &g_cLogApplyTermUpdate,
+      pTerm->GetPointerCountLogExitApplyTermUpdateMessages(),
       Trace_Info,
       Trace_Verbose,
-      "ApplyTermUpdate: "
-      "boosterHandle=%p, "
-      "validationMetricOut=%p"
-      ,
-      static_cast<void *>(boosterHandle),
-      static_cast<void *>(validationMetricOut)
+      "Exited ApplyTermUpdate: "
+      "validationMetricAvg=%le"
+      , 
+      validationMetricAvg
    );
 
-   ErrorEbm error;
-
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
-   if(nullptr == pBoosterShell) {
-      if(LIKELY(nullptr != validationMetricOut)) {
-         *validationMetricOut = 0.0;
-      }
-      // already logged
-      return Error_IllegalParamVal;
-   }
-
-   const size_t iTerm = pBoosterShell->GetTermIndex();
-   if(BoosterShell::k_illegalTermIndex == iTerm) {
-      if(LIKELY(nullptr != validationMetricOut)) {
-         *validationMetricOut = 0.0;
-      }
-      LOG_0(Trace_Error, "ERROR ApplyTermUpdate bad internal state.  No Term index set");
-      return Error_IllegalParamVal;
-   }
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   EBM_ASSERT(nullptr != pBoosterCore);
-   EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
-
-   LOG_COUNTED_0(
-      pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogEnterApplyTermUpdateMessages(),
-      Trace_Info,
-      Trace_Verbose,
-      "Entered ApplyTermUpdate"
-   );
-
-   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
-      // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The term scores are a tensor with zero 
-      // length array logits, which means for our representation that we have zero items in the array total.
-      // since we can predit the output with 100% accuracy, our log loss is 0.
-      if(nullptr != validationMetricOut) {
-         *validationMetricOut = 0.0;
-      }
-      pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
-      LOG_COUNTED_0(
-         pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitApplyTermUpdateMessages(),
-         Trace_Info,
-         Trace_Verbose,
-         "Exited ApplyTermUpdate. cClasses <= 1"
-      );
-      return Error_None;
-   }
-
-   error = ApplyTermUpdateInternal(
-      pBoosterShell,
-      validationMetricOut
-   );
-
-   pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
-
-   if(Error_None != error) {
-      LOG_N(Trace_Warning, "WARNING ApplyTermUpdate: return=%" ErrorEbmPrintf, error);
-   }
-
-   if(nullptr != validationMetricOut) {
-      EBM_ASSERT(!std::isnan(*validationMetricOut)); // NaNs can happen, but we should have edited those before here
-      EBM_ASSERT(!std::isinf(*validationMetricOut)); // infinities can happen, but we should have edited those before here
-      // both log loss and RMSE need to be above zero.  We previously zero any values below zero, which can happen due to floating point instability.
-      EBM_ASSERT(0.0 <= *validationMetricOut);
-      LOG_COUNTED_N(
-         pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitApplyTermUpdateMessages(),
-         Trace_Info,
-         Trace_Verbose,
-         "Exited ApplyTermUpdate: "
-         "*validationMetricOut=%le"
-         , 
-         *validationMetricOut
-      );
-   } else {
-      LOG_COUNTED_0(
-         pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitApplyTermUpdateMessages(),
-         Trace_Info,
-         Trace_Verbose,
-         "Exited ApplyTermUpdate"
-      );
-   }
-   return error;
+   return Error_None;
 }
 
 // we made this a global because if we had put this variable inside the BoosterCore object, then we would need to dereference that before 

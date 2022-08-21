@@ -394,7 +394,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
 );
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
    BoosterHandle boosterHandle,
-   double * validationMetricOut
+   double * avgValidationMetricOut
 );
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
    BoosterHandle boosterHandle, 

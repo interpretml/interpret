@@ -1202,9 +1202,9 @@ class EBMUtils:
                         booster.set_term_update(term_idx, noisy_update_tensor)
 
 
-                    curr_metric = booster.apply_term_update()
+                    cur_metric = booster.apply_term_update()
 
-                    min_metric = min(curr_metric, min_metric)
+                    min_metric = min(cur_metric, min_metric)
 
                 # TODO PK this early_stopping_tolerance is a little inconsistent
                 #      since it triggers intermittently and only re-triggers if the

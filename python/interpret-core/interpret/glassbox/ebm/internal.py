@@ -1001,7 +1001,7 @@ class Native:
         self._unsafe.ApplyTermUpdate.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
-            # double * validationMetricOut
+            # double * avgValidationMetricOut
             ct.POINTER(ct.c_double),
         ]
         self._unsafe.ApplyTermUpdate.restype = ct.c_int32
@@ -1260,16 +1260,16 @@ class Booster(AbstractContextManager):
 
         native = Native.get_native_singleton()
 
-        metric_output = ct.c_double(0.0)
+        avg_validation_metric = ct.c_double(np.inf)
         return_code = native._unsafe.ApplyTermUpdate(
             self._booster_handle, 
-            ct.byref(metric_output),
+            ct.byref(avg_validation_metric),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "ApplyTermUpdate")
 
         # log.debug("Boosting step end")
-        return metric_output.value
+        return avg_validation_metric.value
 
     def get_best_model(self):
         model = []
