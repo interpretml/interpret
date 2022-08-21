@@ -153,25 +153,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
 
-   if(size_t { 0 } == pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
-      // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
-      LOG_0(Trace_Info, "INFO CalcInteractionStrength zero samples");
-      if(nullptr != avgInteractionStrengthOut) {
-         *avgInteractionStrengthOut = 0.0;
-      }
-      return Error_None;
-   }
-   // GetCountClasses cannot be zero if there is 1 or more samples
-   EBM_ASSERT(ptrdiff_t { 0 } != pInteractionCore->GetCountClasses());
-
-   if(ptrdiff_t { 1 } == pInteractionCore->GetCountClasses()) {
-      LOG_0(Trace_Info, "INFO CalcInteractionStrength target with 1 class perfectly predicts the target");
-      if(nullptr != avgInteractionStrengthOut) {
-         *avgInteractionStrengthOut = 0.0;
-      }
-      return Error_None;
-   }
-
    // TODO : we NEVER use the hessian term (currently) in GradientPair when calculating interaction scores, but we're spending time calculating 
    // it, and it's taking up precious memory.  We should eliminate the hessian term HERE in our datastructures OR we should think whether we can 
    // use the hessian as part of the gain function!!!
@@ -234,13 +215,32 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       ++iDimension;
    } while(cDimensions != iDimension);
 
+   if(size_t { 0 } == pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
+      // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
+      LOG_0(Trace_Info, "INFO CalcInteractionStrength zero samples");
+      if(nullptr != avgInteractionStrengthOut) {
+         *avgInteractionStrengthOut = 0.0;
+      }
+      return Error_None;
+   }
+
    const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
+
+   // cClasses cannot be zero if there is 1 or more samples
+   EBM_ASSERT(ptrdiff_t { 0 } != cClasses);
+
+   if(ptrdiff_t { 1 } == cClasses) {
+      LOG_0(Trace_Info, "INFO CalcInteractionStrength target with 1 class perfectly predicts the target");
+      if(nullptr != avgInteractionStrengthOut) {
+         *avgInteractionStrengthOut = 0.0;
+      }
+      return Error_None;
+   }
+
    const bool bClassification = IsClassification(cClasses);
    const size_t cScores = GetCountScores(cClasses);
 
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // checked in CreateInteractionDetector
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // checked in CreateInteractionDetector
-
    const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinFast, cTensorBins)) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTensorBins)");
@@ -272,6 +272,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    }
    const size_t cTotalBinsBig = cTensorBins + cAuxillaryBins;
 
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // checked in CreateInteractionDetector
    const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTotalBinsBig)");
@@ -284,7 +285,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       // already logged
       return Error_OutOfMemory;
    }
-   aBinsBig->Zero(cBytesPerBinBig, cAuxillaryBins, cTensorBins);
 
 #ifndef NDEBUG
    const unsigned char * const pBinsBigEndDebug = reinterpret_cast<unsigned char *>(aBinsBig) + cBytesBufferBig;
@@ -295,7 +295,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    memcpy(aBinsBig, aBinsFast, cBytesBufferFast);
 
 
+
    // TODO: we can exit here back to python to allow caller modification to our bins
+
 
 
 #ifndef NDEBUG
@@ -309,6 +311,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 #endif // NDEBUG
 
    BinBase * aAuxiliaryBins = IndexBin(cBytesPerBinBig, aBinsBig, cTensorBins);
+   aAuxiliaryBins->Zero(cBytesPerBinBig, cAuxillaryBins);
 
    TensorTotalsBuild(
       cClasses,

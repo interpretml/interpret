@@ -49,12 +49,8 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-         cCompilerClasses,
-         cRuntimeClasses
-      );
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
-      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
 
       const size_t cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
@@ -281,11 +277,7 @@ public:
          do {
             const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-            auto * const pBin = IndexBin(
-               cBytesPerBin,
-               aBins,
-               iTensorBin
-            );
+            auto * const pBin = IndexBin(cBytesPerBin, aBins, iTensorBin);
 
             ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetBinsFastEndDebug());
             const size_t cOccurences = *pCountOccurrences;

@@ -30,6 +30,10 @@
 #include "DataSetBoosting.hpp"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
 #include "SamplingSet.hpp"
+
+#include "HistogramTargetEntry.hpp"
+#include "HistogramBucket.hpp"
+
 #include "TreeSweep.hpp"
 
 #include "BoosterShell.hpp"
@@ -306,6 +310,12 @@ ErrorEbm BoosterCore::Create(
    LOG_0(Trace_Info, "BoosterCore::Create done feature processing");
 
    const bool bClassification = IsClassification(cClasses);
+
+   if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)) {
+      LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsOverflowBinSize overflow");
+      return Error_OutOfMemory;
+   }
+
    size_t cBytesArrayEquivalentSplitMax = 0;
 
    EBM_ASSERT(nullptr == pBoosterCore->m_apCurrentTermTensors);

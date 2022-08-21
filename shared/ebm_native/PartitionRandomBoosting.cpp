@@ -59,10 +59,7 @@ public:
       ErrorEbm error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-         cCompilerClasses,
-         pBoosterCore->GetCountClasses()
-      );
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pBoosterCore->GetCountClasses());
 
       const size_t cScores = GetCountScores(cClasses);
       EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
@@ -256,14 +253,14 @@ public:
          }
 
          // the first dimension is special.  we put byte until next item into it instead of counts remaining
-         const Feature * const pFirstFeature = *ppFeature3;
+         const Feature * const pFeature = *ppFeature3;
          ++ppFeature3;
-         const size_t cFirstBins = pFirstFeature->GetCountBins();
-         EBM_ASSERT(size_t { 1 } <= cFirstBins); // we don't boost on empty training sets
-         if(size_t { 1 } < cFirstBins) {
+         const size_t cBins = pFeature->GetCountBins();
+         EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
+         if(size_t { 1 } < cBins) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
-            const size_t cFirstSlices = EbmMin(cLeavesMax, cFirstBins);
+            const size_t cFirstSlices = EbmMin(cLeavesMax, cBins);
             cBytesCollapsedTensor3 = cBytesPerBin * cFirstSlices;
 
             pcBytesInSliceEnd = acItemsInNextSliceOrBytesInCurrentSlice + cFirstSlices;
