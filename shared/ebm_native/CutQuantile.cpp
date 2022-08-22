@@ -2045,11 +2045,10 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeBasics(
 template<typename T>
 static void FillTiebreakers(
    const bool bSymmetryReversal,
-   RandomDeterministic * const pRandomDeterministic,
+   RandomDeterministic * const pRng,
    const size_t cItems,
    T * const aItems
 ) noexcept {
-
    // Occasionally there will be ties in our priority calculation. We need a repeatable method to break
    // those ties so that our outputs are repetable in a consistent cross platform way.  We also want to have symmetry
    // such that if we reversed the order of our input values, we'd get the same cuts.  This isn't possible
@@ -2080,7 +2079,7 @@ static void FillTiebreakers(
    // If the center values was flipped, then you'd see a 1 in the opposite direction, which would screw up our
    // symmetry
    
-   EBM_ASSERT(nullptr != pRandomDeterministic);
+   EBM_ASSERT(nullptr != pRng);
    EBM_ASSERT(size_t { 1 } <= cItems);
    EBM_ASSERT(nullptr != aItems);
 
@@ -2097,7 +2096,7 @@ static void FillTiebreakers(
       // bSymmetryReversal helps us ensure symmetry because we pick true or false based on a fingerprint of the original 
       // values so if the values are flipped in a transform, then we'll flip bSymmetryReversal and get the same 
       // cuts mirror on the opposite sides from the ends
-      const bool bRandom = pRandomDeterministic->NextBool() != bSymmetryReversal; // this is an XOR for bools
+      const bool bRandom = pRng->NextBool() != bSymmetryReversal; // this is an XOR for bools
 
       const ptrdiff_t tiebreakerMinusOne = tiebreaker - ptrdiff_t { 1 };
       const ptrdiff_t tiebreaker1 = UNPREDICTABLE(bRandom) ? tiebreaker : tiebreakerMinusOne;
@@ -2745,10 +2744,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
          // XOR bSymmetryReversal with a random number here
          const bool bSymmetryReversal = DetermineSymmetricDirection(cSamples, aFeatureVals);
 
-         RandomDeterministic randomDeterministic;
-         randomDeterministic.Initialize(seed);
+         RandomDeterministic rng;
+         rng.Initialize(seed);
 
-         FillTiebreakers(bSymmetryReversal, &randomDeterministic, cCuttingRanges, aCuttingRange);
+         FillTiebreakers(bSymmetryReversal, &rng, cCuttingRanges, aCuttingRange);
 
          FillCuttingRangeBasics(cSamples, aFeatureVals, cUncuttableRangeLengthMin, cSamplesBinMin, cCuttingRanges, aCuttingRange);
          FillCuttingRangeNeighbours(cSamples, aFeatureVals, cCuttingRanges, aCuttingRange);
@@ -2822,7 +2821,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
                   std::set<CutPoint *, CompareCutPoint> fillTheVoids;
 #endif // NEVER
 
-                  FillTiebreakers(bSymmetryReversal, &randomDeterministic, cRanges - size_t { 1 }, aCuts + 1);
+                  FillTiebreakers(bSymmetryReversal, &rng, cRanges - size_t { 1 }, aCuts + 1);
 
                   error = TradeCutSegment(
                      &bestCuts,
@@ -2979,7 +2978,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
                               // uncuttable ranges, AND the center of the cutable ranges.  Our final fallback
                               // is to resort to our symmetric determination (PLUS randomness)
 
-                              bool bLocalSymmetryReversal = randomDeterministic.NextBool() != bSymmetryReversal;
+                              bool bLocalSymmetryReversal = rng.NextBool() != bSymmetryReversal;
                               iResult = UNPREDICTABLE(bLocalSymmetryReversal) ? iStartCur : iStartNext;
                            }
                         }

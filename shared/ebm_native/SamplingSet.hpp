@@ -35,7 +35,7 @@ class InnerBag final {
 
    // we take owernship of the aWeights array
    static InnerBag * GenerateSingleInnerBag(
-      RandomDeterministic * const pRandomDeterministic,
+      RandomDeterministic * const pRng,
       const DataSetBoosting * const pOriginDataSet,
       const FloatFast * const aWeights
    );
@@ -64,7 +64,7 @@ public:
    }
 
    static InnerBag ** GenerateInnerBags(
-      RandomDeterministic * const pRandomDeterministic,
+      RandomDeterministic * const pRng,
       const DataSetBoosting * const pOriginDataSet, 
       const FloatFast * const aWeights,
       const size_t cInnerBags

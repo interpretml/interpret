@@ -113,14 +113,18 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
    BagEbm * pSampleReplicationOut = bagOut;
    if(nullptr != rng) {
       RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rng);
+      // the compiler understands the internal state of this RNG and can locate its internal state into CPU registers
+      RandomDeterministic cpuRng;
+      cpuRng.Initialize(*pRng); // move the RNG from memory into CPU registers
       do {
-         const size_t iRandom = pRng->NextFast(cSamplesRemaining);
+         const size_t iRandom = cpuRng.NextFast(cSamplesRemaining);
          const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
          cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
          *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbm { 1 } : BagEbm { -1 };
          ++pSampleReplicationOut;
          --cSamplesRemaining;
       } while(0 != cSamplesRemaining);
+      pRng->Initialize(cpuRng); // move the RNG from the CPU registers back into memory
    } else {
       try {
          RandomNondeterministic<size_t> randomGenerator;
@@ -260,16 +264,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
       LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified cValidationSamples < cClasses");
    }
 
-   RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
-   RandomDeterministic rngInternal;
-   if(nullptr == pRng) {
+   // the compiler understands the internal state of this RNG and can locate its internal state into CPU registers
+   RandomDeterministic cpuRng;
+   if(nullptr == rng) {
       // SampleWithoutReplacementStratified is not called when building a differentially private model, so
       // we can use low-quality non-determinism.  Generate a non-deterministic seed
       try {
          RandomNondeterministic<uint64_t> randomGenerator;
          const uint64_t seed = randomGenerator.Next(std::numeric_limits<uint64_t>::max());
-         rngInternal.Initialize(seed);
-         pRng = &rngInternal;
+         cpuRng.Initialize(seed);
       } catch(const std::bad_alloc &) {
          LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified Out of memory in std::random_device");
          return Error_OutOfMemory;
@@ -277,6 +280,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
          LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified Unknown error in std::random_device");
          return Error_UnexpectedInternal;
       }
+   } else {
+      RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
+      cpuRng.Initialize(*pRng); // move the RNG from memory into CPU registers
    }
 
    const size_t targetSamplingCountsSize = sizeof(TargetSamplingCounts) * cClasses;
@@ -413,7 +419,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
 
       // If more than one class has the same max improvement, randomly select between the classes
       // to give the leftover to.
-      size_t iRandom = pRng->NextFast(mostImprovedClassesSize);
+      size_t iRandom = cpuRng.NextFast(mostImprovedClassesSize);
       size_t classToImprove = *(pMostImprovedClasses + iRandom);
       (pTargetSamplingCounts + classToImprove)->m_cTraining++;
    }
@@ -432,20 +438,25 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
 #endif
 
    for (size_t iSample = 0; iSample < cSamples; iSample++) {
-      TargetSamplingCounts* pTargetSample = pTargetSamplingCounts + targets[iSample];
+      TargetSamplingCounts * pTargetSample = pTargetSamplingCounts + targets[iSample];
       EBM_ASSERT(pTargetSample->m_cTotalRemaining > 0);
-      const size_t iRandom = pRng->NextFast(pTargetSample->m_cTotalRemaining);
+      const size_t iRandom = cpuRng.NextFast(pTargetSample->m_cTotalRemaining);
       const bool bTrainingSample = UNPREDICTABLE(iRandom < pTargetSample->m_cTraining);
 
       if (UNPREDICTABLE(bTrainingSample)) {
          --pTargetSample->m_cTraining;
-         bagOut[iSample] = BagEbm{ 1 };
+         bagOut[iSample] = BagEbm { 1 };
       }
       else {
-         bagOut[iSample] = BagEbm{ -1 };
+         bagOut[iSample] = BagEbm { -1 };
       }
 
       --pTargetSample->m_cTotalRemaining;
+   }
+
+   if(nullptr != rng) {
+      RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
+      pRng->Initialize(cpuRng); // move the RNG from memory into CPU registers
    }
 
 #ifndef NDEBUG

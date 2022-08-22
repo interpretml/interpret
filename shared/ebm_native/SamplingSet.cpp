@@ -24,13 +24,13 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 InnerBag * InnerBag::GenerateSingleInnerBag(
-   RandomDeterministic * const pRandomDeterministic,
+   RandomDeterministic * const pRng,
    const DataSetBoosting * const pOriginDataSet,
    const FloatFast * const aWeights
 ) {
    LOG_0(Trace_Verbose, "Entered InnerBag::GenerateSingleInnerBag");
 
-   EBM_ASSERT(nullptr != pRandomDeterministic);
+   EBM_ASSERT(nullptr != pRng);
    EBM_ASSERT(nullptr != pOriginDataSet);
 
    InnerBag * pRet = EbmMalloc<InnerBag>();
@@ -64,10 +64,14 @@ InnerBag * InnerBag::GenerateSingleInnerBag(
       aCountOccurrences[i] = size_t { 0 };
    }
 
+   // the compiler understands the internal state of this RNG and can locate its internal state into CPU registers
+   RandomDeterministic cpuRng;
+   cpuRng.Initialize(*pRng); // move the RNG from memory into CPU registers
    for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-      const size_t iCountOccurrences = pRandomDeterministic->NextFast(cSamples);
+      const size_t iCountOccurrences = cpuRng.NextFast(cSamples);
       ++aCountOccurrences[iCountOccurrences];
    }
+   pRng->Initialize(cpuRng); // move the RNG from the CPU registers back into memory
 
    FloatBig total;
    if(nullptr == aWeights) {
@@ -197,14 +201,14 @@ void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag ** const apInnerB
 WARNING_POP
 
 InnerBag ** InnerBag::GenerateInnerBags(
-   RandomDeterministic * const pRandomDeterministic,
+   RandomDeterministic * const pRng,
    const DataSetBoosting * const pOriginDataSet, 
    const FloatFast * const aWeights,
    const size_t cInnerBags
 ) {
    LOG_0(Trace_Info, "Entered InnerBag::GenerateInnerBags");
 
-   EBM_ASSERT(nullptr != pRandomDeterministic);
+   EBM_ASSERT(nullptr != pRng);
    EBM_ASSERT(nullptr != pOriginDataSet);
 
    const size_t cInnerBagsAfterZero = 0 == cInnerBags ? size_t { 1 } : cInnerBags;
@@ -229,7 +233,7 @@ InnerBag ** InnerBag::GenerateInnerBags(
       apInnerBags[0] = pSingleInnerBag;
    } else {
       for(size_t iInnerBag = 0; iInnerBag < cInnerBags; ++iInnerBag) {
-         InnerBag * const pSingleInnerBag = GenerateSingleInnerBag(pRandomDeterministic, pOriginDataSet, aWeights);
+         InnerBag * const pSingleInnerBag = GenerateSingleInnerBag(pRng, pOriginDataSet, aWeights);
          if(UNLIKELY(nullptr == pSingleInnerBag)) {
             LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == pSingleInnerBag");
             FreeInnerBags(cInnerBags, apInnerBags);

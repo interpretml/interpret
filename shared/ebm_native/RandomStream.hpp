@@ -55,19 +55,12 @@ class RandomDeterministic final {
 
    INLINE_ALWAYS uint_fast32_t Rand32() {
       // if this gets properly optimized, it gets converted into 4 machine instructions: imulq, iaddq, iaddq, and rorq
-      uint64_t state1 = m_state1;
-      uint64_t state2 = m_state2;
-
-      state1 *= state1;
-      state2 += m_stateSeedConst;
-      m_state2 = state2;
-      state1 += state2;
-
-      // this should get optimized to a single rorq assembly instruction
-      state1 = (state1 >> 32) | (state1 << 32);
-      m_state1 = state1;
+      m_state1 *= m_state1;
+      m_state2 += m_stateSeedConst;
+      m_state1 += m_state2;
+      m_state1 = (m_state1 >> 32) | (m_state1 << 32); // this should get optimized to a single rorq instruction
       // chop it to 32 bits if it was given to us with more bits
-      return static_cast<uint_fast32_t>(static_cast<uint32_t>(state1));
+      return static_cast<uint_fast32_t>(static_cast<uint32_t>(m_state1));
    }
 
    static uint_fast64_t GetOneTimePadConversion(uint_fast64_t seed);
