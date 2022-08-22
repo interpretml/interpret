@@ -313,7 +313,7 @@ public:
       const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
-      const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
+      const StorageDataType maskBits = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMax);
 
       FloatFast sumLogLoss = 0;
       const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(iTerm);
@@ -337,13 +337,13 @@ public:
          // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
-         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
+         StorageDataType iTensorBinCombined = *pInputData;
          ++pInputData;
          do {
             size_t targetData = static_cast<size_t>(*pTargetData);
             ++pTargetData;
 
-            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
             const FloatFast * pUpdateScore = &aUpdateScores[iTensorBin * cScores];
             FloatFast itemExp = 0;
             FloatFast sumExp = 0;
@@ -441,7 +441,7 @@ public:
       const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
-      const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
+      const StorageDataType maskBits = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMax);
 
       FloatFast sumLogLoss = 0;
       const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(iTerm);
@@ -465,13 +465,13 @@ public:
          // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
-         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
+         StorageDataType iTensorBinCombined = *pInputData;
          ++pInputData;
          do {
             size_t targetData = static_cast<size_t>(*pTargetData);
             ++pTargetData;
 
-            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
 
             const FloatFast updateScore = aUpdateScores[iTensorBin];
             // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
@@ -547,7 +547,7 @@ public:
       const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
-      const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
+      const StorageDataType maskBits = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMax);
 
       FloatFast sumSquareError = 0;
       // no hessians for regression
@@ -571,10 +571,10 @@ public:
          // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
-         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
+         StorageDataType iTensorBinCombined = *pInputData;
          ++pInputData;
          do {
-            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
 
             const FloatFast updateScore = aUpdateScores[iTensorBin];
             // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed

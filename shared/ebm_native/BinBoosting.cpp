@@ -227,7 +227,7 @@ public:
       const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
-      const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
+      const StorageDataType maskBits = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMax);
       EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
 
@@ -272,10 +272,11 @@ public:
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
-         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
+         StorageDataType iTensorBinCombined = *pInputData;
          ++pInputData;
          do {
-            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            // TODO: we should assert at least that we can convert to size_t after the shift
+            const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
 
             auto * const pBin = IndexBin(cBytesPerBin, aBins, iTensorBin);
 
