@@ -107,7 +107,7 @@ make_dataset <- function(n_classes, X, y, max_bins, col_names) {
       cuts[[col_name]] <- feature_cuts
 
       # WARNING: bin_indexes is modified in-place
-      bin_feature(X_col, feature_cuts, bin_indexes)
+      discretize(X_col, feature_cuts, bin_indexes)
 
       n_bins = length(feature_cuts) + 3
       is_missing <- TRUE
@@ -130,7 +130,7 @@ make_dataset <- function(n_classes, X, y, max_bins, col_names) {
       feature_cuts <- cuts[[col_name]]
 
       # WARNING: bin_indexes is modified in-place
-      bin_feature(X_col, feature_cuts, bin_indexes)
+      discretize(X_col, feature_cuts, bin_indexes)
 
       n_bins = length(feature_cuts) + 3
       is_missing <- TRUE

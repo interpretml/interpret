@@ -1656,13 +1656,13 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     max_feature_val = np.nanmax(X_col)
                     feature_type_given = None if self.feature_types is None else self.feature_types[feature_idx]
                     cuts = _cut_continuous(native, X_col, feature_type_given, self.binning, max_bins, self.min_samples_bin)
-                    bin_indexes = native.bin_feature(X_col, cuts)
+                    bin_indexes = native.discretize(X_col, cuts)
                     feature_bin_weights = np.bincount(bin_indexes, weights=sample_weight, minlength=len(cuts) + 3)
                     feature_bin_weights = feature_bin_weights.astype(np.float64, copy=False)
 
                     n_cuts = native.get_histogram_cut_count(X_col)
                     histogram_cuts = native.cut_uniform(X_col, n_cuts)
-                    bin_indexes = native.bin_feature(X_col, histogram_cuts)
+                    bin_indexes = native.discretize(X_col, histogram_cuts)
                     feature_histogram_counts = np.bincount(bin_indexes, minlength=len(histogram_cuts) + 3)
                     feature_histogram_counts = feature_histogram_counts.astype(np.int64, copy=False)
 
@@ -1789,7 +1789,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         # X_col could be a slice that has a stride.  We need contiguous for caling into C
                         X_col = X_col.copy()
 
-                    X_col = native.bin_feature(X_col, bins)
+                    X_col = native.discretize(X_col, bins)
 
                 X_binned[:, feature_idx] = X_col
 
@@ -1918,7 +1918,7 @@ def bin_native(
             n_bins = 1 if len(feature_bins) == 0 else (max(feature_bins.values()) + 1)
         else:
             # continuous feature
-            X_col = native.bin_feature(X_col, feature_bins)
+            X_col = native.discretize(X_col, feature_bins)
             n_bins = len(feature_bins) + 2
 
         if bad is not None:
@@ -1960,7 +1960,7 @@ def bin_native(
             n_bins = 1 if len(feature_bins) == 0 else (max(feature_bins.values()) + 1)
         else:
             # continuous feature
-            X_col = native.bin_feature(X_col, feature_bins)
+            X_col = native.discretize(X_col, feature_bins)
             n_bins = len(feature_bins) + 2
 
         if bad is not None:
@@ -2069,7 +2069,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 bad = bad != _none_ndarray
 
             if not X_col.flags.c_contiguous:
-                # we requrested this feature, so at some point we're going to call bin_feature, 
+                # we requrested this feature, so at some point we're going to call discretize, 
                 # which requires contiguous memory
                 X_col = X_col.copy()
 
@@ -2087,7 +2087,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                             bin_indexes = binning_completed[level_idx]
                             if bin_indexes is None:
                                 cuts = bin_levels[level_idx]
-                                bin_indexes = native.bin_feature(X_col, cuts)
+                                bin_indexes = native.discretize(X_col, cuts)
                                 if bad is not None:
                                     bin_indexes[bad] = -1
                                 binning_completed[level_idx] = bin_indexes

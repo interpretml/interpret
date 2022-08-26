@@ -23,7 +23,7 @@ cut_quantile <- function(
    return(cuts_lower_bound_inclusive)
 }
 
-bin_feature <- function(X_col, cuts_lower_bound_inclusive, bin_indexes_out) {
+discretize <- function(X_col, cuts_lower_bound_inclusive, bin_indexes_out) {
    X_col <- as.double(X_col)
    cuts_lower_bound_inclusive <- as.double(cuts_lower_bound_inclusive)
    stopifnot(is.double(bin_indexes_out))
@@ -33,6 +33,6 @@ bin_feature <- function(X_col, cuts_lower_bound_inclusive, bin_indexes_out) {
    # 5.9.10 Named objects and copying [https://cran.r-project.org/doc/manuals/R-exts.html#Named-objects-and-copying]
    # we modify bin_indexes_out to avoid extra allocations in the future where we might allocate a large vector
    # and fill it in prior to passing it into our InitializeBoosting functions
-   result <- .Call(BinFeature_R, X_col, cuts_lower_bound_inclusive, bin_indexes_out)
+   result <- .Call(Discretize_R, X_col, cuts_lower_bound_inclusive, bin_indexes_out)
    return(NULL)
 }

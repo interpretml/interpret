@@ -23,7 +23,7 @@ def test_hist():
     n_cuts = native.get_histogram_cut_count(X_col)
 
     cuts = native.cut_uniform(X_col, n_cuts)
-    bin_indexes = native.bin_feature(X_col, cuts)
+    bin_indexes = native.discretize(X_col, cuts)
     bin_counts = np.bincount(bin_indexes, minlength=len(cuts) + 2)
     edges = np.concatenate(([np.nanmin(X_col)], cuts, [np.nanmax(X_col)]))
 
@@ -42,7 +42,7 @@ def test_cut_winsorized():
     native = Native.get_native_singleton()
 
     cuts = native.cut_winsorized(X_col, 10)
-    bin_indexes = native.bin_feature(X_col, cuts)
+    bin_indexes = native.discretize(X_col, cuts)
     bin_counts = np.bincount(bin_indexes, minlength=len(cuts) + 2)
 
     assert len(cuts) == 10

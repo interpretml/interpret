@@ -296,7 +296,7 @@ SEXP CutQuantile_R(SEXP featureVals, SEXP minSamplesBin, SEXP isRounded, SEXP co
    return ret;
 }
 
-SEXP BinFeature_R(SEXP featureVals, SEXP cutsLowerBoundInclusive, SEXP binIndexesOut) {
+SEXP Discretize_R(SEXP featureVals, SEXP cutsLowerBoundInclusive, SEXP binIndexesOut) {
    EBM_ASSERT(nullptr != featureVals);
    EBM_ASSERT(nullptr != cutsLowerBoundInclusive);
    EBM_ASSERT(nullptr != binIndexesOut);
@@ -308,13 +308,13 @@ SEXP BinFeature_R(SEXP featureVals, SEXP cutsLowerBoundInclusive, SEXP binIndexe
    if(SAFE_FLOAT64_AS_INT64_MAX - 2 < cCuts) {
       // if the number of cuts is low enough, we don't need to check if the bin indexes below exceed our safe float max
       // the highest bin index is +2 from the number of cuts, although the # of bins is 1 higher but we're ok with that
-      error("BinFeature_R SAFE_FLOAT64_AS_INT64_MAX - 2 < cCuts");
+      error("Discretize_R SAFE_FLOAT64_AS_INT64_MAX - 2 < cCuts");
    }
    const double * const aCutsLowerBoundInclusive = REAL(cutsLowerBoundInclusive);
 
    const IntEbm cBinIndexesOut = CountDoubles(binIndexesOut);
    if(cSamples != cBinIndexesOut) {
-      error("BinFeature_R cSamples != cBinIndexesOut");
+      error("Discretize_R cSamples != cBinIndexesOut");
    }
 
    if(0 != cSamples) {
@@ -322,9 +322,9 @@ SEXP BinFeature_R(SEXP featureVals, SEXP cutsLowerBoundInclusive, SEXP binIndexe
          reinterpret_cast<IntEbm *>(R_alloc(static_cast<size_t>(cSamples), static_cast<int>(sizeof(IntEbm))));
       EBM_ASSERT(nullptr != aiBins); // this can't be nullptr since R_alloc uses R error handling
 
-      const ErrorEbm err = BinFeature(cSamples, aFeatureVals, cCuts, aCutsLowerBoundInclusive, aiBins);
+      const ErrorEbm err = Discretize(cSamples, aFeatureVals, cCuts, aCutsLowerBoundInclusive, aiBins);
       if(Error_None != err) {
-         error("BinFeature returned error code: %" ErrorEbmPrintf, err);
+         error("Discretize returned error code: %" ErrorEbmPrintf, err);
       }
 
       double * pBinIndexesOut = REAL(binIndexesOut);
@@ -1065,7 +1065,7 @@ SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexe
 static const R_CallMethodDef g_exposedFunctions[] = {
    { "GenerateSeed_R", (DL_FUNC)&GenerateSeed_R, 2 },
    { "CutQuantile_R", (DL_FUNC)&CutQuantile_R, 4 },
-   { "BinFeature_R", (DL_FUNC)&BinFeature_R, 3 },
+   { "Discretize_R", (DL_FUNC)&Discretize_R, 3 },
    { "MeasureDataSetHeader_R", (DL_FUNC)&MeasureDataSetHeader_R, 3 },
    { "MeasureFeature_R", (DL_FUNC)&MeasureFeature_R, 5 },
    { "MeasureClassificationTarget_R", (DL_FUNC)&MeasureClassificationTarget_R, 2 },

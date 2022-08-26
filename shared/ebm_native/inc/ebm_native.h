@@ -242,7 +242,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SuggestGraphBounds(
    double * highGraphBoundOut
 );
 
-EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION BinFeature(
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION Discretize(
    IntEbm countSamples,
    const double * featureVals,
    IntEbm countCuts,

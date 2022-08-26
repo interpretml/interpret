@@ -151,7 +151,7 @@ ebm_predict_proba <- function (model, X) {
       X_col <- X[, i_feature]
 
       # WARNING: bin_indexes is modified in-place
-      bin_feature(X_col, model$cuts[[col_name]], bin_indexes)
+      discretize(X_col, model$cuts[[col_name]], bin_indexes)
 
       term_scores <- model$term_scores[[col_name]]
       update_scores <- term_scores[bin_indexes + 1]

@@ -128,7 +128,7 @@ namespace DEFINED_ZONE_NAME {
 //       transpose_8192 = 6.26907
 //       transpose_16384 = 7.73406
 
-EBM_API_BODY IntEbm EBM_CALLING_CONVENTION BinFeatureOneSample(
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION DiscretizeOneSample(
    const double featureVal,
    IntEbm countCuts,
    const double * cutsLowerBoundInclusive
@@ -215,10 +215,10 @@ EBM_API_BODY IntEbm EBM_CALLING_CONVENTION BinFeatureOneSample(
 }
 
 // don't bother using a lock here.  We don't care if an extra log message is written out due to thread parallism
-static int g_cLogEnterBinFeature = 25;
-static int g_cLogExitBinFeature = 25;
+static int g_cLogEnterDiscretize = 25;
+static int g_cLogExitDiscretize = 25;
 
-EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
    IntEbm countSamples,
    const double * featureVals,
    IntEbm countCuts,
@@ -239,7 +239,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
    //
    // this function has exactly the same behavior as numpy.digitize, including the lower bound inclusive semantics
    
-   // TODO: we want this function super-fast to handle the case where someone calls BinFeature repeatedly
+   // TODO: we want this function super-fast to handle the case where someone calls Discretize repeatedly
    //       once per-sample.  We can make this faster by eliminating a lot of the initial checks by:
    //       - eliminate the checks for nullptr on our input points.  We just crash if we get these illegal inputs
    //         we can't handle bad input points in general, so this is just accepting a reality for a tradeoff in speed
@@ -272,10 +272,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
    //         after that as a special case
 
    LOG_COUNTED_N(
-      &g_cLogEnterBinFeature,
+      &g_cLogEnterDiscretize,
       Trace_Info,
       Trace_Verbose,
-      "Entered BinFeature: "
+      "Entered Discretize: "
       "countSamples=%" IntEbmPrintf ", "
       "featureVals=%p, "
       "countCuts=%" IntEbmPrintf ", "
@@ -293,7 +293,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
    
    if(UNLIKELY(countSamples <= IntEbm { 0 })) {
       if(UNLIKELY(countSamples < IntEbm { 0 })) {
-         LOG_0(Trace_Error, "ERROR BinFeature countSamples cannot be negative");
+         LOG_0(Trace_Error, "ERROR Discretize countSamples cannot be negative");
          error = Error_IllegalParamVal;
          goto exit_with_log;
       } else {
@@ -304,7 +304,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
    } else {
       if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
          // this needs to point to real memory, otherwise it's invalid
-         LOG_0(Trace_Error, "ERROR BinFeature countSamples was too large to fit into memory");
+         LOG_0(Trace_Error, "ERROR Discretize countSamples was too large to fit into memory");
          error = Error_IllegalParamVal;
          goto exit_with_log;
       }
@@ -312,25 +312,25 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
       const size_t cSamples = static_cast<size_t>(countSamples);
 
       if(IsMultiplyError(sizeof(*featureVals), cSamples)) {
-         LOG_0(Trace_Error, "ERROR BinFeature countSamples was too large to fit into featureVals");
+         LOG_0(Trace_Error, "ERROR Discretize countSamples was too large to fit into featureVals");
          error = Error_IllegalParamVal;
          goto exit_with_log;
       }
 
       if(IsMultiplyError(sizeof(*binIndexesOut), cSamples)) {
-         LOG_0(Trace_Error, "ERROR BinFeature countSamples was too large to fit into binIndexesOut");
+         LOG_0(Trace_Error, "ERROR Discretize countSamples was too large to fit into binIndexesOut");
          error = Error_IllegalParamVal;
          goto exit_with_log;
       }
 
       if(UNLIKELY(nullptr == featureVals)) {
-         LOG_0(Trace_Error, "ERROR BinFeature featureVals cannot be null");
+         LOG_0(Trace_Error, "ERROR Discretize featureVals cannot be null");
          error = Error_IllegalParamVal;
          goto exit_with_log;
       }
 
       if(UNLIKELY(nullptr == binIndexesOut)) {
-         LOG_0(Trace_Error, "ERROR BinFeature binIndexesOut cannot be null");
+         LOG_0(Trace_Error, "ERROR Discretize binIndexesOut cannot be null");
          error = Error_IllegalParamVal;
          goto exit_with_log;
       }
@@ -341,7 +341,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
 
       if(UNLIKELY(countCuts <= IntEbm { 0 })) {
          if(UNLIKELY(countCuts < IntEbm { 0 })) {
-            LOG_0(Trace_Error, "ERROR BinFeature countCuts cannot be negative");
+            LOG_0(Trace_Error, "ERROR Discretize countCuts cannot be negative");
             error = Error_IllegalParamVal;
             goto exit_with_log;
          }
@@ -351,7 +351,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
             const double val = *pVal;
             IntEbm iBin;
             iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : IntEbm { 1 };
-            EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+            EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
             *piBin = iBin;
             ++piBin;
             ++pVal;
@@ -361,7 +361,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
       }
 
       if(UNLIKELY(nullptr == cutsLowerBoundInclusive)) {
-         LOG_0(Trace_Error, "ERROR BinFeature cutsLowerBoundInclusive cannot be null");
+         LOG_0(Trace_Error, "ERROR Discretize cutsLowerBoundInclusive cannot be null");
          error = Error_IllegalParamVal;
          goto exit_with_log;
       }
@@ -395,7 +395,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
             iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm { 2 } : IntEbm { 1 };
             iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
 
-            EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+            EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
             *piBin = iBin;
             ++piBin;
@@ -416,7 +416,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
             iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm { 3 } : iBin;
             iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
 
-            EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+            EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
             *piBin = iBin;
             ++piBin;
@@ -439,7 +439,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
             iBin = UNPREDICTABLE(cut2 <= val) ? IntEbm { 4 } : iBin;
             iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
 
-            EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+            EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
             *piBin = iBin;
             ++piBin;
@@ -464,7 +464,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
             iBin = UNPREDICTABLE(cut3 <= val) ? IntEbm { 5 } : iBin;
             iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
 
-            EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+            EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
             *piBin = iBin;
             ++piBin;
@@ -491,7 +491,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
             iBin = UNPREDICTABLE(cut4 <= val) ? IntEbm { 6 } : iBin;
             iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
 
-            EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+            EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
             *piBin = iBin;
             ++piBin;
@@ -520,7 +520,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
             iBin = UNPREDICTABLE(cut5 <= val) ? IntEbm { 7 } : iBin;
             iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
 
-            EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+            EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
             *piBin = iBin;
             ++piBin;
@@ -574,7 +574,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
                *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
@@ -620,7 +620,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
                *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
@@ -667,7 +667,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
                *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
@@ -715,7 +715,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
                *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
@@ -764,7 +764,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
                *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
@@ -814,7 +814,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
                *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
@@ -865,7 +865,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
 
                const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
-               EBM_ASSERT(static_cast<IntEbm>(iBin) == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
                *piBin = static_cast<IntEbm>(iBin);
                ++piBin;
@@ -878,14 +878,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
 
       if(UNLIKELY(IsConvertError<size_t>(countCuts))) {
          // this needs to point to real memory, otherwise it's invalid
-         LOG_0(Trace_Error, "ERROR BinFeature countCuts was too large to fit into memory");
+         LOG_0(Trace_Error, "ERROR Discretize countCuts was too large to fit into memory");
          error = Error_IllegalParamVal; // the cutsLowerBoundInclusive wouldn't be possible
          goto exit_with_log;
       }
 
       if(IsMultiplyError(sizeof(*cutsLowerBoundInclusive), cCuts)) {
          LOG_0(Trace_Error,
-            "ERROR BinFeature countCuts was too large to fit into cutsLowerBoundInclusive");
+            "ERROR Discretize countCuts was too large to fit into cutsLowerBoundInclusive");
          error = Error_IllegalParamVal; // the cutsLowerBoundInclusive array wouldn't be possible
          goto exit_with_log;
       }
@@ -897,7 +897,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
          // have a maximum of max - 2 cuts.
 
          LOG_0(Trace_Error,
-            "ERROR BinFeature countCuts was too large to allow for a missing value placeholder and -+inf bins");
+            "ERROR Discretize countCuts was too large to allow for a missing value placeholder and -+inf bins");
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
          // tried to allocate it since it doesn't seem worth creating a new error class for it
@@ -908,7 +908,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
       if(UNLIKELY(std::numeric_limits<size_t>::max() == cCuts)) {
          // we add 1 to cCuts as our missing value, so this addition must succeed
          LOG_0(Trace_Error,
-            "ERROR BinFeature countCuts was too large to allow for a missing value placeholder");
+            "ERROR Discretize countCuts was too large to allow for a missing value placeholder");
 
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
@@ -921,7 +921,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
          // the low value can increase until it's equal to cCuts, so cCuts must be expressable as a ptrdiff_t
          // we need to keep low as a ptrdiff_t since we compare it right after with high, which can be -1
          LOG_0(Trace_Error,
-            "ERROR BinFeature countCuts was too large to allow for the binary search comparison");
+            "ERROR Discretize countCuts was too large to allow for the binary search comparison");
 
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
@@ -934,7 +934,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
          // our first operation towards getting the mid-point is to add the size_t low and size_t high, and that can't 
          // overflow, so check that the maximum high added to the maximum low (which is the high) don't exceed that value
          LOG_0(Trace_Error,
-            "ERROR BinFeature countCuts was too large to allow for the binary search add");
+            "ERROR Discretize countCuts was too large to allow for the binary search add");
 
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
@@ -1004,7 +1004,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
          EBM_ASSERT(!IsConvertError<IntEbm>(middle));
          const IntEbm iBin = static_cast<IntEbm>(middle);
 
-         EBM_ASSERT(iBin == BinFeatureOneSample(val, countCuts, cutsLowerBoundInclusive));
+         EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
          *piBin = iBin;
          ++piBin;
@@ -1016,10 +1016,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION BinFeature(
 exit_with_log:;
 
    LOG_COUNTED_N(
-      &g_cLogExitBinFeature,
+      &g_cLogExitDiscretize,
       Trace_Info,
       Trace_Verbose,
-      "Exited BinFeature: "
+      "Exited Discretize: "
       "return=%" ErrorEbmPrintf
       ,
       error

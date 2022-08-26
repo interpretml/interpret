@@ -15,7 +15,7 @@
       CutQuantile;
       CutWinsorized;
       SuggestGraphBounds;
-      BinFeature;
+      Discretize;
       MeasureDataSetHeader;
       MeasureFeature;
       MeasureWeight;

@@ -7,7 +7,7 @@
 #include "ebm_native.h"
 #include "ebm_native_test.hpp"
 
-static const TestPriority k_filePriority = TestPriority::BinFeature;
+static const TestPriority k_filePriority = TestPriority::Discretize;
 
 TEST_CASE("GetHistogramCutCount, normals") {
    UNUSED(testCaseHidden);
@@ -27,7 +27,7 @@ TEST_CASE("GetHistogramCutCount, out of bound inputs") {
    CHECK(3 == result);
 }
 
-TEST_CASE("BinFeature, zero samples") {
+TEST_CASE("Discretize, zero samples") {
    ErrorEbm error;
 
    UNUSED(testCaseHidden);
@@ -35,7 +35,7 @@ TEST_CASE("BinFeature, zero samples") {
    constexpr IntEbm countCuts = sizeof(cutsLowerBoundInclusive) / sizeof(cutsLowerBoundInclusive[0]);
    constexpr IntEbm  cSamples = 0;
 
-   error = BinFeature(
+   error = Discretize(
       cSamples,
       nullptr,
       countCuts,
@@ -44,7 +44,7 @@ TEST_CASE("BinFeature, zero samples") {
    );
    CHECK(Error_None == error);
 
-   error = BinFeature(
+   error = Discretize(
       cSamples,
       nullptr,
       countCuts,
@@ -54,7 +54,7 @@ TEST_CASE("BinFeature, zero samples") {
    CHECK(Error_None == error);
 }
 
-TEST_CASE("BinFeature, increasing lengths") {
+TEST_CASE("Discretize, increasing lengths") {
    constexpr size_t cCutsEnd = 1024 * 2 + 100;
    constexpr size_t cData = 11 * cCutsEnd;
 
@@ -94,7 +94,7 @@ TEST_CASE("BinFeature, increasing lengths") {
 
       const size_t cSamples = cData - cRemoveLow - cRemoveHigh;
       memset(aiBins + cRemoveLow, 0, cSamples * sizeof(*aiBins));
-      error = BinFeature(
+      error = Discretize(
          static_cast<IntEbm>(cSamples),
          featureVals + cRemoveLow,
          cCuts,

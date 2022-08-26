@@ -19,7 +19,7 @@ enum class TestPriority {
    CutUniform,
    CutWinsorized,
    CutQuantile,
-   BinFeature
+   Discretize
 };
 
 

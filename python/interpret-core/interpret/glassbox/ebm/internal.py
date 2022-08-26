@@ -318,10 +318,10 @@ class Native:
 
         return low_graph_bound.value, high_graph_bound.value
 
-    def bin_feature(self, X_col, cuts):
+    def discretize(self, X_col, cuts):
         # TODO: for speed and efficiency, we should instead accept in the bin_indexes array
         bin_indexes = np.empty(X_col.shape[0], dtype=np.int64, order="C")
-        return_code = self._unsafe.BinFeature(
+        return_code = self._unsafe.Discretize(
             X_col.shape[0],
             Native._make_pointer(X_col, np.float64),
             cuts.shape[0],
@@ -329,7 +329,7 @@ class Native:
             Native._make_pointer(bin_indexes, np.int64),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "BinFeature")
+            raise Native._get_native_exception(return_code, "Discretize")
 
         return bin_indexes
 
@@ -714,7 +714,7 @@ class Native:
         self._unsafe.SuggestGraphBounds.restype = ct.c_int32
 
 
-        self._unsafe.BinFeature.argtypes = [
+        self._unsafe.Discretize.argtypes = [
             # int64_t countSamples
             ct.c_int64,
             # double * featureVals
@@ -726,7 +726,7 @@ class Native:
             # int64_t * binIndexesOut
             ct.c_void_p,
         ]
-        self._unsafe.BinFeature.restype = ct.c_int32
+        self._unsafe.Discretize.restype = ct.c_int32
 
 
         self._unsafe.MeasureDataSetHeader.argtypes = [
