@@ -14,10 +14,10 @@
 #include "ebm_internal.hpp"
 
 #include "Feature.hpp"
-#include "FeatureGroup.hpp"
+#include "Term.hpp"
 
-#include "HistogramTargetEntry.hpp"
-#include "HistogramBucket.hpp"
+#include "GradientPair.hpp"
+#include "Bin.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

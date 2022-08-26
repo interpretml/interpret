@@ -14,12 +14,12 @@
 
 #include "ebm_internal.hpp"
 
-#include "RandomStream.hpp"
+#include "RandomDeterministic.hpp"
 #include "RandomNondeterministic.hpp"
 
-#include "CompressibleTensor.hpp"
+#include "Tensor.hpp"
 
-#include "HistogramTargetEntry.hpp"
+#include "GradientPair.hpp"
 
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"

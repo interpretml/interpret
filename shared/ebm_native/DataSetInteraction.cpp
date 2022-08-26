@@ -17,9 +17,7 @@
 #include "DataSetInteraction.hpp"
 
 
-// TODO: remove data_set_shared.hpp and ebm_stats.hpp
-#include "data_set_shared.hpp"
-#include "ebm_stats.hpp"
+#include "dataset_shared.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

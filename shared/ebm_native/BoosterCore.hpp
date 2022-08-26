@@ -16,15 +16,15 @@
 
 #include "ebm_internal.hpp"
 
-#include "CompressibleTensor.hpp"
+#include "Tensor.hpp"
 // feature includes
 #include "Feature.hpp"
-// FeatureGroup.hpp depends on FeatureInternal.h
-#include "FeatureGroup.hpp"
+// Term.hpp depends on Feature.h
+#include "Term.hpp"
 // dataset depends on features
 #include "DataSetBoosting.hpp"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
-#include "SamplingSet.hpp"
+#include "InnerBag.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

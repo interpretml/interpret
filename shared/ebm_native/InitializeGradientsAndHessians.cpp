@@ -13,7 +13,7 @@
 
 #include "ebm_internal.hpp"
 
-#include "data_set_shared.hpp"
+#include "dataset_shared.hpp"
 #include "ebm_stats.hpp"
 
 namespace DEFINED_ZONE_NAME {

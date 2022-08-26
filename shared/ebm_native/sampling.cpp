@@ -10,8 +10,8 @@
 
 #include "ebm_internal.hpp"
 
-#include "data_set_shared.hpp"
-#include "RandomStream.hpp"
+#include "dataset_shared.hpp"
+#include "RandomDeterministic.hpp"
 #include "RandomNondeterministic.hpp"
 
 namespace DEFINED_ZONE_NAME {

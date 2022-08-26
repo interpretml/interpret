@@ -18,21 +18,21 @@
 
 #include "compute_accessors.hpp"
 
-#include "data_set_shared.hpp"
-#include "RandomStream.hpp"
-#include "CompressibleTensor.hpp"
+#include "dataset_shared.hpp"
+#include "RandomDeterministic.hpp"
+#include "Tensor.hpp"
 #include "ebm_stats.hpp"
 // feature includes
 #include "Feature.hpp"
-// FeatureGroup.hpp depends on FeatureInternal.h
-#include "FeatureGroup.hpp"
+// Term.hpp depends on Feature.h
+#include "Term.hpp"
 // dataset depends on features
 #include "DataSetBoosting.hpp"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
-#include "SamplingSet.hpp"
+#include "InnerBag.hpp"
 
-#include "HistogramTargetEntry.hpp"
-#include "HistogramBucket.hpp"
+#include "GradientPair.hpp"
+#include "Bin.hpp"
 
 #include "TreeSweep.hpp"
 

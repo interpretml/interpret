@@ -16,15 +16,15 @@
 
 #include "ebm_internal.hpp"
 
-#include "CompressibleTensor.hpp"
+#include "Tensor.hpp"
 #include "ebm_stats.hpp"
 #include "BoosterShell.hpp"
 
 #include "Feature.hpp"
-#include "FeatureGroup.hpp"
+#include "Term.hpp"
 
-#include "HistogramTargetEntry.hpp"
-#include "HistogramBucket.hpp"
+#include "GradientPair.hpp"
+#include "Bin.hpp"
 
 #include "TreeNode.hpp"
 #include "TreeSweep.hpp"

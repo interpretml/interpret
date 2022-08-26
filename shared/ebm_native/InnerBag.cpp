@@ -14,9 +14,9 @@
 
 #include "ebm_internal.hpp"
 
-#include "RandomStream.hpp" // our header didn't need the full definition, but we use the RandomDeterministic in here, so we need it
+#include "RandomDeterministic.hpp" // our header didn't need the full definition, but we use the RandomDeterministic in here, so we need it
 #include "DataSetBoosting.hpp"
-#include "SamplingSet.hpp"
+#include "InnerBag.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

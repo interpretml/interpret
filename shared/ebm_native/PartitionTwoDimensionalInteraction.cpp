@@ -15,10 +15,10 @@
 #include "ebm_stats.hpp"
 
 #include "Feature.hpp"
-#include "FeatureGroup.hpp"
+#include "Term.hpp"
 
-#include "HistogramTargetEntry.hpp"
-#include "HistogramBucket.hpp"
+#include "GradientPair.hpp"
+#include "Bin.hpp"
 
 #include "InteractionCore.hpp"
 

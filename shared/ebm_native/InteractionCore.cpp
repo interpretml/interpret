@@ -14,17 +14,17 @@
 
 #include "ebm_internal.hpp"
 
-#include "data_set_shared.hpp"
+#include "dataset_shared.hpp"
 
 // feature includes
 #include "Feature.hpp"
-#include "FeatureGroup.hpp"
+#include "Term.hpp"
 
 // dataset depends on features
 #include "DataSetInteraction.hpp"
 
-#include "HistogramTargetEntry.hpp"
-#include "HistogramBucket.hpp"
+#include "GradientPair.hpp"
+#include "Bin.hpp"
 
 #include "InteractionCore.hpp"
 #include "InteractionShell.hpp"

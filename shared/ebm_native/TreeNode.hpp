@@ -15,7 +15,7 @@
 #include "ebm_internal.hpp"
 
 #include "ebm_stats.hpp"
-#include "HistogramBucket.hpp"
+#include "Bin.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

@@ -16,7 +16,7 @@
 
 // feature includes
 #include "Feature.hpp"
-#include "FeatureGroup.hpp"
+#include "Term.hpp"
 // dataset depends on features
 #include "DataSetInteraction.hpp"
 #include "InteractionShell.hpp"

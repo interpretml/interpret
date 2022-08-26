@@ -14,8 +14,8 @@
 
 #include "approximate_math.hpp"
 #include "ebm_stats.hpp"
-// FeatureGroup.hpp depends on FeatureInternal.h
-#include "FeatureGroup.hpp"
+// Term.hpp depends on Feature.h
+#include "Term.hpp"
 // dataset depends on features
 #include "DataSetBoosting.hpp"
 

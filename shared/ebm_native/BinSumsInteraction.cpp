@@ -15,14 +15,14 @@
 #include "ebm_stats.hpp"
 
 #include "Feature.hpp"
-#include "FeatureGroup.hpp"
+#include "Term.hpp"
 #include "DataSetInteraction.hpp"
 
 #include "InteractionCore.hpp"
 #include "InteractionShell.hpp"
 
-#include "HistogramTargetEntry.hpp"
-#include "HistogramBucket.hpp"
+#include "GradientPair.hpp"
+#include "Bin.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

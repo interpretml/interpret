@@ -16,12 +16,12 @@
 
 #include "ebm_internal.hpp"
 
-#include "HistogramTargetEntry.hpp"
+#include "GradientPair.hpp"
 #include "Feature.hpp"
-#include "FeatureGroup.hpp"
+#include "Term.hpp"
 #include "DataSetBoosting.hpp"
 #include "DataSetInteraction.hpp"
-#include "SamplingSet.hpp"
+#include "InnerBag.hpp"
 
 #include "BoosterCore.hpp"
 #include "InteractionCore.hpp"

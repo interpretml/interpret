@@ -19,7 +19,7 @@
 
 #include "ebm_internal.hpp"
 
-#include "RandomStream.hpp"
+#include "RandomDeterministic.hpp"
 
 // TODO: check this file for how we handle subnormal numbers.  NEVER RETURN SUBNORMALS!
 

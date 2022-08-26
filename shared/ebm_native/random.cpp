@@ -9,7 +9,7 @@
 #include "zones.h"
 
 #include "ebm_internal.hpp"
-#include "RandomStream.hpp"
+#include "RandomDeterministic.hpp"
 #include "RandomNondeterministic.hpp"
 
 #include "GaussianDistribution.hpp"

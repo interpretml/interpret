@@ -13,8 +13,8 @@
 
 #include "ebm_internal.hpp"
 
-// FeatureGroup.hpp depends on FeatureInternal.h
-#include "FeatureGroup.hpp"
+// Term.hpp depends on Feature.h
+#include "Term.hpp"
 
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"

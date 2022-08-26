@@ -15,21 +15,21 @@
 
 #include "ebm_internal.hpp"
 
-#include "RandomStream.hpp"
+#include "RandomDeterministic.hpp"
 #include "RandomNondeterministic.hpp"
 
-#include "CompressibleTensor.hpp"
+#include "Tensor.hpp"
 #include "ebm_stats.hpp"
 // feature includes
 #include "Feature.hpp"
-// FeatureGroup.hpp depends on FeatureInternal.h
-#include "FeatureGroup.hpp"
+// Term.hpp depends on Feature.h
+#include "Term.hpp"
 // dataset depends on features
 #include "DataSetBoosting.hpp"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
-#include "SamplingSet.hpp"
-#include "HistogramTargetEntry.hpp"
-#include "HistogramBucket.hpp"
+#include "InnerBag.hpp"
+#include "GradientPair.hpp"
+#include "Bin.hpp"
 
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"

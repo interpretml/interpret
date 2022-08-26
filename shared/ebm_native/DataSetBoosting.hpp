@@ -14,7 +14,7 @@
 
 #include "ebm_internal.hpp"
 
-#include "FeatureGroup.hpp"
+#include "Term.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
