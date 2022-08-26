@@ -390,13 +390,10 @@ public:
 
                // we're walking through all bins, so just move to the next one in the flat array, 
                // with the knowledge that we'll figure out it's multi-dimenional index below
-               pBin = 
-                  IndexBin(cBytesPerBin, pBin, 1);
-
+               pBin = IndexBin(pBin, cBytesPerBin);
             } while(LIKELY(pBinSliceEnd != pBin));
 
-            pCollapsedBin1 = 
-               IndexBin(cBytesPerBin, pCollapsedBin1, 1);
+            pCollapsedBin1 = IndexBin(pCollapsedBin1, cBytesPerBin);
 
             ++pcItemsInNextSliceOrBytesInCurrentSlice;
          } while(PREDICTABLE(pcBytesInSliceEnd != pcItemsInNextSliceOrBytesInCurrentSlice));
@@ -539,7 +536,7 @@ public:
                *pUpdateScore = SafeConvertFloat<FloatFast>(updateScore);
                ++pUpdateScore;
             }
-            pCollapsedBin2 = IndexBin(cBytesPerBin, pCollapsedBin2, 1);
+            pCollapsedBin2 = IndexBin(pCollapsedBin2, cBytesPerBin);
          } while(pCollapsedBinEnd != pCollapsedBin2);
       } else {
          do {
@@ -592,8 +589,7 @@ public:
                   ++pUpdateScore;
                }
             }
-            pCollapsedBin2 = IndexBin(
-               cBytesPerBin, pCollapsedBin2, 1);
+            pCollapsedBin2 = IndexBin(pCollapsedBin2, cBytesPerBin);
          } while(pCollapsedBinEnd != pCollapsedBin2);
       }
 

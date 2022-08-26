@@ -169,7 +169,7 @@ public:
          //   to all places that we loop on the vector
 
          size_t cTensorBytes = cBytesPerBin;
-         size_t iTensorBytes = 0;
+         unsigned char * pRawBin = reinterpret_cast<unsigned char *>(aBins);
          size_t iDimension = 0;
          do {
             DimensionalData * const pDimensionalData = &aDimensionalData[iDimension];
@@ -188,13 +188,13 @@ public:
 
             EBM_ASSERT(iBin < cBins);
 
-            iTensorBytes += cTensorBytes * iBin;
+            pRawBin += cTensorBytes * iBin;
             cTensorBytes *= cBins;
           
             ++iDimension;
          } while(cRealDimensions != iDimension);
 
-         auto * pBin = IndexBin(iTensorBytes, aBins, 1);
+         auto * const pBin = reinterpret_cast<Bin<FloatFast, bClassification> *>(pRawBin);
          ASSERT_BIN_OK(cBytesPerBin, pBin, pInteractionShell->GetBinsFastEndDebug());
          pBin->SetCountSamples(pBin->GetCountSamples() + 1);
          FloatFast weight = 1;

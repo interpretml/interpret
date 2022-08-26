@@ -278,7 +278,7 @@ public:
             // TODO: we should assert at least that we can convert to size_t after the shift
             const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
 
-            auto * const pBin = IndexBin(cBytesPerBin, aBins, iTensorBin);
+            auto * const pBin = IndexBin(aBins, cBytesPerBin * iTensorBin);
 
             ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetBinsFastEndDebug());
             const size_t cOccurences = *pCountOccurrences;

@@ -215,56 +215,32 @@ INLINE_ALWAYS size_t GetBinSize(const bool bClassification, const size_t cScores
 
 template<typename TFloat, bool bClassification>
 INLINE_ALWAYS Bin<TFloat, bClassification> * IndexBin(
-   const size_t cBytesPerBin,
    Bin<TFloat, bClassification> * const aBins,
-   const size_t iBin
+   const size_t iByte
 ) {
-   // TODO: change this and the other IndexBin calls to use just aBins and cBytesOffset.  It will take the same space
-   //       in the caller but will be simpler
-
-   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per bin, 
-   // therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<Bin<TFloat, bClassification> *>(reinterpret_cast<char *>(aBins) + iBin * cBytesPerBin);
+   return reinterpret_cast<Bin<TFloat, bClassification> *>(reinterpret_cast<char *>(aBins) + iByte);
 }
 
 template<typename TFloat, bool bClassification>
 INLINE_ALWAYS const Bin<TFloat, bClassification> * IndexBin(
-   const size_t cBytesPerBin,
    const Bin<TFloat, bClassification> * const aBins,
-   const size_t iBin
+   const size_t iByte
 ) {
-   // TODO: change this and the other IndexBin calls to use just aBins and cBytesOffset.  It will take the same space
-   //       in the caller but will be simpler
-
-   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per bin, 
-   //   therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<const Bin<TFloat, bClassification> *>(reinterpret_cast<const char *>(aBins) + iBin * cBytesPerBin);
+   return reinterpret_cast<const Bin<TFloat, bClassification> *>(reinterpret_cast<const char *>(aBins) + iByte);
 }
 
 INLINE_ALWAYS BinBase * IndexBin(
-   const size_t cBytesPerBin,
    BinBase * const aBins,
-   const size_t iBin
+   const size_t iByte
 ) {
-   // TODO: change this and the other IndexBin calls to use just aBins and cBytesOffset.  It will take the same space
-   //       in the caller but will be simpler
-   
-   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per bin, 
-   //   therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<BinBase *>(reinterpret_cast<char *>(aBins) + iBin * cBytesPerBin);
+   return reinterpret_cast<BinBase *>(reinterpret_cast<char *>(aBins) + iByte);
 }
 
 INLINE_ALWAYS const BinBase * IndexBin(
-   const size_t cBytesPerBin,
    const BinBase * const aBins,
-   const size_t iBin
+   const size_t iByte
 ) {
-   // TODO: change this and the other IndexBin calls to use just aBins and cBytesOffset.  It will take the same space
-   //       in the caller but will be simpler
-
-   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per bin, 
-   //   therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<const BinBase *>(reinterpret_cast<const char *>(aBins) + iBin * cBytesPerBin);
+   return reinterpret_cast<const BinBase *>(reinterpret_cast<const char *>(aBins) + iByte);
 }
 
 // keep this as a MACRO so that we don't materialize any of the parameters on non-debug builds

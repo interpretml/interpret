@@ -197,7 +197,7 @@ public:
       {
          const size_t * pcBins = acBins;
          const size_t * const pcBinsEnd = &acBins[cRuntimeRealDimensions];
-         size_t multiply = 1;
+         size_t iAuxiliaryByte = cBytesPerBin;
          do {
             ASSERT_BIN_OK(cBytesPerBin, pAuxiliaryBin, pBinsEndDebug);
 
@@ -212,7 +212,7 @@ public:
             pFastTotalStateInitialize->m_pDimensionalCur = pAuxiliaryBin;
             // when we exit, pAuxiliaryBin should be == to pBinsEndDebug, which is legal in C++ since it doesn't extend beyond 1 
             // item past the end of the array
-            pAuxiliaryBin = IndexBin(cBytesPerBin, pAuxiliaryBin, multiply);
+            pAuxiliaryBin = IndexBin(pAuxiliaryBin, iAuxiliaryByte);
 
 #ifndef NDEBUG
             if(&fastTotalState[cRealDimensions] == pFastTotalStateInitialize + 1) {
@@ -226,7 +226,7 @@ public:
             }
             for(auto * pDimensionalCur = pFastTotalStateInitialize->m_pDimensionalCur;
                pAuxiliaryBin != pDimensionalCur;
-               pDimensionalCur = IndexBin(cBytesPerBin, pDimensionalCur, 1)) 
+               pDimensionalCur = IndexBin(pDimensionalCur, cBytesPerBin))
             {
                pDimensionalCur->AssertZero(cScores);
             }
@@ -236,7 +236,7 @@ public:
             // the end and make the list one larger
             pFastTotalStateInitialize->m_pDimensionalWrap = pAuxiliaryBin;
 
-            multiply *= cBins;
+            iAuxiliaryByte *= cBins;
             ++pFastTotalStateInitialize;
             ++pcBins;
          } while(LIKELY(pcBinsEnd != pcBins));
@@ -263,7 +263,7 @@ public:
             auto * pAddTo = fastTotalState[iDimension].m_pDimensionalCur;
             pAddTo->Add(*pAddPrev, cScores);
             pAddPrev = pAddTo;
-            pAddTo = IndexBin(cBytesPerBin, pAddTo, 1);
+            pAddTo = IndexBin(pAddTo, cBytesPerBin);
             if(pAddTo == fastTotalState[iDimension].m_pDimensionalWrap) {
                pAddTo = fastTotalState[iDimension].m_pDimensionalFirst;
             }
@@ -294,7 +294,7 @@ public:
 
          // we're walking through all bins, so just move to the next one in the flat array, 
          // with the knowledge that we'll figure out it's multi-dimenional index below
-         pBin = IndexBin(cBytesPerBin, pBin, 1);
+         pBin = IndexBin(pBin, cBytesPerBin);
 
          FastTotalState * pFastTotalState = &fastTotalState[0];
          while(true) {

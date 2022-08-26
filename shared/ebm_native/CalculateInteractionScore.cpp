@@ -310,7 +310,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    }
 #endif // NDEBUG
 
-   BinBase * aAuxiliaryBins = IndexBin(cBytesPerBinBig, aBinsBig, cTensorBins);
+   BinBase * aAuxiliaryBins = IndexBin(aBinsBig, cBytesPerBinBig * cTensorBins);
    aAuxiliaryBins->Zero(cBytesPerBinBig, cAuxillaryBins);
 
    TensorTotalsBuild(

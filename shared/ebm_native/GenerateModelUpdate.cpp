@@ -465,7 +465,7 @@ static ErrorEbm BoostMultiDimensional(
    }
 #endif // NDEBUG
 
-   BinBase * aAuxiliaryBins = IndexBin(cBytesPerBinBig, aBinsBig, cTensorBins);
+   BinBase * aAuxiliaryBins = IndexBin(aBinsBig, cBytesPerBinBig * cTensorBins);
 
    TensorTotalsBuild(
       cClasses,

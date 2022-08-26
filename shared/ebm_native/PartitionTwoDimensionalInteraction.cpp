@@ -66,10 +66,10 @@ public:
       const size_t cScores = GetCountScores(cClasses);
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-      auto * const pTotals00 = IndexBin(cBytesPerBin, aAuxiliaryBins, 0);
-      auto * const pTotals01 = IndexBin(cBytesPerBin, aAuxiliaryBins, 1);
-      auto * const pTotals10 = IndexBin(cBytesPerBin, aAuxiliaryBins, 2);
-      auto * const pTotals11 = IndexBin(cBytesPerBin, aAuxiliaryBins, 3);
+      auto * const pTotals00 = IndexBin(aAuxiliaryBins, cBytesPerBin * 0);
+      auto * const pTotals01 = IndexBin(aAuxiliaryBins, cBytesPerBin * 1);
+      auto * const pTotals10 = IndexBin(aAuxiliaryBins, cBytesPerBin * 2);
+      auto * const pTotals11 = IndexBin(aAuxiliaryBins, cBytesPerBin * 3);
 
       // for interactions we return an interaction score of 0 if any of the dimensions are useless
       EBM_ASSERT(2 == cRealDimensions);

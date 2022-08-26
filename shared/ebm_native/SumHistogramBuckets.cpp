@@ -58,16 +58,13 @@ public:
       FloatBig weightTotalDebug = 0;
 #endif // NDEBUG
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-         cCompilerClasses,
-         cRuntimeClasses
-      );
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses );
       const size_t cScores = GetCountScores(cClasses);
       EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
       const auto * pCopyFrom = aBins;
-      const auto * pCopyFromEnd = IndexBin(cBytesPerBin, aBins, cBins);
+      const auto * pCopyFromEnd = IndexBin(aBins, cBytesPerBin * cBins);
 
       // we do a lot more work in the PartitionOneDimensionalBoosting function per target entry, so if we can compress it by any amount, then it will probably be a win
       // for bin arrays that have a small set of labels, this loop will be fast and result in no movements.  For bin arrays that are long 
@@ -96,7 +93,7 @@ public:
             aSumAllGradientPairs[iScore].Add(pGradientPair[iScore]);
          }
 
-         pCopyFrom = IndexBin(cBytesPerBin, pCopyFrom, 1);
+         pCopyFrom = IndexBin(pCopyFrom, cBytesPerBin);
       } while(pCopyFromEnd != pCopyFrom);
       EBM_ASSERT(0 == (reinterpret_cast<const char *>(pCopyFrom) - reinterpret_cast<const char *>(aBins)) % cBytesPerBin);
 

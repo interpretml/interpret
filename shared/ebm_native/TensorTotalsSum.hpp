@@ -36,11 +36,16 @@ void TensorTotalsSumDebugSlow(
    const size_t * const aiLast,
    Bin<FloatBig, bClassification> * const pRet
 ) {
+   const size_t cScores = GetCountScores(cClasses);
+   // we've allocated this, so it should fit
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores));
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
+
    EBM_ASSERT(1 <= cRealDimensions); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
 
-   size_t iTensorBin = 0;
-   size_t valMultipleInitialize = 1;
+   size_t iTensorByte = 0;
+   size_t cTensorBytesInitialize = cBytesPerBin;
    size_t iDimensionInitialize = 0;
 
    const size_t * pcBinsInit = acBins;
@@ -54,42 +59,38 @@ void TensorTotalsSumDebugSlow(
       EBM_ASSERT(aiLast[iDimensionInitialize] < cBins);
       EBM_ASSERT(aiStart[iDimensionInitialize] <= aiLast[iDimensionInitialize]);
       // aiStart[iDimensionInitialize] is less than cBins, so this should multiply
-      EBM_ASSERT(!IsMultiplyError(valMultipleInitialize, aiStart[iDimensionInitialize]));
-      iTensorBin += valMultipleInitialize * aiStart[iDimensionInitialize];
-      EBM_ASSERT(!IsMultiplyError(valMultipleInitialize, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-      valMultipleInitialize *= cBins;
+      EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, aiStart[iDimensionInitialize]));
+      iTensorByte += cTensorBytesInitialize * aiStart[iDimensionInitialize];
+      EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+      cTensorBytesInitialize *= cBins;
       aiDimensions[iDimensionInitialize] = aiStart[iDimensionInitialize];
       ++iDimensionInitialize;
 
       ++pcBinsInit;
    } while(pcBinsInitEnd != pcBinsInit);
 
-   const size_t cScores = GetCountScores(cClasses);
-   // we've allocated this, so it should fit
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores));
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
    pRet->Zero(cBytesPerBin);
 
    while(true) {
-      const auto * const pBin = IndexBin(cBytesPerBin, aBins, iTensorBin);
+      const auto * const pBin = IndexBin(aBins, iTensorByte);
 
       pRet->Add(*pBin, cScores);
 
       size_t iDimension = 0;
-      size_t valMultipleLoop = 1;
+      size_t cTensorBytesLoop = cBytesPerBin;
       const size_t * pcBins = acBins;
       while(aiDimensions[iDimension] == aiLast[iDimension]) {
          EBM_ASSERT(aiStart[iDimension] <= aiLast[iDimension]);
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(valMultipleLoop, aiLast[iDimension] - aiStart[iDimension]));
-         iTensorBin -= valMultipleLoop * (aiLast[iDimension] - aiStart[iDimension]);
+         EBM_ASSERT(!IsMultiplyError(cTensorBytesLoop, aiLast[iDimension] - aiStart[iDimension]));
+         iTensorByte -= cTensorBytesLoop * (aiLast[iDimension] - aiStart[iDimension]);
 
          const size_t cBins = *pcBins;
          EBM_ASSERT(size_t { 2 } <= cBins);
          ++pcBins;
 
-         EBM_ASSERT(!IsMultiplyError(valMultipleLoop, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         valMultipleLoop *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cTensorBytesLoop, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         cTensorBytesLoop *= cBins;
 
          aiDimensions[iDimension] = aiStart[iDimension];
          ++iDimension;
@@ -98,7 +99,7 @@ void TensorTotalsSumDebugSlow(
          }
       }
       ++aiDimensions[iDimension];
-      iTensorBin += valMultipleLoop;
+      iTensorByte += cTensorBytesLoop;
    }
 }
 
@@ -199,8 +200,8 @@ void TensorTotalsSum(
    const size_t * pcBinsEnd = &acBins[cRealDimensions];
    EBM_ASSERT(1 <= cRealDimensions);
 
-   size_t multipleTotalInitialize = 1;
-   size_t startingOffset = 0;
+   size_t cTensorBytesInitialize = cBytesPerBin;
+   const unsigned char * pStartingBin = reinterpret_cast<const unsigned char *>(aBins);
    const size_t * piPointInitialize = aiPoint;
 
    if(0 == directionVector) {
@@ -211,16 +212,15 @@ void TensorTotalsSum(
          // we don't boost or allow interaction updates if there are zero training samples
          EBM_ASSERT(size_t { 2 } <= cBins);
          EBM_ASSERT(*piPointInitialize < cBins);
-         EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
-         const size_t addVal = multipleTotalInitialize * (*piPointInitialize);
-         EBM_ASSERT(!IsAddError(startingOffset, addVal)); // we're accessing allocated memory, so this needs to add
-         startingOffset += addVal;
-         EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, cBins)); // we're accessing allocated memory, so this needs to multiply
-         multipleTotalInitialize *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
+         const size_t addVal = cTensorBytesInitialize * (*piPointInitialize);
+         pStartingBin += addVal;
+         EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, cBins)); // we're accessing allocated memory, so this needs to multiply
+         cTensorBytesInitialize *= cBins;
          ++piPointInitialize;
          ++pcBins;
       } while(LIKELY(pcBinsEnd != pcBins));
-      const auto * const pBin = IndexBin(cBytesPerBin, aBins, startingOffset);
+      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bClassification> *>(pStartingBin);
       ASSERT_BIN_OK(cBytesPerBin, pRet, pBinsEndDebug);
       ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
       pRet->Copy(*pBin, cScores);
@@ -248,19 +248,18 @@ void TensorTotalsSum(
          // we don't boost or allow interaction updates if there are zero training samples
          EBM_ASSERT(size_t { 2 } <= cBins);
          if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
-            EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, cBins - 1)); // we're accessing allocated memory, so this needs to multiply
-            size_t cLast = multipleTotalInitialize * (cBins - 1);
-            EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
-            pTotalsDimensionEnd->m_cIncrement = multipleTotalInitialize * (*piPointInitialize);
+            EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, cBins - 1)); // we're accessing allocated memory, so this needs to multiply
+            size_t cLast = cTensorBytesInitialize * (cBins - 1);
+            EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
+            pTotalsDimensionEnd->m_cIncrement = cTensorBytesInitialize * (*piPointInitialize);
             pTotalsDimensionEnd->m_cLast = cLast;
-            multipleTotalInitialize += cLast;
+            cTensorBytesInitialize += cLast;
             ++pTotalsDimensionEnd;
          } else {
-            EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
-            const size_t addVal = multipleTotalInitialize * (*piPointInitialize);
-            EBM_ASSERT(!IsAddError(startingOffset, addVal)); // we're accessing allocated memory, so this needs to add
-            startingOffset += addVal;
-            multipleTotalInitialize *= cBins;
+            EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
+            const size_t addVal = cTensorBytesInitialize * (*piPointInitialize);
+            pStartingBin += addVal;
+            cTensorBytesInitialize *= cBins;
          }
          ++piPointInitialize;
          directionVectorDestroy >>= 1;
@@ -274,13 +273,14 @@ void TensorTotalsSum(
 
    size_t permuteVector = 0;
    do {
-      size_t offsetPointer = startingOffset;
+      const unsigned char * pRawBin = pStartingBin;
       size_t evenOdd = cAllBits;
       size_t permuteVectorDestroy = permuteVector;
       const TotalsDimension * pTotalsDimensionLoop = &totalsDimension[0];
       do {
          evenOdd ^= permuteVectorDestroy; // flip least significant bit if the dimension bit is set
-         offsetPointer += *(UNPREDICTABLE(0 != (1 & permuteVectorDestroy)) ? &pTotalsDimensionLoop->m_cLast : &pTotalsDimensionLoop->m_cIncrement);
+         // TODO: probably taking the address and dereferencing will destroy any optimizations putting them in registers
+         pRawBin += *(UNPREDICTABLE(0 != (1 & permuteVectorDestroy)) ? &pTotalsDimensionLoop->m_cLast : &pTotalsDimensionLoop->m_cIncrement);
          permuteVectorDestroy >>= 1;
          ++pTotalsDimensionLoop;
          // TODO : this (pTotalsDimensionEnd != pTotalsDimensionLoop) condition is somewhat unpredictable since the number of dimensions is small.  
@@ -288,10 +288,9 @@ void TensorTotalsSum(
          // outer body and then we eliminate a bunch of unpredictable branches AND a bunch of adds and a lot of other stuff.  If we allow 
          // ourselves to come at the vector from either size (0,0,...,0,0) or (1,1,...,1,1) then we only need to hardcode 63/2 loops.
       } while(LIKELY(pTotalsDimensionEnd != pTotalsDimensionLoop));
-      // TODO : eliminate this multiplication of cBytesPerBin by offsetPointer by multiplying both the startingOffset and the 
-      // m_cLast & m_cIncrement values by cBytesPerBin.  We can eliminate this multiplication each loop!
-      const auto * const pBin =
-         IndexBin(cBytesPerBin, aBins, offsetPointer);
+
+      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bClassification> *>(pRawBin);
+
       // TODO : we can eliminate this really bad unpredictable branch if we use conditional negation on the values in pBin.  
       // We can pass in a bool that indicates if we should take the negation value or the original at each step 
       // (so we don't need to store it beyond one value either).  We would then have an Add(bool bSubtract, ...) function

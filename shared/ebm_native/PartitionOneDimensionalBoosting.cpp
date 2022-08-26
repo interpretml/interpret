@@ -299,7 +299,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             }
          }
       }
-      pBinCur = IndexBin(cBytesPerBin, pBinCur, 1);
+      pBinCur = IndexBin(pBinCur, cBytesPerBin);
    } while(pBinLast != pBinCur);
 
    if(UNLIKELY(pTreeSweepStart == pTreeSweepCur)) {
@@ -367,8 +367,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const FloatBig BEST_weightLeft = pTreeSweepStart->GetBestWeightLeft();
    pLeftChild->SetWeight(BEST_weightLeft);
 
-   const auto * const BEST_pBinNext = 
-      IndexBin(cBytesPerBin, BEST_pBin, 1);
+   const auto * const BEST_pBinNext = IndexBin(BEST_pBin, cBytesPerBin);
    ASSERT_BIN_OK(cBytesPerBin, BEST_pBinNext, pBoosterShell->GetBinsBigEndDebug());
 
    TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
@@ -521,14 +520,8 @@ public:
 #endif // NDEBUG
 
       pRootTreeNode->BEFORE_SetBinFirst(aBins);
-      pRootTreeNode->BEFORE_SetBinLast(
-         IndexBin(cBytesPerBin, aBins, cBins - 1)
-      );
-      ASSERT_BIN_OK(
-         cBytesPerBin,
-         pRootTreeNode->BEFORE_GetBinLast(),
-         pBoosterShell->GetBinsBigEndDebug()
-      );
+      pRootTreeNode->BEFORE_SetBinLast(IndexBin(aBins, cBytesPerBin * (cBins - 1)));
+      ASSERT_BIN_OK(cBytesPerBin, pRootTreeNode->BEFORE_GetBinLast(), pBoosterShell->GetBinsBigEndDebug());
       pRootTreeNode->AMBIGUOUS_SetCountSamples(cSamplesTotal);
       pRootTreeNode->SetWeight(weightTotal);
 

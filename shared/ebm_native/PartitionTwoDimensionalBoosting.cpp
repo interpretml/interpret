@@ -78,10 +78,10 @@ static FloatBig SweepMultiDimensional(
 
    size_t iBestSplit = 0;
 
-   auto * const pTotalsLow = IndexBin(cBytesPerBin, pBinBestAndTemp, 2);
+   auto * const pTotalsLow = IndexBin(pBinBestAndTemp, cBytesPerBin * 2);
    ASSERT_BIN_OK(cBytesPerBin, pTotalsLow, pBinsEndDebug);
 
-   auto * const pTotalsHigh = IndexBin(cBytesPerBin, pBinBestAndTemp, 3);
+   auto * const pTotalsHigh = IndexBin(pBinBestAndTemp, cBytesPerBin * 3);
    ASSERT_BIN_OK(cBytesPerBin, pTotalsHigh, pBinsEndDebug);
 
    EBM_ASSERT(0 < cSamplesLeafMin);
@@ -154,16 +154,8 @@ static FloatBig SweepMultiDimensional(
                bestGain = gain;
                iBestSplit = iBin;
 
-               ASSERT_BIN_OK(
-                  cBytesPerBin,
-                  IndexBin(cBytesPerBin, pBinBestAndTemp, 1),
-                  pBinsEndDebug
-               );
-               ASSERT_BIN_OK(
-                  cBytesPerBin,
-                  IndexBin(cBytesPerBin, pTotalsLow, 1),
-                  pBinsEndDebug
-               );
+               ASSERT_BIN_OK(cBytesPerBin, IndexBin(pBinBestAndTemp, cBytesPerBin), pBinsEndDebug);
+               ASSERT_BIN_OK(cBytesPerBin, IndexBin(pTotalsLow, cBytesPerBin), pBinsEndDebug);
                memcpy(pBinBestAndTemp, pTotalsLow, cBytesPerTwoBins); // this copies both pTotalsLow and pTotalsHigh
             } else {
                EBM_ASSERT(!std::isnan(gain));
@@ -256,10 +248,10 @@ public:
       size_t splitFirst1LowBest;
       size_t splitFirst1HighBest;
 
-      auto * pTotals1LowLowBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 0);
-      auto * pTotals1LowHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 1);
-      auto * pTotals1HighLowBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 2);
-      auto * pTotals1HighHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 3);
+      auto * pTotals1LowLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 0);
+      auto * pTotals1LowHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 1);
+      auto * pTotals1HighLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 2);
+      auto * pTotals1HighHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 3);
 
       EBM_ASSERT(0 < cSamplesLeafMin);
 
@@ -269,8 +261,8 @@ public:
          aiStart[0] = iBin1;
 
          size_t splitSecond1LowBest;
-         auto * pTotals2LowLowBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 4);
-         auto * pTotals2LowHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 5);
+         auto * pTotals2LowLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 4);
+         auto * pTotals2LowHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 5);
          const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses>(
             aBins,
             pTerm->GetCountRealDimensions(),
@@ -293,8 +285,8 @@ public:
             EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
 
             size_t splitSecond1HighBest;
-            auto * pTotals2HighLowBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 8);
-            auto * pTotals2HighHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 9);
+            auto * pTotals2HighLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 8);
+            auto * pTotals2HighHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 9);
             const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses>(
                aBins,
                pTerm->GetCountRealDimensions(),
@@ -351,10 +343,10 @@ public:
       size_t splitFirst2LowBest;
       size_t splitFirst2HighBest;
 
-      auto * pTotals2LowLowBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 12);
-      auto * pTotals2LowHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 13);
-      auto * pTotals2HighLowBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 14);
-      auto * pTotals2HighHighBest = IndexBin(cBytesPerBin, aAuxiliaryBins, 15);
+      auto * pTotals2LowLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 12);
+      auto * pTotals2LowHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 13);
+      auto * pTotals2HighLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 14);
+      auto * pTotals2HighHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 15);
 
       LOG_0(Trace_Verbose, "PartitionTwoDimensionalBoostingInternal Starting SECOND bin sweep loop");
       size_t iBin2 = 0;
@@ -362,8 +354,8 @@ public:
          aiStart[1] = iBin2;
 
          size_t splitSecond2LowBest;
-         auto * pTotals1LowLowBestInner = IndexBin(cBytesPerBin, aAuxiliaryBins, 16);
-         auto * pTotals1LowHighBestInner = IndexBin(cBytesPerBin, aAuxiliaryBins, 17);
+         auto * pTotals1LowLowBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 16);
+         auto * pTotals1LowHighBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 17);
          const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses>(
             aBins,
             pTerm->GetCountRealDimensions(),
@@ -386,8 +378,8 @@ public:
             EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
 
             size_t splitSecond2HighBest;
-            auto * pTotals1HighLowBestInner = IndexBin(cBytesPerBin, aAuxiliaryBins, 20);
-            auto * pTotals1HighHighBestInner = IndexBin(cBytesPerBin, aAuxiliaryBins, 21);
+            auto * pTotals1HighLowBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 20);
+            auto * pTotals1HighHighBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 21);
             const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses>(
                aBins,
                pTerm->GetCountRealDimensions(),
