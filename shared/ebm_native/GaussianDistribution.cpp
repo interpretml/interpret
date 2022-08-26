@@ -19,6 +19,54 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureRNG() {
+   return sizeof(RandomDeterministic);
+}
+
+EBM_API_BODY void EBM_CALLING_CONVENTION InitRNG(SeedEbm seed, void * rngOut) {
+   RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rngOut);
+   pRng->Initialize(seed);
+}
+
+EBM_API_BODY void EBM_CALLING_CONVENTION CopyRNG(void * rng, void * rngOut) {
+   memcpy(rngOut, rng, sizeof(RandomDeterministic));
+}
+
+EBM_API_BODY void EBM_CALLING_CONVENTION BranchRNG(void * rng, void * rngOut) {
+   RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rng);
+   RandomDeterministic * const pRngOut = reinterpret_cast<RandomDeterministic *>(rngOut);
+
+   const uint64_t seed = pRng->Next(std::numeric_limits<uint64_t>::max());
+   // NOTE: it might be better to generate a seed that has all 128 bits of
+   //       our internal state, but 64 bits should be good enough for now
+   pRngOut->Initialize(seed);
+}
+
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateSeed(void * rng, SeedEbm * seedOut) {
+   if(nullptr == seedOut) {
+      LOG_0(Trace_Warning, "WARNING GenerateSeed nullptr == seedOut");
+      return Error_None;
+   }
+   if(nullptr == rng) {
+      try {
+         RandomNondeterministic<USeedEbm> randomGenerator;
+         *seedOut = randomGenerator.NextSeed();
+         return Error_None;
+      } catch(const std::bad_alloc &) {
+         LOG_0(Trace_Warning, "WARNING GenerateSeed Out of memory in std::random_device");
+         return Error_OutOfMemory;
+      } catch(...) {
+         LOG_0(Trace_Warning, "WARNING GenerateSeed Unknown error in std::random_device");
+         return Error_UnexpectedInternal;
+      }
+   } else {
+      RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rng);
+      *seedOut = pRng->NextSeed();
+      return Error_None;
+   }
+}
+
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
 static int g_cLogEnterGenerateGaussianRandom = 25;
 static int g_cLogExitGenerateGaussianRandom = 25;

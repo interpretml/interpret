@@ -169,27 +169,4 @@ exit_loop:;
    m_stateSeedConst = finalSeed;
 }
 
-EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureRNG() {
-   return sizeof(RandomDeterministic);
-}
-
-EBM_API_BODY void EBM_CALLING_CONVENTION InitRNG(SeedEbm seed, void * rngOut) {
-   RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rngOut);
-   pRng->Initialize(seed);
-}
-
-EBM_API_BODY void EBM_CALLING_CONVENTION CopyRNG(void * rng, void * rngOut) {
-   memcpy(rngOut, rng, sizeof(RandomDeterministic));
-}
-
-EBM_API_BODY void EBM_CALLING_CONVENTION BranchRNG(void * rng, void * rngOut) {
-   RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rng);
-   RandomDeterministic * const pRngOut = reinterpret_cast<RandomDeterministic *>(rngOut);
-
-   const uint64_t seed = pRng->Next(std::numeric_limits<uint64_t>::max());
-   // NOTE: it might be better to generate a seed that has all 128 bits of
-   //       our internal state, but 64 bits should be good enough for now
-   pRngOut->Initialize(seed);
-}
-
 } // DEFINED_ZONE_NAME
