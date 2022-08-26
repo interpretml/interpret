@@ -10,24 +10,24 @@ PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -I$(NATIVEDIR)/common_c -I$(NATI
 PKG_CXXFLAGS=$(CXX_VISIBILITY) 
 
 OBJECTS = \
-   $(NATIVEDIR)/ApplyModelUpdate.o \
-   $(NATIVEDIR)/ApplyModelUpdateTraining.o \
-   $(NATIVEDIR)/ApplyModelUpdateValidation.o \
-   $(NATIVEDIR)/BinBoosting.o \
-   $(NATIVEDIR)/BinInteraction.o \
+   $(NATIVEDIR)/ApplyTermUpdate.o \
+   $(NATIVEDIR)/ApplyTermUpdateTraining.o \
+   $(NATIVEDIR)/ApplyTermUpdateValidation.o \
+   $(NATIVEDIR)/BinSumsBoosting.o \
+   $(NATIVEDIR)/BinSumsInteraction.o \
    $(NATIVEDIR)/BoosterCore.o \
    $(NATIVEDIR)/BoosterShell.o \
-   $(NATIVEDIR)/CalculateInteractionScore.o \
+   $(NATIVEDIR)/CalcInteractionStrength.o \
    $(NATIVEDIR)/CutQuantile.o \
    $(NATIVEDIR)/CutUniform.o \
    $(NATIVEDIR)/CutWinsorized.o \
-   $(NATIVEDIR)/data_set_shared.o \
+   $(NATIVEDIR)/dataset_shared.o \
    $(NATIVEDIR)/DataSetBoosting.o \
    $(NATIVEDIR)/DataSetInteraction.o \
    $(NATIVEDIR)/debug_ebm.o \
    $(NATIVEDIR)/Discretize.o \
-   $(NATIVEDIR)/FeatureGroup.o \
-   $(NATIVEDIR)/GenerateModelUpdate.o \
+   $(NATIVEDIR)/Term.o \
+   $(NATIVEDIR)/GenerateTermUpdate.o \
    $(NATIVEDIR)/InitializeGradientsAndHessians.o \
    $(NATIVEDIR)/InteractionCore.o \
    $(NATIVEDIR)/InteractionShell.o \
@@ -36,11 +36,12 @@ OBJECTS = \
    $(NATIVEDIR)/PartitionRandomBoosting.o \
    $(NATIVEDIR)/PartitionTwoDimensionalBoosting.o \
    $(NATIVEDIR)/PartitionTwoDimensionalInteraction.o \
-   $(NATIVEDIR)/RandomStream.o \
+   $(NATIVEDIR)/RandomDeterministic.o \
+   $(NATIVEDIR)/random.o \
    $(NATIVEDIR)/sampling.o \
-   $(NATIVEDIR)/SamplingSet.o \
-   $(NATIVEDIR)/CompressibleTensor.o \
-   $(NATIVEDIR)/SumHistogramBuckets.o \
+   $(NATIVEDIR)/InnerBag.o \
+   $(NATIVEDIR)/Tensor.o \
+   $(NATIVEDIR)/SumAllBins.o \
    $(NATIVEDIR)/TensorTotalsBuild.o \
    $(NATIVEDIR)/common_c/common_c.o \
    $(NATIVEDIR)/common_c/logging.o \
