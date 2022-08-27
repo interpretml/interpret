@@ -26,17 +26,18 @@ struct Bin;
 
 template<bool bClassification>
 struct TreeSweep final {
+   friend bool IsOverflowTreeSweepSize(const bool, const size_t);
+   friend size_t GetTreeSweepSize(const bool, const size_t);
+
 private:
-   size_t m_cBestSamplesLeft;
-   FloatBig m_bestWeightLeft;
    const Bin<FloatBig, bClassification> * m_pBestBin;
 
    // use the "struct hack" since Flexible array member method is not available in C++
-   // m_aBestGradientPairs must be the last item in this struct
+   // m_bestBinLeft must be the last item in this struct
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   GradientPair<FloatBig, bClassification> m_aBestGradientPairs[1];
+   Bin<FloatBig, bClassification> m_bestBinLeft;
 
 public:
 
@@ -44,22 +45,6 @@ public:
    ~TreeSweep() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
-
-   INLINE_ALWAYS size_t GetCountBestSamplesLeft() const {
-      return m_cBestSamplesLeft;
-   }
-
-   INLINE_ALWAYS void SetCountBestSamplesLeft(const size_t cBestSamplesLeft) {
-      m_cBestSamplesLeft = cBestSamplesLeft;
-   }
-
-   INLINE_ALWAYS FloatBig GetBestWeightLeft() const {
-      return m_bestWeightLeft;
-   }
-
-   INLINE_ALWAYS void SetBestWeightLeft(const FloatBig bestWeightLeft) {
-      m_bestWeightLeft = bestWeightLeft;
-   }
 
    INLINE_ALWAYS const Bin<FloatBig, bClassification> * GetBestBin() const {
       return m_pBestBin;
@@ -69,8 +54,25 @@ public:
       m_pBestBin = pBestBin;
    }
 
+   INLINE_ALWAYS size_t GetCountBestSamplesLeft() const {
+      return m_bestBinLeft.GetCountSamples();
+   }
+
+   INLINE_ALWAYS void SetCountBestSamplesLeft(const size_t cBestSamplesLeft) {
+      m_bestBinLeft.SetCountSamples(cBestSamplesLeft);
+   }
+
+   INLINE_ALWAYS FloatBig GetBestWeightLeft() const {
+      return m_bestBinLeft.GetWeight();
+   }
+
+   INLINE_ALWAYS void SetBestWeightLeft(const FloatBig bestWeightLeft) {
+      m_bestBinLeft.SetWeight(bestWeightLeft);
+   }
+
+   // TODO: we can probably now handle SetCountSamples, SetWeight and GetGradientPairs in one combined Bin operation now
    INLINE_ALWAYS GradientPair<FloatBig, bClassification> * GetBestGradientPairs() {
-      return ArrayToPointer(m_aBestGradientPairs);
+      return m_bestBinLeft.GetGradientPairs();
    }
 };
 static_assert(std::is_standard_layout<TreeSweep<true>>::value && std::is_standard_layout<TreeSweep<false>>::value,
@@ -81,21 +83,19 @@ static_assert(std::is_pod<TreeSweep<true>>::value && std::is_pod<TreeSweep<false
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 INLINE_ALWAYS bool IsOverflowTreeSweepSize(const bool bClassification, const size_t cScores) {
-   const size_t cBytesPerGradientPair = GetGradientPairSize<FloatBig>(bClassification);
-
-   if(UNLIKELY(IsMultiplyError(cBytesPerGradientPair, cScores))) {
+   if(IsOverflowBinSize<FloatBig>(bClassification, cScores)) {
       return true;
    }
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
    size_t cBytesTreeSweepComponent;
    if(bClassification) {
-      cBytesTreeSweepComponent = sizeof(TreeSweep<true>);
+      cBytesTreeSweepComponent = sizeof(TreeSweep<true>) - sizeof(TreeSweep<true>::m_bestBinLeft);
    } else {
-      cBytesTreeSweepComponent = sizeof(TreeSweep<false>);
+      cBytesTreeSweepComponent = sizeof(TreeSweep<false>) - sizeof(TreeSweep<false>::m_bestBinLeft);
    }
-   cBytesTreeSweepComponent -= cBytesPerGradientPair;
 
-   if(UNLIKELY(IsAddError(cBytesTreeSweepComponent, cBytesPerGradientPair * cScores))) {
+   if(UNLIKELY(IsAddError(cBytesTreeSweepComponent, cBytesPerBin))) {
       return true;
    }
 
@@ -103,17 +103,16 @@ INLINE_ALWAYS bool IsOverflowTreeSweepSize(const bool bClassification, const siz
 }
 
 INLINE_ALWAYS size_t GetTreeSweepSize(bool bClassification, const size_t cScores) {
-   const size_t cBytesPerGradientPair = GetGradientPairSize<FloatBig>(bClassification);
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
    size_t cBytesTreeSweepComponent;
    if(bClassification) {
-      cBytesTreeSweepComponent = sizeof(TreeSweep<true>);
+      cBytesTreeSweepComponent = sizeof(TreeSweep<true>) - sizeof(TreeSweep<true>::m_bestBinLeft);
    } else {
-      cBytesTreeSweepComponent = sizeof(TreeSweep<false>);
+      cBytesTreeSweepComponent = sizeof(TreeSweep<false>) - sizeof(TreeSweep<false>::m_bestBinLeft);
    }
-   cBytesTreeSweepComponent -= cBytesPerGradientPair;
 
-   return cBytesTreeSweepComponent + cBytesPerGradientPair * cScores;
+   return cBytesTreeSweepComponent + cBytesPerBin;
 }
 
 template<bool bClassification>
