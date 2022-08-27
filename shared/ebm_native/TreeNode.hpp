@@ -23,8 +23,8 @@ namespace DEFINED_ZONE_NAME {
 
 template<bool bClassification>
 struct TreeNode final {
-   friend bool IsOverflowTreeNodeSize(const bool bClassification, const size_t cScores);
-   friend size_t GetTreeNodeSize(const bool bClassification, const size_t cScores);
+   friend bool IsOverflowTreeNodeSize(const bool, const size_t);
+   friend size_t GetTreeNodeSize(const bool, const size_t);
 
    TreeNode() = default; // preserve our POD status
    ~TreeNode() = default; // preserve our POD status
