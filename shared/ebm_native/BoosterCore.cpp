@@ -330,8 +330,8 @@ ErrorEbm BoosterCore::Create(
          return Error_OutOfMemory;
       }
 
-      if(GetTreeSweepSizeOverflow(bClassification, cScores)) {
-         LOG_0(Trace_Warning, "WARNING BoosterCore::Create GetTreeSweepSizeOverflow(bClassification, cScores)");
+      if(IsOverflowTreeSweepSize(bClassification, cScores)) {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsOverflowTreeSweepSize(bClassification, cScores)");
          return Error_OutOfMemory;
       }
       const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cScores);

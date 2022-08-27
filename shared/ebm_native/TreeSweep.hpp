@@ -80,7 +80,7 @@ static_assert(std::is_trivial<TreeSweep<true>>::value && std::is_trivial<TreeSwe
 static_assert(std::is_pod<TreeSweep<true>>::value && std::is_pod<TreeSweep<false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-INLINE_ALWAYS bool GetTreeSweepSizeOverflow(const bool bClassification, const size_t cScores) {
+INLINE_ALWAYS bool IsOverflowTreeSweepSize(const bool bClassification, const size_t cScores) {
    const size_t cBytesPerGradientPair = GetGradientPairSize<FloatBig>(bClassification);
 
    if(UNLIKELY(IsMultiplyError(cBytesPerGradientPair, cScores))) {

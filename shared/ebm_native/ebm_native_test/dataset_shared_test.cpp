@@ -9,7 +9,7 @@
 
 static const TestPriority k_filePriority = TestPriority::DataSetShared;
 
-TEST_CASE("data_set_shared, zero features, zero samples, regression") {
+TEST_CASE("dataset_shared, zero features, zero samples, regression") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -33,7 +33,7 @@ TEST_CASE("data_set_shared, zero features, zero samples, regression") {
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
-TEST_CASE("data_set_shared, zero features, three samples, regression") {
+TEST_CASE("dataset_shared, zero features, three samples, regression") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -61,7 +61,7 @@ TEST_CASE("data_set_shared, zero features, three samples, regression") {
 }
 
 
-TEST_CASE("data_set_shared, two features, zero samples, regression") {
+TEST_CASE("dataset_shared, two features, zero samples, regression") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -97,7 +97,7 @@ TEST_CASE("data_set_shared, two features, zero samples, regression") {
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
-TEST_CASE("data_set_shared, two features, 3 samples, regression") {
+TEST_CASE("dataset_shared, two features, 3 samples, regression") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -136,7 +136,7 @@ TEST_CASE("data_set_shared, two features, 3 samples, regression") {
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
-TEST_CASE("data_set_shared, zero features, zero samples, classification") {
+TEST_CASE("dataset_shared, zero features, zero samples, classification") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -160,7 +160,7 @@ TEST_CASE("data_set_shared, zero features, zero samples, classification") {
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
-TEST_CASE("data_set_shared, zero features, three samples, classification") {
+TEST_CASE("dataset_shared, zero features, three samples, classification") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -187,7 +187,7 @@ TEST_CASE("data_set_shared, zero features, three samples, classification") {
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
-TEST_CASE("data_set_shared, two features, zero samples, classification") {
+TEST_CASE("dataset_shared, two features, zero samples, classification") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -223,7 +223,7 @@ TEST_CASE("data_set_shared, two features, zero samples, classification") {
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
-TEST_CASE("data_set_shared, two features, 3 samples, classification") {
+TEST_CASE("dataset_shared, two features, 3 samples, classification") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -265,7 +265,7 @@ TEST_CASE("data_set_shared, two features, 3 samples, classification") {
 
 // weights 
 
-TEST_CASE("data_set_shared, zero features, zero samples, weights, regression") {
+TEST_CASE("dataset_shared, zero features, zero samples, weights, regression") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -295,7 +295,7 @@ TEST_CASE("data_set_shared, zero features, zero samples, weights, regression") {
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
-TEST_CASE("data_set_shared, zero features, three samples, weights, regression") {
+TEST_CASE("dataset_shared, zero features, three samples, weights, regression") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -330,7 +330,7 @@ TEST_CASE("data_set_shared, zero features, three samples, weights, regression") 
 }
 
 
-TEST_CASE("data_set_shared, two features, zero samples, weights, regression") {
+TEST_CASE("dataset_shared, two features, zero samples, weights, regression") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -372,7 +372,7 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, regression") {
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
-TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
+TEST_CASE("dataset_shared, two features, 3 samples, weights, regression") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -418,7 +418,7 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
-TEST_CASE("data_set_shared, zero features, zero samples, weights, classification") {
+TEST_CASE("dataset_shared, zero features, zero samples, weights, classification") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -448,7 +448,7 @@ TEST_CASE("data_set_shared, zero features, zero samples, weights, classification
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
-TEST_CASE("data_set_shared, zero features, three samples, weights, classification") {
+TEST_CASE("dataset_shared, zero features, three samples, weights, classification") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -482,7 +482,7 @@ TEST_CASE("data_set_shared, zero features, three samples, weights, classificatio
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
-TEST_CASE("data_set_shared, two features, zero samples, weights, classification") {
+TEST_CASE("dataset_shared, two features, zero samples, weights, classification") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
@@ -524,7 +524,7 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, classification"
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
-TEST_CASE("data_set_shared, two features, 3 samples, weights, classification") {
+TEST_CASE("dataset_shared, two features, 3 samples, weights, classification") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;

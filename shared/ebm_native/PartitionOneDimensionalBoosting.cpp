@@ -44,8 +44,8 @@ static void Flatten(
    const size_t cScores
 ) {
    // don't log this since we call it recursively.  Log where the root is called
-   if(UNPREDICTABLE(pTreeNode->WAS_THIS_NODE_SPLIT())) {
-      EBM_ASSERT(!GetTreeNodeSizeOverflow(bClassification, cScores)); // we're accessing allocated memory
+   if(UNPREDICTABLE(pTreeNode->AFTER_IsSplit())) {
+      EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
       const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
          pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
@@ -148,7 +148,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    auto * pBinCur = pTreeNode->BEFORE_GetBinFirst();
    const auto * const pBinLast = pTreeNode->BEFORE_GetBinLast();
 
-   EBM_ASSERT(!GetTreeNodeSizeOverflow(bClassification, cScores)); // we're accessing allocated memory
+   EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
 
    TreeNode<bClassification> * const pLeftChildInit =
@@ -166,14 +166,14 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
-   EBM_ASSERT(!GetTreeSweepSizeOverflow(bClassification, cScores)); // we're accessing allocated memory
+   EBM_ASSERT(!IsOverflowTreeSweepSize(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cScores);
 
    TreeSweep<bClassification> * pTreeSweepStart =
       static_cast<TreeSweep<bClassification> *>(pBoosterShell->GetEquivalentSplits());
    TreeSweep<bClassification> * pTreeSweepCur = pTreeSweepStart;
 
-   size_t cSamplesRight = pTreeNode->AMBIGUOUS_GetCountSamples();
+   size_t cSamplesRight = pTreeNode->GetCountSamples();
    size_t cSamplesLeft = 0;
 
    FloatBig weightRight = pTreeNode->GetWeight();
@@ -362,7 +362,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const auto * const BEST_pBin = pTreeSweepStart->GetBestBin();
    pLeftChild->BEFORE_SetBinLast(BEST_pBin);
    const size_t BEST_cSamplesLeft = pTreeSweepStart->GetCountBestSamplesLeft();
-   pLeftChild->AMBIGUOUS_SetCountSamples(BEST_cSamplesLeft);
+   pLeftChild->SetCountSamples(BEST_cSamplesLeft);
 
    const FloatBig BEST_weightLeft = pTreeSweepStart->GetBestWeightLeft();
    pLeftChild->SetWeight(BEST_weightLeft);
@@ -373,11 +373,11 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
    pRightChild->BEFORE_SetBinFirst(BEST_pBinNext);
-   const size_t cSamplesParent = pTreeNode->AMBIGUOUS_GetCountSamples();
+   const size_t cSamplesParent = pTreeNode->GetCountSamples();
    // if there were zero samples in the entire dataset then we shouldn't have found a split worth making and we 
    // should have handled the empty dataset earlier
    EBM_ASSERT(0 < cSamplesParent);
-   pRightChild->AMBIGUOUS_SetCountSamples(cSamplesParent - BEST_cSamplesLeft);
+   pRightChild->SetCountSamples(cSamplesParent - BEST_cSamplesLeft);
 
    const FloatBig weightParent = pTreeNode->GetWeight();
    pRightChild->SetWeight(weightParent - BEST_weightLeft);
@@ -420,14 +420,14 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    EBM_ASSERT(reinterpret_cast<const char *>(aBins) <= reinterpret_cast<const char *>(BEST_pBin));
    EBM_ASSERT(0 == (reinterpret_cast<const char *>(BEST_pBin) - reinterpret_cast<const char *>(aBins)) % cBytesPerBin);
-   pTreeNode->AFTER_SetSplitVal((reinterpret_cast<const char *>(BEST_pBin) - 
-      reinterpret_cast<const char *>(aBins)) / cBytesPerBin);
+   const size_t iSplit = (reinterpret_cast<const char *>(BEST_pBin) - reinterpret_cast<const char *>(aBins)) / cBytesPerBin;
+   pTreeNode->AFTER_SetSplitVal(iSplit);
 
    LOG_N(
       Trace_Verbose,
       "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: splitVal=%zu, gain=%le",
-      static_cast<size_t>(pTreeNode->AFTER_GetSplitVal()),
-      pTreeNode->AFTER_GetSplitGain()
+      iSplit,
+      BEST_gain
    );
 
    return 0;
@@ -487,8 +487,8 @@ public:
 
       // there will be at least one split
 
-      if(GetTreeNodeSizeOverflow(bClassification, cScores)) {
-         LOG_0(Trace_Warning, "WARNING PartitionOneDimensionalBoosting GetTreeNodeSizeOverflow<bClassification>(cScores)");
+      if(IsOverflowTreeNodeSize(bClassification, cScores)) {
+         LOG_0(Trace_Warning, "WARNING PartitionOneDimensionalBoosting IsOverflowTreeNodeSize<bClassification>(cScores)");
          return Error_OutOfMemory; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
       }
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
@@ -522,7 +522,7 @@ public:
       pRootTreeNode->BEFORE_SetBinFirst(aBins);
       pRootTreeNode->BEFORE_SetBinLast(IndexBin(aBins, cBytesPerBin * (cBins - 1)));
       ASSERT_BIN_OK(cBytesPerBin, pRootTreeNode->BEFORE_GetBinLast(), pBoosterShell->GetBinsBigEndDebug());
-      pRootTreeNode->AMBIGUOUS_SetCountSamples(cSamplesTotal);
+      pRootTreeNode->SetCountSamples(cSamplesTotal);
       pRootTreeNode->SetWeight(weightTotal);
 
       // copying existing mem
@@ -596,11 +596,11 @@ public:
          // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
 
          EBM_ASSERT(2 != cBins || !GetLeftTreeNodeChild<bClassification>(
-            pRootTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode)->IsSplittable() &&
+            pRootTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode)->BEFORE_IsSplittable() &&
             !GetRightTreeNodeChild<bClassification>(
                pRootTreeNode->AFTER_GetTreeNodeChildren(),
                cBytesPerTreeNode
-               )->IsSplittable()
+               )->BEFORE_IsSplittable()
          );
 
          error = pInnerTermUpdate->SetCountSplits(iDimension, 1);
@@ -675,7 +675,7 @@ public:
             aUpdateScores[1] = SafeConvertFloat<FloatFast>(updateScore1);
          }
 
-         const FloatBig totalGain = pRootTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
+         const FloatBig totalGain = pRootTreeNode->AFTER_GetSplitGain();
          EBM_ASSERT(!std::isnan(totalGain));
          EBM_ASSERT(!std::isinf(totalGain));
          EBM_ASSERT(0 <= totalGain);
@@ -731,21 +731,21 @@ public:
 
          skip_first_push_pop:
 
-            // ONLY AFTER WE'VE POPPED pParentTreeNode OFF the priority queue is it considered to have been split.  Calling SPLIT_THIS_NODE makes it formal
-            const FloatBig totalGainUpdate = pParentTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
+            // ONLY AFTER WE'VE POPPED pParentTreeNode OFF the priority queue is it considered to have been split.  Calling AFTER_SplitNode makes it formal
+            const FloatBig totalGainUpdate = pParentTreeNode->AFTER_GetSplitGain();
             EBM_ASSERT(!std::isnan(totalGainUpdate));
             EBM_ASSERT(!std::isinf(totalGainUpdate));
             EBM_ASSERT(0 <= totalGainUpdate);
             totalGain += totalGainUpdate;
 
-            pParentTreeNode->SPLIT_THIS_NODE();
+            pParentTreeNode->AFTER_SplitNode();
 
             TreeNode<bClassification> * const pLeftChild =
                GetLeftTreeNodeChild<bClassification>(
                   pParentTreeNode->AFTER_GetTreeNodeChildren(),
                   cBytesPerTreeNode
                );
-            if(pLeftChild->IsSplittable()) {
+            if(pLeftChild->BEFORE_IsSplittable()) {
                TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceNext =
                   AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
                if(cBytesBuffer2 <
@@ -757,7 +757,7 @@ public:
                   }
                   goto retry_with_bigger_tree_node_children_array;
                }
-               // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED
+               // the act of splitting it implicitly sets AFTER_RejectSplitPossibility
                // because splitting sets splitGain to a non-illegalGain value
                if(0 == ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<cCompilerClasses>(
                   pRng,
@@ -783,8 +783,8 @@ public:
             no_left_split:;
                // we aren't going to split this TreeNode because we can't. We need to set the splitGain value 
                // here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch) 
-               // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode 
-               // because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets 
+               // we can't call AFTER_RejectSplitPossibility before calling SplitTreeNode 
+               // because AFTER_RejectSplitPossibility sets 
                // m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the 
                // m_UNION.m_beforeExaminationForPossibleSplitting values are 
                // needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
@@ -793,14 +793,14 @@ public:
                pLeftChild->SetExaminedForPossibleSplitting(true);
 #endif // NDEBUG
 
-               pLeftChild->INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED();
+               pLeftChild->AFTER_RejectSplitPossibility();
             }
 
             TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
                pParentTreeNode->AFTER_GetTreeNodeChildren(),
                cBytesPerTreeNode
             );
-            if(pRightChild->IsSplittable()) {
+            if(pRightChild->BEFORE_IsSplittable()) {
                TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceNext =
                   AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
                if(cBytesBuffer2 <
@@ -812,7 +812,7 @@ public:
                   }
                   goto retry_with_bigger_tree_node_children_array;
                }
-               // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED 
+               // the act of splitting it implicitly sets AFTER_RejectSplitPossibility 
                // because splitting sets splitGain to a non-NaN value
                if(0 == ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<cCompilerClasses>(
                   pRng,
@@ -838,8 +838,8 @@ public:
             no_right_split:;
                // we aren't going to split this TreeNode because we can't. We need to set the splitGain value 
                // here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch) 
-               // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode 
-               // because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets 
+               // we can't call AFTER_RejectSplitPossibility before calling SplitTreeNode 
+               // because AFTER_RejectSplitPossibility sets 
                // m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the 
                // m_UNION.m_beforeExaminationForPossibleSplitting values are 
                // needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
@@ -848,7 +848,7 @@ public:
                pRightChild->SetExaminedForPossibleSplitting(true);
 #endif // NDEBUG
 
-               pRightChild->INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED();
+               pRightChild->AFTER_RejectSplitPossibility();
             }
             ++cLeaves;
          } while(cLeaves < cLeavesMax && UNLIKELY(!bestTreeNodeToSplit.empty()));

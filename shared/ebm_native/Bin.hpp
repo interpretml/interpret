@@ -229,17 +229,11 @@ INLINE_ALWAYS const Bin<TFloat, bClassification> * IndexBin(
    return reinterpret_cast<const Bin<TFloat, bClassification> *>(reinterpret_cast<const char *>(aBins) + iByte);
 }
 
-INLINE_ALWAYS BinBase * IndexBin(
-   BinBase * const aBins,
-   const size_t iByte
-) {
+INLINE_ALWAYS BinBase * IndexBin(BinBase * const aBins, const size_t iByte) {
    return reinterpret_cast<BinBase *>(reinterpret_cast<char *>(aBins) + iByte);
 }
 
-INLINE_ALWAYS const BinBase * IndexBin(
-   const BinBase * const aBins,
-   const size_t iByte
-) {
+INLINE_ALWAYS const BinBase * IndexBin(const BinBase * const aBins, const size_t iByte) {
    return reinterpret_cast<const BinBase *>(reinterpret_cast<const char *>(aBins) + iByte);
 }
 
