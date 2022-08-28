@@ -152,12 +152,20 @@ struct TreeNode final {
       m_bin.SetWeight(weight);
    }
 
-   // TODO: we can probably now handle SetCountSamples, SetWeight and GetGradientPairs in one combined Bin operation now
+   // TODO: try eliminating GetGradientPairs and see if it works
    INLINE_ALWAYS const GradientPair<FloatBig, bClassification> * GetGradientPairs() const {
       return m_bin.GetGradientPairs();
    }
    INLINE_ALWAYS GradientPair<FloatBig, bClassification> * GetGradientPairs() {
       return m_bin.GetGradientPairs();
+   }
+
+   // TODO: we can probably now handle SetCountSamples, SetWeight and GetGradientPairs in one combined Bin operation now
+   INLINE_ALWAYS const Bin<FloatBig, bClassification> * GetBin() const {
+      return &m_bin;
+   }
+   INLINE_ALWAYS Bin<FloatBig, bClassification> * GetBin() {
+      return &m_bin;
    }
 
 #ifndef NDEBUG

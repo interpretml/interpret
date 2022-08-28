@@ -118,12 +118,14 @@ public:
       m_weight += other.m_weight;
 
       auto * aGradientPairs = GetGradientPairs();
-
       const auto * aOtherGradientPairs = other.GetGradientPairs();
 
-      for(size_t iScore = 0; iScore < cScores; ++iScore) {
+      EBM_ASSERT(1 <= cScores);
+      size_t iScore = 0;
+      do {
          aGradientPairs[iScore].Add(aOtherGradientPairs[iScore]);
-      }
+         ++iScore;
+      } while(cScores != iScore);
    }
 
    INLINE_ALWAYS void Subtract(const Bin<TFloat, bClassification> & other, const size_t cScores) {
@@ -133,14 +135,16 @@ public:
       auto * aGradientPairs = GetGradientPairs();
       const auto * aOtherGradientPairs = other.GetGradientPairs();
 
-      for(size_t iScore = 0; iScore < cScores; ++iScore) {
+      EBM_ASSERT(1 <= cScores);
+      size_t iScore = 0;
+      do {
          aGradientPairs[iScore].Subtract(aOtherGradientPairs[iScore]);
-      }
+         ++iScore;
+      } while(cScores != iScore);
    }
 
    INLINE_ALWAYS void Copy(const Bin<TFloat, bClassification> & other, const size_t cScores) {
       const size_t cBytesPerBin = sizeof(Bin) - sizeof(m_aGradientPairs) + sizeof(m_aGradientPairs[0]) * cScores;
-
       memcpy(this, &other, cBytesPerBin);
    }
 

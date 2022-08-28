@@ -16,6 +16,7 @@
 
 #include "RandomDeterministic.hpp"
 #include "GradientPair.hpp"
+#include "Bin.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -50,9 +51,9 @@ class BoosterShell final {
    FloatFast * m_aTempFloatVector;
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
-   GradientPairBase * m_aSumAllGradientPairs;
-   GradientPairBase * m_aLeftGradientPairs;
-   GradientPairBase * m_aRightGradientPairs;
+   BinBase * m_pSumAllBins;
+   BinBase * m_pLeftBin;
+   BinBase * m_pRightBin;
 
 #ifndef NDEBUG
    const unsigned char * m_pBinsFastEndDebug;
@@ -82,9 +83,9 @@ public:
       m_cThreadByteBufferCapacity2 = 0;
       m_aTempFloatVector = nullptr;
       m_aEquivalentSplits = nullptr;
-      m_aSumAllGradientPairs = nullptr;
-      m_aLeftGradientPairs = nullptr;
-      m_aRightGradientPairs = nullptr;
+      m_pSumAllBins = nullptr;
+      m_pLeftBin = nullptr;
+      m_pRightBin = nullptr;
    }
 
    static void Free(BoosterShell * const pBoosterShell);
@@ -170,18 +171,19 @@ public:
       return m_aEquivalentSplits;
    }
 
-   INLINE_ALWAYS GradientPairBase * GetSumAllGradientPairs() {
-      return m_aSumAllGradientPairs;
+   template<bool bClassification>
+   INLINE_ALWAYS Bin<FloatBig, bClassification> * GetSumAllBins() {
+      return m_pSumAllBins->Specialize<FloatBig, bClassification>();
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS GradientPair<FloatBig, bClassification> * GetLeftGradientPairs() {
-      return static_cast<GradientPair<FloatBig, bClassification> *>(m_aLeftGradientPairs);
+   INLINE_ALWAYS Bin<FloatBig, bClassification> * GetLeftBin() {
+      return m_pLeftBin->Specialize<FloatBig, bClassification>();
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS GradientPair<FloatBig, bClassification> * GetRightGradientPairs() {
-      return static_cast<GradientPair<FloatBig, bClassification> *>(m_aRightGradientPairs);
+   INLINE_ALWAYS Bin<FloatBig, bClassification> * GetRightBin() {
+      return m_pRightBin->Specialize<FloatBig, bClassification>();
    }
 
 #ifndef NDEBUG

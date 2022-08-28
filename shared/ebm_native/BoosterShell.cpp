@@ -38,9 +38,9 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
       free(pBoosterShell->m_aThreadByteBuffer1Fast);
       free(pBoosterShell->m_aThreadByteBuffer1Big);
       free(pBoosterShell->m_aThreadByteBuffer2);
-      free(pBoosterShell->m_aSumAllGradientPairs);
-      free(pBoosterShell->m_aLeftGradientPairs);
-      free(pBoosterShell->m_aRightGradientPairs);
+      free(pBoosterShell->m_pSumAllBins);
+      free(pBoosterShell->m_pLeftBin);
+      free(pBoosterShell->m_pRightBin);
       free(pBoosterShell->m_aTempFloatVector);
       free(pBoosterShell->m_aEquivalentSplits);
       BoosterCore::Free(pBoosterShell->m_pBoosterCore);
@@ -74,7 +74,7 @@ ErrorEbm BoosterShell::FillAllocations() {
 
    const ptrdiff_t cClasses = m_pBoosterCore->GetCountClasses();
    const size_t cScores = GetCountScores(cClasses);
-   const size_t cBytesPerGradientPair = GetGradientPairSize<FloatBig>(IsClassification(cClasses));
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(IsClassification(cClasses), cScores);
       
    m_pTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
    if(nullptr == m_pTermUpdate) {
@@ -86,18 +86,18 @@ ErrorEbm BoosterShell::FillAllocations() {
       goto failed_allocation;
    }
 
-   m_aSumAllGradientPairs = EbmMalloc<GradientPairBase>(cScores, cBytesPerGradientPair);
-   if(nullptr == m_aSumAllGradientPairs) {
+   m_pSumAllBins = EbmMalloc<BinBase>(1, cBytesPerBin);
+   if(nullptr == m_pSumAllBins) {
       goto failed_allocation;
    }
 
-   m_aLeftGradientPairs = EbmMalloc<GradientPairBase>(cScores, cBytesPerGradientPair);
-   if(nullptr == m_aLeftGradientPairs) {
+   m_pLeftBin = EbmMalloc<BinBase>(1, cBytesPerBin);
+   if(nullptr == m_pLeftBin) {
       goto failed_allocation;
    }
 
-   m_aRightGradientPairs = EbmMalloc<GradientPairBase>(cScores, cBytesPerGradientPair);
-   if(nullptr == m_aRightGradientPairs) {
+   m_pRightBin = EbmMalloc<BinBase>(1, cBytesPerBin);
+   if(nullptr == m_pRightBin) {
       goto failed_allocation;
    }
 

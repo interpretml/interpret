@@ -47,11 +47,9 @@ extern void BinSumsBoosting(
 
 extern void SumAllBins(
    BoosterShell * const pBoosterShell,
-   const size_t cBins
-#ifndef NDEBUG
-   , const size_t cSamplesTotal
-   , const FloatBig weightTotal
-#endif // NDEBUG
+   const size_t cBins,
+   const size_t cSamplesTotal,
+   const FloatBig weightTotal
 );
 
 extern void TensorTotalsBuild(
@@ -301,17 +299,11 @@ static ErrorEbm BoostSingleDimensional(
    // TODO: we can exit here back to python to allow caller modification to our histograms
 
 
-   GradientPairBase * const aSumAllGradientPairs = pBoosterShell->GetSumAllGradientPairs();
-   const size_t cBytesPerGradientPair = GetGradientPairSize<FloatBig>(bClassification);
-   aSumAllGradientPairs->Zero(cBytesPerGradientPair, cScores);
-
    SumAllBins(
       pBoosterShell,
-      cBins
-#ifndef NDEBUG
-      , pBoosterCore->GetTrainingSet()->GetCountSamples()
-      , pInnerBag->GetWeightTotal()
-#endif // NDEBUG
+      cBins,
+      pBoosterCore->GetTrainingSet()->GetCountSamples(),
+      pInnerBag->GetWeightTotal()
    );
 
    const size_t cSamplesTotal = pBoosterCore->GetTrainingSet()->GetCountSamples();

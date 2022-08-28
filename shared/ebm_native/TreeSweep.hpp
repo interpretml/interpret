@@ -70,9 +70,10 @@ public:
       m_bestBinLeft.SetWeight(bestWeightLeft);
    }
 
+   // TODO: try eliminating GetCountBestSamplesLeft, SetCountBestSamplesLeft, GetBestWeightLeft, SetBestWeightLeft
    // TODO: we can probably now handle SetCountSamples, SetWeight and GetGradientPairs in one combined Bin operation now
-   INLINE_ALWAYS GradientPair<FloatBig, bClassification> * GetBestGradientPairs() {
-      return m_bestBinLeft.GetGradientPairs();
+   INLINE_ALWAYS Bin<FloatBig, bClassification> * GetBestLeftBin() {
+      return &m_bestBinLeft;
    }
 };
 static_assert(std::is_standard_layout<TreeSweep<true>>::value && std::is_standard_layout<TreeSweep<false>>::value,

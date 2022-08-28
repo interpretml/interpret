@@ -121,24 +121,18 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
-   const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-      cCompilerClasses,
-      cRuntimeClasses
-   );
+   const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
    const size_t cScores = GetCountScores(cClasses);
 
-   // it's tempting to want to use GetSumAllGradientPairs here instead of 
-   // GetLeftGradientPairs, but the problem with that is that we sometimes re-do our work
-   // when we exceed our memory size by goto retry_with_bigger_tree_node_children_array.  When that happens
-   // we need to retrieve the original sum which resides at GetSumAllGradientPairs
-   // since the memory pointed to at pRootTreeNode is freed and re-allocated.
-   // So, DO NOT DO: pBoosterShell->GetSumAllGradientPairs()->
-   //   GetGradientPairs<bClassification>();
-   auto * const aLeftSweepGradientPairs = pBoosterShell->GetLeftGradientPairs<bClassification>();
+   auto * const aLeftBin = pBoosterShell->GetLeftBin<bClassification>();
+   // TODO: eliminate aLeftSweepGradientPairs and use the full bin
+   auto * const aLeftSweepGradientPairs = aLeftBin->GetGradientPairs();
    const size_t cBytesPerGradientPair = GetGradientPairSize<FloatBig>(bClassification);
    aLeftSweepGradientPairs->Zero(cBytesPerGradientPair, cScores);
 
-   auto * const aRightSweepGradientPairs = pBoosterShell->GetRightGradientPairs<bClassification>();
+   auto * const aRightBin = pBoosterShell->GetRightBin<bClassification>();
+   // TODO: eliminate aRightSweepGradientPairs and use the full bin
+   auto * const aRightSweepGradientPairs = aRightBin->GetGradientPairs();
    const auto * pInitGradientPair = pTreeNode->GetGradientPairs();
    for(size_t iScore = 0; iScore < cScores; ++iScore) {
       // TODO : memcpy this instead
@@ -277,7 +271,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             pTreeSweepCur->SetCountBestSamplesLeft(cSamplesLeft);
             pTreeSweepCur->SetBestWeightLeft(weightLeft);
             memcpy(
-               pTreeSweepCur->GetBestGradientPairs(), aLeftSweepGradientPairs,
+               pTreeSweepCur->GetBestLeftBin()->GetGradientPairs(), aLeftSweepGradientPairs,
                sizeof(*aLeftSweepGradientPairs) * cScores
             );
 
@@ -388,7 +382,9 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    const auto * pParentGradientPair = pTreeNode->GetGradientPairs();
 
-   const auto * pBestGradientPair = pTreeSweepStart->GetBestGradientPairs();
+   const auto * pBestLeftBin = pTreeSweepStart->GetBestLeftBin();
+   // TODO: operate on an entire bin instead of a pBestGradientPair
+   const auto * pBestGradientPair = pBestLeftBin->GetGradientPairs();
 
    for(size_t iScore = 0; iScore < cScores; ++iScore) {
       const FloatBig BEST_sumGradientsLeft = pBestGradientPair[iScore].m_sumGradients;
@@ -467,8 +463,9 @@ public:
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
       const auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
 
-      GradientPairBase * const aSumAllGradientPairsBase = pBoosterShell->GetSumAllGradientPairs();
-      const auto * const aSumAllGradientPairs = aSumAllGradientPairsBase->Specialize<FloatBig, bClassification>();
+      const auto * const aSumAllBins = pBoosterShell->GetSumAllBins<bClassification>();
+      // TODO: eliminate aSumAllGradientPairs and use the entire bin 
+      const auto * const aSumAllGradientPairs = aSumAllBins->GetGradientPairs();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();

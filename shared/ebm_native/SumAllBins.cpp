@@ -34,22 +34,28 @@ public:
 
    static void Func(
       BoosterShell * const pBoosterShell,
-      const size_t cBins
-#ifndef NDEBUG
-      , const size_t cSamplesTotal
-      , const FloatBig weightTotal
-#endif // NDEBUG
+      const size_t cBins, 
+      const size_t cSamplesTotal,
+      const FloatBig weightTotal
    ) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
 
+      auto * const aSumAllBins = pBoosterShell->GetSumAllBins<bClassification>();
+
+      // these stay the same, so we can calculate them once at init
+      aSumAllBins->SetCountSamples(cSamplesTotal);
+      aSumAllBins->SetWeight(weightTotal);
+
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
+      const size_t cScores = GetCountScores(cClasses);
 
-      GradientPairBase * const aSumAllGradientPairsBase = pBoosterShell->GetSumAllGradientPairs();
+      auto * const aSumAllGradientPairs = aSumAllBins->GetGradientPairs();
+      aSumAllGradientPairs->Zero(sizeof(*aSumAllGradientPairs), cScores);
+
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
-
       const auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
-      auto * const aSumAllGradientPairs = aSumAllGradientPairsBase->Specialize<FloatBig, bClassification>();
 
       EBM_ASSERT(2 <= cBins); // we pre-filter out features with only one bin
 
@@ -58,8 +64,6 @@ public:
       FloatBig weightTotalDebug = 0;
 #endif // NDEBUG
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses );
-      const size_t cScores = GetCountScores(cClasses);
       EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
@@ -79,7 +83,8 @@ public:
 
          const auto * pGradientPair = pCopyFrom->GetGradientPairs();
 
-         for(size_t iScore = 0; iScore < cScores; ++iScore) {
+         size_t iScore = 0;
+         do {
             // when building a tree, we start from one end and sweep to the other.  In order to caluculate
             // gain on both sides, we need the sum on both sides, which means when starting from one end
             // we need to know the sum of everything on the other side, so we need to calculate this sum
@@ -91,7 +96,8 @@ public:
             // beforehand.  We'll still want this per-bin sumation though since it's unlikley that all data
             // will be continuous in an ML problem.
             aSumAllGradientPairs[iScore].Add(pGradientPair[iScore]);
-         }
+            ++iScore;
+         } while(cScores != iScore);
 
          pCopyFrom = IndexBin(pCopyFrom, cBytesPerBin);
       } while(pCopyFromEnd != pCopyFrom);
@@ -104,11 +110,9 @@ public:
 
 extern void SumAllBins(
    BoosterShell * const pBoosterShell,
-   const size_t cBins
-#ifndef NDEBUG
-   , const size_t cSamplesTotal
-   , const FloatBig weightTotal
-#endif // NDEBUG
+   const size_t cBins,
+   const size_t cSamplesTotal,
+   const FloatBig weightTotal
 ) {
    LOG_0(Trace_Verbose, "Entered SumAllBins");
 
@@ -119,31 +123,25 @@ extern void SumAllBins(
       if(IsBinaryClassification(cRuntimeClasses)) {
          SumAllBinsInternal<2>::Func(
             pBoosterShell,
-            cBins
-#ifndef NDEBUG
-            , cSamplesTotal
-            , weightTotal
-#endif // NDEBUG
+            cBins,
+            cSamplesTotal,
+            weightTotal
          );
       } else {
          SumAllBinsInternal<k_dynamicClassification>::Func(
             pBoosterShell,
-            cBins
-#ifndef NDEBUG
-            , cSamplesTotal
-            , weightTotal
-#endif // NDEBUG
+            cBins,
+            cSamplesTotal,
+            weightTotal
          );
       }
    } else {
       EBM_ASSERT(IsRegression(cRuntimeClasses));
       SumAllBinsInternal<k_regression>::Func(
          pBoosterShell,
-         cBins
-#ifndef NDEBUG
-         , cSamplesTotal
-         , weightTotal
-#endif // NDEBUG
+         cBins,
+         cSamplesTotal,
+         weightTotal
       );
    }
 
