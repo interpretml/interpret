@@ -98,7 +98,7 @@ static void Flatten(
 //   Probably 1 split isn't very good since with 2 splits we can localize a region of high gain in the center somewhere
 
 template<ptrdiff_t cCompilerClasses>
-static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
+static int FindBestSplitGain(
    RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    TreeNode<IsClassification(cCompilerClasses)> * pTreeNode,
@@ -109,7 +109,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    LOG_N(
       Trace_Verbose,
-      "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pBoosterShell=%p, pTreeNode=%p, "
+      "Entered FindBestSplitGain: pBoosterShell=%p, pTreeNode=%p, "
       "pTreeNodeChildrenAvailableStorageSpaceCur=%p, cSamplesLeafMin=%zu",
       static_cast<const void *>(pBoosterShell),
       static_cast<void *>(pTreeNode),
@@ -149,8 +149,8 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
 #ifndef NDEBUG
-   pLeftChildInit->SetExaminedForPossibleSplitting(false);
-   pRightChildInit->SetExaminedForPossibleSplitting(false);
+   pLeftChildInit->SetDoneGainCalc(false);
+   pRightChildInit->SetDoneGainCalc(false);
 #endif // NDEBUG
 
    pLeftChildInit->BEFORE_SetBinFirst(pBinCur);
@@ -343,11 +343,10 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    EBM_ASSERT(0 < pTreeNode->GetCountSamples());
 
 
-   // IMPORTANT!! : we need to finish all our calls that use this->m_UNION.m_beforeExaminationForPossibleSplitting BEFORE setting anything in 
-   // m_UNION.m_afterExaminationForPossibleSplitting as we do below this comment!  The call above to this->GetSamples() needs to be done above 
-   // these lines because it uses m_UNION.m_beforeExaminationForPossibleSplitting for classification!
+   // IMPORTANT!! : We need to finish all our calls that use pTreeNode->m_UNION.m_beforeGainCalc BEFORE setting 
+   // anything in m_UNION.m_afterGainCalc as we do below this comment!
 #ifndef NDEBUG
-   pTreeNode->SetExaminedForPossibleSplitting(true);
+   pTreeNode->SetDoneGainCalc(true);
 #endif // NDEBUG
 
 
@@ -364,7 +363,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    LOG_N(
       Trace_Verbose,
-      "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: splitVal=%zu, gain=%le",
+      "Exited FindBestSplitGain: splitVal=%zu, gain=%le",
       iSplit,
       BEST_gain
    );
@@ -444,7 +443,7 @@ public:
          static_cast<TreeNode<bClassification> *>(pBoosterShell->GetThreadByteBuffer2());
 
 #ifndef NDEBUG
-      pRootTreeNode->SetExaminedForPossibleSplitting(false);
+      pRootTreeNode->SetDoneGainCalc(false);
 #endif // NDEBUG
 
       pRootTreeNode->BEFORE_SetBinFirst(aBins);
@@ -456,18 +455,18 @@ public:
       Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
       size_t cLeaves;
-      const int retExamine = ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<cCompilerClasses>(
+      const int retFind = FindBestSplitGain<cCompilerClasses>(
          pRng,
          pBoosterShell,
          pRootTreeNode,
          AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
          cSamplesLeafMin
       );
-      if(UNLIKELY(0 != retExamine)) {
+      if(UNLIKELY(0 != retFind)) {
          // there will be no splits at all
 
          // any negative gain means there was an overflow.  Let the caller decide if they want to ignore it
-         *pTotalGain = UNLIKELY(retExamine < 0) ? std::numeric_limits<double>::infinity() : 0.0;
+         *pTotalGain = UNLIKELY(retFind < 0) ? std::numeric_limits<double>::infinity() : 0.0;
 
          error = pInnerTermUpdate->SetCountSplits(iDimension, 0);
          if(UNLIKELY(Error_None != error)) {
@@ -644,7 +643,7 @@ public:
             // there is no way to get the top and pop at the same time.. would be good to get a better queue, but our code isn't bottlenecked by it
             pParentTreeNode = bestTreeNodeToSplit.top();
             // In theory we can have nodes with equal gain values here, but this is very very rare to occur in practice
-            // We handle equal gain values in ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint because we 
+            // We handle equal gain values in FindBestSplitGain because we 
             // can have zero instnaces in bins, in which case it occurs, but those equivalent situations have been cleansed by
             // the time we reach this code, so the only realistic scenario where we might get equivalent gains is if we had an almost
             // symetric distribution samples bin distributions AND two tail ends that happen to have the same statistics AND
@@ -682,9 +681,9 @@ public:
                   }
                   goto retry_with_bigger_tree_node_children_array;
                }
-               // the act of splitting it implicitly sets AFTER_RejectSplitPossibility
+               // the act of splitting it implicitly sets AFTER_RejectSplit
                // because splitting sets splitGain to a non-illegalGain value
-               if(0 == ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<cCompilerClasses>(
+               if(0 == FindBestSplitGain<cCompilerClasses>(
                   pRng,
                   pBoosterShell,
                   pLeftChild,
@@ -698,7 +697,7 @@ public:
                   EBM_ASSERT(0 <= pLeftChild->AFTER_GetSplitGain());
                   bestTreeNodeToSplit.push(pLeftChild);
                } else {
-                  // if ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint returned -1 to indicate an 
+                  // if FindBestSplitGain returned -1 to indicate an 
                   // overflow ignore it here. We successfully made a root node split, so we might as well continue 
                   // with the successful tree that we have which can make progress in boosting down the residuals
 
@@ -708,17 +707,16 @@ public:
             no_left_split:;
                // we aren't going to split this TreeNode because we can't. We need to set the splitGain value 
                // here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch) 
-               // we can't call AFTER_RejectSplitPossibility before calling SplitTreeNode 
-               // because AFTER_RejectSplitPossibility sets 
-               // m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the 
-               // m_UNION.m_beforeExaminationForPossibleSplitting values are 
-               // needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
+               // we can't call AFTER_RejectSplit before calling FindBestSplitGain
+               // because AFTER_RejectSplit sets 
+               // m_UNION.m_afterGainCalc.m_splitGain and the 
+               // m_UNION.m_beforeGainCalc values were needed in the call to FindBestSplitGain
 
 #ifndef NDEBUG
-               pLeftChild->SetExaminedForPossibleSplitting(true);
+               pLeftChild->SetDoneGainCalc(true);
 #endif // NDEBUG
 
-               pLeftChild->AFTER_RejectSplitPossibility();
+               pLeftChild->AFTER_RejectSplit();
             }
 
             TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
@@ -737,9 +735,9 @@ public:
                   }
                   goto retry_with_bigger_tree_node_children_array;
                }
-               // the act of splitting it implicitly sets AFTER_RejectSplitPossibility 
+               // the act of splitting it implicitly sets AFTER_RejectSplit 
                // because splitting sets splitGain to a non-NaN value
-               if(0 == ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<cCompilerClasses>(
+               if(0 == FindBestSplitGain<cCompilerClasses>(
                   pRng,
                   pBoosterShell,
                   pRightChild,
@@ -753,7 +751,7 @@ public:
                   EBM_ASSERT(0 <= pRightChild->AFTER_GetSplitGain());
                   bestTreeNodeToSplit.push(pRightChild);
                } else {
-                  // if ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint returned -1 to indicate an 
+                  // if FindBestSplitGain returned -1 to indicate an 
                   // overflow ignore it here. We successfully made a root node split, so we might as well continue 
                   // with the successful tree that we have which can make progress in boosting down the residuals
 
@@ -763,17 +761,16 @@ public:
             no_right_split:;
                // we aren't going to split this TreeNode because we can't. We need to set the splitGain value 
                // here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch) 
-               // we can't call AFTER_RejectSplitPossibility before calling SplitTreeNode 
-               // because AFTER_RejectSplitPossibility sets 
-               // m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the 
-               // m_UNION.m_beforeExaminationForPossibleSplitting values are 
-               // needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
+               // we can't call AFTER_RejectSplit before calling FindBestSplitGain
+               // because AFTER_RejectSplit sets 
+               // m_UNION.m_afterGainCalc.m_splitGain and the 
+               // m_UNION.m_beforeGainCalc values were needed in the call to FindBestSplitGain
 
 #ifndef NDEBUG
-               pRightChild->SetExaminedForPossibleSplitting(true);
+               pRightChild->SetDoneGainCalc(true);
 #endif // NDEBUG
 
-               pRightChild->AFTER_RejectSplitPossibility();
+               pRightChild->AFTER_RejectSplit();
             }
             ++cLeaves;
          } while(cLeaves < cLeavesMax && UNLIKELY(!bestTreeNodeToSplit.empty()));

@@ -32,57 +32,57 @@ struct TreeNode final {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    INLINE_ALWAYS const Bin<FloatBig, bClassification> * BEFORE_GetBinFirst() const {
-      EBM_ASSERT(!m_bExaminedForPossibleSplitting);
-      return m_UNION.m_beforeExaminationForPossibleSplitting.m_pBinFirst;
+      EBM_ASSERT(!m_bDoneGainCalc);
+      return m_UNION.m_beforeGainCalc.m_pBinFirst;
    }
    INLINE_ALWAYS void BEFORE_SetBinFirst(const Bin<FloatBig, bClassification> * const pBinFirst) {
-      EBM_ASSERT(!m_bExaminedForPossibleSplitting);
-      m_UNION.m_beforeExaminationForPossibleSplitting.m_pBinFirst = pBinFirst;
+      EBM_ASSERT(!m_bDoneGainCalc);
+      m_UNION.m_beforeGainCalc.m_pBinFirst = pBinFirst;
    }
 
    INLINE_ALWAYS const Bin<FloatBig, bClassification> * BEFORE_GetBinLast() const {
-      EBM_ASSERT(!m_bExaminedForPossibleSplitting);
-      return m_UNION.m_beforeExaminationForPossibleSplitting.m_pBinLast;
+      EBM_ASSERT(!m_bDoneGainCalc);
+      return m_UNION.m_beforeGainCalc.m_pBinLast;
    }
    INLINE_ALWAYS void BEFORE_SetBinLast(const Bin<FloatBig, bClassification> * const pBinLast) {
-      EBM_ASSERT(!m_bExaminedForPossibleSplitting);
-      m_UNION.m_beforeExaminationForPossibleSplitting.m_pBinLast = pBinLast;
+      EBM_ASSERT(!m_bDoneGainCalc);
+      m_UNION.m_beforeGainCalc.m_pBinLast = pBinLast;
    }
 
    INLINE_ALWAYS bool BEFORE_IsSplittable() const {
-      EBM_ASSERT(!m_bExaminedForPossibleSplitting);
+      EBM_ASSERT(!m_bDoneGainCalc);
       return this->BEFORE_GetBinLast() != this->BEFORE_GetBinFirst();
    }
 
 
 
    INLINE_ALWAYS const TreeNode<bClassification> * AFTER_GetTreeNodeChildren() const {
-      EBM_ASSERT(m_bExaminedForPossibleSplitting);
-      return m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren;
+      EBM_ASSERT(m_bDoneGainCalc);
+      return m_UNION.m_afterGainCalc.m_pTreeNodeChildren;
    }
    INLINE_ALWAYS TreeNode<bClassification> * AFTER_GetTreeNodeChildren() {
-      EBM_ASSERT(m_bExaminedForPossibleSplitting);
-      return m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren;
+      EBM_ASSERT(m_bDoneGainCalc);
+      return m_UNION.m_afterGainCalc.m_pTreeNodeChildren;
    }
    INLINE_ALWAYS void AFTER_SetTreeNodeChildren(TreeNode<bClassification> * const pTreeNodeChildren) {
-      EBM_ASSERT(m_bExaminedForPossibleSplitting);
-      m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren = pTreeNodeChildren;
+      EBM_ASSERT(m_bDoneGainCalc);
+      m_UNION.m_afterGainCalc.m_pTreeNodeChildren = pTreeNodeChildren;
    }
 
    INLINE_ALWAYS ActiveDataType AFTER_GetSplitVal() const {
-      EBM_ASSERT(m_bExaminedForPossibleSplitting);
-      return m_UNION.m_afterExaminationForPossibleSplitting.m_splitVal;
+      EBM_ASSERT(m_bDoneGainCalc);
+      return m_UNION.m_afterGainCalc.m_splitVal;
    }
    INLINE_ALWAYS void AFTER_SetSplitVal(const ActiveDataType splitVal) {
-      EBM_ASSERT(m_bExaminedForPossibleSplitting);
-      m_UNION.m_afterExaminationForPossibleSplitting.m_splitVal = splitVal;
+      EBM_ASSERT(m_bDoneGainCalc);
+      m_UNION.m_afterGainCalc.m_splitVal = splitVal;
    }
 
    INLINE_ALWAYS FloatBig AFTER_GetSplitGain() const {
-      EBM_ASSERT(m_bExaminedForPossibleSplitting);
-      EBM_ASSERT(!m_bSplit);
+      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(!m_bSplitDecided);
 
-      const FloatBig splitGain = m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
+      const FloatBig splitGain = m_UNION.m_afterGainCalc.m_splitGain;
 
       // our priority queue cannot handle NaN values so we filter them out before adding them
       EBM_ASSERT(!std::isnan(splitGain));
@@ -92,49 +92,50 @@ struct TreeNode final {
       return splitGain;
    }
    INLINE_ALWAYS void AFTER_SetSplitGain(const FloatBig splitGain) {
-      EBM_ASSERT(m_bExaminedForPossibleSplitting);
-      EBM_ASSERT(!m_bSplit);
+      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(!m_bSplitDecided);
 
       // our priority queue cannot handle NaN values so we filter them out before adding them
       EBM_ASSERT(!std::isnan(splitGain));
       EBM_ASSERT(!std::isinf(splitGain));
       EBM_ASSERT(0 <= splitGain);
 
-      m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = splitGain;
+      m_UNION.m_afterGainCalc.m_splitGain = splitGain;
    }
 
-
-   INLINE_ALWAYS void AFTER_SplitNode() {
-      EBM_ASSERT(m_bExaminedForPossibleSplitting);
-      EBM_ASSERT(!m_bSplit);
-
-#ifndef NDEBUG
-      m_bSplit = true;
-#endif // NDEBUG
-
-      m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = k_illegalGainFloat;
-   }
-   INLINE_ALWAYS void AFTER_RejectSplitPossibility() {
-      EBM_ASSERT(m_bExaminedForPossibleSplitting);
-      EBM_ASSERT(!m_bSplit);
+   INLINE_ALWAYS void AFTER_RejectSplit() {
+      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(!m_bSplitDecided);
 
 #ifndef NDEBUG
-      m_bSplit = true;
+      m_bSplitDecided = true;
 #endif // NDEBUG
 
       // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because 
       // otherwise it is filled with garbage that could be NaN (meaning the node was a branch) we can't call 
-      // AFTER_RejectSplitPossibility before calling SplitTreeNode because 
-      // AFTER_RejectSplitPossibility sets 
-      // m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the 
-      // m_UNION.m_beforeExaminationForPossibleSplitting values are needed if we had decided to call 
-      // ExamineNodeForSplittingAndDetermineBestPossibleSplit
-      m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = 0;
+      // AFTER_RejectSplit before calling SplitTreeNode because 
+      // AFTER_RejectSplit sets 
+      // m_UNION.m_afterGainCalc.m_splitGain and the 
+      // m_UNION.m_beforeGainCalc values are needed if we had decided to call 
+      // FindBestSplitGain
+      m_UNION.m_afterGainCalc.m_splitGain = 0;
    }
+
+   INLINE_ALWAYS void AFTER_SplitNode() {
+      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(!m_bSplitDecided);
+
+#ifndef NDEBUG
+      m_bSplitDecided = true;
+#endif // NDEBUG
+
+      m_UNION.m_afterGainCalc.m_splitGain = k_illegalGainFloat;
+   }
+
    INLINE_ALWAYS bool AFTER_IsSplit() const {
-      EBM_ASSERT(m_bExaminedForPossibleSplitting);
-      EBM_ASSERT(m_bSplit);
-      return k_illegalGainFloat == m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
+      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(m_bSplitDecided);
+      return k_illegalGainFloat == m_UNION.m_afterGainCalc.m_splitGain;
    }
 
 
@@ -158,52 +159,51 @@ struct TreeNode final {
    }
 
 #ifndef NDEBUG
-   INLINE_ALWAYS void SetExaminedForPossibleSplitting(const bool bExaminedForPossibleSplitting) {
-      if(bExaminedForPossibleSplitting) {
+   INLINE_ALWAYS void SetDoneGainCalc(const bool bDoneGainCalc) {
+      if(bDoneGainCalc) {
          // we set this to false when it's random memory, 
          // but we only flip it to true from an initialized state of false
-         EBM_ASSERT(!m_bExaminedForPossibleSplitting);
+         EBM_ASSERT(!m_bDoneGainCalc);
+         EBM_ASSERT(!m_bSplitDecided);
       }
-      m_bExaminedForPossibleSplitting = bExaminedForPossibleSplitting;
-      m_bSplit = false;
+      m_bDoneGainCalc = bDoneGainCalc;
+      m_bSplitDecided = false;
    }
 #endif // NDEBUG
 
 private:
 
-   struct BeforeExaminationForPossibleSplitting final {
-      BeforeExaminationForPossibleSplitting() = default; // preserve our POD status
-      ~BeforeExaminationForPossibleSplitting() = default; // preserve our POD status
+   struct BeforeGainCalc final {
+      BeforeGainCalc() = default; // preserve our POD status
+      ~BeforeGainCalc() = default; // preserve our POD status
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
       const Bin<FloatBig, bClassification> * m_pBinFirst;
       const Bin<FloatBig, bClassification> * m_pBinLast;
    };
-   static_assert(std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value,
+   static_assert(std::is_standard_layout<BeforeGainCalc>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
-   static_assert(std::is_trivial<BeforeExaminationForPossibleSplitting>::value,
+   static_assert(std::is_trivial<BeforeGainCalc>::value,
       "We use memcpy in several places, so disallow non-trivial types in general");
-   static_assert(std::is_pod<BeforeExaminationForPossibleSplitting>::value,
+   static_assert(std::is_pod<BeforeGainCalc>::value,
       "We use a lot of C constructs, so disallow non-POD types in general");
 
-   struct AfterExaminationForPossibleSplitting final {
-      AfterExaminationForPossibleSplitting() = default; // preserve our POD status
-      ~AfterExaminationForPossibleSplitting() = default; // preserve our POD status
+   struct AfterGainCalc final {
+      AfterGainCalc() = default; // preserve our POD status
+      ~AfterGainCalc() = default; // preserve our POD status
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
       TreeNode<bClassification> * m_pTreeNodeChildren;
-      // put this at the top so that our priority queue can access it directly without adding anything to the pointer 
-      // (this is slightly more efficient on intel systems at least)
+      ActiveDataType m_splitVal; // TODO: make this a size_t for here since it doesn't need cross-platform in the TreeNode
       FloatBig m_splitGain;
-      ActiveDataType m_splitVal;
    };
-   static_assert(std::is_standard_layout<AfterExaminationForPossibleSplitting>::value,
+   static_assert(std::is_standard_layout<AfterGainCalc>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
-   static_assert(std::is_trivial<AfterExaminationForPossibleSplitting>::value,
+   static_assert(std::is_trivial<AfterGainCalc>::value,
       "We use memcpy in several places, so disallow non-trivial types in general");
-   static_assert(std::is_pod<AfterExaminationForPossibleSplitting>::value,
+   static_assert(std::is_pod<AfterGainCalc>::value,
       "We use a lot of C constructs, so disallow non-POD types in general");
 
    union TreeNodeUnion final {
@@ -222,8 +222,8 @@ private:
 #endif // __SUNPRO_CC
 
       // we can save precious L1 cache space by keeping only what we need
-      BeforeExaminationForPossibleSplitting m_beforeExaminationForPossibleSplitting;
-      AfterExaminationForPossibleSplitting m_afterExaminationForPossibleSplitting;
+      BeforeGainCalc m_beforeGainCalc;
+      AfterGainCalc m_afterGainCalc;
    };
    static_assert(std::is_standard_layout<TreeNodeUnion>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -233,8 +233,8 @@ private:
       "We use a lot of C constructs, so disallow non-POD types in general");
 
 #ifndef NDEBUG
-   bool m_bExaminedForPossibleSplitting;
-   bool m_bSplit;
+   bool m_bDoneGainCalc;
+   bool m_bSplitDecided;
 #endif // NDEBUG
 
    TreeNodeUnion m_UNION;

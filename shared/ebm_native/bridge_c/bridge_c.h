@@ -21,7 +21,7 @@ extern "C" {
 #define INTERNAL_IMPORT_EXPORT_INCLUDE extern
 
 typedef size_t StorageDataType;
-typedef UIntEbm ActiveDataType;
+typedef UIntEbm ActiveDataType; // TODO: in most places we could use size_t for this and only use the uint64 version where we have cross-platform considerations.
 
 struct ApplyTrainingData {
    ptrdiff_t m_cRuntimeScores;
