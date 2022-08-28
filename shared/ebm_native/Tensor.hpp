@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef COMPRESSIBLE_TENSOR_HPP
-#define COMPRESSIBLE_TENSOR_HPP
+#ifndef TENSOR_HPP
+#define TENSOR_HPP
 
 #include <type_traits> // std::is_standard_layout
 #include <stdlib.h> // malloc, realloc, free
@@ -237,4 +237,4 @@ static_assert(std::is_pod<Tensor>::value,
 
 } // DEFINED_ZONE_NAME
 
-#endif // COMPRESSIBLE_TENSOR_HPP
+#endif // TENSOR_HPP

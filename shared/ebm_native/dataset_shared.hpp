@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef DATA_SET_SHARED_HPP
-#define DATA_SET_SHARED_HPP
+#ifndef DATASET_SHARED_HPP
+#define DATASET_SHARED_HPP
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -64,4 +64,4 @@ extern const void * GetDataSetSharedTarget(
 
 } // DEFINED_ZONE_NAME
 
-#endif // DATA_SET_SHARED_HPP
+#endif // DATASET_SHARED_HPP

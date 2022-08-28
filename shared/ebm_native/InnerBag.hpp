@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef SAMPLING_SET_HPP
-#define SAMPLING_SET_HPP
+#ifndef INNER_BAG_HPP
+#define INNER_BAG_HPP
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -80,4 +80,4 @@ static_assert(std::is_pod<InnerBag>::value,
 
 } // DEFINED_ZONE_NAME
 
-#endif // SAMPLING_SET_HPP
+#endif // INNER_BAG_HPP

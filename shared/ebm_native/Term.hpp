@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef FEATURE_GROUP_HPP
-#define FEATURE_GROUP_HPP
+#ifndef TERM_HPP
+#define TERM_HPP
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -120,4 +120,4 @@ static_assert(std::is_pod<Term>::value,
 
 } // DEFINED_ZONE_NAME
 
-#endif // FEATURE_GROUP_HPP
+#endif // TERM_HPP

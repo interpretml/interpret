@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef HISTOGRAM_BUCKET_HPP
-#define HISTOGRAM_BUCKET_HPP
+#ifndef BIN_HPP
+#define BIN_HPP
 
 #include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
@@ -244,4 +244,4 @@ INLINE_ALWAYS const BinBase * IndexBin(const BinBase * const aBins, const size_t
 
 } // DEFINED_ZONE_NAME
 
-#endif // HISTOGRAM_BUCKET_HPP
+#endif // BIN_HPP

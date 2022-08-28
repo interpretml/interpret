@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef HISTOGRAM_TARGET_ENTRY_HPP
-#define HISTOGRAM_TARGET_ENTRY_HPP
+#ifndef GRADIENT_PAIR_HPP
+#define GRADIENT_PAIR_HPP
 
 #include <type_traits> // std::is_standard_layout
 
@@ -211,4 +211,4 @@ INLINE_ALWAYS size_t GetGradientPairSize(const bool bClassification) {
 
 } // DEFINED_ZONE_NAME
 
-#endif // HISTOGRAM_TARGET_ENTRY_HPP
+#endif // GRADIENT_PAIR_HPP
