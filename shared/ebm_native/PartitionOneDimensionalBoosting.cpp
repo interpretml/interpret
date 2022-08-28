@@ -465,8 +465,7 @@ public:
       ErrorEbm error;
 
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
-      const auto * const aBins = 
-         aBinsBase->Specialize<FloatBig, bClassification>();
+      const auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
 
       GradientPairBase * const aSumAllGradientPairsBase = pBoosterShell->GetSumAllGradientPairs();
       const auto * const aSumAllGradientPairs = aSumAllGradientPairsBase->Specialize<FloatBig, bClassification>();
@@ -474,10 +473,7 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-         cCompilerClasses,
-         cRuntimeClasses
-      );
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
 
       EBM_ASSERT(nullptr != pTotalGain);
@@ -487,10 +483,7 @@ public:
 
       // there will be at least one split
 
-      if(IsOverflowTreeNodeSize(bClassification, cScores)) {
-         LOG_0(Trace_Warning, "WARNING PartitionOneDimensionalBoosting IsOverflowTreeNodeSize<bClassification>(cScores)");
-         return Error_OutOfMemory; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
-      }
+      EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores));
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
       EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);

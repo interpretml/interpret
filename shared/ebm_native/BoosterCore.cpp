@@ -34,6 +34,7 @@
 #include "GradientPair.hpp"
 #include "Bin.hpp"
 
+#include "TreeNode.hpp"
 #include "TreeSweep.hpp"
 
 #include "BoosterShell.hpp"
@@ -257,8 +258,6 @@ ErrorEbm BoosterCore::Create(
       return error;
    }
 
-   const size_t cScores = GetCountScores(cClasses);
-
    LOG_0(Trace_Info, "BoosterCore::Create starting feature processing");
    if(0 != cFeatures) {
       pBoosterCore->m_cFeatures = cFeatures;
@@ -309,12 +308,9 @@ ErrorEbm BoosterCore::Create(
    }
    LOG_0(Trace_Info, "BoosterCore::Create done feature processing");
 
+   const size_t cScores = GetCountScores(cClasses);
    const bool bClassification = IsClassification(cClasses);
 
-   if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)) {
-      LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsOverflowBinSize overflow");
-      return Error_OutOfMemory;
-   }
 
    size_t cBytesArrayEquivalentSplitMax = 0;
 
@@ -323,6 +319,15 @@ ErrorEbm BoosterCore::Create(
 
    LOG_0(Trace_Info, "BoosterCore::Create starting feature group processing");
    if(0 != cTerms) {
+      if(IsOverflowBinSize<FloatFast>(bClassification, cScores) ||
+         IsOverflowBinSize<FloatBig>(bClassification, cScores) ||
+         IsOverflowTreeNodeSize(bClassification, cScores) ||
+         IsOverflowTreeSweepSize(bClassification, cScores)) 
+      {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
+         return Error_OutOfMemory;
+      }
+
       pBoosterCore->m_cTerms = cTerms;
       pBoosterCore->m_apTerms = Term::AllocateTerms(cTerms);
       if(UNLIKELY(nullptr == pBoosterCore->m_apTerms)) {
@@ -330,10 +335,6 @@ ErrorEbm BoosterCore::Create(
          return Error_OutOfMemory;
       }
 
-      if(IsOverflowTreeSweepSize(bClassification, cScores)) {
-         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsOverflowTreeSweepSize(bClassification, cScores)");
-         return Error_OutOfMemory;
-      }
       const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cScores);
 
       const IntEbm * piTermFeature = aiTermFeatures;

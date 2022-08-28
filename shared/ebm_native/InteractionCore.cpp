@@ -124,14 +124,6 @@ ErrorEbm InteractionCore::Create(
    ptrdiff_t cClasses;
    GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
 
-   const size_t cScores = GetCountScores(cClasses);
-   const bool bClassification = IsClassification(cClasses);
-
-   if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)) {
-      LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsOverflowBinSize overflow");
-      return Error_OutOfMemory;
-   }
-
    pRet->m_cClasses = cClasses;
 
    size_t cTrainingSamples;
@@ -142,8 +134,16 @@ ErrorEbm InteractionCore::Create(
       return error;
    }
 
+   const bool bClassification = IsClassification(cClasses);
+
    LOG_0(Trace_Info, "InteractionCore::Allocate starting feature processing");
    if(0 != cFeatures) {
+      const size_t cScores = GetCountScores(cClasses);
+      if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)) {
+         LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsOverflowBinSize overflow");
+         return Error_OutOfMemory;
+      }
+
       pRet->m_cFeatures = cFeatures;
       Feature * const aFeatures = EbmMalloc<Feature>(cFeatures);
       if(nullptr == aFeatures) {

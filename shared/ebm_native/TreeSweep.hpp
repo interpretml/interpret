@@ -83,9 +83,7 @@ static_assert(std::is_pod<TreeSweep<true>>::value && std::is_pod<TreeSweep<false
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 INLINE_ALWAYS bool IsOverflowTreeSweepSize(const bool bClassification, const size_t cScores) {
-   if(IsOverflowBinSize<FloatBig>(bClassification, cScores)) {
-      return true;
-   }
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // check this before calling us
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
    size_t cBytesTreeSweepComponent;
