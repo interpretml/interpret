@@ -68,8 +68,6 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
    RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const size_t cBins,
-   const size_t cSamplesTotal,
-   const FloatBig weightTotal,
    const size_t iDimension,
    const size_t cSamplesLeafMin,
    const size_t cLeavesMax,
@@ -306,16 +304,12 @@ static ErrorEbm BoostSingleDimensional(
       pInnerBag->GetWeightTotal()
    );
 
-   const size_t cSamplesTotal = pBoosterCore->GetTrainingSet()->GetCountSamples();
-   EBM_ASSERT(1 <= cSamplesTotal);
-   const FloatBig weightTotal = pInnerBag->GetWeightTotal();
+   EBM_ASSERT(1 <= pBoosterCore->GetTrainingSet()->GetCountSamples());
 
    error = PartitionOneDimensionalBoosting(
       pRng,
       pBoosterShell,
       cBins,
-      cSamplesTotal,
-      weightTotal,
       iDimension,
       cSamplesLeafMin,
       cLeavesMax, 

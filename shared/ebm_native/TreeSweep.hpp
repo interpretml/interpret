@@ -24,6 +24,11 @@ namespace DEFINED_ZONE_NAME {
 template<typename TFloat, bool bClassification>
 struct Bin;
 
+// TODO: we can get rid of this class by using the random number generator during tree splitting to decide if
+//       we'll keep the most recent identical gain value or keep the older one.  We now have a really fast
+//       and predictable random number generator, so probably it's slower to save it to this sweep memory
+//       and also less complicated since then we no longer need this class
+
 template<bool bClassification>
 struct TreeSweep final {
    friend bool IsOverflowTreeSweepSize(const bool, const size_t);
@@ -49,29 +54,10 @@ public:
    INLINE_ALWAYS const Bin<FloatBig, bClassification> * GetBestBin() const {
       return m_pBestBin;
    }
-
    INLINE_ALWAYS void SetBestBin(const Bin<FloatBig, bClassification> * pBestBin) {
       m_pBestBin = pBestBin;
    }
 
-   INLINE_ALWAYS size_t GetCountBestSamplesLeft() const {
-      return m_bestBinLeft.GetCountSamples();
-   }
-
-   INLINE_ALWAYS void SetCountBestSamplesLeft(const size_t cBestSamplesLeft) {
-      m_bestBinLeft.SetCountSamples(cBestSamplesLeft);
-   }
-
-   INLINE_ALWAYS FloatBig GetBestWeightLeft() const {
-      return m_bestBinLeft.GetWeight();
-   }
-
-   INLINE_ALWAYS void SetBestWeightLeft(const FloatBig bestWeightLeft) {
-      m_bestBinLeft.SetWeight(bestWeightLeft);
-   }
-
-   // TODO: try eliminating GetCountBestSamplesLeft, SetCountBestSamplesLeft, GetBestWeightLeft, SetBestWeightLeft
-   // TODO: we can probably now handle SetCountSamples, SetWeight and GetGradientPairs in one combined Bin operation now
    INLINE_ALWAYS Bin<FloatBig, bClassification> * GetBestLeftBin() {
       return &m_bestBinLeft;
    }

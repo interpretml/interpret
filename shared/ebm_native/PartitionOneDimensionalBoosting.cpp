@@ -124,20 +124,18 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
    const size_t cScores = GetCountScores(cClasses);
 
-   auto * const aLeftBin = pBoosterShell->GetLeftBin<bClassification>();
-   // TODO: eliminate aLeftSweepGradientPairs and use the full bin
-   auto * const aLeftSweepGradientPairs = aLeftBin->GetGradientPairs();
-   const size_t cBytesPerGradientPair = GetGradientPairSize<FloatBig>(bClassification);
-   aLeftSweepGradientPairs->Zero(cBytesPerGradientPair, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-   auto * const aRightBin = pBoosterShell->GetRightBin<bClassification>();
-   // TODO: eliminate aRightSweepGradientPairs and use the full bin
-   auto * const aRightSweepGradientPairs = aRightBin->GetGradientPairs();
-   const auto * pInitGradientPair = pTreeNode->GetGradientPairs();
-   for(size_t iScore = 0; iScore < cScores; ++iScore) {
-      // TODO : memcpy this instead
-      aRightSweepGradientPairs[iScore] = pInitGradientPair[iScore];
-   }
+   // It is tempting to want to use SumAllBins here instead of GetLeftBin and GetRightBin, but the problem with that 
+   // is we sometimes re-do our work when we exceed our memory size by goto retry_with_bigger_tree_node_children_array.  
+   // When that happens we need to retrieve the original sum which resides at SumAllBins.
+
+   auto * const pLeftBin = pBoosterShell->GetLeftBin<bClassification>();
+   pLeftBin->Zero(cBytesPerBin);
+
+   auto * const pRightBin = pBoosterShell->GetRightBin<bClassification>();
+   pRightBin->Copy(*pTreeNode->GetBin(), cScores);
 
    auto * pBinCur = pTreeNode->BEFORE_GetBinFirst();
    const auto * const pBinLast = pTreeNode->BEFORE_GetBinLast();
@@ -158,20 +156,12 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    pLeftChildInit->BEFORE_SetBinFirst(pBinCur);
    pRightChildInit->BEFORE_SetBinLast(pBinLast);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
    EBM_ASSERT(!IsOverflowTreeSweepSize(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cScores);
 
    TreeSweep<bClassification> * pTreeSweepStart =
       static_cast<TreeSweep<bClassification> *>(pBoosterShell->GetEquivalentSplits());
    TreeSweep<bClassification> * pTreeSweepCur = pTreeSweepStart;
-
-   size_t cSamplesRight = pTreeNode->GetCountSamples();
-   size_t cSamplesLeft = 0;
-
-   FloatBig weightRight = pTreeNode->GetWeight();
-   FloatBig weightLeft = 0;
 
    EBM_ASSERT(0 <= k_gainMin);
    FloatBig BEST_gain = k_gainMin; // it must at least be this, and maybe it needs to be more
@@ -180,19 +170,21 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    do {
       ASSERT_BIN_OK(cBytesPerBin, pBinCur, pBoosterShell->GetBinsBigEndDebug());
 
-      const size_t CHANGE_cSamples = pBinCur->GetCountSamples();
-      cSamplesRight -= CHANGE_cSamples;
+      // TODO: In the future we should add the left, then subtract from the parent to get the right, for numeracy
+      //       since then we'll be guaranteed that at least they sum to the total instead of having the left and
+      //       right drift away from the total over time from floating point noise
+      pRightBin->Subtract(*pBinCur, cScores);
+      pLeftBin->Add(*pBinCur, cScores);
+
+      const size_t cSamplesRight = pRightBin->GetCountSamples();
+      const size_t cSamplesLeft = pLeftBin->GetCountSamples();
+
+      const FloatBig weightRight = pRightBin->GetWeight();
+      const FloatBig weightLeft = pLeftBin->GetWeight();
+
       if(UNLIKELY(cSamplesRight < cSamplesLeafMin)) {
          break; // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
       }
-      cSamplesLeft += CHANGE_cSamples;
-
-
-      const FloatBig CHANGE_weight = pBinCur->GetWeight();
-      weightRight -= CHANGE_weight;
-      weightLeft += CHANGE_weight;
-
-      const auto * pGradientPair = pBinCur->GetGradientPairs();
 
       if(LIKELY(cSamplesLeafMin <= cSamplesLeft)) {
          EBM_ASSERT(0 < cSamplesRight);
@@ -202,24 +194,20 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
          FloatBig sumHessiansLeft = weightLeft;
          FloatBig gain = 0;
 
+         // TODO: We can probably move the partial gain calculation into a function of the Bin class
+         auto * const aLeftSweepGradientPairs = pLeftBin->GetGradientPairs();
+         auto * const aRightSweepGradientPairs = pRightBin->GetGradientPairs();
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             // TODO: instead of adding and subtracing the changes, we should instead subtract the change that
             // we've added from the totals, which would be more accurate in terms of summing to be the total.
 
-            const FloatBig CHANGE_sumGradients = pGradientPair[iScore].m_sumGradients;
-            const FloatBig sumGradientsRight = aRightSweepGradientPairs[iScore].m_sumGradients - CHANGE_sumGradients;
-            aRightSweepGradientPairs[iScore].m_sumGradients = sumGradientsRight;
-            const FloatBig sumGradientsLeft = aLeftSweepGradientPairs[iScore].m_sumGradients + CHANGE_sumGradients;
-            aLeftSweepGradientPairs[iScore].m_sumGradients = sumGradientsLeft;
+            const FloatBig sumGradientsLeft = aLeftSweepGradientPairs[iScore].m_sumGradients;
+            const FloatBig sumGradientsRight = aRightSweepGradientPairs[iScore].m_sumGradients;
 
             if(bClassification) {
-               const FloatBig CHANGE_sumHessians = pGradientPair[iScore].GetSumHessians();
-               const FloatBig newSumHessiansLeft = aLeftSweepGradientPairs[iScore].GetSumHessians() + CHANGE_sumHessians;
-               aLeftSweepGradientPairs[iScore].SetSumHessians(newSumHessiansLeft);
                if(bUseLogitBoost) {
-                  sumHessiansLeft = newSumHessiansLeft;
-                  sumHessiansRight = aRightSweepGradientPairs[iScore].GetSumHessians() - CHANGE_sumHessians;
-                  aRightSweepGradientPairs[iScore].SetSumHessians(sumHessiansRight);
+                  sumHessiansLeft = aLeftSweepGradientPairs[iScore].GetSumHessians();
+                  sumHessiansRight = aRightSweepGradientPairs[iScore].GetSumHessians();
                }
             }
 
@@ -268,29 +256,11 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             BEST_gain = gain;
 
             pTreeSweepCur->SetBestBin(pBinCur);
-            pTreeSweepCur->SetCountBestSamplesLeft(cSamplesLeft);
-            pTreeSweepCur->SetBestWeightLeft(weightLeft);
-            memcpy(
-               pTreeSweepCur->GetBestLeftBin()->GetGradientPairs(), aLeftSweepGradientPairs,
-               sizeof(*aLeftSweepGradientPairs) * cScores
-            );
+            pTreeSweepCur->GetBestLeftBin()->Copy(*pLeftBin, cScores);
 
             pTreeSweepCur = AddBytesTreeSweep(pTreeSweepCur, cBytesPerTreeSweep);
          } else {
             EBM_ASSERT(!std::isnan(gain));
-         }
-      } else {
-         for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatBig CHANGE_sumGradients = pGradientPair[iScore].m_sumGradients;
-            aRightSweepGradientPairs[iScore].m_sumGradients -= CHANGE_sumGradients;
-            aLeftSweepGradientPairs[iScore].m_sumGradients += CHANGE_sumGradients;
-            if(bClassification) {
-               const FloatBig CHANGE_sumHessians = pGradientPair[iScore].GetSumHessians();
-               aLeftSweepGradientPairs[iScore].SetSumHessians(aLeftSweepGradientPairs[iScore].GetSumHessians() + CHANGE_sumHessians);
-               if(bUseLogitBoost) {
-                  aRightSweepGradientPairs[iScore].SetSumHessians(aRightSweepGradientPairs[iScore].GetSumHessians() - CHANGE_sumHessians);
-               }
-            }
          }
       }
       pBinCur = IndexBin(pBinCur, cBytesPerBin);
@@ -355,11 +325,8 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    const auto * const BEST_pBin = pTreeSweepStart->GetBestBin();
    pLeftChild->BEFORE_SetBinLast(BEST_pBin);
-   const size_t BEST_cSamplesLeft = pTreeSweepStart->GetCountBestSamplesLeft();
-   pLeftChild->SetCountSamples(BEST_cSamplesLeft);
 
-   const FloatBig BEST_weightLeft = pTreeSweepStart->GetBestWeightLeft();
-   pLeftChild->SetWeight(BEST_weightLeft);
+   pLeftChild->GetBin()->Copy(*pTreeSweepStart->GetBestLeftBin(), cScores);
 
    const auto * const BEST_pBinNext = IndexBin(BEST_pBin, cBytesPerBin);
    ASSERT_BIN_OK(cBytesPerBin, BEST_pBinNext, pBoosterShell->GetBinsBigEndDebug());
@@ -367,38 +334,14 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
    pRightChild->BEFORE_SetBinFirst(BEST_pBinNext);
-   const size_t cSamplesParent = pTreeNode->GetCountSamples();
+
+   pRightChild->GetBin()->Copy(*pTreeNode->GetBin(), cScores);
+   pRightChild->GetBin()->Subtract(*pTreeSweepStart->GetBestLeftBin(), cScores);
+
    // if there were zero samples in the entire dataset then we shouldn't have found a split worth making and we 
    // should have handled the empty dataset earlier
-   EBM_ASSERT(0 < cSamplesParent);
-   pRightChild->SetCountSamples(cSamplesParent - BEST_cSamplesLeft);
+   EBM_ASSERT(0 < pTreeNode->GetCountSamples());
 
-   const FloatBig weightParent = pTreeNode->GetWeight();
-   pRightChild->SetWeight(weightParent - BEST_weightLeft);
-
-   auto * pLeftChildGradientPair = pLeftChild->GetGradientPairs();
-
-   auto * pRightChildGradientPair = pRightChild->GetGradientPairs();
-
-   const auto * pParentGradientPair = pTreeNode->GetGradientPairs();
-
-   const auto * pBestLeftBin = pTreeSweepStart->GetBestLeftBin();
-   // TODO: operate on an entire bin instead of a pBestGradientPair
-   const auto * pBestGradientPair = pBestLeftBin->GetGradientPairs();
-
-   for(size_t iScore = 0; iScore < cScores; ++iScore) {
-      const FloatBig BEST_sumGradientsLeft = pBestGradientPair[iScore].m_sumGradients;
-      pLeftChildGradientPair[iScore].m_sumGradients = BEST_sumGradientsLeft;
-      const FloatBig sumGradientsParent = pParentGradientPair[iScore].m_sumGradients;
-      pRightChildGradientPair[iScore].m_sumGradients = sumGradientsParent - BEST_sumGradientsLeft;
-
-      if(bClassification) {
-         const FloatBig BEST_sumHessiansLeft = pBestGradientPair[iScore].GetSumHessians();
-         pLeftChildGradientPair[iScore].SetSumHessians(BEST_sumHessiansLeft);
-         const FloatBig sumHessiansParent = pParentGradientPair[iScore].GetSumHessians();
-         pRightChildGradientPair[iScore].SetSumHessians(sumHessiansParent - BEST_sumHessiansLeft);
-      }
-   }
 
    // IMPORTANT!! : we need to finish all our calls that use this->m_UNION.m_beforeExaminationForPossibleSplitting BEFORE setting anything in 
    // m_UNION.m_afterExaminationForPossibleSplitting as we do below this comment!  The call above to this->GetSamples() needs to be done above 
@@ -449,8 +392,6 @@ public:
       RandomDeterministic * const pRng,
       BoosterShell * const pBoosterShell,
       const size_t cBins,
-      const size_t cSamplesTotal,
-      const FloatBig weightTotal,
       const size_t iDimension,
       const size_t cSamplesLeafMin,
       const size_t cLeavesMax,
@@ -463,9 +404,6 @@ public:
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
       const auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
 
-      const auto * const aSumAllBins = pBoosterShell->GetSumAllBins<bClassification>();
-      // TODO: eliminate aSumAllGradientPairs and use the entire bin 
-      const auto * const aSumAllGradientPairs = aSumAllBins->GetGradientPairs();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
@@ -474,7 +412,7 @@ public:
       const size_t cScores = GetCountScores(cClasses);
 
       EBM_ASSERT(nullptr != pTotalGain);
-      EBM_ASSERT(1 <= cSamplesTotal); // filter these out at the start where we can handle this case easily
+      EBM_ASSERT(1 <= pBoosterShell->GetSumAllBins<bClassification>()->GetCountSamples()); // filter these out at the start where we can handle this case easily
       EBM_ASSERT(2 <= cBins); // filter these out at the start where we can handle this case easily
       EBM_ASSERT(2 <= cLeavesMax); // filter these out at the start where we can handle this case easily
 
@@ -512,14 +450,10 @@ public:
       pRootTreeNode->BEFORE_SetBinFirst(aBins);
       pRootTreeNode->BEFORE_SetBinLast(IndexBin(aBins, cBytesPerBin * (cBins - 1)));
       ASSERT_BIN_OK(cBytesPerBin, pRootTreeNode->BEFORE_GetBinLast(), pBoosterShell->GetBinsBigEndDebug());
-      pRootTreeNode->SetCountSamples(cSamplesTotal);
-      pRootTreeNode->SetWeight(weightTotal);
 
-      // copying existing mem
-      memcpy(pRootTreeNode->GetGradientPairs(), aSumAllGradientPairs, cScores * sizeof(*aSumAllGradientPairs));
+      pRootTreeNode->GetBin()->Copy(*pBoosterShell->GetSumAllBins<bClassification>(), cScores);
 
-      Tensor * const pInnerTermUpdate =
-         pBoosterShell->GetInnerTermUpdate();
+      Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
       size_t cLeaves;
       const int retExamine = ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<cCompilerClasses>(
@@ -568,7 +502,8 @@ public:
          } else {
             EBM_ASSERT(IsRegression(cCompilerClasses));
             const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
-               pRootTreeNode->GetGradientPairs()[0].m_sumGradients, weightTotal
+               pRootTreeNode->GetGradientPairs()[0].m_sumGradients, 
+               pRootTreeNode->GetBin()->GetWeight()
             );
             FloatFast * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
             aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
@@ -897,8 +832,6 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
    RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const size_t cBins,
-   const size_t cSamplesTotal,
-   const FloatBig weightTotal,
    const size_t iDimension,
    const size_t cSamplesLeafMin,
    const size_t cLeavesMax,
@@ -917,8 +850,6 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
             pRng,
             pBoosterShell,
             cBins,
-            cSamplesTotal,
-            weightTotal,
             iDimension,
             cSamplesLeafMin,
             cLeavesMax,
@@ -929,8 +860,6 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
             pRng,
             pBoosterShell,
             cBins,
-            cSamplesTotal,
-            weightTotal,
             iDimension,
             cSamplesLeafMin,
             cLeavesMax,
@@ -943,8 +872,6 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
          pRng,
          pBoosterShell,
          cBins,
-         cSamplesTotal,
-         weightTotal,
          iDimension,
          cSamplesLeafMin,
          cLeavesMax,
