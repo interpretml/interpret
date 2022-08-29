@@ -24,11 +24,6 @@ namespace DEFINED_ZONE_NAME {
 template<typename TFloat, bool bClassification>
 struct Bin;
 
-// TODO: we can get rid of this class by using the random number generator during tree splitting to decide if
-//       we'll keep the most recent identical gain value or keep the older one.  We now have a really fast
-//       and predictable random number generator, so probably it's slower to save it to this sweep memory
-//       and also less complicated since then we no longer need this class
-
 template<bool bClassification>
 struct TreeSweep final {
    friend bool IsOverflowTreeSweepSize(const bool, const size_t);

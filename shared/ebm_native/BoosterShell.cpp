@@ -39,8 +39,6 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
       free(pBoosterShell->m_aThreadByteBuffer1Big);
       free(pBoosterShell->m_aThreadByteBuffer2);
       free(pBoosterShell->m_pSumAllBins);
-      free(pBoosterShell->m_pLeftBin);
-      free(pBoosterShell->m_pRightBin);
       free(pBoosterShell->m_aTempFloatVector);
       free(pBoosterShell->m_aEquivalentSplits);
       BoosterCore::Free(pBoosterShell->m_pBoosterCore);
@@ -88,16 +86,6 @@ ErrorEbm BoosterShell::FillAllocations() {
 
    m_pSumAllBins = EbmMalloc<BinBase>(1, cBytesPerBin);
    if(nullptr == m_pSumAllBins) {
-      goto failed_allocation;
-   }
-
-   m_pLeftBin = EbmMalloc<BinBase>(1, cBytesPerBin);
-   if(nullptr == m_pLeftBin) {
-      goto failed_allocation;
-   }
-
-   m_pRightBin = EbmMalloc<BinBase>(1, cBytesPerBin);
-   if(nullptr == m_pRightBin) {
       goto failed_allocation;
    }
 

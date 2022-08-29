@@ -127,34 +127,28 @@ static int FindBestSplitGain(
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-   // It is tempting to want to use SumAllBins here instead of GetLeftBin and GetRightBin, but the problem with that 
-   // is we sometimes re-do our work when we exceed our memory size by goto retry_with_bigger_tree_node_children_array.  
-   // When that happens we need to retrieve the original sum which resides at SumAllBins.
-
-   auto * const pLeftBin = pBoosterShell->GetLeftBin<bClassification>();
-   pLeftBin->Zero(cBytesPerBin);
-
-   auto * const pRightBin = pBoosterShell->GetRightBin<bClassification>();
-   pRightBin->Copy(*pTreeNode->GetBin(), cScores);
-
    auto * pBinCur = pTreeNode->BEFORE_GetBinFirst();
    const auto * const pBinLast = pTreeNode->BEFORE_GetBinLast();
 
    EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
 
-   TreeNode<bClassification> * const pLeftChildInit =
+   TreeNode<bClassification> * const pLeftChild =
       GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
-   TreeNode<bClassification> * const pRightChildInit =
+   TreeNode<bClassification> * const pRightChild =
       GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
 #ifndef NDEBUG
-   pLeftChildInit->SetDoneGainCalc(false);
-   pRightChildInit->SetDoneGainCalc(false);
+   pLeftChild->SetDoneGainCalc(false);
+   pRightChild->SetDoneGainCalc(false);
 #endif // NDEBUG
 
-   pLeftChildInit->BEFORE_SetBinFirst(pBinCur);
-   pRightChildInit->BEFORE_SetBinLast(pBinLast);
+   // we are not using the memory in our next TreeNode children yet, so use it as our temporary accumulation memory
+   pLeftChild->GetBin()->Zero(cBytesPerBin);
+   pRightChild->GetBin()->Copy(*pTreeNode->GetBin(), cScores);
+
+   pLeftChild->BEFORE_SetBinFirst(pBinCur);
+   pRightChild->BEFORE_SetBinLast(pBinLast);
 
    EBM_ASSERT(!IsOverflowTreeSweepSize(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cScores);
@@ -173,14 +167,14 @@ static int FindBestSplitGain(
       // TODO: In the future we should add the left, then subtract from the parent to get the right, for numeracy
       //       since then we'll be guaranteed that at least they sum to the total instead of having the left and
       //       right drift away from the total over time from floating point noise
-      pRightBin->Subtract(*pBinCur, cScores);
-      pLeftBin->Add(*pBinCur, cScores);
+      pRightChild->GetBin()->Subtract(*pBinCur, cScores);
+      pLeftChild->GetBin()->Add(*pBinCur, cScores);
 
-      const size_t cSamplesRight = pRightBin->GetCountSamples();
-      const size_t cSamplesLeft = pLeftBin->GetCountSamples();
+      const size_t cSamplesRight = pRightChild->GetBin()->GetCountSamples();
+      const size_t cSamplesLeft = pLeftChild->GetBin()->GetCountSamples();
 
-      const FloatBig weightRight = pRightBin->GetWeight();
-      const FloatBig weightLeft = pLeftBin->GetWeight();
+      const FloatBig weightRight = pRightChild->GetBin()->GetWeight();
+      const FloatBig weightLeft = pLeftChild->GetBin()->GetWeight();
 
       if(UNLIKELY(cSamplesRight < cSamplesLeafMin)) {
          break; // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
@@ -195,12 +189,9 @@ static int FindBestSplitGain(
          FloatBig gain = 0;
 
          // TODO: We can probably move the partial gain calculation into a function of the Bin class
-         auto * const aLeftSweepGradientPairs = pLeftBin->GetGradientPairs();
-         auto * const aRightSweepGradientPairs = pRightBin->GetGradientPairs();
+         auto * const aLeftSweepGradientPairs = pLeftChild->GetBin()->GetGradientPairs();
+         auto * const aRightSweepGradientPairs = pRightChild->GetBin()->GetGradientPairs();
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            // TODO: instead of adding and subtracing the changes, we should instead subtract the change that
-            // we've added from the totals, which would be more accurate in terms of summing to be the total.
-
             const FloatBig sumGradientsLeft = aLeftSweepGradientPairs[iScore].m_sumGradients;
             const FloatBig sumGradientsRight = aRightSweepGradientPairs[iScore].m_sumGradients;
 
@@ -256,7 +247,7 @@ static int FindBestSplitGain(
             BEST_gain = gain;
 
             pTreeSweepCur->SetBestBin(pBinCur);
-            pTreeSweepCur->GetBestLeftBin()->Copy(*pLeftBin, cScores);
+            pTreeSweepCur->GetBestLeftBin()->Copy(*pLeftChild->GetBin(), cScores);
 
             pTreeSweepCur = AddBytesTreeSweep(pTreeSweepCur, cBytesPerTreeSweep);
          } else {
@@ -320,9 +311,6 @@ static int FindBestSplitGain(
       pTreeSweepStart = AddBytesTreeSweep(pTreeSweepStart, cBytesPerTreeSweep * iRandom);
    }
 
-   TreeNode<bClassification> * const pLeftChild = 
-      GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
-
    const auto * const BEST_pBin = pTreeSweepStart->GetBestBin();
    pLeftChild->BEFORE_SetBinLast(BEST_pBin);
 
@@ -330,8 +318,6 @@ static int FindBestSplitGain(
 
    const auto * const BEST_pBinNext = IndexBin(BEST_pBin, cBytesPerBin);
    ASSERT_BIN_OK(cBytesPerBin, BEST_pBinNext, pBoosterShell->GetBinsBigEndDebug());
-
-   TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
    pRightChild->BEFORE_SetBinFirst(BEST_pBinNext);
 

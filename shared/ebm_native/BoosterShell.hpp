@@ -52,8 +52,6 @@ class BoosterShell final {
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
    BinBase * m_pSumAllBins;
-   BinBase * m_pLeftBin;
-   BinBase * m_pRightBin;
 
 #ifndef NDEBUG
    const unsigned char * m_pBinsFastEndDebug;
@@ -84,8 +82,6 @@ public:
       m_aTempFloatVector = nullptr;
       m_aEquivalentSplits = nullptr;
       m_pSumAllBins = nullptr;
-      m_pLeftBin = nullptr;
-      m_pRightBin = nullptr;
    }
 
    static void Free(BoosterShell * const pBoosterShell);
@@ -176,15 +172,6 @@ public:
       return m_pSumAllBins->Specialize<FloatBig, bClassification>();
    }
 
-   template<bool bClassification>
-   INLINE_ALWAYS Bin<FloatBig, bClassification> * GetLeftBin() {
-      return m_pLeftBin->Specialize<FloatBig, bClassification>();
-   }
-
-   template<bool bClassification>
-   INLINE_ALWAYS Bin<FloatBig, bClassification> * GetRightBin() {
-      return m_pRightBin->Specialize<FloatBig, bClassification>();
-   }
 
 #ifndef NDEBUG
    INLINE_ALWAYS const unsigned char * GetBinsFastEndDebug() const {
