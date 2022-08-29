@@ -258,6 +258,8 @@ ErrorEbm BoosterCore::Create(
       return error;
    }
 
+   size_t cBinsMax = 0;
+
    LOG_0(Trace_Info, "BoosterCore::Create starting feature processing");
    if(0 != cFeatures) {
       pBoosterCore->m_cFeatures = cFeatures;
@@ -287,19 +289,24 @@ ErrorEbm BoosterCore::Create(
             &defaultValSparse,
             &cNonDefaultsSparse
          );
-         if(0 == cBins && (0 != cTrainingSamples || 0 != cValidationSamples)) {
-            LOG_0(Trace_Error, "ERROR BoosterCore::Create countBins cannot be zero if either 0 < cTrainingSamples OR 0 < cValidationSamples");
-            return Error_IllegalParamVal;
-         }
          if(0 == cBins) {
+            if(0 != cTrainingSamples || 0 != cValidationSamples) {
+               LOG_0(Trace_Error, "ERROR BoosterCore::Create countBins cannot be zero if either 0 < cTrainingSamples OR 0 < cValidationSamples");
+               return Error_IllegalParamVal;
+            }
+
             // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
             // can only occur if there were zero training and zero validation cases since the 
             // features would require a value, even if it was 0.
             LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 0 values");
-         } else if(1 == cBins) {
-            // Dimensions with 1 bin don't contribute anything to the model since they always have the same value, but 
-            // the user can specify interactions, so we handle them anyways in a consistent way by boosting on them
-            LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 1 value");
+         } else {
+            cBinsMax = EbmMax(cBinsMax, cBins);
+
+            if(1 == cBins) {
+               // Dimensions with 1 bin don't contribute anything to the model since they always have the same value, but 
+               // the user can specify interactions, so we handle them anyways in a consistent way by boosting on them
+               LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 1 value");
+            }
          }
          pBoosterCore->m_aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnknown, bNominal);
 
@@ -313,6 +320,7 @@ ErrorEbm BoosterCore::Create(
 
 
    size_t cBytesArrayEquivalentSplitMax = 0;
+   size_t cBytesSplitting = 0;
 
    EBM_ASSERT(nullptr == pBoosterCore->m_apCurrentTermTensors);
    EBM_ASSERT(nullptr == pBoosterCore->m_apBestTermTensors);
@@ -326,6 +334,31 @@ ErrorEbm BoosterCore::Create(
       {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
          return Error_OutOfMemory;
+      }
+
+      if(0 != cBinsMax) {
+         // If we have N bins, then we can have at most N - 1 splits.
+         // At maximum if all splits are made, then we'll have a tree with N - 1 nodes.
+         // Each node will contain a the total gradient sums of their left and right sides
+         // Each of the N bins will also have a leaf in the tree, which will also consume a TreeNode structure
+         // because each split needs to preserve the gradient sums of its left and right sides, which in this
+         // case are individual bins.
+         // So, in total we consume N + N - 1 TreeNodes
+
+         cBytesSplitting = cBinsMax - 1;
+         if(IsAddError(cBytesSplitting, cBinsMax)) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cBytesSplitting, cBinsMax)");
+            return Error_OutOfMemory;
+         }
+         cBytesSplitting += cBinsMax;
+
+         const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
+
+         if(IsMultiplyError(cBytesSplitting, cBytesPerTreeNode)) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesSplitting, cBytesPerTreeNode)");
+            return Error_OutOfMemory;
+         }
+         cBytesSplitting *= cBytesPerTreeNode;
       }
 
       pBoosterCore->m_cTerms = cTerms;
@@ -460,6 +493,7 @@ ErrorEbm BoosterCore::Create(
    LOG_0(Trace_Info, "BoosterCore::Create finished feature group processing");
 
    pBoosterCore->m_cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplitMax;
+   pBoosterCore->m_cBytesSplitting = cBytesSplitting;
 
    error = pBoosterCore->m_trainingSet.Initialize(
       cClasses,

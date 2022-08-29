@@ -61,6 +61,7 @@ class BoosterCore final {
    double m_bestModelMetric;
 
    size_t m_cBytesArrayEquivalentSplitMax;
+   size_t m_cBytesSplitting;
 
    DataSetBoosting m_trainingSet;
    DataSetBoosting m_validationSet;
@@ -107,7 +108,8 @@ class BoosterCore final {
       m_apCurrentTermTensors(nullptr),
       m_apBestTermTensors(nullptr),
       m_bestModelMetric(0),
-      m_cBytesArrayEquivalentSplitMax(0)
+      m_cBytesArrayEquivalentSplitMax(0),
+      m_cBytesSplitting(0)
    {
       m_trainingSet.InitializeUnfailing();
       m_validationSet.InitializeUnfailing();
@@ -129,6 +131,10 @@ public:
 
    INLINE_ALWAYS size_t GetCountBytesArrayEquivalentSplitMax() const {
       return m_cBytesArrayEquivalentSplitMax;
+   }
+
+   INLINE_ALWAYS size_t GetCountBytesSplitting() const {
+      return m_cBytesSplitting;
    }
 
    INLINE_ALWAYS size_t GetCountTerms() const {

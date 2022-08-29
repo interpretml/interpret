@@ -37,7 +37,8 @@ class BoosterShell final {
    Tensor * m_pTermUpdate;
    Tensor * m_pInnerTermUpdate;
 
-   // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
+   // TODO: can I preallocate m_aThreadByteBuffer1 without resorting to growing if I examine my inputs
+   // TODO: can merge m_aThreadByteBuffer2 with the pair boosting memory (if it isn't already merged)
 
    BinBase * m_aThreadByteBuffer1Fast;
    size_t m_cThreadByteBufferCapacity1Fast;
@@ -46,7 +47,6 @@ class BoosterShell final {
    size_t m_cThreadByteBufferCapacity1Big;
 
    void * m_aThreadByteBuffer2;
-   size_t m_cThreadByteBufferCapacity2;
 
    FloatFast * m_aTempFloatVector;
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
@@ -78,7 +78,6 @@ public:
       m_aThreadByteBuffer1Big = nullptr;
       m_cThreadByteBufferCapacity1Big = 0;
       m_aThreadByteBuffer2 = nullptr;
-      m_cThreadByteBufferCapacity2 = 0;
       m_aTempFloatVector = nullptr;
       m_aEquivalentSplits = nullptr;
       m_pSumAllBins = nullptr;
@@ -149,14 +148,8 @@ public:
       return m_aThreadByteBuffer1Big;
    }
 
-   ErrorEbm GrowThreadByteBuffer2(const size_t cByteBoundaries);
-
    INLINE_ALWAYS void * GetThreadByteBuffer2() {
       return m_aThreadByteBuffer2;
-   }
-
-   INLINE_ALWAYS size_t GetThreadByteBuffer2Size() const {
-      return m_cThreadByteBufferCapacity2;
    }
 
    INLINE_ALWAYS FloatFast * GetTempFloatVector() {

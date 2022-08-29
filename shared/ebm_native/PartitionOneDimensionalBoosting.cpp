@@ -408,23 +408,6 @@ public:
       EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-   retry_with_bigger_tree_node_children_array:
-
-      size_t cBytesBuffer2 = pBoosterShell->GetThreadByteBuffer2Size();
-      // we need 1 TreeNode for the root, 1 for the left child of the root and 1 for the right child of the root
-      const size_t cBytesInitialNeededAllocation = 3 * cBytesPerTreeNode;
-      if(cBytesBuffer2 < cBytesInitialNeededAllocation) {
-         // TODO : we can eliminate this check as long as we ensure that the ThreadByteBuffer2 is always initialized to be equal to the size of three 
-         // TreeNodes (left and right) == GET_SIZEOF_ONE_TREE_NODE_CHILDREN(cBytesPerTreeNode), or the number of bins (interactions multiply bins) on the 
-         // highest bin count feature
-         error = pBoosterShell->GrowThreadByteBuffer2(cBytesInitialNeededAllocation);
-         if(Error_None != error) {
-            // already logged
-            return error;
-         }
-         cBytesBuffer2 = pBoosterShell->GetThreadByteBuffer2Size();
-         EBM_ASSERT(cBytesInitialNeededAllocation <= cBytesBuffer2);
-      }
       TreeNode<bClassification> * pRootTreeNode =
          static_cast<TreeNode<bClassification> *>(pBoosterShell->GetThreadByteBuffer2());
 
@@ -438,8 +421,6 @@ public:
 
       pRootTreeNode->GetBin()->Copy(*pBoosterShell->GetSumAllBins<bClassification>(), cScores);
 
-      Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
-
       size_t cLeaves;
       const int retFind = FindBestSplitGain<cCompilerClasses>(
          pRng,
@@ -448,6 +429,9 @@ public:
          AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
          cSamplesLeafMin
       );
+
+      Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
+
       if(UNLIKELY(0 != retFind)) {
          // there will be no splits at all
 
@@ -619,7 +603,7 @@ public:
 
          // we skip 3 tree nodes.  The root, the left child of the root, and the right child of the root
          TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceCur =
-            AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesInitialNeededAllocation);
+            AddBytesTreeNode<bClassification>(pRootTreeNode, 3 * cBytesPerTreeNode);
 
          FloatBig totalGain = 0;
 
@@ -656,17 +640,6 @@ public:
                   cBytesPerTreeNode
                );
             if(pLeftChild->BEFORE_IsSplittable()) {
-               TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceNext =
-                  AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
-               if(cBytesBuffer2 <
-                  static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
-                  error = pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode);
-                  if(Error_None != error) {
-                     // already logged
-                     return error;
-                  }
-                  goto retry_with_bigger_tree_node_children_array;
-               }
                // the act of splitting it implicitly sets AFTER_RejectSplit
                // because splitting sets splitGain to a non-illegalGain value
                if(0 == FindBestSplitGain<cCompilerClasses>(
@@ -676,7 +649,8 @@ public:
                   pTreeNodeChildrenAvailableStorageSpaceCur,
                   cSamplesLeafMin
                )) {
-                  pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
+                  pTreeNodeChildrenAvailableStorageSpaceCur = 
+                     AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
                   // our priority queue comparison function cannot handle NaN gains so we filter out before
                   EBM_ASSERT(!std::isnan(pLeftChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(!std::isinf(pLeftChild->AFTER_GetSplitGain()));
@@ -710,17 +684,6 @@ public:
                cBytesPerTreeNode
             );
             if(pRightChild->BEFORE_IsSplittable()) {
-               TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceNext =
-                  AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
-               if(cBytesBuffer2 <
-                  static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
-                  error = pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode);
-                  if(Error_None != error) {
-                     // already logged
-                     return error;
-                  }
-                  goto retry_with_bigger_tree_node_children_array;
-               }
                // the act of splitting it implicitly sets AFTER_RejectSplit 
                // because splitting sets splitGain to a non-NaN value
                if(0 == FindBestSplitGain<cCompilerClasses>(
@@ -730,7 +693,8 @@ public:
                   pTreeNodeChildrenAvailableStorageSpaceCur,
                   cSamplesLeafMin
                )) {
-                  pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
+                  pTreeNodeChildrenAvailableStorageSpaceCur = 
+                     AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
                   // our priority queue comparison function cannot handle NaN gains so we filter out before
                   EBM_ASSERT(!std::isnan(pRightChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(!std::isinf(pRightChild->AFTER_GetSplitGain()));
@@ -769,7 +733,7 @@ public:
 
          *pTotalGain = static_cast<double>(totalGain);
          EBM_ASSERT(
-            static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2
+            static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= pBoosterCore->GetCountBytesSplitting()
          );
       } catch(const std::bad_alloc &) {
          // calling anything inside bestTreeNodeToSplit can throw exceptions

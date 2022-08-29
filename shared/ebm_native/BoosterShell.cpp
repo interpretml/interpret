@@ -101,6 +101,13 @@ ErrorEbm BoosterShell::FillAllocations() {
       }
    }
 
+   if(0 != m_pBoosterCore->GetCountBytesSplitting()) {
+      m_aThreadByteBuffer2 = EbmMalloc<void>(m_pBoosterCore->GetCountBytesSplitting());
+      if(nullptr == m_aThreadByteBuffer2) {
+         goto failed_allocation;
+      }
+   }
+
    LOG_0(Trace_Info, "Exited BoosterShell::FillAllocations");
    return Error_None;
 
@@ -141,29 +148,6 @@ BinBase * BoosterShell::GetBinBaseBig(size_t cBytesRequired) {
       }
    }
    return aBuffer;
-}
-
-ErrorEbm BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
-   // by adding cByteBoundaries and shifting our existing size, we do 2 things:
-   //   1) we ensure that if we have zero size, we'll get some size that we'll get a non-zero size after the shift
-   //   2) we'll always get back an odd number of items, which is good because we always have an odd number of TreeNodeChilden
-   EBM_ASSERT(0 == m_cThreadByteBufferCapacity2 % cByteBoundaries);
-   m_cThreadByteBufferCapacity2 = cByteBoundaries + (m_cThreadByteBufferCapacity2 << 1);
-   LOG_N(Trace_Info, "Growing BoosterShell::ThreadByteBuffer2 to %zu", m_cThreadByteBufferCapacity2);
-
-   // our tree objects have internal pointers, so we're going to dispose of our work anyways
-   // We can't use realloc since there is no way to check if the array was re-allocated or not without 
-   // invoking undefined behavior, so we don't get a benefit if the array can be resized with realloc
-
-   void * aBuffer = m_aThreadByteBuffer2;
-   free(aBuffer);
-   aBuffer = EbmMalloc<void>(m_cThreadByteBufferCapacity2);
-   m_aThreadByteBuffer2 = aBuffer; // store it before checking it incase it's null so that we don't free old memory
-   if(UNLIKELY(nullptr == aBuffer)) {
-      LOG_0(Trace_Warning, "WARNING GrowThreadByteBuffer2 OutOfMemory");
-      return Error_OutOfMemory;
-   }
-   return Error_None;
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
