@@ -80,7 +80,6 @@ struct TreeNode final {
 
    INLINE_ALWAYS FloatBig AFTER_GetSplitGain() const {
       EBM_ASSERT(m_bDoneGainCalc);
-      EBM_ASSERT(!m_bSplitDecided);
 
       const FloatBig splitGain = m_UNION.m_afterGainCalc.m_splitGain;
 
@@ -93,7 +92,6 @@ struct TreeNode final {
    }
    INLINE_ALWAYS void AFTER_SetSplitGain(const FloatBig splitGain) {
       EBM_ASSERT(m_bDoneGainCalc);
-      EBM_ASSERT(!m_bSplitDecided);
 
       // our priority queue cannot handle NaN values so we filter them out before adding them
       EBM_ASSERT(!std::isnan(splitGain));
@@ -105,11 +103,6 @@ struct TreeNode final {
 
    INLINE_ALWAYS void AFTER_RejectSplit() {
       EBM_ASSERT(m_bDoneGainCalc);
-      EBM_ASSERT(!m_bSplitDecided);
-
-#ifndef NDEBUG
-      m_bSplitDecided = true;
-#endif // NDEBUG
 
       // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because 
       // otherwise it is filled with garbage that could be NaN (meaning the node was a branch) we can't call 
@@ -123,18 +116,12 @@ struct TreeNode final {
 
    INLINE_ALWAYS void AFTER_SplitNode() {
       EBM_ASSERT(m_bDoneGainCalc);
-      EBM_ASSERT(!m_bSplitDecided);
-
-#ifndef NDEBUG
-      m_bSplitDecided = true;
-#endif // NDEBUG
 
       m_UNION.m_afterGainCalc.m_splitGain = k_illegalGainFloat;
    }
 
    INLINE_ALWAYS bool AFTER_IsSplit() const {
       EBM_ASSERT(m_bDoneGainCalc);
-      EBM_ASSERT(m_bSplitDecided);
       return k_illegalGainFloat == m_UNION.m_afterGainCalc.m_splitGain;
    }
 
@@ -164,10 +151,8 @@ struct TreeNode final {
          // we set this to false when it's random memory, 
          // but we only flip it to true from an initialized state of false
          EBM_ASSERT(!m_bDoneGainCalc);
-         EBM_ASSERT(!m_bSplitDecided);
       }
       m_bDoneGainCalc = bDoneGainCalc;
-      m_bSplitDecided = false;
    }
 #endif // NDEBUG
 
@@ -234,7 +219,6 @@ private:
 
 #ifndef NDEBUG
    bool m_bDoneGainCalc;
-   bool m_bSplitDecided;
 #endif // NDEBUG
 
    TreeNodeUnion m_UNION;
