@@ -9,7 +9,9 @@ from ..group_importance import (
     compute_group_importance,
     _get_group_name,
     append_group_importance,
-    get_group_and_individual_importances
+    get_group_and_individual_importances,
+    get_individual_importances,
+    get_importance_per_top_groups
 )
 
 def test_group_name():
@@ -112,6 +114,39 @@ def test_group_and_individual_importances():
     dict = get_group_and_individual_importances([term_names_1, term_names_2], ebm, X)
     assert dict["A, B"] == compute_group_importance(term_names_1, ebm, X)
     assert dict["C, D"] == compute_group_importance(term_names_2, ebm, X)
+
+def test_individual_importances():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    ebm = ExplainableBoostingRegressor()
+    ebm.fit(X, y)
+    _, contributions = ebm.predict_and_contrib(X)
+
+    dict = get_individual_importances(ebm, X, contributions)
+    assert dict["A"] == compute_group_importance(["A"], ebm, X, contributions)
+    assert dict["B"] == compute_group_importance(["B"], ebm, X, contributions)
+    assert dict["C"] == compute_group_importance(["C"], ebm, X, contributions)
+    assert dict["D"] == compute_group_importance(["D"], ebm, X, contributions)
+
+def test_get_importance_per_top_groups():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    ebm = ExplainableBoostingRegressor()
+    ebm.fit(X, y)
+
+    df = get_importance_per_top_groups(ebm, X)
+    dict = get_individual_importances(ebm, X)
+
+    assert df.shape[0] == len(ebm.term_features_)
+    # First group
+    assert list(dict.keys())[0] in df["terms_per_group"][0]
+    # Second group
+    assert list(dict.keys())[0] in df["terms_per_group"][1]
+    assert list(dict.keys())[1] in df["terms_per_group"][1]
 
 def _check_group_importance(X, y, ebm):
     term_names = ["A", "B"]

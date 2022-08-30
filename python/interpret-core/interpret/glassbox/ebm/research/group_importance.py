@@ -6,6 +6,8 @@ features or terms and append them to Global Explanations.
 A term denotes both single features and interactions (pairs).
 """
 import numpy as np
+import pandas as pd
+import plotly.express as px
 from sklearn.utils.validation import check_is_fitted
 from sklearn.base import is_classifier
 
@@ -121,7 +123,7 @@ def append_group_importance(term_list, ebm, X, group_name=None, global_exp=None,
 
     return global_explanation
 
-def get_group_and_individual_importances(term_groups_list, ebm, X):
+def get_group_and_individual_importances(term_groups_list, ebm, X, contributions=None):
     """Returns a dict containing the importances of the groups in term_groups_list as well as
         all other EBM terms
 
@@ -132,6 +134,7 @@ def get_group_and_individual_importances(term_groups_list, ebm, X):
             e.g. [["Feature 1", "Feature 2], ["Feature 3", "Feature 4"]]
         ebm: A fitted EBM
         X (numpy array): Samples used to compute the group importance
+        contributions (numpy array, optional): Contributions of all terms per X's row
 
     Returns:
        a dict where each entry is in the form 'term_name: term_importance'
@@ -141,7 +144,9 @@ def get_group_and_individual_importances(term_groups_list, ebm, X):
     elif len(term_groups_list) == 0:
         raise ValueError("term_groups_list should be a non-empty list.")
 
-    _, contributions = ebm.predict_and_contrib(X)
+    if contributions is None:
+        _, contributions = ebm.predict_and_contrib(X)
+
     dict = {}
 
     for term in ebm.term_names_:
@@ -158,3 +163,92 @@ def get_group_and_individual_importances(term_groups_list, ebm, X):
 
     sorted_dict = {k: v for k, v in sorted(dict.items(), key=lambda item: item[1], reverse=True)}
     return sorted_dict
+
+def get_individual_importances(ebm, X, contributions=None):
+    """Returns a dict containing the importances of all EBM terms
+
+    The dict will de sorted in descending order w.r.t. the importances
+
+    Args:
+        ebm: A fitted EBM
+        X (numpy array): Samples used to compute the group importance
+        contributions (numpy array, optional): Contributions of all terms per X's row
+
+    Returns:
+       a dict where each entry is in the form 'term_name: term_importance'
+    """
+    if contributions is None:
+        _, contributions = ebm.predict_and_contrib(X)
+
+    dict = {}
+    for term in ebm.term_names_:
+         dict[term] = compute_group_importance([term], ebm, X, contributions)
+
+    sorted_dict = {k: v for k, v in sorted(dict.items(), key=lambda item: item[1], reverse=True)}
+    return sorted_dict
+
+def get_importance_per_top_groups(ebm, X):
+    """ Returns a Dataframe with the importances of groups of terms, such that:
+
+    The first group is the term with the highest individual importance (i.e. top term), the second group is
+    composed by the top 2 terms, and so on. For example:
+        Group 1 - ['Age']
+        Group 2 - ['Age', 'MaritalStatus']
+        Group 3 - ['Age', 'MaritalStatus', 'CapitalGain']
+        ...
+        Group N - All terms
+
+    Args:
+        ebm: A fitted EBM
+        X (numpy array): Samples used to compute the group importance
+
+    Returns:
+       a pandas Dataframe with three columns: group_names, terms_per_group and importances
+    """
+    _, contributions = ebm.predict_and_contrib(X)
+    individual_importances = get_individual_importances(ebm, X, contributions)
+
+    # Create groups of terms starting with the most important and adding each subsequent term
+    groups_list = []
+    temp_group = []
+    for key in individual_importances.keys():
+        if len(temp_group) > 0:
+            temp_group = list(groups_list[-1])
+        temp_group.append(key)
+        groups_list.append(temp_group)
+
+    # Compute the importance of each group in groups_list
+    group_index = 1
+    output_dict = {}
+    for group in groups_list:
+        group_name = f"Group {group_index}"
+        output_dict[group_name] = compute_group_importance(group, ebm, X, contributions)
+        group_index += 1
+
+    df = pd.DataFrame({
+        "groups": output_dict.keys(),
+        "terms_per_group": groups_list,
+        "importances": output_dict.values(),
+    })
+
+    return df
+
+def plot_importance_per_top_groups(ebm, X):
+    """ Plots a plotly graph where the x-axis represents groups of top K terms and the y-axis their importances.
+
+    The first group is the terms with the highest individual importance (i.e. top term), the second group is
+    composed by the top 2 terms, and so on. For example:
+        Group 1 - ['Age']
+        Group 2 - ['Age', 'MaritalStatus']
+        Group 3 - ['Age', 'MaritalStatus', 'CapitalGain']
+        ...
+        Group N - All terms
+
+    Args:
+        ebm: A fitted EBM
+        X (numpy array): Samples used to compute the group importance
+    """
+    df = get_importance_per_top_groups(ebm, X)
+
+    fig = px.line(df, x="groups", y="importances", title='Group Importances')
+    fig.show()
