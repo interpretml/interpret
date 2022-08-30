@@ -47,13 +47,13 @@ static void Flatten(
    if(UNPREDICTABLE(pTreeNode->AFTER_IsSplit())) {
       EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
-      const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
-         pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
+      const TreeNode<bClassification> * const pLeftChild = GetLeftNode(
+         pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
       Flatten<bClassification>(pLeftChild, ppSplits, ppUpdateScore, cScores);
       **ppSplits = pTreeNode->AFTER_GetSplitVal();
       ++(*ppSplits);
-      const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
-         pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
+      const TreeNode<bClassification> * const pRightChild = GetRightNode(
+         pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
       Flatten<bClassification>(pRightChild, ppSplits, ppUpdateScore, cScores);
    } else {
       FloatFast * pUpdateScoreCur = *ppUpdateScore;
@@ -102,21 +102,36 @@ static int FindBestSplitGain(
    RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    TreeNode<IsClassification(cCompilerClasses)> * pTreeNode,
-   TreeNode<IsClassification(cCompilerClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur,
+   TreeNode<IsClassification(cCompilerClasses)> * const pTreeNodeStackSpace,
    const size_t cSamplesLeafMin
 ) {
    constexpr bool bClassification = IsClassification(cCompilerClasses);
+   constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
 
    LOG_N(
       Trace_Verbose,
-      "Entered FindBestSplitGain: pBoosterShell=%p, pTreeNode=%p, "
-      "pTreeNodeChildrenAvailableStorageSpaceCur=%p, cSamplesLeafMin=%zu",
+      "Entered FindBestSplitGain: "
+      "pRng=%p, "
+      "pBoosterShell=%p, "
+      "pTreeNode=%p, "
+      "pTreeNodeStackSpace=%p, "
+      "cSamplesLeafMin=%zu"
+      ,
+      static_cast<void *>(pRng),
       static_cast<const void *>(pBoosterShell),
       static_cast<void *>(pTreeNode),
-      static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur),
+      static_cast<void *>(pTreeNodeStackSpace),
       cSamplesLeafMin
    );
-   constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
+
+   if(!pTreeNode->BEFORE_IsSplittable()) {
+#ifndef NDEBUG
+      pTreeNode->SetDoneGainCalc(true);
+#endif // NDEBUG
+
+      pTreeNode->AFTER_RejectSplit();
+      return 1;
+   }
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
@@ -133,10 +148,8 @@ static int FindBestSplitGain(
    EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
 
-   TreeNode<bClassification> * const pLeftChild =
-      GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
-   TreeNode<bClassification> * const pRightChild =
-      GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
+   TreeNode<bClassification> * const pLeftChild = GetLeftNode(pTreeNodeStackSpace, cBytesPerTreeNode);
+   TreeNode<bClassification> * const pRightChild = GetRightNode(pTreeNodeStackSpace, cBytesPerTreeNode);
 
 #ifndef NDEBUG
    pLeftChild->SetDoneGainCalc(false);
@@ -260,6 +273,13 @@ static int FindBestSplitGain(
    if(UNLIKELY(pTreeSweepStart == pTreeSweepCur)) {
       // no valid splits found
       EBM_ASSERT(k_gainMin == BEST_gain);
+
+#ifndef NDEBUG
+      pTreeNode->SetDoneGainCalc(true);
+#endif // NDEBUG
+
+      pTreeNode->AFTER_RejectSplit();
+
       return 1;
    }
    EBM_ASSERT(std::isnan(BEST_gain) || 0 <= BEST_gain);
@@ -269,6 +289,12 @@ static int FindBestSplitGain(
 
       // we need this test since the priority queue in the function that calls us cannot accept a NaN value
       // since we would break weak ordering with non-ordered NaN comparisons, thus create undefined behavior
+
+#ifndef NDEBUG
+      pTreeNode->SetDoneGainCalc(true);
+#endif // NDEBUG
+
+      pTreeNode->AFTER_RejectSplit();
 
       return -1; // exit boosting with overflow
    }
@@ -297,6 +323,12 @@ static int FindBestSplitGain(
    if(UNLIKELY(/* NaN */ !LIKELY(k_gainMin <= BEST_gain))) {
       // do not allow splits on gains that are too small
       // also filter out slightly negative numbers that can arrise from floating point noise
+
+#ifndef NDEBUG
+      pTreeNode->SetDoneGainCalc(true);
+#endif // NDEBUG
+
+      pTreeNode->AFTER_RejectSplit();
 
       // but if the parent partial gain overflowed to +inf and thus we got a -inf gain, then handle as an overflow
       return /* NaN */ std::numeric_limits<FloatBig>::lowest() <= BEST_gain ? 1 : -1;
@@ -336,7 +368,7 @@ static int FindBestSplitGain(
 #endif // NDEBUG
 
 
-   pTreeNode->AFTER_SetTreeNodeChildren(pTreeNodeChildrenAvailableStorageSpaceCur);
+   pTreeNode->AFTER_SetChildren(pTreeNodeStackSpace);
    pTreeNode->AFTER_SetSplitGain(BEST_gain);
 
    BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
@@ -347,18 +379,13 @@ static int FindBestSplitGain(
    const size_t iSplit = (reinterpret_cast<const char *>(BEST_pBin) - reinterpret_cast<const char *>(aBins)) / cBytesPerBin;
    pTreeNode->AFTER_SetSplitVal(iSplit);
 
-   LOG_N(
-      Trace_Verbose,
-      "Exited FindBestSplitGain: splitVal=%zu, gain=%le",
-      iSplit,
-      BEST_gain
-   );
+   LOG_N(Trace_Verbose, "Exited FindBestSplitGain: splitVal=%zu, gain=%le", iSplit, BEST_gain);
 
    return 0;
 }
 
 template<bool bClassification>
-class CompareTreeNodeSplittingGain final {
+class CompareNodeGain final {
 public:
    INLINE_ALWAYS bool operator() (const TreeNode<bClassification> * const & lhs, const TreeNode<bClassification> * const & rhs) const noexcept {
       // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
@@ -382,29 +409,19 @@ public:
       const size_t cLeavesMax,
       double * const pTotalGain
    ) {
-      constexpr bool bClassification = IsClassification(cCompilerClasses);
+      EBM_ASSERT(2 <= cBins); // filter these out at the start where we can handle this case easily
+      EBM_ASSERT(2 <= cLeavesMax); // filter these out at the start where we can handle this case easily
+      EBM_ASSERT(nullptr != pTotalGain);
 
       ErrorEbm error;
 
-      BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
-      const auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
-
+      constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
-
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
 
-      EBM_ASSERT(nullptr != pTotalGain);
-      EBM_ASSERT(1 <= pBoosterShell->GetSumAllBins<bClassification>()->GetCountSamples()); // filter these out at the start where we can handle this case easily
-      EBM_ASSERT(2 <= cBins); // filter these out at the start where we can handle this case easily
-      EBM_ASSERT(2 <= cLeavesMax); // filter these out at the start where we can handle this case easily
-
-      // there will be at least one split
-
-      EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores));
-      const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
       EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
@@ -415,335 +432,152 @@ public:
       pRootTreeNode->SetDoneGainCalc(false);
 #endif // NDEBUG
 
+      BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
+      const auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
+
       pRootTreeNode->BEFORE_SetBinFirst(aBins);
       pRootTreeNode->BEFORE_SetBinLast(IndexBin(aBins, cBytesPerBin * (cBins - 1)));
       ASSERT_BIN_OK(cBytesPerBin, pRootTreeNode->BEFORE_GetBinLast(), pBoosterShell->GetBinsBigEndDebug());
 
+      // TODO: move the summation code as a static function in this file and call it here giving it the memory of the RootTreeNode to fill in
       pRootTreeNode->GetBin()->Copy(*pBoosterShell->GetSumAllBins<bClassification>(), cScores);
 
-      size_t cLeaves;
-      const int retFind = FindBestSplitGain<cCompilerClasses>(
+      EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores));
+      const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
+
+      TreeNode<bClassification> * pTreeNodeStackSpace = IndexTreeNode(pRootTreeNode, cBytesPerTreeNode);
+
+      int retFind = FindBestSplitGain<cCompilerClasses>(
          pRng,
          pBoosterShell,
          pRootTreeNode,
-         AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
+         pTreeNodeStackSpace,
          cSamplesLeafMin
       );
-
-      Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
-
+      size_t cLeaves = 1;
+      FloatBig totalGain = 0;
       if(UNLIKELY(0 != retFind)) {
          // there will be no splits at all
-
-         // any negative gain means there was an overflow.  Let the caller decide if they want to ignore it
-         *pTotalGain = UNLIKELY(retFind < 0) ? std::numeric_limits<double>::infinity() : 0.0;
-
-         error = pInnerTermUpdate->SetCountSplits(iDimension, 0);
-         if(UNLIKELY(Error_None != error)) {
-            // already logged
-            return error;
+         if(UNLIKELY(retFind < 0)) {
+            // Any negative return means there was an overflow. Signal the overflow by making gain infinite here.
+            // We'll flip it later to a negative number to signal to the caller that there was an overflow.
+            totalGain = std::numeric_limits<double>::infinity();
          }
+      } else {
+         // our priority queue comparison function cannot handle NaN gains so we filter out before
+         EBM_ASSERT(!std::isnan(pRootTreeNode->AFTER_GetSplitGain()));
+         EBM_ASSERT(!std::isinf(pRootTreeNode->AFTER_GetSplitGain()));
+         EBM_ASSERT(0 <= pRootTreeNode->AFTER_GetSplitGain());
 
-         // we don't need to call EnsureTensorScoreCapacity because by default we start with a value capacity of 2 * cScores
-         if(bClassification) {
-            FloatFast * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
+         try {
+            // TODO: someday see if we can replace this with an in-class priority queue that stores it's info inside
+            //       the TreeNode datastructure
+            std::priority_queue<
+               TreeNode<bClassification> *,
+               std::vector<TreeNode<bClassification> *>,
+               CompareNodeGain<bClassification>
+            > nodeGainRanking;
 
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            FloatBig zeroLogit = 0;
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
+            TreeNode<bClassification> * pTreeNode = pRootTreeNode;
 
-            for(size_t iScore = 0; iScore < cScores; ++iScore) {
-               FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                  pRootTreeNode->GetGradientPairs()[iScore].m_sumGradients, pRootTreeNode->GetGradientPairs()[iScore].GetSumHessians()
-               );
+            // The root node used a left and right leaf, so reserve it here
+            pTreeNodeStackSpace = IndexTreeNode(pTreeNodeStackSpace, cBytesPerTreeNode << 1);
 
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-               if(IsMulticlass(cCompilerClasses)) {
-                  if(size_t { 0 } == iScore) {
-                     zeroLogit = updateScore;
-                  }
-                  updateScore -= zeroLogit;
-               }
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
+            goto skip_first_push_pop;
 
-               aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(updateScore);
-            }
-         } else {
-            EBM_ASSERT(IsRegression(cCompilerClasses));
-            const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
-               pRootTreeNode->GetGradientPairs()[0].m_sumGradients, 
-               pRootTreeNode->GetBin()->GetWeight()
-            );
-            FloatFast * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
-            aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
-         }
+            do {
+               // there is no way to get the top and pop at the same time.. would be good to get a better queue, but our code isn't bottlenecked by it
+               pTreeNode = nodeGainRanking.top();
+               // In theory we can have nodes with equal gain values here, but this is very very rare to occur in practice
+               // We handle equal gain values in FindBestSplitGain because we 
+               // can have zero instances in bins, in which case it occurs, but those equivalent situations have been cleansed by
+               // the time we reach this code, so the only realistic scenario where we might get equivalent gains is if we had an almost
+               // symetric distribution samples bin distributions AND two tail ends that happen to have the same statistics AND
+               // either this is our first split, or we've only made a single split in the center in the case where there is symetry in the center
+               // Even if all of these things are true, after one non-symetric split, we won't see that scenario anymore since the gradients won't be
+               // symetric anymore.  This is so rare, and limited to one split, so we shouldn't bother to handle it since the complexity of doing so
+               // outweights the benefits.
+               nodeGainRanking.pop();
 
-         return Error_None;
-      }
+            skip_first_push_pop:
 
-      // our priority queue comparison function cannot handle NaN gains so we filter out before
-      EBM_ASSERT(!std::isnan(pRootTreeNode->AFTER_GetSplitGain()));
-      EBM_ASSERT(!std::isinf(pRootTreeNode->AFTER_GetSplitGain()));
-      EBM_ASSERT(0 <= pRootTreeNode->AFTER_GetSplitGain());
+               // pTreeNode had the highest gain of all the available Nodes, so we will split it.
 
-      if(UNPREDICTABLE(PREDICTABLE(2 == cLeavesMax) || UNPREDICTABLE(2 == cBins))) {
-         // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
+               // get the gain first, since calling AFTER_SplitNode destroys it
+               const FloatBig totalGainUpdate = pTreeNode->AFTER_GetSplitGain();
+               EBM_ASSERT(!std::isnan(totalGainUpdate));
+               EBM_ASSERT(!std::isinf(totalGainUpdate));
+               EBM_ASSERT(0 <= totalGainUpdate);
+               totalGain += totalGainUpdate;
 
-         EBM_ASSERT(2 != cBins || !GetLeftTreeNodeChild<bClassification>(
-            pRootTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode)->BEFORE_IsSplittable() &&
-            !GetRightTreeNodeChild<bClassification>(
-               pRootTreeNode->AFTER_GetTreeNodeChildren(),
-               cBytesPerTreeNode
-               )->BEFORE_IsSplittable()
-         );
+               pTreeNode->AFTER_SplitNode();
 
-         error = pInnerTermUpdate->SetCountSplits(iDimension, 1);
-         if(UNLIKELY(Error_None != error)) {
-            // already logged
-            return error;
-         }
+               TreeNode<bClassification> * const pLeftChild =
+                  GetLeftNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
 
-         ActiveDataType * pSplits = pInnerTermUpdate->GetSplitPointer(iDimension);
-         pSplits[0] = pRootTreeNode->AFTER_GetSplitVal();
-
-         // we don't need to call EnsureTensorScoreCapacity because by default we start with a value capacity of 2 * cScores
-
-         // TODO : we don't need to get the right and left pointer from the root.. we know where they will be
-         const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
-            pRootTreeNode->AFTER_GetTreeNodeChildren(),
-            cBytesPerTreeNode
-         );
-         const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
-            pRootTreeNode->AFTER_GetTreeNodeChildren(),
-            cBytesPerTreeNode
-         );
-
-         const auto * pLeftChildGradientPair = pLeftChild->GetGradientPairs();
-
-         const auto * pRightChildGradientPair = pRightChild->GetGradientPairs();
-
-         FloatFast * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
-         if(bClassification) {
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            FloatBig zeroLogit0 = FloatBig { 0 };
-            FloatBig zeroLogit1 = FloatBig { 0 };
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
-            for(size_t iScore = 0; iScore < cScores; ++iScore) {
-               FloatBig updateScore0 = EbmStats::ComputeSinglePartitionUpdate(
-                  pLeftChildGradientPair[iScore].m_sumGradients,
-                  pLeftChildGradientPair[iScore].GetSumHessians()
-               );
-               FloatBig updateScore1 = EbmStats::ComputeSinglePartitionUpdate(
-                  pRightChildGradientPair[iScore].m_sumGradients,
-                  pRightChildGradientPair[iScore].GetSumHessians()
-               );
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-               if(IsMulticlass(cCompilerClasses)) {
-                  if(size_t { 0 } == iScore) {
-                     zeroLogit0 = updateScore0;
-                     zeroLogit1 = updateScore1;
-                  }
-                  updateScore0 -= zeroLogit0;
-                  updateScore1 -= zeroLogit1;
-               }
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
-               aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(updateScore0);
-               aUpdateScores[cScores + iScore] = SafeConvertFloat<FloatFast>(updateScore1);
-            }
-         } else {
-            EBM_ASSERT(IsRegression(cCompilerClasses));
-            FloatBig updateScore0 = EbmStats::ComputeSinglePartitionUpdate(
-               pLeftChildGradientPair[0].m_sumGradients,
-               pLeftChild->GetWeight()
-            );
-            FloatBig updateScore1 = EbmStats::ComputeSinglePartitionUpdate(
-               pRightChildGradientPair[0].m_sumGradients,
-               pRightChild->GetWeight()
-            );
-
-            aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore0);
-            aUpdateScores[1] = SafeConvertFloat<FloatFast>(updateScore1);
-         }
-
-         const FloatBig totalGain = pRootTreeNode->AFTER_GetSplitGain();
-         EBM_ASSERT(!std::isnan(totalGain));
-         EBM_ASSERT(!std::isinf(totalGain));
-         EBM_ASSERT(0 <= totalGain);
-         *pTotalGain = static_cast<double>(totalGain);
-         return Error_None;
-      }
-
-      // it's very likely that there will be more than 1 split below this point.  The only case where we wouldn't 
-      // split below is if both our children nodes don't have enough cases to split, but that should rare
-
-      // typically we train on stumps, so often this priority queue is overhead since with 2-3 splits the 
-      // overhead is too large to benefit, but we also aren't bottlenecked if we only have 2-3 splits, 
-      // so we don't care about performance issues.  On the other hand, we don't want to change this to an 
-      // array scan because in theory the user can specify very deep trees, and we don't want to hang on 
-      // an O(N^2) operation if they do.  So, let's keep the priority queue, and only the priority queue 
-      // since it handles all scenarios without any real cost and is simpler
-      // than implementing an optional array scan PLUS a priority queue for deep trees.
-
-      // TODO: someday see if we can replace this with an in-class priority queue that stores it's info inside
-      //       the TreeNode datastructure
-
-      try {
-         std::priority_queue<
-            TreeNode<bClassification> *,
-            std::vector<TreeNode<bClassification> *>,
-            CompareTreeNodeSplittingGain<bClassification>
-         > bestTreeNodeToSplit;
-
-         cLeaves = size_t { 1 };
-         TreeNode<bClassification> * pParentTreeNode = pRootTreeNode;
-
-         // we skip 3 tree nodes.  The root, the left child of the root, and the right child of the root
-         TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceCur =
-            AddBytesTreeNode<bClassification>(pRootTreeNode, 3 * cBytesPerTreeNode);
-
-         FloatBig totalGain = 0;
-
-         goto skip_first_push_pop;
-
-         do {
-            // there is no way to get the top and pop at the same time.. would be good to get a better queue, but our code isn't bottlenecked by it
-            pParentTreeNode = bestTreeNodeToSplit.top();
-            // In theory we can have nodes with equal gain values here, but this is very very rare to occur in practice
-            // We handle equal gain values in FindBestSplitGain because we 
-            // can have zero instnaces in bins, in which case it occurs, but those equivalent situations have been cleansed by
-            // the time we reach this code, so the only realistic scenario where we might get equivalent gains is if we had an almost
-            // symetric distribution samples bin distributions AND two tail ends that happen to have the same statistics AND
-            // either this is our first split, or we've only made a single split in the center in the case where there is symetry in the center
-            // Even if all of these things are true, after one non-symetric split, we won't see that scenario anymore since the gradients won't be
-            // symetric anymore.  This is so rare, and limited to one split, so we shouldn't bother to handle it since the complexity of doing so
-            // outweights the benefits.
-            bestTreeNodeToSplit.pop();
-
-         skip_first_push_pop:
-
-            // ONLY AFTER WE'VE POPPED pParentTreeNode OFF the priority queue is it considered to have been split.  Calling AFTER_SplitNode makes it formal
-            const FloatBig totalGainUpdate = pParentTreeNode->AFTER_GetSplitGain();
-            EBM_ASSERT(!std::isnan(totalGainUpdate));
-            EBM_ASSERT(!std::isinf(totalGainUpdate));
-            EBM_ASSERT(0 <= totalGainUpdate);
-            totalGain += totalGainUpdate;
-
-            pParentTreeNode->AFTER_SplitNode();
-
-            TreeNode<bClassification> * const pLeftChild =
-               GetLeftTreeNodeChild<bClassification>(
-                  pParentTreeNode->AFTER_GetTreeNodeChildren(),
-                  cBytesPerTreeNode
-               );
-            if(pLeftChild->BEFORE_IsSplittable()) {
-               // the act of splitting it implicitly sets AFTER_RejectSplit
-               // because splitting sets splitGain to a non-illegalGain value
-               if(0 == FindBestSplitGain<cCompilerClasses>(
+               retFind = FindBestSplitGain<cCompilerClasses>(
                   pRng,
                   pBoosterShell,
                   pLeftChild,
-                  pTreeNodeChildrenAvailableStorageSpaceCur,
+                  pTreeNodeStackSpace,
                   cSamplesLeafMin
-               )) {
-                  pTreeNodeChildrenAvailableStorageSpaceCur = 
-                     AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
+               );
+               // if FindBestSplitGain returned -1 to indicate an 
+               // overflow ignore it here. We successfully made a root node split, so we might as well continue 
+               // with the successful tree that we have which can make progress in boosting down the residuals
+               if(0 == retFind) {
+                  pTreeNodeStackSpace = IndexTreeNode(pTreeNodeStackSpace, cBytesPerTreeNode << 1);
                   // our priority queue comparison function cannot handle NaN gains so we filter out before
                   EBM_ASSERT(!std::isnan(pLeftChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(!std::isinf(pLeftChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(0 <= pLeftChild->AFTER_GetSplitGain());
-                  bestTreeNodeToSplit.push(pLeftChild);
-               } else {
-                  // if FindBestSplitGain returned -1 to indicate an 
-                  // overflow ignore it here. We successfully made a root node split, so we might as well continue 
-                  // with the successful tree that we have which can make progress in boosting down the residuals
-
-                  goto no_left_split;
+                  nodeGainRanking.push(pLeftChild);
                }
-            } else {
-            no_left_split:;
-               // we aren't going to split this TreeNode because we can't. We need to set the splitGain value 
-               // here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch) 
-               // we can't call AFTER_RejectSplit before calling FindBestSplitGain
-               // because AFTER_RejectSplit sets 
-               // m_UNION.m_afterGainCalc.m_splitGain and the 
-               // m_UNION.m_beforeGainCalc values were needed in the call to FindBestSplitGain
 
-#ifndef NDEBUG
-               pLeftChild->SetDoneGainCalc(true);
-#endif // NDEBUG
+               TreeNode<bClassification> * const pRightChild =
+                  GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
 
-               pLeftChild->AFTER_RejectSplit();
-            }
-
-            TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
-               pParentTreeNode->AFTER_GetTreeNodeChildren(),
-               cBytesPerTreeNode
-            );
-            if(pRightChild->BEFORE_IsSplittable()) {
-               // the act of splitting it implicitly sets AFTER_RejectSplit 
-               // because splitting sets splitGain to a non-NaN value
-               if(0 == FindBestSplitGain<cCompilerClasses>(
+               retFind = FindBestSplitGain<cCompilerClasses>(
                   pRng,
                   pBoosterShell,
                   pRightChild,
-                  pTreeNodeChildrenAvailableStorageSpaceCur,
+                  pTreeNodeStackSpace,
                   cSamplesLeafMin
-               )) {
-                  pTreeNodeChildrenAvailableStorageSpaceCur = 
-                     AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
+               );
+               // if FindBestSplitGain returned -1 to indicate an 
+               // overflow ignore it here. We successfully made a root node split, so we might as well continue 
+               // with the successful tree that we have which can make progress in boosting down the residuals
+               if(0 == retFind) {
+                  pTreeNodeStackSpace = IndexTreeNode(pTreeNodeStackSpace, cBytesPerTreeNode << 1);
                   // our priority queue comparison function cannot handle NaN gains so we filter out before
                   EBM_ASSERT(!std::isnan(pRightChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(!std::isinf(pRightChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(0 <= pRightChild->AFTER_GetSplitGain());
-                  bestTreeNodeToSplit.push(pRightChild);
-               } else {
-                  // if FindBestSplitGain returned -1 to indicate an 
-                  // overflow ignore it here. We successfully made a root node split, so we might as well continue 
-                  // with the successful tree that we have which can make progress in boosting down the residuals
-
-                  goto no_right_split;
+                  nodeGainRanking.push(pRightChild);
                }
-            } else {
-            no_right_split:;
-               // we aren't going to split this TreeNode because we can't. We need to set the splitGain value 
-               // here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch) 
-               // we can't call AFTER_RejectSplit before calling FindBestSplitGain
-               // because AFTER_RejectSplit sets 
-               // m_UNION.m_afterGainCalc.m_splitGain and the 
-               // m_UNION.m_beforeGainCalc values were needed in the call to FindBestSplitGain
 
-#ifndef NDEBUG
-               pRightChild->SetDoneGainCalc(true);
-#endif // NDEBUG
+               ++cLeaves;
+            } while(cLeaves < cLeavesMax && UNLIKELY(!nodeGainRanking.empty()));
 
-               pRightChild->AFTER_RejectSplit();
-            }
-            ++cLeaves;
-         } while(cLeaves < cLeavesMax && UNLIKELY(!bestTreeNodeToSplit.empty()));
-         // we DON'T need to call SetLeafAfterDone() on any items that remain in the bestTreeNodeToSplit queue because everything in that queue has set 
-         // a non-NaN gain value
+            EBM_ASSERT(!std::isnan(totalGain));
+            EBM_ASSERT(0 <= totalGain);
 
+            EBM_ASSERT(static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeStackSpace) -
+               reinterpret_cast<char *>(pRootTreeNode)) <= pBoosterCore->GetCountBytesSplitting());
 
-         EBM_ASSERT(!std::isnan(totalGain));
-         EBM_ASSERT(0 <= totalGain);
-
-         *pTotalGain = static_cast<double>(totalGain);
-         EBM_ASSERT(
-            static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= pBoosterCore->GetCountBytesSplitting()
-         );
-      } catch(const std::bad_alloc &) {
-         // calling anything inside bestTreeNodeToSplit can throw exceptions
-         LOG_0(Trace_Warning, "WARNING PartitionOneDimensionalBoosting out of memory exception");
-         return Error_OutOfMemory;
-      } catch(...) {
-         // calling anything inside bestTreeNodeToSplit can throw exceptions
-         LOG_0(Trace_Warning, "WARNING PartitionOneDimensionalBoosting exception");
-         return Error_UnexpectedInternal;
+         } catch(const std::bad_alloc &) {
+            // calling anything inside nodeGainRanking can throw exceptions
+            LOG_0(Trace_Warning, "WARNING PartitionOneDimensionalBoosting out of memory exception");
+            return Error_OutOfMemory;
+         } catch(...) {
+            // calling anything inside nodeGainRanking can throw exceptions
+            LOG_0(Trace_Warning, "WARNING PartitionOneDimensionalBoosting exception");
+            return Error_UnexpectedInternal;
+         }
       }
+      *pTotalGain = static_cast<double>(totalGain);
+
+      Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
       error = pInnerTermUpdate->SetCountSplits(iDimension, cLeaves - size_t { 1 });
       if(UNLIKELY(Error_None != error)) {
@@ -763,7 +597,7 @@ public:
       FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
 
       LOG_0(Trace_Verbose, "Entered Flatten");
-      Flatten<bClassification>(pRootTreeNode, &pSplits, &pUpdateScore, cScores);
+      Flatten(pRootTreeNode, &pSplits, &pUpdateScore, cScores);
       LOG_0(Trace_Verbose, "Exited Flatten");
 
       EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension) <= pSplits);

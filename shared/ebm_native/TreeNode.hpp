@@ -56,17 +56,17 @@ struct TreeNode final {
 
 
 
-   INLINE_ALWAYS const TreeNode<bClassification> * AFTER_GetTreeNodeChildren() const {
+   INLINE_ALWAYS const TreeNode<bClassification> * AFTER_GetChildren() const {
       EBM_ASSERT(m_bDoneGainCalc);
-      return m_UNION.m_afterGainCalc.m_pTreeNodeChildren;
+      return m_UNION.m_afterGainCalc.m_pChildren;
    }
-   INLINE_ALWAYS TreeNode<bClassification> * AFTER_GetTreeNodeChildren() {
+   INLINE_ALWAYS TreeNode<bClassification> * AFTER_GetChildren() {
       EBM_ASSERT(m_bDoneGainCalc);
-      return m_UNION.m_afterGainCalc.m_pTreeNodeChildren;
+      return m_UNION.m_afterGainCalc.m_pChildren;
    }
-   INLINE_ALWAYS void AFTER_SetTreeNodeChildren(TreeNode<bClassification> * const pTreeNodeChildren) {
+   INLINE_ALWAYS void AFTER_SetChildren(TreeNode<bClassification> * const pChildren) {
       EBM_ASSERT(m_bDoneGainCalc);
-      m_UNION.m_afterGainCalc.m_pTreeNodeChildren = pTreeNodeChildren;
+      m_UNION.m_afterGainCalc.m_pChildren = pChildren;
    }
 
    INLINE_ALWAYS ActiveDataType AFTER_GetSplitVal() const {
@@ -93,6 +93,8 @@ struct TreeNode final {
    INLINE_ALWAYS void AFTER_SetSplitGain(const FloatBig splitGain) {
       EBM_ASSERT(m_bDoneGainCalc);
 
+      // this is only called if there is a legal gain value. If the TreeNode cannot be split call AFTER_RejectSplit.
+
       // our priority queue cannot handle NaN values so we filter them out before adding them
       EBM_ASSERT(!std::isnan(splitGain));
       EBM_ASSERT(!std::isinf(splitGain));
@@ -104,25 +106,30 @@ struct TreeNode final {
    INLINE_ALWAYS void AFTER_RejectSplit() {
       EBM_ASSERT(m_bDoneGainCalc);
 
-      // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because 
-      // otherwise it is filled with garbage that could be NaN (meaning the node was a branch) we can't call 
-      // AFTER_RejectSplit before calling SplitTreeNode because 
-      // AFTER_RejectSplit sets 
-      // m_UNION.m_afterGainCalc.m_splitGain and the 
-      // m_UNION.m_beforeGainCalc values are needed if we had decided to call 
-      // FindBestSplitGain
+      // This TreeNode could not be split, so it won't be added to the priority queue, and it does not have a gain.
+      // 
+      // If the TreeNode could have been split, then we would have set the TreeNode::m_afterGainCalc::m_splitGain
+      // value, and put the TreeNode onto the priority queue to decide later if it has a high enough gain to split.
+      // If a TreeNode was subsequently the highest in the priority queue, then it would then be split, and the 
+      // m_splitGain value would be set to NaN to indicate that the TreeNode was split. 
+      //
+      // Since this function has been called, it was determined this TreeNode could not be split, but the m_splitGain
+      // value has not been set yet, and m_UNION is currently in the BeforeGainCalc state, so m_splitGain is
+      // filled with random garbage.
+      // 
+      // We need to set the m_splitGain value then to something other than NaN to indicate that it was not split.
+
       m_UNION.m_afterGainCalc.m_splitGain = 0;
    }
 
    INLINE_ALWAYS void AFTER_SplitNode() {
       EBM_ASSERT(m_bDoneGainCalc);
-
-      m_UNION.m_afterGainCalc.m_splitGain = k_illegalGainFloat;
+      m_UNION.m_afterGainCalc.m_splitGain = std::numeric_limits<FloatBig>::quiet_NaN();
    }
 
    INLINE_ALWAYS bool AFTER_IsSplit() const {
       EBM_ASSERT(m_bDoneGainCalc);
-      return k_illegalGainFloat == m_UNION.m_afterGainCalc.m_splitGain;
+      return std::isnan(m_UNION.m_afterGainCalc.m_splitGain);
    }
 
 
@@ -180,7 +187,7 @@ private:
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
-      TreeNode<bClassification> * m_pTreeNodeChildren;
+      TreeNode<bClassification> * m_pChildren;
       ActiveDataType m_splitVal; // TODO: make this a size_t for here since it doesn't need cross-platform in the TreeNode
       FloatBig m_splitGain;
    };
@@ -270,35 +277,53 @@ INLINE_ALWAYS size_t GetTreeNodeSize(const bool bClassification, const size_t cS
 }
 
 template<bool bClassification>
-INLINE_ALWAYS TreeNode<bClassification> * AddBytesTreeNode(TreeNode<bClassification> * const pTreeNode, const size_t cBytesAdd) {
-   return reinterpret_cast<TreeNode<bClassification> *>(reinterpret_cast<char *>(pTreeNode) + cBytesAdd);
+INLINE_ALWAYS TreeNode<bClassification> * IndexTreeNode(
+   TreeNode<bClassification> * const pTreeNode, 
+   const size_t iByte
+) {
+   return reinterpret_cast<TreeNode<bClassification> *>(reinterpret_cast<char *>(pTreeNode) + iByte);
 }
 
 template<bool bClassification>
-INLINE_ALWAYS const TreeNode<bClassification> * AddBytesTreeNode(const TreeNode<bClassification> * const pTreeNode, const size_t cBytesAdd) {
-   return reinterpret_cast<const TreeNode<bClassification> *>(reinterpret_cast<const char *>(pTreeNode) + cBytesAdd);
+INLINE_ALWAYS const TreeNode<bClassification> * IndexTreeNode(
+   const TreeNode<bClassification> * const pTreeNode, 
+   const size_t iByte
+) {
+   return reinterpret_cast<const TreeNode<bClassification> *>(reinterpret_cast<const char *>(pTreeNode) + iByte);
 }
 
 template<bool bClassification>
-INLINE_ALWAYS TreeNode<bClassification> * GetLeftTreeNodeChild(TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
-   UNUSED(cBytesTreeNode);
-   return pTreeNodeChildren;
+INLINE_ALWAYS TreeNode<bClassification> * GetLeftNode(
+   TreeNode<bClassification> * const pChildren, 
+   const size_t cBytesPerTreeNode
+) {
+   UNUSED(cBytesPerTreeNode);
+   return pChildren;
 }
 
 template<bool bClassification>
-INLINE_ALWAYS const TreeNode<bClassification> * GetLeftTreeNodeChild(const TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
-   UNUSED(cBytesTreeNode);
-   return pTreeNodeChildren;
+INLINE_ALWAYS const TreeNode<bClassification> * GetLeftNode(
+   const TreeNode<bClassification> * const pChildren, 
+   const size_t cBytesPerTreeNode
+) {
+   UNUSED(cBytesPerTreeNode);
+   return pChildren;
 }
 
 template<bool bClassification>
-INLINE_ALWAYS TreeNode<bClassification> * GetRightTreeNodeChild(TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
-   return AddBytesTreeNode<bClassification>(pTreeNodeChildren, cBytesTreeNode);
+INLINE_ALWAYS TreeNode<bClassification> * GetRightNode(
+   TreeNode<bClassification> * const pChildren, 
+   const size_t cBytesPerTreeNode
+) {
+   return IndexTreeNode<bClassification>(pChildren, cBytesPerTreeNode);
 }
 
 template<bool bClassification>
-INLINE_ALWAYS const TreeNode<bClassification> * GetRightTreeNodeChild(const TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
-   return AddBytesTreeNode<bClassification>(pTreeNodeChildren, cBytesTreeNode);
+INLINE_ALWAYS const TreeNode<bClassification> * GetRightNode(
+   const TreeNode<bClassification> * const pChildren, 
+   const size_t cBytesPerTreeNode
+) {
+   return IndexTreeNode<bClassification>(pChildren, cBytesPerTreeNode);
 }
 
 } // DEFINED_ZONE_NAME
