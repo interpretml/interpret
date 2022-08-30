@@ -41,7 +41,6 @@ OBJECTS = \
    $(NATIVEDIR)/sampling.o \
    $(NATIVEDIR)/InnerBag.o \
    $(NATIVEDIR)/Tensor.o \
-   $(NATIVEDIR)/SumAllBins.o \
    $(NATIVEDIR)/TensorTotalsBuild.o \
    $(NATIVEDIR)/common_c/common_c.o \
    $(NATIVEDIR)/common_c/logging.o \

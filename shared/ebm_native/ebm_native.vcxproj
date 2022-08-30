@@ -358,7 +358,6 @@ EXIT /B 0
     <ClCompile Include="interpretable_numerics.cpp" />
     <ClCompile Include="sampling.cpp" />
     <ClCompile Include="Tensor.cpp" />
-    <ClCompile Include="SumAllBins.cpp" />
     <ClCompile Include="TensorTotalsBuild.cpp" />
     <ClCompile Include="DataSetInteraction.cpp" />
     <ClCompile Include="DataSetBoosting.cpp" />

@@ -51,8 +51,6 @@ class BoosterShell final {
    FloatFast * m_aTempFloatVector;
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
-   BinBase * m_pSumAllBins;
-
 #ifndef NDEBUG
    const unsigned char * m_pBinsFastEndDebug;
    const unsigned char * m_pBinsBigEndDebug;
@@ -80,7 +78,6 @@ public:
       m_aThreadByteBuffer2 = nullptr;
       m_aTempFloatVector = nullptr;
       m_aEquivalentSplits = nullptr;
-      m_pSumAllBins = nullptr;
    }
 
    static void Free(BoosterShell * const pBoosterShell);
@@ -158,11 +155,6 @@ public:
 
    INLINE_ALWAYS void * GetEquivalentSplits() {
       return m_aEquivalentSplits;
-   }
-
-   template<bool bClassification>
-   INLINE_ALWAYS Bin<FloatBig, bClassification> * GetSumAllBins() {
-      return m_pSumAllBins->Specialize<FloatBig, bClassification>();
    }
 
 

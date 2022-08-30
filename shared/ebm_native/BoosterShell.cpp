@@ -38,7 +38,6 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
       free(pBoosterShell->m_aThreadByteBuffer1Fast);
       free(pBoosterShell->m_aThreadByteBuffer1Big);
       free(pBoosterShell->m_aThreadByteBuffer2);
-      free(pBoosterShell->m_pSumAllBins);
       free(pBoosterShell->m_aTempFloatVector);
       free(pBoosterShell->m_aEquivalentSplits);
       BoosterCore::Free(pBoosterShell->m_pBoosterCore);
@@ -81,11 +80,6 @@ ErrorEbm BoosterShell::FillAllocations() {
 
    m_pInnerTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
    if(nullptr == m_pInnerTermUpdate) {
-      goto failed_allocation;
-   }
-
-   m_pSumAllBins = EbmMalloc<BinBase>(1, cBytesPerBin);
-   if(nullptr == m_pSumAllBins) {
       goto failed_allocation;
    }
 

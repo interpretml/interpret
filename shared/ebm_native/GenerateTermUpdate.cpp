@@ -45,13 +45,6 @@ extern void BinSumsBoosting(
    const InnerBag * const pInnerBag
 );
 
-extern void SumAllBins(
-   BoosterShell * const pBoosterShell,
-   const size_t cBins,
-   const size_t cSamplesTotal,
-   const FloatBig weightTotal
-);
-
 extern void TensorTotalsBuild(
    const ptrdiff_t cClasses,
    const size_t cRealDimensions,
@@ -71,6 +64,8 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
    const size_t iDimension,
    const size_t cSamplesLeafMin,
    const size_t cLeavesMax,
+   const size_t cSamplesTotal,
+   const FloatBig weightTotal,
    double * const pTotalGain
 );
 
@@ -297,13 +292,6 @@ static ErrorEbm BoostSingleDimensional(
    // TODO: we can exit here back to python to allow caller modification to our histograms
 
 
-   SumAllBins(
-      pBoosterShell,
-      cBins,
-      pBoosterCore->GetTrainingSet()->GetCountSamples(),
-      pInnerBag->GetWeightTotal()
-   );
-
    EBM_ASSERT(1 <= pBoosterCore->GetTrainingSet()->GetCountSamples());
 
    error = PartitionOneDimensionalBoosting(
@@ -313,6 +301,8 @@ static ErrorEbm BoostSingleDimensional(
       iDimension,
       cSamplesLeafMin,
       cLeavesMax, 
+      pBoosterCore->GetTrainingSet()->GetCountSamples(),
+      pInnerBag->GetWeightTotal(),
       pTotalGain
    );
 
