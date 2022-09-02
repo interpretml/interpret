@@ -616,6 +616,7 @@ We also build on top of many great packages. Please check them out!
 - [ILMART: Interpretable Ranking with Constrained LambdaMART](https://arxiv.org/pdf/2206.00473.pdf)
 - [Integrating Co-Clustering and Interpretable Machine Learning for the Prediction of Intravenous Immunoglobulin Resistance in Kawasaki Disease](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9097874)
 - [GAMI-Net: An Explainable Neural Network based on Generalized Additive Models with Structured Interactions](https://arxiv.org/pdf/2003.07132v1.pdf)
+- [A Concept and Argumentation based Interpretable Model in High Risk Domains](https://arxiv.org/pdf/2208.08149.pdf)
 - [Analyzing the Differences between Professional and Amateur Esports through Win Probability](https://dl.acm.org/doi/pdf/10.1145/3485447.3512277)
 - [Explainable machine learning with pairwise interactions for the classifcation of Parkinson’s disease and SWEDD from clinical and imaging features](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9132761/pdf/11682_2022_Article_688.pdf)
 - [Interpretable Prediction of Goals in Soccer](http://statsbomb.com/wp-content/uploads/2019/10/decroos-interpretability-statsbomb.pdf)
