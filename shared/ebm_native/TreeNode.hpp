@@ -32,54 +32,54 @@ struct TreeNode final {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    INLINE_ALWAYS const Bin<FloatBig, bClassification> * BEFORE_GetBinFirst() const {
-      EBM_ASSERT(!m_bDoneGainCalc);
+      EBM_ASSERT(0 == m_debugProgressionState);
       return m_UNION.m_beforeGainCalc.m_pBinFirst;
    }
    INLINE_ALWAYS void BEFORE_SetBinFirst(const Bin<FloatBig, bClassification> * const pBinFirst) {
-      EBM_ASSERT(!m_bDoneGainCalc);
+      EBM_ASSERT(0 == m_debugProgressionState);
       m_UNION.m_beforeGainCalc.m_pBinFirst = pBinFirst;
    }
 
    INLINE_ALWAYS const Bin<FloatBig, bClassification> * BEFORE_GetBinLast() const {
-      EBM_ASSERT(!m_bDoneGainCalc);
+      EBM_ASSERT(0 == m_debugProgressionState);
       return m_UNION.m_beforeGainCalc.m_pBinLast;
    }
    INLINE_ALWAYS void BEFORE_SetBinLast(const Bin<FloatBig, bClassification> * const pBinLast) {
-      EBM_ASSERT(!m_bDoneGainCalc);
+      EBM_ASSERT(0 == m_debugProgressionState);
       m_UNION.m_beforeGainCalc.m_pBinLast = pBinLast;
    }
 
    INLINE_ALWAYS bool BEFORE_IsSplittable() const {
-      EBM_ASSERT(!m_bDoneGainCalc);
+      EBM_ASSERT(0 == m_debugProgressionState);
       return this->BEFORE_GetBinLast() != this->BEFORE_GetBinFirst();
    }
 
 
-
    INLINE_ALWAYS const TreeNode<bClassification> * AFTER_GetChildren() const {
-      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(1 == m_debugProgressionState || 2 == m_debugProgressionState);
       return m_UNION.m_afterGainCalc.m_pChildren;
    }
    INLINE_ALWAYS TreeNode<bClassification> * AFTER_GetChildren() {
-      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(1 == m_debugProgressionState || 2 == m_debugProgressionState);
       return m_UNION.m_afterGainCalc.m_pChildren;
    }
    INLINE_ALWAYS void AFTER_SetChildren(TreeNode<bClassification> * const pChildren) {
-      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(1 == m_debugProgressionState || 2 == m_debugProgressionState);
       m_UNION.m_afterGainCalc.m_pChildren = pChildren;
    }
 
    INLINE_ALWAYS size_t AFTER_GetSplitVal() const {
-      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(1 == m_debugProgressionState || 2 == m_debugProgressionState);
       return m_UNION.m_afterGainCalc.m_splitVal;
    }
    INLINE_ALWAYS void AFTER_SetSplitVal(const size_t splitVal) {
-      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(1 == m_debugProgressionState || 2 == m_debugProgressionState);
       m_UNION.m_afterGainCalc.m_splitVal = splitVal;
    }
 
+
    INLINE_ALWAYS FloatBig AFTER_GetSplitGain() const {
-      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(1 == m_debugProgressionState);
 
       const FloatBig splitGain = m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_beforeDeconstruct.m_splitGain;
 
@@ -91,7 +91,7 @@ struct TreeNode final {
       return splitGain;
    }
    INLINE_ALWAYS void AFTER_SetSplitGain(const FloatBig splitGain) {
-      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(1 == m_debugProgressionState);
 
       // this is only called if there is a legal gain value. If the TreeNode cannot be split call AFTER_RejectSplit.
 
@@ -104,7 +104,7 @@ struct TreeNode final {
    }
 
    INLINE_ALWAYS void AFTER_RejectSplit() {
-      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(1 == m_debugProgressionState);
 
       // This TreeNode could not be split, so it won't be added to the priority queue, and it does not have a gain.
       // 
@@ -123,20 +123,22 @@ struct TreeNode final {
    }
 
    INLINE_ALWAYS void AFTER_SplitNode() {
-      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(1 == m_debugProgressionState);
       m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_beforeDeconstruct.m_splitGain = std::numeric_limits<FloatBig>::quiet_NaN();
    }
 
    INLINE_ALWAYS bool AFTER_IsSplit() const {
-      EBM_ASSERT(m_bDoneGainCalc);
+      EBM_ASSERT(1 == m_debugProgressionState);
       return std::isnan(m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_beforeDeconstruct.m_splitGain);
    }
 
 
    INLINE_ALWAYS TreeNode<bClassification> * DECONSTRUCT_GetParent() {
+      EBM_ASSERT(2 == m_debugProgressionState);
       return m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_afterDeconstruct.m_pParent;
    }
    INLINE_ALWAYS void DECONSTRUCT_SetParent(TreeNode<bClassification> * const pParent) {
+      EBM_ASSERT(2 == m_debugProgressionState);
       m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_afterDeconstruct.m_pParent = pParent;
    }
 
@@ -161,13 +163,9 @@ struct TreeNode final {
    }
 
 #ifndef NDEBUG
-   INLINE_ALWAYS void SetDoneGainCalc(const bool bDoneGainCalc) {
-      if(bDoneGainCalc) {
-         // we set this to false when it's random memory, 
-         // but we only flip it to true from an initialized state of false
-         EBM_ASSERT(!m_bDoneGainCalc);
-      }
-      m_bDoneGainCalc = bDoneGainCalc;
+   INLINE_ALWAYS void SetDebugProgression(const int state) {
+      EBM_ASSERT(0 == state || m_debugProgressionState < state); // always progress after initialization
+      m_debugProgressionState = state;
    }
 #endif // NDEBUG
 
@@ -204,7 +202,7 @@ private:
    };
 
 #ifndef NDEBUG
-   bool m_bDoneGainCalc;
+   int m_debugProgressionState;
 #endif // NDEBUG
 
    TreeNodeUnion m_UNION;

@@ -125,6 +125,10 @@ INLINE_RELEASE_TEMPLATED static void Flatten(
 
    moved_down:;
       if(UNPREDICTABLE(pTreeNode->AFTER_IsSplit())) {
+#ifndef NDEBUG
+         pTreeNode->SetDebugProgression(2);
+#endif // NDEBUG
+
          pTreeNode->DECONSTRUCT_SetParent(pParent);
          pParent = pTreeNode;
          pTreeNode = GetLeftNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
@@ -210,7 +214,7 @@ static int FindBestSplitGain(
 
    if(!pTreeNode->BEFORE_IsSplittable()) {
 #ifndef NDEBUG
-      pTreeNode->SetDoneGainCalc(true);
+      pTreeNode->SetDebugProgression(1);
 #endif // NDEBUG
 
       pTreeNode->AFTER_RejectSplit();
@@ -236,8 +240,8 @@ static int FindBestSplitGain(
    TreeNode<bClassification> * const pRightChild = GetRightNode(pTreeNodeStackSpace, cBytesPerTreeNode);
 
 #ifndef NDEBUG
-   pLeftChild->SetDoneGainCalc(false);
-   pRightChild->SetDoneGainCalc(false);
+   pLeftChild->SetDebugProgression(0);
+   pRightChild->SetDebugProgression(0);
 #endif // NDEBUG
 
    // we are not using the memory in our next TreeNode children yet, so use it as our temporary accumulation memory
@@ -359,7 +363,7 @@ static int FindBestSplitGain(
       EBM_ASSERT(k_gainMin == BEST_gain);
 
 #ifndef NDEBUG
-      pTreeNode->SetDoneGainCalc(true);
+      pTreeNode->SetDebugProgression(1);
 #endif // NDEBUG
 
       pTreeNode->AFTER_RejectSplit();
@@ -375,7 +379,7 @@ static int FindBestSplitGain(
       // since we would break weak ordering with non-ordered NaN comparisons, thus create undefined behavior
 
 #ifndef NDEBUG
-      pTreeNode->SetDoneGainCalc(true);
+      pTreeNode->SetDebugProgression(1);
 #endif // NDEBUG
 
       pTreeNode->AFTER_RejectSplit();
@@ -409,7 +413,7 @@ static int FindBestSplitGain(
       // also filter out slightly negative numbers that can arrise from floating point noise
 
 #ifndef NDEBUG
-      pTreeNode->SetDoneGainCalc(true);
+      pTreeNode->SetDebugProgression(1);
 #endif // NDEBUG
 
       pTreeNode->AFTER_RejectSplit();
@@ -448,7 +452,7 @@ static int FindBestSplitGain(
    // IMPORTANT!! : We need to finish all our calls that use pTreeNode->m_UNION.m_beforeGainCalc BEFORE setting 
    // anything in m_UNION.m_afterGainCalc as we do below this comment!
 #ifndef NDEBUG
-   pTreeNode->SetDoneGainCalc(true);
+   pTreeNode->SetDebugProgression(1);
 #endif // NDEBUG
 
 
@@ -515,7 +519,7 @@ public:
          static_cast<TreeNode<bClassification> *>(pBoosterShell->GetThreadByteBuffer2());
 
 #ifndef NDEBUG
-      pRootTreeNode->SetDoneGainCalc(false);
+      pRootTreeNode->SetDebugProgression(0);
 #endif // NDEBUG
 
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
