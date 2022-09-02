@@ -103,24 +103,6 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
       }
    } while(pSampleScoresEnd != pSampleScore);
 
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-
-   // TODO: move this into the loop above
-   if(2 <= cScores) {
-      FloatFast * pShiftScore = aSampleScores;
-      const FloatFast * const pExteriorEnd = pShiftScore + cScores * cSetSamples;
-      do {
-         FloatFast shiftScore = pShiftScore[0];
-         const FloatFast * const pInteriorEnd = pShiftScore + cScores;
-         do {
-            *pShiftScore -= shiftScore;
-            ++pShiftScore;
-         } while(pInteriorEnd != pShiftScore);
-      } while(pExteriorEnd != pShiftScore);
-   }
-
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
    LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructSampleScores");
    return aSampleScores;
 }

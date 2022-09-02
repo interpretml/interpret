@@ -104,7 +104,7 @@ public:
    //  probably the right ordering.  We'll probably be using iBitBack and cBitsInPack instead of using "End" pointers for SIMD unrolled code
    //  so if that can work for CPU then great.
 
-   static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       InteractionShell * const pInteractionShell, 
       const size_t cRuntimeRealDimensions,
       const size_t * const aiFeatures,
@@ -260,7 +260,7 @@ public:
 
    BinSumsInteractionDimensions() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       InteractionShell * const pInteractionShell, 
       const size_t cRealDimensions,
       const size_t * const aiFeatures,
@@ -285,7 +285,7 @@ public:
 
    BinSumsInteractionDimensions() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       InteractionShell * const pInteractionShell, 
       const size_t cRealDimensions,
       const size_t * const aiFeatures,
@@ -303,7 +303,7 @@ public:
 
    BinSumsInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       InteractionShell * const pInteractionShell, 
       const size_t cRealDimensions,
       const size_t * const aiFeatures,
@@ -331,7 +331,7 @@ public:
 
    BinSumsInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       InteractionShell * const pInteractionShell, 
       const size_t cRealDimensions,
       const size_t * const aiFeatures,

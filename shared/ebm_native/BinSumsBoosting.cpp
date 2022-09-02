@@ -35,7 +35,7 @@ public:
 
    BinSumsBoostingZeroDimensions() = delete; // this is a static class.  Do not construct
 
-   static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       BoosterShell * const pBoosterShell,
       const InnerBag * const pInnerBag
    ) {
@@ -146,7 +146,7 @@ public:
 
    BinSumsBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       BoosterShell * const pBoosterShell,
       const InnerBag * const pInnerBag
    ) {
@@ -178,7 +178,7 @@ public:
 
    BinSumsBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       BoosterShell * const pBoosterShell,
       const InnerBag * const pInnerBag
    ) {
@@ -200,7 +200,7 @@ public:
 
    BinSumsBoostingInternal() = delete; // this is a static class.  Do not construct
 
-   static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm,
       const InnerBag * const pInnerBag
@@ -368,7 +368,7 @@ public:
 
    BinSumsBoostingNormalTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm,
       const InnerBag * const pInnerBag
@@ -403,7 +403,7 @@ public:
 
    BinSumsBoostingNormalTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm,
       const InnerBag * const pInnerBag
@@ -427,7 +427,7 @@ public:
 
    BinSumsBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm,
       const InnerBag * const pInnerBag
@@ -466,7 +466,7 @@ public:
 
    BinSumsBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm,
       const InnerBag * const pInnerBag
@@ -488,7 +488,7 @@ public:
 
    BinSumsBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm,
       const InnerBag * const pInnerBag
@@ -526,7 +526,7 @@ public:
 
    BinSumsBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm,
       const InnerBag * const pInnerBag

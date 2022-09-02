@@ -35,7 +35,7 @@ public:
 
    PartitionTwoDimensionalInteractionInternal() = delete; // this is a static class.  Do not construct
 
-   static double Func(
+   INLINE_RELEASE_UNTEMPLATED static double Func(
       InteractionCore * const pInteractionCore,
       const size_t cRealDimensions,
       const size_t * const acBins,
@@ -393,7 +393,7 @@ public:
 
    PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static double Func(
+   INLINE_RELEASE_UNTEMPLATED static double Func(
       InteractionCore * const pInteractionCore,
       const size_t cRealDimensions,
       const size_t * const acBins,
@@ -451,7 +451,7 @@ public:
 
    PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static double Func(
+   INLINE_RELEASE_UNTEMPLATED static double Func(
       InteractionCore * const pInteractionCore,
       const size_t cRealDimensions,
       const size_t * const acBins,

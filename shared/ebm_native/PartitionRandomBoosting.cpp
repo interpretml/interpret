@@ -36,7 +36,7 @@ public:
 
    PartitionRandomBoostingInternal() = delete; // this is a static class.  Do not construct
 
-   static ErrorEbm Func(
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
       RandomDeterministic * const pRng,
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
@@ -528,11 +528,6 @@ public:
 
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
                FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(pGradientPair[iScore].m_sumGradients);
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-               // for DP-EBMs, we can't zero one of the class scores as we can for logits since we're returning a sum
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
                *pUpdateScore = SafeConvertFloat<FloatFast>(updateScore);
                ++pUpdateScore;
             }
@@ -549,20 +544,11 @@ public:
                // normally, we'd eliminate regions where the number of items was zero before putting down a split
                // but for random splits we can't know beforehand if there will be zero splits, so we need to check
                for(size_t iScore = 0; iScore < cScores; ++iScore) {
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                  // if we eliminated the space for the logit, we'd need to eliminate one assignment here
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
                   *pUpdateScore = 0;
                   ++pUpdateScore;
                }
             } else {
                auto * const pGradientPair = pCollapsedBin2->GetGradientPairs();
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-               FloatBig zeroLogit = 0;
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
                for(size_t iScore = 0; iScore < cScores; ++iScore) {
                   FloatBig updateScore;
                   if(bClassification) {
@@ -570,14 +556,6 @@ public:
                         pGradientPair[iScore].m_sumGradients,
                         pGradientPair[iScore].GetSumHessians()
                      );
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                     if(IsMulticlass(cCompilerClasses)) {
-                        if(size_t { 0 } == iScore) {
-                           zeroLogit = updateScore;
-                        }
-                        updateScore -= zeroLogit;
-                     }
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
                   } else {
                      EBM_ASSERT(IsRegression(cCompilerClasses));
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
@@ -605,7 +583,7 @@ public:
 
    PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static ErrorEbm Func(
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
       RandomDeterministic * const pRng,
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
@@ -649,7 +627,7 @@ public:
 
    PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static ErrorEbm Func(
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
       RandomDeterministic * const pRng,
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,

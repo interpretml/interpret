@@ -69,11 +69,11 @@ struct TreeNode final {
       m_UNION.m_afterGainCalc.m_pChildren = pChildren;
    }
 
-   INLINE_ALWAYS ActiveDataType AFTER_GetSplitVal() const {
+   INLINE_ALWAYS size_t AFTER_GetSplitVal() const {
       EBM_ASSERT(m_bDoneGainCalc);
       return m_UNION.m_afterGainCalc.m_splitVal;
    }
-   INLINE_ALWAYS void AFTER_SetSplitVal(const ActiveDataType splitVal) {
+   INLINE_ALWAYS void AFTER_SetSplitVal(const size_t splitVal) {
       EBM_ASSERT(m_bDoneGainCalc);
       m_UNION.m_afterGainCalc.m_splitVal = splitVal;
    }
@@ -81,7 +81,7 @@ struct TreeNode final {
    INLINE_ALWAYS FloatBig AFTER_GetSplitGain() const {
       EBM_ASSERT(m_bDoneGainCalc);
 
-      const FloatBig splitGain = m_UNION.m_afterGainCalc.m_splitGain;
+      const FloatBig splitGain = m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_beforeDeconstruct.m_splitGain;
 
       // our priority queue cannot handle NaN values so we filter them out before adding them
       EBM_ASSERT(!std::isnan(splitGain));
@@ -100,7 +100,7 @@ struct TreeNode final {
       EBM_ASSERT(!std::isinf(splitGain));
       EBM_ASSERT(0 <= splitGain);
 
-      m_UNION.m_afterGainCalc.m_splitGain = splitGain;
+      m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_beforeDeconstruct.m_splitGain = splitGain;
    }
 
    INLINE_ALWAYS void AFTER_RejectSplit() {
@@ -119,17 +119,25 @@ struct TreeNode final {
       // 
       // We need to set the m_splitGain value then to something other than NaN to indicate that it was not split.
 
-      m_UNION.m_afterGainCalc.m_splitGain = 0;
+      m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_beforeDeconstruct.m_splitGain = 0;
    }
 
    INLINE_ALWAYS void AFTER_SplitNode() {
       EBM_ASSERT(m_bDoneGainCalc);
-      m_UNION.m_afterGainCalc.m_splitGain = std::numeric_limits<FloatBig>::quiet_NaN();
+      m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_beforeDeconstruct.m_splitGain = std::numeric_limits<FloatBig>::quiet_NaN();
    }
 
    INLINE_ALWAYS bool AFTER_IsSplit() const {
       EBM_ASSERT(m_bDoneGainCalc);
-      return std::isnan(m_UNION.m_afterGainCalc.m_splitGain);
+      return std::isnan(m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_beforeDeconstruct.m_splitGain);
+   }
+
+
+   INLINE_ALWAYS TreeNode<bClassification> * DECONSTRUCT_GetParent() {
+      return m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_afterDeconstruct.m_pParent;
+   }
+   INLINE_ALWAYS void DECONSTRUCT_SetParent(TreeNode<bClassification> * const pParent) {
+      m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_afterDeconstruct.m_pParent = pParent;
    }
 
 
@@ -165,64 +173,35 @@ struct TreeNode final {
 
 private:
 
-   struct BeforeGainCalc final {
-      BeforeGainCalc() = default; // preserve our POD status
-      ~BeforeGainCalc() = default; // preserve our POD status
-      void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-      void operator delete (void *) = delete; // we only use malloc/free in this library
+   struct BeforeDeconstruct final {
+      FloatBig m_splitGain;
+   };
 
+   struct AfterDeconstruct final {
+      TreeNode<bClassification> * m_pParent;
+   };
+
+   union DeconstructUnion final {
+      BeforeDeconstruct m_beforeDeconstruct;
+      AfterDeconstruct m_afterDeconstruct;
+   };
+
+
+   struct BeforeGainCalc final {
       const Bin<FloatBig, bClassification> * m_pBinFirst;
       const Bin<FloatBig, bClassification> * m_pBinLast;
    };
-   static_assert(std::is_standard_layout<BeforeGainCalc>::value,
-      "We use the struct hack in several places, so disallow non-standard_layout types in general");
-   static_assert(std::is_trivial<BeforeGainCalc>::value,
-      "We use memcpy in several places, so disallow non-trivial types in general");
-   static_assert(std::is_pod<BeforeGainCalc>::value,
-      "We use a lot of C constructs, so disallow non-POD types in general");
 
    struct AfterGainCalc final {
-      AfterGainCalc() = default; // preserve our POD status
-      ~AfterGainCalc() = default; // preserve our POD status
-      void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-      void operator delete (void *) = delete; // we only use malloc/free in this library
-
       TreeNode<bClassification> * m_pChildren;
-      ActiveDataType m_splitVal; // TODO: make this a size_t for here since it doesn't need cross-platform in the TreeNode
-      FloatBig m_splitGain;
+      size_t m_splitVal;
+      DeconstructUnion m_DECONSTRUCT;
    };
-   static_assert(std::is_standard_layout<AfterGainCalc>::value,
-      "We use the struct hack in several places, so disallow non-standard_layout types in general");
-   static_assert(std::is_trivial<AfterGainCalc>::value,
-      "We use memcpy in several places, so disallow non-trivial types in general");
-   static_assert(std::is_pod<AfterGainCalc>::value,
-      "We use a lot of C constructs, so disallow non-POD types in general");
 
    union TreeNodeUnion final {
-
-#ifndef __SUNPRO_CC
-
-      // the Oracle Developer Studio compiler has what I think is a bug by making any class that includes 
-      // TreeNodeUnion fields turn into non-trivial classes, so exclude the Oracle compiler
-      // from these protections
-
-      TreeNodeUnion() = default; // preserve our POD status
-      ~TreeNodeUnion() = default; // preserve our POD status
-      void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-      void operator delete (void *) = delete; // we only use malloc/free in this library
-
-#endif // __SUNPRO_CC
-
-      // we can save precious L1 cache space by keeping only what we need
       BeforeGainCalc m_beforeGainCalc;
       AfterGainCalc m_afterGainCalc;
    };
-   static_assert(std::is_standard_layout<TreeNodeUnion>::value,
-      "We use the struct hack in several places, so disallow non-standard_layout types in general");
-   static_assert(std::is_trivial<TreeNodeUnion>::value,
-      "We use memcpy in several places, so disallow non-trivial types in general");
-   static_assert(std::is_pod<TreeNodeUnion>::value,
-      "We use a lot of C constructs, so disallow non-POD types in general");
 
 #ifndef NDEBUG
    bool m_bDoneGainCalc;

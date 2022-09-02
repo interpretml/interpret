@@ -36,7 +36,7 @@ namespace DEFINED_ZONE_NAME {
 
 
 template<ptrdiff_t cCompilerClasses>
-static void SumAllBins(
+INLINE_RELEASE_TEMPLATED static void SumAllBins(
    BoosterShell * const pBoosterShell,
    const size_t cBins,
    const size_t cSamplesTotal,
@@ -110,65 +110,72 @@ static void SumAllBins(
    EBM_ASSERT(weightTotalDebug * 0.999 <= weightTotal && weightTotal <= weightTotalDebug * 1.0001);
 }
 
-
-// TODO: in theory, a malicious caller could overflow our stack if they pass us data that will grow a sufficiently deep tree.  Consider changing this 
-//   recursive function to handle that
 template<bool bClassification>
-static void Flatten(
-   const TreeNode<bClassification> * const pTreeNode,
-   ActiveDataType ** const ppSplits, 
-   FloatFast ** const ppUpdateScore, 
+INLINE_RELEASE_TEMPLATED static void Flatten(
+   TreeNode<bClassification> * pTreeNode,
+   ActiveDataType * pSplits,
+   FloatFast * pUpdateScore,
    const size_t cScores
 ) {
-   // don't log this since we call it recursively.  Log where the root is called
-   if(UNPREDICTABLE(pTreeNode->AFTER_IsSplit())) {
-      EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores)); // we're accessing allocated memory
-      const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
-      const TreeNode<bClassification> * const pLeftChild = GetLeftNode(
-         pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
-      Flatten<bClassification>(pLeftChild, ppSplits, ppUpdateScore, cScores);
-      **ppSplits = pTreeNode->AFTER_GetSplitVal();
-      ++(*ppSplits);
-      const TreeNode<bClassification> * const pRightChild = GetRightNode(
-         pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
-      Flatten<bClassification>(pRightChild, ppSplits, ppUpdateScore, cScores);
-   } else {
-      FloatFast * pUpdateScoreCur = *ppUpdateScore;
-      FloatFast * const pUpdateScoreNext = pUpdateScoreCur + cScores;
-      *ppUpdateScore = pUpdateScoreNext;
+   EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
 
-      const auto * pGradientPair = pTreeNode->GetGradientPairs();
+   TreeNode<bClassification> * pParent = nullptr;
+   while(true) {
 
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-      FloatBig zeroLogit = 0;
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
-      do {
-         FloatBig updateScore;
-         if(bClassification) {
-            updateScore = EbmStats::ComputeSinglePartitionUpdate(
-               pGradientPair->m_sumGradients, pGradientPair->GetSumHessians());
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            if(2 <= cScores) {
-               if(pTreeNode->GetGradientPairs() == pGradientPair) {
-                  zeroLogit = updateScore;
-               }
-               updateScore -= zeroLogit;
+   moved_down:;
+      if(UNPREDICTABLE(pTreeNode->AFTER_IsSplit())) {
+         pTreeNode->DECONSTRUCT_SetParent(pParent);
+         pParent = pTreeNode;
+         pTreeNode = GetLeftNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
+         goto moved_down;
+      } else {
+         const auto * aGradientPair = pTreeNode->GetGradientPairs();
+         size_t iScore = 0;
+         do {
+            FloatBig updateScore;
+            if(bClassification) {
+               updateScore = EbmStats::ComputeSinglePartitionUpdate(
+                  aGradientPair[iScore].m_sumGradients, aGradientPair[iScore].GetSumHessians());
+            } else {
+               updateScore = EbmStats::ComputeSinglePartitionUpdate(
+                  aGradientPair[iScore].m_sumGradients, pTreeNode->GetWeight());
             }
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-         } else {
-            updateScore = EbmStats::ComputeSinglePartitionUpdate(
-               pGradientPair->m_sumGradients, pTreeNode->GetWeight());
+            *pUpdateScore = SafeConvertFloat<FloatFast>(updateScore);
+            ++pUpdateScore;
+
+            ++iScore;
+         } while(cScores != iScore);
+
+         pTreeNode = pParent;
+         if(nullptr != pTreeNode) {
+            goto moved_up;
          }
-         *pUpdateScoreCur = SafeConvertFloat<FloatFast>(updateScore);
+         // this can only happen if our tree has one split, but we need to check it
+         break;
+      }
 
-         ++pGradientPair;
-         ++pUpdateScoreCur;
-      } while(pUpdateScoreNext != pUpdateScoreCur);
+   moved_up:;
+      TreeNode<bClassification> * pChildren = pTreeNode->AFTER_GetChildren();
+      if(nullptr != pChildren) {
+         *pSplits = pTreeNode->AFTER_GetSplitVal();
+         ++pSplits;
+
+         pParent = pTreeNode;
+         pTreeNode->AFTER_SetChildren(nullptr);
+         pTreeNode = GetRightNode(pChildren, cBytesPerTreeNode);
+         goto moved_down;
+      } else {
+         pTreeNode = pTreeNode->DECONSTRUCT_GetParent();
+         if(nullptr != pTreeNode) {
+            goto moved_up;
+         }
+         break;
+      }
    }
 }
+
 
 // TODO: it would be easy for us to implement a -1 lookback where we make the first split, find the second split, elimnate the first split and try 
 //   again on that side, then re-examine the second split again.  For mains this would be very quick we have found that 2-3 splits are optimimum.  
@@ -675,13 +682,8 @@ public:
       FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
 
       LOG_0(Trace_Verbose, "Entered Flatten");
-      Flatten(pRootTreeNode, &pSplits, &pUpdateScore, cScores);
+      Flatten(pRootTreeNode, pSplits, pUpdateScore, cScores);
       LOG_0(Trace_Verbose, "Exited Flatten");
-
-      EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension) <= pSplits);
-      EBM_ASSERT(static_cast<size_t>(pSplits - pInnerTermUpdate->GetSplitPointer(iDimension)) == cLeaves - 1);
-      EBM_ASSERT(pInnerTermUpdate->GetTensorScoresPointer() < pUpdateScore);
-      EBM_ASSERT(static_cast<size_t>(pUpdateScore - pInnerTermUpdate->GetTensorScoresPointer()) == cScores * cLeaves);
 
       return Error_None;
    }

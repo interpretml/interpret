@@ -27,7 +27,7 @@ public:
 
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
-   static ErrorEbm Func(
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
       const ptrdiff_t cRuntimeClasses,
       const BagEbm direction,
       const BagEbm * const aBag,
@@ -83,10 +83,6 @@ public:
 
                FloatFast sumExp = 0;
 
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-               FloatFast zeroLogit = 0;
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
                size_t iScore = 0;
                do {
                   FloatFast initScore = 0;
@@ -94,15 +90,6 @@ public:
                      initScore = SafeConvertFloat<FloatFast>(*pInitScore);
                      ++pInitScore;
                   }
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                  if(IsMulticlass(cCompilerClasses)) {
-                     if(size_t { 0 } == iScore) {
-                        zeroLogit = initScore;
-                     }
-                     initScore -= zeroLogit;
-                  }
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
                   const FloatFast oneExp = ExpForMulticlass<false>(initScore);
                   *pExp = oneExp;
                   ++pExp;
@@ -154,7 +141,7 @@ public:
 
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
-   static ErrorEbm Func(
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
       const ptrdiff_t cRuntimeClasses,
       const BagEbm direction,
       const BagEbm * const aBag,
@@ -230,7 +217,7 @@ public:
 
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
-   static ErrorEbm Func(
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
       const ptrdiff_t cRuntimeClasses,
       const BagEbm direction,
       const BagEbm * const aBag,

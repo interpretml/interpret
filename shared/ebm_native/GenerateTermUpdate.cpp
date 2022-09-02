@@ -153,35 +153,14 @@ static ErrorEbm BoostZeroDimensional(
       if(0 != (BoostFlags_GradientSums & flags)) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aGradientPairs[iScore].m_sumGradients);
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            // Hmmm.. for DP we need the sum, which means that we can't zero one of the class numbers as we
-            // could with one of the logits in multiclass.
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
             aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(updateScore);
          }
       } else {
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-         FloatBig zeroLogit = 0;
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
                aGradientPairs[iScore].m_sumGradients,
                aGradientPairs[iScore].GetSumHessians()
             );
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            if(IsMulticlass(cClasses)) {
-               if(size_t { 0 } == iScore) {
-                  zeroLogit = updateScore;
-               }
-               updateScore -= zeroLogit;
-            }
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
             aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(updateScore);
          }
       }

@@ -35,7 +35,7 @@ public:
 
    ApplyTermUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
 
-   static double Func(BoosterShell * const pBoosterShell) {
+   INLINE_RELEASE_UNTEMPLATED static double Func(BoosterShell * const pBoosterShell) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
 
@@ -74,16 +74,6 @@ public:
             ++pUpdateScore;
             // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
             const FloatFast sampleScore = *pSampleScore + updateScore;
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            if(IsMulticlass(cCompilerClasses)) {
-               if(size_t { 0 } == iScore) {
-                  EBM_ASSERT(0 == updateScore);
-                  EBM_ASSERT(0 == sampleScore);
-               }
-            }
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
             *pSampleScore = sampleScore;
             ++pSampleScore;
             const FloatFast oneExp = ExpForLogLossMulticlass<false>(sampleScore);
@@ -125,7 +115,7 @@ public:
 
    ApplyTermUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
 
-   static double Func(BoosterShell * const pBoosterShell) {
+   INLINE_RELEASE_UNTEMPLATED static double Func(BoosterShell * const pBoosterShell) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
@@ -181,7 +171,7 @@ public:
 
    ApplyTermUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
 
-   static double Func(BoosterShell * const pBoosterShell) {
+   INLINE_RELEASE_UNTEMPLATED static double Func(BoosterShell * const pBoosterShell) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
@@ -234,7 +224,7 @@ public:
 
    ApplyTermUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static double Func(BoosterShell * const pBoosterShell) {
+   INLINE_RELEASE_UNTEMPLATED static double Func(BoosterShell * const pBoosterShell) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
@@ -263,7 +253,7 @@ public:
 
    ApplyTermUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static double Func(BoosterShell * const pBoosterShell) {
+   INLINE_RELEASE_UNTEMPLATED static double Func(BoosterShell * const pBoosterShell) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
       EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
@@ -279,7 +269,7 @@ public:
 
    ApplyTermUpdateValidationInternal() = delete; // this is a static class.  Do not construct
 
-   static double Func(
+   INLINE_RELEASE_UNTEMPLATED static double Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm
    ) {
@@ -353,16 +343,6 @@ public:
                ++pUpdateScore;
                // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
                const FloatFast sampleScore = *pSampleScore + updateScore;
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-               if(IsMulticlass(cCompilerClasses)) {
-                  if(size_t { 0 } == iScore) {
-                     EBM_ASSERT(0 == updateScore);
-                     EBM_ASSERT(0 == sampleScore);
-                  }
-               }
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
                *pSampleScore = sampleScore;
                ++pSampleScore;
                const FloatFast oneExp = ExpForLogLossMulticlass<false>(sampleScore);
@@ -413,7 +393,7 @@ public:
 
    ApplyTermUpdateValidationInternal() = delete; // this is a static class.  Do not construct
 
-   static double Func(
+   INLINE_RELEASE_UNTEMPLATED static double Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm
    ) {
@@ -519,7 +499,7 @@ public:
 
    ApplyTermUpdateValidationInternal() = delete; // this is a static class.  Do not construct
 
-   static double Func(
+   INLINE_RELEASE_UNTEMPLATED static double Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm
    ) {
@@ -620,7 +600,7 @@ public:
 
    ApplyTermUpdateValidationNormalTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static double Func(
+   INLINE_RELEASE_UNTEMPLATED static double Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm
    ) {
@@ -654,7 +634,7 @@ public:
 
    ApplyTermUpdateValidationNormalTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static double Func(
+   INLINE_RELEASE_UNTEMPLATED static double Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm
    ) {
@@ -676,7 +656,7 @@ public:
 
    ApplyTermUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static double Func(
+   INLINE_RELEASE_UNTEMPLATED static double Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm
    ) {
@@ -711,7 +691,7 @@ public:
 
    ApplyTermUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static double Func(
+   INLINE_RELEASE_UNTEMPLATED static double Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm
    ) {
@@ -734,7 +714,7 @@ public:
 
    ApplyTermUpdateValidationSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static double Func(
+   INLINE_RELEASE_UNTEMPLATED static double Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm
    ) {
@@ -771,7 +751,7 @@ public:
 
    ApplyTermUpdateValidationSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static double Func(
+   INLINE_RELEASE_UNTEMPLATED static double Func(
       BoosterShell * const pBoosterShell,
       const size_t iTerm
    ) {

@@ -179,7 +179,7 @@ public:
    WARNING_PUSH
    WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 
-   static ErrorEbm Func(
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
       const size_t * const acBins,
@@ -540,14 +540,6 @@ public:
                      auto * const pGradientPairTotals2LowHighBest = pTotals2LowHighBest->GetGradientPairs();
                      auto * const pGradientPairTotals2HighLowBest = pTotals2HighLowBest->GetGradientPairs();
                      auto * const pGradientPairTotals2HighHighBest = pTotals2HighHighBest->GetGradientPairs();
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                     FloatBig zeroLogit0 = 0;
-                     FloatBig zeroLogit1 = 0;
-                     FloatBig zeroLogit2 = 0;
-                     FloatBig zeroLogit3 = 0;
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
                      for(size_t iScore = 0; iScore < cScores; ++iScore) {
                         FloatBig predictionLowLow;
                         FloatBig predictionLowHigh;
@@ -571,22 +563,6 @@ public:
                               pGradientPairTotals2HighHighBest[iScore].m_sumGradients,
                               pGradientPairTotals2HighHighBest[iScore].GetSumHessians()
                            );
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                           if(IsMulticlass(cCompilerClasses)) {
-                              if(size_t { 0 } == iScore) {
-                                 zeroLogit0 = predictionLowLow;
-                                 zeroLogit1 = predictionLowHigh;
-                                 zeroLogit2 = predictionHighLow;
-                                 zeroLogit3 = predictionHighHigh;
-                              }
-                              predictionLowLow -= zeroLogit0;
-                              predictionLowHigh -= zeroLogit1;
-                              predictionHighLow -= zeroLogit2;
-                              predictionHighHigh -= zeroLogit3;
-                           }
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
                         } else {
                            EBM_ASSERT(IsRegression(cCompilerClasses));
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
@@ -683,14 +659,6 @@ public:
                      auto * const pGradientPairTotals1LowHighBest = pTotals1LowHighBest->GetGradientPairs();
                      auto * const pGradientPairTotals1HighLowBest = pTotals1HighLowBest->GetGradientPairs();
                      auto * const pGradientPairTotals1HighHighBest = pTotals1HighHighBest->GetGradientPairs();
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                     FloatBig zeroLogit0 = 0;
-                     FloatBig zeroLogit1 = 0;
-                     FloatBig zeroLogit2 = 0;
-                     FloatBig zeroLogit3 = 0;
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
                      for(size_t iScore = 0; iScore < cScores; ++iScore) {
                         FloatBig predictionLowLow;
                         FloatBig predictionLowHigh;
@@ -714,21 +682,6 @@ public:
                               pGradientPairTotals1HighHighBest[iScore].m_sumGradients,
                               pGradientPairTotals1HighHighBest[iScore].GetSumHessians()
                            );
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                           if(IsMulticlass(cCompilerClasses)) {
-                              if(size_t { 0 } == iScore) {
-                                 zeroLogit0 = predictionLowLow;
-                                 zeroLogit1 = predictionLowHigh;
-                                 zeroLogit2 = predictionHighLow;
-                                 zeroLogit3 = predictionHighHigh;
-                              }
-                              predictionLowLow -= zeroLogit0;
-                              predictionLowHigh -= zeroLogit1;
-                              predictionHighLow -= zeroLogit2;
-                              predictionHighHigh -= zeroLogit3;
-                           }
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
                         } else {
                            EBM_ASSERT(IsRegression(cCompilerClasses));
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
@@ -801,10 +754,6 @@ public:
       // we don't need to call pInnerTermUpdate->EnsureTensorScoreCapacity, 
       // since our value capacity would be 1, which is pre-allocated
 
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-      FloatBig zeroLogit = 0;
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
       for(size_t iScore = 0; iScore < cScores; ++iScore) {
          FloatBig update;
          if(bClassification) {
@@ -812,16 +761,6 @@ public:
                pGradientPairTotal[iScore].m_sumGradients,
                pGradientPairTotal[iScore].GetSumHessians()
             );
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            if(IsMulticlass(cCompilerClasses)) {
-               if(size_t { 0 } == iScore) {
-                  zeroLogit = update;
-               }
-               update -= zeroLogit;
-            }
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
          } else {
             EBM_ASSERT(IsRegression(cCompilerClasses));
             update = EbmStats::ComputeSinglePartitionUpdate(
@@ -844,7 +783,7 @@ public:
 
    PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static ErrorEbm Func(
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
       const size_t * const acBins,
@@ -897,7 +836,7 @@ public:
 
    PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static ErrorEbm Func(
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
       const size_t * const acBins,

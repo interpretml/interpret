@@ -212,8 +212,6 @@ INLINE_ALWAYS static double CleanFloat(const double val) noexcept {
    return deprecisioned[0];
 }
 
-//#define ZERO_FIRST_MULTICLASS_LOGIT
-
 } // DEFINED_ZONE_NAME
 
 #endif // EBM_INTERNAL_HPP

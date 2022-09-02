@@ -470,23 +470,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
    static_assert(sizeof(*updateScoresTensor) == sizeof(*aUpdateScores), "float mismatch");
    memcpy(aUpdateScores, updateScoresTensor, sizeof(*aUpdateScores) * cTensorScores);
 
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-
-   if(2 <= cScores) {
-      FloatFast * pUpdateScore = aUpdateScores;
-      const FloatFast * const pExteriorEnd = pUpdateScore + cTensorScores;
-      do {
-         FloatFast shiftScore = pUpdateScore[0];
-         const FloatFast * const pInteriorEnd = pUpdateScore + cScores;
-         do {
-            *pUpdateScore -= shiftScore;
-            ++pUpdateScore;
-         } while(pInteriorEnd != pUpdateScore);
-      } while(pExteriorEnd != pUpdateScore);
-   }
-
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
    pBoosterShell->SetTermIndex(iTerm);
 
    return Error_None;
