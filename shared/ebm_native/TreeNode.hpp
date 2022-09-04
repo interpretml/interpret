@@ -31,57 +31,56 @@ struct TreeNode final {
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
+
    INLINE_ALWAYS const Bin<FloatBig, bClassification> * BEFORE_GetBinFirst() const {
-      EBM_ASSERT(0 == m_debugProgressionState);
+      EBM_ASSERT(0 == m_debugProgressionStage);
       return m_UNION.m_beforeGainCalc.m_pBinFirst;
    }
    INLINE_ALWAYS void BEFORE_SetBinFirst(const Bin<FloatBig, bClassification> * const pBinFirst) {
-      EBM_ASSERT(0 == m_debugProgressionState);
+      EBM_ASSERT(0 == m_debugProgressionStage);
       m_UNION.m_beforeGainCalc.m_pBinFirst = pBinFirst;
    }
 
    INLINE_ALWAYS const Bin<FloatBig, bClassification> * BEFORE_GetBinLast() const {
-      EBM_ASSERT(0 == m_debugProgressionState);
-      return m_UNION.m_beforeGainCalc.m_pBinLast;
+      EBM_ASSERT(0 == m_debugProgressionStage);
+      return reinterpret_cast<const Bin<FloatBig, bClassification> *>(pBinLastOrChildren);
    }
    INLINE_ALWAYS void BEFORE_SetBinLast(const Bin<FloatBig, bClassification> * const pBinLast) {
-      EBM_ASSERT(0 == m_debugProgressionState);
-      m_UNION.m_beforeGainCalc.m_pBinLast = pBinLast;
+      EBM_ASSERT(0 == m_debugProgressionStage);
+      // we aren't going to modify pBinLast, but we're storing it in a shared pointer, so remove the const for now
+      pBinLastOrChildren = const_cast<void *>(static_cast<const void *>(pBinLast));
    }
 
    INLINE_ALWAYS bool BEFORE_IsSplittable() const {
-      EBM_ASSERT(0 == m_debugProgressionState);
+      EBM_ASSERT(0 == m_debugProgressionStage);
       return this->BEFORE_GetBinLast() != this->BEFORE_GetBinFirst();
    }
 
 
-   INLINE_ALWAYS const TreeNode<bClassification> * AFTER_GetChildren() const {
-      EBM_ASSERT(1 == m_debugProgressionState || 2 == m_debugProgressionState);
-      return m_UNION.m_afterGainCalc.m_pChildren;
-   }
-   INLINE_ALWAYS TreeNode<bClassification> * AFTER_GetChildren() {
-      EBM_ASSERT(1 == m_debugProgressionState || 2 == m_debugProgressionState);
-      return m_UNION.m_afterGainCalc.m_pChildren;
-   }
-   INLINE_ALWAYS void AFTER_SetChildren(TreeNode<bClassification> * const pChildren) {
-      EBM_ASSERT(1 == m_debugProgressionState || 2 == m_debugProgressionState);
-      m_UNION.m_afterGainCalc.m_pChildren = pChildren;
+   INLINE_ALWAYS const void * DANGEROUS_GetBinLastOrChildren() const {
+      EBM_ASSERT(1 == m_debugProgressionStage);
+      return pBinLastOrChildren;
    }
 
-   INLINE_ALWAYS size_t AFTER_GetSplitVal() const {
-      EBM_ASSERT(1 == m_debugProgressionState || 2 == m_debugProgressionState);
-      return m_UNION.m_afterGainCalc.m_splitVal;
+
+   INLINE_ALWAYS const TreeNode<bClassification> * AFTER_GetChildren() const {
+      EBM_ASSERT(1 == m_debugProgressionStage || 2 == m_debugProgressionStage);
+      return reinterpret_cast<const TreeNode<bClassification> *>(pBinLastOrChildren);
    }
-   INLINE_ALWAYS void AFTER_SetSplitVal(const size_t splitVal) {
-      EBM_ASSERT(1 == m_debugProgressionState || 2 == m_debugProgressionState);
-      m_UNION.m_afterGainCalc.m_splitVal = splitVal;
+   INLINE_ALWAYS TreeNode<bClassification> * AFTER_GetChildren() {
+      EBM_ASSERT(1 == m_debugProgressionStage || 2 == m_debugProgressionStage);
+      return reinterpret_cast<TreeNode<bClassification> *>(pBinLastOrChildren);
+   }
+   INLINE_ALWAYS void AFTER_SetChildren(TreeNode<bClassification> * const pChildren) {
+      EBM_ASSERT(1 == m_debugProgressionStage || 2 == m_debugProgressionStage);
+      pBinLastOrChildren = pChildren;
    }
 
 
    INLINE_ALWAYS FloatBig AFTER_GetSplitGain() const {
-      EBM_ASSERT(1 == m_debugProgressionState);
+      EBM_ASSERT(1 == m_debugProgressionStage);
 
-      const FloatBig splitGain = m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_beforeDeconstruct.m_splitGain;
+      const FloatBig splitGain = m_UNION.m_afterGainCalc.m_splitGain;
 
       // our priority queue cannot handle NaN values so we filter them out before adding them
       EBM_ASSERT(!std::isnan(splitGain));
@@ -91,7 +90,7 @@ struct TreeNode final {
       return splitGain;
    }
    INLINE_ALWAYS void AFTER_SetSplitGain(const FloatBig splitGain) {
-      EBM_ASSERT(1 == m_debugProgressionState);
+      EBM_ASSERT(1 == m_debugProgressionStage);
 
       // this is only called if there is a legal gain value. If the TreeNode cannot be split call AFTER_RejectSplit.
 
@@ -100,11 +99,11 @@ struct TreeNode final {
       EBM_ASSERT(!std::isinf(splitGain));
       EBM_ASSERT(0 <= splitGain);
 
-      m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_beforeDeconstruct.m_splitGain = splitGain;
+      m_UNION.m_afterGainCalc.m_splitGain = splitGain;
    }
 
    INLINE_ALWAYS void AFTER_RejectSplit() {
-      EBM_ASSERT(1 == m_debugProgressionState);
+      EBM_ASSERT(1 == m_debugProgressionStage);
 
       // This TreeNode could not be split, so it won't be added to the priority queue, and it does not have a gain.
       // 
@@ -119,27 +118,27 @@ struct TreeNode final {
       // 
       // We need to set the m_splitGain value then to something other than NaN to indicate that it was not split.
 
-      m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_beforeDeconstruct.m_splitGain = 0;
+      m_UNION.m_afterGainCalc.m_splitGain = 0;
    }
 
    INLINE_ALWAYS void AFTER_SplitNode() {
-      EBM_ASSERT(1 == m_debugProgressionState);
-      m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_beforeDeconstruct.m_splitGain = std::numeric_limits<FloatBig>::quiet_NaN();
+      EBM_ASSERT(1 == m_debugProgressionStage);
+      m_UNION.m_afterGainCalc.m_splitGain = std::numeric_limits<FloatBig>::quiet_NaN();
    }
 
    INLINE_ALWAYS bool AFTER_IsSplit() const {
-      EBM_ASSERT(1 == m_debugProgressionState);
-      return std::isnan(m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_beforeDeconstruct.m_splitGain);
+      EBM_ASSERT(1 == m_debugProgressionStage);
+      return std::isnan(m_UNION.m_afterGainCalc.m_splitGain);
    }
 
 
    INLINE_ALWAYS TreeNode<bClassification> * DECONSTRUCT_GetParent() {
-      EBM_ASSERT(2 == m_debugProgressionState);
-      return m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_afterDeconstruct.m_pParent;
+      EBM_ASSERT(2 == m_debugProgressionStage);
+      return m_UNION.m_deconstruct.m_pParent;
    }
    INLINE_ALWAYS void DECONSTRUCT_SetParent(TreeNode<bClassification> * const pParent) {
-      EBM_ASSERT(2 == m_debugProgressionState);
-      m_UNION.m_afterGainCalc.m_DECONSTRUCT.m_afterDeconstruct.m_pParent = pParent;
+      EBM_ASSERT(2 == m_debugProgressionStage);
+      m_UNION.m_deconstruct.m_pParent = pParent;
    }
 
 
@@ -163,48 +162,37 @@ struct TreeNode final {
    }
 
 #ifndef NDEBUG
-   INLINE_ALWAYS void SetDebugProgression(const int state) {
-      EBM_ASSERT(0 == state || m_debugProgressionState < state); // always progress after initialization
-      m_debugProgressionState = state;
+   INLINE_ALWAYS void SetDebugProgression(const int stage) {
+      EBM_ASSERT(0 == stage || m_debugProgressionStage < stage); // always progress after initialization
+      m_debugProgressionStage = stage;
    }
 #endif // NDEBUG
 
 private:
 
-   struct BeforeDeconstruct final {
-      FloatBig m_splitGain;
-   };
-
-   struct AfterDeconstruct final {
-      TreeNode<bClassification> * m_pParent;
-   };
-
-   union DeconstructUnion final {
-      BeforeDeconstruct m_beforeDeconstruct;
-      AfterDeconstruct m_afterDeconstruct;
-   };
-
-
    struct BeforeGainCalc final {
       const Bin<FloatBig, bClassification> * m_pBinFirst;
-      const Bin<FloatBig, bClassification> * m_pBinLast;
    };
 
    struct AfterGainCalc final {
-      TreeNode<bClassification> * m_pChildren;
-      size_t m_splitVal;
-      DeconstructUnion m_DECONSTRUCT;
+      FloatBig m_splitGain;
+   };
+
+   struct Deconstruct final {
+      TreeNode<bClassification> * m_pParent;
    };
 
    union TreeNodeUnion final {
       BeforeGainCalc m_beforeGainCalc;
       AfterGainCalc m_afterGainCalc;
+      Deconstruct m_deconstruct;
    };
 
 #ifndef NDEBUG
-   int m_debugProgressionState;
+   int m_debugProgressionStage;
 #endif // NDEBUG
 
+   void * pBinLastOrChildren;
    TreeNodeUnion m_UNION;
 
    // use the "struct hack" since Flexible array member method is not available in C++

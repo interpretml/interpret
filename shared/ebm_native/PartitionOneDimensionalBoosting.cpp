@@ -112,15 +112,22 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
 
 template<bool bClassification>
 INLINE_RELEASE_TEMPLATED static void Flatten(
+   BinBase * aBinsBase,
+   size_t cBins,
    TreeNode<bClassification> * pTreeNode,
    ActiveDataType * pSplits,
    FloatFast * pUpdateScore,
    const size_t cScores
 ) {
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
+   BinBase * pBinsEnd = IndexBin(aBinsBase, cBins * cBytesPerBin);
+
    EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
 
    TreeNode<bClassification> * pParent = nullptr;
+   size_t iSplit;
    while(true) {
 
    moved_down:;
@@ -134,6 +141,23 @@ INLINE_RELEASE_TEMPLATED static void Flatten(
          pTreeNode = GetLeftNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
          goto moved_down;
       } else {
+         const void * pBinLastOrChildren = pTreeNode->DANGEROUS_GetBinLastOrChildren();
+         // if the pointer points to the space within the bins, then the TreeNode could not be split
+         // and this TreeNode never had children and we never wrote a pointer to the children in this memory
+         if(pBinLastOrChildren < aBinsBase || pBinsEnd <= pBinLastOrChildren) {
+            // the node was examined and a gain calculated, so it has left and right children.
+            // We can retrieve the split location by looking at where the right child would end its range
+            const TreeNode<bClassification> * const pRightChild = 
+               GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
+            pBinLastOrChildren = pRightChild->BEFORE_GetBinLast();
+         }
+         EBM_ASSERT(reinterpret_cast<const char *>(aBinsBase) <= reinterpret_cast<const char *>(pBinLastOrChildren));
+         EBM_ASSERT(reinterpret_cast<const char *>(pBinLastOrChildren) < reinterpret_cast<const char *>(pBinsEnd));
+         EBM_ASSERT(0 == (reinterpret_cast<const char *>(pBinLastOrChildren) - 
+            reinterpret_cast<const char *>(aBinsBase)) % cBytesPerBin);
+         iSplit = (reinterpret_cast<const char *>(pBinLastOrChildren) - reinterpret_cast<const char *>(aBinsBase)) / 
+            cBytesPerBin;
+
          const auto * aGradientPair = pTreeNode->GetGradientPairs();
          size_t iScore = 0;
          do {
@@ -156,14 +180,13 @@ INLINE_RELEASE_TEMPLATED static void Flatten(
          if(nullptr != pTreeNode) {
             goto moved_up;
          }
-         // this can only happen if our tree has one split, but we need to check it
-         break;
+         break; // this can only happen if our tree has zero splits, but we need to check it
       }
 
    moved_up:;
       TreeNode<bClassification> * pChildren = pTreeNode->AFTER_GetChildren();
       if(nullptr != pChildren) {
-         *pSplits = pTreeNode->AFTER_GetSplitVal();
+         *pSplits = iSplit;
          ++pSplits;
 
          pParent = pTreeNode;
@@ -367,7 +390,6 @@ static int FindBestSplitGain(
 #endif // NDEBUG
 
       pTreeNode->AFTER_RejectSplit();
-
       return 1;
    }
    EBM_ASSERT(std::isnan(BEST_gain) || 0 <= BEST_gain);
@@ -383,7 +405,6 @@ static int FindBestSplitGain(
 #endif // NDEBUG
 
       pTreeNode->AFTER_RejectSplit();
-
       return -1; // exit boosting with overflow
    }
 
@@ -459,15 +480,7 @@ static int FindBestSplitGain(
    pTreeNode->AFTER_SetChildren(pTreeNodeStackSpace);
    pTreeNode->AFTER_SetSplitGain(BEST_gain);
 
-   BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
-   const auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
-
-   EBM_ASSERT(reinterpret_cast<const char *>(aBins) <= reinterpret_cast<const char *>(BEST_pBin));
-   EBM_ASSERT(0 == (reinterpret_cast<const char *>(BEST_pBin) - reinterpret_cast<const char *>(aBins)) % cBytesPerBin);
-   const size_t iSplit = (reinterpret_cast<const char *>(BEST_pBin) - reinterpret_cast<const char *>(aBins)) / cBytesPerBin;
-   pTreeNode->AFTER_SetSplitVal(iSplit);
-
-   LOG_N(Trace_Verbose, "Exited FindBestSplitGain: splitVal=%zu, gain=%le", iSplit, BEST_gain);
+   LOG_N(Trace_Verbose, "Exited FindBestSplitGain: gain=%le", BEST_gain);
 
    return 0;
 }
@@ -686,7 +699,7 @@ public:
       FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
 
       LOG_0(Trace_Verbose, "Entered Flatten");
-      Flatten(pRootTreeNode, pSplits, pUpdateScore, cScores);
+      Flatten(aBinsBase, cBins, pRootTreeNode, pSplits, pUpdateScore, cScores);
       LOG_0(Trace_Verbose, "Exited Flatten");
 
       return Error_None;
