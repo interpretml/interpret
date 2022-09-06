@@ -269,12 +269,7 @@ static int FindBestSplitGain(
 
    auto * const aLeftGradientPairs = pLeftChild->GetGradientPairs();
    aLeftGradientPairs->Zero(sizeof(*aLeftGradientPairs), cScores);
-
-   auto * const aRightGradientPairs = pRightChild->GetGradientPairs();
    const auto * aParentGradientPairs = pTreeNode->GetGradientPairs();
-   for(size_t iScore = 0; iScore < cScores; ++iScore) {
-      aRightGradientPairs[iScore] = aParentGradientPairs[iScore];
-   }
 
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
@@ -288,7 +283,7 @@ static int FindBestSplitGain(
    size_t cSamplesRight = pTreeNode->GetCountSamples();
    size_t cSamplesLeft = 0;
 
-   FloatBig weightRight = pTreeNode->GetWeight();
+   FloatBig weightParent = pTreeNode->GetWeight();
    FloatBig weightLeft = 0;
 
    EBM_ASSERT(0 <= k_gainMin);
@@ -308,10 +303,7 @@ static int FindBestSplitGain(
       }
       cSamplesLeft += CHANGE_cSamples;
 
-
-      const FloatBig CHANGE_weight = pBinCur->GetWeight();
-      weightRight -= CHANGE_weight;
-      weightLeft += CHANGE_weight;
+      weightLeft += pBinCur->GetWeight();
 
       const auto * aBinGradientPairs = pBinCur->GetGradientPairs();
 
@@ -319,28 +311,22 @@ static int FindBestSplitGain(
          EBM_ASSERT(0 < cSamplesRight);
          EBM_ASSERT(0 < cSamplesLeft);
 
-         FloatBig sumHessiansRight = weightRight;
+         FloatBig sumHessiansRight = weightParent - weightLeft;
          FloatBig sumHessiansLeft = weightLeft;
          FloatBig gain = 0;
 
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            // TODO: instead of adding and subtracing the changes, we should instead subtract the change that
-            // we've added from the totals, which would be more accurate in terms of summing to be the total.
-
-            const FloatBig CHANGE_sumGradients = aBinGradientPairs[iScore].m_sumGradients;
-            const FloatBig sumGradientsRight = aRightGradientPairs[iScore].m_sumGradients - CHANGE_sumGradients;
-            aRightGradientPairs[iScore].m_sumGradients = sumGradientsRight;
-            const FloatBig sumGradientsLeft = aLeftGradientPairs[iScore].m_sumGradients + CHANGE_sumGradients;
+            const FloatBig sumGradientsLeft = aLeftGradientPairs[iScore].m_sumGradients + 
+               aBinGradientPairs[iScore].m_sumGradients;
             aLeftGradientPairs[iScore].m_sumGradients = sumGradientsLeft;
+            const FloatBig sumGradientsRight = aParentGradientPairs[iScore].m_sumGradients - sumGradientsLeft;
 
             if(bClassification) {
-               const FloatBig CHANGE_sumHessians = aBinGradientPairs[iScore].GetSumHessians();
-               const FloatBig newSumHessiansLeft = aLeftGradientPairs[iScore].GetSumHessians() + CHANGE_sumHessians;
+               const FloatBig newSumHessiansLeft = aLeftGradientPairs[iScore].GetSumHessians() + aBinGradientPairs[iScore].GetSumHessians();
                aLeftGradientPairs[iScore].SetSumHessians(newSumHessiansLeft);
                if(bUseLogitBoost) {
                   sumHessiansLeft = newSumHessiansLeft;
-                  sumHessiansRight = aRightGradientPairs[iScore].GetSumHessians() - CHANGE_sumHessians;
-                  aRightGradientPairs[iScore].SetSumHessians(sumHessiansRight);
+                  sumHessiansRight = aParentGradientPairs[iScore].GetSumHessians() - newSumHessiansLeft;
                }
             }
 
@@ -402,15 +388,10 @@ static int FindBestSplitGain(
          }
       } else {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatBig CHANGE_sumGradients = aBinGradientPairs[iScore].m_sumGradients;
-            aRightGradientPairs[iScore].m_sumGradients -= CHANGE_sumGradients;
-            aLeftGradientPairs[iScore].m_sumGradients += CHANGE_sumGradients;
+            aLeftGradientPairs[iScore].m_sumGradients += aBinGradientPairs[iScore].m_sumGradients;
             if(bClassification) {
-               const FloatBig CHANGE_sumHessians = aBinGradientPairs[iScore].GetSumHessians();
-               aLeftGradientPairs[iScore].SetSumHessians(aLeftGradientPairs[iScore].GetSumHessians() + CHANGE_sumHessians);
-               if(bUseLogitBoost) {
-                  aRightGradientPairs[iScore].SetSumHessians(aRightGradientPairs[iScore].GetSumHessians() - CHANGE_sumHessians);
-               }
+               aLeftGradientPairs[iScore].SetSumHessians(
+                  aLeftGradientPairs[iScore].GetSumHessians() + aBinGradientPairs[iScore].GetSumHessians());
             }
          }
       }
