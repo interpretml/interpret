@@ -14,10 +14,6 @@
 
 #include "ebm_internal.hpp"
 
-#include "RandomDeterministic.hpp"
-#include "GradientPair.hpp"
-#include "Bin.hpp"
-
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
@@ -25,6 +21,12 @@ namespace DEFINED_ZONE_NAME {
 
 struct BinBase;
 class BoosterCore;
+
+template<bool bClassification>
+struct SplitPosition;
+
+template<bool bClassification>
+struct TreeNode;
 
 class BoosterShell final {
    static constexpr size_t k_handleVerificationOk = 10995; // random 15 bit number
@@ -38,7 +40,6 @@ class BoosterShell final {
    Tensor * m_pInnerTermUpdate;
 
    // TODO: can I preallocate m_aThreadByteBuffer1 without resorting to growing if I examine my inputs
-   // TODO: can merge m_aThreadByteBuffer2 with the pair boosting memory (if it isn't already merged)
 
    BinBase * m_aThreadByteBuffer1Fast;
    size_t m_cThreadByteBufferCapacity1Fast;
@@ -46,10 +47,11 @@ class BoosterShell final {
    BinBase * m_aThreadByteBuffer1Big;
    size_t m_cThreadByteBufferCapacity1Big;
 
-   void * m_aThreadByteBuffer2;
+   // TODO: I think this can share memory with m_aThreadByteBuffer1Fast since the GradientPair always contains a FloatFast, and it always contains enough for the multiclass scores in the first bin, and we always have at least 1 bin, right?
+   FloatFast * m_aMulticlassMidwayTemp;
 
-   FloatFast * m_aTempFloatVector;
-   void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
+   void * m_aTreeNodesTemp;
+   void * m_aSplitPositionsTemp;
 
 #ifndef NDEBUG
    const unsigned char * m_pBinsFastEndDebug;
@@ -75,9 +77,9 @@ public:
       m_cThreadByteBufferCapacity1Fast = 0;
       m_aThreadByteBuffer1Big = nullptr;
       m_cThreadByteBufferCapacity1Big = 0;
-      m_aThreadByteBuffer2 = nullptr;
-      m_aTempFloatVector = nullptr;
-      m_aEquivalentSplits = nullptr;
+      m_aMulticlassMidwayTemp = nullptr;
+      m_aTreeNodesTemp = nullptr;
+      m_aSplitPositionsTemp = nullptr;
    }
 
    static void Free(BoosterShell * const pBoosterShell);
@@ -145,16 +147,18 @@ public:
       return m_aThreadByteBuffer1Big;
    }
 
-   INLINE_ALWAYS void * GetThreadByteBuffer2() {
-      return m_aThreadByteBuffer2;
+   INLINE_ALWAYS FloatFast * GetMulticlassMidwayTemp() {
+      return m_aMulticlassMidwayTemp;
    }
 
-   INLINE_ALWAYS FloatFast * GetTempFloatVector() {
-      return m_aTempFloatVector;
+   template<bool bClassification>
+   INLINE_ALWAYS TreeNode<bClassification> * GetTreeNodesTemp() {
+      return static_cast<TreeNode<bClassification> *>(m_aTreeNodesTemp);
    }
 
-   INLINE_ALWAYS void * GetEquivalentSplits() {
-      return m_aEquivalentSplits;
+   template<bool bClassification>
+   INLINE_ALWAYS SplitPosition<bClassification> * GetSplitPositionsTemp() {
+      return static_cast<SplitPosition<bClassification> *>(m_aSplitPositionsTemp);
    }
 
 

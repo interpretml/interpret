@@ -60,8 +60,8 @@ class BoosterCore final {
 
    double m_bestModelMetric;
 
-   size_t m_cBytesArrayEquivalentSplitMax;
-   size_t m_cBytesSplitting;
+   size_t m_cBytesSplitPositions;
+   size_t m_cBytesTreeNodes;
 
    DataSetBoosting m_trainingSet;
    DataSetBoosting m_validationSet;
@@ -108,8 +108,8 @@ class BoosterCore final {
       m_apCurrentTermTensors(nullptr),
       m_apBestTermTensors(nullptr),
       m_bestModelMetric(0),
-      m_cBytesArrayEquivalentSplitMax(0),
-      m_cBytesSplitting(0)
+      m_cBytesSplitPositions(0),
+      m_cBytesTreeNodes(0)
    {
       m_trainingSet.InitializeUnfailing();
       m_validationSet.InitializeUnfailing();
@@ -129,12 +129,12 @@ public:
       return m_cClasses;
    }
 
-   INLINE_ALWAYS size_t GetCountBytesArrayEquivalentSplitMax() const {
-      return m_cBytesArrayEquivalentSplitMax;
+   INLINE_ALWAYS size_t GetCountBytesSplitPositions() const {
+      return m_cBytesSplitPositions;
    }
 
-   INLINE_ALWAYS size_t GetCountBytesSplitting() const {
-      return m_cBytesSplitting;
+   INLINE_ALWAYS size_t GetCountBytesTreeNodes() const {
+      return m_cBytesTreeNodes;
    }
 
    INLINE_ALWAYS size_t GetCountTerms() const {

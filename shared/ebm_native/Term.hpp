@@ -29,11 +29,7 @@ class Term final {
    int m_cLogEnterApplyTermUpdateMessages;
    int m_cLogExitApplyTermUpdateMessages;
 
-   // use the "struct hack" since Flexible array member method is not available in C++
-   // m_apFeature must be the last item in this struct
-   // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
-   // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
-   // (either the parent or child) if the class is derrived
+   // IMPORTANT: m_apFeature must be in the last position for the struct hack and this must be standard layout
    const Feature * m_apFeature[k_cDimensionsMax];
 
 public:

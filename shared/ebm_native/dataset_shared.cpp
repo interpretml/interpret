@@ -167,7 +167,7 @@ struct HeaderDataSetShared {
    SharedStorageDataType m_cWeights;
    SharedStorageDataType m_cTargets;
 
-   // m_offsets needs to be at the bottom of this struct.  We use the struct hack to size this array
+   // IMPORTANT: m_offsets must be in the last position for the struct hack and this must be standard layout
    SharedStorageDataType m_offsets[1];
 };
 static_assert(std::is_standard_layout<HeaderDataSetShared>::value,
@@ -191,7 +191,7 @@ struct SparseFeatureDataSetShared {
    SharedStorageDataType m_defaultVal;
    SharedStorageDataType m_cNonDefaults;
 
-   // m_nonDefaults needs to be at the bottom of this struct.  We use the struct hack to size this array
+   // IMPORTANT: m_nonDefaults must be in the last position for the struct hack and this must be standard layout
    SparseFeatureDataSetSharedEntry m_nonDefaults[1];
 };
 static_assert(std::is_standard_layout<SparseFeatureDataSetShared>::value,

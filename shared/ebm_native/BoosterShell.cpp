@@ -19,7 +19,7 @@
 
 #include "Tensor.hpp"
 
-#include "GradientPair.hpp"
+#include "Bin.hpp"
 
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"
@@ -37,9 +37,9 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
       Tensor::Free(pBoosterShell->m_pInnerTermUpdate);
       free(pBoosterShell->m_aThreadByteBuffer1Fast);
       free(pBoosterShell->m_aThreadByteBuffer1Big);
-      free(pBoosterShell->m_aThreadByteBuffer2);
-      free(pBoosterShell->m_aTempFloatVector);
-      free(pBoosterShell->m_aEquivalentSplits);
+      free(pBoosterShell->m_aTreeNodesTemp);
+      free(pBoosterShell->m_aMulticlassMidwayTemp);
+      free(pBoosterShell->m_aSplitPositionsTemp);
       BoosterCore::Free(pBoosterShell->m_pBoosterCore);
 
       // before we free our memory, indicate it was freed so if our higher level language attempts to use it we have
@@ -83,21 +83,21 @@ ErrorEbm BoosterShell::FillAllocations() {
       goto failed_allocation;
    }
 
-   m_aTempFloatVector = EbmMalloc<FloatFast>(cScores);
-   if(nullptr == m_aTempFloatVector) {
+   m_aMulticlassMidwayTemp = EbmMalloc<FloatFast>(cScores);
+   if(nullptr == m_aMulticlassMidwayTemp) {
       goto failed_allocation;
    }
 
-   if(0 != m_pBoosterCore->GetCountBytesArrayEquivalentSplitMax()) {
-      m_aEquivalentSplits = EbmMalloc<void>(m_pBoosterCore->GetCountBytesArrayEquivalentSplitMax());
-      if(nullptr == m_aEquivalentSplits) {
+   if(0 != m_pBoosterCore->GetCountBytesSplitPositions()) {
+      m_aSplitPositionsTemp = EbmMalloc<void>(m_pBoosterCore->GetCountBytesSplitPositions());
+      if(nullptr == m_aSplitPositionsTemp) {
          goto failed_allocation;
       }
    }
 
-   if(0 != m_pBoosterCore->GetCountBytesSplitting()) {
-      m_aThreadByteBuffer2 = EbmMalloc<void>(m_pBoosterCore->GetCountBytesSplitting());
-      if(nullptr == m_aThreadByteBuffer2) {
+   if(0 != m_pBoosterCore->GetCountBytesTreeNodes()) {
+      m_aTreeNodesTemp = EbmMalloc<void>(m_pBoosterCore->GetCountBytesTreeNodes());
+      if(nullptr == m_aTreeNodesTemp) {
          goto failed_allocation;
       }
    }

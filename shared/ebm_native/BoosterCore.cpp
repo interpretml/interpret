@@ -319,8 +319,8 @@ ErrorEbm BoosterCore::Create(
    const bool bClassification = IsClassification(cClasses);
 
 
-   size_t cBytesArrayEquivalentSplitMax = 0;
-   size_t cBytesSplitting = 0;
+   size_t cBytesSplitPositionsMax = 0;
+   size_t cBytesTreeNodes = 0;
 
    EBM_ASSERT(nullptr == pBoosterCore->m_apCurrentTermTensors);
    EBM_ASSERT(nullptr == pBoosterCore->m_apBestTermTensors);
@@ -330,7 +330,7 @@ ErrorEbm BoosterCore::Create(
       if(IsOverflowBinSize<FloatFast>(bClassification, cScores) ||
          IsOverflowBinSize<FloatBig>(bClassification, cScores) ||
          IsOverflowTreeNodeSize(bClassification, cScores) ||
-         IsOverflowTreeSweepSize(bClassification, cScores)) 
+         IsOverflowSplitPositionSize(bClassification, cScores)) 
       {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
          return Error_OutOfMemory;
@@ -345,20 +345,20 @@ ErrorEbm BoosterCore::Create(
          // case are individual bins.
          // So, in total we consume N + N - 1 TreeNodes
 
-         cBytesSplitting = cBinsMax - 1;
-         if(IsAddError(cBytesSplitting, cBinsMax)) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cBytesSplitting, cBinsMax)");
+         cBytesTreeNodes = cBinsMax - 1;
+         if(IsAddError(cBytesTreeNodes, cBinsMax)) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cBytesTreeNodes, cBinsMax)");
             return Error_OutOfMemory;
          }
-         cBytesSplitting += cBinsMax;
+         cBytesTreeNodes += cBinsMax;
 
          const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
 
-         if(IsMultiplyError(cBytesSplitting, cBytesPerTreeNode)) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesSplitting, cBytesPerTreeNode)");
+         if(IsMultiplyError(cBytesTreeNodes, cBytesPerTreeNode)) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesTreeNodes, cBytesPerTreeNode)");
             return Error_OutOfMemory;
          }
-         cBytesSplitting *= cBytesPerTreeNode;
+         cBytesTreeNodes *= cBytesPerTreeNode;
       }
 
       pBoosterCore->m_cTerms = cTerms;
@@ -368,7 +368,7 @@ ErrorEbm BoosterCore::Create(
          return Error_OutOfMemory;
       }
 
-      const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cScores);
+      const size_t cBytesPerSplitPosition = GetSplitPositionSize(bClassification, cScores);
 
       const IntEbm * piTermFeature = aiTermFeatures;
       size_t iTerm = 0;
@@ -401,7 +401,7 @@ ErrorEbm BoosterCore::Create(
                LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures is null when there are Terms with non-zero numbers of features");
                return Error_IllegalParamVal;
             }
-            size_t cEquivalentSplits = 1;
+            size_t cSplitPositions = 1;
             const Feature ** ppFeature = pTerm->GetFeatures();
             const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
             do {
@@ -438,7 +438,7 @@ ErrorEbm BoosterCore::Create(
                      return Error_OutOfMemory;
                   }
                   cTensorBins *= cBins;
-                  cEquivalentSplits *= cBins - 1; // we can only split between the bins
+                  cSplitPositions *= cBins - 1; // we can only split between the bins
                } else {
                   LOG_0(Trace_Info, "INFO BoosterCore::Create feature group with no useful features");
                }
@@ -450,20 +450,20 @@ ErrorEbm BoosterCore::Create(
             if(LIKELY(0 != cRealDimensions)) {
                EBM_ASSERT(1 < cTensorBins);
 
-               size_t cBytesArrayEquivalentSplit;
+               size_t cBytesSplitPositions;
                if(1 == cRealDimensions) {
-                  if(IsMultiplyError(cBytesPerTreeSweep, cEquivalentSplits)) {
-                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerTreeSweep, cEquivalentSplits)");
+                  if(IsMultiplyError(cBytesPerSplitPosition, cSplitPositions)) {
+                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerSplitPosition, cSplitPositionTies)");
                      return Error_OutOfMemory;
                   }
-                  cBytesArrayEquivalentSplit = cBytesPerTreeSweep * cEquivalentSplits;
+                  cBytesSplitPositions = cBytesPerSplitPosition * cSplitPositions;
                } else {
                   // TODO : someday add equal gain multidimensional randomized picking.  It's rather hard though with the existing sweep functions for 
                   // multidimensional right now
-                  cBytesArrayEquivalentSplit = 0;
+                  cBytesSplitPositions = 0;
                }
-               if(cBytesArrayEquivalentSplitMax < cBytesArrayEquivalentSplit) {
-                  cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplit;
+               if(cBytesSplitPositionsMax < cBytesSplitPositions) {
+                  cBytesSplitPositionsMax = cBytesSplitPositions;
                }
 
                const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
@@ -492,8 +492,8 @@ ErrorEbm BoosterCore::Create(
    }
    LOG_0(Trace_Info, "BoosterCore::Create finished feature group processing");
 
-   pBoosterCore->m_cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplitMax;
-   pBoosterCore->m_cBytesSplitting = cBytesSplitting;
+   pBoosterCore->m_cBytesSplitPositions = cBytesSplitPositionsMax;
+   pBoosterCore->m_cBytesTreeNodes = cBytesTreeNodes;
 
    error = pBoosterCore->m_trainingSet.Initialize(
       cClasses,

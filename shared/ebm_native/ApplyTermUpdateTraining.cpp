@@ -45,7 +45,7 @@ public:
 
       FloatFast aLocalExpVector[GetCountScores(cCompilerClasses)];
       FloatFast * const aExps = 
-         k_dynamicClassification == cCompilerClasses ? pBoosterShell->GetTempFloatVector() : aLocalExpVector;
+         k_dynamicClassification == cCompilerClasses ? pBoosterShell->GetMulticlassMidwayTemp() : aLocalExpVector;
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
@@ -236,7 +236,7 @@ public:
 
       FloatFast aLocalExpVector[GetCountScores(cCompilerClasses)];
       FloatFast * const aExps = 
-         k_dynamicClassification == cCompilerClasses ? pBoosterShell->GetTempFloatVector() : aLocalExpVector;
+         k_dynamicClassification == cCompilerClasses ? pBoosterShell->GetMulticlassMidwayTemp() : aLocalExpVector;
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);

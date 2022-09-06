@@ -13,6 +13,8 @@
 
 #include "ebm_internal.hpp"
 
+#include "RandomDeterministic.hpp"
+
 #include "Tensor.hpp"
 #include "ebm_stats.hpp"
 
