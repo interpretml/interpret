@@ -262,10 +262,8 @@ INLINE_ALWAYS const TreeNode<bClassification> * IndexTreeNode(
 
 template<bool bClassification>
 INLINE_ALWAYS TreeNode<bClassification> * GetLeftNode(
-   TreeNode<bClassification> * const pChildren, 
-   const size_t cBytesPerTreeNode
+   TreeNode<bClassification> * const pChildren
 ) {
-   UNUSED(cBytesPerTreeNode);
    return pChildren;
 }
 

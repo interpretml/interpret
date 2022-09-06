@@ -42,17 +42,12 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
       DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
-      FloatFast * const aTempFloatVector = pBoosterShell->GetTempFloatVector();
 
-      FloatFast aLocalExpVector[
-         k_dynamicClassification == cCompilerClasses ? 1 : GetCountScores(cCompilerClasses)
-      ];
-      FloatFast * const aExps = k_dynamicClassification == cCompilerClasses ? aTempFloatVector : aLocalExpVector;
+      FloatFast aLocalExpVector[GetCountScores(cCompilerClasses)];
+      FloatFast * const aExps = 
+         k_dynamicClassification == cCompilerClasses ? pBoosterShell->GetTempFloatVector() : aLocalExpVector;
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-         cCompilerClasses,
-         cRuntimeClasses
-      );
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
@@ -238,17 +233,12 @@ public:
       const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
       DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
-      FloatFast * const aTempFloatVector = pBoosterShell->GetTempFloatVector();
 
-      FloatFast aLocalExpVector[
-         k_dynamicClassification == cCompilerClasses ? 1 : GetCountScores(cCompilerClasses)
-      ];
-      FloatFast * const aExps = k_dynamicClassification == cCompilerClasses ? aTempFloatVector : aLocalExpVector;
+      FloatFast aLocalExpVector[GetCountScores(cCompilerClasses)];
+      FloatFast * const aExps = 
+         k_dynamicClassification == cCompilerClasses ? pBoosterShell->GetTempFloatVector() : aLocalExpVector;
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-         cCompilerClasses,
-         cRuntimeClasses
-      );
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);

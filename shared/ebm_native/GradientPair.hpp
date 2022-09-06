@@ -57,21 +57,6 @@ struct GradientPairBase {
    INLINE_ALWAYS const GradientPair<TFloat, bClassification> * Specialize() const {
       return static_cast<const GradientPair<TFloat, bClassification> *>(this);
    }
-
-   INLINE_ALWAYS void Zero(const size_t cBytesPerItem, const size_t cItems = 1) {
-      // The C standard guarantees that zeroing integer types is a zero, and IEEE-754 guarantees 
-      // that zeroing a floating point is zero.  Our GradientPair objects are POD and also only contain
-      // floating point and unsigned integer types
-      //
-      // 6.2.6.2 Integer types -> 5. The values of any padding bits are unspecified.A valid (non - trap) 
-      // object representation of a signed integer type where the sign bit is zero is a valid object 
-      // representation of the corresponding unsigned type, and shall represent the same value.For any 
-      // integer type, the object representation where all the bits are zero shall be a representation 
-      // of the value zero in that type.
-
-      static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
-      memset(this, 0, cItems * cBytesPerItem);
-   }
 };
 static_assert(std::is_standard_layout<GradientPairBase>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -127,6 +112,10 @@ struct GradientPair<TFloat, true> final : GradientPairBase {
       m_sumGradients = other.m_sumGradients;
       m_sumHessians = other.m_sumHessians;
    }
+   INLINE_ALWAYS void Zero() {
+      m_sumGradients = 0;
+      m_sumHessians = 0;
+   }
    INLINE_ALWAYS void AssertZero() const {
       EBM_ASSERT(0 == m_sumGradients);
       EBM_ASSERT(0 == m_sumHessians);
@@ -181,6 +170,9 @@ struct GradientPair<TFloat, false> final : GradientPairBase {
    }
    INLINE_ALWAYS void Copy(const GradientPair<TFloat, false> & other) {
       m_sumGradients = other.m_sumGradients;
+   }
+   INLINE_ALWAYS void Zero() {
+      m_sumGradients = 0;
    }
    INLINE_ALWAYS void AssertZero() const {
       EBM_ASSERT(0 == m_sumGradients);
