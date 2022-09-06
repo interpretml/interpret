@@ -84,7 +84,7 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
       weightTotalDebug += pCopyFrom->GetWeight();
 #endif // NDEBUG
 
-      const auto * pGradientPair = pCopyFrom->GetGradientPairs();
+      const auto * aGradientPairs = pCopyFrom->GetGradientPairs();
 
       size_t iScore = 0;
       do {
@@ -98,7 +98,7 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
          // and that is if almost all bins have either 0 or 1 samples, which would happen if we didn't bin at all
          // beforehand.  We'll still want this per-bin sumation though since it's unlikley that all data
          // will be continuous in an ML problem.
-         aSumAllGradientPairs[iScore].Add(pGradientPair[iScore]);
+         aSumAllGradientPairs[iScore].Add(aGradientPairs[iScore]);
          ++iScore;
       } while(cScores != iScore);
 
@@ -250,9 +250,6 @@ static int FindBestSplitGain(
    const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
    const size_t cScores = GetCountScores(cClasses);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
-
    auto * pBinCur = pTreeNode->BEFORE_GetBinFirst();
    const auto * const pBinLast = pTreeNode->BEFORE_GetBinLast();
 
@@ -267,19 +264,32 @@ static int FindBestSplitGain(
    pRightChild->SetDebugProgression(0);
 #endif // NDEBUG
 
-   // we are not using the memory in our next TreeNode children yet, so use it as our temporary accumulation memory
-   pLeftChild->GetBin()->Zero(cBytesPerBin);
-   pRightChild->GetBin()->Copy(*pTreeNode->GetBin(), cScores);
-
    pLeftChild->BEFORE_SetBinFirst(pBinCur);
    pRightChild->BEFORE_SetBinLast(pBinLast);
 
+   auto * const aLeftGradientPairs = pLeftChild->GetGradientPairs();
+   aLeftGradientPairs->Zero(sizeof(*aLeftGradientPairs), cScores);
+
+   auto * const aRightGradientPairs = pRightChild->GetGradientPairs();
+   const auto * aParentGradientPairs = pTreeNode->GetGradientPairs();
+   for(size_t iScore = 0; iScore < cScores; ++iScore) {
+      aRightGradientPairs[iScore] = aParentGradientPairs[iScore];
+   }
+
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
    EBM_ASSERT(!IsOverflowTreeSweepSize(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cScores);
 
    TreeSweep<bClassification> * pTreeSweepStart =
       static_cast<TreeSweep<bClassification> *>(pBoosterShell->GetEquivalentSplits());
    TreeSweep<bClassification> * pTreeSweepCur = pTreeSweepStart;
+
+   size_t cSamplesRight = pTreeNode->GetCountSamples();
+   size_t cSamplesLeft = 0;
+
+   FloatBig weightRight = pTreeNode->GetWeight();
+   FloatBig weightLeft = 0;
 
    EBM_ASSERT(0 <= k_gainMin);
    FloatBig BEST_gain = k_gainMin; // it must at least be this, and maybe it needs to be more
@@ -291,18 +301,19 @@ static int FindBestSplitGain(
       // TODO: In the future we should add the left, then subtract from the parent to get the right, for numeracy
       //       since then we'll be guaranteed that at least they sum to the total instead of having the left and
       //       right drift away from the total over time from floating point noise
-      pRightChild->GetBin()->Subtract(*pBinCur, cScores);
-      pLeftChild->GetBin()->Add(*pBinCur, cScores);
-
-      const size_t cSamplesRight = pRightChild->GetBin()->GetCountSamples();
-      const size_t cSamplesLeft = pLeftChild->GetBin()->GetCountSamples();
-
-      const FloatBig weightRight = pRightChild->GetBin()->GetWeight();
-      const FloatBig weightLeft = pLeftChild->GetBin()->GetWeight();
-
+      const size_t CHANGE_cSamples = pBinCur->GetCountSamples();
+      cSamplesRight -= CHANGE_cSamples;
       if(UNLIKELY(cSamplesRight < cSamplesLeafMin)) {
          break; // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
       }
+      cSamplesLeft += CHANGE_cSamples;
+
+
+      const FloatBig CHANGE_weight = pBinCur->GetWeight();
+      weightRight -= CHANGE_weight;
+      weightLeft += CHANGE_weight;
+
+      const auto * aBinGradientPairs = pBinCur->GetGradientPairs();
 
       if(LIKELY(cSamplesLeafMin <= cSamplesLeft)) {
          EBM_ASSERT(0 < cSamplesRight);
@@ -312,17 +323,24 @@ static int FindBestSplitGain(
          FloatBig sumHessiansLeft = weightLeft;
          FloatBig gain = 0;
 
-         // TODO: We can probably move the partial gain calculation into a function of the Bin class
-         auto * const aLeftSweepGradientPairs = pLeftChild->GetBin()->GetGradientPairs();
-         auto * const aRightSweepGradientPairs = pRightChild->GetBin()->GetGradientPairs();
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatBig sumGradientsLeft = aLeftSweepGradientPairs[iScore].m_sumGradients;
-            const FloatBig sumGradientsRight = aRightSweepGradientPairs[iScore].m_sumGradients;
+            // TODO: instead of adding and subtracing the changes, we should instead subtract the change that
+            // we've added from the totals, which would be more accurate in terms of summing to be the total.
+
+            const FloatBig CHANGE_sumGradients = aBinGradientPairs[iScore].m_sumGradients;
+            const FloatBig sumGradientsRight = aRightGradientPairs[iScore].m_sumGradients - CHANGE_sumGradients;
+            aRightGradientPairs[iScore].m_sumGradients = sumGradientsRight;
+            const FloatBig sumGradientsLeft = aLeftGradientPairs[iScore].m_sumGradients + CHANGE_sumGradients;
+            aLeftGradientPairs[iScore].m_sumGradients = sumGradientsLeft;
 
             if(bClassification) {
+               const FloatBig CHANGE_sumHessians = aBinGradientPairs[iScore].GetSumHessians();
+               const FloatBig newSumHessiansLeft = aLeftGradientPairs[iScore].GetSumHessians() + CHANGE_sumHessians;
+               aLeftGradientPairs[iScore].SetSumHessians(newSumHessiansLeft);
                if(bUseLogitBoost) {
-                  sumHessiansLeft = aLeftSweepGradientPairs[iScore].GetSumHessians();
-                  sumHessiansRight = aRightSweepGradientPairs[iScore].GetSumHessians();
+                  sumHessiansLeft = newSumHessiansLeft;
+                  sumHessiansRight = aRightGradientPairs[iScore].GetSumHessians() - CHANGE_sumHessians;
+                  aRightGradientPairs[iScore].SetSumHessians(sumHessiansRight);
                }
             }
 
@@ -371,11 +389,29 @@ static int FindBestSplitGain(
             BEST_gain = gain;
 
             pTreeSweepCur->SetBestBin(pBinCur);
-            pTreeSweepCur->GetBestLeftBin()->Copy(*pLeftChild->GetBin(), cScores);
+            pTreeSweepCur->GetBestLeftBin()->SetCountSamples(cSamplesLeft);
+            pTreeSweepCur->GetBestLeftBin()->SetWeight(weightLeft);
+            memcpy(
+               pTreeSweepCur->GetBestLeftBin()->GetGradientPairs(), aLeftGradientPairs,
+               sizeof(*aLeftGradientPairs) * cScores
+            );
 
             pTreeSweepCur = AddBytesTreeSweep(pTreeSweepCur, cBytesPerTreeSweep);
          } else {
             EBM_ASSERT(!std::isnan(gain));
+         }
+      } else {
+         for(size_t iScore = 0; iScore < cScores; ++iScore) {
+            const FloatBig CHANGE_sumGradients = aBinGradientPairs[iScore].m_sumGradients;
+            aRightGradientPairs[iScore].m_sumGradients -= CHANGE_sumGradients;
+            aLeftGradientPairs[iScore].m_sumGradients += CHANGE_sumGradients;
+            if(bClassification) {
+               const FloatBig CHANGE_sumHessians = aBinGradientPairs[iScore].GetSumHessians();
+               aLeftGradientPairs[iScore].SetSumHessians(aLeftGradientPairs[iScore].GetSumHessians() + CHANGE_sumHessians);
+               if(bUseLogitBoost) {
+                  aRightGradientPairs[iScore].SetSumHessians(aRightGradientPairs[iScore].GetSumHessians() - CHANGE_sumHessians);
+               }
+            }
          }
       }
       pBinCur = IndexBin(pBinCur, cBytesPerBin);

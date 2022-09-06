@@ -153,6 +153,9 @@ struct TreeNode final {
    INLINE_ALWAYS const GradientPair<FloatBig, bClassification> * GetGradientPairs() const {
       return m_bin.GetGradientPairs();
    }
+   INLINE_ALWAYS GradientPair<FloatBig, bClassification> * GetGradientPairs() {
+      return m_bin.GetGradientPairs();
+   }
 
    INLINE_ALWAYS const Bin<FloatBig, bClassification> * GetBin() const {
       return &m_bin;
