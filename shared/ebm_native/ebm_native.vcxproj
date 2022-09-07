@@ -319,7 +319,7 @@ EXIT /B 0
     <ClInclude Include="Tensor.hpp" />
     <ClInclude Include="TensorTotalsSum.hpp" />
     <ClInclude Include="TreeNode.hpp" />
-    <ClInclude Include="TreeSweep.hpp" />
+    <ClInclude Include="SplitPosition.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApplyTermUpdate.cpp" />

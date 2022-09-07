@@ -69,7 +69,7 @@
     <ClInclude Include="Tensor.hpp" />
     <ClInclude Include="TensorTotalsSum.hpp" />
     <ClInclude Include="TreeNode.hpp" />
-    <ClInclude Include="TreeSweep.hpp" />
+    <ClInclude Include="SplitPosition.hpp" />
     <ClInclude Include="inc\ebm_native.h">
       <Filter>inc</Filter>
     </ClInclude>

@@ -29,7 +29,7 @@
 #include "Bin.hpp"
 
 #include "TreeNode.hpp"
-#include "TreeSweep.hpp"
+#include "SplitPosition.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

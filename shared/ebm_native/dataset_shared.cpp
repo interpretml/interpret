@@ -1425,8 +1425,8 @@ extern ErrorEbm GetDataSetSharedHeader(
    }
    const size_t cOffsets = cFeatures + cWeights + cTargets;
 
-   if(IsMultiplyError(cOffsets, sizeof(pHeaderDataSetShared->m_offsets[0]))) {
-      LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(cOffsets, sizeof(pHeaderDataSetShared->m_offsets[0]))");
+   if(IsMultiplyError(sizeof(pHeaderDataSetShared->m_offsets[0]), cOffsets)) {
+      LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(sizeof(pHeaderDataSetShared->m_offsets[0]), cOffsets)");
       return Error_IllegalParamVal;
    }
    size_t iOffsetNext = cOffsets * sizeof(pHeaderDataSetShared->m_offsets[0]);
@@ -1495,8 +1495,8 @@ extern ErrorEbm GetDataSetSharedHeader(
          }
          const size_t cNonDefaults = static_cast<size_t>(countNonDefaults);
 
-         if(IsMultiplyError(cNonDefaults, sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]))) {
-            LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(cNonDefaults, sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]))");
+         if(IsMultiplyError(sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]), cNonDefaults)) {
+            LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]), cNonDefaults)");
             return Error_IllegalParamVal;
          }
          const size_t cTotalNonDefaults = cNonDefaults * sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]);
@@ -1506,8 +1506,8 @@ extern ErrorEbm GetDataSetSharedHeader(
          }
          iOffsetNext += cTotalNonDefaults;
       } else {
-         if(IsMultiplyError(cSamples, sizeof(SharedStorageDataType))) {
-            LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(cSamples, sizeof(SharedStorageDataType))");
+         if(IsMultiplyError(sizeof(SharedStorageDataType), cSamples)) {
+            LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(sizeof(SharedStorageDataType), cSamples)");
             return Error_IllegalParamVal;
          }
          const size_t cTotalMem = cSamples * sizeof(SharedStorageDataType);
@@ -1614,7 +1614,7 @@ extern const void * GetDataSetSharedFeature(
    EBM_ASSERT(!IsConvertError<size_t>(pHeaderDataSetShared->m_cFeatures));
    EBM_ASSERT(iFeature < static_cast<size_t>(pHeaderDataSetShared->m_cFeatures));
 
-   EBM_ASSERT(!IsMultiplyError(iFeature, sizeof(pHeaderDataSetShared->m_offsets[0])));
+   EBM_ASSERT(!IsMultiplyError(sizeof(pHeaderDataSetShared->m_offsets[0]), iFeature));
    const SharedStorageDataType indexMem = ArrayToPointer(pHeaderDataSetShared->m_offsets)[iFeature];
    EBM_ASSERT(!IsConvertError<size_t>(indexMem));
    const size_t iMem = static_cast<size_t>(indexMem);
@@ -1744,7 +1744,7 @@ extern const FloatFast * GetDataSetSharedWeight(
    EBM_ASSERT(!IsAddError(cFeatures, iWeight));
    const size_t iOffset = cFeatures + iWeight;
 
-   EBM_ASSERT(!IsMultiplyError(iOffset, sizeof(pHeaderDataSetShared->m_offsets[0])));
+   EBM_ASSERT(!IsMultiplyError(sizeof(pHeaderDataSetShared->m_offsets[0]), iOffset));
    const SharedStorageDataType indexMem = ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset];
    EBM_ASSERT(!IsConvertError<size_t>(indexMem));
    const size_t iMem = static_cast<size_t>(indexMem);
@@ -1782,7 +1782,7 @@ extern const void * GetDataSetSharedTarget(
    EBM_ASSERT(!IsAddError(cFeatures, cWeights, iTarget));
    const size_t iOffset = cFeatures + cWeights + iTarget;
 
-   EBM_ASSERT(!IsMultiplyError(iOffset, sizeof(pHeaderDataSetShared->m_offsets[0])));
+   EBM_ASSERT(!IsMultiplyError(sizeof(pHeaderDataSetShared->m_offsets[0]), iOffset));
    const SharedStorageDataType indexMem = ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset];
    EBM_ASSERT(!IsConvertError<size_t>(indexMem));
    const size_t iMem = static_cast<size_t>(indexMem);

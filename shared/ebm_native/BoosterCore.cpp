@@ -35,7 +35,7 @@
 #include "Bin.hpp"
 
 #include "TreeNode.hpp"
-#include "TreeSweep.hpp"
+#include "SplitPosition.hpp"
 
 #include "BoosterShell.hpp"
 #include "BoosterCore.hpp"
@@ -258,8 +258,6 @@ ErrorEbm BoosterCore::Create(
       return error;
    }
 
-   size_t cBinsMax = 0;
-
    LOG_0(Trace_Info, "BoosterCore::Create starting feature processing");
    if(0 != cFeatures) {
       pBoosterCore->m_cFeatures = cFeatures;
@@ -299,14 +297,10 @@ ErrorEbm BoosterCore::Create(
             // can only occur if there were zero training and zero validation cases since the 
             // features would require a value, even if it was 0.
             LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 0 values");
-         } else {
-            cBinsMax = EbmMax(cBinsMax, cBins);
-
-            if(1 == cBins) {
-               // Dimensions with 1 bin don't contribute anything to the model since they always have the same value, but 
-               // the user can specify interactions, so we handle them anyways in a consistent way by boosting on them
-               LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 1 value");
-            }
+         } else if(1 == cBins) {
+            // Dimensions with 1 bin don't contribute anything to the model since they always have the same value, but 
+            // the user can specify interactions, so we handle them anyways in a consistent way by boosting on them
+            LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 1 value");
          }
          pBoosterCore->m_aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnknown, bNominal);
 
@@ -317,10 +311,6 @@ ErrorEbm BoosterCore::Create(
 
    const size_t cScores = GetCountScores(cClasses);
    const bool bClassification = IsClassification(cClasses);
-
-
-   size_t cBytesSplitPositionsMax = 0;
-   size_t cBytesTreeNodes = 0;
 
    EBM_ASSERT(nullptr == pBoosterCore->m_apCurrentTermTensors);
    EBM_ASSERT(nullptr == pBoosterCore->m_apBestTermTensors);
@@ -336,31 +326,6 @@ ErrorEbm BoosterCore::Create(
          return Error_OutOfMemory;
       }
 
-      if(0 != cBinsMax) {
-         // If we have N bins, then we can have at most N - 1 splits.
-         // At maximum if all splits are made, then we'll have a tree with N - 1 nodes.
-         // Each node will contain a the total gradient sums of their left and right sides
-         // Each of the N bins will also have a leaf in the tree, which will also consume a TreeNode structure
-         // because each split needs to preserve the gradient sums of its left and right sides, which in this
-         // case are individual bins.
-         // So, in total we consume N + N - 1 TreeNodes
-
-         cBytesTreeNodes = cBinsMax - 1;
-         if(IsAddError(cBytesTreeNodes, cBinsMax)) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cBytesTreeNodes, cBinsMax)");
-            return Error_OutOfMemory;
-         }
-         cBytesTreeNodes += cBinsMax;
-
-         const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
-
-         if(IsMultiplyError(cBytesTreeNodes, cBytesPerTreeNode)) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesTreeNodes, cBytesPerTreeNode)");
-            return Error_OutOfMemory;
-         }
-         cBytesTreeNodes *= cBytesPerTreeNode;
-      }
-
       pBoosterCore->m_cTerms = cTerms;
       pBoosterCore->m_apTerms = Term::AllocateTerms(cTerms);
       if(UNLIKELY(nullptr == pBoosterCore->m_apTerms)) {
@@ -368,7 +333,7 @@ ErrorEbm BoosterCore::Create(
          return Error_OutOfMemory;
       }
 
-      const size_t cBytesPerSplitPosition = GetSplitPositionSize(bClassification, cScores);
+      size_t cSingleDimensionBinsMax = 0;
 
       const IntEbm * piTermFeature = aiTermFeatures;
       size_t iTerm = 0;
@@ -401,7 +366,7 @@ ErrorEbm BoosterCore::Create(
                LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures is null when there are Terms with non-zero numbers of features");
                return Error_IllegalParamVal;
             }
-            size_t cSplitPositions = 1;
+            size_t cSingleDimensionBins = 0;
             const Feature ** ppFeature = pTerm->GetFeatures();
             const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
             do {
@@ -438,7 +403,7 @@ ErrorEbm BoosterCore::Create(
                      return Error_OutOfMemory;
                   }
                   cTensorBins *= cBins;
-                  cSplitPositions *= cBins - 1; // we can only split between the bins
+                  cSingleDimensionBins = cBins;
                } else {
                   LOG_0(Trace_Info, "INFO BoosterCore::Create feature group with no useful features");
                }
@@ -450,20 +415,8 @@ ErrorEbm BoosterCore::Create(
             if(LIKELY(0 != cRealDimensions)) {
                EBM_ASSERT(1 < cTensorBins);
 
-               size_t cBytesSplitPositions;
                if(1 == cRealDimensions) {
-                  if(IsMultiplyError(cBytesPerSplitPosition, cSplitPositions)) {
-                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerSplitPosition, cSplitPositionTies)");
-                     return Error_OutOfMemory;
-                  }
-                  cBytesSplitPositions = cBytesPerSplitPosition * cSplitPositions;
-               } else {
-                  // TODO : someday add equal gain multidimensional randomized picking.  It's rather hard though with the existing sweep functions for 
-                  // multidimensional right now
-                  cBytesSplitPositions = 0;
-               }
-               if(cBytesSplitPositionsMax < cBytesSplitPositions) {
-                  cBytesSplitPositionsMax = cBytesSplitPositions;
+                  cSingleDimensionBinsMax = EbmMax(cSingleDimensionBinsMax, cSingleDimensionBins);
                }
 
                const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
@@ -476,6 +429,43 @@ ErrorEbm BoosterCore::Create(
 
          ++iTerm;
       } while(iTerm < cTerms);
+
+      if(0 != cSingleDimensionBinsMax) {
+         const size_t cSingleDimensionSplitsMax = cSingleDimensionBinsMax - 1;
+         const size_t cBytesPerSplitPosition = GetSplitPositionSize(bClassification, cScores);
+         if(IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)");
+            return Error_OutOfMemory;
+         }
+         // TODO : someday add equal gain multidimensional randomized picking.  I think for that we should generate
+         //        random numbers as we find equal gains, so we won't need this memory if we do that
+         pBoosterCore->m_cBytesSplitPositions = cBytesPerSplitPosition * cSingleDimensionSplitsMax;
+
+
+         // If we have N bins, then we can have at most N - 1 splits.
+         // At maximum if all splits are made, then we'll have a tree with N - 1 nodes.
+         // Each node will contain a the total gradient sums of their left and right sides
+         // Each of the N bins will also have a leaf in the tree, which will also consume a TreeNode structure
+         // because each split needs to preserve the gradient sums of its left and right sides, which in this
+         // case are individual bins.
+         // So, in total we consume N + N - 1 TreeNodes
+         
+         if(IsAddError(cSingleDimensionSplitsMax, cSingleDimensionBinsMax)) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cSingleDimensionSplitsMax, cSingleDimensionBinsMax)");
+            return Error_OutOfMemory;
+         }
+         const size_t cTreeNodes = cSingleDimensionSplitsMax + cSingleDimensionBinsMax;
+
+         const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
+         if(IsMultiplyError(cBytesPerTreeNode, cTreeNodes)) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerTreeNode, cTreeNodes)");
+            return Error_OutOfMemory;
+         }
+         pBoosterCore->m_cBytesTreeNodes = cTreeNodes * cBytesPerTreeNode;
+      } else {
+         EBM_ASSERT(0 == pBoosterCore->m_cBytesSplitPositions);
+         EBM_ASSERT(0 == pBoosterCore->m_cBytesTreeNodes);
+      }
 
       if(!bClassification || ptrdiff_t { 2 } <= cClasses) {
          error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apCurrentTermTensors);
@@ -491,9 +481,6 @@ ErrorEbm BoosterCore::Create(
       }
    }
    LOG_0(Trace_Info, "BoosterCore::Create finished feature group processing");
-
-   pBoosterCore->m_cBytesSplitPositions = cBytesSplitPositionsMax;
-   pBoosterCore->m_cBytesTreeNodes = cBytesTreeNodes;
 
    error = pBoosterCore->m_trainingSet.Initialize(
       cClasses,
