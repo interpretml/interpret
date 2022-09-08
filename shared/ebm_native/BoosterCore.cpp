@@ -333,6 +333,8 @@ ErrorEbm BoosterCore::Create(
          return Error_OutOfMemory;
       }
 
+      size_t cFastBinsMax = 1; // even zero dimensions has 1 bin
+      size_t cBigBinsMax = 1; // even zero dimensions has 1 bin
       size_t cSingleDimensionBinsMax = 0;
 
       const IntEbm * piTermFeature = aiTermFeatures;
@@ -356,6 +358,9 @@ ErrorEbm BoosterCore::Create(
          // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
          pBoosterCore->m_apTerms[iTerm] = pTerm;
 
+         pTerm->SetCountAuxillaryBins(0); // we only use these for pairs, so otherwise it gets left as zero
+
+         size_t cAuxillaryBinsForBuildFastTotals = 0;
          size_t cRealDimensions = 0;
          ptrdiff_t cItemsPerBitPack = k_cItemsPerBitPackNone;
          size_t cTensorBins = 1;
@@ -397,13 +402,27 @@ ErrorEbm BoosterCore::Create(
                   // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is 
                   // otherwise indistinquishable from the original data
                   ++cRealDimensions;
+
+                  cSingleDimensionBins = cBins;
+                  
                   if(IsMultiplyError(cTensorBins, cBins)) {
                      // if this overflows, we definetly won't be able to allocate it
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cTensorStates, cBins)");
                      return Error_OutOfMemory;
                   }
+
+                  // mathematically, cTensorBins grows faster than cAuxillaryBinsForBuildFastTotals
+                  EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTensorBins);
+
+                  // since cBins must be 2 or more, cAuxillaryBinsForBuildFastTotals must grow slower than 
+                  // cTensorBins, and we checked above that cTensorBins would not overflow
+                  EBM_ASSERT(!IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins));
+
+                  cAuxillaryBinsForBuildFastTotals += cTensorBins;
                   cTensorBins *= cBins;
-                  cSingleDimensionBins = cBins;
+
+                  // same reasoning as above: cAuxillaryBinsForBuildFastTotals grows slower than cTensorBins
+                  EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTensorBins);
                } else {
                   LOG_0(Trace_Info, "INFO BoosterCore::Create feature group with no useful features");
                }
@@ -412,12 +431,30 @@ ErrorEbm BoosterCore::Create(
                ++ppFeature;
             } while(ppFeaturesEnd != ppFeature);
 
-            if(LIKELY(0 != cRealDimensions)) {
+            if(LIKELY(1 <= cRealDimensions)) {
                EBM_ASSERT(1 < cTensorBins);
 
+               cFastBinsMax = EbmMax(cFastBinsMax, cTensorBins);
+
+               size_t cTotalBinsBig = cTensorBins;
                if(1 == cRealDimensions) {
                   cSingleDimensionBinsMax = EbmMax(cSingleDimensionBinsMax, cSingleDimensionBins);
+               } else {
+                  // we only use AuxillaryBins for pairs.  We wouldn't use them for random pairs, but we
+                  // don't know yet if the caller will set the random boosting flag on all pairs, so allocate it
+
+                  // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20 at max, so we need 24
+                  constexpr size_t cAuxillaryBinsForSplitting = 24;
+                  const size_t cAuxillaryBins = EbmMax(cAuxillaryBinsForBuildFastTotals, cAuxillaryBinsForSplitting);
+                  pTerm->SetCountAuxillaryBins(cAuxillaryBins);
+
+                  if(IsAddError(cTensorBins, cAuxillaryBins)) {
+                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cTensorBins, cAuxillaryBins)");
+                     return Error_OutOfMemory;
+                  }
+                  cTotalBinsBig += cAuxillaryBins;
                }
+               cBigBinsMax = EbmMax(cBigBinsMax, cTotalBinsBig);
 
                const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
                EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
@@ -426,9 +463,24 @@ ErrorEbm BoosterCore::Create(
          }
          pTerm->SetCountRealDimensions(cRealDimensions);
          pTerm->SetBitPack(cItemsPerBitPack);
+         pTerm->SetCountTensorBins(cTensorBins);
 
          ++iTerm;
       } while(iTerm < cTerms);
+
+      const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
+      if(IsMultiplyError(cBytesPerBinFast, cFastBinsMax)) {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerBinFast, cFastBinsMax)");
+         return Error_OutOfMemory;
+      }
+      pBoosterCore->m_cBytesBinsFast = cBytesPerBinFast * cFastBinsMax;
+
+      const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
+      if(IsMultiplyError(cBytesPerBinBig, cBigBinsMax)) {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerBinBig, cBigBinsMax)");
+         return Error_OutOfMemory;
+      }
+      pBoosterCore->m_cBytesBinsBig = cBytesPerBinBig * cBigBinsMax;
 
       if(0 != cSingleDimensionBinsMax) {
          const size_t cSingleDimensionSplitsMax = cSingleDimensionBinsMax - 1;

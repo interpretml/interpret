@@ -39,15 +39,11 @@ class BoosterShell final {
    Tensor * m_pTermUpdate;
    Tensor * m_pInnerTermUpdate;
 
-   // TODO: can I preallocate m_aThreadByteBuffer1 without resorting to growing if I examine my inputs
+   // TODO: try to merge some of this memory so that we get more CPU cache residency
+   BinBase * m_aBinsFastTemp;
+   BinBase * m_aBinsBig;
 
-   BinBase * m_aThreadByteBuffer1Fast;
-   size_t m_cThreadByteBufferCapacity1Fast;
-
-   BinBase * m_aThreadByteBuffer1Big;
-   size_t m_cThreadByteBufferCapacity1Big;
-
-   // TODO: I think this can share memory with m_aThreadByteBuffer1Fast since the GradientPair always contains a FloatFast, and it always contains enough for the multiclass scores in the first bin, and we always have at least 1 bin, right?
+   // TODO: I think this can share memory with m_aBinsFastTemp since the GradientPair always contains a FloatFast, and it always contains enough for the multiclass scores in the first bin, and we always have at least 1 bin, right?
    FloatFast * m_aMulticlassMidwayTemp;
 
    void * m_aTreeNodesTemp;
@@ -73,10 +69,8 @@ public:
       m_iTerm = k_illegalTermIndex;
       m_pTermUpdate = nullptr;
       m_pInnerTermUpdate = nullptr;
-      m_aThreadByteBuffer1Fast = nullptr;
-      m_cThreadByteBufferCapacity1Fast = 0;
-      m_aThreadByteBuffer1Big = nullptr;
-      m_cThreadByteBufferCapacity1Big = 0;
+      m_aBinsFastTemp = nullptr;
+      m_aBinsBig = nullptr;
       m_aMulticlassMidwayTemp = nullptr;
       m_aTreeNodesTemp = nullptr;
       m_aSplitPositionsTemp = nullptr;
@@ -133,18 +127,14 @@ public:
       return m_pInnerTermUpdate;
    }
 
-   BinBase * GetBinBaseFast(size_t cBytesRequired);
-
    INLINE_ALWAYS BinBase * GetBinBaseFast() {
       // call this if the bins were already allocated and we just need the pointer
-      return m_aThreadByteBuffer1Fast;
+      return m_aBinsFastTemp;
    }
-
-   BinBase * GetBinBaseBig(size_t cBytesRequired);
 
    INLINE_ALWAYS BinBase * GetBinBaseBig() {
       // call this if the bins were already allocated and we just need the pointer
-      return m_aThreadByteBuffer1Big;
+      return m_aBinsBig;
    }
 
    INLINE_ALWAYS FloatFast * GetMulticlassMidwayTemp() {

@@ -90,7 +90,7 @@ extern ErrorEbm PartitionRandomBoosting(
    double * const pTotalGain
 );
 
-static ErrorEbm BoostZeroDimensional(
+static void BoostZeroDimensional(
    BoosterShell * const pBoosterShell, 
    const InnerBag * const pInnerBag,
    const BoostFlags flags
@@ -106,33 +106,23 @@ static ErrorEbm BoostZeroDimensional(
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster
    const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
 
-   BinBase * const pBinFast = pBoosterShell->GetBinBaseFast(cBytesPerBinFast);
-   if(UNLIKELY(nullptr == pBinFast)) {
-      // already logged
-      return Error_OutOfMemory;
-   }
+   BinBase * const pBinFast = pBoosterShell->GetBinBaseFast();
+   EBM_ASSERT(nullptr != pBinFast);
+
    pBinFast->Zero(cBytesPerBinFast);
 
 #ifndef NDEBUG
    pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(pBinFast) + cBytesPerBinFast);
 #endif // NDEBUG
 
-   BinSumsBoosting(
-      pBoosterShell,
-      BoosterShell::k_illegalTermIndex,
-      pInnerBag
-   );
+   BinSumsBoosting(pBoosterShell, BoosterShell::k_illegalTermIndex, pInnerBag);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster
-   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
-
-   BinBase * const pBinBig = pBoosterShell->GetBinBaseBig(cBytesPerBinBig);
-   if(UNLIKELY(nullptr == pBinBig)) {
-      // already logged
-      return Error_OutOfMemory;
-   }
+   BinBase * const pBinBig = pBoosterShell->GetBinBaseBig();
+   EBM_ASSERT(nullptr != pBinBig);
 
 #ifndef NDEBUG
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
    pBoosterShell->SetBinsBigEndDebug(reinterpret_cast<unsigned char *>(pBinBig) + cBytesPerBinBig);
 #endif // NDEBUG
 
@@ -181,7 +171,6 @@ static ErrorEbm BoostZeroDimensional(
    }
 
    LOG_0(Trace_Verbose, "Exited BoostZeroDimensional");
-   return Error_None;
 }
 
 static ErrorEbm BoostSingleDimensional(
@@ -199,7 +188,6 @@ static ErrorEbm BoostSingleDimensional(
 
    LOG_0(Trace_Verbose, "Entered BoostSingleDimensional");
 
-
    EBM_ASSERT(IntEbm { 2 } <= countLeavesMax); // otherwise we would have called BoostZeroDimensional
    size_t cLeavesMax = static_cast<size_t>(countLeavesMax);
    if(IsConvertError<size_t>(countLeavesMax)) {
@@ -212,6 +200,8 @@ static ErrorEbm BoostSingleDimensional(
 
    EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
    EBM_ASSERT(1 == pBoosterCore->GetTerms()[iTerm]->GetCountRealDimensions());
+   EBM_ASSERT(cBins == pBoosterCore->GetTerms()[iTerm]->GetCountTensorBins());
+   EBM_ASSERT(0 == pBoosterCore->GetTerms()[iTerm]->GetCountAuxillaryBins());
 
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
    const bool bClassification = IsClassification(cClasses);
@@ -219,46 +209,28 @@ static ErrorEbm BoostSingleDimensional(
 
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster
    const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
-   if(IsMultiplyError(cBytesPerBinFast, cBins)) {
-      // TODO : move this to initialization where we execute it only once
-      LOG_0(Trace_Warning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerBinFast, cBins)");
-      return Error_OutOfMemory;
-   }
+   EBM_ASSERT(!IsMultiplyError(cBytesPerBinFast, cBins));
    const size_t cBytesBufferFast = cBytesPerBinFast * cBins;
 
-   BinBase * const aBinsFast = pBoosterShell->GetBinBaseFast(cBytesBufferFast);
-   if(UNLIKELY(nullptr == aBinsFast)) {
-      // already logged
-      return Error_OutOfMemory;
-   }
+   BinBase * const aBinsFast = pBoosterShell->GetBinBaseFast();
+   EBM_ASSERT(nullptr != aBinsFast);
+
    aBinsFast->Zero(cBytesPerBinFast, cBins);
 
 #ifndef NDEBUG
    pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast);
 #endif // NDEBUG
 
-   BinSumsBoosting(
-      pBoosterShell,
-      iTerm,
-      pInnerBag
-   );
+   BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
-   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
-   if(IsMultiplyError(cBytesPerBinBig, cBins)) {
-      // TODO : move this to initialization where we execute it only once
-      LOG_0(Trace_Warning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerBinBig, cBins)");
-      return Error_OutOfMemory;
-   }
-   const size_t cBytesBufferBig = cBytesPerBinBig * cBins;
-
-   BinBase * const aBinsBig = pBoosterShell->GetBinBaseBig(cBytesBufferBig);
-   if(UNLIKELY(nullptr == aBinsBig)) {
-      // already logged
-      return Error_OutOfMemory;
-   }
+   BinBase * const aBinsBig = pBoosterShell->GetBinBaseBig();
+   EBM_ASSERT(nullptr != aBinsBig);
 
 #ifndef NDEBUG
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
+   EBM_ASSERT(!IsMultiplyError(cBytesPerBinBig, cBins));
+   const size_t cBytesBufferBig = cBytesPerBinBig * cBins;
    pBoosterShell->SetBinsBigEndDebug(reinterpret_cast<unsigned char *>(aBinsBig) + cBytesBufferBig);
 #endif // NDEBUG
 
@@ -310,8 +282,7 @@ static ErrorEbm BoostMultiDimensional(
 
    ErrorEbm error;
 
-   size_t cAuxillaryBinsForBuildFastTotals = 0;
-   size_t cTensorBins = 1;
+   const size_t cTensorBins = pTerm->GetCountTensorBins();
 
    size_t acBins[k_cDimensionsMax];
    size_t * pcBins = acBins;
@@ -325,18 +296,6 @@ static ErrorEbm BoostMultiDimensional(
       if(size_t { 1 } < cBins) {
          *pcBins = cBins;
          ++pcBins;
-
-         // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins) at runtime
-         EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTensorBins);
-         // since cBins must be 2 or more, cAuxillaryBinsForBuildFastTotals must grow slower than cTensorBins, and we checked at 
-         // allocation that cTensorBins would not overflow
-         EBM_ASSERT(!IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins));
-         cAuxillaryBinsForBuildFastTotals += cTensorBins;
-         // we check for simple multiplication overflow from m_cBins in pBoosterCore->Initialize when we unpack featureIndexes
-         EBM_ASSERT(!IsMultiplyError(cTensorBins, cBins));
-         cTensorBins *= cBins;
-         // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins) at runtime
-         EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTensorBins);
       }
       ++ppFeature;
    } while(ppFeaturesEnd != ppFeature);
@@ -347,18 +306,12 @@ static ErrorEbm BoostMultiDimensional(
 
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster 
    const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
-   if(IsMultiplyError(cBytesPerBinFast, cTensorBins)) {
-      LOG_0(Trace_Warning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerBinFast, cTensorBins)");
-      return Error_OutOfMemory;
-   }
+   EBM_ASSERT(!IsMultiplyError(cBytesPerBinFast, cTensorBins));
    const size_t cBytesBufferFast = cBytesPerBinFast * cTensorBins;
 
-   // we don't need to free this!  It's tracked and reused by pBoosterShell
-   BinBase * const aBinsFast = pBoosterShell->GetBinBaseFast(cBytesBufferFast);
-   if(UNLIKELY(nullptr == aBinsFast)) {
-      // already logged
-      return Error_OutOfMemory;
-   }
+   BinBase * const aBinsFast = pBoosterShell->GetBinBaseFast();
+   EBM_ASSERT(nullptr != aBinsFast);
+   
    aBinsFast->Zero(cBytesPerBinFast, cTensorBins);
 
 #ifndef NDEBUG
@@ -367,32 +320,21 @@ static ErrorEbm BoostMultiDimensional(
 
    BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
 
-   // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20 at max, so we need 24
-   constexpr size_t cAuxillaryBinsForSplitting = 24;
-   const size_t cAuxillaryBins = EbmMax(cAuxillaryBinsForBuildFastTotals, cAuxillaryBinsForSplitting);
-
-   if(IsAddError(cTensorBins, cAuxillaryBins)) {
-      LOG_0(Trace_Warning, "WARNING BoostMultiDimensional IsAddError(cTensorBins, cAuxillaryBins)");
-      return Error_OutOfMemory;
-   }
+   const size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
+   EBM_ASSERT(!IsAddError(cTensorBins, cAuxillaryBins));
    const size_t cTotalBinsBig = cTensorBins + cAuxillaryBins;
 
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
    const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
-   if(IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)) {
-      LOG_0(Trace_Warning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)");
-      return Error_OutOfMemory;
-   }
-   const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBinsBig;
+
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
-   BinBase * const aBinsBig = pBoosterShell->GetBinBaseBig(cBytesBufferBig);
-   if(UNLIKELY(nullptr == aBinsBig)) {
-      // already logged
-      return Error_OutOfMemory;
-   }
+   BinBase * const aBinsBig = pBoosterShell->GetBinBaseBig();
+   EBM_ASSERT(nullptr != aBinsBig);
 
 #ifndef NDEBUG
+   EBM_ASSERT(!IsMultiplyError(cBytesPerBinBig, cTotalBinsBig));
+   const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBinsBig;
    const unsigned char * const pBinsBigEndDebug = reinterpret_cast<unsigned char *>(aBinsBig) + cBytesBufferBig;
    pBoosterShell->SetBinsBigEndDebug(pBinsBigEndDebug);
 #endif // NDEBUG
@@ -596,14 +538,7 @@ static ErrorEbm BoostRandom(
    const size_t cDimensions = pTerm->GetCountDimensions();
    EBM_ASSERT(1 <= cDimensions);
 
-   size_t cTotalBins = 1;
-   for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      const size_t cBins = pTerm->GetFeatures()[iDimension]->GetCountBins();
-      EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
-      // we check for simple multiplication overflow from m_cBins in BoosterCore::Initialize when we unpack featureIndexes
-      EBM_ASSERT(!IsMultiplyError(cTotalBins, cBins));
-      cTotalBins *= cBins;
-   }
+   size_t cTotalBins = pTerm->GetCountTensorBins();
 
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
    const bool bClassification = IsClassification(cClasses);
@@ -611,46 +546,28 @@ static ErrorEbm BoostRandom(
 
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster 
    const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
-   if(IsMultiplyError(cBytesPerBinFast, cTotalBins)) {
-      LOG_0(Trace_Warning, "WARNING BoostRandom IsMultiplyError(cBytesPerBinFast, cTotalBins)");
-      return Error_OutOfMemory;
-   }
+   EBM_ASSERT(!IsMultiplyError(cBytesPerBinFast, cTotalBins));
    const size_t cBytesBufferFast = cBytesPerBinFast * cTotalBins;
 
-   // we don't need to free this!  It's tracked and reused by pBoosterShell
-   BinBase * const aBinsFast = pBoosterShell->GetBinBaseFast(cBytesBufferFast);
-   if(UNLIKELY(nullptr == aBinsFast)) {
-      // already logged
-      return Error_OutOfMemory;
-   }
+   BinBase * const aBinsFast = pBoosterShell->GetBinBaseFast();
+   EBM_ASSERT(nullptr != aBinsFast);
+
    aBinsFast->Zero(cBytesPerBinFast, cTotalBins);
 
 #ifndef NDEBUG
    pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast);
 #endif // NDEBUG
 
-   BinSumsBoosting(
-      pBoosterShell,
-      iTerm,
-      pInnerBag
-   );
+   BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
-   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
-   if(IsMultiplyError(cBytesPerBinBig, cTotalBins)) {
-      LOG_0(Trace_Warning, "WARNING BoostRandom IsMultiplyError(cBytesPerBinBig, cTotalBins)");
-      return Error_OutOfMemory;
-   }
-   const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBins;
-
-   // we don't need to free this!  It's tracked and reused by pBoosterShell
-   BinBase * const aBinsBig = pBoosterShell->GetBinBaseBig(cBytesBufferBig);
-   if(UNLIKELY(nullptr == aBinsBig)) {
-      // already logged
-      return Error_OutOfMemory;
-   }
+   BinBase * const aBinsBig = pBoosterShell->GetBinBaseBig();
+   EBM_ASSERT(nullptr != aBinsBig);
 
 #ifndef NDEBUG
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
+   EBM_ASSERT(!IsMultiplyError(cBytesPerBinBig, cTotalBins));
+   const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBins;
    pBoosterShell->SetBinsBigEndDebug(reinterpret_cast<unsigned char *>(aBinsBig) + cBytesBufferBig);
 #endif // NDEBUG
 
@@ -903,10 +820,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          const InnerBag * const pInnerBag = *ppInnerBag;
          if(UNLIKELY(IntEbm { 0 } == lastDimensionLeavesMax)) {
             LOG_0(Trace_Warning, "WARNING GenerateTermUpdate boosting zero dimensional");
-            error = BoostZeroDimensional(pBoosterShell, pInnerBag, flags);
-            if(Error_None != error) {
-               return error;
-            }
+            BoostZeroDimensional(pBoosterShell, pInnerBag, flags);
          } else {
             double gain;
             if(0 != (BoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {

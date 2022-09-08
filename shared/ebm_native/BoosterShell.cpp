@@ -35,11 +35,11 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
    if(nullptr != pBoosterShell) {
       Tensor::Free(pBoosterShell->m_pTermUpdate);
       Tensor::Free(pBoosterShell->m_pInnerTermUpdate);
-      free(pBoosterShell->m_aThreadByteBuffer1Fast);
-      free(pBoosterShell->m_aThreadByteBuffer1Big);
-      free(pBoosterShell->m_aTreeNodesTemp);
+      free(pBoosterShell->m_aBinsFastTemp);
+      free(pBoosterShell->m_aBinsBig);
       free(pBoosterShell->m_aMulticlassMidwayTemp);
       free(pBoosterShell->m_aSplitPositionsTemp);
+      free(pBoosterShell->m_aTreeNodesTemp);
       BoosterCore::Free(pBoosterShell->m_pBoosterCore);
 
       // before we free our memory, indicate it was freed so if our higher level language attempts to use it we have
@@ -83,6 +83,20 @@ ErrorEbm BoosterShell::FillAllocations() {
       goto failed_allocation;
    }
 
+   if(0 != m_pBoosterCore->GetCountBytesBinsFast()) {
+      m_aBinsFastTemp = static_cast<BinBase *>(EbmMalloc<void>(m_pBoosterCore->GetCountBytesBinsFast()));
+      if(nullptr == m_aBinsFastTemp) {
+         goto failed_allocation;
+      }
+   }
+
+   if(0 != m_pBoosterCore->GetCountBytesBinsBig()) {
+      m_aBinsBig = static_cast<BinBase *>(EbmMalloc<void>(m_pBoosterCore->GetCountBytesBinsBig()));
+      if(nullptr == m_aBinsBig) {
+         goto failed_allocation;
+      }
+   }
+
    m_aMulticlassMidwayTemp = EbmMalloc<FloatFast>(cScores);
    if(nullptr == m_aMulticlassMidwayTemp) {
       goto failed_allocation;
@@ -108,40 +122,6 @@ ErrorEbm BoosterShell::FillAllocations() {
 failed_allocation:;
    LOG_0(Trace_Warning, "WARNING Exited BoosterShell::FillAllocations with allocation failure");
    return Error_OutOfMemory;
-}
-
-BinBase * BoosterShell::GetBinBaseFast(size_t cBytesRequired) {
-   BinBase * aBuffer = m_aThreadByteBuffer1Fast;
-   if(UNLIKELY(m_cThreadByteBufferCapacity1Fast < cBytesRequired)) {
-      cBytesRequired <<= 1;
-      m_cThreadByteBufferCapacity1Fast = cBytesRequired;
-      LOG_N(Trace_Info, "Growing BoosterShell::ThreadByteBuffer1Fast to %zu", cBytesRequired);
-
-      free(aBuffer);
-      aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
-      m_aThreadByteBuffer1Fast = aBuffer; // store it before checking it incase it's null so that we don't free old memory
-      if(nullptr == aBuffer) {
-         LOG_0(Trace_Warning, "WARNING BoosterShell::GetBinBaseFast OutOfMemory");
-      }
-   }
-   return aBuffer;
-}
-
-BinBase * BoosterShell::GetBinBaseBig(size_t cBytesRequired) {
-   BinBase * aBuffer = m_aThreadByteBuffer1Big;
-   if(UNLIKELY(m_cThreadByteBufferCapacity1Big < cBytesRequired)) {
-      cBytesRequired <<= 1;
-      m_cThreadByteBufferCapacity1Big = cBytesRequired;
-      LOG_N(Trace_Info, "Growing BoosterShell::ThreadByteBuffer1Big to %zu", cBytesRequired);
-
-      free(aBuffer);
-      aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
-      m_aThreadByteBuffer1Big = aBuffer; // store it before checking it incase it's null so that we don't free old memory
-      if(nullptr == aBuffer) {
-         LOG_0(Trace_Warning, "WARNING BoosterShell::GetBinBaseBig OutOfMemory");
-      }
-   }
-   return aBuffer;
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(

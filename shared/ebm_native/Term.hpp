@@ -24,6 +24,8 @@ class Term final {
    ptrdiff_t m_cItemsPerBitPack;
    size_t m_cDimensions;
    size_t m_cRealDimensions;
+   size_t m_cTensorBins;
+   size_t m_cAuxillaryBins;
    int m_cLogEnterGenerateTermUpdateMessages;
    int m_cLogExitGenerateTermUpdateMessages;
    int m_cLogEnterApplyTermUpdateMessages;
@@ -82,6 +84,22 @@ public:
 
    INLINE_ALWAYS void SetCountRealDimensions(const size_t cRealDimensions) noexcept {
       m_cRealDimensions = cRealDimensions;
+   }
+
+   INLINE_ALWAYS size_t GetCountTensorBins() const noexcept {
+      return m_cTensorBins;
+   }
+
+   INLINE_ALWAYS void SetCountTensorBins(const size_t cTensorBins) noexcept {
+      m_cTensorBins = cTensorBins;
+   }
+
+   INLINE_ALWAYS size_t GetCountAuxillaryBins() const noexcept {
+      return m_cAuxillaryBins;
+   }
+
+   INLINE_ALWAYS void SetCountAuxillaryBins(const size_t cAuxillaryBins) noexcept {
+      m_cAuxillaryBins = cAuxillaryBins;
    }
 
    INLINE_ALWAYS const Feature * const * GetFeatures() const noexcept {
