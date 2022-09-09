@@ -46,7 +46,7 @@ static FloatBig SweepMultiDimensional(
    Bin<FloatBig, IsClassification(cCompilerClasses)> * const pBinBestAndTemp,
    size_t * const piBestSplit
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBinsDebugCopy
+   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -101,7 +101,7 @@ static FloatBig SweepMultiDimensional(
          directionVectorLow,
          pTotalsLow
 #ifndef NDEBUG
-         , aBinsDebugCopy
+         , aDebugCopyBins
          , pBinsEndDebug
 #endif // NDEBUG
          );
@@ -116,7 +116,7 @@ static FloatBig SweepMultiDimensional(
             directionVectorHigh,
             pTotalsHigh
 #ifndef NDEBUG
-            , aBinsDebugCopy
+            , aDebugCopyBins
             , pBinsEndDebug
 #endif // NDEBUG
          );
@@ -184,10 +184,10 @@ public:
       const Term * const pTerm,
       const size_t * const acBins,
       const size_t cSamplesLeafMin,
-      BinBase * aAuxiliaryBinsBase,
+      BinBase * const aAuxiliaryBinsBase,
       double * const pTotalGain
 #ifndef NDEBUG
-      , const BinBase * const aBinsBaseDebugCopy
+      , const BinBase * const aDebugCopyBinsBase
 #endif // NDEBUG
    ) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
@@ -195,7 +195,7 @@ public:
       ErrorEbm error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-      BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
+      auto * const aBins = pBoosterShell->GetBigBins()->Specialize<FloatBig, bClassification>();
       Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
@@ -205,11 +205,10 @@ public:
       const size_t cScores = GetCountScores(cClasses);
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-      auto * aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification>();
-      auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
+      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification>();
 
 #ifndef NDEBUG
-      const auto * const aBinsDebugCopy = aBinsBaseDebugCopy->Specialize<FloatBig, bClassification>();
+      const auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification>();
 #endif // NDEBUG
 
       size_t aiStart[k_cDimensionsMax];
@@ -276,8 +275,8 @@ public:
             pTotals2LowLowBest,
             &splitSecond1LowBest
 #ifndef NDEBUG
-            , aBinsDebugCopy
-            , pBoosterShell->GetBinsBigEndDebug()
+            , aDebugCopyBins
+            , pBoosterShell->GetDebugBigBinsEnd()
 #endif // NDEBUG
             );
 
@@ -300,8 +299,8 @@ public:
                pTotals2HighLowBest,
                &splitSecond1HighBest
 #ifndef NDEBUG
-               , aBinsDebugCopy
-               , pBoosterShell->GetBinsBigEndDebug()
+               , aDebugCopyBins
+               , pBoosterShell->GetDebugBigBinsEnd()
 #endif // NDEBUG
                );
 
@@ -369,8 +368,8 @@ public:
             pTotals1LowLowBestInner,
             &splitSecond2LowBest
 #ifndef NDEBUG
-            , aBinsDebugCopy
-            , pBoosterShell->GetBinsBigEndDebug()
+            , aDebugCopyBins
+            , pBoosterShell->GetDebugBigBinsEnd()
 #endif // NDEBUG
             );
 
@@ -393,8 +392,8 @@ public:
                pTotals1HighLowBestInner,
                &splitSecond2HighBest
 #ifndef NDEBUG
-               , aBinsDebugCopy
-               , pBoosterShell->GetBinsBigEndDebug()
+               , aDebugCopyBins
+               , pBoosterShell->GetDebugBigBinsEnd()
 #endif // NDEBUG
                );
 
@@ -435,13 +434,11 @@ public:
 
       EBM_ASSERT(std::isnan(bestGain) || k_illegalGainFloat == bestGain || 0 <= bestGain);
 
-      // the bin before the aAuxiliaryBinsBase is the last summation bin of aBinsBase, 
+      // the bin before the aAuxiliaryBins is the last summation bin of aBinsBase, 
       // which contains the totals of all bins
-      const auto * const pTotal =
-         reinterpret_cast<const Bin<FloatBig, bClassification> *>(
-            reinterpret_cast<const char *>(aAuxiliaryBinsBase) - cBytesPerBin);
+      const auto * const pTotal = NegativeIndexBin(aAuxiliaryBins, cBytesPerBin);
 
-      ASSERT_BIN_OK(cBytesPerBin, pTotal, pBoosterShell->GetBinsBigEndDebug());
+      ASSERT_BIN_OK(cBytesPerBin, pTotal, pBoosterShell->GetDebugBigBinsEnd());
 
       const auto * const pGradientPairTotal = pTotal->GetGradientPairs();
 
@@ -791,7 +788,7 @@ public:
       BinBase * aAuxiliaryBinsBase,
       double * const pTotalGain
 #ifndef NDEBUG
-      , const BinBase * const aBinsBaseDebugCopy
+      , const BinBase * const aDebugCopyBinsBase
 #endif // NDEBUG
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
@@ -811,7 +808,7 @@ public:
             aAuxiliaryBinsBase,
             pTotalGain
 #ifndef NDEBUG
-            , aBinsBaseDebugCopy
+            , aDebugCopyBinsBase
 #endif // NDEBUG
          );
       } else {
@@ -823,7 +820,7 @@ public:
             aAuxiliaryBinsBase,
             pTotalGain
 #ifndef NDEBUG
-            , aBinsBaseDebugCopy
+            , aDebugCopyBinsBase
 #endif // NDEBUG
          );
       }
@@ -844,7 +841,7 @@ public:
       BinBase * aAuxiliaryBinsBase,
       double * const pTotalGain
 #ifndef NDEBUG
-      , const BinBase * const aBinsBaseDebugCopy
+      , const BinBase * const aDebugCopyBinsBase
 #endif // NDEBUG
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
@@ -860,7 +857,7 @@ public:
          aAuxiliaryBinsBase,
          pTotalGain
 #ifndef NDEBUG
-         , aBinsBaseDebugCopy
+         , aDebugCopyBinsBase
 #endif // NDEBUG
       );
    }
@@ -874,7 +871,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(
    BinBase * aAuxiliaryBinsBase,
    double * const pTotalGain
 #ifndef NDEBUG
-   , const BinBase * const aBinsBaseDebugCopy
+   , const BinBase * const aDebugCopyBinsBase
 #endif // NDEBUG
 ) {
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -889,7 +886,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(
          aAuxiliaryBinsBase,
          pTotalGain
 #ifndef NDEBUG
-         , aBinsBaseDebugCopy
+         , aDebugCopyBinsBase
 #endif // NDEBUG
       );
    } else {
@@ -902,7 +899,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(
          aAuxiliaryBinsBase,
          pTotalGain
 #ifndef NDEBUG
-         , aBinsBaseDebugCopy
+         , aDebugCopyBinsBase
 #endif // NDEBUG
       );
    }

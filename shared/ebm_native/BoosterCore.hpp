@@ -60,8 +60,8 @@ class BoosterCore final {
 
    double m_bestModelMetric;
 
-   size_t m_cBytesBinsFast;
-   size_t m_cBytesBinsBig;
+   size_t m_cBytesFastBins;
+   size_t m_cBytesBigBins;
 
    size_t m_cBytesSplitPositions;
    size_t m_cBytesTreeNodes;
@@ -111,8 +111,8 @@ class BoosterCore final {
       m_apCurrentTermTensors(nullptr),
       m_apBestTermTensors(nullptr),
       m_bestModelMetric(0),
-      m_cBytesBinsFast(0),
-      m_cBytesBinsBig(0),
+      m_cBytesFastBins(0),
+      m_cBytesBigBins(0),
       m_cBytesSplitPositions(0),
       m_cBytesTreeNodes(0)
    {
@@ -134,12 +134,12 @@ public:
       return m_cClasses;
    }
 
-   INLINE_ALWAYS size_t GetCountBytesBinsFast() const {
-      return m_cBytesBinsFast;
+   INLINE_ALWAYS size_t GetCountBytesFastBins() const {
+      return m_cBytesFastBins;
    }
 
-   INLINE_ALWAYS size_t GetCountBytesBinsBig() const {
-      return m_cBytesBinsBig;
+   INLINE_ALWAYS size_t GetCountBytesBigBins() const {
+      return m_cBytesBigBins;
    }
 
    INLINE_ALWAYS size_t GetCountBytesSplitPositions() const {

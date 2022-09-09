@@ -52,7 +52,7 @@ extern void TensorTotalsBuild(
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
 #ifndef NDEBUG
-   , BinBase * const aBinsBaseDebugCopy
+   , BinBase * const aDebugCopyBinsBase
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 );
@@ -77,7 +77,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(
    BinBase * aAuxiliaryBinsBase,
    double * const pTotalGain
 #ifndef NDEBUG
-   , const BinBase * const aBinsBaseDebugCopy
+   , const BinBase * const aDebugCopyBinsBase
 #endif // NDEBUG
 );
 
@@ -104,32 +104,32 @@ static void BoostZeroDimensional(
    const size_t cScores = GetCountScores(cClasses);
 
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster
-   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
+   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
 
-   BinBase * const pBinFast = pBoosterShell->GetBinBaseFast();
-   EBM_ASSERT(nullptr != pBinFast);
+   BinBase * const pFastBin = pBoosterShell->GetFastBinsTemp();
+   EBM_ASSERT(nullptr != pFastBin);
 
-   pBinFast->Zero(cBytesPerBinFast);
+   pFastBin->Zero(cBytesPerFastBin);
 
 #ifndef NDEBUG
-   pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(pBinFast) + cBytesPerBinFast);
+   pBoosterShell->SetDebugFastBinsEnd(reinterpret_cast<unsigned char *>(pFastBin) + cBytesPerFastBin);
 #endif // NDEBUG
 
    BinSumsBoosting(pBoosterShell, BoosterShell::k_illegalTermIndex, pInnerBag);
 
-   BinBase * const pBinBig = pBoosterShell->GetBinBaseBig();
-   EBM_ASSERT(nullptr != pBinBig);
+   BinBase * const pBigBin = pBoosterShell->GetBigBins();
+   EBM_ASSERT(nullptr != pBigBin);
 
 #ifndef NDEBUG
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster
-   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
-   pBoosterShell->SetBinsBigEndDebug(reinterpret_cast<unsigned char *>(pBinBig) + cBytesPerBinBig);
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
+   pBoosterShell->SetDebugBigBinsEnd(reinterpret_cast<unsigned char *>(pBigBin) + cBytesPerBigBin);
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
    static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
-   EBM_ASSERT(cBytesPerBinFast == cBytesPerBinBig); // until we switch fast to float datatypes
-   memcpy(pBinBig, pBinFast, cBytesPerBinFast);
+   EBM_ASSERT(cBytesPerFastBin == cBytesPerBigBin); // until we switch fast to float datatypes
+   memcpy(pBigBin, pFastBin, cBytesPerFastBin);
 
 
    // TODO: we can exit here back to python to allow caller modification to our histograms
@@ -138,7 +138,7 @@ static void BoostZeroDimensional(
    Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
    FloatFast * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
    if(bClassification) {
-      const auto * const pBin = pBinBig->Specialize<FloatBig, true>();
+      const auto * const pBin = pBigBin->Specialize<FloatBig, true>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (BoostFlags_GradientSums & flags)) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
@@ -156,7 +156,7 @@ static void BoostZeroDimensional(
       }
    } else {
       EBM_ASSERT(IsRegression(cClasses));
-      const auto * const pBin = pBinBig->Specialize<FloatBig, false>();
+      const auto * const pBin = pBigBin->Specialize<FloatBig, false>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (BoostFlags_GradientSums & flags)) {
          const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aGradientPairs[0].m_sumGradients);
@@ -208,36 +208,34 @@ static ErrorEbm BoostSingleDimensional(
    const size_t cScores = GetCountScores(cClasses);
 
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster
-   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
-   EBM_ASSERT(!IsMultiplyError(cBytesPerBinFast, cBins));
-   const size_t cBytesBufferFast = cBytesPerBinFast * cBins;
+   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
+   EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cBins));
 
-   BinBase * const aBinsFast = pBoosterShell->GetBinBaseFast();
-   EBM_ASSERT(nullptr != aBinsFast);
+   BinBase * const aFastBins = pBoosterShell->GetFastBinsTemp();
+   EBM_ASSERT(nullptr != aFastBins);
 
-   aBinsFast->Zero(cBytesPerBinFast, cBins);
+   aFastBins->Zero(cBytesPerFastBin, cBins);
 
 #ifndef NDEBUG
-   pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast);
+   pBoosterShell->SetDebugFastBinsEnd(reinterpret_cast<unsigned char *>(aFastBins) + cBytesPerFastBin * cBins);
 #endif // NDEBUG
 
    BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
 
-   BinBase * const aBinsBig = pBoosterShell->GetBinBaseBig();
-   EBM_ASSERT(nullptr != aBinsBig);
+   BinBase * const aBigBins = pBoosterShell->GetBigBins();
+   EBM_ASSERT(nullptr != aBigBins);
 
 #ifndef NDEBUG
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
-   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
-   EBM_ASSERT(!IsMultiplyError(cBytesPerBinBig, cBins));
-   const size_t cBytesBufferBig = cBytesPerBinBig * cBins;
-   pBoosterShell->SetBinsBigEndDebug(reinterpret_cast<unsigned char *>(aBinsBig) + cBytesBufferBig);
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
+   EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cBins));
+   pBoosterShell->SetDebugBigBinsEnd(reinterpret_cast<unsigned char *>(aBigBins) + cBytesPerBigBin * cBins);
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
    static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
-   EBM_ASSERT(cBytesBufferFast == cBytesBufferBig); // until we switch fast to float datatypes
-   memcpy(aBinsBig, aBinsFast, cBytesBufferFast);
+   EBM_ASSERT(cBytesPerFastBin == cBytesPerBigBin); // until we switch fast to float datatypes
+   memcpy(aBigBins, aFastBins, cBytesPerFastBin * cBins);
 
 
    // TODO: we can exit here back to python to allow caller modification to our histograms
@@ -305,47 +303,46 @@ static ErrorEbm BoostMultiDimensional(
    const size_t cScores = GetCountScores(cClasses);
 
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster 
-   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
-   EBM_ASSERT(!IsMultiplyError(cBytesPerBinFast, cTensorBins));
-   const size_t cBytesBufferFast = cBytesPerBinFast * cTensorBins;
+   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
+   EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTensorBins));
 
-   BinBase * const aBinsFast = pBoosterShell->GetBinBaseFast();
-   EBM_ASSERT(nullptr != aBinsFast);
+   BinBase * const aFastBins = pBoosterShell->GetFastBinsTemp();
+   EBM_ASSERT(nullptr != aFastBins);
    
-   aBinsFast->Zero(cBytesPerBinFast, cTensorBins);
+   aFastBins->Zero(cBytesPerFastBin, cTensorBins);
 
 #ifndef NDEBUG
-   pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast);
+   pBoosterShell->SetDebugFastBinsEnd(reinterpret_cast<unsigned char *>(aFastBins) + cBytesPerFastBin * cTensorBins);
 #endif // NDEBUG
 
    BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
 
    const size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
    EBM_ASSERT(!IsAddError(cTensorBins, cAuxillaryBins));
-   const size_t cTotalBinsBig = cTensorBins + cAuxillaryBins;
+   const size_t cTotalBigBins = cTensorBins + cAuxillaryBins;
 
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
-   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
 
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
-   BinBase * const aBinsBig = pBoosterShell->GetBinBaseBig();
-   EBM_ASSERT(nullptr != aBinsBig);
+   BinBase * const aBigBins = pBoosterShell->GetBigBins();
+   EBM_ASSERT(nullptr != aBigBins);
 
 #ifndef NDEBUG
-   EBM_ASSERT(!IsMultiplyError(cBytesPerBinBig, cTotalBinsBig));
-   const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBinsBig;
-   const unsigned char * const pBinsBigEndDebug = reinterpret_cast<unsigned char *>(aBinsBig) + cBytesBufferBig;
-   pBoosterShell->SetBinsBigEndDebug(pBinsBigEndDebug);
+   EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTotalBigBins));
+   const unsigned char * const pDebugBigBinsEnd = 
+      reinterpret_cast<unsigned char *>(aBigBins) + cBytesPerBigBin * cTotalBigBins;
+   pBoosterShell->SetDebugBigBinsEnd(pDebugBigBinsEnd);
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
    static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
-   memcpy(aBinsBig, aBinsFast, cBytesBufferFast);
+   memcpy(aBigBins, aFastBins, cBytesPerFastBin * cTensorBins);
 
 
    // we also need to zero the auxillary bins
-   aBinsBig->Zero(cBytesPerBinBig, cAuxillaryBins, cTensorBins);
+   aBigBins->Zero(cBytesPerBigBin, cAuxillaryBins, cTensorBins);
 
 
    // TODO: we can exit here back to python to allow caller modification to our histograms
@@ -354,25 +351,24 @@ static ErrorEbm BoostMultiDimensional(
 #ifndef NDEBUG
    // make a copy of the original bins for debugging purposes
 
-   BinBase * const aBinsDebugCopy = EbmMalloc<BinBase>(cTensorBins, cBytesPerBinBig);
-   if(nullptr != aBinsDebugCopy) {
+   BinBase * const aDebugCopyBins = EbmMalloc<BinBase>(cTensorBins, cBytesPerBigBin);
+   if(nullptr != aDebugCopyBins) {
       // if we can't allocate, don't fail.. just stop checking
-      const size_t cBytesBufferDebug = cTensorBins * cBytesPerBinBig;
-      memcpy(aBinsDebugCopy, aBinsBig, cBytesBufferDebug);
+      memcpy(aDebugCopyBins, aBigBins, cTensorBins * cBytesPerBigBin);
    }
 #endif // NDEBUG
 
-   BinBase * aAuxiliaryBins = IndexBin(aBinsBig, cBytesPerBinBig * cTensorBins);
+   BinBase * aAuxiliaryBins = IndexBin(aBigBins, cBytesPerBigBin * cTensorBins);
 
    TensorTotalsBuild(
       cClasses,
       pTerm->GetCountRealDimensions(),
       acBins,
       aAuxiliaryBins,
-      aBinsBig
+      aBigBins
 #ifndef NDEBUG
-      , aBinsDebugCopy
-      , pBinsBigEndDebug
+      , aDebugCopyBins
+      , pDebugBigBinsEnd
 #endif // NDEBUG
    );
 
@@ -481,12 +477,12 @@ static ErrorEbm BoostMultiDimensional(
          aAuxiliaryBins,
          pTotalGain
 #ifndef NDEBUG
-         , aBinsDebugCopy
+         , aDebugCopyBins
 #endif // NDEBUG
       );
       if(Error_None != error) {
 #ifndef NDEBUG
-         free(aBinsDebugCopy);
+         free(aDebugCopyBins);
 #endif // NDEBUG
 
          LOG_0(Trace_Verbose, "Exited BoostMultiDimensional with Error code");
@@ -503,13 +499,13 @@ static ErrorEbm BoostMultiDimensional(
       //       then we can replace this branch with an assert
 #ifndef NDEBUG
       EBM_ASSERT(false);
-      free(aBinsDebugCopy);
+      free(aDebugCopyBins);
 #endif // NDEBUG
       return Error_UnexpectedInternal;
    }
 
 #ifndef NDEBUG
-   free(aBinsDebugCopy);
+   free(aDebugCopyBins);
 #endif // NDEBUG
 
    LOG_0(Trace_Verbose, "Exited BoostMultiDimensional");
@@ -545,36 +541,35 @@ static ErrorEbm BoostRandom(
    const size_t cScores = GetCountScores(cClasses);
 
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster 
-   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
-   EBM_ASSERT(!IsMultiplyError(cBytesPerBinFast, cTotalBins));
-   const size_t cBytesBufferFast = cBytesPerBinFast * cTotalBins;
+   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
 
-   BinBase * const aBinsFast = pBoosterShell->GetBinBaseFast();
-   EBM_ASSERT(nullptr != aBinsFast);
+   BinBase * const aFastBins = pBoosterShell->GetFastBinsTemp();
+   EBM_ASSERT(nullptr != aFastBins);
 
-   aBinsFast->Zero(cBytesPerBinFast, cTotalBins);
+   aFastBins->Zero(cBytesPerFastBin, cTotalBins);
+
+   EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTotalBins));
 
 #ifndef NDEBUG
-   pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast);
+   pBoosterShell->SetDebugFastBinsEnd(reinterpret_cast<unsigned char *>(aFastBins) + cBytesPerFastBin * cTotalBins);
 #endif // NDEBUG
 
    BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
 
-   BinBase * const aBinsBig = pBoosterShell->GetBinBaseBig();
-   EBM_ASSERT(nullptr != aBinsBig);
+   BinBase * const aBigBins = pBoosterShell->GetBigBins();
+   EBM_ASSERT(nullptr != aBigBins);
 
 #ifndef NDEBUG
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
-   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
-   EBM_ASSERT(!IsMultiplyError(cBytesPerBinBig, cTotalBins));
-   const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBins;
-   pBoosterShell->SetBinsBigEndDebug(reinterpret_cast<unsigned char *>(aBinsBig) + cBytesBufferBig);
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
+   EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTotalBins));
+   pBoosterShell->SetDebugBigBinsEnd(reinterpret_cast<unsigned char *>(aBigBins) + cBytesPerBigBin * cTotalBins);
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
    static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
-   EBM_ASSERT(cBytesBufferFast == cBytesBufferBig); // until we switch fast to float datatypes
-   memcpy(aBinsBig, aBinsFast, cBytesBufferFast);
+   EBM_ASSERT(cBytesPerFastBin == cBytesPerBigBin); // until we switch fast to float datatypes
+   memcpy(aBigBins, aFastBins, cBytesPerFastBin * cTotalBins);
 
 
    // TODO: we can exit here back to python to allow caller modification to our histograms

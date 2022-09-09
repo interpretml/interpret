@@ -172,7 +172,7 @@ void TensorTotalsSum(
    const size_t directionVector,
    Bin<FloatBig, IsClassification(cCompilerClasses)> * const pRet
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBinsDebugCopy
+   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -307,9 +307,9 @@ void TensorTotalsSum(
    } while(LIKELY(0 == (permuteVector >> cAllBits)));
 
 #ifndef NDEBUG
-   if(nullptr != aBinsDebugCopy) {
+   if(nullptr != aDebugCopyBins) {
       TensorTotalsCompareDebug<bClassification>(
-         aBinsDebugCopy,
+         aDebugCopyBins,
          cRealDimensions,
          acBins,
          aiPoint,

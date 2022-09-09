@@ -41,10 +41,10 @@ public:
       const size_t * const acBins,
       const InteractionFlags flags,
       const size_t cSamplesLeafMin,
-      BinBase * aAuxiliaryBinsBase,
+      BinBase * const aAuxiliaryBinsBase,
       BinBase * const aBinsBase
 #ifndef NDEBUG
-      , const BinBase * const aBinsBaseDebugCopy
+      , const BinBase * const aDebugCopyBinsBase
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
@@ -55,7 +55,7 @@ public:
       auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
 
 #ifndef NDEBUG
-      auto * const aBinsDebugCopy = aBinsBaseDebugCopy->Specialize<FloatBig, bClassification>();
+      auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification>();
 #endif // NDEBUG
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(
@@ -112,7 +112,7 @@ public:
                0x00,
                pTotals00
 #ifndef NDEBUG
-               , aBinsDebugCopy
+               , aDebugCopyBins
                , pBinsEndDebug
 #endif // NDEBUG
                );
@@ -127,7 +127,7 @@ public:
                   0x01,
                   pTotals01
 #ifndef NDEBUG
-                  , aBinsDebugCopy
+                  , aDebugCopyBins
                   , pBinsEndDebug
 #endif // NDEBUG
                   );
@@ -142,7 +142,7 @@ public:
                      0x02,
                      pTotals10
 #ifndef NDEBUG
-                     , aBinsDebugCopy
+                     , aDebugCopyBins
                      , pBinsEndDebug
 #endif // NDEBUG
                      );
@@ -157,7 +157,7 @@ public:
                         0x03,
                         pTotals11
 #ifndef NDEBUG
-                        , aBinsDebugCopy
+                        , aDebugCopyBins
                         , pBinsEndDebug
 #endif // NDEBUG
                         );
@@ -344,11 +344,9 @@ public:
          // gain. All the splits we've analyzed so far though had the same non-split partial gain, so we subtract it here
          // instead of inside the loop.
 
-         // the bin before the aAuxiliaryBinsBase is the last summation bin of aBinsBase, 
+         // the bin before the aAuxiliaryBins is the last summation bin of aBinsBase, 
          // which contains the totals of all bins
-         const auto * const pTotal =
-            reinterpret_cast<const Bin<FloatBig, bClassification> *>(
-               reinterpret_cast<const char *>(aAuxiliaryBinsBase) - cBytesPerBin);
+         const auto * const pTotal = NegativeIndexBin(aAuxiliaryBins, cBytesPerBin);
 
          const FloatBig weightAll = pTotal->GetWeight();
 
@@ -402,7 +400,7 @@ public:
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
 #ifndef NDEBUG
-      , const BinBase * const aBinsBaseDebugCopy
+      , const BinBase * const aDebugCopyBinsBase
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
@@ -423,7 +421,7 @@ public:
             aAuxiliaryBinsBase,
             aBinsBase
 #ifndef NDEBUG
-            , aBinsBaseDebugCopy
+            , aDebugCopyBinsBase
             , pBinsEndDebug
 #endif // NDEBUG
          );
@@ -437,7 +435,7 @@ public:
             aAuxiliaryBinsBase,
             aBinsBase
 #ifndef NDEBUG
-            , aBinsBaseDebugCopy
+            , aDebugCopyBinsBase
             , pBinsEndDebug
 #endif // NDEBUG
          );
@@ -460,7 +458,7 @@ public:
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
 #ifndef NDEBUG
-      , const BinBase * const aBinsBaseDebugCopy
+      , const BinBase * const aDebugCopyBinsBase
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
@@ -478,7 +476,7 @@ public:
          aAuxiliaryBinsBase,
          aBinsBase
 #ifndef NDEBUG
-         , aBinsBaseDebugCopy
+         , aDebugCopyBinsBase
          , pBinsEndDebug
 #endif // NDEBUG
       );
@@ -494,7 +492,7 @@ extern double PartitionTwoDimensionalInteraction(
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
 #ifndef NDEBUG
-   , const BinBase * const aBinsBaseDebugCopy
+   , const BinBase * const aDebugCopyBinsBase
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -510,7 +508,7 @@ extern double PartitionTwoDimensionalInteraction(
          aAuxiliaryBinsBase,
          aBinsBase
 #ifndef NDEBUG
-         , aBinsBaseDebugCopy
+         , aDebugCopyBinsBase
          , pBinsEndDebug
 #endif // NDEBUG
       );
@@ -525,7 +523,7 @@ extern double PartitionTwoDimensionalInteraction(
          aAuxiliaryBinsBase,
          aBinsBase
 #ifndef NDEBUG
-         , aBinsBaseDebugCopy
+         , aDebugCopyBinsBase
          , pBinsEndDebug
 #endif // NDEBUG
       );

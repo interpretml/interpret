@@ -159,7 +159,7 @@ public:
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
 #ifndef NDEBUG
-      , BinBase * const aBinsBaseDebugCopy
+      , BinBase * const aDebugCopyBinsBase
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
@@ -222,7 +222,7 @@ public:
                EBM_ASSERT(reinterpret_cast<unsigned char *>(pAuxiliaryBin) <= pBinsEndDebug);
             } else {
                // if this isn't the last iteration, then we'll actually be using this memory, so the entire bin had better be useable
-               EBM_ASSERT(reinterpret_cast<unsigned char *>(pAuxiliaryBin) + cBytesPerBin <= pBinsEndDebug);
+               EBM_ASSERT(reinterpret_cast<unsigned char *>(IndexBin(pAuxiliaryBin, cBytesPerBin)) <= pBinsEndDebug);
             }
             for(auto * pDimensionalCur = pFastTotalStateInitialize->m_pDimensionalCur;
                pAuxiliaryBin != pDimensionalCur;
@@ -247,7 +247,7 @@ public:
 
       auto * const pDebugBin = EbmMalloc<Bin<FloatBig, bClassification>>(1, cBytesPerBin);
 
-      auto * aBinsDebugCopy = aBinsBaseDebugCopy->Specialize<FloatBig, bClassification>();
+      auto * aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification>();
 
 #endif //NDEBUG
 
@@ -272,7 +272,7 @@ public:
          pBin->Copy(*pAddPrev, cScores);
 
 #ifndef NDEBUG
-         if(nullptr != aBinsDebugCopy && nullptr != pDebugBin) {
+         if(nullptr != aDebugCopyBins && nullptr != pDebugBin) {
             size_t aiStart[k_cDimensionsMax];
             size_t aiLast[k_cDimensionsMax];
             for(size_t iDebugDimension = 0; iDebugDimension < cRealDimensions; ++iDebugDimension) {
@@ -283,7 +283,7 @@ public:
                cClasses,
                cRealDimensions,
                acBins,
-               aBinsDebugCopy,
+               aDebugCopyBins,
                aiStart,
                aiLast,
                pDebugBin
@@ -338,7 +338,7 @@ public:
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
 #ifndef NDEBUG
-      , BinBase * const aBinsBaseDebugCopy
+      , BinBase * const aDebugCopyBinsBase
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
@@ -355,7 +355,7 @@ public:
             aAuxiliaryBinsBase,
             aBinsBase
 #ifndef NDEBUG
-            , aBinsBaseDebugCopy
+            , aDebugCopyBinsBase
             , pBinsEndDebug
 #endif // NDEBUG
          );
@@ -367,7 +367,7 @@ public:
             aAuxiliaryBinsBase,
             aBinsBase
 #ifndef NDEBUG
-            , aBinsBaseDebugCopy
+            , aDebugCopyBinsBase
             , pBinsEndDebug
 #endif // NDEBUG
          );
@@ -388,7 +388,7 @@ public:
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
 #ifndef NDEBUG
-      , BinBase * const aBinsBaseDebugCopy
+      , BinBase * const aDebugCopyBinsBase
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
@@ -401,7 +401,7 @@ public:
          aAuxiliaryBinsBase,
          aBinsBase
 #ifndef NDEBUG
-         , aBinsBaseDebugCopy
+         , aDebugCopyBinsBase
          , pBinsEndDebug
 #endif // NDEBUG
       );
@@ -421,7 +421,7 @@ public:
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
 #ifndef NDEBUG
-      , BinBase * const aBinsBaseDebugCopy
+      , BinBase * const aDebugCopyBinsBase
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
@@ -439,7 +439,7 @@ public:
             aAuxiliaryBinsBase,
             aBinsBase
 #ifndef NDEBUG
-            , aBinsBaseDebugCopy
+            , aDebugCopyBinsBase
             , pBinsEndDebug
 #endif // NDEBUG
          );
@@ -451,7 +451,7 @@ public:
             aAuxiliaryBinsBase,
             aBinsBase
 #ifndef NDEBUG
-            , aBinsBaseDebugCopy
+            , aDebugCopyBinsBase
             , pBinsEndDebug
 #endif // NDEBUG
          );
@@ -472,7 +472,7 @@ public:
       BinBase * aAuxiliaryBinsBase,
       BinBase * const aBinsBase
 #ifndef NDEBUG
-      , BinBase * const aBinsBaseDebugCopy
+      , BinBase * const aDebugCopyBinsBase
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
@@ -488,7 +488,7 @@ public:
          aAuxiliaryBinsBase,
          aBinsBase
 #ifndef NDEBUG
-         , aBinsBaseDebugCopy
+         , aDebugCopyBinsBase
          , pBinsEndDebug
 #endif // NDEBUG
       );
@@ -502,7 +502,7 @@ extern void TensorTotalsBuild(
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
 #ifndef NDEBUG
-   , BinBase * const aBinsBaseDebugCopy
+   , BinBase * const aDebugCopyBinsBase
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -514,7 +514,7 @@ extern void TensorTotalsBuild(
          aAuxiliaryBinsBase,
          aBinsBase
 #ifndef NDEBUG
-         , aBinsBaseDebugCopy
+         , aDebugCopyBinsBase
          , pBinsEndDebug
 #endif // NDEBUG
       );
@@ -527,7 +527,7 @@ extern void TensorTotalsBuild(
          aAuxiliaryBinsBase,
          aBinsBase
 #ifndef NDEBUG
-         , aBinsBaseDebugCopy
+         , aDebugCopyBinsBase
          , pBinsEndDebug
 #endif // NDEBUG
       );
@@ -559,15 +559,15 @@ extern void TensorTotalsBuild(
 //      cTotalBinsDebug *= cBins;
 //   }
 //   EBM_ASSERT(IsMultiplyError(cTotalBinsDebug, cBytesPerBin)); // we're accessing allocated memory, so this should work
-//   const size_t cBytesBufferDebug = cTotalBinsDebug * cBytesPerBin;
+//   const size_t cBytesDebugBuffer = cTotalBinsDebug * cBytesPerBin;
 //   DO : ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> technically, adding cBytesPerBin could overflow so we should handle that instead of asserting
-//   EBM_ASSERT(IsAddError(cBytesBufferDebug, cBytesPerBin)); // we're just allocating one extra bin.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
-//   Bin<IsClassification(cCompilerClasses)> * const aBinsDebugCopy = static_cast<Bin<IsClassification(cCompilerClasses)> *>(malloc(cBytesBufferDebug + cBytesPerBin));
+//   EBM_ASSERT(IsAddError(cBytesDebugBuffer, cBytesPerBin)); // we're just allocating one extra bin.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
+//   Bin<IsClassification(cCompilerClasses)> * const aDebugCopyBins = static_cast<Bin<IsClassification(cCompilerClasses)> *>(malloc(cBytesDebugBuffer + cBytesPerBin));
 //   Bin<IsClassification(cCompilerClasses)> * const pDebugBin = nullptr;
-//   if(nullptr != aBinsDebugCopy) {
+//   if(nullptr != aDebugCopyBins) {
 //      // if we can't obtain the memory, then don't do the comparison and exit
-//      memcpy(aBinsDebugCopy, aBins, cBytesBufferDebug);
-//      pDebugBin = IndexBin(cBytesPerBin, aBinsDebugCopy, cTotalBinsDebug);
+//      memcpy(aDebugCopyBins, aBins, cBytesDebugBuffer);
+//      pDebugBin = IndexBin(cBytesPerBin, aDebugCopyBins, cTotalBinsDebug);
 //   }
 //#endif // NDEBUG
 //
@@ -630,7 +630,7 @@ extern void TensorTotalsBuild(
 //      } while(permuteVectorEnd != permuteVector);
 //
 //#ifndef NDEBUG
-//      if(nullptr != aBinsDebugCopy) {
+//      if(nullptr != aDebugCopyBins) {
 //         EBM_ASSERT(nullptr != pDebugBin);
 //         size_t aiStart[k_cDimensionsMax];
 //         size_t aiLast[k_cDimensionsMax];
@@ -638,10 +638,10 @@ extern void TensorTotalsBuild(
 //            aiStart[iDebugDimension] = 0;
 //            aiLast[iDebugDimension] = currentIndexAndCountBins[iDebugDimension].m_iCur;
 //         }
-//         TensorTotalsSumDebugSlow<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBinsDebugCopy, aiStart, aiLast, pDebugBin);
+//         TensorTotalsSumDebugSlow<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aDebugCopyBins, aiStart, aiLast, pDebugBin);
 //         EBM_ASSERT(pDebugBin->GetCountSamples() == pBin->GetCountSamples());
 //
-//         free(aBinsDebugCopy);
+//         free(aDebugCopyBins);
 //      }
 //#endif // NDEBUG
 //
@@ -688,15 +688,15 @@ extern void TensorTotalsBuild(
 //      cTotalBinsDebug *= cBins;
 //   }
 //   EBM_ASSERT(IsMultiplyError(cTotalBinsDebug, cBytesPerBin)); // we're accessing allocated memory, so this should work
-//   const size_t cBytesBufferDebug = cTotalBinsDebug * cBytesPerBin;
+//   const size_t cBytesDebugBuffer = cTotalBinsDebug * cBytesPerBin;
 //   DO : ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> technically, adding cBytesPerBin could overflow so we should handle that instead of asserting
-//   EBM_ASSERT(IsAddError(cBytesBufferDebug, cBytesPerBin)); // we're just allocating one extra bin.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
-//   Bin<IsClassification(cCompilerClasses)> * const aBinsDebugCopy = static_cast<Bin<IsClassification(cCompilerClasses)> *>(malloc(cBytesBufferDebug + cBytesPerBin));
+//   EBM_ASSERT(IsAddError(cBytesDebugBuffer, cBytesPerBin)); // we're just allocating one extra bin.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
+//   Bin<IsClassification(cCompilerClasses)> * const aDebugCopyBins = static_cast<Bin<IsClassification(cCompilerClasses)> *>(malloc(cBytesDebugBuffer + cBytesPerBin));
 //   Bin<IsClassification(cCompilerClasses)> * const pDebugBin = nullptr;
-//   if(nullptr != aBinsDebugCopy) {
+//   if(nullptr != aDebugCopyBins) {
 //      // if we can't obtain the memory, then don't do the comparison and exit
-//      memcpy(aBinsDebugCopy, aBins, cBytesBufferDebug);
-//      pDebugBin = IndexBin(cBytesPerBin, aBinsDebugCopy, cTotalBinsDebug);
+//      memcpy(aDebugCopyBins, aBins, cBytesDebugBuffer);
+//      pDebugBin = IndexBin(cBytesPerBin, aDebugCopyBins, cTotalBinsDebug);
 //   }
 //#endif // NDEBUG
 //
@@ -761,7 +761,7 @@ extern void TensorTotalsBuild(
 //      } while(permuteVectorEnd != permuteVector);
 //
 //#ifndef NDEBUG
-//      if(nullptr != aBinsDebugCopy) {
+//      if(nullptr != aDebugCopyBins) {
 //         EBM_ASSERT(nullptr != pDebugBin);
 //         size_t aiStart[k_cDimensionsMax];
 //         size_t aiLast[k_cDimensionsMax];
@@ -771,9 +771,9 @@ extern void TensorTotalsBuild(
 //            aiLast[iDebugDimension] = static_cast<size_t>(currentIndexAndCountBins[iDebugDimension].multipliedIndexCur / multipleTotalDebug);
 //            multipleTotalDebug = currentIndexAndCountBins[iDebugDimension].multipleTotal;
 //         }
-//         TensorTotalsSumDebugSlow<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBinsDebugCopy, aiStart, aiLast, pDebugBin);
+//         TensorTotalsSumDebugSlow<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aDebugCopyBins, aiStart, aiLast, pDebugBin);
 //         EBM_ASSERT(pDebugBin->GetCountSamples() == pBin->GetCountSamples());
-//         free(aBinsDebugCopy);
+//         free(aDebugCopyBins);
 //      }
 //#endif // NDEBUG
 //
@@ -810,7 +810,7 @@ extern void TensorTotalsBuild(
 //template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
 //void BuildFastTotalsZeroMemoryIncrease(const ptrdiff_t cRuntimeClasses, const Term * const pTerm, Bin<IsClassification(cCompilerClasses)> * const aBins
 //#ifndef NDEBUG
-//   , const Bin<IsClassification(cCompilerClasses)> * const aBinsDebugCopy, const unsigned char * const pBinsEndDebug
+//   , const Bin<IsClassification(cCompilerClasses)> * const aDebugCopyBins, const unsigned char * const pBinsEndDebug
 //#endif // NDEBUG
 //) {
 //   LOG_0(Trace_Verbose, "Entered BuildFastTotalsZeroMemoryIncrease");
@@ -935,7 +935,7 @@ extern void TensorTotalsBuild(
 //         aiLast[iDebugDimension] = static_cast<size_t>((0 == iDebugDimension ? multipliedIndexCur0 : currentIndexAndCountBins[iDebugDimension].multipliedIndexCur) / multipleTotalDebug);
 //         multipleTotalDebug = currentIndexAndCountBins[iDebugDimension].multipleTotal;
 //      }
-//      TensorTotalsSumDebugSlow<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBinsDebugCopy, aiStart, aiLast, pDebugBin);
+//      TensorTotalsSumDebugSlow<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aDebugCopyBins, aiStart, aiLast, pDebugBin);
 //      EBM_ASSERT(pDebugBin->GetCountSamples() == pBin->GetCountSamples());
 //#endif // NDEBUG
 //
@@ -1006,21 +1006,21 @@ extern void TensorTotalsBuild(
 //      if(pInnerTermUpdate->SetCountSplits(0, 1)) {
 //         free(aDynamicBins);
 //#ifndef NDEBUG
-//         free(aBinsDebugCopy);
+//         free(aDebugCopyBins);
 //#endif // NDEBUG
 //         return true;
 //      }
 //      if(pInnerTermUpdate->SetCountSplits(1, 1)) {
 //         free(aDynamicBins);
 //#ifndef NDEBUG
-//         free(aBinsDebugCopy);
+//         free(aDebugCopyBins);
 //#endif // NDEBUG
 //         return true;
 //      }
 //      if(pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 4)) {
 //         free(aDynamicBins);
 //#ifndef NDEBUG
-//         free(aBinsDebugCopy);
+//         free(aDebugCopyBins);
 //#endif // NDEBUG
 //         return true;
 //      }
@@ -1242,12 +1242,12 @@ extern void TensorTotalsBuild(
 //      DO: handle this better
 //#ifndef NDEBUG
 //      EBM_ASSERT(false); // we only support pairs currently
-//      free(aBinsDebugCopy);
+//      free(aDebugCopyBins);
 //#endif // NDEBUG
 //      return true;
 //   }
 //#ifndef NDEBUG
-//   free(aBinsDebugCopy);
+//   free(aDebugCopyBins);
 //#endif // NDEBUG
 //   return false;
 //}

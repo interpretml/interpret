@@ -40,7 +40,7 @@ namespace DEFINED_ZONE_NAME {
 template<ptrdiff_t cCompilerClasses>
 INLINE_RELEASE_TEMPLATED static void SumAllBins(
    BoosterShell * const pBoosterShell,
-   const size_t cBins,
+   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const pBinsEnd,
    const size_t cSamplesTotal,
    const FloatBig weightTotal,
    Bin<FloatBig, IsClassification(cCompilerClasses)> * const pBinOut
@@ -69,10 +69,7 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
       ++iScoreZero;
    } while(cScores != iScoreZero);
 
-   BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
-   const auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
-
-   EBM_ASSERT(2 <= cBins); // we pre-filter out features with only one bin
+   const auto * const aBins = pBoosterShell->GetBigBins()->Specialize<FloatBig, bClassification>();
 
 #ifndef NDEBUG
    size_t cSamplesTotalDebug = 0;
@@ -82,17 +79,17 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-   const auto * pCopyFrom = aBins;
-   const auto * pCopyFromEnd = IndexBin(aBins, cBytesPerBin * cBins);
+   EBM_ASSERT(2 <= CountBins(aBins, pBinsEnd, cBytesPerBin)); // we pre-filter out features with only one bin
 
+   const auto * pBin = aBins;
    do {
-      ASSERT_BIN_OK(cBytesPerBin, pCopyFrom, pBoosterShell->GetBinsBigEndDebug());
+      ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetDebugBigBinsEnd());
 #ifndef NDEBUG
-      cSamplesTotalDebug += pCopyFrom->GetCountSamples();
-      weightTotalDebug += pCopyFrom->GetWeight();
+      cSamplesTotalDebug += pBin->GetCountSamples();
+      weightTotalDebug += pBin->GetWeight();
 #endif // NDEBUG
 
-      const auto * aGradientPairs = pCopyFrom->GetGradientPairs();
+      const auto * aGradientPairs = pBin->GetGradientPairs();
 
       size_t iScore = 0;
       do {
@@ -100,9 +97,8 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
          ++iScore;
       } while(cScores != iScore);
 
-      pCopyFrom = IndexBin(pCopyFrom, cBytesPerBin);
-   } while(pCopyFromEnd != pCopyFrom);
-   EBM_ASSERT(0 == (reinterpret_cast<const char *>(pCopyFrom) - reinterpret_cast<const char *>(aBins)) % cBytesPerBin);
+      pBin = IndexBin(pBin, cBytesPerBin);
+   } while(pBinsEnd != pBin);
 
    EBM_ASSERT(cSamplesTotal == cSamplesTotalDebug);
    EBM_ASSERT(weightTotalDebug * 0.999 <= weightTotal && weightTotal <= weightTotalDebug * 1.0001);
@@ -122,8 +118,8 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
 
 template<bool bClassification>
 INLINE_RELEASE_TEMPLATED static void Flatten(
-   BinBase * aBinsBase,
-   size_t cBins,
+   const void * const aBins,
+   const void * const pBinsEnd,
    TreeNode<bClassification> * pTreeNode,
    ActiveDataType * pSplits,
    FloatFast * pUpdateScore,
@@ -131,7 +127,6 @@ INLINE_RELEASE_TEMPLATED static void Flatten(
 ) {
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
-   BinBase * pBinsEnd = IndexBin(aBinsBase, cBins * cBytesPerBin);
 
    EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
@@ -154,20 +149,21 @@ INLINE_RELEASE_TEMPLATED static void Flatten(
          const void * pBinLastOrChildren = pTreeNode->DANGEROUS_GetBinLastOrChildren();
          // if the pointer points to the space within the bins, then the TreeNode could not be split
          // and this TreeNode never had children and we never wrote a pointer to the children in this memory
-         if(pBinLastOrChildren < aBinsBase || pBinsEnd <= pBinLastOrChildren) {
+         if(pBinLastOrChildren < aBins || pBinsEnd <= pBinLastOrChildren) {
             // the node was examined and a gain calculated, so it has left and right children.
             // We can retrieve the split location by looking at where the right child would end its range
             const TreeNode<bClassification> * const pRightChild = 
                GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
             pBinLastOrChildren = pRightChild->BEFORE_GetBinLast();
          }
-         EBM_ASSERT(reinterpret_cast<const char *>(aBinsBase) <= reinterpret_cast<const char *>(pBinLastOrChildren));
-         EBM_ASSERT(reinterpret_cast<const char *>(pBinLastOrChildren) < reinterpret_cast<const char *>(pBinsEnd));
-         EBM_ASSERT(0 == (reinterpret_cast<const char *>(pBinLastOrChildren) - 
-            reinterpret_cast<const char *>(aBinsBase)) % cBytesPerBin);
-         iSplit = (reinterpret_cast<const char *>(pBinLastOrChildren) - reinterpret_cast<const char *>(aBinsBase)) / 
-            cBytesPerBin;
-
+         EBM_ASSERT(aBins <= pBinLastOrChildren);
+         EBM_ASSERT(pBinLastOrChildren < pBinsEnd);
+         iSplit = CountBins(
+            reinterpret_cast<const Bin<FloatBig, bClassification> *>(aBins),
+            reinterpret_cast<const Bin<FloatBig, bClassification> *>(pBinLastOrChildren),
+            cBytesPerBin
+         );
+            
          const auto * aGradientPair = pTreeNode->GetGradientPairs();
          size_t iScore = 0;
          do {
@@ -315,7 +311,7 @@ static int FindBestSplitGain(
    EBM_ASSERT(0 < cSamplesLeafMin);
    EBM_ASSERT(pBinLast != pBinCur); // then we would be non-splitable and would have exited above
    do {
-      ASSERT_BIN_OK(cBytesPerBin, pBinCur, pBoosterShell->GetBinsBigEndDebug());
+      ASSERT_BIN_OK(cBytesPerBin, pBinCur, pBoosterShell->GetDebugBigBinsEnd());
 
       const size_t cSamplesChange = pBinCur->GetCountSamples();
       cSamplesRight -= cSamplesChange;
@@ -493,7 +489,7 @@ static int FindBestSplitGain(
    pLeftChild->GetBin()->Copy(*pBestSplitsStart->GetLeftSum(), cScores);
 
    const auto * const pBinFirst = IndexBin(pBestBinPosition, cBytesPerBin);
-   ASSERT_BIN_OK(cBytesPerBin, pBinFirst, pBoosterShell->GetBinsBigEndDebug());
+   ASSERT_BIN_OK(cBytesPerBin, pBinFirst, pBoosterShell->GetDebugBigBinsEnd());
 
 
    EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores)); // we're accessing allocated memory
@@ -572,14 +568,15 @@ public:
       pRootTreeNode->SetDebugProgression(0);
 #endif // NDEBUG
 
-      BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
-      const auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
+      const auto * const aBins = pBoosterShell->GetBigBins()->Specialize<FloatBig, bClassification>();
+      const auto * const pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
+      const auto * const pBinsLast = NegativeIndexBin(pBinsEnd, cBytesPerBin);
 
       pRootTreeNode->BEFORE_SetBinFirst(aBins);
-      pRootTreeNode->BEFORE_SetBinLast(IndexBin(aBins, cBytesPerBin * (cBins - 1)));
-      ASSERT_BIN_OK(cBytesPerBin, pRootTreeNode->BEFORE_GetBinLast(), pBoosterShell->GetBinsBigEndDebug());
+      pRootTreeNode->BEFORE_SetBinLast(pBinsLast);
+      ASSERT_BIN_OK(cBytesPerBin, pRootTreeNode->BEFORE_GetBinLast(), pBoosterShell->GetDebugBigBinsEnd());
 
-      SumAllBins<cCompilerClasses>(pBoosterShell, cBins, cSamplesTotal, weightTotal, pRootTreeNode->GetBin());
+      SumAllBins<cCompilerClasses>(pBoosterShell, pBinsEnd, cSamplesTotal, weightTotal, pRootTreeNode->GetBin());
 
       EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores));
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
@@ -735,7 +732,7 @@ public:
       FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
 
       LOG_0(Trace_Verbose, "Entered Flatten");
-      Flatten(aBinsBase, cBins, pRootTreeNode, pSplits, pUpdateScore, cScores);
+      Flatten(aBins, pBinsEnd, pRootTreeNode, pSplits, pUpdateScore, cScores);
       LOG_0(Trace_Verbose, "Exited Flatten");
 
       return Error_None;

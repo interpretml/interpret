@@ -67,8 +67,7 @@ public:
       EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-      BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
-      auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
+      auto * const aBins = pBoosterShell->GetBigBins()->Specialize<FloatBig, bClassification>();
 
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
@@ -387,7 +386,7 @@ public:
                reinterpret_cast<const char *>(pBin) + *pcItemsInNextSliceOrBytesInCurrentSlice);
 
             do {
-               ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetBinsBigEndDebug());
+               ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetDebugBigBinsEnd());
                pCollapsedBin1->Add(*pBin, cScores);
 
                // we're walking through all bins, so just move to the next one in the flat array, 

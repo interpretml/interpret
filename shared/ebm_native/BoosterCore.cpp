@@ -436,7 +436,7 @@ ErrorEbm BoosterCore::Create(
 
                cFastBinsMax = EbmMax(cFastBinsMax, cTensorBins);
 
-               size_t cTotalBinsBig = cTensorBins;
+               size_t cTotalBigBins = cTensorBins;
                if(1 == cRealDimensions) {
                   cSingleDimensionBinsMax = EbmMax(cSingleDimensionBinsMax, cSingleDimensionBins);
                } else {
@@ -452,9 +452,9 @@ ErrorEbm BoosterCore::Create(
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cTensorBins, cAuxillaryBins)");
                      return Error_OutOfMemory;
                   }
-                  cTotalBinsBig += cAuxillaryBins;
+                  cTotalBigBins += cAuxillaryBins;
                }
-               cBigBinsMax = EbmMax(cBigBinsMax, cTotalBinsBig);
+               cBigBinsMax = EbmMax(cBigBinsMax, cTotalBigBins);
 
                const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
                EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
@@ -468,19 +468,19 @@ ErrorEbm BoosterCore::Create(
          ++iTerm;
       } while(iTerm < cTerms);
 
-      const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
-      if(IsMultiplyError(cBytesPerBinFast, cFastBinsMax)) {
-         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerBinFast, cFastBinsMax)");
+      const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
+      if(IsMultiplyError(cBytesPerFastBin, cFastBinsMax)) {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerFastBin, cFastBinsMax)");
          return Error_OutOfMemory;
       }
-      pBoosterCore->m_cBytesBinsFast = cBytesPerBinFast * cFastBinsMax;
+      pBoosterCore->m_cBytesFastBins = cBytesPerFastBin * cFastBinsMax;
 
-      const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
-      if(IsMultiplyError(cBytesPerBinBig, cBigBinsMax)) {
-         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerBinBig, cBigBinsMax)");
+      const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
+      if(IsMultiplyError(cBytesPerBigBin, cBigBinsMax)) {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerBigBin, cBigBinsMax)");
          return Error_OutOfMemory;
       }
-      pBoosterCore->m_cBytesBinsBig = cBytesPerBinBig * cBigBinsMax;
+      pBoosterCore->m_cBytesBigBins = cBytesPerBigBin * cBigBinsMax;
 
       if(0 != cSingleDimensionBinsMax) {
          const size_t cSingleDimensionSplitsMax = cSingleDimensionBinsMax - 1;

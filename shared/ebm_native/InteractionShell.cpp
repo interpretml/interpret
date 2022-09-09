@@ -51,7 +51,7 @@ InteractionShell * InteractionShell::Create() {
    return pNew;
 }
 
-BinBase * InteractionShell::GetBinBaseFast(size_t cBytesRequired) {
+BinBase * InteractionShell::GetFastBinsTemp(size_t cBytesRequired) {
    BinBase * aBuffer = m_aThreadByteBuffer1Fast;
    if(UNLIKELY(m_cThreadByteBufferCapacity1Fast < cBytesRequired)) {
       cBytesRequired <<= 1;
@@ -62,13 +62,13 @@ BinBase * InteractionShell::GetBinBaseFast(size_t cBytesRequired) {
       aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
       m_aThreadByteBuffer1Fast = aBuffer; // store it before checking it incase it's null so that we don't free old memory
       if(nullptr == aBuffer) {
-         LOG_0(Trace_Warning, "WARNING InteractionShell::GetBinBaseFast OutOfMemory");
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetFastBinsTemp OutOfMemory");
       }
    }
    return aBuffer;
 }
 
-BinBase * InteractionShell::GetBinBaseBig(size_t cBytesRequired) {
+BinBase * InteractionShell::GetBigBins(size_t cBytesRequired) {
    BinBase * aBuffer = m_aThreadByteBuffer1Big;
    if(UNLIKELY(m_cThreadByteBufferCapacity1Big < cBytesRequired)) {
       cBytesRequired <<= 1;
@@ -79,7 +79,7 @@ BinBase * InteractionShell::GetBinBaseBig(size_t cBytesRequired) {
       aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
       m_aThreadByteBuffer1Big = aBuffer; // store it before checking it incase it's null so that we don't free old memory
       if(nullptr == aBuffer) {
-         LOG_0(Trace_Warning, "WARNING InteractionShell::GetBinBaseBig OutOfMemory");
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetBigBins OutOfMemory");
       }
    }
    return aBuffer;

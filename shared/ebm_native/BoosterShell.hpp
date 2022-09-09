@@ -40,18 +40,18 @@ class BoosterShell final {
    Tensor * m_pInnerTermUpdate;
 
    // TODO: try to merge some of this memory so that we get more CPU cache residency
-   BinBase * m_aBinsFastTemp;
-   BinBase * m_aBinsBig;
+   BinBase * m_aFastBinsTemp;
+   BinBase * m_aBigBins;
 
-   // TODO: I think this can share memory with m_aBinsFastTemp since the GradientPair always contains a FloatFast, and it always contains enough for the multiclass scores in the first bin, and we always have at least 1 bin, right?
+   // TODO: I think this can share memory with m_aFastBinsTemp since the GradientPair always contains a FloatFast, and it always contains enough for the multiclass scores in the first bin, and we always have at least 1 bin, right?
    FloatFast * m_aMulticlassMidwayTemp;
 
    void * m_aTreeNodesTemp;
    void * m_aSplitPositionsTemp;
 
 #ifndef NDEBUG
-   const unsigned char * m_pBinsFastEndDebug;
-   const unsigned char * m_pBinsBigEndDebug;
+   const unsigned char * m_pDebugFastBinsEnd;
+   const unsigned char * m_pDebugBigBinsEnd;
 #endif // NDEBUG
 
 public:
@@ -69,8 +69,8 @@ public:
       m_iTerm = k_illegalTermIndex;
       m_pTermUpdate = nullptr;
       m_pInnerTermUpdate = nullptr;
-      m_aBinsFastTemp = nullptr;
-      m_aBinsBig = nullptr;
+      m_aFastBinsTemp = nullptr;
+      m_aBigBins = nullptr;
       m_aMulticlassMidwayTemp = nullptr;
       m_aTreeNodesTemp = nullptr;
       m_aSplitPositionsTemp = nullptr;
@@ -127,14 +127,14 @@ public:
       return m_pInnerTermUpdate;
    }
 
-   INLINE_ALWAYS BinBase * GetBinBaseFast() {
+   INLINE_ALWAYS BinBase * GetFastBinsTemp() {
       // call this if the bins were already allocated and we just need the pointer
-      return m_aBinsFastTemp;
+      return m_aFastBinsTemp;
    }
 
-   INLINE_ALWAYS BinBase * GetBinBaseBig() {
+   INLINE_ALWAYS BinBase * GetBigBins() {
       // call this if the bins were already allocated and we just need the pointer
-      return m_aBinsBig;
+      return m_aBigBins;
    }
 
    INLINE_ALWAYS FloatFast * GetMulticlassMidwayTemp() {
@@ -153,20 +153,20 @@ public:
 
 
 #ifndef NDEBUG
-   INLINE_ALWAYS const unsigned char * GetBinsFastEndDebug() const {
-      return m_pBinsFastEndDebug;
+   INLINE_ALWAYS const unsigned char * GetDebugFastBinsEnd() const {
+      return m_pDebugFastBinsEnd;
    }
 
-   INLINE_ALWAYS void SetBinsFastEndDebug(const unsigned char * const pBinsFastEndDebug) {
-      m_pBinsFastEndDebug = pBinsFastEndDebug;
+   INLINE_ALWAYS void SetDebugFastBinsEnd(const unsigned char * const pDebugFastBinsEnd) {
+      m_pDebugFastBinsEnd = pDebugFastBinsEnd;
    }
 
-   INLINE_ALWAYS const unsigned char * GetBinsBigEndDebug() const {
-      return m_pBinsBigEndDebug;
+   INLINE_ALWAYS const unsigned char * GetDebugBigBinsEnd() const {
+      return m_pDebugBigBinsEnd;
    }
 
-   INLINE_ALWAYS void SetBinsBigEndDebug(const unsigned char * const pBinsBigEndDebug) {
-      m_pBinsBigEndDebug = pBinsBigEndDebug;
+   INLINE_ALWAYS void SetDebugBigBinsEnd(const unsigned char * const pDebugBigBinsEnd) {
+      m_pDebugBigBinsEnd = pDebugBigBinsEnd;
    }
 #endif // NDEBUG
 };

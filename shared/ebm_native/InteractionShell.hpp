@@ -39,7 +39,7 @@ class InteractionShell final {
    int m_cLogExitMessages;
 
 #ifndef NDEBUG
-   const unsigned char * m_pBinsFastEndDebug;
+   const unsigned char * m_pDebugFastBinsEnd;
 #endif // NDEBUG
 
 public:
@@ -107,27 +107,27 @@ public:
       return &m_cLogExitMessages;
    }
 
-   BinBase * GetBinBaseFast(size_t cBytesRequired);
+   BinBase * GetFastBinsTemp(size_t cBytesRequired);
 
-   INLINE_ALWAYS BinBase * GetBinBaseFast() {
+   INLINE_ALWAYS BinBase * GetFastBinsTemp() {
       // call this if the bins were already allocated and we just need the pointer
       return m_aThreadByteBuffer1Fast;
    }
 
-   BinBase * GetBinBaseBig(size_t cBytesRequired);
+   BinBase * GetBigBins(size_t cBytesRequired);
 
-   INLINE_ALWAYS BinBase * GetBinBaseBig() {
+   INLINE_ALWAYS BinBase * GetBigBins() {
       // call this if the bins were already allocated and we just need the pointer
       return m_aThreadByteBuffer1Big;
    }
 
 #ifndef NDEBUG
-   INLINE_ALWAYS const unsigned char * GetBinsFastEndDebug() const {
-      return m_pBinsFastEndDebug;
+   INLINE_ALWAYS const unsigned char * GetDebugFastBinsEnd() const {
+      return m_pDebugFastBinsEnd;
    }
 
-   INLINE_ALWAYS void SetBinsFastEndDebug(const unsigned char * const pBinsFastEndDebug) {
-      m_pBinsFastEndDebug = pBinsFastEndDebug;
+   INLINE_ALWAYS void SetDebugFastBinsEnd(const unsigned char * const pDebugFastBinsEnd) {
+      m_pDebugFastBinsEnd = pDebugFastBinsEnd;
    }
 #endif // NDEBUG
 };

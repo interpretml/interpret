@@ -101,12 +101,13 @@ INLINE_ALWAYS SplitPosition<bClassification> * IndexSplitPosition(
 
 template<bool bClassification>
 INLINE_ALWAYS size_t CountSplitPositions(
-   const SplitPosition<bClassification> * const pSplitPositionStart,
-   const SplitPosition<bClassification> * const pSplitPositionCur,
+   const SplitPosition<bClassification> * const pSplitPositionLow,
+   const SplitPosition<bClassification> * const pSplitPositionHigh,
    const size_t cBytesPerSplitPosition
 ) {
-   EBM_ASSERT(reinterpret_cast<const char *>(pSplitPositionStart) <= reinterpret_cast<const char *>(pSplitPositionCur));
-   const size_t cBytesDiff = reinterpret_cast<const char *>(pSplitPositionCur) - reinterpret_cast<const char *>(pSplitPositionStart);
+   EBM_ASSERT(pSplitPositionLow <= pSplitPositionHigh);
+   const size_t cBytesDiff = reinterpret_cast<const char *>(pSplitPositionHigh) - 
+      reinterpret_cast<const char *>(pSplitPositionLow);
    EBM_ASSERT(0 == cBytesDiff % cBytesPerSplitPosition);
    return cBytesDiff / cBytesPerSplitPosition;
 }

@@ -43,8 +43,7 @@ public:
 
       LOG_0(Trace_Verbose, "Entered BinSumsBoostingZeroDimensions");
 
-      BinBase * const pBinBase = pBoosterShell->GetBinBaseFast();
-      auto * const pBin = pBinBase->Specialize<FloatFast, bClassification>();
+      auto * const pBin = pBoosterShell->GetFastBinsTemp()->Specialize<FloatFast, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
@@ -209,8 +208,7 @@ public:
 
       LOG_0(Trace_Verbose, "Entered BinSumsBoostingInternal");
 
-      BinBase * const aBinsBase = pBoosterShell->GetBinBaseFast();
-      auto * const aBins = aBinsBase->Specialize<FloatFast, bClassification>();
+      auto * const aBins = pBoosterShell->GetFastBinsTemp()->Specialize<FloatFast, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
@@ -280,7 +278,7 @@ public:
 
             auto * const pBin = IndexBin(aBins, cBytesPerBin * iTensorBin);
 
-            ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetBinsFastEndDebug());
+            ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetDebugFastBinsEnd());
             const size_t cOccurences = *pCountOccurrences;
             const FloatFast weight = *pWeight;
 

@@ -237,6 +237,35 @@ INLINE_ALWAYS const BinBase * IndexBin(const BinBase * const aBins, const size_t
    return reinterpret_cast<const BinBase *>(reinterpret_cast<const char *>(aBins) + iByte);
 }
 
+template<typename TFloat, bool bClassification>
+INLINE_ALWAYS const Bin<TFloat, bClassification> * NegativeIndexBin(
+   const Bin<TFloat, bClassification> * const aBins,
+   const size_t iByte
+) {
+   return reinterpret_cast<const Bin<TFloat, bClassification> *>(reinterpret_cast<const char *>(aBins) - iByte);
+}
+
+template<typename TFloat, bool bClassification>
+INLINE_ALWAYS Bin<TFloat, bClassification> * NegativeIndexBin(
+   Bin<TFloat, bClassification> * const aBins,
+   const size_t iByte
+) {
+   return reinterpret_cast<Bin<TFloat, bClassification> *>(reinterpret_cast<char *>(aBins) - iByte);
+}
+
+template<typename TFloat, bool bClassification>
+INLINE_ALWAYS size_t CountBins(
+   const Bin<TFloat, bClassification> * const pBinLow,
+   const Bin<TFloat, bClassification> * const pBinHigh,
+   const size_t cBytesPerBin
+) {
+   EBM_ASSERT(pBinLow <= pBinHigh);
+   const size_t cBytesDiff = reinterpret_cast<const char *>(pBinHigh) - reinterpret_cast<const char *>(pBinLow);
+   EBM_ASSERT(0 == cBytesDiff % cBytesPerBin);
+   return cBytesDiff / cBytesPerBin;
+}
+
+
 // keep this as a MACRO so that we don't materialize any of the parameters on non-debug builds
 #define ASSERT_BIN_OK(MACRO_cBytesPerBin, MACRO_pBin, MACRO_pBinsEnd) \
    (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_pBin) + static_cast<size_t>(MACRO_cBytesPerBin) <= \

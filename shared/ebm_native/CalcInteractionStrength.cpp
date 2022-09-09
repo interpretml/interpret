@@ -44,7 +44,7 @@ extern void TensorTotalsBuild(
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
 #ifndef NDEBUG
-   , BinBase * const aBinsBaseDebugCopy
+   , BinBase * const aDebugCopyBinsBase
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 );
@@ -58,7 +58,7 @@ extern double PartitionTwoDimensionalInteraction(
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
 #ifndef NDEBUG
-   , const BinBase * const aBinsBaseDebugCopy
+   , const BinBase * const aDebugCopyBinsBase
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 );
@@ -241,24 +241,24 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    const size_t cScores = GetCountScores(cClasses);
 
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // checked in CreateInteractionDetector
-   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
-   if(IsMultiplyError(cBytesPerBinFast, cTensorBins)) {
+   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
+   if(IsMultiplyError(cBytesPerFastBin, cTensorBins)) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTensorBins)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBufferFast = cBytesPerBinFast * cTensorBins;
 
    // this doesn't need to be freed since it's tracked and re-used by the class InteractionShell
-   BinBase * const aBinsFast = pInteractionShell->GetBinBaseFast(cBytesBufferFast);
-   if(UNLIKELY(nullptr == aBinsFast)) {
+   BinBase * const aFastBins = pInteractionShell->GetFastBinsTemp(cBytesPerFastBin * cTensorBins);
+   if(UNLIKELY(nullptr == aFastBins)) {
       // already logged
       return Error_OutOfMemory;
    }
-   aBinsFast->Zero(cBytesPerBinFast, cTensorBins);
+   aFastBins->Zero(cBytesPerFastBin, cTensorBins);
 
 #ifndef NDEBUG
-   const unsigned char * const pBinsFastEndDebug = reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast;
-   pInteractionShell->SetBinsFastEndDebug(pBinsFastEndDebug);
+   const unsigned char * const pDebugFastBinsEnd = 
+      reinterpret_cast<unsigned char *>(aFastBins) + cBytesPerFastBin * cTensorBins;
+   pInteractionShell->SetDebugFastBinsEnd(pDebugFastBinsEnd);
 #endif // NDEBUG
 
    BinSumsInteraction(pInteractionShell, cDimensions, aiFeatures, acBins);
@@ -270,29 +270,29 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsAddError(cTensorBins, cAuxillaryBins)");
       return Error_OutOfMemory;
    }
-   const size_t cTotalBinsBig = cTensorBins + cAuxillaryBins;
+   const size_t cTotalBigBins = cTensorBins + cAuxillaryBins;
 
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // checked in CreateInteractionDetector
-   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
-   if(IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)) {
-      LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTotalBinsBig)");
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
+   if(IsMultiplyError(cBytesPerBigBin, cTotalBigBins)) {
+      LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTotalBigBins)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBinsBig;
 
-   BinBase * const aBinsBig = pInteractionShell->GetBinBaseBig(cBytesBufferBig);
-   if(UNLIKELY(nullptr == aBinsBig)) {
+   BinBase * const aBigBins = pInteractionShell->GetBigBins(cBytesPerBigBin * cTotalBigBins);
+   if(UNLIKELY(nullptr == aBigBins)) {
       // already logged
       return Error_OutOfMemory;
    }
 
 #ifndef NDEBUG
-   const unsigned char * const pBinsBigEndDebug = reinterpret_cast<unsigned char *>(aBinsBig) + cBytesBufferBig;
+   const unsigned char * const pDebugBigBinsEnd = 
+      reinterpret_cast<unsigned char *>(aBigBins) + cBytesPerBigBin * cTotalBigBins;
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
-   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
-   memcpy(aBinsBig, aBinsFast, cBytesBufferFast);
+   EBM_ASSERT(cBytesPerBigBin == cBytesPerFastBin);
+   memcpy(aBigBins, aFastBins, cBytesPerFastBin * cTensorBins);
 
 
 
@@ -302,26 +302,25 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
 #ifndef NDEBUG
    // make a copy of the original bins for debugging purposes
-   BinBase * const aBinsDebugCopy = EbmMalloc<BinBase>(cTensorBins, cBytesPerBinBig);
-   if(nullptr != aBinsDebugCopy) {
+   BinBase * const aDebugCopyBins = EbmMalloc<BinBase>(cTensorBins, cBytesPerBigBin);
+   if(nullptr != aDebugCopyBins) {
       // if we can't allocate, don't fail.. just stop checking
-      const size_t cBytesBufferDebug = cTensorBins * cBytesPerBinBig;
-      memcpy(aBinsDebugCopy, aBinsBig, cBytesBufferDebug);
+      memcpy(aDebugCopyBins, aBigBins, cTensorBins * cBytesPerBigBin);
    }
 #endif // NDEBUG
 
-   BinBase * aAuxiliaryBins = IndexBin(aBinsBig, cBytesPerBinBig * cTensorBins);
-   aAuxiliaryBins->Zero(cBytesPerBinBig, cAuxillaryBins);
+   BinBase * aAuxiliaryBins = IndexBin(aBigBins, cBytesPerBigBin * cTensorBins);
+   aAuxiliaryBins->Zero(cBytesPerBigBin, cAuxillaryBins);
 
    TensorTotalsBuild(
       cClasses,
       cDimensions,
       acBins,
       aAuxiliaryBins,
-      aBinsBig
+      aBigBins
 #ifndef NDEBUG
-      , aBinsDebugCopy
-      , pBinsBigEndDebug
+      , aDebugCopyBins
+      , pDebugBigBinsEnd
 #endif // NDEBUG
    );
 
@@ -335,10 +334,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          flags,
          cSamplesLeafMin,
          aAuxiliaryBins,
-         aBinsBig
+         aBigBins
 #ifndef NDEBUG
-         , aBinsDebugCopy
-         , pBinsBigEndDebug
+         , aDebugCopyBins
+         , pDebugBigBinsEnd
 #endif // NDEBUG
       );
 
@@ -396,7 +395,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    }
 
 #ifndef NDEBUG
-   free(aBinsDebugCopy);
+   free(aDebugCopyBins);
 #endif // NDEBUG
 
    return Error_None;
