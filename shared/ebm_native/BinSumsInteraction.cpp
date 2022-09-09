@@ -114,7 +114,7 @@ public:
 
       LOG_0(Trace_Verbose, "Entered BinSumsInteractionInternal");
 
-      auto * const aBins = pInteractionShell->GetFastBinsTemp()->Specialize<FloatFast, bClassification>();
+      auto * const aBins = pInteractionShell->GetInteractionFastBinsTemp()->Specialize<FloatFast, bClassification>();
 
       InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
       const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();

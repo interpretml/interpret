@@ -195,7 +195,7 @@ public:
       ErrorEbm error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-      auto * const aBins = pBoosterShell->GetBigBins()->Specialize<FloatBig, bClassification>();
+      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bClassification>();
       Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();

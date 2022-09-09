@@ -29,11 +29,11 @@ class InteractionShell final {
 
    InteractionCore * m_pInteractionCore;
 
-   BinBase * m_aThreadByteBuffer1Fast;
-   size_t m_cThreadByteBufferCapacity1Fast;
+   BinBase * m_aInteractionFastBinsTemp;
+   size_t m_cAllocatedFastBins;
 
-   BinBase * m_aThreadByteBuffer1Big;
-   size_t m_cThreadByteBufferCapacity1Big;
+   BinBase * m_aInteractionBigBins;
+   size_t m_cAllocatedBigBins;
 
    int m_cLogEnterMessages;
    int m_cLogExitMessages;
@@ -53,11 +53,11 @@ public:
       m_handleVerification = k_handleVerificationOk;
       m_pInteractionCore = nullptr;
 
-      m_aThreadByteBuffer1Fast = nullptr;
-      m_cThreadByteBufferCapacity1Fast = 0;
+      m_aInteractionFastBinsTemp = nullptr;
+      m_cAllocatedFastBins = 0;
 
-      m_aThreadByteBuffer1Big = nullptr;
-      m_cThreadByteBufferCapacity1Big = 0;
+      m_aInteractionBigBins = nullptr;
+      m_cAllocatedBigBins = 0;
 
       m_cLogEnterMessages = 1000;
       m_cLogExitMessages = 1000;
@@ -107,18 +107,18 @@ public:
       return &m_cLogExitMessages;
    }
 
-   BinBase * GetFastBinsTemp(size_t cBytesRequired);
+   BinBase * GetInteractionFastBinsTemp(const size_t cBytesPerFastBin, const size_t cFastBins);
 
-   INLINE_ALWAYS BinBase * GetFastBinsTemp() {
+   INLINE_ALWAYS BinBase * GetInteractionFastBinsTemp() {
       // call this if the bins were already allocated and we just need the pointer
-      return m_aThreadByteBuffer1Fast;
+      return m_aInteractionFastBinsTemp;
    }
 
-   BinBase * GetBigBins(size_t cBytesRequired);
+   BinBase * GetInteractionBigBins(const size_t cBytesPerBigBin, const size_t cBigBins);
 
-   INLINE_ALWAYS BinBase * GetBigBins() {
+   INLINE_ALWAYS BinBase * GetInteractionBigBins() {
       // call this if the bins were already allocated and we just need the pointer
-      return m_aThreadByteBuffer1Big;
+      return m_aInteractionBigBins;
    }
 
 #ifndef NDEBUG

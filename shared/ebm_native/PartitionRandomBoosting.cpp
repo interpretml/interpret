@@ -67,7 +67,7 @@ public:
       EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-      auto * const aBins = pBoosterShell->GetBigBins()->Specialize<FloatBig, bClassification>();
+      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bClassification>();
 
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());

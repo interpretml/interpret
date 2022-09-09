@@ -106,7 +106,7 @@ static void BoostZeroDimensional(
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster
    const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
 
-   BinBase * const pFastBin = pBoosterShell->GetFastBinsTemp();
+   BinBase * const pFastBin = pBoosterShell->GetBoostingFastBinsTemp();
    EBM_ASSERT(nullptr != pFastBin);
 
    pFastBin->Zero(cBytesPerFastBin);
@@ -117,7 +117,7 @@ static void BoostZeroDimensional(
 
    BinSumsBoosting(pBoosterShell, BoosterShell::k_illegalTermIndex, pInnerBag);
 
-   BinBase * const pBigBin = pBoosterShell->GetBigBins();
+   BinBase * const pBigBin = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != pBigBin);
 
 #ifndef NDEBUG
@@ -211,7 +211,7 @@ static ErrorEbm BoostSingleDimensional(
    const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
    EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cBins));
 
-   BinBase * const aFastBins = pBoosterShell->GetFastBinsTemp();
+   BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
    EBM_ASSERT(nullptr != aFastBins);
 
    aFastBins->Zero(cBytesPerFastBin, cBins);
@@ -222,7 +222,7 @@ static ErrorEbm BoostSingleDimensional(
 
    BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
 
-   BinBase * const aBigBins = pBoosterShell->GetBigBins();
+   BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != aBigBins);
 
 #ifndef NDEBUG
@@ -306,7 +306,7 @@ static ErrorEbm BoostMultiDimensional(
    const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
    EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTensorBins));
 
-   BinBase * const aFastBins = pBoosterShell->GetFastBinsTemp();
+   BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
    EBM_ASSERT(nullptr != aFastBins);
    
    aFastBins->Zero(cBytesPerFastBin, cTensorBins);
@@ -326,7 +326,7 @@ static ErrorEbm BoostMultiDimensional(
 
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
-   BinBase * const aBigBins = pBoosterShell->GetBigBins();
+   BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != aBigBins);
 
 #ifndef NDEBUG
@@ -543,7 +543,7 @@ static ErrorEbm BoostRandom(
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster 
    const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
 
-   BinBase * const aFastBins = pBoosterShell->GetFastBinsTemp();
+   BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
    EBM_ASSERT(nullptr != aFastBins);
 
    aFastBins->Zero(cBytesPerFastBin, cTotalBins);
@@ -556,7 +556,7 @@ static ErrorEbm BoostRandom(
 
    BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
 
-   BinBase * const aBigBins = pBoosterShell->GetBigBins();
+   BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != aBigBins);
 
 #ifndef NDEBUG

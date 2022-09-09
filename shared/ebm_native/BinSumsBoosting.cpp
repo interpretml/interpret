@@ -43,7 +43,7 @@ public:
 
       LOG_0(Trace_Verbose, "Entered BinSumsBoostingZeroDimensions");
 
-      auto * const pBin = pBoosterShell->GetFastBinsTemp()->Specialize<FloatFast, bClassification>();
+      auto * const pBin = pBoosterShell->GetBoostingFastBinsTemp()->Specialize<FloatFast, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
@@ -208,7 +208,7 @@ public:
 
       LOG_0(Trace_Verbose, "Entered BinSumsBoostingInternal");
 
-      auto * const aBins = pBoosterShell->GetFastBinsTemp()->Specialize<FloatFast, bClassification>();
+      auto * const aBins = pBoosterShell->GetBoostingFastBinsTemp()->Specialize<FloatFast, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();

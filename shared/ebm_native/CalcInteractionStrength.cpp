@@ -248,7 +248,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    }
 
    // this doesn't need to be freed since it's tracked and re-used by the class InteractionShell
-   BinBase * const aFastBins = pInteractionShell->GetFastBinsTemp(cBytesPerFastBin * cTensorBins);
+   BinBase * const aFastBins = pInteractionShell->GetInteractionFastBinsTemp(cBytesPerFastBin, cTensorBins);
    if(UNLIKELY(nullptr == aFastBins)) {
       // already logged
       return Error_OutOfMemory;
@@ -279,7 +279,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       return Error_OutOfMemory;
    }
 
-   BinBase * const aBigBins = pInteractionShell->GetBigBins(cBytesPerBigBin * cTotalBigBins);
+   BinBase * const aBigBins = pInteractionShell->GetInteractionBigBins(cBytesPerBigBin, cTotalBigBins);
    if(UNLIKELY(nullptr == aBigBins)) {
       // already logged
       return Error_OutOfMemory;

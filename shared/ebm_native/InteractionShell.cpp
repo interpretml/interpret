@@ -25,8 +25,8 @@ void InteractionShell::Free(InteractionShell * const pInteractionShell) {
    LOG_0(Trace_Info, "Entered InteractionShell::Free");
 
    if(nullptr != pInteractionShell) {
-      free(pInteractionShell->m_aThreadByteBuffer1Fast);
-      free(pInteractionShell->m_aThreadByteBuffer1Big);
+      free(pInteractionShell->m_aInteractionFastBinsTemp);
+      free(pInteractionShell->m_aInteractionBigBins);
       InteractionCore::Free(pInteractionShell->m_pInteractionCore);
       
       // before we free our memory, indicate it was freed so if our higher level language attempts to use it we have
@@ -51,36 +51,54 @@ InteractionShell * InteractionShell::Create() {
    return pNew;
 }
 
-BinBase * InteractionShell::GetFastBinsTemp(size_t cBytesRequired) {
-   BinBase * aBuffer = m_aThreadByteBuffer1Fast;
-   if(UNLIKELY(m_cThreadByteBufferCapacity1Fast < cBytesRequired)) {
-      cBytesRequired <<= 1;
-      m_cThreadByteBufferCapacity1Fast = cBytesRequired;
-      LOG_N(Trace_Info, "Growing InteractionShell::ThreadByteBuffer1Fast to %zu", cBytesRequired);
-
+BinBase * InteractionShell::GetInteractionFastBinsTemp(const size_t cBytesPerFastBin, const size_t cFastBins) {
+   BinBase * aBuffer = m_aInteractionFastBinsTemp;
+   if(UNLIKELY(m_cAllocatedFastBins < cFastBins)) {
       free(aBuffer);
-      aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
-      m_aThreadByteBuffer1Fast = aBuffer; // store it before checking it incase it's null so that we don't free old memory
-      if(nullptr == aBuffer) {
-         LOG_0(Trace_Warning, "WARNING InteractionShell::GetFastBinsTemp OutOfMemory");
+      m_aInteractionFastBinsTemp = nullptr;
+
+      const size_t cItemsGrowth = (cFastBins >> 2) + 16; // cannot overflow
+      if(IsAddError(cItemsGrowth, cFastBins)) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp IsAddError(cItemsGrowth, cFastBins)");
+         return nullptr;
       }
+      const size_t cNewAllocatedFastBins = cFastBins + cItemsGrowth;
+
+      m_cAllocatedFastBins = cNewAllocatedFastBins;
+      LOG_N(Trace_Info, "Growing Interaction fast bins to %zu", cNewAllocatedFastBins);
+
+      aBuffer = EbmMalloc<BinBase>(cNewAllocatedFastBins, cBytesPerFastBin);
+      if(nullptr == aBuffer) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp OutOfMemory");
+         return nullptr;
+      }
+      m_aInteractionFastBinsTemp = aBuffer;
    }
    return aBuffer;
 }
 
-BinBase * InteractionShell::GetBigBins(size_t cBytesRequired) {
-   BinBase * aBuffer = m_aThreadByteBuffer1Big;
-   if(UNLIKELY(m_cThreadByteBufferCapacity1Big < cBytesRequired)) {
-      cBytesRequired <<= 1;
-      m_cThreadByteBufferCapacity1Big = cBytesRequired;
-      LOG_N(Trace_Info, "Growing InteractionShell::ThreadByteBuffer1Big to %zu", cBytesRequired);
-
+BinBase * InteractionShell::GetInteractionBigBins(const size_t cBytesPerBigBin, const size_t cBigBins) {
+   BinBase * aBuffer = m_aInteractionBigBins;
+   if(UNLIKELY(m_cAllocatedBigBins < cBigBins)) {
       free(aBuffer);
-      aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
-      m_aThreadByteBuffer1Big = aBuffer; // store it before checking it incase it's null so that we don't free old memory
-      if(nullptr == aBuffer) {
-         LOG_0(Trace_Warning, "WARNING InteractionShell::GetBigBins OutOfMemory");
+      m_aInteractionBigBins = nullptr;
+
+      const size_t cItemsGrowth = (cBigBins >> 2) + 16; // cannot overflow
+      if(IsAddError(cItemsGrowth, cBigBins)) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionBigBins IsAddError(cItemsGrowth, cBigBins)");
+         return nullptr;
       }
+      const size_t cNewAllocatedBigBins = cBigBins + cItemsGrowth;
+
+      m_cAllocatedBigBins = cNewAllocatedBigBins;
+      LOG_N(Trace_Info, "Growing Interaction big bins to %zu", cNewAllocatedBigBins);
+
+      aBuffer = EbmMalloc<BinBase>(cNewAllocatedBigBins, cBytesPerBigBin);
+      if(nullptr == aBuffer) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionBigBins OutOfMemory");
+         return nullptr;
+      }
+      m_aInteractionBigBins = aBuffer;
    }
    return aBuffer;
 }

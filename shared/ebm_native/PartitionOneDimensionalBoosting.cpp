@@ -69,7 +69,7 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
       ++iScoreZero;
    } while(cScores != iScoreZero);
 
-   const auto * const aBins = pBoosterShell->GetBigBins()->Specialize<FloatBig, bClassification>();
+   const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bClassification>();
 
 #ifndef NDEBUG
    size_t cSamplesTotalDebug = 0;
@@ -568,7 +568,7 @@ public:
       pRootTreeNode->SetDebugProgression(0);
 #endif // NDEBUG
 
-      const auto * const aBins = pBoosterShell->GetBigBins()->Specialize<FloatBig, bClassification>();
+      const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bClassification>();
       const auto * const pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
       const auto * const pBinsLast = NegativeIndexBin(pBinsEnd, cBytesPerBin);
 

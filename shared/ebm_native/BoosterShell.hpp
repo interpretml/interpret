@@ -40,10 +40,10 @@ class BoosterShell final {
    Tensor * m_pInnerTermUpdate;
 
    // TODO: try to merge some of this memory so that we get more CPU cache residency
-   BinBase * m_aFastBinsTemp;
-   BinBase * m_aBigBins;
+   BinBase * m_aBoostingFastBinsTemp;
+   BinBase * m_aBoostingBigBins;
 
-   // TODO: I think this can share memory with m_aFastBinsTemp since the GradientPair always contains a FloatFast, and it always contains enough for the multiclass scores in the first bin, and we always have at least 1 bin, right?
+   // TODO: I think this can share memory with m_aBoostingFastBinsTemp since the GradientPair always contains a FloatFast, and it always contains enough for the multiclass scores in the first bin, and we always have at least 1 bin, right?
    FloatFast * m_aMulticlassMidwayTemp;
 
    void * m_aTreeNodesTemp;
@@ -69,8 +69,8 @@ public:
       m_iTerm = k_illegalTermIndex;
       m_pTermUpdate = nullptr;
       m_pInnerTermUpdate = nullptr;
-      m_aFastBinsTemp = nullptr;
-      m_aBigBins = nullptr;
+      m_aBoostingFastBinsTemp = nullptr;
+      m_aBoostingBigBins = nullptr;
       m_aMulticlassMidwayTemp = nullptr;
       m_aTreeNodesTemp = nullptr;
       m_aSplitPositionsTemp = nullptr;
@@ -127,14 +127,14 @@ public:
       return m_pInnerTermUpdate;
    }
 
-   INLINE_ALWAYS BinBase * GetFastBinsTemp() {
+   INLINE_ALWAYS BinBase * GetBoostingFastBinsTemp() {
       // call this if the bins were already allocated and we just need the pointer
-      return m_aFastBinsTemp;
+      return m_aBoostingFastBinsTemp;
    }
 
-   INLINE_ALWAYS BinBase * GetBigBins() {
+   INLINE_ALWAYS BinBase * GetBoostingBigBins() {
       // call this if the bins were already allocated and we just need the pointer
-      return m_aBigBins;
+      return m_aBoostingBigBins;
    }
 
    INLINE_ALWAYS FloatFast * GetMulticlassMidwayTemp() {

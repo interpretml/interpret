@@ -35,8 +35,8 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
    if(nullptr != pBoosterShell) {
       Tensor::Free(pBoosterShell->m_pTermUpdate);
       Tensor::Free(pBoosterShell->m_pInnerTermUpdate);
-      free(pBoosterShell->m_aFastBinsTemp);
-      free(pBoosterShell->m_aBigBins);
+      free(pBoosterShell->m_aBoostingFastBinsTemp);
+      free(pBoosterShell->m_aBoostingBigBins);
       free(pBoosterShell->m_aMulticlassMidwayTemp);
       free(pBoosterShell->m_aSplitPositionsTemp);
       free(pBoosterShell->m_aTreeNodesTemp);
@@ -84,15 +84,15 @@ ErrorEbm BoosterShell::FillAllocations() {
    }
 
    if(0 != m_pBoosterCore->GetCountBytesFastBins()) {
-      m_aFastBinsTemp = static_cast<BinBase *>(EbmMalloc<void>(m_pBoosterCore->GetCountBytesFastBins()));
-      if(nullptr == m_aFastBinsTemp) {
+      m_aBoostingFastBinsTemp = static_cast<BinBase *>(EbmMalloc<void>(m_pBoosterCore->GetCountBytesFastBins()));
+      if(nullptr == m_aBoostingFastBinsTemp) {
          goto failed_allocation;
       }
    }
 
    if(0 != m_pBoosterCore->GetCountBytesBigBins()) {
-      m_aBigBins = static_cast<BinBase *>(EbmMalloc<void>(m_pBoosterCore->GetCountBytesBigBins()));
-      if(nullptr == m_aBigBins) {
+      m_aBoostingBigBins = static_cast<BinBase *>(EbmMalloc<void>(m_pBoosterCore->GetCountBytesBigBins()));
+      if(nullptr == m_aBoostingBigBins) {
          goto failed_allocation;
       }
    }
