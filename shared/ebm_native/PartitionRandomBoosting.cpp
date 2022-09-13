@@ -360,7 +360,7 @@ public:
       // integer type, the object representation where all the bits are zero shall be a representation 
       // of the value zero in that type.
       static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
-      memset(aCollapsedBins, 0, cBytesCollapsedTensor3);
+      aCollapsedBins->ZeroMem(cBytesCollapsedTensor3);
       const auto * const pCollapsedBinEnd =
          reinterpret_cast<Bin<FloatBig, bClassification> *>(reinterpret_cast<char *>(aCollapsedBins) +
             cBytesCollapsedTensor3);
@@ -555,7 +555,7 @@ public:
                   if(bClassification) {
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
                         pGradientPair[iScore].m_sumGradients,
-                        pGradientPair[iScore].GetSumHessians()
+                        pGradientPair[iScore].GetHess()
                      );
                   } else {
                      EBM_ASSERT(IsRegression(cCompilerClasses));

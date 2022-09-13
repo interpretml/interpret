@@ -69,7 +69,7 @@ void TensorTotalsSumDebugSlow(
       ++pcBinsInit;
    } while(pcBinsInitEnd != pcBinsInit);
 
-   pRet->Zero(cBytesPerBin);
+   pRet->ZeroMem(cBytesPerBin);
 
    while(true) {
       const auto * const pBin = IndexBin(aBins, iTensorByte);
@@ -111,7 +111,9 @@ void TensorTotalsCompareDebug(
    const size_t * const aiPoint,
    const size_t directionVector,
    const ptrdiff_t cClasses,
-   const Bin<FloatBig, bClassification> * const pComparison
+   const size_t & cSamples,
+   const FloatBig & weight,
+   const GradientPair<FloatBig, bClassification> * const aGradientPairs
 ) {
    const size_t cScores = GetCountScores(cClasses);
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
@@ -153,24 +155,31 @@ void TensorTotalsCompareDebug(
          aiStart,
          aiLast,
          pComparison2
-         );
-      EBM_ASSERT(pComparison->GetCountSamples() == pComparison2->GetCountSamples());
+      );
+      EBM_ASSERT(pComparison2->GetCountSamples() == cSamples);
+      UNUSED(weight);
+      UNUSED(aGradientPairs);
+      //EBM_ASSERT(pComparison2->IsBinClose(cSamples, weight, aGradientPairs, cScores));
       free(pComparison2);
    }
 }
 
 #endif // NDEBUG
 
-// TODO : we're not currently using cCompilerDimensions, so either use it or get rid of it
+// TODO : we're not currently using cCompilerDimensions, but we should since the number of dimensions is
+//        usually going to be small and we can eliminate a loop branch if the number of dimensions is known
+// TODO:  write a specialized and better optimized version of this function for pairs.
 template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
-void TensorTotalsSum(
+INLINE_ALWAYS static void TensorTotalsSum(
    const ptrdiff_t cRuntimeClasses,
    const size_t cRealDimensions,
    const size_t * const acBins,
    const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
    const size_t * const aiPoint,
    const size_t directionVector,
-   Bin<FloatBig, IsClassification(cCompilerClasses)> * const pRet
+   size_t & cSamplesOut,
+   FloatBig & weightOut,
+   GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
 #ifndef NDEBUG
    , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
    , const unsigned char * const pBinsEndDebug
@@ -221,9 +230,8 @@ void TensorTotalsSum(
          ++pcBins;
       } while(LIKELY(pcBinsEnd != pcBins));
       const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bClassification> *>(pStartingBin);
-      ASSERT_BIN_OK(cBytesPerBin, pRet, pBinsEndDebug);
       ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
-      pRet->Copy(*pBin, cScores);
+      pBin->CopyTo(cSamplesOut, weightOut, aGradientPairsOut, cScores);
       return;
    }
 
@@ -241,6 +249,7 @@ void TensorTotalsSum(
    TotalsDimension totalsDimension[k_cDimensionsMax];
    TotalsDimension * pTotalsDimensionEnd = totalsDimension;
    {
+      // TODO: should I move this initialization out into a separate inlined function that we do once outside of any loops of our caller
       size_t directionVectorDestroy = directionVector;
       do {
          const size_t cBins = *pcBins;
@@ -269,7 +278,15 @@ void TensorTotalsSum(
    const unsigned int cAllBits = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
    EBM_ASSERT(cAllBits < k_cBitsForSizeT);
 
-   pRet->Zero(cBytesPerBin);
+   cSamplesOut = 0;
+   weightOut = 0;
+
+   EBM_ASSERT(1 <= cScores);
+   size_t iScore = 0;
+   do {
+      aGradientPairsOut[iScore].Zero();
+      ++iScore;
+   } while(cScores != iScore);
 
    size_t permuteVector = 0;
    do {
@@ -295,13 +312,11 @@ void TensorTotalsSum(
       // We can pass in a bool that indicates if we should take the negation value or the original at each step 
       // (so we don't need to store it beyond one value either).  We would then have an Add(bool bSubtract, ...) function
       if(UNPREDICTABLE(0 != (1 & evenOdd))) {
-         ASSERT_BIN_OK(cBytesPerBin, pRet, pBinsEndDebug);
          ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
-         pRet->Subtract(*pBin, cScores);
+         pBin->SubtractTo(cSamplesOut, weightOut, aGradientPairsOut, cScores);
       } else {
-         ASSERT_BIN_OK(cBytesPerBin, pRet, pBinsEndDebug);
          ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
-         pRet->Add(*pBin, cScores);
+         pBin->AddTo(cSamplesOut, weightOut, aGradientPairsOut, cScores);
       }
       ++permuteVector;
    } while(LIKELY(0 == (permuteVector >> cAllBits)));
@@ -315,8 +330,10 @@ void TensorTotalsSum(
          aiPoint,
          directionVector,
          cClasses,
-         pRet
-         );
+         cSamplesOut,
+         weightOut,
+         aGradientPairsOut
+      );
    }
 #endif // NDEBUG
 }

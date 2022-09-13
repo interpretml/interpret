@@ -21,9 +21,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<typename TFloat, bool bClassification>
-struct Bin;
-
 template<bool bClassification>
 struct SplitPosition final {
    friend bool IsOverflowSplitPositionSize(const bool, const size_t);

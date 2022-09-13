@@ -109,7 +109,7 @@ static void BoostZeroDimensional(
    BinBase * const pFastBin = pBoosterShell->GetBoostingFastBinsTemp();
    EBM_ASSERT(nullptr != pFastBin);
 
-   pFastBin->Zero(cBytesPerFastBin);
+   pFastBin->ZeroMem(cBytesPerFastBin);
 
 #ifndef NDEBUG
    pBoosterShell->SetDebugFastBinsEnd(reinterpret_cast<unsigned char *>(pFastBin) + cBytesPerFastBin);
@@ -149,7 +149,7 @@ static void BoostZeroDimensional(
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
                aGradientPairs[iScore].m_sumGradients,
-               aGradientPairs[iScore].GetSumHessians()
+               aGradientPairs[iScore].GetHess()
             );
             aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(updateScore);
          }
@@ -214,7 +214,7 @@ static ErrorEbm BoostSingleDimensional(
    BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
    EBM_ASSERT(nullptr != aFastBins);
 
-   aFastBins->Zero(cBytesPerFastBin, cBins);
+   aFastBins->ZeroMem(cBytesPerFastBin, cBins);
 
 #ifndef NDEBUG
    pBoosterShell->SetDebugFastBinsEnd(reinterpret_cast<unsigned char *>(aFastBins) + cBytesPerFastBin * cBins);
@@ -309,7 +309,7 @@ static ErrorEbm BoostMultiDimensional(
    BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
    EBM_ASSERT(nullptr != aFastBins);
    
-   aFastBins->Zero(cBytesPerFastBin, cTensorBins);
+   aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
 
 #ifndef NDEBUG
    pBoosterShell->SetDebugFastBinsEnd(reinterpret_cast<unsigned char *>(aFastBins) + cBytesPerFastBin * cTensorBins);
@@ -342,7 +342,7 @@ static ErrorEbm BoostMultiDimensional(
 
 
    // we also need to zero the auxillary bins
-   aBigBins->Zero(cBytesPerBigBin, cAuxillaryBins, cTensorBins);
+   aBigBins->ZeroMem(cBytesPerBigBin, cAuxillaryBins, cTensorBins);
 
 
    // TODO: we can exit here back to python to allow caller modification to our histograms
@@ -546,7 +546,7 @@ static ErrorEbm BoostRandom(
    BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
    EBM_ASSERT(nullptr != aFastBins);
 
-   aFastBins->Zero(cBytesPerFastBin, cTotalBins);
+   aFastBins->ZeroMem(cBytesPerFastBin, cTotalBins);
 
    EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTotalBins));
 

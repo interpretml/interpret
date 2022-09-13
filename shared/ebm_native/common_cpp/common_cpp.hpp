@@ -111,6 +111,47 @@ static_assert(EbmMax(3.75, 2.5, 1.25) == 3.75, "automated test with compiler");
 static_assert(EbmMax(2.5, 3.75, 1.25) == 3.75, "automated test with compiler");
 static_assert(EbmMax(1.25, 2.5, 3.75) == 3.75, "automated test with compiler");
 
+template<typename T>
+INLINE_ALWAYS constexpr static T EbmAbs(T v) noexcept {
+   return T { 0 } <= v ? v : -v;
+}
+
+template<typename T>
+INLINE_ALWAYS static bool IsClose(
+   T v1, 
+   T v2, 
+   T threshold = T { 1e-10 }, 
+   T additiveError = T { 1e-15 },
+   T multipleError = T { 0.9999 }
+) noexcept {
+   EBM_ASSERT(T { 0 } < threshold);
+   EBM_ASSERT(T { 0 } < additiveError);
+   EBM_ASSERT(additiveError < threshold);
+   EBM_ASSERT(T { 0 } < multipleError);
+   EBM_ASSERT(multipleError < T { 1 });
+
+   if(threshold <= v1) {
+      if(v1 < v2) {
+         return v2 * multipleError <= v1;
+      } else {
+         return v1 * multipleError <= v2;
+      }
+   } else if(threshold <= v2) {
+      return v2 * multipleError <= v1;
+   } else if(v1 <= -threshold) {
+      if(v2 < v1) {
+         return v1 <= v2 * multipleError;
+      } else {
+         return v2 <= v1 * multipleError;
+      }
+   } else if(v2 <= -threshold) {
+      return v1 <= v2 * multipleError;
+   } else {
+      // the absolute value of both are below threshold, so use additive error
+      return EbmAbs(v2 - v1) <= additiveError;
+   }
+}
+
 
 // use SFINAE to compile time specialize IsConvertError
 // https://www.fluentcpp.com/2019/08/23/how-to-make-sfinae-pretty-and-robust/

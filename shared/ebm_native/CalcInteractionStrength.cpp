@@ -253,7 +253,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       // already logged
       return Error_OutOfMemory;
    }
-   aFastBins->Zero(cBytesPerFastBin, cTensorBins);
+   aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
 
 #ifndef NDEBUG
    const unsigned char * const pDebugFastBinsEnd = 
@@ -310,7 +310,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 #endif // NDEBUG
 
    BinBase * aAuxiliaryBins = IndexBin(aBigBins, cBytesPerBigBin * cTensorBins);
-   aAuxiliaryBins->Zero(cBytesPerBigBin, cAuxillaryBins);
+   aAuxiliaryBins->ZeroMem(cBytesPerBigBin, cAuxillaryBins);
 
    TensorTotalsBuild(
       cClasses,

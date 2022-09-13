@@ -94,23 +94,24 @@ struct GradientPair<TFloat, true> final : GradientPairBase {
    // nicely from eachother and match other package naming.  ThirdDerivative is nice since it's distinctly named
    // and easy to see rather than Derivative1, Derivative2, Derivative3, etc..
 
-   INLINE_ALWAYS TFloat GetSumHessians() const {
+   INLINE_ALWAYS TFloat GetHess() const {
       return m_sumHessians;
    }
-   INLINE_ALWAYS void SetSumHessians(const TFloat sumHessians) {
+   INLINE_ALWAYS void SetHess(const TFloat sumHessians) {
       m_sumHessians = sumHessians;
    }
-   INLINE_ALWAYS void Add(const GradientPair<TFloat, true> & other) {
+   INLINE_ALWAYS GradientPair & operator+=(const GradientPair & other) {
       m_sumGradients += other.m_sumGradients;
       m_sumHessians += other.m_sumHessians;
+      return *this;
    }
-   INLINE_ALWAYS void Subtract(const GradientPair<TFloat, true> & other) {
+   INLINE_ALWAYS GradientPair & operator-=(const GradientPair & other) {
       m_sumGradients -= other.m_sumGradients;
       m_sumHessians -= other.m_sumHessians;
+      return *this;
    }
-   INLINE_ALWAYS void Copy(const GradientPair<TFloat, true> & other) {
-      m_sumGradients = other.m_sumGradients;
-      m_sumHessians = other.m_sumHessians;
+   INLINE_ALWAYS bool IsGradientsClose(const GradientPair & other) const {
+      return IsClose(m_sumGradients, other.m_sumGradients) && IsClose(m_sumHessians, other.m_sumHessians);
    }
    INLINE_ALWAYS void Zero() {
       m_sumGradients = 0;
@@ -154,22 +155,24 @@ struct GradientPair<TFloat, false> final : GradientPairBase {
 
    TFloat m_sumGradients;
 
-   INLINE_ALWAYS TFloat GetSumHessians() const {
+   INLINE_ALWAYS TFloat GetHess() const {
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
       return TFloat { 0 };
    }
-   INLINE_ALWAYS void SetSumHessians(const TFloat sumHessians) {
+   INLINE_ALWAYS void SetHess(const TFloat sumHessians) {
       UNUSED(sumHessians);
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
    }
-   INLINE_ALWAYS void Add(const GradientPair<TFloat, false> & other) {
+   INLINE_ALWAYS GradientPair & operator+=(const GradientPair & other) {
       m_sumGradients += other.m_sumGradients;
+      return *this;
    }
-   INLINE_ALWAYS void Subtract(const GradientPair<TFloat, false> & other) {
+   INLINE_ALWAYS GradientPair & operator-=(const GradientPair & other) {
       m_sumGradients -= other.m_sumGradients;
+      return *this;
    }
-   INLINE_ALWAYS void Copy(const GradientPair<TFloat, false> & other) {
-      m_sumGradients = other.m_sumGradients;
+   INLINE_ALWAYS bool IsGradientsClose(const GradientPair & other) const {
+      return IsClose(m_sumGradients, other.m_sumGradients);
    }
    INLINE_ALWAYS void Zero() {
       m_sumGradients = 0;

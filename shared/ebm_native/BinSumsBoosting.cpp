@@ -114,7 +114,7 @@ public:
                //   MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the computation if 
                //   not necssary and access it through an accessor so that we can make the change entirely via macro
                const FloatFast hessian = *(pGradientAndHessian + 1);
-               pGradientPair[iScore].SetSumHessians(pGradientPair[iScore].GetSumHessians() + hessian * weight);
+               pGradientPair[iScore].SetHess(pGradientPair[iScore].GetHess() + hessian * weight);
             }
             pGradientAndHessian += bClassification ? 2 : 1;
             ++iScore;
@@ -316,7 +316,7 @@ public:
                   //   done in a MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the 
                   //   computation if not necssary and access it through an accessor so that we can make the change entirely via macro
                   const FloatFast hessian = *(pGradientAndHessian + 1);
-                  pGradientPair[iScore].SetSumHessians(pGradientPair[iScore].GetSumHessians() + hessian * weight);
+                  pGradientPair[iScore].SetHess(pGradientPair[iScore].GetHess() + hessian * weight);
                }
                pGradientAndHessian += bClassification ? 2 : 1;
                ++iScore;

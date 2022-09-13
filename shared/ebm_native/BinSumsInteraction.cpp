@@ -230,14 +230,14 @@ public:
                   !std::isinf(hessian) && -k_epsilonGradient <= hessian && hessian <= FloatFast { 0.25 }
                ); // since any one hessian is limited to 0 <= hessian <= 0.25, the sum must be representable by a 64 bit number, 
 
-               const FloatFast oldHessian = pGradientPair->GetSumHessians();
+               const FloatFast oldHessian = pGradientPair->GetHess();
                // since any one hessian is limited to 0 <= gradient <= 0.25, the sum must be representable by a 64 bit number, 
                EBM_ASSERT(std::isnan(oldHessian) || !std::isinf(oldHessian) && -k_epsilonGradient <= oldHessian);
                const FloatFast newHessian = oldHessian + hessian * weight;
                // since any one hessian is limited to 0 <= hessian <= 0.25, the sum must be representable by a 64 bit number, 
                EBM_ASSERT(std::isnan(newHessian) || !std::isinf(newHessian) && -k_epsilonGradient <= newHessian);
                // which will always be representable by a float or double, so we can't overflow to inifinity or -infinity
-               pGradientPair->SetSumHessians(newHessian);
+               pGradientPair->SetHess(newHessian);
             }
             pGradientAndHessian += bClassification ? 2 : 1;
             ++iScore;

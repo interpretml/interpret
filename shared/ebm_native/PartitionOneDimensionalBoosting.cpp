@@ -93,7 +93,7 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
 
       size_t iScore = 0;
       do {
-         aSumGradientPairs[iScore].Add(aGradientPairs[iScore]);
+         aSumGradientPairs[iScore] += aGradientPairs[iScore];
          ++iScore;
       } while(cScores != iScore);
 
@@ -170,7 +170,7 @@ INLINE_RELEASE_TEMPLATED static void Flatten(
             FloatBig updateScore;
             if(bClassification) {
                updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                  aGradientPair[iScore].m_sumGradients, aGradientPair[iScore].GetSumHessians());
+                  aGradientPair[iScore].m_sumGradients, aGradientPair[iScore].GetHess());
             } else {
                updateScore = EbmStats::ComputeSinglePartitionUpdate(
                   aGradientPair[iScore].m_sumGradients, pTreeNode->GetWeight());
@@ -336,11 +336,11 @@ static int FindBestSplitGain(
          const FloatBig sumGradientsRight = aParentGradientPairs[iScore].m_sumGradients - sumGradientsLeft;
 
          if(bClassification) {
-            const FloatBig newSumHessiansLeft = aLeftGradientPairs[iScore].GetSumHessians() + aBinGradientPairs[iScore].GetSumHessians();
-            aLeftGradientPairs[iScore].SetSumHessians(newSumHessiansLeft);
+            const FloatBig newSumHessiansLeft = aLeftGradientPairs[iScore].GetHess() + aBinGradientPairs[iScore].GetHess();
+            aLeftGradientPairs[iScore].SetHess(newSumHessiansLeft);
             if(bUseLogitBoost) {
                sumHessiansLeft = newSumHessiansLeft;
-               sumHessiansRight = aParentGradientPairs[iScore].GetSumHessians() - newSumHessiansLeft;
+               sumHessiansRight = aParentGradientPairs[iScore].GetHess() - newSumHessiansLeft;
             }
          }
 
@@ -392,16 +392,8 @@ static int FindBestSplitGain(
             bestGain = gain;
 
             pBestSplitsCur->SetBinPosition(pBinCur);
-            pBestSplitsCur->GetLeftSum()->SetCountSamples(cSamplesLeft);
-            pBestSplitsCur->GetLeftSum()->SetWeight(weightLeft);
 
-            auto * const aBestGradientPairs = pBestSplitsCur->GetLeftSum()->GetGradientPairs();
-            size_t iScoreCopy = 0;
-            do {
-               // do not use memcpy here so that the compiler can keep aLeftGradientPairsLocal in registers
-               aBestGradientPairs[iScoreCopy] = aLeftGradientPairs[iScoreCopy];
-               ++iScoreCopy;
-            } while(cScores != iScoreCopy);
+            pBestSplitsCur->GetLeftSum()->CopyFrom(cSamplesLeft, weightLeft, aLeftGradientPairs, cScores);
 
             pBestSplitsCur = IndexSplitPosition(pBestSplitsCur, cBytesPerSplitPosition);
          } else {
@@ -444,7 +436,7 @@ static int FindBestSplitGain(
       const FloatBig sumGradientsParent = aParentGradientPairs[iScoreParent].m_sumGradients;
       if(bClassification) {
          if(bUseLogitBoost) {
-            sumHessiansOverwrite = aParentGradientPairs[iScoreParent].GetSumHessians();
+            sumHessiansOverwrite = aParentGradientPairs[iScoreParent].GetHess();
          }
       }
       const FloatBig gain1 = EbmStats::CalcPartialGain(sumGradientsParent, sumHessiansOverwrite);
@@ -486,7 +478,7 @@ static int FindBestSplitGain(
    const auto * const pBestBinPosition = pBestSplitsStart->GetBinPosition();
    pLeftChild->BEFORE_SetBinLast(pBestBinPosition);
 
-   pLeftChild->GetBin()->Copy(*pBestSplitsStart->GetLeftSum(), cScores);
+   memcpy(pLeftChild->GetBin(), pBestSplitsStart->GetLeftSum(), cBytesPerBin);
 
    const auto * const pBinFirst = IndexBin(pBestBinPosition, cBytesPerBin);
    ASSERT_BIN_OK(cBytesPerBin, pBinFirst, pBoosterShell->GetDebugBigBinsEnd());
@@ -500,8 +492,20 @@ static int FindBestSplitGain(
 #endif // NDEBUG
    pRightChild->BEFORE_SetBinLast(pBinLast);
    pRightChild->BEFORE_SetBinFirst(pBinFirst);
-   pRightChild->GetBin()->Copy(*pTreeNode->GetBin(), cScores);
-   pRightChild->GetBin()->Subtract(*pBestSplitsStart->GetLeftSum(), cScores);
+
+   pRightChild->GetBin()->SetCountSamples(pTreeNode->GetCountSamples() - pBestSplitsStart->GetLeftSum()->GetCountSamples());
+   pRightChild->GetBin()->SetWeight(weightParent - pBestSplitsStart->GetLeftSum()->GetWeight());
+
+   auto * const aRightGradientPairs = pRightChild->GetGradientPairs();
+   const auto * const aBestGradientPairs = pBestSplitsStart->GetLeftSum()->GetGradientPairs();
+   size_t iScoreCopy = 0;
+   do {
+      auto temp = aParentGradientPairs[iScoreCopy];
+      temp -= aBestGradientPairs[iScoreCopy];
+      aRightGradientPairs[iScoreCopy] = temp;
+
+      ++iScoreCopy;
+   } while(cScores != iScoreCopy);
 
 
    // IMPORTANT!! : We need to finish all our calls that use pTreeNode->m_UNION.m_beforeGainCalc BEFORE setting 

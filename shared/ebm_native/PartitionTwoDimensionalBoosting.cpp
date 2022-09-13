@@ -60,10 +60,7 @@ static FloatBig SweepMultiDimensional(
    EBM_ASSERT(iDimensionSweep < cRealDimensions);
    EBM_ASSERT(0 == (directionVectorLow & (size_t { 1 } << iDimensionSweep)));
 
-   const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-      cCompilerClasses,
-      cRuntimeClasses
-   );
+   const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
    const size_t cScores = GetCountScores(cClasses);
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
@@ -84,6 +81,22 @@ static FloatBig SweepMultiDimensional(
    auto * const pTotalsHigh = IndexBin(pBinBestAndTemp, cBytesPerBin * 3);
    ASSERT_BIN_OK(cBytesPerBin, pTotalsHigh, pBinsEndDebug);
 
+   GradientPair<FloatBig, bClassification> aGradientPairsLowLocal[GetCountScores(cCompilerClasses)];
+   GradientPair<FloatBig, bClassification> aGradientPairsHighLocal[GetCountScores(cCompilerClasses)];
+
+   // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
+   constexpr bool bUseStackMemory = k_dynamicClassification != cCompilerClasses;
+   GradientPair<FloatBig, bClassification> * const aGradientPairsLow =
+      bUseStackMemory ? aGradientPairsLowLocal : pTotalsLow->GetGradientPairs();
+   GradientPair<FloatBig, bClassification> * const aGradientPairsHigh =
+      bUseStackMemory ? aGradientPairsHighLocal : pTotalsHigh->GetGradientPairs();
+
+   size_t cSamplesLow;
+   FloatBig weightLow;
+
+   size_t cSamplesHigh;
+   FloatBig weightHigh;
+
    EBM_ASSERT(0 < cSamplesLeafMin);
 
    FloatBig bestGain = k_illegalGainFloat;
@@ -99,13 +112,15 @@ static FloatBig SweepMultiDimensional(
          aBins,
          aiPoint,
          directionVectorLow,
-         pTotalsLow
+         cSamplesLow,
+         weightLow,
+         aGradientPairsLow
 #ifndef NDEBUG
          , aDebugCopyBins
          , pBinsEndDebug
 #endif // NDEBUG
          );
-      if(LIKELY(cSamplesLeafMin <= pTotalsLow->GetCountSamples())) {
+      if(LIKELY(cSamplesLeafMin <= cSamplesLow)) {
          EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
          TensorTotalsSum<cCompilerClasses, 2>(
             cRuntimeClasses,
@@ -114,23 +129,18 @@ static FloatBig SweepMultiDimensional(
             aBins,
             aiPoint,
             directionVectorHigh,
-            pTotalsHigh
+            cSamplesHigh,
+            weightHigh,
+            aGradientPairsHigh
 #ifndef NDEBUG
             , aDebugCopyBins
             , pBinsEndDebug
 #endif // NDEBUG
          );
-         if(LIKELY(cSamplesLeafMin <= pTotalsHigh->GetCountSamples())) {
+         if(LIKELY(cSamplesLeafMin <= cSamplesHigh)) {
             FloatBig gain = 0;
-            EBM_ASSERT(0 < pTotalsLow->GetCountSamples());
-            EBM_ASSERT(0 < pTotalsHigh->GetCountSamples());
-
-            const FloatBig cLowWeight = pTotalsLow->GetWeight();
-            const FloatBig cHighWeight = pTotalsHigh->GetWeight();
-
-            auto * const pGradientPairLow = pTotalsLow->GetGradientPairs();
-
-            auto * const pGradientPairHigh = pTotalsHigh->GetGradientPairs();
+            EBM_ASSERT(0 < cSamplesLow);
+            EBM_ASSERT(0 < cSamplesHigh);
 
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
                // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
@@ -138,11 +148,11 @@ static FloatBig SweepMultiDimensional(
 
                constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
                const FloatBig gain1 = EbmStats::CalcPartialGain(
-                  pGradientPairLow[iScore].m_sumGradients, bUseLogitBoost ? pGradientPairLow[iScore].GetSumHessians() : cLowWeight);
+                  aGradientPairsLow[iScore].m_sumGradients, bUseLogitBoost ? aGradientPairsLow[iScore].GetHess() : weightLow);
                EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                gain += gain1;
                const FloatBig gain2 = EbmStats::CalcPartialGain(
-                  pGradientPairHigh[iScore].m_sumGradients, bUseLogitBoost ? pGradientPairHigh[iScore].GetSumHessians() : cHighWeight);
+                  aGradientPairsHigh[iScore].m_sumGradients, bUseLogitBoost ? aGradientPairsHigh[iScore].GetHess() : weightHigh);
                EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
                gain += gain2;
             }
@@ -154,9 +164,15 @@ static FloatBig SweepMultiDimensional(
                bestGain = gain;
                iBestSplit = iBin;
 
-               ASSERT_BIN_OK(cBytesPerBin, IndexBin(pBinBestAndTemp, cBytesPerBin), pBinsEndDebug);
-               ASSERT_BIN_OK(cBytesPerBin, IndexBin(pTotalsLow, cBytesPerBin), pBinsEndDebug);
-               memcpy(pBinBestAndTemp, pTotalsLow, cBytesPerTwoBins); // this copies both pTotalsLow and pTotalsHigh
+               auto * const pTotalsLowOut = IndexBin(pBinBestAndTemp, cBytesPerBin * 0);
+               ASSERT_BIN_OK(cBytesPerBin, pTotalsLowOut, pBinsEndDebug);
+
+               pTotalsLowOut->CopyFrom(cSamplesLow, weightLow, aGradientPairsLow, cScores);
+
+               auto * const pTotalsHighOut = IndexBin(pBinBestAndTemp, cBytesPerBin * 1);
+               ASSERT_BIN_OK(cBytesPerBin, pTotalsHighOut, pBinsEndDebug);
+
+               pTotalsHighOut->CopyFrom(cSamplesHigh, weightHigh, aGradientPairsHigh, cScores);
             } else {
                EBM_ASSERT(!std::isnan(gain));
             }
@@ -318,10 +334,11 @@ public:
                   splitFirst1LowBest = splitSecond1LowBest;
                   splitFirst1HighBest = splitSecond1HighBest;
 
-                  pTotals1LowLowBest->Copy(*pTotals2LowLowBest, cScores);
-                  pTotals1LowHighBest->Copy(*pTotals2LowHighBest, cScores);
-                  pTotals1HighLowBest->Copy(*pTotals2HighLowBest, cScores);
-                  pTotals1HighHighBest->Copy(*pTotals2HighHighBest, cScores);
+                  // TODO: we can probably copy all 4 of these with a single memcpy
+                  memcpy(pTotals1LowLowBest, pTotals2LowLowBest, cBytesPerBin);
+                  memcpy(pTotals1LowHighBest, pTotals2LowHighBest, cBytesPerBin);
+                  memcpy(pTotals1HighLowBest, pTotals2HighLowBest, cBytesPerBin);
+                  memcpy(pTotals1HighHighBest, pTotals2HighHighBest, cBytesPerBin);
                } else {
                   EBM_ASSERT(!std::isnan(gain));
                }
@@ -411,10 +428,11 @@ public:
                   splitFirst2LowBest = splitSecond2LowBest;
                   splitFirst2HighBest = splitSecond2HighBest;
 
-                  pTotals2LowLowBest->Copy(*pTotals1LowLowBestInner, cScores);
-                  pTotals2LowHighBest->Copy(*pTotals1LowHighBestInner, cScores);
-                  pTotals2HighLowBest->Copy(*pTotals1HighLowBestInner, cScores);
-                  pTotals2HighHighBest->Copy(*pTotals1HighHighBestInner, cScores);
+                  // TODO: we can probably copy all 4 of these with a single memcpy
+                  memcpy(pTotals2LowLowBest, pTotals1LowLowBestInner, cBytesPerBin);
+                  memcpy(pTotals2LowHighBest, pTotals1LowHighBestInner, cBytesPerBin);
+                  memcpy(pTotals2HighLowBest, pTotals1HighLowBestInner, cBytesPerBin);
+                  memcpy(pTotals2HighHighBest, pTotals1HighHighBestInner, cBytesPerBin);
 
                   bSplitFirst2 = true;
                } else {
@@ -465,7 +483,7 @@ public:
                constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
                const FloatBig gain1 = EbmStats::CalcPartialGain(
                   pGradientPairTotal[iScore].m_sumGradients,
-                  bUseLogitBoost ? pGradientPairTotal[iScore].GetSumHessians() : weightAll
+                  bUseLogitBoost ? pGradientPairTotal[iScore].GetHess() : weightAll
                );
                EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                bestGain -= gain1;
@@ -546,19 +564,19 @@ public:
                         if(bClassification) {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals2LowLowBest[iScore].m_sumGradients,
-                              pGradientPairTotals2LowLowBest[iScore].GetSumHessians()
+                              pGradientPairTotals2LowLowBest[iScore].GetHess()
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals2LowHighBest[iScore].m_sumGradients,
-                              pGradientPairTotals2LowHighBest[iScore].GetSumHessians()
+                              pGradientPairTotals2LowHighBest[iScore].GetHess()
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals2HighLowBest[iScore].m_sumGradients,
-                              pGradientPairTotals2HighLowBest[iScore].GetSumHessians()
+                              pGradientPairTotals2HighLowBest[iScore].GetHess()
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals2HighHighBest[iScore].m_sumGradients,
-                              pGradientPairTotals2HighHighBest[iScore].GetSumHessians()
+                              pGradientPairTotals2HighHighBest[iScore].GetHess()
                            );
                         } else {
                            EBM_ASSERT(IsRegression(cCompilerClasses));
@@ -665,19 +683,19 @@ public:
                         if(bClassification) {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals1LowLowBest[iScore].m_sumGradients,
-                              pGradientPairTotals1LowLowBest[iScore].GetSumHessians()
+                              pGradientPairTotals1LowLowBest[iScore].GetHess()
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals1LowHighBest[iScore].m_sumGradients,
-                              pGradientPairTotals1LowHighBest[iScore].GetSumHessians()
+                              pGradientPairTotals1LowHighBest[iScore].GetHess()
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals1HighLowBest[iScore].m_sumGradients,
-                              pGradientPairTotals1HighLowBest[iScore].GetSumHessians()
+                              pGradientPairTotals1HighLowBest[iScore].GetHess()
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals1HighHighBest[iScore].m_sumGradients,
-                              pGradientPairTotals1HighHighBest[iScore].GetSumHessians()
+                              pGradientPairTotals1HighHighBest[iScore].GetHess()
                            );
                         } else {
                            EBM_ASSERT(IsRegression(cCompilerClasses));
@@ -756,7 +774,7 @@ public:
          if(bClassification) {
             update = EbmStats::ComputeSinglePartitionUpdate(
                pGradientPairTotal[iScore].m_sumGradients,
-               pGradientPairTotal[iScore].GetSumHessians()
+               pGradientPairTotal[iScore].GetHess()
             );
          } else {
             EBM_ASSERT(IsRegression(cCompilerClasses));

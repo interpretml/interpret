@@ -14,6 +14,7 @@
 #include "logging.h"
 #include "zones.h"
 
+#include "common_cpp.hpp"
 #include "ebm_internal.hpp"
 
 #include "GradientPair.hpp"
@@ -49,10 +50,10 @@ struct BinBase {
       return static_cast<const Bin<TFloat, bClassification> *>(this);
    }
 
-   INLINE_ALWAYS void Zero(const size_t cBytesPerBin, const size_t cBins = 1, const size_t iBin = 0) {
-      // The C standard guarantees that zeroing integer types is a zero, and IEEE-754 guarantees 
-      // that zeroing a floating point is zero.  Our Bin objects are POD and also only contain
-      // floating point and unsigned integer types
+   INLINE_ALWAYS void ZeroMem(const size_t cBytesPerBin, const size_t cBins = 1, const size_t iBin = 0) {
+      // The C standard guarantees that memset to 0 on integer types is a zero, and IEEE-754 guarantees 
+      // that mem zeroing a floating point is zero.  Our Bin objects are POD and also only contain floating point
+      // and unsigned integer types, so memset is legal. We do not use pointers which would be implementation defined.
       //
       // 6.2.6.2 Integer types -> 5. The values of any padding bits are unspecified.A valid (non - trap) 
       // object representation of a signed integer type where the sign bit is zero is a valid object 
@@ -61,7 +62,7 @@ struct BinBase {
       // of the value zero in that type.
 
       static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
-      memset(reinterpret_cast<char *>(this) + iBin * cBytesPerBin, 0, cBins * cBytesPerBin);
+      memset(reinterpret_cast<char *>(this) + iBin * cBytesPerBin, 0, cBytesPerBin * cBins);
    }
 };
 static_assert(std::is_standard_layout<BinBase>::value,
@@ -113,13 +114,13 @@ public:
       m_cSamples += other.m_cSamples;
       m_weight += other.m_weight;
 
-      auto * aGradientPairs = GetGradientPairs();
-      const auto * aOtherGradientPairs = other.GetGradientPairs();
+      auto * const aThisGradientPairs = GetGradientPairs();
+      const auto * const aOtherGradientPairs = other.GetGradientPairs();
 
       EBM_ASSERT(1 <= cScores);
       size_t iScore = 0;
       do {
-         aGradientPairs[iScore].Add(aOtherGradientPairs[iScore]);
+         aThisGradientPairs[iScore] += aOtherGradientPairs[iScore];
          ++iScore;
       } while(cScores != iScore);
    }
@@ -128,20 +129,170 @@ public:
       m_cSamples -= other.m_cSamples;
       m_weight -= other.m_weight;
 
-      auto * aGradientPairs = GetGradientPairs();
-      const auto * aOtherGradientPairs = other.GetGradientPairs();
+      auto * const aThisGradientPairs = GetGradientPairs();
+      const auto * const aOtherGradientPairs = other.GetGradientPairs();
 
       EBM_ASSERT(1 <= cScores);
       size_t iScore = 0;
       do {
-         aGradientPairs[iScore].Subtract(aOtherGradientPairs[iScore]);
+         aThisGradientPairs[iScore] -= aOtherGradientPairs[iScore];
          ++iScore;
       } while(cScores != iScore);
    }
 
    INLINE_ALWAYS void Copy(const Bin<TFloat, bClassification> & other, const size_t cScores) {
-      const size_t cBytesPerBin = sizeof(Bin) - sizeof(m_aGradientPairs) + sizeof(m_aGradientPairs[0]) * cScores;
-      memcpy(this, &other, cBytesPerBin);
+      m_cSamples = other.m_cSamples;
+      m_weight = other.m_weight;
+
+      auto * const aThisGradientPairs = GetGradientPairs();
+      const auto * const aOtherGradientPairs = other.GetGradientPairs();
+
+      EBM_ASSERT(1 <= cScores);
+      size_t iScore = 0;
+      do {
+         aThisGradientPairs[iScore] = aOtherGradientPairs[iScore];
+         ++iScore;
+      } while(cScores != iScore);
+   }
+
+   INLINE_ALWAYS void AddTo(
+      size_t & cSamplesInOut, 
+      TFloat & weightInOut,
+      GradientPair<TFloat, bClassification> * const aGradientPairsInOut,
+      const size_t cScores
+   ) const {
+      cSamplesInOut += m_cSamples;
+      weightInOut += m_weight;
+
+      const auto * const aThisGradientPairs = GetGradientPairs();
+
+      EBM_ASSERT(1 <= cScores);
+      size_t iScore = 0;
+      do {
+         aGradientPairsInOut[iScore] += aThisGradientPairs[iScore];
+         ++iScore;
+      } while(cScores != iScore);
+   }
+
+   INLINE_ALWAYS void SubtractTo(
+      size_t & cSamplesInOut,
+      TFloat & weightInOut,
+      GradientPair<TFloat, bClassification> * const aGradientPairsInOut,
+      const size_t cScores
+   ) const {
+      cSamplesInOut -= m_cSamples;
+      weightInOut -= m_weight;
+
+      const auto * const aThisGradientPairs = GetGradientPairs();
+
+      EBM_ASSERT(1 <= cScores);
+      size_t iScore = 0;
+      do {
+         aGradientPairsInOut[iScore] -= aThisGradientPairs[iScore];
+         ++iScore;
+      } while(cScores != iScore);
+   }
+
+   INLINE_ALWAYS void CopyTo(
+      size_t & cSamplesInOut,
+      TFloat & weightInOut,
+      GradientPair<TFloat, bClassification> * const aGradientPairsInOut,
+      const size_t cScores
+   ) const {
+      cSamplesInOut = m_cSamples;
+      weightInOut = m_weight;
+
+      const auto * const aThisGradientPairs = GetGradientPairs();
+
+      EBM_ASSERT(1 <= cScores);
+      size_t iScore = 0;
+      do {
+         aGradientPairsInOut[iScore] = aThisGradientPairs[iScore];
+         ++iScore;
+      } while(cScores != iScore);
+   }
+
+
+   INLINE_ALWAYS void AddFrom(
+      const size_t & cSamples,
+      const TFloat & weight,
+      const GradientPair<TFloat, bClassification> * const aGradientPairs,
+      const size_t cScores
+   ) {
+      m_cSamples += cSamples;
+      m_weight += weight;
+
+      auto * const aThisGradientPairs = GetGradientPairs();
+
+      EBM_ASSERT(1 <= cScores);
+      size_t iScore = 0;
+      do {
+         aThisGradientPairs[iScore] += aGradientPairs[iScore];
+         ++iScore;
+      } while(cScores != iScore);
+   }
+
+   INLINE_ALWAYS void SubtractFrom(
+      const size_t & cSamples,
+      const TFloat & weight,
+      const GradientPair<TFloat, bClassification> * const aGradientPairs,
+      const size_t cScores
+   ) {
+      m_cSamples -= cSamples;
+      m_weight -= weight;
+
+      auto * const aThisGradientPairs = GetGradientPairs();
+
+      EBM_ASSERT(1 <= cScores);
+      size_t iScore = 0;
+      do {
+         aThisGradientPairs[iScore] -= aGradientPairs[iScore];
+         ++iScore;
+      } while(cScores != iScore);
+   }
+
+   INLINE_ALWAYS void CopyFrom(
+      const size_t & cSamples,
+      const TFloat & weight,
+      const GradientPair<TFloat, bClassification> * const aGradientPairs,
+      const size_t cScores
+   ) {
+      m_cSamples = cSamples;
+      m_weight = weight;
+
+      auto * const aThisGradientPairs = GetGradientPairs();
+
+      EBM_ASSERT(1 <= cScores);
+      size_t iScore = 0;
+      do {
+         aThisGradientPairs[iScore] = aGradientPairs[iScore];
+         ++iScore;
+      } while(cScores != iScore);
+   }
+
+   INLINE_ALWAYS bool IsBinClose(
+      const size_t & cSamples,
+      const TFloat & weight,
+      const GradientPair<TFloat, bClassification> * const aGradientPairs,
+      const size_t cScores
+   ) const {
+      if(cSamples != m_cSamples) {
+         return false;
+      }
+      if(!IsClose(weight, m_weight)) {
+         return false;
+      }
+
+      const auto * const aThisGradientPairs = GetGradientPairs();
+
+      EBM_ASSERT(1 <= cScores);
+      size_t iScore = 0;
+      do {
+         if(!aThisGradientPairs[iScore].IsGradientsClose(aGradientPairs[iScore]))             {
+            return false;
+         }
+         ++iScore;
+      } while(cScores != iScore);
    }
 
    INLINE_ALWAYS void AssertZero(const size_t cScores) const {
@@ -150,10 +301,14 @@ public:
       EBM_ASSERT(0 == m_cSamples);
       EBM_ASSERT(0 == m_weight);
 
-      const auto * aGradientPairs = GetGradientPairs();
-      for(size_t iScore = 0; iScore < cScores; ++iScore) {
-         aGradientPairs[iScore].AssertZero();
-      }
+      const auto * const aThisGradientPairs = GetGradientPairs();
+
+      EBM_ASSERT(1 <= cScores);
+      size_t iScore = 0;
+      do {
+         aThisGradientPairs[iScore].AssertZero();
+         ++iScore;
+      } while(cScores != iScore);
 #endif // NDEBUG
    }
 };
