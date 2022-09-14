@@ -167,9 +167,9 @@ void TensorTotalsCompareDebug(
 #endif // NDEBUG
 
 template<ptrdiff_t cCompilerClasses>
-INLINE_ALWAYS static void TensorTotalsSumPair(
+INLINE_ALWAYS static void TensorTotalsSumMulti(
    const ptrdiff_t cRuntimeClasses,
-   const size_t cRuntimeRealDimensions,
+   const size_t cRealDimensions,
    const size_t * const acBins,
    const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
    const size_t * const aiPoint,
@@ -182,94 +182,6 @@ INLINE_ALWAYS static void TensorTotalsSumPair(
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
-   // TODO: make a pair specific version of this function
-   //       For pairs, we'd probably be better off if we did the original thing where we put 4 co-located Bins
-   //       (low, low), (low, high), (high, low), (high, high) and then just use the bin demaned by the 
-   //       directionVector.  Our algorithm below works well for higher dimensions where this blows up quickly
-   //       but doing it the way below really randomizes memory accesses.
-}
-
-template<ptrdiff_t cCompilerClasses>
-INLINE_ALWAYS static void TensorTotalsSumTripple(
-   const ptrdiff_t cRuntimeClasses,
-   const size_t cRuntimeRealDimensions,
-   const size_t * const acBins,
-   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
-   const size_t * const aiPoint,
-   const size_t directionVector,
-   size_t & cSamplesOut,
-   FloatBig & weightOut,
-   GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
-#ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
-   , const unsigned char * const pBinsEndDebug
-#endif // NDEBUG
-) {
-   // TODO: make a tripple specific version of this function
-}
-
-template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
-INLINE_ALWAYS static void TensorTotalsSum(
-   const ptrdiff_t cRuntimeClasses,
-   const size_t cRuntimeRealDimensions,
-   const size_t * const acBins,
-   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
-   const size_t * const aiPoint,
-   const size_t directionVector,
-   size_t & cSamplesOut,
-   FloatBig & weightOut,
-   GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
-#ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
-   , const unsigned char * const pBinsEndDebug
-#endif // NDEBUG
-) {
-   // TODO: This function is specialized to runtime numbers of dimensions, and I do not think it can be
-   //       properly compiler specialized to specific numbers of dimensions.  We should build pair and tripple
-   //       specialized versions of this function and leave this one for higher dimenional problems
-   //       One example of where we would benefit is that we no longer need to zero the initial value and then 
-   //       add/subtract from the zeroed bin.  For the 3 directions that are not straight copies we can make the initial 
-   //       copy and then add/subtract the other bins without re-reading from memory.
-
-
-//   if(2 == cCompilerDimensions) {
-//      TensorTotalsSumPair<cCompilerClasses>(
-//         cRuntimeClasses,
-//         cRuntimeRealDimensions,
-//         acBins,
-//         aBins,
-//         aiPoint,
-//         directionVector,
-//         cSamplesOut,
-//         weightOut,
-//         aGradientPairsOut
-//#ifndef NDEBUG
-//         , aDebugCopyBins
-//         , pBinsEndDebug
-//#endif // NDEBUG
-//         );
-//      return;
-//   }
-//
-//   if(3 == cCompilerDimensions) {
-//      TensorTotalsSumTripple<cCompilerClasses>(
-//         cRuntimeClasses,
-//         cRuntimeRealDimensions,
-//         acBins,
-//         aBins,
-//         aiPoint,
-//         directionVector,
-//         cSamplesOut,
-//         weightOut,
-//         aGradientPairsOut
-//#ifndef NDEBUG
-//         , aDebugCopyBins
-//         , pBinsEndDebug
-//#endif // NDEBUG
-//      );
-//      return;
-//   }
-
    struct TotalsDimension {
       size_t m_cIncrement;
       size_t m_cLast;
@@ -284,7 +196,6 @@ INLINE_ALWAYS static void TensorTotalsSum(
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-   const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
    EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
 
    size_t cTensorBytesInitialize = cBytesPerBin;
@@ -325,7 +236,7 @@ INLINE_ALWAYS static void TensorTotalsSum(
    //   }
    //}
 
-   TotalsDimension totalsDimension[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+   TotalsDimension totalsDimension[k_cDimensionsMax];
    TotalsDimension * pTotalsDimensionEnd = totalsDimension;
    {
       size_t directionVectorDestroy = directionVector;
@@ -413,6 +324,147 @@ INLINE_ALWAYS static void TensorTotalsSum(
    }
 #endif // NDEBUG
 }
+
+template<ptrdiff_t cCompilerClasses>
+INLINE_ALWAYS static void TensorTotalsSumTripple(
+   const ptrdiff_t cRuntimeClasses,
+   const size_t * const acBins,
+   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
+   const size_t * const aiPoint,
+   const size_t directionVector,
+   size_t & cSamplesOut,
+   FloatBig & weightOut,
+   GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
+#ifndef NDEBUG
+   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
+   , const unsigned char * const pBinsEndDebug
+#endif // NDEBUG
+) {
+   // TODO: make a tripple specific version of this function
+   TensorTotalsSumMulti<cCompilerClasses>(
+      cRuntimeClasses,
+      3,
+      acBins,
+      aBins,
+      aiPoint,
+      directionVector,
+      cSamplesOut,
+      weightOut,
+      aGradientPairsOut
+#ifndef NDEBUG
+      , aDebugCopyBins
+      , pBinsEndDebug
+#endif // NDEBUG
+   );
+}
+
+template<ptrdiff_t cCompilerClasses>
+INLINE_ALWAYS static void TensorTotalsSumPair(
+   const ptrdiff_t cRuntimeClasses,
+   const size_t * const acBins,
+   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
+   const size_t * const aiPoint,
+   const size_t directionVector,
+   size_t & cSamplesOut,
+   FloatBig & weightOut,
+   GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
+#ifndef NDEBUG
+   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
+   , const unsigned char * const pBinsEndDebug
+#endif // NDEBUG
+) {
+   // TODO: make a pair specific version of this function
+   //       For pairs, we'd probably be better off if we did the original thing where we put 4 co-located Bins
+   //       (low, low), (low, high), (high, low), (high, high) and then just use the bin demaned by the 
+   //       directionVector.  Our algorithm below works well for higher dimensions where this blows up quickly
+   //       but doing it the way below really randomizes memory accesses.
+   TensorTotalsSumMulti<cCompilerClasses>(
+      cRuntimeClasses,
+      2,
+      acBins,
+      aBins,
+      aiPoint,
+      directionVector,
+      cSamplesOut,
+      weightOut,
+      aGradientPairsOut
+#ifndef NDEBUG
+      , aDebugCopyBins
+      , pBinsEndDebug
+#endif // NDEBUG
+   );
+}
+
+template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
+INLINE_ALWAYS static void TensorTotalsSum(
+   const ptrdiff_t cRuntimeClasses,
+   const size_t cRuntimeRealDimensions,
+   const size_t * const acBins,
+   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
+   const size_t * const aiPoint,
+   const size_t directionVector,
+   size_t & cSamplesOut,
+   FloatBig & weightOut,
+   GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
+#ifndef NDEBUG
+   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
+   , const unsigned char * const pBinsEndDebug
+#endif // NDEBUG
+) {
+   constexpr bool bPair = (2 == cCompilerDimensions);
+   constexpr bool bTripple = (3 == cCompilerDimensions);
+   if(bPair) {
+      EBM_ASSERT(2 == cRuntimeRealDimensions);
+      TensorTotalsSumPair<cCompilerClasses>(
+         cRuntimeClasses,
+         acBins,
+         aBins,
+         aiPoint,
+         directionVector,
+         cSamplesOut,
+         weightOut,
+         aGradientPairsOut
+#ifndef NDEBUG
+         , aDebugCopyBins
+         , pBinsEndDebug
+#endif // NDEBUG
+      );
+   } else if(bTripple) {
+      EBM_ASSERT(3 == cRuntimeRealDimensions);
+      TensorTotalsSumTripple<cCompilerClasses>(
+         cRuntimeClasses,
+         acBins,
+         aBins,
+         aiPoint,
+         directionVector,
+         cSamplesOut,
+         weightOut,
+         aGradientPairsOut
+#ifndef NDEBUG
+         , aDebugCopyBins
+         , pBinsEndDebug
+#endif // NDEBUG
+      );
+   } else {
+      EBM_ASSERT(2 != cRuntimeRealDimensions && 3 != cRuntimeRealDimensions);
+      TensorTotalsSumMulti<cCompilerClasses>(
+         cRuntimeClasses,
+         cRuntimeRealDimensions,
+         acBins,
+         aBins,
+         aiPoint,
+         directionVector,
+         cSamplesOut,
+         weightOut,
+         aGradientPairsOut
+#ifndef NDEBUG
+         , aDebugCopyBins
+         , pBinsEndDebug
+#endif // NDEBUG
+      );
+   }
+}
+
 
 } // DEFINED_ZONE_NAME
 
