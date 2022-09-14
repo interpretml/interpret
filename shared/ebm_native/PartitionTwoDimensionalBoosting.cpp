@@ -142,20 +142,26 @@ static FloatBig SweepMultiDimensional(
             EBM_ASSERT(0 < cSamplesLow);
             EBM_ASSERT(0 < cSamplesHigh);
 
-            for(size_t iScore = 0; iScore < cScores; ++iScore) {
+            EBM_ASSERT(1 <= cScores);
+            size_t iScore = 0;
+            do {
                // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
                constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
+               
                const FloatBig gain1 = EbmStats::CalcPartialGain(
                   aGradientPairsLow[iScore].m_sumGradients, bUseLogitBoost ? aGradientPairsLow[iScore].GetHess() : weightLow);
                EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                gain += gain1;
+               
                const FloatBig gain2 = EbmStats::CalcPartialGain(
                   aGradientPairsHigh[iScore].m_sumGradients, bUseLogitBoost ? aGradientPairsHigh[iScore].GetHess() : weightHigh);
                EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
                gain += gain2;
-            }
+
+               ++iScore;
+            } while(cScores != iScore);
             EBM_ASSERT(std::isnan(gain) || 0 <= gain); // sumation of positive numbers should be positive
 
             if(UNLIKELY(/* NaN */ !LIKELY(gain <= bestGain))) {

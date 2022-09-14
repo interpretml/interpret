@@ -166,13 +166,10 @@ void TensorTotalsCompareDebug(
 
 #endif // NDEBUG
 
-// TODO : we're not currently using cCompilerDimensions, but we should since the number of dimensions is
-//        usually going to be small and we can eliminate a loop branch if the number of dimensions is known
-// TODO:  write a specialized and better optimized version of this function for pairs.
-template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
-INLINE_ALWAYS static void TensorTotalsSum(
+template<ptrdiff_t cCompilerClasses>
+INLINE_ALWAYS static void TensorTotalsSumPair(
    const ptrdiff_t cRuntimeClasses,
-   const size_t cRealDimensions,
+   const size_t cRuntimeRealDimensions,
    const size_t * const acBins,
    const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
    const size_t * const aiPoint,
@@ -185,6 +182,94 @@ INLINE_ALWAYS static void TensorTotalsSum(
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
+   // TODO: make a pair specific version of this function
+   //       For pairs, we'd probably be better off if we did the original thing where we put 4 co-located Bins
+   //       (low, low), (low, high), (high, low), (high, high) and then just use the bin demaned by the 
+   //       directionVector.  Our algorithm below works well for higher dimensions where this blows up quickly
+   //       but doing it the way below really randomizes memory accesses.
+}
+
+template<ptrdiff_t cCompilerClasses>
+INLINE_ALWAYS static void TensorTotalsSumTripple(
+   const ptrdiff_t cRuntimeClasses,
+   const size_t cRuntimeRealDimensions,
+   const size_t * const acBins,
+   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
+   const size_t * const aiPoint,
+   const size_t directionVector,
+   size_t & cSamplesOut,
+   FloatBig & weightOut,
+   GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
+#ifndef NDEBUG
+   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
+   , const unsigned char * const pBinsEndDebug
+#endif // NDEBUG
+) {
+   // TODO: make a tripple specific version of this function
+}
+
+template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
+INLINE_ALWAYS static void TensorTotalsSum(
+   const ptrdiff_t cRuntimeClasses,
+   const size_t cRuntimeRealDimensions,
+   const size_t * const acBins,
+   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
+   const size_t * const aiPoint,
+   const size_t directionVector,
+   size_t & cSamplesOut,
+   FloatBig & weightOut,
+   GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
+#ifndef NDEBUG
+   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
+   , const unsigned char * const pBinsEndDebug
+#endif // NDEBUG
+) {
+   // TODO: This function is specialized to runtime numbers of dimensions, and I do not think it can be
+   //       properly compiler specialized to specific numbers of dimensions.  We should build pair and tripple
+   //       specialized versions of this function and leave this one for higher dimenional problems
+   //       One example of where we would benefit is that we no longer need to zero the initial value and then 
+   //       add/subtract from the zeroed bin.  For the 3 directions that are not straight copies we can make the initial 
+   //       copy and then add/subtract the other bins without re-reading from memory.
+
+
+//   if(2 == cCompilerDimensions) {
+//      TensorTotalsSumPair<cCompilerClasses>(
+//         cRuntimeClasses,
+//         cRuntimeRealDimensions,
+//         acBins,
+//         aBins,
+//         aiPoint,
+//         directionVector,
+//         cSamplesOut,
+//         weightOut,
+//         aGradientPairsOut
+//#ifndef NDEBUG
+//         , aDebugCopyBins
+//         , pBinsEndDebug
+//#endif // NDEBUG
+//         );
+//      return;
+//   }
+//
+//   if(3 == cCompilerDimensions) {
+//      TensorTotalsSumTripple<cCompilerClasses>(
+//         cRuntimeClasses,
+//         cRuntimeRealDimensions,
+//         acBins,
+//         aBins,
+//         aiPoint,
+//         directionVector,
+//         cSamplesOut,
+//         weightOut,
+//         aGradientPairsOut
+//#ifndef NDEBUG
+//         , aDebugCopyBins
+//         , pBinsEndDebug
+//#endif // NDEBUG
+//      );
+//      return;
+//   }
+
    struct TotalsDimension {
       size_t m_cIncrement;
       size_t m_cLast;
@@ -192,43 +277,37 @@ INLINE_ALWAYS static void TensorTotalsSum(
 
    constexpr bool bClassification = IsClassification(cCompilerClasses);
 
-   // don't LOG this!  It would create way too much chatter!
-
    static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
-   // TODO: I don't think I'm benefitting much here for pair code since the permute vector thing below won't
-   //       be optimized away.  We should probably build special cases for this function for pairs (only 4 options
-   //       in an if statement), and tripples (only 8 options in an if statement) and then keep this more general one 
-   //       for higher dimensions
 
    const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
    const size_t cScores = GetCountScores(cClasses);
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-   const size_t * pcBins = acBins;
-   const size_t * pcBinsEnd = &acBins[cRealDimensions];
-   EBM_ASSERT(1 <= cRealDimensions);
+   const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
+   EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
 
    size_t cTensorBytesInitialize = cBytesPerBin;
    const unsigned char * pStartingBin = reinterpret_cast<const unsigned char *>(aBins);
-   const size_t * piPointInitialize = aiPoint;
 
    if(0 == directionVector) {
       // we would require a check in our inner loop below to handle the case of zero Features, so let's handle it separetly here instead
+
+      size_t iDimension = 0;
       do {
-         const size_t cBins = *pcBins;
-         // cBins can only be 0 if there are zero training and zero validation samples
-         // we don't boost or allow interaction updates if there are zero training samples
+         const size_t cBins = acBins[iDimension];
+         const size_t iPoint = aiPoint[iDimension];
+
          EBM_ASSERT(size_t { 2 } <= cBins);
-         EBM_ASSERT(*piPointInitialize < cBins);
-         EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
-         const size_t addVal = cTensorBytesInitialize * (*piPointInitialize);
+         EBM_ASSERT(iPoint < cBins);
+         EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, iPoint)); // we're accessing allocated memory
+         const size_t addVal = cTensorBytesInitialize * (iPoint);
          pStartingBin += addVal;
-         EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, cBins)); // we're accessing allocated memory, so this needs to multiply
+         EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, cBins)); // we're accessing allocated memory
          cTensorBytesInitialize *= cBins;
-         ++piPointInitialize;
-         ++pcBins;
-      } while(LIKELY(pcBinsEnd != pcBins));
+
+         ++iDimension;
+      } while(LIKELY(cRealDimensions != iDimension));
       const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bClassification> *>(pStartingBin);
       ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
       pBin->CopyTo(cSamplesOut, weightOut, aGradientPairsOut, cScores);
@@ -246,37 +325,39 @@ INLINE_ALWAYS static void TensorTotalsSum(
    //   }
    //}
 
-   TotalsDimension totalsDimension[k_cDimensionsMax];
+   TotalsDimension totalsDimension[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
    TotalsDimension * pTotalsDimensionEnd = totalsDimension;
    {
-      // TODO: should I move this initialization out into a separate inlined function that we do once outside of any loops of our caller
       size_t directionVectorDestroy = directionVector;
+      size_t iDimension = 0;
       do {
-         const size_t cBins = *pcBins;
-         // cBins can only be 0 if there are zero training and zero validation samples
-         // we don't boost or allow interaction updates if there are zero training samples
+         const size_t cBins = acBins[iDimension];
+         const size_t iPoint = aiPoint[iDimension];
+
          EBM_ASSERT(size_t { 2 } <= cBins);
+         EBM_ASSERT(iPoint < cBins);
+
+         EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, iPoint)); // we're accessing allocated memory
+         const size_t addVal = cTensorBytesInitialize * iPoint;
+
          if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
             EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, cBins - 1)); // we're accessing allocated memory, so this needs to multiply
             size_t cLast = cTensorBytesInitialize * (cBins - 1);
-            EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
-            pTotalsDimensionEnd->m_cIncrement = cTensorBytesInitialize * (*piPointInitialize);
+            pTotalsDimensionEnd->m_cIncrement = addVal;
             pTotalsDimensionEnd->m_cLast = cLast;
             cTensorBytesInitialize += cLast;
             ++pTotalsDimensionEnd;
          } else {
-            EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
-            const size_t addVal = cTensorBytesInitialize * (*piPointInitialize);
             pStartingBin += addVal;
             cTensorBytesInitialize *= cBins;
          }
-         ++piPointInitialize;
          directionVectorDestroy >>= 1;
-         ++pcBins;
-      } while(LIKELY(pcBinsEnd != pcBins));
+
+         ++iDimension;
+      } while(LIKELY(cRealDimensions != iDimension));
    }
-   const unsigned int cAllBits = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
-   EBM_ASSERT(cAllBits < k_cBitsForSizeT);
+   const unsigned int cProcessingDimensions = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
+   EBM_ASSERT(cProcessingDimensions < k_cBitsForSizeT);
 
    cSamplesOut = 0;
    weightOut = 0;
@@ -288,29 +369,24 @@ INLINE_ALWAYS static void TensorTotalsSum(
       ++iScore;
    } while(cScores != iScore);
 
-   size_t permuteVector = 0;
+   size_t dimensionFlags = 0;
    do {
       const unsigned char * pRawBin = pStartingBin;
-      size_t evenOdd = cAllBits;
-      size_t permuteVectorDestroy = permuteVector;
-      const TotalsDimension * pTotalsDimensionLoop = &totalsDimension[0];
+      size_t evenOdd = cProcessingDimensions;
+      size_t dimensionFlagsDestroy = dimensionFlags;
+      const TotalsDimension * pTotalsDimensionLoop = totalsDimension;
       do {
-         evenOdd ^= permuteVectorDestroy; // flip least significant bit if the dimension bit is set
-         // TODO: probably taking the address and dereferencing will destroy any optimizations putting them in registers
-         pRawBin += *(UNPREDICTABLE(0 != (1 & permuteVectorDestroy)) ? &pTotalsDimensionLoop->m_cLast : &pTotalsDimensionLoop->m_cIncrement);
-         permuteVectorDestroy >>= 1;
+         evenOdd ^= dimensionFlagsDestroy; // flip least significant bit if the dimension bit is set
+         // TODO: check if it's faster to load both m_cLast and m_cIncrement instead of selecting the right
+         // address and loading it.  Loading both would be more prefetch predictable for the CPU
+         pRawBin += *(UNPREDICTABLE(0 != (1 & dimensionFlagsDestroy)) ? 
+            &pTotalsDimensionLoop->m_cLast : &pTotalsDimensionLoop->m_cIncrement);
+         dimensionFlagsDestroy >>= 1;
          ++pTotalsDimensionLoop;
-         // TODO : this (pTotalsDimensionEnd != pTotalsDimensionLoop) condition is somewhat unpredictable since the number of dimensions is small.  
-         // Since the number of iterations will remain constant, we can use templates to move this check out of both loop to the completely non-looped 
-         // outer body and then we eliminate a bunch of unpredictable branches AND a bunch of adds and a lot of other stuff.  If we allow 
-         // ourselves to come at the vector from either size (0,0,...,0,0) or (1,1,...,1,1) then we only need to hardcode 63/2 loops.
       } while(LIKELY(pTotalsDimensionEnd != pTotalsDimensionLoop));
 
       const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bClassification> *>(pRawBin);
 
-      // TODO : we can eliminate this really bad unpredictable branch if we use conditional negation on the values in pBin.  
-      // We can pass in a bool that indicates if we should take the negation value or the original at each step 
-      // (so we don't need to store it beyond one value either).  We would then have an Add(bool bSubtract, ...) function
       if(UNPREDICTABLE(0 != (1 & evenOdd))) {
          ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
          pBin->SubtractTo(cSamplesOut, weightOut, aGradientPairsOut, cScores);
@@ -318,8 +394,8 @@ INLINE_ALWAYS static void TensorTotalsSum(
          ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
          pBin->AddTo(cSamplesOut, weightOut, aGradientPairsOut, cScores);
       }
-      ++permuteVector;
-   } while(LIKELY(0 == (permuteVector >> cAllBits)));
+      ++dimensionFlags;
+   } while(LIKELY(0 == (dimensionFlags >> cProcessingDimensions)));
 
 #ifndef NDEBUG
    if(nullptr != aDebugCopyBins) {

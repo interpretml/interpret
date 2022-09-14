@@ -65,7 +65,7 @@ INLINE_ALWAYS constexpr static size_t GetCountScores(const ptrdiff_t cClasses) n
 // places where you couldn't do so with variable loop iterations
 // TODO: use this macro more
 // TODO: do we really need the static_cast to size_t here?
-#define GET_DIMENSIONS(MACRO_cCompilerDimensions, MACRO_cRuntimeDimensions) \
+#define GET_COUNT_DIMENSIONS(MACRO_cCompilerDimensions, MACRO_cRuntimeDimensions) \
    (k_dynamicDimensions == (MACRO_cCompilerDimensions) ? static_cast<size_t>(MACRO_cRuntimeDimensions) : static_cast<size_t>(MACRO_cCompilerDimensions))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function

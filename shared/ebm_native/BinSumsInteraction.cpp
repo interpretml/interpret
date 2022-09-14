@@ -130,7 +130,7 @@ public:
 
       const FloatFast * pWeight = pDataSet->GetWeights();
 
-      const size_t cRealDimensions = GET_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
+      const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
       EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
 
 #ifndef NDEBUG

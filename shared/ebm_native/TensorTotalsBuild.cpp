@@ -183,9 +183,8 @@ public:
       //       based and then having a stack based pointer system like the RandomSplitState class in PartitionRandomBoostingInternal
       //       to handle any dimensions at the 3rd level and above.  We'll never need to make any additional checks 
       //       on main memory until we reach the 3rd dimension which should be enough for any performance geek
-      const size_t cRealDimensions = GET_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
+      const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
       EBM_ASSERT(1 <= cRealDimensions);
-
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
