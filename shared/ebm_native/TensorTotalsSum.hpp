@@ -280,17 +280,18 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
       ++iScore;
    } while(cScores != iScore);
 
-   size_t dimensionFlags = 0;
+   // for every dimension that we're processing, set the dimension bit flag to 1 to start
+   ptrdiff_t dimensionFlags = static_cast<ptrdiff_t>((~size_t { 0 }) >> (k_cBitsForSizeT - cProcessingDimensions));
    do {
       const unsigned char * pRawBin = pStartingBin;
-      size_t evenOdd = cProcessingDimensions;
-      size_t dimensionFlagsDestroy = dimensionFlags;
+      size_t evenOdd = 0;
+      size_t dimensionFlagsDestroy = static_cast<size_t>(dimensionFlags);
       const TotalsDimension * pTotalsDimensionLoop = totalsDimension;
       do {
          evenOdd ^= dimensionFlagsDestroy; // flip least significant bit if the dimension bit is set
          // TODO: check if it's faster to load both m_cLast and m_cIncrement instead of selecting the right
          // address and loading it.  Loading both would be more prefetch predictable for the CPU
-         pRawBin += *(UNPREDICTABLE(0 != (1 & dimensionFlagsDestroy)) ? 
+         pRawBin += *(UNPREDICTABLE(0 == (1 & dimensionFlagsDestroy)) ? 
             &pTotalsDimensionLoop->m_cLast : &pTotalsDimensionLoop->m_cIncrement);
          dimensionFlagsDestroy >>= 1;
          ++pTotalsDimensionLoop;
@@ -305,8 +306,8 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
          ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
          pBin->AddTo(cSamplesOut, weightOut, aGradientPairsOut, cScores);
       }
-      ++dimensionFlags;
-   } while(LIKELY(0 == (dimensionFlags >> cProcessingDimensions)));
+      --dimensionFlags;
+   } while(LIKELY(0 <= dimensionFlags));
 
 #ifndef NDEBUG
    if(nullptr != aDebugCopyBins) {
