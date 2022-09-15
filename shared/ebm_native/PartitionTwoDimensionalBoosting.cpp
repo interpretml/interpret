@@ -32,17 +32,16 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<ptrdiff_t cCompilerClasses>
+template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
 static FloatBig SweepMultiDimensional(
-   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
-   const size_t cRealDimensions,
-   const size_t * const acBins,
-   size_t * const aiPoint,
-   const size_t directionVectorLow,
-   const unsigned int iDimensionSweep,
-   const size_t cSweepBins,
-   const size_t cSamplesLeafMin,
    const ptrdiff_t cRuntimeClasses,
+   const size_t cRuntimeRealDimensions,
+   const size_t * const aiPoint,
+   const size_t * const acBins,
+   const size_t directionVectorLow,
+   const size_t iDimensionSweep,
+   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
+   const size_t cSamplesLeafMin,
    Bin<FloatBig, IsClassification(cCompilerClasses)> * const pBinBestAndTemp,
    size_t * const piBestSplit
 #ifndef NDEBUG
@@ -52,26 +51,30 @@ static FloatBig SweepMultiDimensional(
 ) {
    constexpr bool bClassification = IsClassification(cCompilerClasses);
 
-   // don't LOG this!  It would create way too much chatter!
-
-   // TODO : optimize this function
-
-   EBM_ASSERT(1 <= cRealDimensions);
-   EBM_ASSERT(iDimensionSweep < cRealDimensions);
-   EBM_ASSERT(0 == (directionVectorLow & (size_t { 1 } << iDimensionSweep)));
-
    const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
    const size_t cScores = GetCountScores(cClasses);
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
-   EBM_ASSERT(!IsMultiplyError(size_t { 2 }, cBytesPerBin)); // we're accessing allocated memory
-   const size_t cBytesPerTwoBins = cBytesPerBin << 1;
 
-   size_t * const piBin = &aiPoint[iDimensionSweep];
-   *piBin = 0;
-   size_t directionVectorHigh = directionVectorLow | size_t { 1 } << iDimensionSweep;
+   const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
+   EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
+   EBM_ASSERT(iDimensionSweep < cRealDimensions);
+   EBM_ASSERT(0 == (directionVectorLow & (size_t { 1 } << iDimensionSweep)));
 
-   EBM_ASSERT(2 <= cSweepBins);
+   TensorSumDimension aDimensions[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+   size_t iDimensionInit = 0;
+   do {
+      // move data to a local variable that the compiler can reason about and then eliminate by moving to CPU registers
+
+      aDimensions[iDimensionInit].m_iPoint = aiPoint[iDimensionInit];
+      aDimensions[iDimensionInit].m_cBins = acBins[iDimensionInit];
+
+      ++iDimensionInit;
+   } while(cRealDimensions != iDimensionInit);
+
+   const size_t directionVectorHigh = directionVectorLow | size_t { 1 } << iDimensionSweep;
+   const size_t cSweepCuts = aDimensions[iDimensionSweep].m_cBins - 1;
+   EBM_ASSERT(1 <= cSweepCuts); // dimensions with 1 bin are removed earlier
 
    size_t iBestSplit = 0;
 
@@ -102,16 +105,14 @@ static FloatBig SweepMultiDimensional(
    FloatBig bestGain = k_illegalGainFloat;
    size_t iBin = 0;
    do {
-      *piBin = iBin;
-
+      aDimensions[iDimensionSweep].m_iPoint = iBin;
       EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-      TensorTotalsSum<cCompilerClasses, 2>(
+      TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
          cRuntimeClasses,
          cRealDimensions,
-         acBins,
-         aBins,
-         aiPoint,
+         aDimensions,
          directionVectorLow,
+         aBins,
          cSamplesLow,
          weightLow,
          aGradientPairsLow
@@ -119,16 +120,15 @@ static FloatBig SweepMultiDimensional(
          , aDebugCopyBins
          , pBinsEndDebug
 #endif // NDEBUG
-         );
+      );
       if(LIKELY(cSamplesLeafMin <= cSamplesLow)) {
          EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-         TensorTotalsSum<cCompilerClasses, 2>(
+         TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
             cRuntimeClasses,
             cRealDimensions,
-            acBins,
-            aBins,
-            aiPoint,
+            aDimensions,
             directionVectorHigh,
+            aBins,
             cSamplesHigh,
             weightHigh,
             aGradientPairsHigh
@@ -185,7 +185,7 @@ static FloatBig SweepMultiDimensional(
          }
       }
       ++iBin;
-   } while(iBin < cSweepBins - 1);
+   } while(cSweepCuts != iBin);
    *piBestSplit = iBestSplit;
 
    EBM_ASSERT(std::isnan(bestGain) || k_illegalGainFloat == bestGain || 0 <= bestGain);
@@ -213,6 +213,7 @@ public:
 #endif // NDEBUG
    ) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
+      constexpr size_t cCompilerDimensions = 2;
 
       ErrorEbm error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -280,27 +281,25 @@ public:
       size_t iBin1 = 0;
       do {
          aiStart[0] = iBin1;
-
          size_t splitSecond1LowBest;
          auto * pTotals2LowLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 4);
          auto * pTotals2LowHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 5);
-         const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses>(
-            aBins,
+         const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses, cCompilerDimensions>(
+            cRuntimeClasses,
             pTerm->GetCountRealDimensions(),
-            acBins,
             aiStart,
+            acBins,
             0x0,
             1,
-            cBinsDimension2,
+            aBins,
             cSamplesLeafMin,
-            cRuntimeClasses,
             pTotals2LowLowBest,
             &splitSecond1LowBest
 #ifndef NDEBUG
             , aDebugCopyBins
             , pBoosterShell->GetDebugBigBinsEnd()
 #endif // NDEBUG
-            );
+         );
 
          if(LIKELY(/* NaN */ !UNLIKELY(gain1 < 0))) {
             EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
@@ -308,23 +307,22 @@ public:
             size_t splitSecond1HighBest;
             auto * pTotals2HighLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 8);
             auto * pTotals2HighHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 9);
-            const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses>(
-               aBins,
+            const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses, cCompilerDimensions>(
+               cRuntimeClasses,
                pTerm->GetCountRealDimensions(),
-               acBins,
                aiStart,
+               acBins,
                0x1,
                1,
-               cBinsDimension2,
+               aBins,
                cSamplesLeafMin,
-               cRuntimeClasses,
                pTotals2HighLowBest,
                &splitSecond1HighBest
 #ifndef NDEBUG
                , aDebugCopyBins
                , pBoosterShell->GetDebugBigBinsEnd()
 #endif // NDEBUG
-               );
+            );
 
             if(LIKELY(/* NaN */ !UNLIKELY(gain2 < 0))) {
                EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
@@ -374,27 +372,25 @@ public:
       size_t iBin2 = 0;
       do {
          aiStart[1] = iBin2;
-
          size_t splitSecond2LowBest;
          auto * pTotals1LowLowBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 16);
          auto * pTotals1LowHighBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 17);
-         const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses>(
-            aBins,
+         const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses, cCompilerDimensions>(
+            cRuntimeClasses,
             pTerm->GetCountRealDimensions(),
-            acBins,
             aiStart,
+            acBins,
             0x0,
             0,
-            cBinsDimension1,
+            aBins,
             cSamplesLeafMin,
-            cRuntimeClasses,
             pTotals1LowLowBestInner,
             &splitSecond2LowBest
 #ifndef NDEBUG
             , aDebugCopyBins
             , pBoosterShell->GetDebugBigBinsEnd()
 #endif // NDEBUG
-            );
+         );
 
          if(LIKELY(/* NaN */ !UNLIKELY(gain1 < 0))) {
             EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
@@ -402,23 +398,22 @@ public:
             size_t splitSecond2HighBest;
             auto * pTotals1HighLowBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 20);
             auto * pTotals1HighHighBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 21);
-            const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses>(
-               aBins,
+            const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses, cCompilerDimensions>(
+               cRuntimeClasses,
                pTerm->GetCountRealDimensions(),
-               acBins,
                aiStart,
+               acBins,
                0x2,
                0,
-               cBinsDimension1,
+               aBins,
                cSamplesLeafMin,
-               cRuntimeClasses,
                pTotals1HighLowBestInner,
                &splitSecond2HighBest
 #ifndef NDEBUG
                , aDebugCopyBins
                , pBoosterShell->GetDebugBigBinsEnd()
 #endif // NDEBUG
-               );
+            );
 
             if(LIKELY(/* NaN */ !UNLIKELY(gain2 < 0))) {
                EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);

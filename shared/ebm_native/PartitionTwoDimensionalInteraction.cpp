@@ -49,6 +49,7 @@ public:
 #endif // NDEBUG
    ) {
       constexpr bool bClassification = IsClassification(cCompilerClasses);
+      constexpr size_t cCompilerDimensions = 2;
 
       auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification>();
 
@@ -58,13 +59,22 @@ public:
       auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification>();
 #endif // NDEBUG
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-         cCompilerClasses,
-         pInteractionCore->GetCountClasses()
-      );
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pInteractionCore->GetCountClasses());
 
       const size_t cScores = GetCountScores(cClasses);
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
+
+      EBM_ASSERT(cCompilerDimensions == cRealDimensions);
+
+      TensorSumDimension aDimensions[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+      size_t iDimensionInit = 0;
+      do {
+         // move data to a local variable that the compiler can reason about and then eliminate by moving to CPU registers
+
+         aDimensions[iDimensionInit].m_cBins = acBins[iDimensionInit];
+
+         ++iDimensionInit;
+      } while(cRealDimensions != iDimensionInit);
 
       auto * const pTotals00 = IndexBin(aAuxiliaryBins, cBytesPerBin * 0);
       ASSERT_BIN_OK(cBytesPerBin, pTotals00, pBinsEndDebug);
@@ -104,16 +114,6 @@ public:
       FloatBig weight11;
 
 
-      // for interactions we return an interaction score of 0 if any of the dimensions are useless
-      EBM_ASSERT(2 == cRealDimensions);
-
-      // we return an interaction score of 0 if any features are useless before calling here
-      const size_t cBinsDimension1 = acBins[0];
-      const size_t cBinsDimension2 = acBins[1];
-
-      // any pair with a feature with 1 cBins returns an interaction score of 0
-      EBM_ASSERT(2 <= cBinsDimension1);
-      EBM_ASSERT(2 <= cBinsDimension2);
 
       EBM_ASSERT(0 < cSamplesLeafMin);
 
@@ -124,25 +124,19 @@ public:
       // if a negative value were to occur, then it would be due to numeric instability, so clip it to zero here
       FloatBig bestGain = 0;
 
-      size_t aiStart[k_cDimensionsMax];
-
-      EBM_ASSERT(1 < cBinsDimension1);
-      size_t iBin1 = 0;
+      EBM_ASSERT(2 <= aDimensions[0].m_cBins); // 1 cBins in any dimension returns an interaction score of 0
+      aDimensions[0].m_iPoint = 0;
       do {
-         aiStart[0] = iBin1;
-         EBM_ASSERT(1 < cBinsDimension2);
-         size_t iBin2 = 0;
+         EBM_ASSERT(2 <= aDimensions[1].m_cBins); // 1 cBins in any dimension returns an interaction score of 0
+         aDimensions[1].m_iPoint = 0;
          do {
-            aiStart[1] = iBin2;
-
             EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-            TensorTotalsSum<cCompilerClasses, 2>(
+            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
                cClasses,
                cRealDimensions,
-               acBins,
-               aBins,
-               aiStart,
+               aDimensions,
                0x00,
+               aBins,
                cSamples00,
                weight00,
                aGradientPairs00
@@ -150,16 +144,15 @@ public:
                , aDebugCopyBins
                , pBinsEndDebug
 #endif // NDEBUG
-               );
+            );
             if(LIKELY(cSamplesLeafMin <= cSamples00)) {
                EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-               TensorTotalsSum<cCompilerClasses, 2>(
+               TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
                   cClasses,
                   cRealDimensions,
-                  acBins,
-                  aBins,
-                  aiStart,
+                  aDimensions,
                   0x01,
+                  aBins,
                   cSamples01,
                   weight01,
                   aGradientPairs01
@@ -167,16 +160,15 @@ public:
                   , aDebugCopyBins
                   , pBinsEndDebug
 #endif // NDEBUG
-                  );
+               );
                if(LIKELY(cSamplesLeafMin <= cSamples01)) {
                   EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-                  TensorTotalsSum<cCompilerClasses, 2>(
+                  TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
                      cClasses,
                      cRealDimensions,
-                     acBins,
-                     aBins,
-                     aiStart,
+                     aDimensions,
                      0x02,
+                     aBins,
                      cSamples10,
                      weight10,
                      aGradientPairs10
@@ -184,16 +176,15 @@ public:
                      , aDebugCopyBins
                      , pBinsEndDebug
 #endif // NDEBUG
-                     );
+                  );
                   if(LIKELY(cSamplesLeafMin <= cSamples10)) {
                      EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-                     TensorTotalsSum<cCompilerClasses, 2>(
+                     TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
                         cClasses,
                         cRealDimensions,
-                        acBins,
-                        aBins,
-                        aiStart,
+                        aDimensions,
                         0x03,
+                        aBins,
                         cSamples11,
                         weight11,
                         aGradientPairs11
@@ -201,7 +192,7 @@ public:
                         , aDebugCopyBins
                         , pBinsEndDebug
 #endif // NDEBUG
-                        );
+                     );
                      if(LIKELY(cSamplesLeafMin <= cSamples11)) {
 #ifndef NDEBUG
                         bAnySplits = true;
@@ -361,10 +352,10 @@ public:
                   }
                }
             }
-            ++iBin2;
-         } while(iBin2 < cBinsDimension2 - 1);
-         ++iBin1;
-      } while(iBin1 < cBinsDimension1 - 1);
+            ++aDimensions[1].m_iPoint;
+         } while(aDimensions[1].m_cBins - 1 != aDimensions[1].m_iPoint);
+         ++aDimensions[0].m_iPoint;
+      } while(aDimensions[0].m_cBins - 1 != aDimensions[0].m_iPoint);
 
       // we start from zero, so bestGain can't be negative here
       EBM_ASSERT(std::isnan(bestGain) || 0 <= bestGain);

@@ -24,17 +24,22 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+struct TensorSumDimension {
+   size_t m_iPoint;
+   size_t m_cBins;
+};
+
 #ifndef NDEBUG
 
 template<bool bClassification>
 void TensorTotalsSumDebugSlow(
    const ptrdiff_t cClasses,
    const size_t cRealDimensions,
-   const size_t * const acBins,
-   const Bin<FloatBig, bClassification> * const aBins,
    const size_t * const aiStart,
    const size_t * const aiLast,
-   Bin<FloatBig, bClassification> * const pRet
+   const size_t * const acBins,
+   const Bin<FloatBig, bClassification> * const aBins,
+   Bin<FloatBig, bClassification> * const pOut
 ) {
    const size_t cScores = GetCountScores(cClasses);
    // we've allocated this, so it should fit
@@ -69,12 +74,12 @@ void TensorTotalsSumDebugSlow(
       ++pcBinsInit;
    } while(pcBinsInitEnd != pcBinsInit);
 
-   pRet->ZeroMem(cBytesPerBin);
+   pOut->ZeroMem(cBytesPerBin);
 
    while(true) {
       const auto * const pBin = IndexBin(aBins, iTensorByte);
 
-      pRet->Add(*pBin, cScores);
+      pOut->Add(*pBin, cScores);
 
       size_t iDimension = 0;
       size_t cTensorBytesLoop = cBytesPerBin;
@@ -105,12 +110,11 @@ void TensorTotalsSumDebugSlow(
 
 template<bool bClassification>
 void TensorTotalsCompareDebug(
-   const Bin<FloatBig, bClassification> * const aBins,
-   const size_t cRealDimensions,
-   const size_t * const acBins,
-   const size_t * const aiPoint,
-   const size_t directionVector,
    const ptrdiff_t cClasses,
+   const size_t cRealDimensions,
+   const TensorSumDimension * const aDimensions,
+   const size_t directionVector,
+   const Bin<FloatBig, bClassification> * const aBins,
    const size_t & cSamples,
    const FloatBig & weight,
    const GradientPair<FloatBig, bClassification> * const aGradientPairs
@@ -119,30 +123,29 @@ void TensorTotalsCompareDebug(
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
+   size_t acBins[k_cDimensionsMax];
    size_t aiStart[k_cDimensionsMax];
    size_t aiLast[k_cDimensionsMax];
    size_t directionVectorDestroy = directionVector;
 
-   const size_t * pcBins = acBins;
-   const size_t * const pcBinsEnd = &acBins[cRealDimensions];
-
-   size_t iDimensionDebug = 0;
+   size_t iDimension = 0;
    do {
-      const size_t cBins = *pcBins;
-      // cBins can only be 0 if there are zero training and zero validation samples
-      // we don't boost or allow interaction updates if there are zero training samples
+      const size_t iPoint = aDimensions[iDimension].m_iPoint;
+      const size_t cBins = aDimensions[iDimension].m_cBins;
+
+      acBins[iDimension] = cBins;
+
       EBM_ASSERT(size_t { 2 } <= cBins);
       if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
-         aiStart[iDimensionDebug] = aiPoint[iDimensionDebug] + 1;
-         aiLast[iDimensionDebug] = cBins - 1;
+         aiStart[iDimension] = iPoint + 1;
+         aiLast[iDimension] = cBins - 1;
       } else {
-         aiStart[iDimensionDebug] = 0;
-         aiLast[iDimensionDebug] = aiPoint[iDimensionDebug];
+         aiStart[iDimension] = 0;
+         aiLast[iDimension] = iPoint;
       }
       directionVectorDestroy >>= 1;
-      ++iDimensionDebug;
-      ++pcBins;
-   } while(pcBinsEnd != pcBins);
+      ++iDimension;
+   } while(cRealDimensions != iDimension);
 
    auto * const pComparison2 = EbmMalloc<Bin<FloatBig, bClassification>>(1, cBytesPerBin);
    if(nullptr != pComparison2) {
@@ -150,10 +153,10 @@ void TensorTotalsCompareDebug(
       TensorTotalsSumDebugSlow<bClassification>(
          cClasses,
          cRealDimensions,
-         acBins,
-         aBins,
          aiStart,
          aiLast,
+         acBins,
+         aBins,
          pComparison2
       );
       EBM_ASSERT(pComparison2->GetCountSamples() == cSamples);
@@ -170,10 +173,9 @@ template<ptrdiff_t cCompilerClasses>
 INLINE_ALWAYS static void TensorTotalsSumMulti(
    const ptrdiff_t cRuntimeClasses,
    const size_t cRealDimensions,
-   const size_t * const acBins,
-   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
-   const size_t * const aiPoint,
+   const TensorSumDimension * const aDimensions,
    const size_t directionVector,
+   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
    size_t & cSamplesOut,
    FloatBig & weightOut,
    GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
@@ -182,6 +184,18 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
+   // TODO: build a version of this function that can get the sum of any interior volume.  This function
+   //       currently only allows us to get the sum from any point to the edge boundaries of the tensor
+   //       The algorithm to extend this to get any interor volume 
+   //       eg: (start_x, start_y, start_z) to (end_x, end_y, end_z) is similar to always getting the far
+   //       end volume.  For a tripple where we're getting the far end vector directionVector = (1, 1, 1) 
+   //       we always start from the last Bin that contains the total sum and ablate the planes of each
+   //       dimension combination, then the "tubes", then the origin cube.  When we have a starting and ending
+   //       point, we treat the ending point like we do below for the sum total last Bin.  If we look at
+   //       the point (end_x, end_y, end_z) it contains the sum up until that point, and we can pretend/ignore
+   //       all points past that location and then apply our existing algorithm to ablate the volumes 
+   //       related to (start_x, start_y, start_z) as if we were getting the far side cube directionVector = (1, 1, 1) 
+
    struct TotalsDimension {
       size_t m_cIncrement;
       size_t m_cLast;
@@ -206,13 +220,13 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
 
       size_t iDimension = 0;
       do {
-         const size_t cBins = acBins[iDimension];
-         const size_t iPoint = aiPoint[iDimension];
+         const size_t iPoint = aDimensions[iDimension].m_iPoint;
+         const size_t cBins = aDimensions[iDimension].m_cBins;
 
          EBM_ASSERT(size_t { 2 } <= cBins);
          EBM_ASSERT(iPoint < cBins);
          EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, iPoint)); // we're accessing allocated memory
-         const size_t addVal = cTensorBytesInitialize * (iPoint);
+         const size_t addVal = cTensorBytesInitialize * iPoint;
          pStartingBin += addVal;
          EBM_ASSERT(!IsMultiplyError(cTensorBytesInitialize, cBins)); // we're accessing allocated memory
          cTensorBytesInitialize *= cBins;
@@ -242,8 +256,8 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
       size_t directionVectorDestroy = directionVector;
       size_t iDimension = 0;
       do {
-         const size_t cBins = acBins[iDimension];
-         const size_t iPoint = aiPoint[iDimension];
+         const size_t iPoint = aDimensions[iDimension].m_iPoint;
+         const size_t cBins = aDimensions[iDimension].m_cBins;
 
          EBM_ASSERT(size_t { 2 } <= cBins);
          EBM_ASSERT(iPoint < cBins);
@@ -312,12 +326,11 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
 #ifndef NDEBUG
    if(nullptr != aDebugCopyBins) {
       TensorTotalsCompareDebug<bClassification>(
-         aDebugCopyBins,
-         cRealDimensions,
-         acBins,
-         aiPoint,
-         directionVector,
          cClasses,
+         cRealDimensions,
+         aDimensions,
+         directionVector,
+         aDebugCopyBins,
          cSamplesOut,
          weightOut,
          aGradientPairsOut
@@ -329,10 +342,9 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
 template<ptrdiff_t cCompilerClasses>
 INLINE_ALWAYS static void TensorTotalsSumTripple(
    const ptrdiff_t cRuntimeClasses,
-   const size_t * const acBins,
-   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
-   const size_t * const aiPoint,
+   const TensorSumDimension * const aDimensions,
    const size_t directionVector,
+   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
    size_t & cSamplesOut,
    FloatBig & weightOut,
    GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
@@ -345,10 +357,9 @@ INLINE_ALWAYS static void TensorTotalsSumTripple(
    TensorTotalsSumMulti<cCompilerClasses>(
       cRuntimeClasses,
       3,
-      acBins,
-      aBins,
-      aiPoint,
+      aDimensions,
       directionVector,
+      aBins,
       cSamplesOut,
       weightOut,
       aGradientPairsOut
@@ -362,10 +373,9 @@ INLINE_ALWAYS static void TensorTotalsSumTripple(
 template<ptrdiff_t cCompilerClasses>
 INLINE_ALWAYS static void TensorTotalsSumPair(
    const ptrdiff_t cRuntimeClasses,
-   const size_t * const acBins,
-   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
-   const size_t * const aiPoint,
+   const TensorSumDimension * const aDimensions,
    const size_t directionVector,
+   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
    size_t & cSamplesOut,
    FloatBig & weightOut,
    GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
@@ -382,10 +392,9 @@ INLINE_ALWAYS static void TensorTotalsSumPair(
    TensorTotalsSumMulti<cCompilerClasses>(
       cRuntimeClasses,
       2,
-      acBins,
-      aBins,
-      aiPoint,
+      aDimensions,
       directionVector,
+      aBins,
       cSamplesOut,
       weightOut,
       aGradientPairsOut
@@ -400,10 +409,9 @@ template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
 INLINE_ALWAYS static void TensorTotalsSum(
    const ptrdiff_t cRuntimeClasses,
    const size_t cRuntimeRealDimensions,
-   const size_t * const acBins,
-   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
-   const size_t * const aiPoint,
+   const TensorSumDimension * const aDimensions,
    const size_t directionVector,
+   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
    size_t & cSamplesOut,
    FloatBig & weightOut,
    GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
@@ -418,10 +426,9 @@ INLINE_ALWAYS static void TensorTotalsSum(
       EBM_ASSERT(2 == cRuntimeRealDimensions);
       TensorTotalsSumPair<cCompilerClasses>(
          cRuntimeClasses,
-         acBins,
-         aBins,
-         aiPoint,
+         aDimensions,
          directionVector,
+         aBins,
          cSamplesOut,
          weightOut,
          aGradientPairsOut
@@ -434,10 +441,9 @@ INLINE_ALWAYS static void TensorTotalsSum(
       EBM_ASSERT(3 == cRuntimeRealDimensions);
       TensorTotalsSumTripple<cCompilerClasses>(
          cRuntimeClasses,
-         acBins,
-         aBins,
-         aiPoint,
+         aDimensions,
          directionVector,
+         aBins,
          cSamplesOut,
          weightOut,
          aGradientPairsOut
@@ -451,10 +457,9 @@ INLINE_ALWAYS static void TensorTotalsSum(
       TensorTotalsSumMulti<cCompilerClasses>(
          cRuntimeClasses,
          cRuntimeRealDimensions,
-         acBins,
-         aBins,
-         aiPoint,
+         aDimensions,
          directionVector,
+         aBins,
          cSamplesOut,
          weightOut,
          aGradientPairsOut

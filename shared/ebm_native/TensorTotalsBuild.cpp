@@ -179,10 +179,6 @@ public:
 
       auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
 
-      // TODO: we can get rid of the cCompilerDimensions aspect here by making the 1 or 2 inner loops register/pointer
-      //       based and then having a stack based pointer system like the RandomSplitState class in PartitionRandomBoostingInternal
-      //       to handle any dimensions at the 3rd level and above.  We'll never need to make any additional checks 
-      //       on main memory until we reach the 3rd dimension which should be enough for any performance geek
       const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
       EBM_ASSERT(1 <= cRealDimensions);
 
@@ -255,9 +251,25 @@ public:
       while(true) {
          ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
 
+         // TODO: on the 0th dimension, we could preserve the prev bin sum and avoid at least one read by
+         //       eliminating one dimension loop iteration.  This would allow us to keep the 
+         //       cSamples, weight, gradient and hessian in CPU regsiters. Keep the loop as a do loop however and 
+         //       require that 2 <= cDimensions
+
+         // TODO: if we have 3 dimensions (as an example), we don't have to keep storing the results of the Add
+         //       function back into memory.  We can first load the original Bin into CPU registers and then
+         //       add all the other dimensions, and at the end write it back to memory
+
          auto * pAddPrev = pBin;
          size_t iDimension = cRealDimensions;
          do {
+            // TODO: Is there any benefit in making a pair/tripple specific version of this function
+            //       This loop might be optimizable away (although the loop inside Add might prevent this
+            //       loop from disapparing).  Even so, we could probably eliminate the auxillary memory
+            //       for pairs and keep both the left bin and the left up bin on the stack and only read
+            //       the up bin since that one will move.  The up left bin can be preserved in registers when reading
+            //       the up bin. Perhaps we could optimize all dimensions to preserve these things though.
+
             --iDimension;
             auto * pAddTo = fastTotalState[iDimension].m_pDimensionalCur;
             pAddTo->Add(*pAddPrev, cScores);
@@ -281,10 +293,10 @@ public:
             TensorTotalsSumDebugSlow<bClassification>(
                cClasses,
                cRealDimensions,
-               acBins,
-               aDebugCopyBins,
                aiStart,
                aiLast,
+               acBins,
+               aDebugCopyBins,
                pDebugBin
             );
             EBM_ASSERT(pDebugBin->GetCountSamples() == pBin->GetCountSamples());
@@ -534,446 +546,6 @@ extern void TensorTotalsBuild(
 }
 
 // Boneyard of useful ideas below:
-
-//struct CurrentIndexAndCountBins {
-//   size_t m_iCur;
-//   // copy cBins to our local stack since we'll be referring to them often and our stack is more compact in cache and less all over the place AND not shared between CPUs
-//   size_t m_cBins;
-//};
-//
-//template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
-//void BuildFastTotals(const ptrdiff_t cRuntimeClasses, const Term * const pTerm, Bin<IsClassification(cCompilerClasses)> * const aBins) {
-//   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
-//
-//   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
-//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(cCompilerClasses)>(cScores)); // we're accessing allocated memory
-//   const size_t cBytesPerBin = GetBinSize<IsClassification(cCompilerClasses)>(GET_VECTOR_LENGTH(cCompilerClasses, cRuntimeClasses));
-//
-//#ifndef NDEBUG
-//   // make a copy of the original bins for debugging purposes
-//   size_t cTotalBinsDebug = 1;
-//   for(size_t iDimensionDebug = 0; iDimensionDebug < pTerm->GetCountDimensions(); ++iDimensionDebug) {
-//      const size_t cBins = pTerm->GetFeatures()[iDimensionDebug].m_pFeature->m_cBins;
-//      EBM_ASSERT(IsMultiplyError(cTotalBinsDebug, cBins)); // we're accessing allocated memory, so this should work
-//      cTotalBinsDebug *= cBins;
-//   }
-//   EBM_ASSERT(IsMultiplyError(cTotalBinsDebug, cBytesPerBin)); // we're accessing allocated memory, so this should work
-//   const size_t cBytesDebugBuffer = cTotalBinsDebug * cBytesPerBin;
-//   DO : ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> technically, adding cBytesPerBin could overflow so we should handle that instead of asserting
-//   EBM_ASSERT(IsAddError(cBytesDebugBuffer, cBytesPerBin)); // we're just allocating one extra bin.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
-//   Bin<IsClassification(cCompilerClasses)> * const aDebugCopyBins = static_cast<Bin<IsClassification(cCompilerClasses)> *>(malloc(cBytesDebugBuffer + cBytesPerBin));
-//   Bin<IsClassification(cCompilerClasses)> * const pDebugBin = nullptr;
-//   if(nullptr != aDebugCopyBins) {
-//      // if we can't obtain the memory, then don't do the comparison and exit
-//      memcpy(aDebugCopyBins, aBins, cBytesDebugBuffer);
-//      pDebugBin = IndexBin(cBytesPerBin, aDebugCopyBins, cTotalBinsDebug);
-//   }
-//#endif // NDEBUG
-//
-//   EBM_ASSERT(0 < cDimensions);
-//
-//   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
-//   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
-//   const TermEntry * pTermEntry = pTerm->GetFeatures();
-//   for(CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins; pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize; ++pCurrentIndexAndCountBinsInitialize, ++pTermEntry) {
-//      pCurrentIndexAndCountBinsInitialize->m_iCur = 0;
-//      EBM_ASSERT(2 <= pTermEntry->m_pFeature->m_cBins);
-//      pCurrentIndexAndCountBinsInitialize->m_cBins = pTermEntry->m_pFeature->m_cBins;
-//   }
-//
-//   static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
-//   EBM_ASSERT(cDimensions < k_cBitsForSizeT);
-//   const size_t permuteVectorEnd = size_t { 1 } << cDimensions;
-//   Bin<IsClassification(cCompilerClasses)> * pBin = aBins;
-//
-//   goto skip_intro;
-//
-//   CurrentIndexAndCountBins * pCurrentIndexAndCountBins;
-//   size_t iBin;
-//   while(true) {
-//      pCurrentIndexAndCountBins->m_iCur = iBin;
-//      // we're walking through all bins, so just move to the next one in the flat array, with the knoledge that we'll figure out it's multi-dimenional index below
-//      pBin = IndexBin(cBytesPerBin, pBin, 1);
-//
-//   skip_intro:
-//
-//      DO : I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> I think this code below can be made more efficient by storing the sum of all the items in the 0th dimension where we don't subtract the 0th dimension then when we go to sum up the next set we can eliminate half the work!
-//
-//      size_t permuteVector = 1;
-//      do {
-//         Bin<IsClassification(cCompilerClasses)> * pTargetBin = pBin;
-//         bool bPositive = false;
-//         size_t permuteVectorDestroy = permuteVector;
-//         ptrdiff_t multiplyDimension = -1;
-//         pCurrentIndexAndCountBins = &currentIndexAndCountBins[0];
-//         do {
-//            if(0 != (1 & permuteVectorDestroy)) {
-//               if(0 == pCurrentIndexAndCountBins->m_iCur) {
-//                  goto skip_group;
-//               }
-//               pTargetBin = IndexBin(cBytesPerBin, pTargetBin, multiplyDimension);
-//               bPositive = !bPositive;
-//            }
-//            DO: ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> can we eliminate the multiplication by storing the multiples instead of the cBins?
-//            multiplyDimension *= pCurrentIndexAndCountBins->m_cBins;
-//            ++pCurrentIndexAndCountBins;
-//            permuteVectorDestroy >>= 1;
-//         } while(0 != permuteVectorDestroy);
-//         if(bPositive) {
-//            pBin->Add(*pTargetBin, cRuntimeClasses);
-//         } else {
-//            pBin->Subtract(*pTargetBin, cRuntimeClasses);
-//         }
-//      skip_group:
-//         ++permuteVector;
-//      } while(permuteVectorEnd != permuteVector);
-//
-//#ifndef NDEBUG
-//      if(nullptr != aDebugCopyBins) {
-//         EBM_ASSERT(nullptr != pDebugBin);
-//         size_t aiStart[k_cDimensionsMax];
-//         size_t aiLast[k_cDimensionsMax];
-//         for(size_t iDebugDimension = 0; iDebugDimension < cDimensions; ++iDebugDimension) {
-//            aiStart[iDebugDimension] = 0;
-//            aiLast[iDebugDimension] = currentIndexAndCountBins[iDebugDimension].m_iCur;
-//         }
-//         TensorTotalsSumDebugSlow<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aDebugCopyBins, aiStart, aiLast, pDebugBin);
-//         EBM_ASSERT(pDebugBin->GetCountSamples() == pBin->GetCountSamples());
-//
-//         free(aDebugCopyBins);
-//      }
-//#endif // NDEBUG
-//
-//      pCurrentIndexAndCountBins = &currentIndexAndCountBins[0];
-//      while(true) {
-//         iBin = pCurrentIndexAndCountBins->m_iCur + 1;
-//         EBM_ASSERT(iBin <= pCurrentIndexAndCountBins->m_cBins);
-//         if(iBin != pCurrentIndexAndCountBins->m_cBins) {
-//            break;
-//         }
-//         pCurrentIndexAndCountBins->m_iCur = 0;
-//         ++pCurrentIndexAndCountBins;
-//         if(pCurrentIndexAndCountBinsEnd == pCurrentIndexAndCountBins) {
-//            return;
-//         }
-//      }
-//   }
-//}
-//
-
-
-
-
-
-//struct CurrentIndexAndCountBins {
-//   ptrdiff_t m_multipliedIndexCur;
-//   ptrdiff_t m_multipleTotal;
-//};
-//
-//template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
-//void BuildFastTotals(const ptrdiff_t cRuntimeClasses, const Term * const pTerm, Bin<IsClassification(cCompilerClasses)> * const aBins) {
-//   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
-//
-//   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
-//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(cCompilerClasses)>(cScores)); // we're accessing allocated memory
-//   const size_t cBytesPerBin = GetBinSize<IsClassification(cCompilerClasses)>(GET_VECTOR_LENGTH(cCompilerClasses, cRuntimeClasses));
-//
-//#ifndef NDEBUG
-//   // make a copy of the original bins for debugging purposes
-//   size_t cTotalBinsDebug = 1;
-//   for(size_t iDimensionDebug = 0; iDimensionDebug < pTerm->GetCountDimensions(); ++iDimensionDebug) {
-//      const size_t cBins = pTerm->GetFeatures()[iDimensionDebug].m_pFeature->m_cBins;
-//      EBM_ASSERT(IsMultiplyError(cTotalBinsDebug, cBins)); // we're accessing allocated memory, so this should work
-//      cTotalBinsDebug *= cBins;
-//   }
-//   EBM_ASSERT(IsMultiplyError(cTotalBinsDebug, cBytesPerBin)); // we're accessing allocated memory, so this should work
-//   const size_t cBytesDebugBuffer = cTotalBinsDebug * cBytesPerBin;
-//   DO : ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> technically, adding cBytesPerBin could overflow so we should handle that instead of asserting
-//   EBM_ASSERT(IsAddError(cBytesDebugBuffer, cBytesPerBin)); // we're just allocating one extra bin.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
-//   Bin<IsClassification(cCompilerClasses)> * const aDebugCopyBins = static_cast<Bin<IsClassification(cCompilerClasses)> *>(malloc(cBytesDebugBuffer + cBytesPerBin));
-//   Bin<IsClassification(cCompilerClasses)> * const pDebugBin = nullptr;
-//   if(nullptr != aDebugCopyBins) {
-//      // if we can't obtain the memory, then don't do the comparison and exit
-//      memcpy(aDebugCopyBins, aBins, cBytesDebugBuffer);
-//      pDebugBin = IndexBin(cBytesPerBin, aDebugCopyBins, cTotalBinsDebug);
-//   }
-//#endif // NDEBUG
-//
-//   EBM_ASSERT(0 < cDimensions);
-//
-//   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
-//   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
-//   const TermEntry * pTermEntry = pTerm->GetFeatures();
-//   ptrdiff_t multipleTotalInitialize = -1;
-//   for(CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins; pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize; ++pCurrentIndexAndCountBinsInitialize, ++pTermEntry) {
-//      pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
-//      EBM_ASSERT(2 <= pTermEntry->m_pFeature->m_cBins);
-//      multipleTotalInitialize *= static_cast<ptrdiff_t>(pTermEntry->m_pFeature->m_cBins);
-//      pCurrentIndexAndCountBinsInitialize->multipleTotal = multipleTotalInitialize;
-//   }
-//
-//   static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
-//   EBM_ASSERT(cDimensions < k_cBitsForSizeT);
-//   const size_t permuteVectorEnd = size_t { 1 } << cDimensions;
-//   Bin<IsClassification(cCompilerClasses)> * pBin = aBins;
-//
-//   goto skip_intro;
-//
-//   CurrentIndexAndCountBins * pCurrentIndexAndCountBins;
-//   ptrdiff_t multipliedIndexCur;
-//   while(true) {
-//      pCurrentIndexAndCountBins->multipliedIndexCur = multipliedIndexCur;
-//      // we're walking through all bins, so just move to the next one in the flat array, with the knoledge that we'll figure out it's multi-dimenional index below
-//      pBin = IndexBin(cBytesPerBin, pBin, 1);
-//
-//   skip_intro:
-//
-//      DO : I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> I think this code below can be made more efficient by storing the sum of all the items in the 0th dimension where we don't subtract the 0th dimension then when we go to sum up the next set we can eliminate half the work!
-//
-//      size_t permuteVector = 1;
-//      do {
-//         Bin<IsClassification(cCompilerClasses)> * pTargetBin = pBin;
-//         bool bPositive = false;
-//         size_t permuteVectorDestroy = permuteVector;
-//         ptrdiff_t multipleTotal = -1;
-//         pCurrentIndexAndCountBins = &currentIndexAndCountBins[0];
-//         do {
-//            if(0 != (1 & permuteVectorDestroy)) {
-//               // even though our index is multiplied by the total bins until this point, we only care about the zero bin, and zero multiplied by anything is zero
-//               if(0 == pCurrentIndexAndCountBins->multipliedIndexCur) {
-//                  goto skip_group;
-//               }
-//               pTargetBin = IndexBin(cBytesPerBin, pTargetBin, multipleTotal);
-//               bPositive = !bPositive;
-//            }
-//            multipleTotal = pCurrentIndexAndCountBins->multipleTotal;
-//            ++pCurrentIndexAndCountBins;
-//            permuteVectorDestroy >>= 1;
-//         } while(0 != permuteVectorDestroy);
-//         if(bPositive) {
-//            pBin->Add(*pTargetBin, cRuntimeClasses);
-//         } else {
-//            pBin->Subtract(*pTargetBin, cRuntimeClasses);
-//         }
-//      skip_group:
-//         ++permuteVector;
-//      } while(permuteVectorEnd != permuteVector);
-//
-//#ifndef NDEBUG
-//      if(nullptr != aDebugCopyBins) {
-//         EBM_ASSERT(nullptr != pDebugBin);
-//         size_t aiStart[k_cDimensionsMax];
-//         size_t aiLast[k_cDimensionsMax];
-//         ptrdiff_t multipleTotalDebug = -1;
-//         for(size_t iDebugDimension = 0; iDebugDimension < cDimensions; ++iDebugDimension) {
-//            aiStart[iDebugDimension] = 0;
-//            aiLast[iDebugDimension] = static_cast<size_t>(currentIndexAndCountBins[iDebugDimension].multipliedIndexCur / multipleTotalDebug);
-//            multipleTotalDebug = currentIndexAndCountBins[iDebugDimension].multipleTotal;
-//         }
-//         TensorTotalsSumDebugSlow<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aDebugCopyBins, aiStart, aiLast, pDebugBin);
-//         EBM_ASSERT(pDebugBin->GetCountSamples() == pBin->GetCountSamples());
-//         free(aDebugCopyBins);
-//      }
-//#endif // NDEBUG
-//
-//      pCurrentIndexAndCountBins = &currentIndexAndCountBins[0];
-//      ptrdiff_t multipleTotal = -1;
-//      while(true) {
-//         multipliedIndexCur = pCurrentIndexAndCountBins->multipliedIndexCur + multipleTotal;
-//         multipleTotal = pCurrentIndexAndCountBins->multipleTotal;
-//         if(multipliedIndexCur != multipleTotal) {
-//            break;
-//         }
-//         pCurrentIndexAndCountBins->multipliedIndexCur = 0;
-//         ++pCurrentIndexAndCountBins;
-//         if(pCurrentIndexAndCountBinsEnd == pCurrentIndexAndCountBins) {
-//            return;
-//         }
-//      }
-//   }
-//}
-//
-
-
-
-
-
-
-
-
-
-//struct CurrentIndexAndCountBins {
-//   ptrdiff_t m_multipliedIndexCur;
-//   ptrdiff_t m_multipleTotal;
-//};
-//template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
-//void BuildFastTotalsZeroMemoryIncrease(const ptrdiff_t cRuntimeClasses, const Term * const pTerm, Bin<IsClassification(cCompilerClasses)> * const aBins
-//#ifndef NDEBUG
-//   , const Bin<IsClassification(cCompilerClasses)> * const aDebugCopyBins, const unsigned char * const pBinsEndDebug
-//#endif // NDEBUG
-//) {
-//   LOG_0(Trace_Verbose, "Entered BuildFastTotalsZeroMemoryIncrease");
-//
-//   DO: ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
-//
-//   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
-//   EBM_ASSERT(1 <= cDimensions);
-//
-//   const size_t cScores = GET_VECTOR_LENGTH(cCompilerClasses, cRuntimeClasses);
-//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(cCompilerClasses)>(cScores)); // we're accessing allocated memory
-//   const size_t cBytesPerBin = GetBinSize<IsClassification(cCompilerClasses)>(cScores);
-//
-//   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
-//   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
-//   ptrdiff_t multipleTotalInitialize = -1;
-//   {
-//      CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins;
-//      const TermEntry * pTermEntry = pTerm->GetFeatures();
-//      EBM_ASSERT(1 <= cDimensions);
-//      do {
-//         pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
-//         EBM_ASSERT(1 <= pTermEntry->m_pFeature->m_cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
-//         multipleTotalInitialize *= static_cast<ptrdiff_t>(pTermEntry->m_pFeature->m_cBins);
-//         pCurrentIndexAndCountBinsInitialize->multipleTotal = multipleTotalInitialize;
-//         ++pTermEntry;
-//         ++pCurrentIndexAndCountBinsInitialize;
-//      } while(LIKELY(pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize));
-//   }
-//
-//   // TODO: If we have a compiler cScores, we could put the pPrevious object into our stack since it would have a defined size.  We could then eliminate having to access it through a pointer and we'd just access through the stack pointer
-//   // TODO: can we put Bin object onto the stack in other places too?
-//   // we reserved 1 extra space for these when we binned our data
-//   Bin<IsClassification(cCompilerClasses)> * const pPrevious = IndexBin(cBytesPerBin, aBins, -multipleTotalInitialize);
-//   ASSERT_BIN_OK(cBytesPerBin, pPrevious, pBinsEndDebug);
-//
-//#ifndef NDEBUG
-//   Bin<IsClassification(cCompilerClasses)> * const pDebugBin = static_cast<Bin<IsClassification(cCompilerClasses)> *>(malloc(cBytesPerBin));
-//   pPrevious->AssertZero();
-//#endif //NDEBUG
-//
-//   static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
-//   EBM_ASSERT(cDimensions < k_cBitsForSizeT);
-//   EBM_ASSERT(2 <= cDimensions);
-//   const size_t permuteVectorEnd = size_t { 1 } << (cDimensions - 1);
-//   Bin<IsClassification(cCompilerClasses)> * pBin = aBins;
-//   
-//   ptrdiff_t multipliedIndexCur0 = 0;
-//   const ptrdiff_t multipleTotal0 = currentIndexAndCountBins[0].multipleTotal;
-//
-//   goto skip_intro;
-//
-//   CurrentIndexAndCountBins * pCurrentIndexAndCountBins;
-//   ptrdiff_t multipliedIndexCur;
-//   while(true) {
-//      pCurrentIndexAndCountBins->multipliedIndexCur = multipliedIndexCur;
-//
-//   skip_intro:
-//      
-//      // TODO: We're currently reducing the work by a factor of 2 by keeping the pPrevious values.  I think I could reduce the work by annohter factor of 2 if I maintained a 1 dimensional array of previous values for the 2nd dimension.  I think I could reduce by annohter factor of 2 by maintaininng a two dimensional space of previous values, etc..  At the end I think I can remove the combinatorial treatment by adding about the same order of memory as our existing totals space, which is a great tradeoff because then we can figure out a cell by looping N times for N dimensions instead of 2^N!
-//      //       After we're solved that, I think I can use the resulting intermediate work to avoid the 2^N work in the region totals function that uses our work (this is speculative)
-//      //       I think instead of storing the totals in the N^D space, I'll end up storing the previous values for the 1st dimension, or maybe I need to keep both.  Or maybe I can eliminate a huge amount of memory in the last dimension by doing a tiny bit of extra work.  I don't know yet.
-//      //       
-//      // TODO: before doing the above, I think I want to take what I have and extract a 2-dimensional and 3-dimensional specializations since these don't need the extra complexity.  Especially for 2-D where I don't even need to keep the previous value
-//
-//      ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
-//
-//      const size_t cSamplesInBin = pBin->GetCountSamples() + pPrevious->GetCountSamples();
-//      pBin->m_cSamples = cSamplesInBin;
-//      pPrevious->m_cSamples = cSamplesInBin;
-//      for(size_t iScore = 0; iScore < cScores; ++iScore) {
-//         const FloatBig sumGradients = pBin->GetGradientPairs()[iScore].m_sumGradients + pPrevious->GetGradientPairs()[iScore].m_sumGradients;
-//         pBin->GetGradientPairs()[iScore].m_sumGradients = sumGradients;
-//         pPrevious->GetGradientPairs()[iScore].m_sumGradients = sumGradients;
-//
-//         if(IsClassification(cCompilerClasses)) {
-//            const FloatBig sumHessians = pBin->GetGradientPairs()[iScore].GetHess() + pPrevious->GetGradientPairs()[iScore].GetHess();
-//            pBin->GetGradientPairs()[iScore].SetHess(sumHessians);
-//            pPrevious->GetGradientPairs()[iScore].SetHess(sumHessians);
-//         }
-//      }
-//
-//      size_t permuteVector = 1;
-//      do {
-//         ptrdiff_t offsetPointer = 0;
-//         unsigned int evenOdd = 0;
-//         size_t permuteVectorDestroy = permuteVector;
-//         // skip the first one since we preserve the total from the previous run instead of adding all the -1 values
-//         const CurrentIndexAndCountBins * pCurrentIndexAndCountBinsLoop = &currentIndexAndCountBins[1];
-//         EBM_ASSERT(0 != permuteVectorDestroy);
-//         do {
-//            // even though our index is multiplied by the total bins until this point, we only care about the zero bin, and zero multiplied by anything is zero
-//            if(UNLIKELY(0 != ((0 == pCurrentIndexAndCountBinsLoop->multipliedIndexCur ? 1 : 0) & permuteVectorDestroy))) {
-//               goto skip_group;
-//            }
-//            offsetPointer = UNPREDICTABLE(0 != (1 & permuteVectorDestroy)) ? pCurrentIndexAndCountBinsLoop[-1].multipleTotal + offsetPointer : offsetPointer;
-//            evenOdd ^= permuteVectorDestroy; // flip least significant bit if the dimension bit is set
-//            ++pCurrentIndexAndCountBinsLoop;
-//            permuteVectorDestroy >>= 1;
-//            // this (0 != permuteVectorDestroy) condition is somewhat unpredictable because for low dimensions or for low permutations it exits after just a few loops
-//            // it might be tempting to try and eliminate the loop by templating it and hardcoding the number of iterations based on the number of dimensions, but that would probably
-//            // be a bad choice because we can exit this loop early when the permutation number is low, and on average that eliminates more than half of the loop iterations
-//            // the cost of a branch misprediction is probably equal to one complete loop above, but we're reducing it by more than that, and keeping the code more compact by not 
-//            // exploding the amount of code based on the number of possible dimensions
-//         } while(LIKELY(0 != permuteVectorDestroy));
-//         ASSERT_BIN_OK(cBytesPerBin, IndexBin(cBytesPerBin, pBin, offsetPointer), pBinsEndDebug);
-//         if(UNPREDICTABLE(0 != (1 & evenOdd))) {
-//            pBin->Add(*IndexBin(cBytesPerBin, pBin, offsetPointer), cRuntimeClasses);
-//         } else {
-//            pBin->Subtract(*IndexBin(cBytesPerBin, pBin, offsetPointer), cRuntimeClasses);
-//         }
-//      skip_group:
-//         ++permuteVector;
-//      } while(LIKELY(permuteVectorEnd != permuteVector));
-//
-//#ifndef NDEBUG
-//      size_t aiStart[k_cDimensionsMax];
-//      size_t aiLast[k_cDimensionsMax];
-//      ptrdiff_t multipleTotalDebug = -1;
-//      for(size_t iDebugDimension = 0; iDebugDimension < cDimensions; ++iDebugDimension) {
-//         aiStart[iDebugDimension] = 0;
-//         aiLast[iDebugDimension] = static_cast<size_t>((0 == iDebugDimension ? multipliedIndexCur0 : currentIndexAndCountBins[iDebugDimension].multipliedIndexCur) / multipleTotalDebug);
-//         multipleTotalDebug = currentIndexAndCountBins[iDebugDimension].multipleTotal;
-//      }
-//      TensorTotalsSumDebugSlow<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aDebugCopyBins, aiStart, aiLast, pDebugBin);
-//      EBM_ASSERT(pDebugBin->GetCountSamples() == pBin->GetCountSamples());
-//#endif // NDEBUG
-//
-//      // we're walking through all bins, so just move to the next one in the flat array, with the knoledge that we'll figure out it's multi-dimenional index below
-//      pBin = IndexBin(cBytesPerBin, pBin, 1);
-//
-//      // TODO: we are putting storage that would exist in our array from the innermost loop into registers (multipliedIndexCur0 & multipleTotal0).  We can probably do this in many other places as well that use this pattern of indexing via an array
-//
-//      --multipliedIndexCur0;
-//      if(LIKELY(multipliedIndexCur0 != multipleTotal0)) {
-//         goto skip_intro;
-//      }
-//
-//      pPrevious->Zero(cRuntimeClasses);
-//      multipliedIndexCur0 = 0;
-//      pCurrentIndexAndCountBins = &currentIndexAndCountBins[1];
-//      ptrdiff_t multipleTotal = multipleTotal0;
-//      while(true) {
-//         multipliedIndexCur = pCurrentIndexAndCountBins->multipliedIndexCur + multipleTotal;
-//         multipleTotal = pCurrentIndexAndCountBins->multipleTotal;
-//         if(LIKELY(multipliedIndexCur != multipleTotal)) {
-//            break;
-//         }
-//
-//         pCurrentIndexAndCountBins->multipliedIndexCur = 0;
-//         ++pCurrentIndexAndCountBins;
-//         if(UNLIKELY(pCurrentIndexAndCountBinsEnd == pCurrentIndexAndCountBins)) {
-//#ifndef NDEBUG
-//            free(pDebugBin);
-//#endif // NDEBUG
-//            return;
-//         }
-//      }
-//   }
-//
-//   LOG_0(Trace_Verbose, "Exited BuildFastTotalsZeroMemoryIncrease");
-//}
-
-
 
 
 //template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
