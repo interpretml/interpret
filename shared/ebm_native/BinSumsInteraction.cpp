@@ -110,7 +110,7 @@ public:
       const size_t * const aiFeatures,
       const size_t * const acBins
    ) {
-      constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       LOG_0(Trace_Verbose, "Entered BinSumsInteractionInternal");
 

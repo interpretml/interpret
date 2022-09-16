@@ -19,7 +19,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-constexpr double k_percentageDeviationFromEndpointForInterpretableNumbers = double { 0.25 };
+static constexpr double k_percentageDeviationFromEndpointForInterpretableNumbers = double { 0.25 };
 
 INLINE_ALWAYS constexpr static size_t CountBase10CharactersAbs(int n) noexcept {
    // this works for negative numbers too
@@ -29,7 +29,7 @@ INLINE_ALWAYS constexpr static size_t CountBase10CharactersAbs(int n) noexcept {
 // According to the C++ documentation, std::numeric_limits<double>::max_digits10 - 1 digits 
 // are required after the period in +9.1234567890123456e-301 notation, so for a double, the values would be 
 // 17 == std::numeric_limits<double>::max_digits10, and printf format specifier "%.16e"
-constexpr size_t k_cDigitsAfterPeriod = size_t { std::numeric_limits<double>::max_digits10 } - size_t { 1 };
+static constexpr size_t k_cDigitsAfterPeriod = size_t { std::numeric_limits<double>::max_digits10 } - size_t { 1 };
 
 // Unfortunately, min_exponent10 doesn't seem to include subnormal numbers, so although it's the true
 // minimum exponent in terms of the floating point exponential representation, it isn't the true minimum exponent 
@@ -39,10 +39,10 @@ constexpr size_t k_cDigitsAfterPeriod = size_t { std::numeric_limits<double>::ma
 // it's really unlikely to go from N to N+2, since in the simplest case that would be a factor of 10 in the 
 // exponential term (if the low number was almost N and the high number was just a bit above N+2), and 
 // subnormal numbers shouldn't increase the exponent by that much ever.
-constexpr size_t k_cExponentMaxTextDigits = CountBase10CharactersAbs(std::numeric_limits<double>::max_exponent10);
-constexpr size_t k_cExponentMinTextDigits = CountBase10CharactersAbs(std::numeric_limits<double>::min_exponent10) + size_t { 1 };
-constexpr size_t k_cExponentTextDigits =
-k_cExponentMaxTextDigits < k_cExponentMinTextDigits ? k_cExponentMinTextDigits : k_cExponentMaxTextDigits;
+static constexpr size_t k_cExponentMaxTextDigits = CountBase10CharactersAbs(std::numeric_limits<double>::max_exponent10);
+static constexpr size_t k_cExponentMinTextDigits = CountBase10CharactersAbs(std::numeric_limits<double>::min_exponent10) + size_t { 1 };
+static constexpr size_t k_cExponentTextDigits =
+   k_cExponentMaxTextDigits < k_cExponentMinTextDigits ? k_cExponentMinTextDigits : k_cExponentMaxTextDigits;
 
 // we have a function that ensures our output is exactly in the format that we require.  That format is:
 // "+9.1234567890123456e-301" (this is when 16 == cDigitsAfterPeriod, the value for doubles)
@@ -53,8 +53,8 @@ k_cExponentMaxTextDigits < k_cExponentMinTextDigits ? k_cExponentMinTextDigits :
 // 2 characters for "e-"
 // cExponentTextDigits characters for the exponent text
 // 1 character for null terminator
-constexpr size_t k_iExp = size_t { 3 } + k_cDigitsAfterPeriod;
-constexpr size_t k_cCharsFloatPrint = k_iExp + size_t { 2 } + k_cExponentTextDigits + size_t { 1 };
+static constexpr size_t k_iExp = size_t { 3 } + k_cDigitsAfterPeriod;
+static constexpr size_t k_cCharsFloatPrint = k_iExp + size_t { 2 } + k_cExponentTextDigits + size_t { 1 };
 
 extern double ArithmeticMean(const double low, const double high) noexcept {
    // nan values represent missing, and are filtered out from our data prior to discretization
@@ -192,7 +192,7 @@ static bool FloatToFullString(const double val, char * const str) noexcept {
    // the buffer.  According to the docs, snprintf returns the number of characters that would have been written MINUS 
    // the null terminator.
 
-   constexpr static char g_pPrintfForRoundTrip[] = "%+.*le";
+   static constexpr char g_pPrintfForRoundTrip[] = "%+.*le";
 
    const int cCharsWithoutNullTerminator = snprintf(
       str,
@@ -431,7 +431,7 @@ static bool StringToFloatChopped(
                *pDigit = '1';
                *(pDigit + size_t { 1 }) = 'e';
 
-               constexpr static char g_pPrintfLongInt[] = "%+d";
+               static constexpr char g_pPrintfLongInt[] = "%+d";
                // for the size -> one for the '+' or '-' sign, k_cExponentTextDigits for the digits, 1 for null terminator
                int cCharsWithoutNullTerminator = snprintf(
                   pDigit + size_t { 2 },

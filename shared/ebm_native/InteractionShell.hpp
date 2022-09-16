@@ -66,7 +66,7 @@ public:
    static void Free(InteractionShell * const pInteractionShell);
    static InteractionShell * Create();
 
-   static INLINE_ALWAYS InteractionShell * GetInteractionShellFromHandle(
+   INLINE_ALWAYS static InteractionShell * GetInteractionShellFromHandle(
       const InteractionHandle interactionHandle
    ) {
       if(nullptr == interactionHandle) {

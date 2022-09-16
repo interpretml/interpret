@@ -91,23 +91,23 @@ namespace DEFINED_ZONE_NAME {
 
 
 // header ids
-constexpr static SharedStorageDataType k_sharedDataSetWorkingId = 0x46DB; // random 15 bit number
-constexpr static SharedStorageDataType k_sharedDataSetErrorId = 0x103; // anything other than our normal id will work
-constexpr static SharedStorageDataType k_sharedDataSetDoneId = 0x61E3; // random 15 bit number
+static constexpr SharedStorageDataType k_sharedDataSetWorkingId = 0x46DB; // random 15 bit number
+static constexpr SharedStorageDataType k_sharedDataSetErrorId = 0x103; // anything other than our normal id will work
+static constexpr SharedStorageDataType k_sharedDataSetDoneId = 0x61E3; // random 15 bit number
 
 // feature ids
-constexpr static SharedStorageDataType k_missingFeatureBit = 0x1;
-constexpr static SharedStorageDataType k_unknownFeatureBit = 0x2;
-constexpr static SharedStorageDataType k_nominalFeatureBit = 0x4;
-constexpr static SharedStorageDataType k_sparseFeatureBit = 0x8;
-constexpr static SharedStorageDataType k_featureId = 0x2B40; // random 15 bit number with lower 4 bits set to zero
+static constexpr SharedStorageDataType k_missingFeatureBit = 0x1;
+static constexpr SharedStorageDataType k_unknownFeatureBit = 0x2;
+static constexpr SharedStorageDataType k_nominalFeatureBit = 0x4;
+static constexpr SharedStorageDataType k_sparseFeatureBit = 0x8;
+static constexpr SharedStorageDataType k_featureId = 0x2B40; // random 15 bit number with lower 4 bits set to zero
 
 // weight ids
-constexpr static SharedStorageDataType k_weightId = 0x61FB; // random 15 bit number
+static constexpr SharedStorageDataType k_weightId = 0x61FB; // random 15 bit number
 
 // target ids
-constexpr static SharedStorageDataType k_classificationBit = 0x1;
-constexpr static SharedStorageDataType k_targetId = 0x5A92; // random 15 bit number with lowest bit set to zero
+static constexpr SharedStorageDataType k_classificationBit = 0x1;
+static constexpr SharedStorageDataType k_targetId = 0x5A92; // random 15 bit number with lowest bit set to zero
 
 INLINE_ALWAYS static bool IsFeature(const SharedStorageDataType id) noexcept {
    return (k_missingFeatureBit | k_unknownFeatureBit | k_nominalFeatureBit | k_sparseFeatureBit | k_featureId) ==
@@ -174,8 +174,8 @@ static_assert(std::is_standard_layout<HeaderDataSetShared>::value,
    "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 static_assert(std::is_trivial<HeaderDataSetShared>::value,
    "These structs are shared between processes, so they definetly need to be standard layout and trivial");
-constexpr static size_t k_cBytesHeaderNoOffset = offsetof(HeaderDataSetShared, m_offsets);
-constexpr static SharedStorageDataType k_unfilledOffset = k_cBytesHeaderNoOffset - 1;
+static constexpr size_t k_cBytesHeaderNoOffset = offsetof(HeaderDataSetShared, m_offsets);
+static constexpr SharedStorageDataType k_unfilledOffset = k_cBytesHeaderNoOffset - 1;
 
 struct FeatureDataSetShared {
    SharedStorageDataType m_id; // dense or sparse?  nominal, missing, unknown or not?

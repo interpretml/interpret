@@ -141,7 +141,7 @@ typedef double FloatBig;
 INLINE_ALWAYS static void StopClangAnalysis() EBM_NOEXCEPT ANALYZER_NORETURN {
 }
 
-INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * dest, const char * src) EBM_NOEXCEPT {
+INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * const dest, const char * const src) EBM_NOEXCEPT {
    StopClangAnalysis();
    return strcpy(dest, src);
 }

@@ -37,7 +37,7 @@ namespace DEFINED_ZONE_NAME {
 
 
 
-static INLINE_ALWAYS double ConvertDouble(const SEXP sexp) {
+INLINE_ALWAYS static double ConvertDouble(const SEXP sexp) {
    if(REALSXP != TYPEOF(sexp)) {
       error("ConvertDouble REALSXP != TYPEOF(sexp)");
    }
@@ -47,14 +47,14 @@ static INLINE_ALWAYS double ConvertDouble(const SEXP sexp) {
    return REAL(sexp)[0];
 }
 
-static INLINE_ALWAYS IntEbm ConvertIndex(double index) {
+INLINE_ALWAYS static IntEbm ConvertIndex(double index) {
    if(std::isnan(index)) {
       error("ConvertIndex std::isnan(index)");
    }
    if(index < 0) {
       error("ConvertIndex index < 0");
    }
-   constexpr double maxValid = EbmMin(
+   static constexpr double maxValid = EbmMin(
       double { R_XLEN_T_MAX }, 
       double { SAFE_FLOAT64_AS_INT64_MAX },
       static_cast<double>(std::numeric_limits<size_t>::max()),
@@ -67,22 +67,22 @@ static INLINE_ALWAYS IntEbm ConvertIndex(double index) {
    return static_cast<IntEbm>(index);
 }
 
-static INLINE_ALWAYS IntEbm ConvertIndex(const SEXP sexp) {
+INLINE_ALWAYS static IntEbm ConvertIndex(const SEXP sexp) {
    return ConvertIndex(ConvertDouble(sexp));
 }
 
-static INLINE_ALWAYS IntEbm ConvertIndexApprox(double index) {
+INLINE_ALWAYS static IntEbm ConvertIndexApprox(double index) {
    if(std::isnan(index)) {
       error("ConvertIndexApprox std::isnan(index)");
    }
-   constexpr double minValid = EbmMax(
+   static constexpr double minValid = EbmMax(
       double { -FLOAT64_TO_INT64_MAX },
       static_cast<double>(std::numeric_limits<IntEbm>::lowest())
    );
    if(index < minValid) {
       return minValid;
    }
-   constexpr double maxValid = EbmMin(
+   static constexpr double maxValid = EbmMin(
       double { FLOAT64_TO_INT64_MAX },
       static_cast<double>(std::numeric_limits<IntEbm>::max())
    );
@@ -92,11 +92,11 @@ static INLINE_ALWAYS IntEbm ConvertIndexApprox(double index) {
    return static_cast<IntEbm>(index);
 }
 
-static INLINE_ALWAYS IntEbm ConvertIndexApprox(const SEXP sexp) {
+INLINE_ALWAYS static IntEbm ConvertIndexApprox(const SEXP sexp) {
    return ConvertIndexApprox(ConvertDouble(sexp));
 }
 
-static INLINE_ALWAYS IntEbm ConvertInt(const SEXP sexp) {
+INLINE_ALWAYS static IntEbm ConvertInt(const SEXP sexp) {
    if(INTSXP != TYPEOF(sexp)) {
       error("ConvertInt INTSXP != TYPEOF(sexp)");
    }
@@ -106,7 +106,7 @@ static INLINE_ALWAYS IntEbm ConvertInt(const SEXP sexp) {
    return INTEGER(sexp)[0];
 }
 
-static INLINE_ALWAYS BoolEbm ConvertBool(const SEXP sexp) {
+INLINE_ALWAYS static BoolEbm ConvertBool(const SEXP sexp) {
    if(LGLSXP != TYPEOF(sexp)) {
       error("ConvertBool LGLSXP != TYPEOF(sexp)");
    }

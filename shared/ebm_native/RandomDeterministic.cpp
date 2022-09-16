@@ -106,7 +106,7 @@ uint_fast64_t RandomDeterministic::GetOneTimePadConversion(uint_fast64_t seed) {
 }
 
 void RandomDeterministic::Initialize(const uint64_t seed) {
-   constexpr uint64_t initializeSeed = uint64_t { 0xa75f138b4a162cfd };
+   static constexpr uint64_t initializeSeed = uint64_t { 0xa75f138b4a162cfd };
 
    m_state1 = initializeSeed;
    m_state2 = initializeSeed;

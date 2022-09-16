@@ -9,13 +9,13 @@
 #include "ebm_native.h"
 #include "ebm_native_test.hpp"
 
-static const TestPriority k_filePriority = TestPriority::CutUniform;
+static constexpr TestPriority k_filePriority = TestPriority::CutUniform;
 
-constexpr double k_minNonSubnormal = 2.2250738585072014e-308; // std::numeric_limits<double>::min()
-constexpr double k_maxNonInf = 1.7976931348623158e+308; // std::numeric_limits<double>::max()
-constexpr double k_subnormToNorm = 4503599627370496.0; // multiplying by this will move a subnormal into a normal
+static constexpr double k_minNonSubnormal = 2.2250738585072014e-308; // std::numeric_limits<double>::min()
+static constexpr double k_maxNonInf = 1.7976931348623158e+308; // std::numeric_limits<double>::max()
+static constexpr double k_subnormToNorm = 4503599627370496.0; // multiplying by this will move a subnormal into a normal
 
-constexpr double illegalVal = double { -888.88 };
+static constexpr double illegalVal = double { -888.88 };
 static double * const pIllegal = reinterpret_cast<double *>(1);
 
 TEST_CASE("CutUniform, zero cuts") {
@@ -196,7 +196,7 @@ TEST_CASE("CutUniform, infinite diff, even cuts") {
       std::numeric_limits<double>::max(),
       std::numeric_limits<double>::lowest(),
    };
-   const std::vector<double> expectedCuts { -5.9923104495410517e+307, 5.9923104495410517e+307 };
+   static const std::vector<double> expectedCuts { -5.9923104495410517e+307, 5.9923104495410517e+307 };
 
    std::vector<double> cuts(static_cast<size_t>(countCuts), illegalVal);
 
@@ -218,7 +218,7 @@ TEST_CASE("CutUniform, infinite diff, odd cuts") {
       std::numeric_limits<double>::lowest(),
       std::numeric_limits<double>::max(),
    };
-   const std::vector<double> expectedCuts { -8.9884656743115785e+307, 0, 8.9884656743115785e+307 };
+   static const std::vector<double> expectedCuts { -8.9884656743115785e+307, 0, 8.9884656743115785e+307 };
 
    std::vector<double> cuts(static_cast<size_t>(countCuts), illegalVal);
 
@@ -237,7 +237,7 @@ TEST_CASE("CutUniform, min and max at interior positions") {
    IntEbm countCuts = 9;
 
    std::vector<double> featureVals { 1, 2, 3, 4, 5, 0, 10, 6, 7, 8, 9 };
-   const std::vector<double> expectedCuts { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+   static const std::vector<double> expectedCuts { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
    std::vector<double> cuts(static_cast<size_t>(countCuts), illegalVal);
 
@@ -318,8 +318,8 @@ TEST_CASE("CutUniform, stress test reproducible") {
 
    double featureVals[2] = { 0, 0 };
 
-   constexpr size_t cInteresting = 19;
-   double interestingVals[cInteresting] = {
+   static constexpr size_t cInteresting = 19;
+   static constexpr double interestingVals[cInteresting] = {
       -k_maxNonInf,
       -3.0,
       -2.0,
@@ -340,7 +340,7 @@ TEST_CASE("CutUniform, stress test reproducible") {
       3.0,
       k_maxNonInf
    };
-   constexpr size_t cCutsMax = 31; // 31 is prime
+   static constexpr size_t cCutsMax = 31; // 31 is prime
    double cuts[cCutsMax] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
    // this is a really crappy Middle-square random number generator so that we can replicate it in any language

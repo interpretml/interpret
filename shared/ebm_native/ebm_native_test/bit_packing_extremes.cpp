@@ -7,7 +7,7 @@
 #include "ebm_native.h"
 #include "ebm_native_test.hpp"
 
-static const TestPriority k_filePriority = TestPriority::BitPackingExtremes;
+static constexpr TestPriority k_filePriority = TestPriority::BitPackingExtremes;
 
 TEST_CASE("Test data bit packing extremes, boosting, regression") {
    for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {

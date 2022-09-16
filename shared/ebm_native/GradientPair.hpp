@@ -43,30 +43,8 @@ static_assert(sizeof(FloatAndInt<double>) == sizeof(double), "FloatAndInt<double
 template<typename TFloat, bool bClassification>
 struct GradientPair;
 
-struct GradientPairBase {
-   GradientPairBase() = default; // preserve our POD status
-   ~GradientPairBase() = default; // preserve our POD status
-   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-   void operator delete (void *) = delete; // we only use malloc/free in this library
-
-   template<typename TFloat, bool bClassification>
-   INLINE_ALWAYS GradientPair<TFloat, bClassification> * Specialize() {
-      return static_cast<GradientPair<TFloat, bClassification> *>(this);
-   }
-   template<typename TFloat, bool bClassification>
-   INLINE_ALWAYS const GradientPair<TFloat, bClassification> * Specialize() const {
-      return static_cast<const GradientPair<TFloat, bClassification> *>(this);
-   }
-};
-static_assert(std::is_standard_layout<GradientPairBase>::value,
-   "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<GradientPairBase>::value,
-   "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<GradientPairBase>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
-
 template<typename TFloat>
-struct GradientPair<TFloat, true> final : GradientPairBase {
+struct GradientPair<TFloat, true> final {
    // classification version of the GradientPair class
 
 #ifndef __SUNPRO_CC
@@ -137,7 +115,7 @@ static_assert(std::is_pod<GradientPair<float, true>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<typename TFloat>
-struct GradientPair<TFloat, false> final : GradientPairBase {
+struct GradientPair<TFloat, false> final {
    // regression version of the GradientPair class
 
 #ifndef __SUNPRO_CC
@@ -195,8 +173,21 @@ static_assert(std::is_trivial<GradientPair<float, false>>::value,
 static_assert(std::is_pod<GradientPair<float, false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
+template<typename TFloat, bool bClassification>
+INLINE_ALWAYS static void ZeroGradientPairs(
+   GradientPair<TFloat, bClassification> * const aGradientPairs, 
+   const size_t cScores
+) {
+   EBM_ASSERT(1 <= cScores);
+   size_t iScore = 0;
+   do {
+      aGradientPairs[iScore].Zero();
+      ++iScore;
+   } while(cScores != iScore);
+}
+
 template<typename TFloat>
-INLINE_ALWAYS size_t GetGradientPairSize(const bool bClassification) {
+INLINE_ALWAYS static size_t GetGradientPairSize(const bool bClassification) {
    if(bClassification) {
       return sizeof(GradientPair<TFloat, true>);
    } else {

@@ -8,7 +8,7 @@
 #include "ebm_native_test.hpp"
 #include "RandomStreamTest.hpp"
 
-static const TestPriority k_filePriority = TestPriority::RandomNumbers;
+static constexpr TestPriority k_filePriority = TestPriority::RandomNumbers;
 
 TEST_CASE("InitRNG, 0") {
    IntEbm cBytes = MeasureRNG();
@@ -59,8 +59,8 @@ TEST_CASE("GenerateSeed, 99") {
 }
 
 TEST_CASE("SampleWithoutReplacementStratified, stress test") {
-   constexpr size_t cSamples = 500;
-   constexpr size_t cClasses = 10;
+   static constexpr size_t cSamples = 500;
+   static constexpr size_t cClasses = 10;
 
    ErrorEbm error;
 
@@ -205,7 +205,7 @@ TEST_CASE("SampleWithoutReplacement, stress test") {
    ErrorEbm error;
 
    for(int iBool = 0; iBool < 2; ++iBool) {
-      constexpr size_t cSamples = 1000;
+      static constexpr size_t cSamples = 1000;
       BagEbm samples[cSamples];
 
       RandomStreamTest randomStream(k_seed);
@@ -278,8 +278,8 @@ TEST_CASE("test random number generator equivalency") {
 }
 
 TEST_CASE("GenerateGaussianRandom") {
-   constexpr int cIterations = 1000;
-   constexpr int offset = 0;
+   static constexpr int cIterations = 1000;
+   static constexpr int offset = 0;
 
    std::vector<unsigned char> rng(static_cast<size_t>(MeasureRNG()));
    InitRNG(k_seed, &rng[0]);

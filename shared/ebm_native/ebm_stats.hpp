@@ -40,8 +40,8 @@ static_assert(
 
 // TODO: we should make this the min() instead of the denorm_min().  We want denormals flushed to zero
 // because they either case non-determinism due to flush to zero or they cause performance issues, often.
-constexpr FloatBig k_hessianMin = std::numeric_limits<FloatBig>::denorm_min();
-constexpr FloatBig k_gainMin = 0;
+static constexpr FloatBig k_hessianMin = std::numeric_limits<FloatBig>::denorm_min();
+static constexpr FloatBig k_gainMin = 0;
 
 // HANDLING SPECIAL FLOATING POINT VALUES (NaN/infinities/denormals/-0):
 // - it should be virtually impossible to get NaN values anywhere in this code without being given an 

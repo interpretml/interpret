@@ -251,13 +251,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
    //       - we check for both negative AND positive countCuts values that are too high.  We can
    //         combine these checks by first converting negatives into big positive unsigned values
    //         which are guaranteed to be larger than our largest valid index.  We then find via
-   //         constexpr the biggest of the maxes that we care about, and then make one comparison
+   //         static constexpr the biggest of the maxes that we care about, and then make one comparison
    //         for all these conditions.  We might have code that differentiates the results if we trigger
    //         an error return
    //       - we have comparisons to both size_t and IntEbm max values, which we can collapse into
    //         just a single max value comparison.  If the max unsigned size_t is bigger than the max unsigned
    //         UIntEbm then do the comparison in the bigger domain.
-   //       - we can write a constexpr function that takes the value we have, and the max value in
+   //       - we can write a static constexpr function that takes the value we have, and the max value in
    //         the same type and the max value in annother type and does all the right things to compare
    //         them properly.  Use SINAFE to have 2 functions (one where the initial value type is lower
    //         and another where it is higher).  We could probably use this function in a number of places
@@ -539,7 +539,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
       const size_t cCuts = static_cast<size_t>(countCuts);
 
       if(PREDICTABLE(countCuts <= IntEbm { 14 })) {
-         constexpr size_t cPower = 16;
+         static constexpr size_t cPower = 16;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
                sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");
@@ -584,7 +584,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbm { 30 })) {
-         constexpr size_t cPower = 32;
+         static constexpr size_t cPower = 32;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
                sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");
@@ -630,7 +630,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbm { 62 })) {
-         constexpr size_t cPower = 64;
+         static constexpr size_t cPower = 64;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
                sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");
@@ -677,7 +677,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbm { 126 })) {
-         constexpr size_t cPower = 128;
+         static constexpr size_t cPower = 128;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
                sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");
@@ -725,7 +725,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbm { 254 })) {
-         constexpr size_t cPower = 256;
+         static constexpr size_t cPower = 256;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
                sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");
@@ -774,7 +774,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbm { 510 })) {
-         constexpr size_t cPower = 512;
+         static constexpr size_t cPower = 512;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
                sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");
@@ -824,7 +824,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbm { 1022 })) {
-         constexpr size_t cPower = 1024;
+         static constexpr size_t cPower = 1024;
          if(cPower * 4 <= cSamples) {
             static_assert(cPower - 1 == sizeof(cutsLowerBoundInclusiveCopy) /
                sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");

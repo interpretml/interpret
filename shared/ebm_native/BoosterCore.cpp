@@ -444,7 +444,7 @@ ErrorEbm BoosterCore::Create(
                   // don't know yet if the caller will set the random boosting flag on all pairs, so allocate it
 
                   // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20 at max, so we need 24
-                  constexpr size_t cAuxillaryBinsForSplitting = 24;
+                  static constexpr size_t cAuxillaryBinsForSplitting = 24;
                   const size_t cAuxillaryBins = EbmMax(cAuxillaryBinsForBuildFastTotals, cAuxillaryBinsForSplitting);
                   pTerm->SetCountAuxillaryBins(cAuxillaryBins);
 

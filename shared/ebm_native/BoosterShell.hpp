@@ -61,7 +61,7 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   constexpr static size_t k_illegalTermIndex = size_t { static_cast<size_t>(ptrdiff_t { -1 }) };
+   static constexpr size_t k_illegalTermIndex = size_t { static_cast<size_t>(ptrdiff_t { -1 }) };
 
    INLINE_ALWAYS void InitializeUnfailing() {
       m_handleVerification = k_handleVerificationOk;
@@ -80,7 +80,7 @@ public:
    static BoosterShell * Create();
    ErrorEbm FillAllocations();
 
-   static INLINE_ALWAYS BoosterShell * GetBoosterShellFromHandle(const BoosterHandle boosterHandle) {
+   INLINE_ALWAYS static BoosterShell * GetBoosterShellFromHandle(const BoosterHandle boosterHandle) {
       if(nullptr == boosterHandle) {
          LOG_0(Trace_Error, "ERROR GetBoosterShellFromHandle null boosterHandle");
          return nullptr;
@@ -142,12 +142,12 @@ public:
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS TreeNode<bClassification> * GetTreeNodesTemp() {
+   INLINE_ALWAYS auto * GetTreeNodesTemp() {
       return static_cast<TreeNode<bClassification> *>(m_aTreeNodesTemp);
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS SplitPosition<bClassification> * GetSplitPositionsTemp() {
+   INLINE_ALWAYS auto * GetSplitPositionsTemp() {
       return static_cast<SplitPosition<bClassification> *>(m_aSplitPositionsTemp);
    }
 

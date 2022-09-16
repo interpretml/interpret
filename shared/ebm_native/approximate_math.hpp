@@ -233,29 +233,29 @@ namespace DEFINED_ZONE_NAME {
 
 
 
-constexpr double k_expErrorPeriodicity = 0.69314718055994529; // ln(2)
+static constexpr double k_expErrorPeriodicity = 0.69314718055994529; // ln(2)
 
 // this constant does not change for any variation in optimizing for different objectives in Schraudolph
-constexpr float k_expMultiple = 12102203.0f; // (1<<23) / ln(2)
+static constexpr float k_expMultiple = 12102203.0f; // (1<<23) / ln(2)
 
 // all of these constants should have exact rounding to float, per IEEE 754 9-12 digit rule (see above)
-constexpr int32_t k_expTermUpperBound                   = 1065353217; // theoretically justified -> 1065353216 + 1
-constexpr int32_t k_expTermMinimizeRelativeMaximumError = 1064986824; // theoretically justified
-constexpr int32_t k_expTermZeroMeanRelativeError        = 1064870596; // experimentally determined.  This unbiases our average such that averages of large numbers of values should be balanced towards zero
-constexpr int32_t k_expTermMinimizeRelativeRMSE         = 1064866805; // theoretically justified -> 1065353216 - 486411
-constexpr int32_t k_expTermMinimizeRelativeMeanAbsError = 1064807269; // theoretically justified -> 1065353216 - 545947
-constexpr int32_t k_expTermLowerBound                   = 1064631197; // theoretically justified -> 1065353216 - 722019
+static constexpr int32_t k_expTermUpperBound                   = 1065353217; // theoretically justified -> 1065353216 + 1
+static constexpr int32_t k_expTermMinimizeRelativeMaximumError = 1064986824; // theoretically justified
+static constexpr int32_t k_expTermZeroMeanRelativeError        = 1064870596; // experimentally determined.  This unbiases our average such that averages of large numbers of values should be balanced towards zero
+static constexpr int32_t k_expTermMinimizeRelativeRMSE         = 1064866805; // theoretically justified -> 1065353216 - 486411
+static constexpr int32_t k_expTermMinimizeRelativeMeanAbsError = 1064807269; // theoretically justified -> 1065353216 - 545947
+static constexpr int32_t k_expTermLowerBound                   = 1064631197; // theoretically justified -> 1065353216 - 722019
 
 // experimentally determined softmax Schraudolph terms for softmax where one logit is zeroed by subtracing it from the other logits
-constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewMinus0_696462 = 1064873067; // experimentally determined, +-1, from -0.696462 - k_expErrorPeriodicity / 2 to -0.696462 + k_expErrorPeriodicity / 2
+static constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewMinus0_696462 = 1064873067; // experimentally determined, +-1, from -0.696462 - k_expErrorPeriodicity / 2 to -0.696462 + k_expErrorPeriodicity / 2
 // mid-point = -0.509733
-constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewMinus0_323004 = 1064873067; // experimentally determined, +-1, from -0.323004 - k_expErrorPeriodicity / 2 to -0.323004 + k_expErrorPeriodicity / 2
-constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkew0      = 1064873067; // experimentally determined, +-1, from -k_expErrorPeriodicity / 2 to +k_expErrorPeriodicity / 2
-constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewPlus0_370957 = 1064873067; // experimentally determined, +-1, from 0.370957 - k_expErrorPeriodicity / 2 to 0.370957 + k_expErrorPeriodicity / 2
+static constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewMinus0_323004 = 1064873067; // experimentally determined, +-1, from -0.323004 - k_expErrorPeriodicity / 2 to -0.323004 + k_expErrorPeriodicity / 2
+static constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkew0      = 1064873067; // experimentally determined, +-1, from -k_expErrorPeriodicity / 2 to +k_expErrorPeriodicity / 2
+static constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewPlus0_370957 = 1064873067; // experimentally determined, +-1, from 0.370957 - k_expErrorPeriodicity / 2 to 0.370957 + k_expErrorPeriodicity / 2
 // mid-point = 0.533474
-constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewPlus0_695991 = 1064873067; // experimentally determined, +-1, from 0.695991 - k_expErrorPeriodicity / 2 to 0.695991 + k_expErrorPeriodicity / 2
+static constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewPlus0_695991 = 1064873067; // experimentally determined, +-1, from 0.695991 - k_expErrorPeriodicity / 2 to 0.695991 + k_expErrorPeriodicity / 2
 
-constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermZeroedRange20 = 1064872079; // experimentally determined, +-1, the zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
+static constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermZeroedRange20 = 1064872079; // experimentally determined, +-1, the zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
 // USE THIS Schraudolph term for softmax.  It gives 0.001% -> 0.00001 average error, so it's unlikley to miscalibrate 
 // the results too much.  Keeping all softmax terms without zeroing any of them leads to an error of about 0.16% or 
 // thereabouts, which is much larger than anything observed for zeroed logits
@@ -269,8 +269,8 @@ constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermZe
 // this Schraudolph term works relatively well for softmax with 3+ classes, different skews, and if the predicted
 // class is the zeroed class or a non-zeroed class.  It also works fairly well if the non-zeroed logits are greater
 // than zero after shifting them
-constexpr int32_t k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit = 1064871915; // experimentally determined, AVERAGED between the zeroed and non-zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
-constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermNonZeroedRange20 = 1064871750; // experimentally determined, +-1, the non-zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
+static constexpr int32_t k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit = 1064871915; // experimentally determined, AVERAGED between the zeroed and non-zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
+static constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermNonZeroedRange20 = 1064871750; // experimentally determined, +-1, the non-zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
 
 // TODO: we can probably pick a better k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit above for binary classification 
 // where we know for sure the number of classes, and we know the likely sign of the value going into the exp 
@@ -278,9 +278,9 @@ constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermNo
 // trying to push that value in a consistent direction towards the true value
 
 // these are rough determinations that need to be vetted 
-//constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0 = 1064873955; // experimentally determined, +-?
-//constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0_370? = 1064873955; // experimentally determined, +-?
-//constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0_69982536866359447004608294930875 = 1064873955; // experimentally determined, +-?
+//static constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0 = 1064873955; // experimentally determined, +-?
+//static constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0_370? = 1064873955; // experimentally determined, +-?
+//static constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0_69982536866359447004608294930875 = 1064873955; // experimentally determined, +-?
 
 
 // DO NOT USE.  This constant minimizes the mean error for softmax where none of the logits are zeroed.  It has
@@ -288,12 +288,12 @@ constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermNo
 // Using non-zeroed softmax isn't as viable since at modest skews (I tried k_expErrorPeriodicity / 4), achieving zero average error is impossible
 // since all valid addition terms from k_expTermLowerBound to k_expTermUpperBound can result in non-zero error averages
 // softmax with a zeroed term seems to have much tighter bounds on the mean error even if the absolute mean error is higher
-constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesSkew0 = 1064963329; // experimentally determined +-1, non-zeroed, from -k_expErrorPeriodicity / 2 to k_expErrorPeriodicity / 2
+static constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesSkew0 = 1064963329; // experimentally determined +-1, non-zeroed, from -k_expErrorPeriodicity / 2 to k_expErrorPeriodicity / 2
 
 // k_expUnderflowPoint is set to a value that prevents us from returning a denormal number. These approximate function 
 // don't really work with denomals and start to drift very quickly from the true exp values when we reach denormals.
-constexpr float k_expUnderflowPoint = -87.25f; // this is exactly representable in IEEE 754
-constexpr float k_expOverflowPoint = 88.5f; // this is exactly representable in IEEE 754
+static constexpr float k_expUnderflowPoint = -87.25f; // this is exactly representable in IEEE 754
+static constexpr float k_expOverflowPoint = 88.5f; // this is exactly representable in IEEE 754
 
 // use the integer version for now since in non-SIMD this is probably faster and more exact
 #define EXP_INT
@@ -306,7 +306,7 @@ template<
    bool bSpecialCaseZero = false,
    typename T
 >
-INLINE_ALWAYS T ExpApproxSchraudolph(T val, const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) {
+INLINE_ALWAYS static T ExpApproxSchraudolph(T val, const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) {
    // This function guarnatees non-decreasing monotonicity, so it never decreases with increasing inputs, but
    // it can sometimes yield equal outputs on increasing inputs
 
@@ -359,7 +359,7 @@ INLINE_ALWAYS T ExpApproxSchraudolph(T val, const int32_t addExpSchraudolphTerm 
       }
 
       const float valFloat = static_cast<float>(val);
-      constexpr float signedExpMultiple = bNegateInput ? -k_expMultiple : k_expMultiple;
+      static constexpr float signedExpMultiple = bNegateInput ? -k_expMultiple : k_expMultiple;
 
 #ifdef EXP_INT
 
@@ -401,7 +401,7 @@ template<
    bool bSpecialCaseZero = false,
    typename T
 >
-INLINE_ALWAYS T ExpApproxBest(T val) {
+INLINE_ALWAYS static T ExpApproxBest(T val) {
    // This function DOES NOT guarnatee monotonicity, and in fact I've seen small monotonicity violations, so it's
    // not just a theoretical consideration.  Unlike the ExpApproxSchraudolph, we have discontinuities
    // at the integer rounding points due to floating point rounding inexactness.
@@ -562,7 +562,7 @@ INLINE_ALWAYS T ExpApproxBest(T val) {
 }
 
 template<bool bNegateInput = false, typename T>
-INLINE_ALWAYS T ExpForBinaryClassification(const T val) {
+INLINE_ALWAYS static T ExpForBinaryClassification(const T val) {
 #ifdef FAST_EXP
    // the optimal addExpSchraudolphTerm would be different between binary 
    // and multiclass since the softmax form we use is different
@@ -576,7 +576,7 @@ INLINE_ALWAYS T ExpForBinaryClassification(const T val) {
 }
 
 template<bool bNegateInput = false, typename T>
-INLINE_ALWAYS T ExpForMulticlass(const T val) {
+INLINE_ALWAYS static T ExpForMulticlass(const T val) {
 #ifdef FAST_EXP
    // the optimal addExpSchraudolphTerm would be different between binary
    // and multiclass since the softmax form we use is different
@@ -595,7 +595,7 @@ INLINE_ALWAYS T ExpForMulticlass(const T val) {
 ///////////////////////////////////////////// LOG SECTION
 
 // this constant does not change for any variation in optimizing for different objectives in Schraudolph
-constexpr float k_logMultiple = 8.26295832e-08f; // ln(2) / (1<<23)
+static constexpr float k_logMultiple = 8.26295832e-08f; // ln(2) / (1<<23)
 
 // k_logTermUpperBound = 
 // std::nextafter(-(k_expTermLowerBound * ln(2) / (1 << 23))) = 
@@ -603,7 +603,7 @@ constexpr float k_logMultiple = 8.26295832e-08f; // ln(2) / (1<<23)
 // std::nextafter(-87.970031802262032630372429596766f, 0.0f)
 // we need to take the nextafter, because the round of that number is -87.9700317f otherwise which is below the bound
 // -87.9700241f
-constexpr float k_logTermUpperBound = -87.9700241f;
+static constexpr float k_logTermUpperBound = -87.9700241f;
 
 // k_logTermLowerBound = 
 // -(k_expTermUpperBound * ln(2) / (1 << 23)) = 
@@ -611,14 +611,14 @@ constexpr float k_logTermUpperBound = -87.9700241f;
 // -88.029692013742637244666652182484f
 // -88.0296936f (rounded)
 // we do not need to take the nextafter, because the round of that number is -88.0296936f is already outside the bound
-constexpr float k_logTermLowerBound = -88.0296936f;
+static constexpr float k_logTermLowerBound = -88.0296936f;
 
 // ln(1) = 0, and we want to be close to that.  Our boosting never goes below 1 for log loss, so if we set
 // a minimum of 0.9999 (to account for floating point inexactness), then our minimum is:
-constexpr float k_logTermLowerBoundInputCloseToOne = -88.02955453797396f;
+static constexpr float k_logTermLowerBoundInputCloseToOne = -88.02955453797396f;
 
 // LOG constants
-constexpr float k_logTermZeroMeanErrorForLogFrom1_To1_5 = -87.9865799f; // experimentally determined.  optimized for input values from 1 to 1.5.  Equivalent to 1064831465
+static constexpr float k_logTermZeroMeanErrorForLogFrom1_To1_5 = -87.9865799f; // experimentally determined.  optimized for input values from 1 to 1.5.  Equivalent to 1064831465
 
 
 // the more exact log constancts from https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastlog.h
@@ -648,7 +648,7 @@ template<
    bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
    typename T
 >
-INLINE_ALWAYS T LogApproxSchraudolph(T val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) {
+INLINE_ALWAYS static T LogApproxSchraudolph(T val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) {
    // NOTE: this function will have large errors on denomal inputs, but the results are reliably big negative numbers
 
    // to get the log, just reverse the approximate exp function steps
@@ -726,7 +726,7 @@ INLINE_ALWAYS T LogApproxSchraudolph(T val, const float addLogSchraudolphTerm = 
 }
 
 template<bool bNegateInput = false, typename T>
-INLINE_ALWAYS T ExpForLogLossBinaryClassification(const T val) {
+INLINE_ALWAYS static T ExpForLogLossBinaryClassification(const T val) {
 #ifdef FAST_LOG
    // the optimal addExpSchraudolphTerm is different between binary and multiclass 
    // since the softmax form we use is different
@@ -744,7 +744,7 @@ INLINE_ALWAYS T ExpForLogLossBinaryClassification(const T val) {
 }
 
 template<bool bNegateInput = false, typename T>
-INLINE_ALWAYS T ExpForLogLossMulticlass(const T val) {
+INLINE_ALWAYS static T ExpForLogLossMulticlass(const T val) {
 #ifdef FAST_LOG
    // the optimal addExpSchraudolphTerm is different between binary and multiclass 
    // since the softmax form we use is different
@@ -764,7 +764,7 @@ INLINE_ALWAYS T ExpForLogLossMulticlass(const T val) {
 }
 
 template<bool bNegateOutput = false, typename T>
-INLINE_ALWAYS T LogForLogLoss(const T val) {
+INLINE_ALWAYS static T LogForLogLoss(const T val) {
 
    // the log function is only used to calculate the log loss on the valididation set only in our codebase
    // the log loss is calculated for the validation set and then returned as a single number to the caller

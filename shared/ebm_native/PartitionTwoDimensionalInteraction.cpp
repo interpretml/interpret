@@ -48,8 +48,8 @@ public:
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      constexpr bool bClassification = IsClassification(cCompilerClasses);
-      constexpr size_t cCompilerDimensions = 2;
+      static constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr size_t cCompilerDimensions = 2;
 
       auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification>();
 
@@ -91,15 +91,11 @@ public:
       GradientPair<FloatBig, bClassification> aGradientPairsLocal11[GetCountScores(cCompilerClasses)];
 
       // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
-      constexpr bool bUseStackMemory = k_dynamicClassification != cCompilerClasses;
-      GradientPair<FloatBig, bClassification> * const aGradientPairs00 =
-         bUseStackMemory ? aGradientPairsLocal00 : pTotals00->GetGradientPairs();
-      GradientPair<FloatBig, bClassification> * const aGradientPairs01 =
-         bUseStackMemory ? aGradientPairsLocal01 : pTotals01->GetGradientPairs();
-      GradientPair<FloatBig, bClassification> * const aGradientPairs10 =
-         bUseStackMemory ? aGradientPairsLocal10 : pTotals10->GetGradientPairs();
-      GradientPair<FloatBig, bClassification> * const aGradientPairs11 =
-         bUseStackMemory ? aGradientPairsLocal11 : pTotals11->GetGradientPairs();
+      static constexpr bool bUseStackMemory = k_dynamicClassification != cCompilerClasses;
+      auto * const aGradientPairs00 = bUseStackMemory ? aGradientPairsLocal00 : pTotals00->GetGradientPairs();
+      auto * const aGradientPairs01 = bUseStackMemory ? aGradientPairsLocal01 : pTotals01->GetGradientPairs();
+      auto * const aGradientPairs10 = bUseStackMemory ? aGradientPairsLocal10 : pTotals10->GetGradientPairs();
+      auto * const aGradientPairs11 = bUseStackMemory ? aGradientPairsLocal11 : pTotals11->GetGradientPairs();
 
       size_t cSamples00;
       FloatBig weight00;
@@ -203,7 +199,7 @@ public:
                            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
                            // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-                           constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
+                           static constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
 
                            // n = numerator (sum_gradients), d = denominator (sum_hessians or weight)
 
@@ -378,7 +374,7 @@ public:
             // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-            constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
+            static constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
             bestGain -= EbmStats::CalcPartialGain(
                aGradientPairs[iScore].m_sumGradients,
                bUseLogitBoost ? aGradientPairs[iScore].GetHess() : weightAll

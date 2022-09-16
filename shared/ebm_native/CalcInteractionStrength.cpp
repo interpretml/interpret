@@ -263,7 +263,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
    BinSumsInteraction(pInteractionShell, cDimensions, aiFeatures, acBins);
 
-   constexpr size_t cAuxillaryBinsForSplitting = 4;
+   static constexpr size_t cAuxillaryBinsForSplitting = 4;
    const size_t cAuxillaryBins = EbmMax(cAuxillaryBinsForBuildFastTotals, cAuxillaryBinsForSplitting);
    
    if(IsAddError(cTensorBins, cAuxillaryBins)) {

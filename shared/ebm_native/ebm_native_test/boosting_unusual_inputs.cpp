@@ -7,7 +7,7 @@
 #include "ebm_native.h"
 #include "ebm_native_test.hpp"
 
-static const TestPriority k_filePriority = TestPriority::BoostingUnusualInputs;
+static constexpr TestPriority k_filePriority = TestPriority::BoostingUnusualInputs;
 
 TEST_CASE("zero learning rate, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
@@ -1263,7 +1263,7 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
 }
 
 TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
-   constexpr IntEbm cStates = 7;
+   static constexpr IntEbm cStates = 7;
    static const std::vector<IntEbm> k_leavesMax = {
       IntEbm { 3 },
       IntEbm { 3 },
@@ -1320,7 +1320,7 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
 }
 
 TEST_CASE("Random splitting, pure tripples, multiclass") {
-   constexpr IntEbm cStates = 7;
+   static constexpr IntEbm cStates = 7;
    static const std::vector<IntEbm> k_leavesMax = {
       IntEbm { 3 },
       IntEbm { 3 },
@@ -1379,7 +1379,7 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
 }
 
 TEST_CASE("Random splitting, pure tripples, regression") {
-   constexpr IntEbm cStates = 7;
+   static constexpr IntEbm cStates = 7;
    static const std::vector<IntEbm> k_leavesMax = {
       IntEbm { 3 },
       IntEbm { 3 },
@@ -1433,8 +1433,8 @@ TEST_CASE("Random splitting, pure tripples, regression") {
 }
 
 TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
-   constexpr IntEbm k_cStates = 7;
-   constexpr IntEbm k_minSamplesLeaf = 1;
+   static constexpr IntEbm k_cStates = 7;
+   static constexpr IntEbm k_minSamplesLeaf = 1;
    static const std::vector<IntEbm> k_leavesMax = {
       IntEbm { 1 },
       IntEbm { 1 },

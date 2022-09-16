@@ -49,7 +49,7 @@ static FloatBig SweepMultiDimensional(
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
-   constexpr bool bClassification = IsClassification(cCompilerClasses);
+   static constexpr bool bClassification = IsClassification(cCompilerClasses);
 
    const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
    const size_t cScores = GetCountScores(cClasses);
@@ -88,11 +88,9 @@ static FloatBig SweepMultiDimensional(
    GradientPair<FloatBig, bClassification> aGradientPairsHighLocal[GetCountScores(cCompilerClasses)];
 
    // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
-   constexpr bool bUseStackMemory = k_dynamicClassification != cCompilerClasses;
-   GradientPair<FloatBig, bClassification> * const aGradientPairsLow =
-      bUseStackMemory ? aGradientPairsLowLocal : pTotalsLow->GetGradientPairs();
-   GradientPair<FloatBig, bClassification> * const aGradientPairsHigh =
-      bUseStackMemory ? aGradientPairsHighLocal : pTotalsHigh->GetGradientPairs();
+   static constexpr bool bUseStackMemory = k_dynamicClassification != cCompilerClasses;
+   auto * const aGradientPairsLow = bUseStackMemory ? aGradientPairsLowLocal : pTotalsLow->GetGradientPairs();
+   auto * const aGradientPairsHigh = bUseStackMemory ? aGradientPairsHighLocal : pTotalsHigh->GetGradientPairs();
 
    size_t cSamplesLow;
    FloatBig weightLow;
@@ -148,7 +146,7 @@ static FloatBig SweepMultiDimensional(
                // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-               constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
+               static constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
                
                const FloatBig gain1 = EbmStats::CalcPartialGain(
                   aGradientPairsLow[iScore].m_sumGradients, bUseLogitBoost ? aGradientPairsLow[iScore].GetHess() : weightLow);
@@ -212,8 +210,8 @@ public:
       , const BinBase * const aDebugCopyBinsBase
 #endif // NDEBUG
    ) {
-      constexpr bool bClassification = IsClassification(cCompilerClasses);
-      constexpr size_t cCompilerDimensions = 2;
+      static constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr size_t cCompilerDimensions = 2;
 
       ErrorEbm error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -481,7 +479,7 @@ public:
                // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-               constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
+               static constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
                const FloatBig gain1 = EbmStats::CalcPartialGain(
                   pGradientPairTotal[iScore].m_sumGradients,
                   bUseLogitBoost ? pGradientPairTotal[iScore].GetHess() : weightAll

@@ -98,9 +98,21 @@
     - our higher level language to C++ interface boundary uses pure C (the only portable solution), so we can't 
       throw exceptions accross that boundary, so ultimately we need error codes at that level anyways.
 
-- use the following order throughout for functions and variable declarations: 
+- use the following order throughout for function declarations: 
   "INLINE_RELEASE_UNTEMPLATED constexpr static"
-  INLINE_RELEASE_UNTEMPLATED needs to be first since it's a template under DEBUG builds (for functions)
+  INLINE_RELEASE_UNTEMPLATED needs to be first since it's a template under DEBUG builds for functions
   constexpr next so that it doesn't sit next to const if our function returns a const type
   static last since that's what's left
-
+  NOTE: before C++17 "inline static" and "static inline" were both ok, but the standard obsoleted "inline static"
+        https://stackoverflow.com/questions/61714110/static-inline-vs-inline-static
+        However, since we use templating for INLINE_RELEASE_UNTEMPLATED we require it to be first, and since we want 
+        INLINE_ALWAYS to be in the same position, we use this obsolete ordering until the compilers start to complain
+- use the following order throughout for variable declarations: 
+  "static const"  eg: "static const int k_myInt = 5;"
+  AND
+  "static constexpr"  eg: "static constexpr int k_myInt = 5;"
+  For variables const should be next to the type since it is more important for understanding the variable than static
+  This ordering is opposite the order we use for functions, but that is because const/constexpr are in this
+  case modifying the variable as opposed to modifying the function.
+  This also has the advantage of conforming to the new C++17 change that requires static to preceed const
+  https://stackoverflow.com/questions/61714110/static-inline-vs-inline-static

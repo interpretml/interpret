@@ -41,7 +41,7 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS static constexpr size_t GetTermCountBytes(const size_t cFeatures) noexcept {
+   INLINE_ALWAYS constexpr static size_t GetTermCountBytes(const size_t cFeatures) noexcept {
       return sizeof(Term) - sizeof(Term::m_apFeature) + sizeof(Term::m_apFeature[0]) * cFeatures;
    }
 

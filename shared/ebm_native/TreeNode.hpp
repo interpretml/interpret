@@ -23,8 +23,8 @@ namespace DEFINED_ZONE_NAME {
 
 template<bool bClassification>
 struct TreeNode final {
-   friend bool IsOverflowTreeNodeSize(const bool, const size_t);
-   friend size_t GetTreeNodeSize(const bool, const size_t);
+   friend static bool IsOverflowTreeNodeSize(const bool, const size_t);
+   friend static size_t GetTreeNodeSize(const bool, const size_t);
 
    TreeNode() = default; // preserve our POD status
    ~TreeNode() = default; // preserve our POD status
@@ -32,7 +32,7 @@ struct TreeNode final {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
 
-   INLINE_ALWAYS const Bin<FloatBig, bClassification> * BEFORE_GetBinFirst() const {
+   INLINE_ALWAYS const auto * BEFORE_GetBinFirst() const {
       EBM_ASSERT(0 == m_debugProgressionStage);
       return m_UNION.m_beforeGainCalc.m_pBinFirst;
    }
@@ -41,7 +41,7 @@ struct TreeNode final {
       m_UNION.m_beforeGainCalc.m_pBinFirst = pBinFirst;
    }
 
-   INLINE_ALWAYS const Bin<FloatBig, bClassification> * BEFORE_GetBinLast() const {
+   INLINE_ALWAYS const auto * BEFORE_GetBinLast() const {
       EBM_ASSERT(0 == m_debugProgressionStage);
       return reinterpret_cast<const Bin<FloatBig, bClassification> *>(pBinLastOrChildren);
    }
@@ -63,15 +63,15 @@ struct TreeNode final {
    }
 
 
-   INLINE_ALWAYS const TreeNode<bClassification> * AFTER_GetChildren() const {
+   INLINE_ALWAYS const TreeNode * AFTER_GetChildren() const {
       EBM_ASSERT(1 == m_debugProgressionStage || 2 == m_debugProgressionStage);
-      return reinterpret_cast<const TreeNode<bClassification> *>(pBinLastOrChildren);
+      return reinterpret_cast<const TreeNode *>(pBinLastOrChildren);
    }
-   INLINE_ALWAYS TreeNode<bClassification> * AFTER_GetChildren() {
+   INLINE_ALWAYS TreeNode * AFTER_GetChildren() {
       EBM_ASSERT(1 == m_debugProgressionStage || 2 == m_debugProgressionStage);
-      return reinterpret_cast<TreeNode<bClassification> *>(pBinLastOrChildren);
+      return reinterpret_cast<TreeNode *>(pBinLastOrChildren);
    }
-   INLINE_ALWAYS void AFTER_SetChildren(TreeNode<bClassification> * const pChildren) {
+   INLINE_ALWAYS void AFTER_SetChildren(TreeNode * const pChildren) {
       EBM_ASSERT(1 == m_debugProgressionStage || 2 == m_debugProgressionStage);
       pBinLastOrChildren = pChildren;
    }
@@ -132,11 +132,11 @@ struct TreeNode final {
    }
 
 
-   INLINE_ALWAYS TreeNode<bClassification> * DECONSTRUCT_GetParent() {
+   INLINE_ALWAYS TreeNode * DECONSTRUCT_GetParent() {
       EBM_ASSERT(2 == m_debugProgressionStage);
       return m_UNION.m_deconstruct.m_pParent;
    }
-   INLINE_ALWAYS void DECONSTRUCT_SetParent(TreeNode<bClassification> * const pParent) {
+   INLINE_ALWAYS void DECONSTRUCT_SetParent(TreeNode * const pParent) {
       EBM_ASSERT(2 == m_debugProgressionStage);
       m_UNION.m_deconstruct.m_pParent = pParent;
    }
@@ -150,17 +150,17 @@ struct TreeNode final {
       return m_bin.GetWeight();
    }
 
-   INLINE_ALWAYS const GradientPair<FloatBig, bClassification> * GetGradientPairs() const {
+   INLINE_ALWAYS const auto * GetGradientPairs() const {
       return m_bin.GetGradientPairs();
    }
-   INLINE_ALWAYS GradientPair<FloatBig, bClassification> * GetGradientPairs() {
+   INLINE_ALWAYS auto * GetGradientPairs() {
       return m_bin.GetGradientPairs();
    }
 
-   INLINE_ALWAYS const Bin<FloatBig, bClassification> * GetBin() const {
+   INLINE_ALWAYS const auto * GetBin() const {
       return &m_bin;
    }
-   INLINE_ALWAYS Bin<FloatBig, bClassification> * GetBin() {
+   INLINE_ALWAYS auto * GetBin() {
       return &m_bin;
    }
 
@@ -182,7 +182,7 @@ private:
    };
 
    struct Deconstruct final {
-      TreeNode<bClassification> * m_pParent;
+      TreeNode * m_pParent;
    };
 
    union TreeNodeUnion final {
@@ -208,7 +208,7 @@ static_assert(std::is_trivial<TreeNode<true>>::value && std::is_trivial<TreeNode
 static_assert(std::is_pod<TreeNode<true>>::value && std::is_pod<TreeNode<false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-INLINE_ALWAYS bool IsOverflowTreeNodeSize(const bool bClassification, const size_t cScores) {
+INLINE_ALWAYS static bool IsOverflowTreeNodeSize(const bool bClassification, const size_t cScores) {
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // check this before calling us
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
@@ -226,7 +226,7 @@ INLINE_ALWAYS bool IsOverflowTreeNodeSize(const bool bClassification, const size
    return false;
 }
 
-INLINE_ALWAYS size_t GetTreeNodeSize(const bool bClassification, const size_t cScores) {
+INLINE_ALWAYS static size_t GetTreeNodeSize(const bool bClassification, const size_t cScores) {
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
    size_t cBytesTreeNodeComponent;
@@ -240,7 +240,7 @@ INLINE_ALWAYS size_t GetTreeNodeSize(const bool bClassification, const size_t cS
 }
 
 template<bool bClassification>
-INLINE_ALWAYS TreeNode<bClassification> * IndexTreeNode(
+INLINE_ALWAYS static auto * IndexTreeNode(
    TreeNode<bClassification> * const pTreeNode, 
    const size_t iByte
 ) {
@@ -248,7 +248,7 @@ INLINE_ALWAYS TreeNode<bClassification> * IndexTreeNode(
 }
 
 template<bool bClassification>
-INLINE_ALWAYS const TreeNode<bClassification> * IndexTreeNode(
+INLINE_ALWAYS static const auto * IndexTreeNode(
    const TreeNode<bClassification> * const pTreeNode, 
    const size_t iByte
 ) {
@@ -256,35 +256,18 @@ INLINE_ALWAYS const TreeNode<bClassification> * IndexTreeNode(
 }
 
 template<bool bClassification>
-INLINE_ALWAYS TreeNode<bClassification> * GetLeftNode(
+INLINE_ALWAYS static auto * GetLeftNode(
    TreeNode<bClassification> * const pChildren
 ) {
    return pChildren;
 }
 
 template<bool bClassification>
-INLINE_ALWAYS const TreeNode<bClassification> * GetLeftNode(
-   const TreeNode<bClassification> * const pChildren, 
-   const size_t cBytesPerTreeNode
-) {
-   UNUSED(cBytesPerTreeNode);
-   return pChildren;
-}
-
-template<bool bClassification>
-INLINE_ALWAYS TreeNode<bClassification> * GetRightNode(
+INLINE_ALWAYS static auto * GetRightNode(
    TreeNode<bClassification> * const pChildren, 
    const size_t cBytesPerTreeNode
 ) {
-   return IndexTreeNode<bClassification>(pChildren, cBytesPerTreeNode);
-}
-
-template<bool bClassification>
-INLINE_ALWAYS const TreeNode<bClassification> * GetRightNode(
-   const TreeNode<bClassification> * const pChildren, 
-   const size_t cBytesPerTreeNode
-) {
-   return IndexTreeNode<bClassification>(pChildren, cBytesPerTreeNode);
+   return IndexTreeNode(pChildren, cBytesPerTreeNode);
 }
 
 } // DEFINED_ZONE_NAME

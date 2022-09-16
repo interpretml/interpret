@@ -18,9 +18,9 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-constexpr static ptrdiff_t k_regression = -1;
-constexpr static ptrdiff_t k_dynamicClassification = 0;
-constexpr static ptrdiff_t k_oneScore = 1;
+static constexpr ptrdiff_t k_regression = -1;
+static constexpr ptrdiff_t k_dynamicClassification = 0;
+static constexpr ptrdiff_t k_oneScore = 1;
 INLINE_ALWAYS constexpr static bool IsRegression(const ptrdiff_t cClasses) noexcept {
    return k_regression == cClasses;
 }
@@ -77,15 +77,15 @@ INLINE_ALWAYS constexpr static size_t GetCountScores(const ptrdiff_t cClasses) n
    (k_cItemsPerBitPackDynamic2 == (MACRO_compilerBitPack) ? \
       static_cast<size_t>(MACRO_runtimeBitPack) : static_cast<size_t>(MACRO_compilerBitPack))
 
-constexpr static size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
+static constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 
 INLINE_ALWAYS constexpr static size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
    return k_cBitsForStorageType / cItemsBitPacked;
 }
 
-constexpr static ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin
+static constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin
 // TODO : remove the 2 suffixes from these, and verify these are being used!!  AND at the same time verify that we like the sign of anything that uses these constants size_t vs ptrdiff_t
-constexpr static ptrdiff_t k_cItemsPerBitPackDynamic2 = ptrdiff_t { 0 };
+static constexpr ptrdiff_t k_cItemsPerBitPackDynamic2 = ptrdiff_t { 0 };
 
 } // DEFINED_ZONE_NAME
 

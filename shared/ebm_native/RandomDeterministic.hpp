@@ -98,7 +98,7 @@ public:
       // one to keep the numbers in bounds.  If the compiler is using some non-twos complement
       // representation, then we'll get a compile error in the static_asserts below or in the initialization
       // of USeedEbm below
-      constexpr USeedEbm negativeOfLowest =
+      static constexpr USeedEbm negativeOfLowest =
          USeedEbm { -(std::numeric_limits<SeedEbm>::lowest() + SeedEbm { 1 }) } + USeedEbm { 1 };
 
       static_assert(USeedEbm { std::numeric_limits<SeedEbm>::max() } == negativeOfLowest - USeedEbm { 1 }, 

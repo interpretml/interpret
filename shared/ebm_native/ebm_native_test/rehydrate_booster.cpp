@@ -7,7 +7,7 @@
 #include "ebm_native.h"
 #include "ebm_native_test.hpp"
 
-static const TestPriority k_filePriority = TestPriority::Rehydration;
+static constexpr TestPriority k_filePriority = TestPriority::Rehydration;
 
 TEST_CASE("Test Rehydration, boosting, regression") {
    TestApi testContinuous = TestApi(k_learningTypeRegression);

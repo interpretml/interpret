@@ -42,17 +42,17 @@ namespace DEFINED_ZONE_NAME {
 // TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the 
 //   runtime looped version of our code
 
-constexpr static ptrdiff_t k_cCompilerClassesMax2 = 8;
-constexpr static ptrdiff_t k_cCompilerClassesStart2 = 3;
+static constexpr ptrdiff_t k_cCompilerClassesMax2 = 8;
+static constexpr ptrdiff_t k_cCompilerClassesStart2 = 3;
 
 static_assert(
    2 <= k_cCompilerClassesMax2,
    "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would "
    "output model files with two values instead of our special case 1");
 
-constexpr static ptrdiff_t k_cItemsPerBitPackMax2 = ptrdiff_t { k_cBitsForStorageType };
+static constexpr ptrdiff_t k_cItemsPerBitPackMax2 = ptrdiff_t { k_cBitsForStorageType };
 static_assert(k_cItemsPerBitPackMax2 <= ptrdiff_t { k_cBitsForStorageType }, "k_cItemsPerBitPackMax too big");
-constexpr static ptrdiff_t k_cItemsPerBitPackMin2 = ptrdiff_t { 1 };
+static constexpr ptrdiff_t k_cItemsPerBitPackMin2 = ptrdiff_t { 1 };
 static_assert(1 <= k_cItemsPerBitPackMin2 || (k_cItemsPerBitPackDynamic2 == k_cItemsPerBitPackMin2 && k_cItemsPerBitPackDynamic2 == k_cItemsPerBitPackMax2), "k_cItemsPerBitPackMin must be positive and can only be zero if both min and max are zero (which means we only use dynamic)");
 static_assert(k_cItemsPerBitPackMin2 <= k_cItemsPerBitPackMax2, "bit pack max less than min");
 static_assert(
@@ -66,7 +66,7 @@ static_assert(
    ptrdiff_t { k_cBitsForStorageType } / (ptrdiff_t { k_cBitsForStorageType } / k_cItemsPerBitPackMax2),
    "k_cItemsPerBitPackMax needs to be on the progression series");
 // if we cover the entire range of possible bit packing, then we don't need the dynamic case!
-constexpr static ptrdiff_t k_cItemsPerBitPackLast = (ptrdiff_t { k_cBitsForStorageType } == k_cItemsPerBitPackMax2 &&
+static constexpr ptrdiff_t k_cItemsPerBitPackLast = (ptrdiff_t { k_cBitsForStorageType } == k_cItemsPerBitPackMax2 &&
    ptrdiff_t { 1 } == k_cItemsPerBitPackMin2) ? ptrdiff_t { 1 } : k_cItemsPerBitPackDynamic2;
 INLINE_ALWAYS constexpr static ptrdiff_t GetNextBitPack(const ptrdiff_t cItemsBitPackedPrev) noexcept {
    // for 64 bits, the progression is: 64,32,21,16,12,10,9,8,7,6,5,4,3,2,1,0 (optionaly),-1 (never occurs in this function)

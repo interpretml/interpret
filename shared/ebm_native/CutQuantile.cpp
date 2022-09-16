@@ -32,9 +32,9 @@ namespace DEFINED_ZONE_NAME {
 //#define LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
 
 // TODO: increase the k_cutExploreDistance, and also increase our testing length to compensate
-constexpr size_t k_cutExploreDistance = 20;
+static constexpr size_t k_cutExploreDistance = 20;
 // 1073741824 is 2^30.  Using a power of two with no detail in the mantissa might help multiplication
-constexpr double tweakIncrement = std::numeric_limits<double>::epsilon() * double { 1073741824 };
+static constexpr double tweakIncrement = std::numeric_limits<double>::epsilon() * double { 1073741824 };
 
 // Some general definitions:
 //  - uncuttable range - a long contiguous series of feature values after sorting that have the same value, 
@@ -72,11 +72,11 @@ INLINE_ALWAYS constexpr static double GetTweakingMultipleNegative(const size_t i
    return double { 1 } - tweakIncrement * static_cast<double>(iTweak);
 }
 
-constexpr ptrdiff_t k_movementDoneCut = std::numeric_limits<ptrdiff_t>::lowest();
-constexpr double k_priorityNoCutsPossible = std::numeric_limits<double>::lowest();
-constexpr size_t k_valNotLegal = std::numeric_limits<size_t>::max();
+static constexpr ptrdiff_t k_movementDoneCut = std::numeric_limits<ptrdiff_t>::lowest();
+static constexpr double k_priorityNoCutsPossible = std::numeric_limits<double>::lowest();
+static constexpr size_t k_valNotLegal = std::numeric_limits<size_t>::max();
 
-constexpr double k_illegalAvgCuttableRangeWidthAfterAddingOneCut = std::numeric_limits<double>::lowest();
+static constexpr double k_illegalAvgCuttableRangeWidthAfterAddingOneCut = std::numeric_limits<double>::lowest();
 
 struct NeighbourJump final {
 
@@ -208,7 +208,7 @@ public:
    }
 };
 
-INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
+INLINE_RELEASE_UNTEMPLATED static size_t CalculateRangesMaximizeMin(
    const double sideDistance, 
    const double totalDistance, 
    const size_t cRanges,
@@ -664,7 +664,7 @@ static void BuildNeighbourhoodPlan(
       }
    }
 
-   constexpr double k_badScore = std::numeric_limits<double>::lowest();
+   static constexpr double k_badScore = std::numeric_limits<double>::lowest();
 
    double scoreHigh;
    ptrdiff_t transferRangesHigh;
@@ -1539,8 +1539,8 @@ static ErrorEbm TreeSearchCutSegment(
       //     also explore the no choice at the root option
       //
 
-      //constexpr size_t k_CutExploreDepth = 8;
-      //constexpr size_t k_CutExplorations = size_t { 1 } << k_CutExploreDepth;
+      //static constexpr size_t k_CutExploreDepth = 8;
+      //static constexpr size_t k_CutExplorations = size_t { 1 } << k_CutExploreDepth;
 
       CutPoint * pCutCur = &aCutsWithENDPOINTS[0];
       CutPoint * pCutNext = &aCutsWithENDPOINTS[1];
@@ -2462,7 +2462,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
    // marginal changes to where the cuts are placed.  Exposing it just means we need to 
    // use the same value in every language that we support, and any preprocessors then need to
    // take a random number to be useful, which would be odd for a preprocessor.
-   constexpr uint64_t seed = 9397611943394063143u;
+   static constexpr uint64_t seed = 9397611943394063143u;
 
    LOG_COUNTED_N(
       &g_cLogEnterCutQuantile,

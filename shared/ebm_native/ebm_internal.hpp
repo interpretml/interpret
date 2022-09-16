@@ -56,17 +56,17 @@ INLINE_ALWAYS static TTo SafeConvertFloat(const TFrom val) {
 
 // gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small 
 // negative values close to zero that might occur due to numeric instability
-constexpr static FloatBig k_illegalGainFloat = std::numeric_limits<FloatBig>::lowest();
-constexpr static double k_illegalGainDouble = std::numeric_limits<double>::lowest();
-constexpr static FloatBig k_epsilonNegativeGainAllowed = FloatBig { -1e-7 };
-constexpr static FloatFast k_epsilonGradient = FloatFast { 1e-7 };
+static constexpr FloatBig k_illegalGainFloat = std::numeric_limits<FloatBig>::lowest();
+static constexpr double k_illegalGainDouble = std::numeric_limits<double>::lowest();
+static constexpr FloatBig k_epsilonNegativeGainAllowed = FloatBig { -1e-7 };
+static constexpr FloatFast k_epsilonGradient = FloatFast { 1e-7 };
 #if defined(FAST_EXP) || defined(FAST_LOG)
 // with the approximate exp function we can expect a bit of noise.  We might need to increase this further
-constexpr static FloatFast k_epsilonGradientForBinaryToMulticlass = FloatFast { 1e-1 };
+static constexpr FloatFast k_epsilonGradientForBinaryToMulticlass = FloatFast { 1e-1 };
 #else // defined(FAST_EXP) || defined(FAST_LOG)
-constexpr static FloatFast k_epsilonGradientForBinaryToMulticlass = FloatFast { 1e-7 };
+static constexpr FloatFast k_epsilonGradientForBinaryToMulticlass = FloatFast { 1e-7 };
 #endif // defined(FAST_EXP) || defined(FAST_LOG)
-constexpr static FloatFast k_epsilonLogLoss = FloatFast { 1e-7 };
+static constexpr FloatFast k_epsilonLogLoss = FloatFast { 1e-7 };
 
 // there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerClassesMax value.  The bottleneck seems to be 
 // that setting it too high increases compile time and module size
@@ -79,27 +79,27 @@ constexpr static FloatFast k_epsilonLogLoss = FloatFast { 1e-7 };
 // TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the 
 //   runtime looped version of our code
 
-constexpr static ptrdiff_t k_cCompilerClassesMax = 8;
-constexpr static ptrdiff_t k_cCompilerClassesStart = 3;
+static constexpr ptrdiff_t k_cCompilerClassesMax = 8;
+static constexpr ptrdiff_t k_cCompilerClassesStart = 3;
 
 static_assert(
    2 <= k_cCompilerClassesMax,
    "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would "
    "output model files with two values instead of our special case 1");
 
-constexpr static size_t k_cCompilerOptimizedCountDimensionsMax = 3;
+static constexpr size_t k_cCompilerOptimizedCountDimensionsMax = 3;
 
 static_assert(1 <= k_cCompilerOptimizedCountDimensionsMax,
    "k_cCompilerOptimizedCountDimensionsMax can be 1 if we want to turn off dimension optimization, but 0 or less is disallowed.");
 static_assert(k_cCompilerOptimizedCountDimensionsMax <= k_cDimensionsMax,
    "k_cCompilerOptimizedCountDimensionsMax cannot be larger than the maximum number of dimensions.");
 
-constexpr static size_t k_dynamicDimensions = 0;
+static constexpr size_t k_dynamicDimensions = 0;
 
 #ifndef TODO_remove_this
-constexpr static size_t k_cItemsPerBitPackDynamic = 0;
-constexpr static size_t k_cItemsPerBitPackMax = 0; // if there are more than 16 (4 bits), then we should just use a loop since the code will be pretty big
-constexpr static size_t k_cItemsPerBitPackMin = 0; // our default binning leads us to 256 values, which is 8 units per 64-bit data pack
+static constexpr size_t k_cItemsPerBitPackDynamic = 0;
+static constexpr size_t k_cItemsPerBitPackMax = 0; // if there are more than 16 (4 bits), then we should just use a loop since the code will be pretty big
+static constexpr size_t k_cItemsPerBitPackMin = 0; // our default binning leads us to 256 values, which is 8 units per 64-bit data pack
 INLINE_ALWAYS constexpr static size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) noexcept {
    // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1 [there are 15 of these]
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1 [which are all included in 64 bits]
@@ -117,8 +117,8 @@ INLINE_ALWAYS constexpr static size_t GetNextCountItemsBitPacked(const size_t cI
 //       packing, so we'd load eight 64-bit numbers at a time and then keep all the interior loops.  In this case
 //       the only penalty would be one branch mispredict, but we'd be able to loop over 8 bit extractions at a time
 //       We might also pay a penalty if our stride length for the outputs is too long, but we'll have to test that
-constexpr static bool k_bUseSIMD = false;
-constexpr static bool k_bUseLogitboost = false;
+static constexpr bool k_bUseSIMD = false;
+static constexpr bool k_bUseLogitboost = false;
 
 //template<typename T>
 //static T AddPositiveFloatsSafe(size_t cVals, const T * pVals) {

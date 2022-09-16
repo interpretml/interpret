@@ -7,7 +7,7 @@
 #include "ebm_native.h"
 #include "ebm_native_test.hpp"
 
-static const TestPriority k_filePriority = TestPriority::DataSetShared;
+static constexpr TestPriority k_filePriority = TestPriority::DataSetShared;
 
 TEST_CASE("dataset_shared, zero features, zero samples, regression") {
    IntEbm sum = 0;
@@ -38,7 +38,7 @@ TEST_CASE("dataset_shared, zero features, three samples, regression") {
    IntEbm part;
    ErrorEbm error;
 
-   constexpr IntEbm k_cSamples = 3;
+   static constexpr IntEbm k_cSamples = 3;
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
    part = MeasureDataSetHeader(0, 0, 1);
@@ -101,7 +101,7 @@ TEST_CASE("dataset_shared, two features, 3 samples, regression") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
-   constexpr IntEbm k_cSamples = 3;
+   static constexpr IntEbm k_cSamples = 3;
    IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
@@ -165,7 +165,7 @@ TEST_CASE("dataset_shared, zero features, three samples, classification") {
    IntEbm part;
    ErrorEbm error;
 
-   constexpr IntEbm k_cSamples = 3;
+   static constexpr IntEbm k_cSamples = 3;
    IntEbm targets[k_cSamples] { 2, 1, 0 };
 
    part = MeasureDataSetHeader(0, 0, 1);
@@ -227,7 +227,7 @@ TEST_CASE("dataset_shared, two features, 3 samples, classification") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
-   constexpr IntEbm k_cSamples = 3;
+   static constexpr IntEbm k_cSamples = 3;
    IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
    IntEbm targets[k_cSamples] { 2, 1, 0 };
 
@@ -300,7 +300,7 @@ TEST_CASE("dataset_shared, zero features, three samples, weights, regression") {
    IntEbm part;
    ErrorEbm error;
 
-   constexpr IntEbm k_cSamples = 3;
+   static constexpr IntEbm k_cSamples = 3;
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
@@ -376,7 +376,7 @@ TEST_CASE("dataset_shared, two features, 3 samples, weights, regression") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
-   constexpr IntEbm k_cSamples = 3;
+   static constexpr IntEbm k_cSamples = 3;
    IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    double targets[k_cSamples] { 0.3, 0.2, 0.1 };
@@ -453,7 +453,7 @@ TEST_CASE("dataset_shared, zero features, three samples, weights, classification
    IntEbm part;
    ErrorEbm error;
 
-   constexpr IntEbm k_cSamples = 3;
+   static constexpr IntEbm k_cSamples = 3;
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    IntEbm targets[k_cSamples] { 2, 1, 0 };
 
@@ -528,7 +528,7 @@ TEST_CASE("dataset_shared, two features, 3 samples, weights, classification") {
    IntEbm sum = 0;
    IntEbm part;
    ErrorEbm error;
-   constexpr IntEbm k_cSamples = 3;
+   static constexpr IntEbm k_cSamples = 3;
    IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
    double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    IntEbm targets[k_cSamples] { 2, 1, 0 };

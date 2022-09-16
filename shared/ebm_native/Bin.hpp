@@ -42,11 +42,11 @@ struct BinBase {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    template<typename TFloat, bool bClassification>
-   INLINE_ALWAYS Bin<TFloat, bClassification> * Specialize() {
+   INLINE_ALWAYS auto * Specialize() {
       return static_cast<Bin<TFloat, bClassification> *>(this);
    }
    template<typename TFloat, bool bClassification>
-   INLINE_ALWAYS const Bin<TFloat, bClassification> * Specialize() const {
+   INLINE_ALWAYS const auto * Specialize() const {
       return static_cast<const Bin<TFloat, bClassification> *>(this);
    }
 
@@ -110,7 +110,7 @@ public:
       return ArrayToPointer(m_aGradientPairs);
    }
 
-   INLINE_ALWAYS void Add(const Bin<TFloat, bClassification> & other, const size_t cScores) {
+   INLINE_ALWAYS void Add(const Bin & other, const size_t cScores) {
       m_cSamples += other.m_cSamples;
       m_weight += other.m_weight;
 
@@ -125,7 +125,7 @@ public:
       } while(cScores != iScore);
    }
 
-   INLINE_ALWAYS void Subtract(const Bin<TFloat, bClassification> & other, const size_t cScores) {
+   INLINE_ALWAYS void Subtract(const Bin & other, const size_t cScores) {
       m_cSamples -= other.m_cSamples;
       m_weight -= other.m_weight;
 
@@ -140,7 +140,7 @@ public:
       } while(cScores != iScore);
    }
 
-   INLINE_ALWAYS void Copy(const Bin<TFloat, bClassification> & other, const size_t cScores) {
+   INLINE_ALWAYS void Copy(const Bin & other, const size_t cScores) {
       m_cSamples = other.m_cSamples;
       m_weight = other.m_weight;
 
@@ -312,22 +312,22 @@ public:
 #endif // NDEBUG
    }
 };
-static_assert(std::is_standard_layout<Bin<double, true>>::value && std::is_standard_layout<Bin<double, false>>::value,
+static_assert(std::is_standard_layout<Bin<float, true>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<Bin<double, true>>::value && std::is_trivial<Bin<double, false>>::value,
+static_assert(std::is_trivial<Bin<float, true>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<Bin<double, true>>::value && std::is_pod<Bin<double, false>>::value,
+static_assert(std::is_pod<Bin<float, true>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-static_assert(std::is_standard_layout<Bin<float, true>>::value && std::is_standard_layout<Bin<float, false>>::value,
+static_assert(std::is_standard_layout<Bin<double, false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<Bin<float, true>>::value && std::is_trivial<Bin<float, false>>::value,
+static_assert(std::is_trivial<Bin<double, false>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<Bin<float, true>>::value && std::is_pod<Bin<float, false>>::value,
+static_assert(std::is_pod<Bin<double, false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<typename TFloat>
-INLINE_ALWAYS bool IsOverflowBinSize(const bool bClassification, const size_t cScores) {
+INLINE_ALWAYS static bool IsOverflowBinSize(const bool bClassification, const size_t cScores) {
    const size_t cBytesPerGradientPair = GetGradientPairSize<TFloat>(bClassification);
 
    if(UNLIKELY(IsMultiplyError(cBytesPerGradientPair, cScores))) {
@@ -350,7 +350,7 @@ INLINE_ALWAYS bool IsOverflowBinSize(const bool bClassification, const size_t cS
 }
 
 template<typename TFloat>
-INLINE_ALWAYS size_t GetBinSize(const bool bClassification, const size_t cScores) {
+INLINE_ALWAYS static size_t GetBinSize(const bool bClassification, const size_t cScores) {
    // TODO: someday try out bin sizes that are a power of two.  This would allow us to use a shift when using bins
    //       instead of using multiplications.  In that version return the number of bits to shift here to make it easy
    //       to get either the shift required for indexing OR the number of bytes (shift 1 << num_bits)
@@ -369,7 +369,7 @@ INLINE_ALWAYS size_t GetBinSize(const bool bClassification, const size_t cScores
 }
 
 template<typename TFloat, bool bClassification>
-INLINE_ALWAYS Bin<TFloat, bClassification> * IndexBin(
+INLINE_ALWAYS static auto * IndexBin(
    Bin<TFloat, bClassification> * const aBins,
    const size_t iByte
 ) {
@@ -377,23 +377,23 @@ INLINE_ALWAYS Bin<TFloat, bClassification> * IndexBin(
 }
 
 template<typename TFloat, bool bClassification>
-INLINE_ALWAYS const Bin<TFloat, bClassification> * IndexBin(
+INLINE_ALWAYS static const auto * IndexBin(
    const Bin<TFloat, bClassification> * const aBins,
    const size_t iByte
 ) {
    return reinterpret_cast<const Bin<TFloat, bClassification> *>(reinterpret_cast<const char *>(aBins) + iByte);
 }
 
-INLINE_ALWAYS BinBase * IndexBin(BinBase * const aBins, const size_t iByte) {
+INLINE_ALWAYS static BinBase * IndexBin(BinBase * const aBins, const size_t iByte) {
    return reinterpret_cast<BinBase *>(reinterpret_cast<char *>(aBins) + iByte);
 }
 
-INLINE_ALWAYS const BinBase * IndexBin(const BinBase * const aBins, const size_t iByte) {
+INLINE_ALWAYS static const BinBase * IndexBin(const BinBase * const aBins, const size_t iByte) {
    return reinterpret_cast<const BinBase *>(reinterpret_cast<const char *>(aBins) + iByte);
 }
 
 template<typename TFloat, bool bClassification>
-INLINE_ALWAYS const Bin<TFloat, bClassification> * NegativeIndexBin(
+INLINE_ALWAYS static const auto * NegativeIndexBin(
    const Bin<TFloat, bClassification> * const aBins,
    const size_t iByte
 ) {
@@ -401,7 +401,7 @@ INLINE_ALWAYS const Bin<TFloat, bClassification> * NegativeIndexBin(
 }
 
 template<typename TFloat, bool bClassification>
-INLINE_ALWAYS Bin<TFloat, bClassification> * NegativeIndexBin(
+INLINE_ALWAYS static auto * NegativeIndexBin(
    Bin<TFloat, bClassification> * const aBins,
    const size_t iByte
 ) {
@@ -409,7 +409,7 @@ INLINE_ALWAYS Bin<TFloat, bClassification> * NegativeIndexBin(
 }
 
 template<typename TFloat, bool bClassification>
-INLINE_ALWAYS size_t CountBins(
+INLINE_ALWAYS static size_t CountBins(
    const Bin<TFloat, bClassification> * const pBinLow,
    const Bin<TFloat, bClassification> * const pBinHigh,
    const size_t cBytesPerBin

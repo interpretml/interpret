@@ -45,7 +45,7 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
    const FloatBig weightTotal,
    Bin<FloatBig, IsClassification(cCompilerClasses)> * const pBinOut
 ) {
-   constexpr bool bClassification = IsClassification(cCompilerClasses);
+   static constexpr bool bClassification = IsClassification(cCompilerClasses);
 
    // these stay the same across boosting rounds, so we can calculate them once at init
    pBinOut->SetCountSamples(cSamplesTotal);
@@ -58,16 +58,10 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
 
    // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
    GradientPair<FloatBig, bClassification> aSumGradientPairsLocal[GetCountScores(cCompilerClasses)];
-   constexpr bool bUseStackMemory = k_dynamicClassification != cCompilerClasses;
-   GradientPair<FloatBig, bClassification> * const aSumGradientPairs =
-      bUseStackMemory ? aSumGradientPairsLocal : pBinOut->GetGradientPairs();
+   static constexpr bool bUseStackMemory = k_dynamicClassification != cCompilerClasses;
+   auto * const aSumGradientPairs = bUseStackMemory ? aSumGradientPairsLocal : pBinOut->GetGradientPairs();
 
-   size_t iScoreZero = 0;
-   do {
-      // do not use memset here so that the compiler can keep aSumGradientPairsLocal in registers
-      aSumGradientPairs[iScoreZero].Zero();
-      ++iScoreZero;
-   } while(cScores != iScoreZero);
+   ZeroGradientPairs(aSumGradientPairs, cScores);
 
    const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bClassification>();
 
@@ -118,8 +112,8 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
 
 template<bool bClassification>
 INLINE_RELEASE_TEMPLATED static void Flatten(
-   const void * const aBins,
-   const void * const pBinsEnd,
+   const Bin<FloatBig, bClassification> * const aBins,
+   const Bin<FloatBig, bClassification> * const pBinsEnd,
    TreeNode<bClassification> * pTreeNode,
    ActiveDataType * pSplits,
    FloatFast * pUpdateScore,
@@ -152,17 +146,14 @@ INLINE_RELEASE_TEMPLATED static void Flatten(
          if(pBinLastOrChildren < aBins || pBinsEnd <= pBinLastOrChildren) {
             // the node was examined and a gain calculated, so it has left and right children.
             // We can retrieve the split location by looking at where the right child would end its range
-            const TreeNode<bClassification> * const pRightChild = 
-               GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
+            const auto * const pRightChild = GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
             pBinLastOrChildren = pRightChild->BEFORE_GetBinLast();
          }
-         EBM_ASSERT(aBins <= pBinLastOrChildren);
-         EBM_ASSERT(pBinLastOrChildren < pBinsEnd);
-         iSplit = CountBins(
-            reinterpret_cast<const Bin<FloatBig, bClassification> *>(aBins),
-            reinterpret_cast<const Bin<FloatBig, bClassification> *>(pBinLastOrChildren),
-            cBytesPerBin
-         );
+         const auto * const pBinLast = reinterpret_cast<const Bin<FloatBig, bClassification> *>(pBinLastOrChildren);
+
+         EBM_ASSERT(aBins <= pBinLast);
+         EBM_ASSERT(pBinLast < pBinsEnd);
+         iSplit = CountBins(aBins, pBinLast, cBytesPerBin);
             
          const auto * aGradientPair = pTreeNode->GetGradientPairs();
          size_t iScore = 0;
@@ -190,7 +181,7 @@ INLINE_RELEASE_TEMPLATED static void Flatten(
       }
 
    moved_up:;
-      TreeNode<bClassification> * pChildren = pTreeNode->AFTER_GetChildren();
+      auto * pChildren = pTreeNode->AFTER_GetChildren();
       if(nullptr != pChildren) {
          *pSplits = iSplit;
          ++pSplits;
@@ -222,8 +213,8 @@ static int FindBestSplitGain(
    TreeNode<IsClassification(cCompilerClasses)> * const pTreeNodeScratchSpace,
    const size_t cSamplesLeafMin
 ) {
-   constexpr bool bClassification = IsClassification(cCompilerClasses);
-   constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
+   static constexpr bool bClassification = IsClassification(cCompilerClasses);
+   static constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
 
    LOG_N(
       Trace_Verbose,
@@ -256,7 +247,7 @@ static int FindBestSplitGain(
    const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
    const size_t cScores = GetCountScores(cClasses);
 
-   TreeNode<bClassification> * const pLeftChild = GetLeftNode(pTreeNodeScratchSpace);
+   auto * const pLeftChild = GetLeftNode(pTreeNodeScratchSpace);
 #ifndef NDEBUG
    pLeftChild->SetDebugProgression(0);
 #endif // NDEBUG
@@ -265,11 +256,9 @@ static int FindBestSplitGain(
    GradientPair<FloatBig, bClassification> aLeftGradientPairsLocal[GetCountScores(cCompilerClasses)];
 
    // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
-   constexpr bool bUseStackMemory = k_dynamicClassification != cCompilerClasses;
-   GradientPair<FloatBig, bClassification> * const aParentGradientPairs =
-      bUseStackMemory ? aParentGradientPairsLocal : pTreeNode->GetGradientPairs();
-   GradientPair<FloatBig, bClassification> * const aLeftGradientPairs = 
-      bUseStackMemory ? aLeftGradientPairsLocal : pLeftChild->GetGradientPairs();
+   static constexpr bool bUseStackMemory = k_dynamicClassification != cCompilerClasses;
+   auto * const aParentGradientPairs = bUseStackMemory ? aParentGradientPairsLocal : pTreeNode->GetGradientPairs();
+   auto * const aLeftGradientPairs = bUseStackMemory ? aLeftGradientPairsLocal : pLeftChild->GetGradientPairs();
    if(bUseStackMemory) {
       const auto * const aCopyGradientPairs = pTreeNode->GetGradientPairs();
       size_t iScoreCopy = 0;
@@ -280,12 +269,7 @@ static int FindBestSplitGain(
       } while(cScores != iScoreCopy);
    }
 
-   size_t iScoreZero = 0;
-   do {
-      // do not use memset here so that the compiler can keep aLeftGradientPairsLocal in registers
-      aLeftGradientPairs[iScoreZero].Zero();
-      ++iScoreZero;
-   } while(cScores != iScoreZero);
+   ZeroGradientPairs(aLeftGradientPairs, cScores);
 
    auto * pBinCur = pTreeNode->BEFORE_GetBinFirst();
    const auto * const pBinLast = pTreeNode->BEFORE_GetBinLast();
@@ -297,8 +281,8 @@ static int FindBestSplitGain(
    EBM_ASSERT(!IsOverflowSplitPositionSize(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerSplitPosition = GetSplitPositionSize(bClassification, cScores);
 
-   SplitPosition<bClassification> * pBestSplitsStart = pBoosterShell->GetSplitPositionsTemp<bClassification>();
-   SplitPosition<bClassification> * pBestSplitsCur = pBestSplitsStart;
+   auto * pBestSplitsStart = pBoosterShell->GetSplitPositionsTemp<bClassification>();
+   auto * pBestSplitsCur = pBestSplitsStart;
 
    size_t cSamplesRight = pTreeNode->GetCountSamples();
    size_t cSamplesLeft = 0;
@@ -486,7 +470,7 @@ static int FindBestSplitGain(
 
    EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
-   TreeNode<bClassification> * const pRightChild = GetRightNode(pTreeNodeScratchSpace, cBytesPerTreeNode);
+   auto * const pRightChild = GetRightNode(pTreeNodeScratchSpace, cBytesPerTreeNode);
 #ifndef NDEBUG
    pRightChild->SetDebugProgression(0);
 #endif // NDEBUG
@@ -556,7 +540,7 @@ public:
 
       ErrorEbm error;
 
-      constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
@@ -566,7 +550,7 @@ public:
       EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-      TreeNode<bClassification> * pRootTreeNode = pBoosterShell->GetTreeNodesTemp<bClassification>();
+      auto * const pRootTreeNode = pBoosterShell->GetTreeNodesTemp<bClassification>();
 
 #ifndef NDEBUG
       pRootTreeNode->SetDebugProgression(0);
@@ -585,7 +569,7 @@ public:
       EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores));
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
 
-      TreeNode<bClassification> * pTreeNodeScratchSpace = IndexTreeNode(pRootTreeNode, cBytesPerTreeNode);
+      auto * pTreeNodeScratchSpace = IndexTreeNode(pRootTreeNode, cBytesPerTreeNode);
 
       int retFind = FindBestSplitGain<cCompilerClasses>(
          pRng,
@@ -618,7 +602,7 @@ public:
                CompareNodeGain<bClassification>
             > nodeGainRanking;
 
-            TreeNode<bClassification> * pTreeNode = pRootTreeNode;
+            auto * pTreeNode = pRootTreeNode;
 
             // The root node used a left and right leaf, so reserve it here
             pTreeNodeScratchSpace = IndexTreeNode(pTreeNodeScratchSpace, cBytesPerTreeNode << 1);
@@ -652,7 +636,7 @@ public:
 
                pTreeNode->AFTER_SplitNode();
 
-               TreeNode<bClassification> * const pLeftChild = GetLeftNode(pTreeNode->AFTER_GetChildren());
+               auto * const pLeftChild = GetLeftNode(pTreeNode->AFTER_GetChildren());
 
                retFind = FindBestSplitGain<cCompilerClasses>(
                   pRng,
@@ -673,8 +657,7 @@ public:
                   nodeGainRanking.push(pLeftChild);
                }
 
-               TreeNode<bClassification> * const pRightChild =
-                  GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
+               auto * const pRightChild = GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
 
                retFind = FindBestSplitGain<cCompilerClasses>(
                   pRng,

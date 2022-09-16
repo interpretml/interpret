@@ -929,9 +929,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       bool bClassification = IsClassification(cClasses);
       if(bClassification) {
 #ifdef EXPAND_BINARY_LOGITS
-         constexpr bool bExpandBinaryLogits = true;
+         static constexpr bool bExpandBinaryLogits = true;
 #else // EXPAND_BINARY_LOGITS
-         constexpr bool bExpandBinaryLogits = false;
+         static constexpr bool bExpandBinaryLogits = false;
 #endif // EXPAND_BINARY_LOGITS
 
          //if(0 <= k_iZeroLogit || ptrdiff_t { 2 } == pBoosterCore->m_cClasses && bExpandBinaryLogits) {

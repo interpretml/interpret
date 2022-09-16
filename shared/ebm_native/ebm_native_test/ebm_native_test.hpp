@@ -127,7 +127,7 @@ bool IsApproxEqual(const double val, const double expected, const double percent
 
 // EBM/interpret specific stuff below here!!
 
-constexpr ptrdiff_t k_learningTypeRegression = ptrdiff_t { -1 };
+static constexpr ptrdiff_t k_learningTypeRegression = ptrdiff_t { -1 };
 inline constexpr static bool IsClassification(const ptrdiff_t cClasses) {
    return 0 <= cClasses;
 }
@@ -140,7 +140,7 @@ inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) {
 #endif // EXPAND_BINARY_LOGITS
 }
 
-constexpr SeedEbm k_seed = SeedEbm { -42 };
+static constexpr SeedEbm k_seed = SeedEbm { -42 };
 
 class FeatureTest final {
 public:

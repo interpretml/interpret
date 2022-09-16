@@ -7,12 +7,12 @@
 #include "ebm_native.h"
 #include "ebm_native_test.hpp"
 
-static const TestPriority k_filePriority = TestPriority::Discretize;
+static constexpr TestPriority k_filePriority = TestPriority::Discretize;
 
 TEST_CASE("GetHistogramCutCount, normals") {
    UNUSED(testCaseHidden);
    const double test[] { 1, 2, 3, 5 };
-   constexpr size_t cTest = sizeof(test) / sizeof(test[0]);
+   static constexpr size_t cTest = sizeof(test) / sizeof(test[0]);
 
    IntEbm result = GetHistogramCutCount(static_cast<IntEbm>(cTest), test);
    CHECK(3 == result);
@@ -21,7 +21,7 @@ TEST_CASE("GetHistogramCutCount, normals") {
 TEST_CASE("GetHistogramCutCount, out of bound inputs") {
    UNUSED(testCaseHidden);
    const double test[] { std::numeric_limits<double>::infinity(), 1, 2, std::numeric_limits<double>::quiet_NaN(), 3, 5, -std::numeric_limits<double>::infinity() };
-   constexpr size_t cTest = sizeof(test) / sizeof(test[0]);
+   static constexpr size_t cTest = sizeof(test) / sizeof(test[0]);
 
    IntEbm result = GetHistogramCutCount(static_cast<IntEbm>(cTest), test);
    CHECK(3 == result);
@@ -32,8 +32,8 @@ TEST_CASE("Discretize, zero samples") {
 
    UNUSED(testCaseHidden);
    const double cutsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
-   constexpr IntEbm countCuts = sizeof(cutsLowerBoundInclusive) / sizeof(cutsLowerBoundInclusive[0]);
-   constexpr IntEbm  cSamples = 0;
+   static constexpr IntEbm countCuts = sizeof(cutsLowerBoundInclusive) / sizeof(cutsLowerBoundInclusive[0]);
+   static constexpr IntEbm  cSamples = 0;
 
    error = Discretize(
       cSamples,
@@ -55,8 +55,8 @@ TEST_CASE("Discretize, zero samples") {
 }
 
 TEST_CASE("Discretize, increasing lengths") {
-   constexpr size_t cCutsEnd = 1024 * 2 + 100;
-   constexpr size_t cData = 11 * cCutsEnd;
+   static constexpr size_t cCutsEnd = 1024 * 2 + 100;
+   static constexpr size_t cData = 11 * cCutsEnd;
 
    ErrorEbm error;
 

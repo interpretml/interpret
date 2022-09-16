@@ -201,7 +201,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
       size_t m_cLast;
    };
 
-   constexpr bool bClassification = IsClassification(cCompilerClasses);
+   static constexpr bool bClassification = IsClassification(cCompilerClasses);
 
    static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
@@ -287,12 +287,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
    cSamplesOut = 0;
    weightOut = 0;
 
-   EBM_ASSERT(1 <= cScores);
-   size_t iScore = 0;
-   do {
-      aGradientPairsOut[iScore].Zero();
-      ++iScore;
-   } while(cScores != iScore);
+   ZeroGradientPairs(aGradientPairsOut, cScores);
 
    // for every dimension that we're processing, set the dimension bit flag to 1 to start
    ptrdiff_t dimensionFlags = static_cast<ptrdiff_t>((~size_t { 0 }) >> (k_cBitsForSizeT - cProcessingDimensions));
@@ -420,8 +415,8 @@ INLINE_ALWAYS static void TensorTotalsSum(
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
-   constexpr bool bPair = (2 == cCompilerDimensions);
-   constexpr bool bTripple = (3 == cCompilerDimensions);
+   static constexpr bool bPair = (2 == cCompilerDimensions);
+   static constexpr bool bTripple = (3 == cCompilerDimensions);
    if(bPair) {
       EBM_ASSERT(2 == cRuntimeRealDimensions);
       TensorTotalsSumPair<cCompilerClasses>(

@@ -163,7 +163,7 @@ public:
       , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       struct FastTotalState {
          Bin<FloatBig, bClassification> * m_pDimensionalCur;

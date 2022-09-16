@@ -7,7 +7,7 @@
 #include "ebm_native.h"
 #include "ebm_native_test.hpp"
 
-static const TestPriority k_filePriority = TestPriority::InteractionUnusualInputs;
+static constexpr TestPriority k_filePriority = TestPriority::InteractionUnusualInputs;
 
 TEST_CASE("Zero interaction samples, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);

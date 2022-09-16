@@ -85,14 +85,14 @@ class Registration {
 
    // these ConvertStringToRegistrationType functions are here to de-template the various Param types
 
-   static INLINE_ALWAYS const char * ConvertStringToRegistrationType(
+   INLINE_ALWAYS static const char * ConvertStringToRegistrationType(
       const char * const s, 
       double * const pResultOut
    ) noexcept {
       return ConvertStringToFloat(s, pResultOut);
    }
 
-   static INLINE_ALWAYS const char * ConvertStringToRegistrationType(
+   INLINE_ALWAYS static const char * ConvertStringToRegistrationType(
       const char * const s, 
       bool * const pResultOut
    ) noexcept {
@@ -175,9 +175,9 @@ protected:
 
 public:
 
-   constexpr static const char k_paramSeparator = ';';
-   constexpr static char k_valueSeparator = '=';
-   constexpr static char k_typeTerminator = ':';
+   static constexpr const char k_paramSeparator = ';';
+   static constexpr char k_valueSeparator = '=';
+   static constexpr char k_typeTerminator = ':';
 
    static bool CreateRegistrable(
       const Config * const pConfig,

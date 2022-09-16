@@ -8,7 +8,7 @@
 #include "ebm_native_test.hpp"
 #include "RandomStreamTest.hpp"
 
-static const TestPriority k_filePriority = TestPriority::CutQuantile;
+static constexpr TestPriority k_filePriority = TestPriority::CutQuantile;
 
 class CompareFloatWithNan final {
 public:
@@ -42,7 +42,7 @@ void TestQuantileBinning(
    const IntEbm countCutsMax = cCutsMax;
    const IntEbm minSamplesBin = cSamplesBinMin;
 
-   constexpr double illegalVal = double { -888.88 };
+   static constexpr double illegalVal = double { -888.88 };
    std::vector<double> cutsLowerBoundInclusive(cCutsMax + 2, illegalVal); // allocate values at ends
 
    std::vector<double> featureVals1(featureVals);
@@ -104,12 +104,12 @@ void TestQuantileBinning(
 }
 
 TEST_CASE("CutQuantile, 0 samples") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { };
-   const std::vector<double> expectedCuts { };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { };
+   static const std::vector<double> expectedCuts { };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -123,12 +123,12 @@ TEST_CASE("CutQuantile, 0 samples") {
 }
 
 TEST_CASE("CutQuantile, only missing") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::signaling_NaN() };
-   const std::vector<double> expectedCuts {};
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::signaling_NaN() };
+   static const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -142,12 +142,12 @@ TEST_CASE("CutQuantile, only missing") {
 }
 
 TEST_CASE("CutQuantile, zero cuts") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 0;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { 1, 2 };
-   const std::vector<double> expectedCuts {};
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 0;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { 1, 2 };
+   static const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -161,12 +161,12 @@ TEST_CASE("CutQuantile, zero cuts") {
 }
 
 TEST_CASE("CutQuantile, too small") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 5 };
-   const std::vector<double> expectedCuts {};
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 5 };
+   static const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -180,12 +180,12 @@ TEST_CASE("CutQuantile, too small") {
 }
 
 TEST_CASE("CutQuantile, positive and +infinity") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { 11, std::numeric_limits<double>::infinity() };
-   const std::vector<double> expectedCuts { 4e+154 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { 11, std::numeric_limits<double>::infinity() };
+   static const std::vector<double> expectedCuts { 4e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -199,12 +199,12 @@ TEST_CASE("CutQuantile, positive and +infinity") {
 }
 
 TEST_CASE("CutQuantile, positive and +max") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { 11, std::numeric_limits<double>::max() };
-   const std::vector<double> expectedCuts { 4e+154 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { 11, std::numeric_limits<double>::max() };
+   static const std::vector<double> expectedCuts { 4e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -218,12 +218,12 @@ TEST_CASE("CutQuantile, positive and +max") {
 }
 
 TEST_CASE("CutQuantile, one and +max minus one tick backwards") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { double { 1 }, FloatTickDecrementTest(std::numeric_limits<double>::max()) };
-   const std::vector<double> expectedCuts { 1e+154 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { double { 1 }, FloatTickDecrementTest(std::numeric_limits<double>::max()) };
+   static const std::vector<double> expectedCuts { 1e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -237,12 +237,12 @@ TEST_CASE("CutQuantile, one and +max minus one tick backwards") {
 }
 
 TEST_CASE("CutQuantile, zero and +max") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { 0, std::numeric_limits<double>::max() };
-   const std::vector<double> expectedCuts { 9e+307 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { 0, std::numeric_limits<double>::max() };
+   static const std::vector<double> expectedCuts { 9e+307 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -256,12 +256,12 @@ TEST_CASE("CutQuantile, zero and +max") {
 }
 
 TEST_CASE("CutQuantile, negative and +max") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { -11, std::numeric_limits<double>::max() };
-   const std::vector<double> expectedCuts { 0 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { -11, std::numeric_limits<double>::max() };
+   static const std::vector<double> expectedCuts { 0 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -275,12 +275,12 @@ TEST_CASE("CutQuantile, negative and +max") {
 }
 
 TEST_CASE("CutQuantile, negative and -infinity") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { -11, -std::numeric_limits<double>::infinity() };
-   const std::vector<double> expectedCuts { -4e+154 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { -11, -std::numeric_limits<double>::infinity() };
+   static const std::vector<double> expectedCuts { -4e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -294,12 +294,12 @@ TEST_CASE("CutQuantile, negative and -infinity") {
 }
 
 TEST_CASE("CutQuantile, negative and lowest") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { -11, std::numeric_limits<double>::lowest() };
-   const std::vector<double> expectedCuts { -4e+154 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { -11, std::numeric_limits<double>::lowest() };
+   static const std::vector<double> expectedCuts { -4e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -313,12 +313,12 @@ TEST_CASE("CutQuantile, negative and lowest") {
 }
 
 TEST_CASE("CutQuantile, -1 and lowest plus one tick backwards") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { double { -1 }, FloatTickIncrementTest(std::numeric_limits<double>::lowest()) };
-   const std::vector<double> expectedCuts { -1e+154 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { double { -1 }, FloatTickIncrementTest(std::numeric_limits<double>::lowest()) };
+   static const std::vector<double> expectedCuts { -1e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -332,12 +332,12 @@ TEST_CASE("CutQuantile, -1 and lowest plus one tick backwards") {
 }
 
 TEST_CASE("CutQuantile, zero and lowest") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { 0, std::numeric_limits<double>::lowest() };
-   const std::vector<double> expectedCuts { -9e+307 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { 0, std::numeric_limits<double>::lowest() };
+   static const std::vector<double> expectedCuts { -9e+307 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -351,12 +351,12 @@ TEST_CASE("CutQuantile, zero and lowest") {
 }
 
 TEST_CASE("CutQuantile, positive and lowest") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { 11, std::numeric_limits<double>::lowest() };
-   const std::vector<double> expectedCuts { 0 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { 11, std::numeric_limits<double>::lowest() };
+   static const std::vector<double> expectedCuts { 0 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -370,12 +370,12 @@ TEST_CASE("CutQuantile, positive and lowest") {
 }
 
 TEST_CASE("CutQuantile, cuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 0, 1, 2, 3 };
-   const std::vector<double> expectedCuts { 1.5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 0, 1, 2, 3 };
+   static const std::vector<double> expectedCuts { 1.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -389,12 +389,12 @@ TEST_CASE("CutQuantile, cuttable") {
 }
 
 TEST_CASE("CutQuantile, cuttable (first interior check not cuttable)") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 3;
-   const std::vector<double> featureVals { 0, 1, 5, 5, 7, 8, 9 };
-   const std::vector<double> expectedCuts { 6 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 3;
+   static const std::vector<double> featureVals { 0, 1, 5, 5, 7, 8, 9 };
+   static const std::vector<double> expectedCuts { 6 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -408,12 +408,12 @@ TEST_CASE("CutQuantile, cuttable (first interior check not cuttable)") {
 }
 
 TEST_CASE("CutQuantile, cuttable except middle isn't available") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 3;
-   const std::vector<double> featureVals { 0, 1, 5, 5, 8, 9 };
-   const std::vector<double> expectedCuts { };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 3;
+   static const std::vector<double> featureVals { 0, 1, 5, 5, 8, 9 };
+   static const std::vector<double> expectedCuts { };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -427,12 +427,12 @@ TEST_CASE("CutQuantile, cuttable except middle isn't available") {
 }
 
 TEST_CASE("CutQuantile, uncuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 5, 5, 5, 5 };
-   const std::vector<double> expectedCuts {};
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 5, 5, 5, 5 };
+   static const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -446,12 +446,12 @@ TEST_CASE("CutQuantile, uncuttable") {
 }
 
 TEST_CASE("CutQuantile, left+uncuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 1, 5, 5, 5 };
-   const std::vector<double> expectedCuts {};
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 1, 5, 5, 5 };
+   static const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -465,12 +465,12 @@ TEST_CASE("CutQuantile, left+uncuttable") {
 }
 
 TEST_CASE("CutQuantile, uncuttable+right") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 5, 5, 5, 9 };
-   const std::vector<double> expectedCuts {};
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 5, 5, 5, 9 };
+   static const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -484,12 +484,12 @@ TEST_CASE("CutQuantile, uncuttable+right") {
 }
 
 TEST_CASE("CutQuantile, left+uncuttable+right") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 1, 5, 5, 9 };
-   const std::vector<double> expectedCuts {};
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 1, 5, 5, 9 };
+   static const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -503,12 +503,12 @@ TEST_CASE("CutQuantile, left+uncuttable+right") {
 }
 
 TEST_CASE("CutQuantile, uncuttable+uncuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 4, 4, 6, 6 };
-   const std::vector<double> expectedCuts { 5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 4, 4, 6, 6 };
+   static const std::vector<double> expectedCuts { 5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -522,12 +522,12 @@ TEST_CASE("CutQuantile, uncuttable+uncuttable") {
 }
 
 TEST_CASE("CutQuantile, left+uncuttable+uncuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 1, 4, 4, 6, 6, 6 };
-   const std::vector<double> expectedCuts { 5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 1, 4, 4, 6, 6, 6 };
+   static const std::vector<double> expectedCuts { 5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -541,12 +541,12 @@ TEST_CASE("CutQuantile, left+uncuttable+uncuttable") {
 }
 
 TEST_CASE("CutQuantile, uncuttable+uncuttable+right") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 4, 4, 6, 6, 6, 9 };
-   const std::vector<double> expectedCuts { 5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 4, 4, 6, 6, 6, 9 };
+   static const std::vector<double> expectedCuts { 5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -560,12 +560,12 @@ TEST_CASE("CutQuantile, uncuttable+uncuttable+right") {
 }
 
 TEST_CASE("CutQuantile, uncuttable+mid+uncuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 4, 4, 4, 5, 6, 6 };
-   const std::vector<double> expectedCuts { 4.5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 4, 4, 4, 5, 6, 6 };
+   static const std::vector<double> expectedCuts { 4.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -579,12 +579,12 @@ TEST_CASE("CutQuantile, uncuttable+mid+uncuttable") {
 }
 
 TEST_CASE("CutQuantile, left+uncuttable+mid+uncuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 1, 4, 4, 5, 6, 6 };
-   const std::vector<double> expectedCuts { 4.5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 1, 4, 4, 5, 6, 6 };
+   static const std::vector<double> expectedCuts { 4.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -598,12 +598,12 @@ TEST_CASE("CutQuantile, left+uncuttable+mid+uncuttable") {
 }
 
 TEST_CASE("CutQuantile, uncuttable+mid+uncuttable+right") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 4, 4, 5, 6, 6, 9 };
-   const std::vector<double> expectedCuts { 5.5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 4, 4, 5, 6, 6, 9 };
+   static const std::vector<double> expectedCuts { 5.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -617,12 +617,12 @@ TEST_CASE("CutQuantile, uncuttable+mid+uncuttable+right") {
 }
 
 TEST_CASE("CutQuantile, uncuttable+cuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 5, 5, 7, 8 };
-   const std::vector<double> expectedCuts { 6 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 5, 5, 7, 8 };
+   static const std::vector<double> expectedCuts { 6 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -636,12 +636,12 @@ TEST_CASE("CutQuantile, uncuttable+cuttable") {
 }
 
 TEST_CASE("CutQuantile, left+uncuttable+cuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 1, 5, 5, 5, 7, 8 };
-   const std::vector<double> expectedCuts { 6 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 1, 5, 5, 5, 7, 8 };
+   static const std::vector<double> expectedCuts { 6 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -655,12 +655,12 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable") {
 }
 
 TEST_CASE("CutQuantile, cuttable+uncuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 2, 3, 5, 5 };
-   const std::vector<double> expectedCuts { 4 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 2, 3, 5, 5 };
+   static const std::vector<double> expectedCuts { 4 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -674,12 +674,12 @@ TEST_CASE("CutQuantile, cuttable+uncuttable") {
 }
 
 TEST_CASE("CutQuantile, cuttable+uncuttable+right") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 1, 2, 3, 5, 5, 7 };
-   const std::vector<double> expectedCuts { 4 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 1, 2, 3, 5, 5, 7 };
+   static const std::vector<double> expectedCuts { 4 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -693,12 +693,12 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+right") {
 }
 
 TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 2, 3, 5, 5, 7, 8 };
-   const std::vector<double> expectedCuts { 4, 6 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 2, 3, 5, 5, 7, 8 };
+   static const std::vector<double> expectedCuts { 4, 6 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -712,12 +712,12 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable") {
 }
 
 TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 2, 2, 4, 6, 8, 8 };
-   const std::vector<double> expectedCuts { 3, 7 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 2, 2, 4, 6, 8, 8 };
+   static const std::vector<double> expectedCuts { 3, 7 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -731,12 +731,12 @@ TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable") {
 }
 
 TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 1, 2, 2, 4, 5, 6, 8, 8 };
-   const std::vector<double> expectedCuts { 3, 7 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 1, 2, 2, 4, 5, 6, 8, 8 };
+   static const std::vector<double> expectedCuts { 3, 7 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -750,12 +750,12 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable") {
 }
 
 TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable+right") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 2, 2, 2, 4, 6, 8, 8, 9 };
-   const std::vector<double> expectedCuts { 3, 7 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 2, 2, 2, 4, 6, 8, 8, 9 };
+   static const std::vector<double> expectedCuts { 3, 7 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -769,12 +769,12 @@ TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable+right") {
 }
 
 TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+right") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 1, 2, 2, 4, 6, 8, 8, 9 };
-   const std::vector<double> expectedCuts { 3, 7 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 1, 2, 2, 4, 6, 8, 8, 9 };
+   static const std::vector<double> expectedCuts { 3, 7 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -788,12 +788,12 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+right") {
 }
 
 TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable+cuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 1, 1, 2, 3, 5, 5, 7, 8 };
-   const std::vector<double> expectedCuts { 1.5, 4, 6 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 1, 1, 2, 3, 5, 5, 7, 8 };
+   static const std::vector<double> expectedCuts { 1.5, 4, 6 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -807,12 +807,12 @@ TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable+cuttable") {
 }
 
 TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+cuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 0, 1, 1, 2, 3, 5, 5, 5, 7, 8 };
-   const std::vector<double> expectedCuts { 1.5, 4, 6 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 0, 1, 1, 2, 3, 5, 5, 5, 7, 8 };
+   static const std::vector<double> expectedCuts { 1.5, 4, 6 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -826,12 +826,12 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+cuttable") {
 }
 
 TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable+uncuttable") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 2, 3, 5, 5, 7, 8, 9, 9 };
-   const std::vector<double> expectedCuts { 4, 6, 8.5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 2, 3, 5, 5, 7, 8, 9, 9 };
+   static const std::vector<double> expectedCuts { 4, 6, 8.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -845,12 +845,12 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable+uncuttable") {
 }
 
 TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable+uncuttable+right") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 2, 3, 5, 5, 5, 7, 8, 9, 9, 10 };
-   const std::vector<double> expectedCuts { 4, 6, 8.5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 2, 3, 5, 5, 5, 7, 8, 9, 9, 10 };
+   static const std::vector<double> expectedCuts { 4, 6, 8.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -864,12 +864,12 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable+uncuttable+right") {
 }
 
 TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+cuttable+uncuttable+cuttable+uncuttable+right") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 1, 2, 2, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9 };
-   const std::vector<double> expectedCuts { 3.5, 4.5, 7.5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 1, 2, 2, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9 };
+   static const std::vector<double> expectedCuts { 3.5, 4.5, 7.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -883,11 +883,11 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+cuttable+uncuttable+
 }
 
 TEST_CASE("CutQuantile, infinities") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 
       -std::numeric_limits<double>::infinity(),
       std::numeric_limits<double>::lowest(),
       std::numeric_limits<double>::max(),
@@ -899,7 +899,7 @@ TEST_CASE("CutQuantile, infinities") {
       std::numeric_limits<double>::infinity(),
       std::numeric_limits<double>::signaling_NaN(),
    };
-   const std::vector<double> expectedCuts { 0 };
+   static const std::vector<double> expectedCuts { 0 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -921,14 +921,14 @@ TEST_CASE("CutQuantile, average segment sizes that requires the ceiling instead 
    // first and last CuttingRanges are special in that they may have no long ranges on the tail ends, 
    // you still end up with one or more CuttingRanges that can't have a cut if you don't take the ceiling.
 
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 26;
-   constexpr size_t cSamplesBinMin = 2;
-   const std::vector<double> featureVals { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12,
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 26;
+   static constexpr size_t cSamplesBinMin = 2;
+   static const std::vector<double> featureVals { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12,
       13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 
       27, 27, 28, 28, 29, 29, 30, 30 };
-   const std::vector<double> expectedCuts { 2.5, 4.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 
+   static const std::vector<double> expectedCuts { 2.5, 4.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 
       14.5, 15.5, 16.5, 17.5, 18.5, 19.5, 20.5, 21.5, 22.5, 23.5, 24.5, 25.5, 26.5, 27.5, 28.5, 29.5 };
    TestQuantileBinning(
       testCaseHidden,
@@ -942,12 +942,12 @@ TEST_CASE("CutQuantile, average segment sizes that requires the ceiling instead 
 }
 
 TEST_CASE("CutQuantile, reversibility, 2") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { -1, 1 };
-   const std::vector<double> expectedCuts { 0 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { -1, 1 };
+   static const std::vector<double> expectedCuts { 0 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -961,12 +961,12 @@ TEST_CASE("CutQuantile, reversibility, 2") {
 }
 
 TEST_CASE("CutQuantile, reversibility, 3") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { -2, 1, 2 };
-   const std::vector<double> expectedCuts { 0, 1.5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { -2, 1, 2 };
+   static const std::vector<double> expectedCuts { 0, 1.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -980,12 +980,12 @@ TEST_CASE("CutQuantile, reversibility, 3") {
 }
 
 TEST_CASE("CutQuantile, reversibility") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { -2, -1, 1, 2 };
-   const std::vector<double> expectedCuts { -1.5, 0, 1.5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { -2, -1, 1, 2 };
+   static const std::vector<double> expectedCuts { -1.5, 0, 1.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -999,12 +999,12 @@ TEST_CASE("CutQuantile, reversibility") {
 }
 
 TEST_CASE("CutQuantile, imbalanced") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { -3, -1, 2, 3 };
-   const std::vector<double> expectedCuts { -2, 0, 2.5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { -3, -1, 2, 3 };
+   static const std::vector<double> expectedCuts { -2, 0, 2.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -1018,12 +1018,12 @@ TEST_CASE("CutQuantile, imbalanced") {
 }
 
 TEST_CASE("CutQuantile, extreme tails") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { std::numeric_limits<double>::lowest(), 1, 2, 3, std::numeric_limits<double>::max() };
-   const std::vector<double> expectedCuts { 0.5, 1.5, 2.5, 3.5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { std::numeric_limits<double>::lowest(), 1, 2, 3, std::numeric_limits<double>::max() };
+   static const std::vector<double> expectedCuts { 0.5, 1.5, 2.5, 3.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -1037,12 +1037,12 @@ TEST_CASE("CutQuantile, extreme tails") {
 }
 
 TEST_CASE("CutQuantile, far tails") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { -1, 1, 2, 3, 5 };
-   const std::vector<double> expectedCuts { 0.5, 1.5, 2.5, 3.5 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { -1, 1, 2, 3, 5 };
+   static const std::vector<double> expectedCuts { 0.5, 1.5, 2.5, 3.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -1056,12 +1056,12 @@ TEST_CASE("CutQuantile, far tails") {
 }
 
 TEST_CASE("CutQuantile, close tails") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { 0.9, 1, 2, 3, 3.1 };
-   const std::vector<double> expectedCuts { 0.95, 1.5, 2.5, 3.05 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { 0.9, 1, 2, 3, 3.1 };
+   static const std::vector<double> expectedCuts { 0.95, 1.5, 2.5, 3.05 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -1075,12 +1075,12 @@ TEST_CASE("CutQuantile, close tails") {
 }
 
 TEST_CASE("CutQuantile, non-smart") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = false;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals { std::numeric_limits<double>::lowest(), 0, 1000, 10000000, std::numeric_limits<double>::max() };
-   const std::vector<double> expectedCuts { -8.9884656743115785e+307, 500, 5000500, 8.9884656743115785e+307 };
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = false;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals { std::numeric_limits<double>::lowest(), 0, 1000, 10000000, std::numeric_limits<double>::max() };
+   static const std::vector<double> expectedCuts { -8.9884656743115785e+307, 500, 5000500, 8.9884656743115785e+307 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -1094,18 +1094,18 @@ TEST_CASE("CutQuantile, non-smart") {
 }
 
 TEST_CASE("CutQuantile, overflow interpretable ends") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals {
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals {
       std::numeric_limits<double>::lowest(),
       FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
       FloatTickDecrementTest(std::numeric_limits<double>::max()),
       std::numeric_limits<double>::max()
    };
 
-   const std::vector<double> expectedCuts {
+   static const std::vector<double> expectedCuts {
       FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
       0,
       std::numeric_limits<double>::max()
@@ -1123,18 +1123,18 @@ TEST_CASE("CutQuantile, overflow interpretable ends") {
 }
 
 TEST_CASE("CutQuantile, maximum non-overflow interpretable ends") {
-   constexpr bool bTestReverse = true;
-   constexpr bool bSmart = true;
-   constexpr size_t cCutsMax = 1000;
-   constexpr size_t cSamplesBinMin = 1;
-   const std::vector<double> featureVals {
+   static constexpr bool bTestReverse = true;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cCutsMax = 1000;
+   static constexpr size_t cSamplesBinMin = 1;
+   static const std::vector<double> featureVals {
       std::numeric_limits<double>::lowest(),
       FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
       std::numeric_limits<double>::max() - FloatTickDecrementTest(std::numeric_limits<double>::max()),
       std::numeric_limits<double>::max()
    };
 
-   const std::vector<double> expectedCuts {
+   static const std::vector<double> expectedCuts {
       FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
       0,
       2.0000000000000001e+300
@@ -1152,9 +1152,9 @@ TEST_CASE("CutQuantile, maximum non-overflow interpretable ends") {
 }
 
 TEST_CASE("CutQuantile, stress test the guarantee of one cut per CuttingRange, by 2") {
-   constexpr size_t cItemsPerRange = 10;
-   constexpr size_t cInteriorRanges = 3;
-   constexpr size_t cRemoveCuts = 1;
+   static constexpr size_t cItemsPerRange = 10;
+   static constexpr size_t cInteriorRanges = 3;
+   static constexpr size_t cRemoveCuts = 1;
 
    std::vector<double> featureVals(3 + cInteriorRanges * cItemsPerRange, 0);
    std::vector<double> expectedCuts;
@@ -1183,10 +1183,10 @@ TEST_CASE("CutQuantile, stress test the guarantee of one cut per CuttingRange, b
       assert(0 == cRemoveCuts);
    }
 
-   constexpr bool bSmart = true;
-   constexpr bool bTestReverse = true;
-   constexpr size_t cCutsMax = cInteriorRanges + 1 - cRemoveCuts;
-   constexpr size_t cSamplesBinMin = 1;
+   static constexpr bool bSmart = true;
+   static constexpr bool bTestReverse = true;
+   static constexpr size_t cCutsMax = cInteriorRanges + 1 - cRemoveCuts;
+   static constexpr size_t cSamplesBinMin = 1;
 
    TestQuantileBinning(
       testCaseHidden,
@@ -1207,20 +1207,20 @@ TEST_CASE("CutQuantile, randomized fairness check") {
       exit(1);
    }
 
-   constexpr bool bSmart = true;
-   constexpr IntEbm minSamplesBin = 1;
-   constexpr IntEbm countSamples = 100;
+   static constexpr bool bSmart = true;
+   static constexpr IntEbm minSamplesBin = 1;
+   static constexpr IntEbm countSamples = 100;
    double featureVals[countSamples]; // preserve these for debugging purposes
    double featureValsForward[countSamples];
    double featureValsReversed[countSamples];
 
-   constexpr IntEbm randomMaxMax = countSamples - 1; // this doesn't need to be exactly countSamples - 1, but this number gives us chunky sets
+   static constexpr IntEbm randomMaxMax = countSamples - 1; // this doesn't need to be exactly countSamples - 1, but this number gives us chunky sets
    size_t cutHistogram[randomMaxMax];
-   constexpr size_t cCutHistogram = sizeof(cutHistogram) / sizeof(cutHistogram[0]);
+   static constexpr size_t cCutHistogram = sizeof(cutHistogram) / sizeof(cutHistogram[0]);
    // our random numbers can be any numbers from 0 to randomMaxMax (inclusive), which gives us randomMaxMax - 1 possible cut points between them
    static_assert(1 == cCutHistogram % 2, "cutHistogram must have a center value that is perfectly in the middle");
 
-   constexpr size_t cCuts = 9;
+   static constexpr size_t cCuts = 9;
    double cutsLowerBoundInclusiveForward[cCuts];
    double cutsLowerBoundInclusiveReversed[cCuts];
 
@@ -1288,7 +1288,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
          std::sort(featureVals, featureVals + countSamples, CompareFloatWithNan());
 
          assert(1 == randomMax % 2); // our random numbers need a center value as well
-         constexpr size_t iHistogramExactMiddle = cCutHistogram / 2;
+         static constexpr size_t iHistogramExactMiddle = cCutHistogram / 2;
          const size_t iCutExactMiddle = randomMax / 2;
          assert(iCutExactMiddle <= iHistogramExactMiddle);
          const size_t iShiftToMiddle = iHistogramExactMiddle - iCutExactMiddle;
@@ -1341,15 +1341,15 @@ TEST_CASE("CutQuantile, chunky randomized check") {
       exit(1);
    }
 
-   constexpr bool bSmart = true;
-   constexpr size_t cSamplesMin = 1;
-   constexpr size_t cSamplesMax = 250;
-   constexpr size_t cCutsMin = 1;
-   constexpr size_t cCutsMax = 70;
-   constexpr IntEbm minSamplesBinMin = 1;
-   constexpr IntEbm minSamplesBinMax = 3;
+   static constexpr bool bSmart = true;
+   static constexpr size_t cSamplesMin = 1;
+   static constexpr size_t cSamplesMax = 250;
+   static constexpr size_t cCutsMin = 1;
+   static constexpr size_t cCutsMax = 70;
+   static constexpr IntEbm minSamplesBinMin = 1;
+   static constexpr IntEbm minSamplesBinMax = 3;
 
-   constexpr size_t randomValMax = 70; // the min is 1 since the value doesn't really matter
+   static constexpr size_t randomValMax = 70; // the min is 1 since the value doesn't really matter
 
    double cutsLowerBoundInclusiveForward[cCutsMax];
    double cutsLowerBoundInclusiveReversed[cCutsMax];

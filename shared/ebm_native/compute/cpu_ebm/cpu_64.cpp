@@ -24,7 +24,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 struct Cpu_64_Operators final {
-   constexpr static size_t countPackedItems = 1; // the number of Unpacked items in a Packed structure
+   static constexpr size_t countPackedItems = 1; // the number of Unpacked items in a Packed structure
    typedef double Unpacked;
    typedef double Packed;
 
@@ -124,7 +124,7 @@ static_assert(std::is_trivially_copyable<Cpu_64_Operators>::value,
 // FIRST, define the RegisterLoss function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions
 template<template <typename> class TRegistrable, typename... Args>
-static INLINE_ALWAYS std::shared_ptr<const Registration> RegisterLoss(const char * const sRegistrationName, const Args...args) {
+INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterLoss(const char * const sRegistrationName, const Args...args) {
    return Register<TRegistrable, Cpu_64_Operators>(sRegistrationName, args...);
 }
 

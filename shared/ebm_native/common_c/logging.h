@@ -48,16 +48,16 @@ extern void LogAssertFailure(
 // We use separate macros for LOG_0 (zero parameters) and LOG_N (variadic parameters) because having zero parameters is non-standardized in C++11
 // In C++20, there will be __VA_OPT__, but I don't want to take a dependency on such a new standard yet
 // In GCC, you can use ##__VA_ARGS__, but it's non-standard
-// In C++11, you can use (but it's more complicated and I can't generate "const static char" string arrays by default):
-// constexpr size_t LOG__cArguments = std::tuple_size<decltype(std::make_tuple(__VA_ARGS__))>::value; // this gets the number of arguments
+// In C++11, you can use (but it's more complicated and I can't generate "static const char" string arrays by default):
+// static constexpr size_t LOG__cArguments = std::tuple_size<decltype(std::make_tuple(__VA_ARGS__))>::value; // this gets the number of arguments
 // static const char * LOG__sMessage = std::get<0>(std::make_tuple(__VA_ARGS__)); // this gets a specific argument by index.  In C++14 it should 
-// have a constexpr version
+// have a static constexpr version
 
 // use a MACRO for LOG_0/LOG_N(..) and LOG_COUNTED_0/LOG_COUNTED_N(..) instead of an inline because:
 //   1) we can use static_assert on the log level
 //   2) we can get the number of variadic arguments at compile time, allowing the call to InteralLogWithArguments to be optimized away in cases where we 
 //      have a simple string
-//   3) we can put our input string into a const static char LOG__sMessage[] instead of keeping it as a string, which is useful in some languages 
+//   3) we can put our input string into a static const char LOG__sMessage[] instead of keeping it as a string, which is useful in some languages 
 //      because I think strings are not const, so by default get put into the read/write data segment instead of readonly
 //   3) our variadic arguments won't be evaluated unless they are necessary (log level is set high enough).  If we had inlined them, they might have 
 //      needed to be evaluated, depending on the inputs
@@ -78,7 +78,7 @@ extern void LogAssertFailure(
       static_assert(Trace_Off < LOG__traceLevel, "traceLevel can't be Trace_Off or lower for call to LOG_0(traceLevel, sMessage, ...)"); \
       static_assert(LOG__traceLevel <= Trace_Verbose, "traceLevel can't be higher than Trace_Verbose for call to LOG_0(traceLevel, sMessage, ...)"); \
       if(LOG__traceLevel <= g_traceLevel) { \
-         const static char LOG__sMessage[] = sMessage; \
+         static const char LOG__sMessage[] = sMessage; \
          InteralLogWithoutArguments(LOG__traceLevel, LOG__sMessage); \
       } \
    } while( (void)0, 0)
@@ -90,7 +90,7 @@ extern void LogAssertFailure(
       static_assert(LOG__traceLevel <= Trace_Verbose, \
          "traceLevel can't be higher than Trace_Verbose for call to LOG_N(traceLevel, sMessage, ...)"); \
       if(LOG__traceLevel <= g_traceLevel) { \
-         const static char LOG__sMessage[] = sMessage; \
+         static const char LOG__sMessage[] = sMessage; \
          InteralLogWithArguments(LOG__traceLevel, LOG__sMessage, __VA_ARGS__); \
       } \
    } while( (void)0, 0)
@@ -124,7 +124,7 @@ extern void LogAssertFailure(
             } else { \
                LOG__traceLevelLogging = LOG__traceLevelAfter; \
             }\
-            const static char LOG__sMessage[] = sMessage; \
+            static const char LOG__sMessage[] = sMessage; \
             InteralLogWithoutArguments(LOG__traceLevelLogging, LOG__sMessage); \
          } while( (void)0, 0); \
       } \
@@ -159,7 +159,7 @@ extern void LogAssertFailure(
             } else { \
                LOG__traceLevelLogging = LOG__traceLevelAfter; \
             }\
-            const static char LOG__sMessage[] = sMessage; \
+            static const char LOG__sMessage[] = sMessage; \
             InteralLogWithArguments(LOG__traceLevelLogging, LOG__sMessage, __VA_ARGS__); \
          } while( (void)0, 0); \
       } \

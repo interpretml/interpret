@@ -39,7 +39,7 @@ public:
       BoosterShell * const pBoosterShell,
       const InnerBag * const pInnerBag
    ) {
-      constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       LOG_0(Trace_Verbose, "Entered BinSumsBoostingZeroDimensions");
 
@@ -95,9 +95,9 @@ public:
 
 #ifndef NDEBUG
 #ifdef EXPAND_BINARY_LOGITS
-         constexpr bool bExpandBinaryLogits = true;
+         static constexpr bool bExpandBinaryLogits = true;
 #else // EXPAND_BINARY_LOGITS
-         constexpr bool bExpandBinaryLogits = false;
+         static constexpr bool bExpandBinaryLogits = false;
 #endif // EXPAND_BINARY_LOGITS
          FloatFast sumGradientsDebug = 0;
 #endif // NDEBUG
@@ -204,7 +204,7 @@ public:
       const size_t iTerm,
       const InnerBag * const pInnerBag
    ) {
-      constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       LOG_0(Trace_Verbose, "Entered BinSumsBoostingInternal");
 
@@ -297,9 +297,9 @@ public:
 
 #ifndef NDEBUG
 #ifdef EXPAND_BINARY_LOGITS
-            constexpr bool bExpandBinaryLogits = true;
+            static constexpr bool bExpandBinaryLogits = true;
 #else // EXPAND_BINARY_LOGITS
-            constexpr bool bExpandBinaryLogits = false;
+            static constexpr bool bExpandBinaryLogits = false;
 #endif // EXPAND_BINARY_LOGITS
             FloatFast gradientTotalDebug = 0;
 #endif // NDEBUG

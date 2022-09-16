@@ -47,12 +47,12 @@ namespace DEFINED_ZONE_NAME {
 // We require that the numbers in this file are converted to their exact IEEE-754 representation, which is a 
 // requirement by the IEEE-754 standard when numbers are provided with 17 digits of precision, which we provide.
 
-constexpr double k_minNonSubnormal = 2.2250738585072014e-308; // std::numeric_limits<double>::min()
-constexpr double k_maxNonInf = 1.7976931348623158e+308; // std::numeric_limits<double>::max()
-constexpr double k_nonDoubleable = 8.9884656743115795e+307; // if you double this power of two you get +inf
-constexpr double k_lastTick = 1.9958403095347198e+292; // the tick for numbers greater or equal to k_nonDoubleable
-constexpr double k_epsilon = 2.2204460492503131e-16; // std::numeric_limits<double>::epsilon()
-constexpr double k_subnormToNorm = 4503599627370496.0; // multiplying by this will move a subnormal into a normal
+static constexpr double k_minNonSubnormal = 2.2250738585072014e-308; // std::numeric_limits<double>::min()
+static constexpr double k_maxNonInf = 1.7976931348623158e+308; // std::numeric_limits<double>::max()
+static constexpr double k_nonDoubleable = 8.9884656743115795e+307; // if you double this power of two you get +inf
+static constexpr double k_lastTick = 1.9958403095347198e+292; // the tick for numbers greater or equal to k_nonDoubleable
+static constexpr double k_epsilon = 2.2204460492503131e-16; // std::numeric_limits<double>::epsilon()
+static constexpr double k_subnormToNorm = 4503599627370496.0; // multiplying by this will move a subnormal into a normal
 
 static_assert(k_subnormToNorm == std::numeric_limits<double>::min() / std::numeric_limits<double>::denorm_min(),
    "bad min to denorm_min ratio");

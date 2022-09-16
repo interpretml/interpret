@@ -77,7 +77,7 @@ INLINE_ALWAYS static const T * ArrayToPointer(const T * const a) noexcept {
 }
 
 // TODO : replace all std::min and std::max and similar comparions that get the min/max with this function
-// unlike std::min/std::max, our version has explicit noexcept semantics, constexpr, and is variadic
+// unlike std::min/std::max, our version has explicit noexcept semantics, constexpr static, and is variadic
 template<typename T>
 INLINE_ALWAYS constexpr static T EbmMin(T v1, T v2) noexcept {
    return v1 < v2 ? v1 : v2;
@@ -400,10 +400,8 @@ static_assert(!IsConvertError<uint8_t>(uint16_t { 0 }), "automated test with com
 
 
 template<typename TTo1, typename TTo2, typename TFrom>
-INLINE_ALWAYS static bool IsConvertErrorDual(const TFrom number) noexcept {
-   const bool bCompare1 = IsConvertError<TTo1>(number);
-   const bool bCompare2 = IsConvertError<TTo2>(number);
-   return bCompare1 || bCompare2;
+INLINE_ALWAYS constexpr static bool IsConvertErrorDual(const TFrom number) noexcept {
+   return IsConvertError<TTo1>(number) || IsConvertError<TTo2>(number);
 }
 
 
@@ -438,7 +436,7 @@ static_assert(MaxFromCountBits<uint8_t>(4) == 15, "automated test with compiler"
 static_assert(MaxFromCountBits<uint8_t>(8) == 255, "automated test with compiler");
 static_assert(MaxFromCountBits<uint64_t>(64) == uint64_t { 18446744073709551615u }, "automated test with compiler");
 
-constexpr static size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
+static constexpr size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
 
 // It is impossible for us to have tensors with more than k_cDimensionsMax dimensions.  
 // Our public C interface passes tensors back and forth with our caller with each dimension having
@@ -449,7 +447,7 @@ constexpr static size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>()
 // of 1 byte and filled all memory on a 64 bit machine, then we could not have more than 64 dimensions.
 // On a real system, we can't fill all memory, and our interface requires tensors of double, so we  
 // can subtract bits for the # of bytes used in a double and subtract 1 more because we cannot use all memory.
-constexpr static size_t k_cDimensionsMax = 
+static constexpr size_t k_cDimensionsMax = 
    k_cBitsForSizeT - CountBitsRequired(sizeof(double) / sizeof(uint8_t) - 1) - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
@@ -561,7 +559,7 @@ INLINE_ALWAYS static T * EbmMalloc() noexcept {
 }
 template<typename T>
 INLINE_ALWAYS static T * EbmMalloc(const size_t cItems) noexcept {
-   constexpr size_t cBytesPerItem = sizeof(typename std::conditional<std::is_same<T, void>::value, char, T>::type);
+   static constexpr size_t cBytesPerItem = sizeof(typename std::conditional<std::is_same<T, void>::value, char, T>::type);
    static_assert(0 < cBytesPerItem, "can't have a zero sized item");
    bool bOneByte = 1 == cBytesPerItem;
    if(bOneByte) {

@@ -417,7 +417,7 @@ protected:
    }
 
    template<typename TLoss>
-   constexpr static bool IsEdgeLoss() { 
+   constexpr static bool IsEdgeLoss() {
       return
          std::is_base_of<BinaryLoss, TLoss>::value ||
          std::is_base_of<MulticlassLoss, TLoss>::value ||
@@ -584,10 +584,10 @@ protected:
    LOSS_CLASS_TEMPLATE_BOILERPLATE \
    LOSS_CLASS_VIRTUAL_BOILERPLATE(__EBM_TYPE)
 
-// TODO: use the isVectorized constexpr to control construction of the Loss structs
+// TODO: use the isVectorized static constexpr to control construction of the Loss structs
 #define LOSS_CLASS_CONSTANTS_BOILERPLATE(isVectorized) \
    public: \
-      constexpr static bool k_bVectorized = (isVectorized);
+      static constexpr bool k_bVectorized = (isVectorized);
 
 #define LOSS_CLASS_TEMPLATE_BOILERPLATE \
    public: \

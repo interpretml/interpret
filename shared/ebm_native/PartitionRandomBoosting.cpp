@@ -48,7 +48,7 @@ public:
    ) {
       // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
-      constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr bool bClassification = IsClassification(cCompilerClasses);
 
       // TODO: add a new random_rety option that will retry random splitting for N times and select the one with the best gain
       // TODO: accept the minimum number of items in a split and then refuse to allow the split if we violate it, or
@@ -361,9 +361,7 @@ public:
       // of the value zero in that type.
       static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
       aCollapsedBins->ZeroMem(cBytesCollapsedTensor3);
-      const auto * const pCollapsedBinEnd =
-         reinterpret_cast<Bin<FloatBig, bClassification> *>(reinterpret_cast<char *>(aCollapsedBins) +
-            cBytesCollapsedTensor3);
+      const auto * const pCollapsedBinEnd = IndexBin(aCollapsedBins, cBytesCollapsedTensor3);
 
       // we special case the first dimension, so drop it by subtracting
       EBM_ASSERT(&randomSplitState[pTerm->GetCountRealDimensions() - size_t { 1 }] == pStateInit);
@@ -381,10 +379,7 @@ public:
          // super critical inner loop without overburdening the CPU registers when we execute the outer loop.
          const size_t * pcItemsInNextSliceOrBytesInCurrentSlice = acItemsInNextSliceOrBytesInCurrentSlice;
          do {
-            const auto * const pBinSliceEnd =
-               reinterpret_cast<const Bin<FloatBig, bClassification> *>(
-               reinterpret_cast<const char *>(pBin) + *pcItemsInNextSliceOrBytesInCurrentSlice);
-
+            const auto * const pBinSliceEnd = IndexBin(pBin, *pcItemsInNextSliceOrBytesInCurrentSlice);
             do {
                ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetDebugBigBinsEnd());
                pCollapsedBin1->Add(*pBin, cScores);
@@ -407,9 +402,7 @@ public:
                // jump over it on the first loop, but I wasn't able to make the Visual Studio compiler do it
 
                pState->m_cItemsInSliceRemaining = cItemsInSliceRemaining;
-               pCollapsedBin1 = reinterpret_cast<Bin<FloatBig, bClassification> *>(
-                  reinterpret_cast<char *>(pCollapsedBin1) -
-                  pState->m_cBytesSubtractResetCollapsedBin);
+               pCollapsedBin1 = NegativeIndexBin(pCollapsedBin1, pState->m_cBytesSubtractResetCollapsedBin);
 
                goto move_next_slice;
             }

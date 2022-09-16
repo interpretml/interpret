@@ -23,8 +23,8 @@ namespace DEFINED_ZONE_NAME {
 
 template<bool bClassification>
 struct SplitPosition final {
-   friend bool IsOverflowSplitPositionSize(const bool, const size_t);
-   friend size_t GetSplitPositionSize(const bool, const size_t);
+   friend static bool IsOverflowSplitPositionSize(const bool, const size_t);
+   friend static size_t GetSplitPositionSize(const bool, const size_t);
 
 private:
    const Bin<FloatBig, bClassification> * m_pBinPosition;
@@ -39,14 +39,14 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS const Bin<FloatBig, bClassification> * GetBinPosition() const {
+   INLINE_ALWAYS const auto * GetBinPosition() const {
       return m_pBinPosition;
    }
-   INLINE_ALWAYS void SetBinPosition(const Bin<FloatBig, bClassification> * pBinPosition) {
+   INLINE_ALWAYS void SetBinPosition(const Bin<FloatBig, bClassification> * const pBinPosition) {
       m_pBinPosition = pBinPosition;
    }
 
-   INLINE_ALWAYS Bin<FloatBig, bClassification> * GetLeftSum() {
+   INLINE_ALWAYS auto * GetLeftSum() {
       return &m_leftSum;
    }
 };
@@ -57,7 +57,7 @@ static_assert(std::is_trivial<SplitPosition<true>>::value && std::is_trivial<Spl
 static_assert(std::is_pod<SplitPosition<true>>::value && std::is_pod<SplitPosition<false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-INLINE_ALWAYS bool IsOverflowSplitPositionSize(const bool bClassification, const size_t cScores) {
+INLINE_ALWAYS static bool IsOverflowSplitPositionSize(const bool bClassification, const size_t cScores) {
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // check this before calling us
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
@@ -75,7 +75,7 @@ INLINE_ALWAYS bool IsOverflowSplitPositionSize(const bool bClassification, const
    return false;
 }
 
-INLINE_ALWAYS size_t GetSplitPositionSize(bool bClassification, const size_t cScores) {
+INLINE_ALWAYS static size_t GetSplitPositionSize(bool bClassification, const size_t cScores) {
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
    size_t cBytesSplitPositionComponent;
@@ -89,7 +89,7 @@ INLINE_ALWAYS size_t GetSplitPositionSize(bool bClassification, const size_t cSc
 }
 
 template<bool bClassification>
-INLINE_ALWAYS SplitPosition<bClassification> * IndexSplitPosition(
+INLINE_ALWAYS static auto * IndexSplitPosition(
    SplitPosition<bClassification> * const pSplitPosition, 
    const size_t iByte
 ) {
@@ -97,7 +97,7 @@ INLINE_ALWAYS SplitPosition<bClassification> * IndexSplitPosition(
 }
 
 template<bool bClassification>
-INLINE_ALWAYS size_t CountSplitPositions(
+INLINE_ALWAYS static size_t CountSplitPositions(
    const SplitPosition<bClassification> * const pSplitPositionLow,
    const SplitPosition<bClassification> * const pSplitPositionHigh,
    const size_t cBytesPerSplitPosition
