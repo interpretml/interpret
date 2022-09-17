@@ -46,10 +46,7 @@ public:
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != aGradientAndHessian);
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(
-         cCompilerClasses,
-         cRuntimeClasses
-      );
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
 
       // TODO: we could eliminate this memory by doing the calculation twice below and then this code could return on error value (or would that work with the loss function stuff?)

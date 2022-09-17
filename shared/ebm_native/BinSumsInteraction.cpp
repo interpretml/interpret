@@ -111,10 +111,11 @@ public:
       const size_t * const acBins
    ) {
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
       LOG_0(Trace_Verbose, "Entered BinSumsInteractionInternal");
 
-      auto * const aBins = pInteractionShell->GetInteractionFastBinsTemp()->Specialize<FloatFast, bClassification>();
+      auto * const aBins = pInteractionShell->GetInteractionFastBinsTemp()->Specialize<FloatFast, bClassification, cCompilerScores>();
 
       InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
       const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
@@ -193,7 +194,7 @@ public:
             ++iDimension;
          } while(cRealDimensions != iDimension);
 
-         auto * const pBin = reinterpret_cast<Bin<FloatFast, bClassification> *>(pRawBin);
+         auto * const pBin = reinterpret_cast<Bin<FloatFast, bClassification, cCompilerScores> *>(pRawBin);
          ASSERT_BIN_OK(cBytesPerBin, pBin, pInteractionShell->GetDebugFastBinsEnd());
          pBin->SetCountSamples(pBin->GetCountSamples() + 1);
          FloatFast weight = 1;

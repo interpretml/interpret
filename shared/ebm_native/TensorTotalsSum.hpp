@@ -39,7 +39,7 @@ void TensorTotalsSumDebugSlow(
    const size_t * const aiLast,
    const size_t * const acBins,
    const Bin<FloatBig, bClassification> * const aBins,
-   Bin<FloatBig, bClassification> * const pOut
+   Bin<FloatBig, bClassification> & binOut
 ) {
    const size_t cScores = GetCountScores(cClasses);
    // we've allocated this, so it should fit
@@ -74,12 +74,12 @@ void TensorTotalsSumDebugSlow(
       ++pcBinsInit;
    } while(pcBinsInitEnd != pcBinsInit);
 
-   pOut->ZeroMem(cBytesPerBin);
+   binOut.ZeroMem(cBytesPerBin);
 
    while(true) {
       const auto * const pBin = IndexBin(aBins, iTensorByte);
 
-      pOut->Add(*pBin, cScores);
+      binOut.Add(cScores, *pBin);
 
       size_t iDimension = 0;
       size_t cTensorBytesLoop = cBytesPerBin;
@@ -115,8 +115,7 @@ void TensorTotalsCompareDebug(
    const TensorSumDimension * const aDimensions,
    const size_t directionVector,
    const Bin<FloatBig, bClassification> * const aBins,
-   const size_t & cSamples,
-   const FloatBig & weight,
+   const Bin<FloatBig, bClassification> & bin,
    const GradientPair<FloatBig, bClassification> * const aGradientPairs
 ) {
    const size_t cScores = GetCountScores(cClasses);
@@ -157,12 +156,10 @@ void TensorTotalsCompareDebug(
          aiLast,
          acBins,
          aBins,
-         pComparison2
+         *pComparison2
       );
-      EBM_ASSERT(pComparison2->GetCountSamples() == cSamples);
-      UNUSED(weight);
+      EBM_ASSERT(pComparison2->GetCountSamples() == bin.GetCountSamples());
       UNUSED(aGradientPairs);
-      //EBM_ASSERT(pComparison2->IsBinClose(cSamples, weight, aGradientPairs, cScores));
       free(pComparison2);
    }
 }
@@ -175,12 +172,11 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
    const size_t cRealDimensions,
    const TensorSumDimension * const aDimensions,
    const size_t directionVector,
-   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
-   size_t & cSamplesOut,
-   FloatBig & weightOut,
+   const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aBins,
+   Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> & binOut,
    GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
+   , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -202,6 +198,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
    };
 
    static constexpr bool bClassification = IsClassification(cCompilerClasses);
+   static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
    static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
@@ -233,9 +230,9 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
 
          ++iDimension;
       } while(LIKELY(cRealDimensions != iDimension));
-      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bClassification> *>(pStartingBin);
+      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bClassification, cCompilerScores> *>(pStartingBin);
       ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
-      pBin->CopyTo(cSamplesOut, weightOut, aGradientPairsOut, cScores);
+      binOut.Copy(cScores, *pBin, pBin->GetGradientPairs(), aGradientPairsOut);
       return;
    }
 
@@ -284,10 +281,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
    const unsigned int cProcessingDimensions = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
    EBM_ASSERT(cProcessingDimensions < k_cBitsForSizeT);
 
-   cSamplesOut = 0;
-   weightOut = 0;
-
-   ZeroGradientPairs(aGradientPairsOut, cScores);
+   binOut.Zero(cScores, aGradientPairsOut);
 
    // for every dimension that we're processing, set the dimension bit flag to 1 to start
    ptrdiff_t dimensionFlags = static_cast<ptrdiff_t>((~size_t { 0 }) >> (k_cBitsForSizeT - cProcessingDimensions));
@@ -306,14 +300,14 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
          ++pTotalsDimensionLoop;
       } while(LIKELY(pTotalsDimensionEnd != pTotalsDimensionLoop));
 
-      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bClassification> *>(pRawBin);
+      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bClassification, cCompilerScores> *>(pRawBin);
 
       if(UNPREDICTABLE(0 != (1 & evenOdd))) {
          ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
-         pBin->SubtractTo(cSamplesOut, weightOut, aGradientPairsOut, cScores);
+         binOut.Subtract(cScores, *pBin, pBin->GetGradientPairs(), aGradientPairsOut);
       } else {
          ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
-         pBin->AddTo(cSamplesOut, weightOut, aGradientPairsOut, cScores);
+         binOut.Add(cScores, *pBin, pBin->GetGradientPairs(), aGradientPairsOut);
       }
       --dimensionFlags;
    } while(LIKELY(0 <= dimensionFlags));
@@ -325,9 +319,8 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
          cRealDimensions,
          aDimensions,
          directionVector,
-         aDebugCopyBins,
-         cSamplesOut,
-         weightOut,
+         aDebugCopyBins->Downgrade(),
+         *binOut.Downgrade(),
          aGradientPairsOut
       );
    }
@@ -339,12 +332,11 @@ INLINE_ALWAYS static void TensorTotalsSumTripple(
    const ptrdiff_t cRuntimeClasses,
    const TensorSumDimension * const aDimensions,
    const size_t directionVector,
-   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
-   size_t & cSamplesOut,
-   FloatBig & weightOut,
+   const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aBins,
+   Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> & binOut,
    GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
+   , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -355,8 +347,7 @@ INLINE_ALWAYS static void TensorTotalsSumTripple(
       aDimensions,
       directionVector,
       aBins,
-      cSamplesOut,
-      weightOut,
+      binOut,
       aGradientPairsOut
 #ifndef NDEBUG
       , aDebugCopyBins
@@ -370,12 +361,11 @@ INLINE_ALWAYS static void TensorTotalsSumPair(
    const ptrdiff_t cRuntimeClasses,
    const TensorSumDimension * const aDimensions,
    const size_t directionVector,
-   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
-   size_t & cSamplesOut,
-   FloatBig & weightOut,
+   const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aBins,
+   Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> & binOut,
    GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
+   , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -390,8 +380,7 @@ INLINE_ALWAYS static void TensorTotalsSumPair(
       aDimensions,
       directionVector,
       aBins,
-      cSamplesOut,
-      weightOut,
+      binOut,
       aGradientPairsOut
 #ifndef NDEBUG
       , aDebugCopyBins
@@ -406,12 +395,11 @@ INLINE_ALWAYS static void TensorTotalsSum(
    const size_t cRuntimeRealDimensions,
    const TensorSumDimension * const aDimensions,
    const size_t directionVector,
-   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
-   size_t & cSamplesOut,
-   FloatBig & weightOut,
+   const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aBins,
+   Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> & binOut,
    GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
+   , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -424,8 +412,7 @@ INLINE_ALWAYS static void TensorTotalsSum(
          aDimensions,
          directionVector,
          aBins,
-         cSamplesOut,
-         weightOut,
+         binOut,
          aGradientPairsOut
 #ifndef NDEBUG
          , aDebugCopyBins
@@ -439,8 +426,7 @@ INLINE_ALWAYS static void TensorTotalsSum(
          aDimensions,
          directionVector,
          aBins,
-         cSamplesOut,
-         weightOut,
+         binOut,
          aGradientPairsOut
 #ifndef NDEBUG
          , aDebugCopyBins
@@ -455,8 +441,7 @@ INLINE_ALWAYS static void TensorTotalsSum(
          aDimensions,
          directionVector,
          aBins,
-         cSamplesOut,
-         weightOut,
+         binOut,
          aGradientPairsOut
 #ifndef NDEBUG
          , aDebugCopyBins

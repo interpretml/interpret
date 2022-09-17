@@ -49,6 +49,7 @@ public:
       // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
       // TODO: add a new random_rety option that will retry random splitting for N times and select the one with the best gain
       // TODO: accept the minimum number of items in a split and then refuse to allow the split if we violate it, or
@@ -67,7 +68,7 @@ public:
       EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bClassification>();
+      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bClassification, cCompilerScores>();
 
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
@@ -346,20 +347,8 @@ public:
 
       // put the histograms right after our slice array
       auto * const aCollapsedBins =
-         reinterpret_cast<Bin<FloatBig, bClassification> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
+         reinterpret_cast<Bin<FloatBig, bClassification, cCompilerScores> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
 
-      // TODO: move this into a helper function on the Bin object that zeros N bytes (if we know the bytes).  Mostly as a warning to understand where we're using memset
-
-      // C standard guarantees that zeroing integer types (size_t) is a zero, and IEEE 754 guarantees 
-      // that zeroing a floating point is zero.  Our Bin objects are POD and also only contain
-      // floating point types and size_t
-      //
-      // 6.2.6.2 Integer types -> 5. The values of any padding bits are unspecified.A valid (non - trap) 
-      // object representation of a signed integer type where the sign bit is zero is a valid object 
-      // representation of the corresponding unsigned type, and shall represent the same value.For any 
-      // integer type, the object representation where all the bits are zero shall be a representation 
-      // of the value zero in that type.
-      static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
       aCollapsedBins->ZeroMem(cBytesCollapsedTensor3);
       const auto * const pCollapsedBinEnd = IndexBin(aCollapsedBins, cBytesCollapsedTensor3);
 
@@ -382,7 +371,9 @@ public:
             const auto * const pBinSliceEnd = IndexBin(pBin, *pcItemsInNextSliceOrBytesInCurrentSlice);
             do {
                ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetDebugBigBinsEnd());
-               pCollapsedBin1->Add(*pBin, cScores);
+               // TODO: add this first into a local Bin that can be put in registers then write it to
+               // pCollapsedBin1 aferwards
+               pCollapsedBin1->Add(cScores, *pBin);
 
                // we're walking through all bins, so just move to the next one in the flat array, 
                // with the knowledge that we'll figure out it's multi-dimenional index below

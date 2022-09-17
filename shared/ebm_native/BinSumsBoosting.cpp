@@ -40,10 +40,11 @@ public:
       const InnerBag * const pInnerBag
    ) {
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
       LOG_0(Trace_Verbose, "Entered BinSumsBoostingZeroDimensions");
 
-      auto * const pBin = pBoosterShell->GetBoostingFastBinsTemp()->Specialize<FloatFast, bClassification>();
+      auto * const pBin = pBoosterShell->GetBoostingFastBinsTemp()->Specialize<FloatFast, bClassification, cCompilerScores>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
@@ -205,10 +206,11 @@ public:
       const InnerBag * const pInnerBag
    ) {
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
       LOG_0(Trace_Verbose, "Entered BinSumsBoostingInternal");
 
-      auto * const aBins = pBoosterShell->GetBoostingFastBinsTemp()->Specialize<FloatFast, bClassification>();
+      auto * const aBins = pBoosterShell->GetBoostingFastBinsTemp()->Specialize<FloatFast, bClassification, cCompilerScores>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();

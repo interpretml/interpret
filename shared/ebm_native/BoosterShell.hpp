@@ -22,10 +22,10 @@ namespace DEFINED_ZONE_NAME {
 struct BinBase;
 class BoosterCore;
 
-template<bool bClassification>
+template<bool bClassification, size_t cCompilerScores>
 struct SplitPosition;
 
-template<bool bClassification>
+template<bool bClassification, size_t cCompilerScores>
 struct TreeNode;
 
 class BoosterShell final {
@@ -141,14 +141,14 @@ public:
       return m_aMulticlassMidwayTemp;
    }
 
-   template<bool bClassification>
-   INLINE_ALWAYS TreeNode<bClassification> * GetTreeNodesTemp() {
-      return static_cast<TreeNode<bClassification> *>(m_aTreeNodesTemp);
+   template<bool bClassification, size_t cCompilerScores = 1>
+   INLINE_ALWAYS TreeNode<bClassification, cCompilerScores> * GetTreeNodesTemp() {
+      return static_cast<TreeNode<bClassification, cCompilerScores> *>(m_aTreeNodesTemp);
    }
 
-   template<bool bClassification>
-   INLINE_ALWAYS SplitPosition<bClassification> * GetSplitPositionsTemp() {
-      return static_cast<SplitPosition<bClassification> *>(m_aSplitPositionsTemp);
+   template<bool bClassification, size_t cCompilerScores = 1>
+   INLINE_ALWAYS SplitPosition<bClassification, cCompilerScores> * GetSplitPositionsTemp() {
+      return static_cast<SplitPosition<bClassification, cCompilerScores> *>(m_aSplitPositionsTemp);
    }
 
 

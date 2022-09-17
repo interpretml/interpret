@@ -40,16 +40,17 @@ static FloatBig SweepMultiDimensional(
    const size_t * const acBins,
    const size_t directionVectorLow,
    const size_t iDimensionSweep,
-   const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aBins,
+   const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aBins,
    const size_t cSamplesLeafMin,
-   Bin<FloatBig, IsClassification(cCompilerClasses)> * const pBinBestAndTemp,
+   Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const pBinBestAndTemp,
    size_t * const piBestSplit
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses)> * const aDebugCopyBins
+   , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
    , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
    static constexpr bool bClassification = IsClassification(cCompilerClasses);
+   static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
    const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
    const size_t cScores = GetCountScores(cClasses);
@@ -78,25 +79,18 @@ static FloatBig SweepMultiDimensional(
 
    size_t iBestSplit = 0;
 
-   auto * const pTotalsLow = IndexBin(pBinBestAndTemp, cBytesPerBin * 2);
-   ASSERT_BIN_OK(cBytesPerBin, pTotalsLow, pBinsEndDebug);
+   auto * const p_DO_NOT_USE_DIRECTLY_Low = IndexBin(pBinBestAndTemp, cBytesPerBin * 2);
+   ASSERT_BIN_OK(cBytesPerBin, p_DO_NOT_USE_DIRECTLY_Low, pBinsEndDebug);
+   auto * const p_DO_NOT_USE_DIRECTLY_High = IndexBin(pBinBestAndTemp, cBytesPerBin * 3);
+   ASSERT_BIN_OK(cBytesPerBin, p_DO_NOT_USE_DIRECTLY_High, pBinsEndDebug);
 
-   auto * const pTotalsHigh = IndexBin(pBinBestAndTemp, cBytesPerBin * 3);
-   ASSERT_BIN_OK(cBytesPerBin, pTotalsHigh, pBinsEndDebug);
-
-   GradientPair<FloatBig, bClassification> aGradientPairsLowLocal[GetCountScores(cCompilerClasses)];
-   GradientPair<FloatBig, bClassification> aGradientPairsHighLocal[GetCountScores(cCompilerClasses)];
+   Bin<FloatBig, bClassification, cCompilerScores> binLow;
+   Bin<FloatBig, bClassification, cCompilerScores> binHigh;
 
    // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
    static constexpr bool bUseStackMemory = k_dynamicClassification != cCompilerClasses;
-   auto * const aGradientPairsLow = bUseStackMemory ? aGradientPairsLowLocal : pTotalsLow->GetGradientPairs();
-   auto * const aGradientPairsHigh = bUseStackMemory ? aGradientPairsHighLocal : pTotalsHigh->GetGradientPairs();
-
-   size_t cSamplesLow;
-   FloatBig weightLow;
-
-   size_t cSamplesHigh;
-   FloatBig weightHigh;
+   auto * const aGradientPairsLow = bUseStackMemory ? binLow.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_Low->GetGradientPairs();
+   auto * const aGradientPairsHigh = bUseStackMemory ? binHigh.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_High->GetGradientPairs();
 
    EBM_ASSERT(0 < cSamplesLeafMin);
 
@@ -111,15 +105,14 @@ static FloatBig SweepMultiDimensional(
          aDimensions,
          directionVectorLow,
          aBins,
-         cSamplesLow,
-         weightLow,
+         binLow,
          aGradientPairsLow
 #ifndef NDEBUG
          , aDebugCopyBins
          , pBinsEndDebug
 #endif // NDEBUG
       );
-      if(LIKELY(cSamplesLeafMin <= cSamplesLow)) {
+      if(LIKELY(cSamplesLeafMin <= binLow.GetCountSamples())) {
          EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
          TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
             cRuntimeClasses,
@@ -127,18 +120,17 @@ static FloatBig SweepMultiDimensional(
             aDimensions,
             directionVectorHigh,
             aBins,
-            cSamplesHigh,
-            weightHigh,
+            binHigh,
             aGradientPairsHigh
 #ifndef NDEBUG
             , aDebugCopyBins
             , pBinsEndDebug
 #endif // NDEBUG
          );
-         if(LIKELY(cSamplesLeafMin <= cSamplesHigh)) {
+         if(LIKELY(cSamplesLeafMin <= binHigh.GetCountSamples())) {
             FloatBig gain = 0;
-            EBM_ASSERT(0 < cSamplesLow);
-            EBM_ASSERT(0 < cSamplesHigh);
+            EBM_ASSERT(0 < binLow.GetCountSamples());
+            EBM_ASSERT(0 < binHigh.GetCountSamples());
 
             EBM_ASSERT(1 <= cScores);
             size_t iScore = 0;
@@ -149,12 +141,12 @@ static FloatBig SweepMultiDimensional(
                static constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
                
                const FloatBig gain1 = EbmStats::CalcPartialGain(
-                  aGradientPairsLow[iScore].m_sumGradients, bUseLogitBoost ? aGradientPairsLow[iScore].GetHess() : weightLow);
+                  aGradientPairsLow[iScore].m_sumGradients, bUseLogitBoost ? aGradientPairsLow[iScore].GetHess() : binLow.GetWeight());
                EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                gain += gain1;
                
                const FloatBig gain2 = EbmStats::CalcPartialGain(
-                  aGradientPairsHigh[iScore].m_sumGradients, bUseLogitBoost ? aGradientPairsHigh[iScore].GetHess() : weightHigh);
+                  aGradientPairsHigh[iScore].m_sumGradients, bUseLogitBoost ? aGradientPairsHigh[iScore].GetHess() : binHigh.GetWeight());
                EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
                gain += gain2;
 
@@ -171,12 +163,12 @@ static FloatBig SweepMultiDimensional(
                auto * const pTotalsLowOut = IndexBin(pBinBestAndTemp, cBytesPerBin * 0);
                ASSERT_BIN_OK(cBytesPerBin, pTotalsLowOut, pBinsEndDebug);
 
-               pTotalsLowOut->CopyFrom(cSamplesLow, weightLow, aGradientPairsLow, cScores);
+               pTotalsLowOut->Copy(cScores, binLow, aGradientPairsLow);
 
                auto * const pTotalsHighOut = IndexBin(pBinBestAndTemp, cBytesPerBin * 1);
                ASSERT_BIN_OK(cBytesPerBin, pTotalsHighOut, pBinsEndDebug);
 
-               pTotalsHighOut->CopyFrom(cSamplesHigh, weightHigh, aGradientPairsHigh, cScores);
+               pTotalsHighOut->Copy(cScores, binHigh, aGradientPairsHigh);
             } else {
                EBM_ASSERT(!std::isnan(gain));
             }
@@ -211,12 +203,13 @@ public:
 #endif // NDEBUG
    ) {
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
       static constexpr size_t cCompilerDimensions = 2;
 
       ErrorEbm error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bClassification>();
+      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bClassification, cCompilerScores>();
       Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
@@ -226,10 +219,10 @@ public:
       const size_t cScores = GetCountScores(cClasses);
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification>();
+      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
 
 #ifndef NDEBUG
-      const auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification>();
+      const auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
 #endif // NDEBUG
 
       size_t aiStart[k_cDimensionsMax];

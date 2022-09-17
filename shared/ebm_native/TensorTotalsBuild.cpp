@@ -164,20 +164,21 @@ public:
 #endif // NDEBUG
    ) {
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
       struct FastTotalState {
-         Bin<FloatBig, bClassification> * m_pDimensionalCur;
-         Bin<FloatBig, bClassification> * m_pDimensionalWrap;
-         Bin<FloatBig, bClassification> * m_pDimensionalFirst;
+         Bin<FloatBig, bClassification, cCompilerScores> * m_pDimensionalCur;
+         Bin<FloatBig, bClassification, cCompilerScores> * m_pDimensionalWrap;
+         Bin<FloatBig, bClassification, cCompilerScores> * m_pDimensionalFirst;
          size_t m_iCur;
          size_t m_cBins;
       };
 
       LOG_0(Trace_Verbose, "Entered BuildFastTotals");
 
-      auto * pAuxiliaryBin = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification>();
+      auto * pAuxiliaryBin = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
 
-      auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
+      auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
 
       const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
       EBM_ASSERT(1 <= cRealDimensions);
@@ -240,9 +241,9 @@ public:
 
 #ifndef NDEBUG
 
-      auto * const pDebugBin = EbmMalloc<Bin<FloatBig, bClassification>>(1, cBytesPerBin);
+      auto * const pDebugBin = EbmMalloc<Bin<FloatBig, bClassification, cCompilerScores>>(1, cBytesPerBin);
 
-      auto * aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification>();
+      auto * aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
 
 #endif //NDEBUG
 
@@ -272,7 +273,7 @@ public:
 
             --iDimension;
             auto * pAddTo = fastTotalState[iDimension].m_pDimensionalCur;
-            pAddTo->Add(*pAddPrev, cScores);
+            pAddTo->Add(cScores, *pAddPrev);
             pAddPrev = pAddTo;
             pAddTo = IndexBin(pAddTo, cBytesPerBin);
             if(pAddTo == fastTotalState[iDimension].m_pDimensionalWrap) {
@@ -296,8 +297,8 @@ public:
                aiStart,
                aiLast,
                acBins,
-               aDebugCopyBins,
-               pDebugBin
+               aDebugCopyBins->Downgrade(),
+               *pDebugBin->Downgrade()
             );
             EBM_ASSERT(pDebugBin->GetCountSamples() == pBin->GetCountSamples());
          }

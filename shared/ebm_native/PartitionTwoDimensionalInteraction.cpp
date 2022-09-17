@@ -49,14 +49,14 @@ public:
 #endif // NDEBUG
    ) {
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
+      static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
       static constexpr size_t cCompilerDimensions = 2;
 
-      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification>();
-
-      auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
+      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
+      auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
 
 #ifndef NDEBUG
-      auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification>();
+      auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
 #endif // NDEBUG
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pInteractionCore->GetCountClasses());
@@ -76,40 +76,26 @@ public:
          ++iDimensionInit;
       } while(cRealDimensions != iDimensionInit);
 
-      auto * const pTotals00 = IndexBin(aAuxiliaryBins, cBytesPerBin * 0);
-      ASSERT_BIN_OK(cBytesPerBin, pTotals00, pBinsEndDebug);
-      auto * const pTotals01 = IndexBin(aAuxiliaryBins, cBytesPerBin * 1);
-      ASSERT_BIN_OK(cBytesPerBin, pTotals01, pBinsEndDebug);
-      auto * const pTotals10 = IndexBin(aAuxiliaryBins, cBytesPerBin * 2);
-      ASSERT_BIN_OK(cBytesPerBin, pTotals10, pBinsEndDebug);
-      auto * const pTotals11 = IndexBin(aAuxiliaryBins, cBytesPerBin * 3);
-      ASSERT_BIN_OK(cBytesPerBin, pTotals11, pBinsEndDebug);
+      auto * const p_DO_NOT_USE_DIRECTLY_00 = IndexBin(aAuxiliaryBins, cBytesPerBin * 0);
+      ASSERT_BIN_OK(cBytesPerBin, p_DO_NOT_USE_DIRECTLY_00, pBinsEndDebug);
+      auto * const p_DO_NOT_USE_DIRECTLY_01 = IndexBin(aAuxiliaryBins, cBytesPerBin * 1);
+      ASSERT_BIN_OK(cBytesPerBin, p_DO_NOT_USE_DIRECTLY_01, pBinsEndDebug);
+      auto * const p_DO_NOT_USE_DIRECTLY_10 = IndexBin(aAuxiliaryBins, cBytesPerBin * 2);
+      ASSERT_BIN_OK(cBytesPerBin, p_DO_NOT_USE_DIRECTLY_10, pBinsEndDebug);
+      auto * const p_DO_NOT_USE_DIRECTLY_11 = IndexBin(aAuxiliaryBins, cBytesPerBin * 3);
+      ASSERT_BIN_OK(cBytesPerBin, p_DO_NOT_USE_DIRECTLY_11, pBinsEndDebug);
 
-      GradientPair<FloatBig, bClassification> aGradientPairsLocal00[GetCountScores(cCompilerClasses)];
-      GradientPair<FloatBig, bClassification> aGradientPairsLocal01[GetCountScores(cCompilerClasses)];
-      GradientPair<FloatBig, bClassification> aGradientPairsLocal10[GetCountScores(cCompilerClasses)];
-      GradientPair<FloatBig, bClassification> aGradientPairsLocal11[GetCountScores(cCompilerClasses)];
+      Bin<FloatBig, bClassification, cCompilerScores> bin00;
+      Bin<FloatBig, bClassification, cCompilerScores> bin01;
+      Bin<FloatBig, bClassification, cCompilerScores> bin10;
+      Bin<FloatBig, bClassification, cCompilerScores> bin11;
 
       // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
       static constexpr bool bUseStackMemory = k_dynamicClassification != cCompilerClasses;
-      auto * const aGradientPairs00 = bUseStackMemory ? aGradientPairsLocal00 : pTotals00->GetGradientPairs();
-      auto * const aGradientPairs01 = bUseStackMemory ? aGradientPairsLocal01 : pTotals01->GetGradientPairs();
-      auto * const aGradientPairs10 = bUseStackMemory ? aGradientPairsLocal10 : pTotals10->GetGradientPairs();
-      auto * const aGradientPairs11 = bUseStackMemory ? aGradientPairsLocal11 : pTotals11->GetGradientPairs();
-
-      size_t cSamples00;
-      FloatBig weight00;
-
-      size_t cSamples01;
-      FloatBig weight01;
-
-      size_t cSamples10;
-      FloatBig weight10;
-
-      size_t cSamples11;
-      FloatBig weight11;
-
-
+      auto * const aGradientPairs00 = bUseStackMemory ? bin00.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_00->GetGradientPairs();
+      auto * const aGradientPairs01 = bUseStackMemory ? bin01.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_01->GetGradientPairs();
+      auto * const aGradientPairs10 = bUseStackMemory ? bin10.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_10->GetGradientPairs();
+      auto * const aGradientPairs11 = bUseStackMemory ? bin11.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_11->GetGradientPairs();
 
       EBM_ASSERT(0 < cSamplesLeafMin);
 
@@ -133,15 +119,14 @@ public:
                aDimensions,
                0x00,
                aBins,
-               cSamples00,
-               weight00,
+               bin00,
                aGradientPairs00
 #ifndef NDEBUG
                , aDebugCopyBins
                , pBinsEndDebug
 #endif // NDEBUG
             );
-            if(LIKELY(cSamplesLeafMin <= cSamples00)) {
+            if(LIKELY(cSamplesLeafMin <= bin00.GetCountSamples())) {
                EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
                   cClasses,
@@ -149,15 +134,14 @@ public:
                   aDimensions,
                   0x01,
                   aBins,
-                  cSamples01,
-                  weight01,
+                  bin01,
                   aGradientPairs01
 #ifndef NDEBUG
                   , aDebugCopyBins
                   , pBinsEndDebug
 #endif // NDEBUG
                );
-               if(LIKELY(cSamplesLeafMin <= cSamples01)) {
+               if(LIKELY(cSamplesLeafMin <= bin01.GetCountSamples())) {
                   EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                   TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
                      cClasses,
@@ -165,15 +149,14 @@ public:
                      aDimensions,
                      0x02,
                      aBins,
-                     cSamples10,
-                     weight10,
+                     bin10,
                      aGradientPairs10
 #ifndef NDEBUG
                      , aDebugCopyBins
                      , pBinsEndDebug
 #endif // NDEBUG
                   );
-                  if(LIKELY(cSamplesLeafMin <= cSamples10)) {
+                  if(LIKELY(cSamplesLeafMin <= bin10.GetCountSamples())) {
                      EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                      TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
                         cClasses,
@@ -181,15 +164,14 @@ public:
                         aDimensions,
                         0x03,
                         aBins,
-                        cSamples11,
-                        weight11,
+                        bin11,
                         aGradientPairs11
 #ifndef NDEBUG
                         , aDebugCopyBins
                         , pBinsEndDebug
 #endif // NDEBUG
                      );
-                     if(LIKELY(cSamplesLeafMin <= cSamples11)) {
+                     if(LIKELY(cSamplesLeafMin <= bin11.GetCountSamples())) {
 #ifndef NDEBUG
                         bAnySplits = true;
 #endif // NDEBUG
@@ -204,16 +186,16 @@ public:
                            // n = numerator (sum_gradients), d = denominator (sum_hessians or weight)
 
                            const FloatBig n00 = aGradientPairs00[iScore].m_sumGradients;
-                           const FloatBig d00 = bUseLogitBoost ? aGradientPairs00[iScore].GetHess() : weight00;
+                           const FloatBig d00 = bUseLogitBoost ? aGradientPairs00[iScore].GetHess() : bin00.GetWeight();
 
                            const FloatBig n01 = aGradientPairs01[iScore].m_sumGradients;
-                           const FloatBig d01 = bUseLogitBoost ? aGradientPairs01[iScore].GetHess() : weight01;
+                           const FloatBig d01 = bUseLogitBoost ? aGradientPairs01[iScore].GetHess() : bin01.GetWeight();
 
                            const FloatBig n10 = aGradientPairs10[iScore].m_sumGradients;
-                           const FloatBig d10 = bUseLogitBoost ? aGradientPairs10[iScore].GetHess() : weight10;
+                           const FloatBig d10 = bUseLogitBoost ? aGradientPairs10[iScore].GetHess() : bin10.GetWeight();
 
                            const FloatBig n11 = aGradientPairs11[iScore].m_sumGradients;
-                           const FloatBig d11 = bUseLogitBoost ? aGradientPairs11[iScore].GetHess() : weight11;
+                           const FloatBig d11 = bUseLogitBoost ? aGradientPairs11[iScore].GetHess() : bin11.GetWeight();
 
                            if(0 != (InteractionFlags_Pure & flags)) {
                               // purified gain
@@ -365,11 +347,8 @@ public:
          // the bin before the aAuxiliaryBins is the last summation bin of aBinsBase, 
          // which contains the totals of all bins
          const auto * const pTotal = NegativeIndexBin(aAuxiliaryBins, cBytesPerBin);
-
          const FloatBig weightAll = pTotal->GetWeight();
-
          const auto * const aGradientPairs = pTotal->GetGradientPairs();
-
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain

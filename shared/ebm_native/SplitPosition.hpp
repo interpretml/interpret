@@ -24,16 +24,16 @@ namespace DEFINED_ZONE_NAME {
 static bool IsOverflowSplitPositionSize(const bool bClassification, const size_t cScores);
 static size_t GetSplitPositionSize(bool bClassification, const size_t cScores);
 
-template<bool bClassification>
+template<bool bClassification, size_t cCompilerScores = 1>
 struct SplitPosition final {
    friend bool IsOverflowSplitPositionSize(const bool, const size_t);
    friend size_t GetSplitPositionSize(const bool, const size_t);
 
 private:
-   const Bin<FloatBig, bClassification> * m_pBinPosition;
+   const Bin<FloatBig, bClassification, cCompilerScores> * m_pBinPosition;
 
    // IMPORTANT: m_leftSum must be in the last position for the struct hack and this must be standard layout
-   Bin<FloatBig, bClassification> m_leftSum;
+   Bin<FloatBig, bClassification, cCompilerScores> m_leftSum;
 
 public:
 
@@ -42,14 +42,14 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS const Bin<FloatBig, bClassification> * GetBinPosition() const {
+   INLINE_ALWAYS const Bin<FloatBig, bClassification, cCompilerScores> * GetBinPosition() const {
       return m_pBinPosition;
    }
-   INLINE_ALWAYS void SetBinPosition(const Bin<FloatBig, bClassification> * const pBinPosition) {
+   INLINE_ALWAYS void SetBinPosition(const Bin<FloatBig, bClassification, cCompilerScores> * const pBinPosition) {
       m_pBinPosition = pBinPosition;
    }
 
-   INLINE_ALWAYS Bin<FloatBig, bClassification> * GetLeftSum() {
+   INLINE_ALWAYS Bin<FloatBig, bClassification, cCompilerScores> * GetLeftSum() {
       return &m_leftSum;
    }
 };
@@ -95,18 +95,18 @@ INLINE_ALWAYS static size_t GetSplitPositionSize(bool bClassification, const siz
    return cBytesSplitPositionComponent + cBytesPerBin;
 }
 
-template<bool bClassification>
-INLINE_ALWAYS static SplitPosition<bClassification> * IndexSplitPosition(
-   SplitPosition<bClassification> * const pSplitPosition, 
+template<bool bClassification, size_t cCompilerScores>
+INLINE_ALWAYS static SplitPosition<bClassification, cCompilerScores> * IndexSplitPosition(
+   SplitPosition<bClassification, cCompilerScores> * const pSplitPosition,
    const size_t iByte
 ) {
-   return reinterpret_cast<SplitPosition<bClassification> *>(reinterpret_cast<char *>(pSplitPosition) + iByte);
+   return reinterpret_cast<SplitPosition<bClassification, cCompilerScores> *>(reinterpret_cast<char *>(pSplitPosition) + iByte);
 }
 
-template<bool bClassification>
+template<bool bClassification, size_t cCompilerScores>
 INLINE_ALWAYS static size_t CountSplitPositions(
-   const SplitPosition<bClassification> * const pSplitPositionLow,
-   const SplitPosition<bClassification> * const pSplitPositionHigh,
+   const SplitPosition<bClassification, cCompilerScores> * const pSplitPositionLow,
+   const SplitPosition<bClassification, cCompilerScores> * const pSplitPositionHigh,
    const size_t cBytesPerSplitPosition
 ) {
    EBM_ASSERT(pSplitPositionLow <= pSplitPositionHigh);

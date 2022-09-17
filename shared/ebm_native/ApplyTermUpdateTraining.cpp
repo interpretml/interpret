@@ -38,12 +38,13 @@ public:
    INLINE_RELEASE_UNTEMPLATED static void Func(BoosterShell * const pBoosterShell) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
+      static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
       DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
 
-      FloatFast aLocalExpVector[GetCountScores(cCompilerClasses)];
+      FloatFast aLocalExpVector[cCompilerScores];
       FloatFast * const aExps = 
          k_dynamicClassification == cCompilerClasses ? pBoosterShell->GetMulticlassMidwayTemp() : aLocalExpVector;
 
@@ -227,6 +228,7 @@ public:
    ) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
+      static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
@@ -234,7 +236,7 @@ public:
       const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
       DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
 
-      FloatFast aLocalExpVector[GetCountScores(cCompilerClasses)];
+      FloatFast aLocalExpVector[cCompilerScores];
       FloatFast * const aExps = 
          k_dynamicClassification == cCompilerClasses ? pBoosterShell->GetMulticlassMidwayTemp() : aLocalExpVector;
 
