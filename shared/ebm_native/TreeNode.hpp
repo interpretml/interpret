@@ -21,10 +21,13 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+static bool IsOverflowTreeNodeSize(const bool bClassification, const size_t cScores);
+static size_t GetTreeNodeSize(const bool bClassification, const size_t cScores);
+
 template<bool bClassification>
 struct TreeNode final {
-   friend static bool IsOverflowTreeNodeSize(const bool, const size_t);
-   friend static size_t GetTreeNodeSize(const bool, const size_t);
+   friend bool IsOverflowTreeNodeSize(const bool, const size_t);
+   friend size_t GetTreeNodeSize(const bool, const size_t);
 
    TreeNode() = default; // preserve our POD status
    ~TreeNode() = default; // preserve our POD status
@@ -32,7 +35,7 @@ struct TreeNode final {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
 
-   INLINE_ALWAYS const auto * BEFORE_GetBinFirst() const {
+   INLINE_ALWAYS const Bin<FloatBig, bClassification> * BEFORE_GetBinFirst() const {
       EBM_ASSERT(0 == m_debugProgressionStage);
       return m_UNION.m_beforeGainCalc.m_pBinFirst;
    }
@@ -41,7 +44,7 @@ struct TreeNode final {
       m_UNION.m_beforeGainCalc.m_pBinFirst = pBinFirst;
    }
 
-   INLINE_ALWAYS const auto * BEFORE_GetBinLast() const {
+   INLINE_ALWAYS const Bin<FloatBig, bClassification> * BEFORE_GetBinLast() const {
       EBM_ASSERT(0 == m_debugProgressionStage);
       return reinterpret_cast<const Bin<FloatBig, bClassification> *>(pBinLastOrChildren);
    }
@@ -150,17 +153,17 @@ struct TreeNode final {
       return m_bin.GetWeight();
    }
 
-   INLINE_ALWAYS const auto * GetGradientPairs() const {
+   INLINE_ALWAYS const GradientPair<FloatBig, bClassification> * GetGradientPairs() const {
       return m_bin.GetGradientPairs();
    }
-   INLINE_ALWAYS auto * GetGradientPairs() {
+   INLINE_ALWAYS GradientPair<FloatBig, bClassification> * GetGradientPairs() {
       return m_bin.GetGradientPairs();
    }
 
-   INLINE_ALWAYS const auto * GetBin() const {
+   INLINE_ALWAYS const Bin<FloatBig, bClassification> * GetBin() const {
       return &m_bin;
    }
-   INLINE_ALWAYS auto * GetBin() {
+   INLINE_ALWAYS Bin<FloatBig, bClassification> * GetBin() {
       return &m_bin;
    }
 
@@ -214,9 +217,11 @@ INLINE_ALWAYS static bool IsOverflowTreeNodeSize(const bool bClassification, con
 
    size_t cBytesTreeNodeComponent;
    if(bClassification) {
-      cBytesTreeNodeComponent = sizeof(TreeNode<true>) - sizeof(TreeNode<true>::m_bin);
+      typedef TreeNode<true> OffsetType;
+      cBytesTreeNodeComponent = offsetof(OffsetType, m_bin);
    } else {
-      cBytesTreeNodeComponent = sizeof(TreeNode<false>) - sizeof(TreeNode<false>::m_bin);
+      typedef TreeNode<false> OffsetType;
+      cBytesTreeNodeComponent = offsetof(OffsetType, m_bin);
    }
 
    if(UNLIKELY(IsAddError(cBytesTreeNodeComponent, cBytesPerBin))) {
@@ -231,16 +236,18 @@ INLINE_ALWAYS static size_t GetTreeNodeSize(const bool bClassification, const si
 
    size_t cBytesTreeNodeComponent;
    if(bClassification) {
-      cBytesTreeNodeComponent = sizeof(TreeNode<true>) - sizeof(TreeNode<true>::m_bin);
+      typedef TreeNode<true> OffsetType;
+      cBytesTreeNodeComponent = offsetof(OffsetType, m_bin);
    } else {
-      cBytesTreeNodeComponent = sizeof(TreeNode<false>) - sizeof(TreeNode<false>::m_bin);
+      typedef TreeNode<false> OffsetType;
+      cBytesTreeNodeComponent = offsetof(OffsetType, m_bin);
    }
 
    return cBytesTreeNodeComponent + cBytesPerBin;
 }
 
 template<bool bClassification>
-INLINE_ALWAYS static auto * IndexTreeNode(
+INLINE_ALWAYS static TreeNode<bClassification> * IndexTreeNode(
    TreeNode<bClassification> * const pTreeNode, 
    const size_t iByte
 ) {
@@ -248,7 +255,7 @@ INLINE_ALWAYS static auto * IndexTreeNode(
 }
 
 template<bool bClassification>
-INLINE_ALWAYS static const auto * IndexTreeNode(
+INLINE_ALWAYS static const TreeNode<bClassification> * IndexTreeNode(
    const TreeNode<bClassification> * const pTreeNode, 
    const size_t iByte
 ) {
@@ -256,14 +263,14 @@ INLINE_ALWAYS static const auto * IndexTreeNode(
 }
 
 template<bool bClassification>
-INLINE_ALWAYS static auto * GetLeftNode(
+INLINE_ALWAYS static TreeNode<bClassification> * GetLeftNode(
    TreeNode<bClassification> * const pChildren
 ) {
    return pChildren;
 }
 
 template<bool bClassification>
-INLINE_ALWAYS static auto * GetRightNode(
+INLINE_ALWAYS static TreeNode<bClassification> * GetRightNode(
    TreeNode<bClassification> * const pChildren, 
    const size_t cBytesPerTreeNode
 ) {

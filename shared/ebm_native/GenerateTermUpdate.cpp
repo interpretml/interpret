@@ -318,8 +318,6 @@ static ErrorEbm BoostMultiDimensional(
    BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
 
    const size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
-   EBM_ASSERT(!IsAddError(cTensorBins, cAuxillaryBins));
-   const size_t cTotalBigBins = cTensorBins + cAuxillaryBins;
 
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
    const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
@@ -330,9 +328,10 @@ static ErrorEbm BoostMultiDimensional(
    EBM_ASSERT(nullptr != aBigBins);
 
 #ifndef NDEBUG
-   EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTotalBigBins));
+   EBM_ASSERT(!IsAddError(cTensorBins, cAuxillaryBins));
+   EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTensorBins + cAuxillaryBins));
    const unsigned char * const pDebugBigBinsEnd = 
-      reinterpret_cast<unsigned char *>(aBigBins) + cBytesPerBigBin * cTotalBigBins;
+      reinterpret_cast<unsigned char *>(aBigBins) + cBytesPerBigBin * (cTensorBins + cAuxillaryBins);
    pBoosterShell->SetDebugBigBinsEnd(pDebugBigBinsEnd);
 #endif // NDEBUG
 
@@ -530,9 +529,6 @@ static ErrorEbm BoostRandom(
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-
-   const size_t cDimensions = pTerm->GetCountDimensions();
-   EBM_ASSERT(1 <= cDimensions);
 
    size_t cTotalBins = pTerm->GetCountTensorBins();
 

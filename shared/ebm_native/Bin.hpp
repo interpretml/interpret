@@ -42,11 +42,11 @@ struct BinBase {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    template<typename TFloat, bool bClassification>
-   INLINE_ALWAYS auto * Specialize() {
+   INLINE_ALWAYS Bin<TFloat, bClassification> * Specialize() {
       return static_cast<Bin<TFloat, bClassification> *>(this);
    }
    template<typename TFloat, bool bClassification>
-   INLINE_ALWAYS const auto * Specialize() const {
+   INLINE_ALWAYS const Bin<TFloat, bClassification> * Specialize() const {
       return static_cast<const Bin<TFloat, bClassification> *>(this);
    }
 
@@ -72,8 +72,18 @@ static_assert(std::is_trivial<BinBase>::value,
 static_assert(std::is_pod<BinBase>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
+
+template<typename TFloat>
+static bool IsOverflowBinSize(const bool bClassification, const size_t cScores);
+
+template<typename TFloat>
+static size_t GetBinSize(const bool bClassification, const size_t cScores);
+
 template<typename TFloat, bool bClassification>
 struct Bin final : BinBase {
+   template<typename> friend bool IsOverflowBinSize(const bool, const size_t);
+   template<typename> friend size_t GetBinSize(const bool, const size_t);
+
 private:
 
    size_t m_cSamples;
@@ -336,11 +346,12 @@ INLINE_ALWAYS static bool IsOverflowBinSize(const bool bClassification, const si
 
    size_t cBytesBinComponent;
    if(bClassification) {
-      cBytesBinComponent = sizeof(Bin<TFloat, true>);
+      typedef Bin<TFloat, true> OffsetType;
+      cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
    } else {
-      cBytesBinComponent = sizeof(Bin<TFloat, false>);
+      typedef Bin<TFloat, false> OffsetType;
+      cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
    }
-   cBytesBinComponent -= cBytesPerGradientPair;
 
    if(UNLIKELY(IsAddError(cBytesBinComponent, cBytesPerGradientPair * cScores))) {
       return true;
@@ -359,17 +370,18 @@ INLINE_ALWAYS static size_t GetBinSize(const bool bClassification, const size_t 
 
    size_t cBytesBinComponent;
    if(bClassification) {
-      cBytesBinComponent = sizeof(Bin<TFloat, true>);
+      typedef Bin<TFloat, true> OffsetType;
+      cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
    } else {
-      cBytesBinComponent = sizeof(Bin<TFloat, false>);
+      typedef Bin<TFloat, false> OffsetType;
+      cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
    }
-   cBytesBinComponent -= cBytesPerGradientPair;
 
    return cBytesBinComponent + cBytesPerGradientPair * cScores;
 }
 
 template<typename TFloat, bool bClassification>
-INLINE_ALWAYS static auto * IndexBin(
+INLINE_ALWAYS static Bin<TFloat, bClassification> * IndexBin(
    Bin<TFloat, bClassification> * const aBins,
    const size_t iByte
 ) {
@@ -377,7 +389,7 @@ INLINE_ALWAYS static auto * IndexBin(
 }
 
 template<typename TFloat, bool bClassification>
-INLINE_ALWAYS static const auto * IndexBin(
+INLINE_ALWAYS static const Bin<TFloat, bClassification> * IndexBin(
    const Bin<TFloat, bClassification> * const aBins,
    const size_t iByte
 ) {
@@ -393,7 +405,7 @@ INLINE_ALWAYS static const BinBase * IndexBin(const BinBase * const aBins, const
 }
 
 template<typename TFloat, bool bClassification>
-INLINE_ALWAYS static const auto * NegativeIndexBin(
+INLINE_ALWAYS static const Bin<TFloat, bClassification> * NegativeIndexBin(
    const Bin<TFloat, bClassification> * const aBins,
    const size_t iByte
 ) {
@@ -401,7 +413,7 @@ INLINE_ALWAYS static const auto * NegativeIndexBin(
 }
 
 template<typename TFloat, bool bClassification>
-INLINE_ALWAYS static auto * NegativeIndexBin(
+INLINE_ALWAYS static Bin<TFloat, bClassification> * NegativeIndexBin(
    Bin<TFloat, bClassification> * const aBins,
    const size_t iByte
 ) {

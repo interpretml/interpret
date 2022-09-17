@@ -21,10 +21,13 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+static bool IsOverflowSplitPositionSize(const bool bClassification, const size_t cScores);
+static size_t GetSplitPositionSize(bool bClassification, const size_t cScores);
+
 template<bool bClassification>
 struct SplitPosition final {
-   friend static bool IsOverflowSplitPositionSize(const bool, const size_t);
-   friend static size_t GetSplitPositionSize(const bool, const size_t);
+   friend bool IsOverflowSplitPositionSize(const bool, const size_t);
+   friend size_t GetSplitPositionSize(const bool, const size_t);
 
 private:
    const Bin<FloatBig, bClassification> * m_pBinPosition;
@@ -39,14 +42,14 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS const auto * GetBinPosition() const {
+   INLINE_ALWAYS const Bin<FloatBig, bClassification> * GetBinPosition() const {
       return m_pBinPosition;
    }
    INLINE_ALWAYS void SetBinPosition(const Bin<FloatBig, bClassification> * const pBinPosition) {
       m_pBinPosition = pBinPosition;
    }
 
-   INLINE_ALWAYS auto * GetLeftSum() {
+   INLINE_ALWAYS Bin<FloatBig, bClassification> * GetLeftSum() {
       return &m_leftSum;
    }
 };
@@ -63,9 +66,11 @@ INLINE_ALWAYS static bool IsOverflowSplitPositionSize(const bool bClassification
 
    size_t cBytesSplitPositionComponent;
    if(bClassification) {
-      cBytesSplitPositionComponent = sizeof(SplitPosition<true>) - sizeof(SplitPosition<true>::m_leftSum);
+      typedef SplitPosition<true> OffsetType;
+      cBytesSplitPositionComponent = offsetof(OffsetType, m_leftSum);
    } else {
-      cBytesSplitPositionComponent = sizeof(SplitPosition<false>) - sizeof(SplitPosition<false>::m_leftSum);
+      typedef SplitPosition<false> OffsetType;
+      cBytesSplitPositionComponent = offsetof(OffsetType, m_leftSum);
    }
 
    if(UNLIKELY(IsAddError(cBytesSplitPositionComponent, cBytesPerBin))) {
@@ -80,16 +85,18 @@ INLINE_ALWAYS static size_t GetSplitPositionSize(bool bClassification, const siz
 
    size_t cBytesSplitPositionComponent;
    if(bClassification) {
-      cBytesSplitPositionComponent = sizeof(SplitPosition<true>) - sizeof(SplitPosition<true>::m_leftSum);
+      typedef SplitPosition<true> OffsetType;
+      cBytesSplitPositionComponent = offsetof(OffsetType, m_leftSum);
    } else {
-      cBytesSplitPositionComponent = sizeof(SplitPosition<false>) - sizeof(SplitPosition<false>::m_leftSum);
+      typedef SplitPosition<false> OffsetType;
+      cBytesSplitPositionComponent = offsetof(OffsetType, m_leftSum);
    }
 
    return cBytesSplitPositionComponent + cBytesPerBin;
 }
 
 template<bool bClassification>
-INLINE_ALWAYS static auto * IndexSplitPosition(
+INLINE_ALWAYS static SplitPosition<bClassification> * IndexSplitPosition(
    SplitPosition<bClassification> * const pSplitPosition, 
    const size_t iByte
 ) {

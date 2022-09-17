@@ -142,12 +142,12 @@ public:
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS auto * GetTreeNodesTemp() {
+   INLINE_ALWAYS TreeNode<bClassification> * GetTreeNodesTemp() {
       return static_cast<TreeNode<bClassification> *>(m_aTreeNodesTemp);
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS auto * GetSplitPositionsTemp() {
+   INLINE_ALWAYS SplitPosition<bClassification> * GetSplitPositionsTemp() {
       return static_cast<SplitPosition<bClassification> *>(m_aSplitPositionsTemp);
    }
 

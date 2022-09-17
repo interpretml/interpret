@@ -71,7 +71,6 @@ ErrorEbm BoosterShell::FillAllocations() {
 
    const ptrdiff_t cClasses = m_pBoosterCore->GetCountClasses();
    const size_t cScores = GetCountScores(cClasses);
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(IsClassification(cClasses), cScores);
       
    m_pTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
    if(nullptr == m_pTermUpdate) {
