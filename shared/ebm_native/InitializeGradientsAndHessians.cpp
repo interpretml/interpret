@@ -310,6 +310,16 @@ extern ErrorEbm InitializeGradientsAndHessians(
             cSetSamples,
             aGradientAndHessian
          );
+      } else if(3 == cRuntimeClasses) {
+         return InitializeGradientsAndHessiansInternal<3>::Func(
+            cRuntimeClasses,
+            direction,
+            aBag,
+            aTargets,
+            aInitScores,
+            cSetSamples,
+            aGradientAndHessian
+         );
       } else {
          return InitializeGradientsAndHessiansInternal<k_dynamicClassification>::Func(
             cRuntimeClasses,

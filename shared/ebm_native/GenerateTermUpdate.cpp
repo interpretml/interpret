@@ -63,7 +63,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
    const size_t cBins,
    const size_t iDimension,
    const size_t cSamplesLeafMin,
-   const size_t cLeavesMax,
+   const size_t cSplitsMax,
    const size_t cSamplesTotal,
    const FloatBig weightTotal,
    double * const pTotalGain
@@ -189,11 +189,11 @@ static ErrorEbm BoostSingleDimensional(
    LOG_0(Trace_Verbose, "Entered BoostSingleDimensional");
 
    EBM_ASSERT(IntEbm { 2 } <= countLeavesMax); // otherwise we would have called BoostZeroDimensional
-   size_t cLeavesMax = static_cast<size_t>(countLeavesMax);
+   size_t cSplitsMax = static_cast<size_t>(countLeavesMax) - size_t { 1 };
    if(IsConvertError<size_t>(countLeavesMax)) {
       // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we were going to overflow because it will generate 
       // the same results as if we used the true number
-      cLeavesMax = std::numeric_limits<size_t>::max();
+      cSplitsMax = std::numeric_limits<size_t>::max();
    }
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -249,7 +249,7 @@ static ErrorEbm BoostSingleDimensional(
       cBins,
       iDimension,
       cSamplesLeafMin,
-      cLeavesMax, 
+      cSplitsMax,
       pBoosterCore->GetTrainingSet()->GetCountSamples(),
       pInnerBag->GetWeightTotal(),
       pTotalGain

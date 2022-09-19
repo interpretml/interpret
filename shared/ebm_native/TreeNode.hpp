@@ -167,6 +167,15 @@ struct TreeNode final {
       return &m_bin;
    }
 
+   template<size_t cCompilerScores>
+   INLINE_ALWAYS TreeNode<bClassification, cCompilerScores> * Upgrade() {
+      return reinterpret_cast<TreeNode<bClassification, cCompilerScores> *>(this);
+   }
+   INLINE_ALWAYS TreeNode<bClassification, 1> * Downgrade() {
+      return reinterpret_cast<TreeNode<bClassification, 1> *>(this);
+   }
+
+
 #ifndef NDEBUG
    INLINE_ALWAYS void SetDebugProgression(const int stage) {
       EBM_ASSERT(0 == stage || m_debugProgressionStage < stage); // always progress after initialization

@@ -111,21 +111,55 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
    }
 }
 
-// do not inline this.  Not inlining it makes fewer versions that can be called from the more specialized functions
+// do not inline this.  Not inlining it makes fewer versions that can be called from the more templated functions
 template<bool bClassification>
-static void Flatten(
-   const Bin<FloatBig, bClassification> * const aBins,
-   const Bin<FloatBig, bClassification> * const pBinsEnd,
-   TreeNode<bClassification> * pTreeNode,
-   ActiveDataType * pSplits,
-   FloatFast * pUpdateScore,
-   const size_t cScores
+static ErrorEbm Flatten(
+   BoosterShell * const pBoosterShell,
+   const size_t iDimension,
+   const size_t cBins,
+   const size_t cSplits
 ) {
+   LOG_0(Trace_Verbose, "Entered Flatten");
+
+   EBM_ASSERT(nullptr != pBoosterShell);
+   EBM_ASSERT(iDimension <= k_cDimensionsMax);
+   EBM_ASSERT(cSplits < cBins);
+   
+   ErrorEbm error;
+
+   Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
+
+   error = pInnerTermUpdate->SetCountSplits(iDimension, cSplits);
+   if(UNLIKELY(Error_None != error)) {
+      // already logged
+      return error;
+   }
+
+   const BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
+   const size_t cScores = GetCountScores(cRuntimeClasses);
+
+   // we checked during init that cScores * cBins can be allocated, so cSplits + 1 must work too
+   EBM_ASSERT(!IsMultiplyError(cScores, cSplits + size_t { 1 }));
+   error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * (cSplits + size_t { 1 }));
+   if(UNLIKELY(Error_None != error)) {
+      // already logged
+      return error;
+   }
+
+   ActiveDataType * pSplits = pInnerTermUpdate->GetSplitPointer(iDimension);
+   FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
+
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
    EBM_ASSERT(!IsOverflowTreeNodeSize(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
+
+   const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bClassification>();
+   const auto * const pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
+
+   auto * pTreeNode = pBoosterShell->GetTreeNodesTemp<bClassification>();
 
    TreeNode<bClassification> * pParent = nullptr;
    size_t iSplit;
@@ -200,6 +234,8 @@ static void Flatten(
          break;
       }
    }
+   LOG_0(Trace_Verbose, "Exited Flatten");
+   return Error_None;
 }
 
 
@@ -524,16 +560,14 @@ public:
       const size_t cBins,
       const size_t iDimension,
       const size_t cSamplesLeafMin,
-      const size_t cLeavesMax,
+      const size_t cSplitsMax,
       const size_t cSamplesTotal,
       const FloatBig weightTotal,
       double * const pTotalGain
    ) {
       EBM_ASSERT(2 <= cBins); // filter these out at the start where we can handle this case easily
-      EBM_ASSERT(2 <= cLeavesMax); // filter these out at the start where we can handle this case easily
+      EBM_ASSERT(1 <= cSplitsMax); // filter these out at the start where we can handle this case easily
       EBM_ASSERT(nullptr != pTotalGain);
-
-      ErrorEbm error;
 
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
       static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
@@ -574,7 +608,7 @@ public:
          pTreeNodeScratchSpace,
          cSamplesLeafMin
       );
-      size_t cLeaves = 1;
+      size_t cSplitsRemaining = cSplitsMax;
       FloatBig totalGain = 0;
       if(UNLIKELY(0 != retFind)) {
          // there will be no splits at all
@@ -607,7 +641,7 @@ public:
 
             do {
                // there is no way to get the top and pop at the same time.. would be good to get a better queue, but our code isn't bottlenecked by it
-               pTreeNode = nodeGainRanking.top();
+               pTreeNode = nodeGainRanking.top()->Upgrade<cCompilerScores>();
                // In theory we can have nodes with equal gain values here, but this is very very rare to occur in practice
                // We handle equal gain values in FindBestSplitGain because we 
                // can have zero instances in bins, in which case it occurs, but those equivalent situations have been cleansed by
@@ -650,7 +684,7 @@ public:
                   EBM_ASSERT(!std::isnan(pLeftChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(!std::isinf(pLeftChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(0 <= pLeftChild->AFTER_GetSplitGain());
-                  nodeGainRanking.push(pLeftChild);
+                  nodeGainRanking.push(pLeftChild->Downgrade());
                }
 
                auto * const pRightChild = GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
@@ -671,11 +705,11 @@ public:
                   EBM_ASSERT(!std::isnan(pRightChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(!std::isinf(pRightChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(0 <= pRightChild->AFTER_GetSplitGain());
-                  nodeGainRanking.push(pRightChild);
+                  nodeGainRanking.push(pRightChild->Downgrade());
                }
 
-               ++cLeaves;
-            } while(cLeaves < cLeavesMax && UNLIKELY(!nodeGainRanking.empty()));
+               --cSplitsRemaining;
+            } while(0 != cSplitsRemaining && UNLIKELY(!nodeGainRanking.empty()));
 
             EBM_ASSERT(!std::isnan(totalGain));
             EBM_ASSERT(0 <= totalGain);
@@ -694,31 +728,8 @@ public:
          }
       }
       *pTotalGain = static_cast<double>(totalGain);
-
-      Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
-
-      error = pInnerTermUpdate->SetCountSplits(iDimension, cLeaves - size_t { 1 });
-      if(UNLIKELY(Error_None != error)) {
-         // already logged
-         return error;
-      }
-      if(IsMultiplyError(cScores, cLeaves)) {
-         LOG_0(Trace_Warning, "WARNING PartitionOneDimensionalBoosting IsMultiplyError(cScores, cLeaves)");
-         return Error_OutOfMemory;
-      }
-      error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * cLeaves);
-      if(UNLIKELY(Error_None != error)) {
-         // already logged
-         return error;
-      }
-      ActiveDataType * pSplits = pInnerTermUpdate->GetSplitPointer(iDimension);
-      FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
-
-      LOG_0(Trace_Verbose, "Entered Flatten");
-      Flatten(aBins, pBinsEnd, pRootTreeNode, pSplits, pUpdateScore, cScores);
-      LOG_0(Trace_Verbose, "Exited Flatten");
-
-      return Error_None;
+      const size_t cSplits = cSplitsMax - cSplitsRemaining;
+      return Flatten<bClassification>(pBoosterShell, iDimension, cBins, cSplits);
    }
 };
 
@@ -728,7 +739,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
    const size_t cBins,
    const size_t iDimension,
    const size_t cSamplesLeafMin,
-   const size_t cLeavesMax,
+   const size_t cSplitsMax,
    const size_t cSamplesTotal,
    const FloatBig weightTotal,
    double * const pTotalGain
@@ -748,7 +759,19 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
             cBins,
             iDimension,
             cSamplesLeafMin,
-            cLeavesMax,
+            cSplitsMax,
+            cSamplesTotal,
+            weightTotal,
+            pTotalGain
+         );
+      } else if(3 == cRuntimeClasses) {
+         error = PartitionOneDimensionalBoostingInternal<3>::Func(
+            pRng,
+            pBoosterShell,
+            cBins,
+            iDimension,
+            cSamplesLeafMin,
+            cSplitsMax,
             cSamplesTotal,
             weightTotal,
             pTotalGain
@@ -760,7 +783,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
             cBins,
             iDimension,
             cSamplesLeafMin,
-            cLeavesMax,
+            cSplitsMax,
             cSamplesTotal,
             weightTotal,
             pTotalGain
@@ -774,7 +797,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
          cBins,
          iDimension,
          cSamplesLeafMin,
-         cLeavesMax,
+         cSplitsMax,
          cSamplesTotal,
          weightTotal,
          pTotalGain
