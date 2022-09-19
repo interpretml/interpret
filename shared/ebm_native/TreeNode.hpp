@@ -167,9 +167,9 @@ struct TreeNode final {
       return &m_bin;
    }
 
-   template<size_t cCompilerScores>
-   INLINE_ALWAYS TreeNode<bClassification, cCompilerScores> * Upgrade() {
-      return reinterpret_cast<TreeNode<bClassification, cCompilerScores> *>(this);
+   template<size_t cNewCompilerScores>
+   INLINE_ALWAYS TreeNode<bClassification, cNewCompilerScores> * Upgrade() {
+      return reinterpret_cast<TreeNode<bClassification, cNewCompilerScores> *>(this);
    }
    INLINE_ALWAYS TreeNode<bClassification, 1> * Downgrade() {
       return reinterpret_cast<TreeNode<bClassification, 1> *>(this);

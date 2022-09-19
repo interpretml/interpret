@@ -641,7 +641,7 @@ public:
 
             do {
                // there is no way to get the top and pop at the same time.. would be good to get a better queue, but our code isn't bottlenecked by it
-               pTreeNode = nodeGainRanking.top()->Upgrade<cCompilerScores>();
+               pTreeNode = nodeGainRanking.top()->template Upgrade<cCompilerScores>();
                // In theory we can have nodes with equal gain values here, but this is very very rare to occur in practice
                // We handle equal gain values in FindBestSplitGain because we 
                // can have zero instances in bins, in which case it occurs, but those equivalent situations have been cleansed by
