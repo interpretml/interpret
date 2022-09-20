@@ -6,23 +6,15 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
 #include "logging.h"
+#include "common_c.h" // LIKELY
 #include "zones.h"
 
-#include "ebm_internal.hpp"
-
 #include "ebm_stats.hpp"
-
-#include "Feature.hpp"
-#include "Term.hpp"
-
 #include "GradientPair.hpp"
 #include "Bin.hpp"
-
-#include "InteractionCore.hpp"
-
 #include "TensorTotalsSum.hpp"
+#include "InteractionCore.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

@@ -8,22 +8,18 @@
 #include <limits> // numeric_limits
 #include <string.h> // memcpy
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // ErrorEbm
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // FloatBig
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "ebm_internal.hpp" // k_cDimensionsMax
 
-// feature includes
 #include "Feature.hpp"
-#include "Term.hpp"
-// dataset depends on features
 #include "DataSetInteraction.hpp"
-#include "InteractionShell.hpp"
-
+#include "Bin.hpp" // GetBinSize
 #include "InteractionCore.hpp"
-
-#include "TensorTotalsSum.hpp"
+#include "InteractionShell.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

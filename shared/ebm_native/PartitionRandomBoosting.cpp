@@ -7,23 +7,18 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <algorithm> // sort
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // ErrorEbm
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // LIKELY
 #include "zones.h"
 
-#include "ebm_internal.hpp"
-
 #include "RandomDeterministic.hpp"
-
-#include "Tensor.hpp"
 #include "ebm_stats.hpp"
-
 #include "Feature.hpp"
 #include "Term.hpp"
-
+#include "Tensor.hpp"
 #include "GradientPair.hpp"
 #include "Bin.hpp"
-
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"
 
@@ -73,8 +68,7 @@ public:
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
 
-      Tensor * const pInnerTermUpdate =
-         pBoosterShell->GetInnerTermUpdate();
+      Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
       const IntEbm * pLeavesMax1 = aLeavesMax;
       const Feature * const * ppFeature1 = pTerm->GetFeatures();

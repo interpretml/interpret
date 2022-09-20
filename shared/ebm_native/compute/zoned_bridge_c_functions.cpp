@@ -8,10 +8,8 @@
 #include <vector>
 #include <algorithm>
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "common_c.h"
-#include "bridge_c.h"
+#include "ebm_native.h" // ErrorEbm
+#include "bridge_c.h" // INTERNAL_IMPORT_EXPORT_BODY
 #include "zones.h"
 
 #include "zoned_bridge_c_functions.h"

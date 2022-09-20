@@ -9,7 +9,6 @@
 #include <string.h> // memcpy
 
 #include "logging.h" // EBM_ASSERT
-#include "zones.h"
 
 #include "ebm_internal.hpp" // AddPositiveFloatsSafeBig
 #include "RandomDeterministic.hpp" // RandomDeterministic

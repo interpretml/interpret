@@ -4,14 +4,12 @@
 
 #include "precompiled_header_cpp.hpp"
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // EBM_API_BODY
+#include "logging.h" // LOG_
 #include "zones.h"
 
-#include "ebm_internal.hpp"
 #include "RandomDeterministic.hpp"
 #include "RandomNondeterministic.hpp"
-
 #include "GaussianDistribution.hpp"
 
 namespace DEFINED_ZONE_NAME {

@@ -13,11 +13,12 @@
 #include <set> // std::set
 #include <string.h> // strchr, memmove
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // EBM_API_BODY
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // LIKELY
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "common_cpp.hpp" // IsConvertError
 
 #include "RandomDeterministic.hpp"
 

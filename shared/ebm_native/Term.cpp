@@ -7,6 +7,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "common_c.h" // UNLIKELY
+
 #include "Term.hpp"
 
 namespace DEFINED_ZONE_NAME {

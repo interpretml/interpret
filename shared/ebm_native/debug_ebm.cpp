@@ -19,8 +19,6 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "ebm_internal.hpp"
-
 #include "approximate_math.hpp"
 
 namespace DEFINED_ZONE_NAME {

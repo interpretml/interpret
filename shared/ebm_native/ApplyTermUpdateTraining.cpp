@@ -6,11 +6,9 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
-#include "ebm_internal.hpp"
 #include "approximate_math.hpp"
 #include "ebm_stats.hpp"
 #include "Term.hpp"

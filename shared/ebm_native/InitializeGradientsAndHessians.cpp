@@ -7,14 +7,13 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // ErrorEbm
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // FloatFast
 #include "zones.h"
 
-#include "ebm_internal.hpp"
-
-#include "dataset_shared.hpp"
 #include "ebm_stats.hpp"
+#include "dataset_shared.hpp" // GetDataSetSharedTarget
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

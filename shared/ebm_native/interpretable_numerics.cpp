@@ -9,10 +9,13 @@
 #include <string.h> // strchr, memmove, memcpy
 
 #include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // LIKELY
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "common_cpp.hpp" // IsConvertError
+
+#include "ebm_internal.hpp" // FloatTickIncrement
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

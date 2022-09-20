@@ -11,8 +11,8 @@
 #include "bridge_cpp.hpp" // GetCountScores
 
 #include "ebm_internal.hpp" // AddPositiveFloatsSafeBig
-#include "dataset_shared.hpp" // SharedStorageDataType
 
+#include "dataset_shared.hpp" // SharedStorageDataType
 #include "DataSetInteraction.hpp"
 
 namespace DEFINED_ZONE_NAME {

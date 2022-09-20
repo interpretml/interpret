@@ -10,26 +10,19 @@
 #include <vector>
 #include <queue>
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // ErrorEbm
+#include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
 #include "ebm_internal.hpp"
 
 #include "RandomDeterministic.hpp"
-
-#include "Tensor.hpp"
 #include "ebm_stats.hpp"
-
-#include "Feature.hpp"
-#include "Term.hpp"
-
+#include "Tensor.hpp"
 #include "GradientPair.hpp"
 #include "Bin.hpp"
-
 #include "TreeNode.hpp"
 #include "SplitPosition.hpp"
-
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"
 

@@ -13,9 +13,10 @@
 
 #include "ebm_native.h"
 #include "logging.h"
+#include "common_c.h" // LIKELY
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "common_cpp.hpp" // IsConvertError
 
 // TODO: check this file for how we handle subnormal numbers!  It's tricky if we get them
 

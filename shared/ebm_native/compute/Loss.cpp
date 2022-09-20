@@ -8,11 +8,10 @@
 #include <memory> // shared_ptr, unique_ptr
 #include <vector>
 
-#include "Loss.hpp"
-
 #include "zoned_bridge_c_functions.h"
 #include "registration_exceptions.hpp"
 #include "Registration.hpp"
+#include "Loss.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

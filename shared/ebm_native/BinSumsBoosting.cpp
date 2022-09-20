@@ -6,23 +6,17 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "ebm_internal.hpp" // k_cCompilerClassesMax
 
-#include "ebm_stats.hpp"
-
-#include "Feature.hpp"
 #include "Term.hpp"
 #include "InnerBag.hpp"
-#include "Tensor.hpp"
-#include "BoosterCore.hpp"
-#include "BoosterShell.hpp"
-
 #include "GradientPair.hpp"
 #include "Bin.hpp"
+#include "BoosterCore.hpp"
+#include "BoosterShell.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

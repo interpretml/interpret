@@ -9,11 +9,14 @@
 #include <algorithm> // std::sort
 #include <string.h> // memcpy
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // EBM_API_BODY
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // LIKELY
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "common_cpp.hpp" // IsConvertError
+
+#include "ebm_internal.hpp" // FloatTickIncrement
 
 // TODO: check this file for how we handle subnormal numbers.  NEVER RETURN SUBNORMALS!
 

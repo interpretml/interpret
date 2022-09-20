@@ -7,11 +7,10 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <string.h> // memcpy
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // ErrorEbm
+#include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
-#include "ebm_internal.hpp"
 #include "Feature.hpp"
 #include "Term.hpp"
 #include "Tensor.hpp"

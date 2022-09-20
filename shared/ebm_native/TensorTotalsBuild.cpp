@@ -10,14 +10,11 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "common_cpp.hpp" // IsMultiplyError
 
-#include "Feature.hpp"
-#include "Term.hpp"
-
+#include "ebm_internal.hpp" // k_dynamicDimensions
 #include "GradientPair.hpp"
 #include "Bin.hpp"
-
 #include "TensorTotalsSum.hpp"
 
 namespace DEFINED_ZONE_NAME {

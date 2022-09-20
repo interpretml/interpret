@@ -12,11 +12,9 @@
 
 #include "bridge_cpp.hpp" // GetCountScores
 
-#include "dataset_shared.hpp" // GetDataSetSharedHeader
-
 #include "Feature.hpp" // Feature
+#include "dataset_shared.hpp" // GetDataSetSharedHeader
 #include "Bin.hpp" // IsOverflowBinSize
-
 #include "InteractionCore.hpp"
 
 namespace DEFINED_ZONE_NAME {

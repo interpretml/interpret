@@ -7,11 +7,10 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "bridge_cpp.hpp" // GetCountScores
 
 #include "GradientPair.hpp"
 #include "Bin.hpp"

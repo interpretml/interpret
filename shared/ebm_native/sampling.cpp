@@ -4,15 +4,14 @@
 
 #include "precompiled_header_cpp.hpp"
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // ErrorEbm
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // LIKELY
 #include "zones.h"
 
-#include "ebm_internal.hpp"
-
-#include "dataset_shared.hpp"
 #include "RandomDeterministic.hpp"
 #include "RandomNondeterministic.hpp"
+#include "dataset_shared.hpp" // GetDataSetSharedWeight
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

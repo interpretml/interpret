@@ -6,23 +6,16 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "ebm_internal.hpp" // k_cDimensionsMax
 
-#include "ebm_stats.hpp"
-
-#include "Feature.hpp"
-#include "Term.hpp"
-#include "DataSetInteraction.hpp"
-
-#include "InteractionCore.hpp"
-#include "InteractionShell.hpp"
-
-#include "GradientPair.hpp"
-#include "Bin.hpp"
+#include "DataSetInteraction.hpp" // DataSetInteraction
+#include "GradientPair.hpp" // GradientPair
+#include "Bin.hpp" // Bin
+#include "InteractionCore.hpp" // InteractionCore
+#include "InteractionShell.hpp" // InteractionShell
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
