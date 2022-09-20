@@ -7,10 +7,10 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "common_c.h"
-#include "bridge_c.h"
+#include "ebm_native.h" // ErrorEbm
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // SkipEndWhitespaceWhenGuaranteedNonWhitespace
+#include "bridge_c.h" // CreateLoss_*
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {

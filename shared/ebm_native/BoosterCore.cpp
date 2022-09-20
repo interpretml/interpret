@@ -9,41 +9,31 @@
 #include <limits> // numeric_limits
 #include <thread>
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "zones.h"
 
-#include "common_cpp.hpp"
-#include "ebm_internal.hpp"
+#include "logging.h" // EBM_ASSERT
 
-#include "compute_accessors.hpp"
+#include "common_cpp.hpp" // IsConvertError, IsMultiplyError
+#include "ebm_internal.hpp" // AddPositiveFloatsSafeBig
 
-#include "dataset_shared.hpp"
-#include "RandomDeterministic.hpp"
-#include "Tensor.hpp"
-#include "ebm_stats.hpp"
-// feature includes
-#include "Feature.hpp"
-// Term.hpp depends on Feature.h
-#include "Term.hpp"
-// dataset depends on features
-#include "DataSetBoosting.hpp"
-// samples is somewhat independent from datasets, but relies on an indirect coupling with them
-#include "InnerBag.hpp"
+#include "dataset_shared.hpp" // GetDataSetSharedHeader
+#include "Tensor.hpp" // Tensor
+#include "Feature.hpp" // Feature
+#include "Term.hpp" // Term
+#include "InnerBag.hpp" // InnerBag
 
-#include "GradientPair.hpp"
-#include "Bin.hpp"
+#include "Bin.hpp" // IsOverflowBinSize
 
-#include "TreeNode.hpp"
-#include "SplitPosition.hpp"
+#include "TreeNode.hpp" // IsOverflowTreeNodeSize
+#include "SplitPosition.hpp" // IsOverflowSplitPositionSize
 
-#include "BoosterShell.hpp"
 #include "BoosterCore.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
+
+class RandomDeterministic;
 
 extern ErrorEbm InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
@@ -141,6 +131,23 @@ ErrorEbm BoosterCore::InitializeTensors(
    return Error_None;
 }
 
+BoosterCore::~BoosterCore() {
+   // this only gets called after our reference count has been decremented to zero
+
+   m_trainingSet.Destruct();
+   m_validationSet.Destruct();
+
+   InnerBag::FreeInnerBags(m_cInnerBags, m_apInnerBags);
+   free(m_aValidationWeights);
+
+   Term::FreeTerms(m_cTerms, m_apTerms);
+
+   free(m_aFeatures);
+
+   DeleteTensors(m_cTerms, m_apCurrentTermTensors);
+   DeleteTensors(m_cTerms, m_apBestTermTensors);
+};
+
 void BoosterCore::Free(BoosterCore * const pBoosterCore) {
    LOG_0(Trace_Info, "Entered BoosterCore::Free");
    if(nullptr != pBoosterCore) {
@@ -172,7 +179,6 @@ void BoosterCore::Free(BoosterCore * const pBoosterCore) {
 
 ErrorEbm BoosterCore::Create(
    RandomDeterministic * const pRng,
-   BoosterShell * const pBoosterShell,
    const size_t cTerms,
    const size_t cInnerBags,
    const double * const experimentalParams,
@@ -180,7 +186,8 @@ ErrorEbm BoosterCore::Create(
    const IntEbm * const aiTermFeatures, 
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
-   const double * const aInitScores
+   const double * const aInitScores,
+   BoosterCore ** const ppBoosterCoreOut
 ) {
    // experimentalParams isn't used by default.  It's meant to provide an easy way for python or other higher
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
@@ -188,7 +195,9 @@ ErrorEbm BoosterCore::Create(
 
    LOG_0(Trace_Info, "Entered BoosterCore::Create");
 
-   EBM_ASSERT(nullptr != pBoosterShell);
+   EBM_ASSERT(nullptr != ppBoosterCoreOut);
+   EBM_ASSERT(nullptr == *ppBoosterCoreOut);
+   EBM_ASSERT(nullptr != pDataSetShared);
 
    ErrorEbm error;
 
@@ -226,8 +235,8 @@ ErrorEbm BoosterCore::Create(
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == pBoosterCore");
       return Error_OutOfMemory;
    }
-   // give ownership of our object to pBoosterShell
-   pBoosterShell->SetBoosterCore(pBoosterCore);
+   // give ownership of our object back to the caller, even if there is a failure
+   *ppBoosterCoreOut = pBoosterCore;
 
    size_t cSamples = 0;
    size_t cFeatures = 0;
@@ -595,7 +604,7 @@ ErrorEbm BoosterCore::Create(
       // TODO: we could steal the aWeights in GenerateInnerBags for flat sampling sets
       pBoosterCore->m_apInnerBags = InnerBag::GenerateInnerBags(
          pRng,
-         &pBoosterCore->m_trainingSet, 
+         pBoosterCore->m_trainingSet.GetCountSamples(), 
          aWeights, 
          cInnerBags
       );

@@ -8,11 +8,9 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // InteractionHandle
+#include "logging.h" // LOG_0
 #include "zones.h"
-
-#include "ebm_internal.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -49,9 +47,9 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS void InitializeUnfailing() {
+   inline void InitializeUnfailing(InteractionCore * const pInteractionCore) {
       m_handleVerification = k_handleVerificationOk;
-      m_pInteractionCore = nullptr;
+      m_pInteractionCore = pInteractionCore;
 
       m_aInteractionFastBinsTemp = nullptr;
       m_cAllocatedFastBins = 0;
@@ -64,9 +62,9 @@ public:
    }
 
    static void Free(InteractionShell * const pInteractionShell);
-   static InteractionShell * Create();
+   static InteractionShell * Create(InteractionCore * const pInteractionCore);
 
-   INLINE_ALWAYS static InteractionShell * GetInteractionShellFromHandle(
+   inline static InteractionShell * GetInteractionShellFromHandle(
       const InteractionHandle interactionHandle
    ) {
       if(nullptr == interactionHandle) {
@@ -84,49 +82,43 @@ public:
       }
       return nullptr;
    }
-   INLINE_ALWAYS InteractionHandle GetHandle() {
+   inline InteractionHandle GetHandle() {
       return reinterpret_cast<InteractionHandle>(this);
    }
 
-   INLINE_ALWAYS InteractionCore * GetInteractionCore() {
+   inline InteractionCore * GetInteractionCore() {
       EBM_ASSERT(nullptr != m_pInteractionCore);
       return m_pInteractionCore;
    }
 
-   INLINE_ALWAYS void SetInteractionCore(InteractionCore * const pInteractionCore) {
-      EBM_ASSERT(nullptr != pInteractionCore);
-      EBM_ASSERT(nullptr == m_pInteractionCore); // only set it once
-      m_pInteractionCore = pInteractionCore;
-   }
-
-   INLINE_ALWAYS int * GetPointerCountLogEnterMessages() {
+   inline int * GetPointerCountLogEnterMessages() {
       return &m_cLogEnterMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogExitMessages() {
+   inline int * GetPointerCountLogExitMessages() {
       return &m_cLogExitMessages;
    }
 
    BinBase * GetInteractionFastBinsTemp(const size_t cBytesPerFastBin, const size_t cFastBins);
 
-   INLINE_ALWAYS BinBase * GetInteractionFastBinsTemp() {
+   inline BinBase * GetInteractionFastBinsTemp() {
       // call this if the bins were already allocated and we just need the pointer
       return m_aInteractionFastBinsTemp;
    }
 
    BinBase * GetInteractionBigBins(const size_t cBytesPerBigBin, const size_t cBigBins);
 
-   INLINE_ALWAYS BinBase * GetInteractionBigBins() {
+   inline BinBase * GetInteractionBigBins() {
       // call this if the bins were already allocated and we just need the pointer
       return m_aInteractionBigBins;
    }
 
 #ifndef NDEBUG
-   INLINE_ALWAYS const unsigned char * GetDebugFastBinsEnd() const {
+   inline const unsigned char * GetDebugFastBinsEnd() const {
       return m_pDebugFastBinsEnd;
    }
 
-   INLINE_ALWAYS void SetDebugFastBinsEnd(const unsigned char * const pDebugFastBinsEnd) {
+   inline void SetDebugFastBinsEnd(const unsigned char * const pDebugFastBinsEnd) {
       m_pDebugFastBinsEnd = pDebugFastBinsEnd;
    }
 #endif // NDEBUG

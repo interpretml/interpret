@@ -7,7 +7,6 @@
 
 #include <exception>
 
-#include "ebm_native.h"
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {

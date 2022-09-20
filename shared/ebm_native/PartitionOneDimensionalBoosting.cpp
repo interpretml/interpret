@@ -20,7 +20,6 @@
 
 #include "Tensor.hpp"
 #include "ebm_stats.hpp"
-#include "BoosterShell.hpp"
 
 #include "Feature.hpp"
 #include "Term.hpp"
@@ -31,11 +30,13 @@
 #include "TreeNode.hpp"
 #include "SplitPosition.hpp"
 
+#include "BoosterCore.hpp"
+#include "BoosterShell.hpp"
+
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
-
 
 template<ptrdiff_t cCompilerClasses>
 INLINE_RELEASE_TEMPLATED static void SumAllBins(

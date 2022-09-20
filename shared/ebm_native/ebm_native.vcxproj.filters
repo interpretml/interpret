@@ -100,9 +100,8 @@
     <None Include="ebm_native_exports.def" />
     <None Include="CODING_STYLE.md" />
     <None Include="IMPORTANT.md" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="ebm_native_exports.txt" />
+    <None Include="include_ordering.txt" />
+    <None Include="ebm_native_exports.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="inc">

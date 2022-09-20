@@ -12,10 +12,9 @@
 #include "zones.h"
 
 #include "ebm_internal.hpp"
-
-// Term.hpp depends on Feature.h
+#include "Feature.hpp"
 #include "Term.hpp"
-
+#include "Tensor.hpp"
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"
 

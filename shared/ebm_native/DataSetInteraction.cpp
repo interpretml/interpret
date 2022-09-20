@@ -7,17 +7,13 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "zones.h"
+#include "common_cpp.hpp" // INLINE_RELEASE_UNTEMPLATED
+#include "bridge_cpp.hpp" // GetCountScores
 
-#include "ebm_internal.hpp"
+#include "ebm_internal.hpp" // AddPositiveFloatsSafeBig
+#include "dataset_shared.hpp" // SharedStorageDataType
 
-#include "Feature.hpp"
 #include "DataSetInteraction.hpp"
-
-
-#include "dataset_shared.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

@@ -8,13 +8,13 @@
 #include <cmath> // log, exp, etc
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // INLINE_ALWAYS, LIKELY, UNLIKELY
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "ebm_internal.hpp" // k_epsilonGradient
 
-#include "approximate_math.hpp"
+#include "approximate_math.hpp" // ExpForLogLossBinaryClassification, ...
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

@@ -8,26 +8,16 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "zones.h"
+#include "logging.h" // EBM_ASSERT
 
-#include "ebm_internal.hpp"
+#include "bridge_cpp.hpp" // GetCountScores
 
-#include "dataset_shared.hpp"
+#include "dataset_shared.hpp" // GetDataSetSharedHeader
 
-// feature includes
-#include "Feature.hpp"
-#include "Term.hpp"
-
-// dataset depends on features
-#include "DataSetInteraction.hpp"
-
-#include "GradientPair.hpp"
-#include "Bin.hpp"
+#include "Feature.hpp" // Feature
+#include "Bin.hpp" // IsOverflowBinSize
 
 #include "InteractionCore.hpp"
-#include "InteractionShell.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -68,11 +58,11 @@ void InteractionCore::Free(InteractionCore * const pInteractionCore) {
 }
 
 ErrorEbm InteractionCore::Create(
-   InteractionShell * const pInteractionShell,
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
    const double * const aInitScores,
-   const double * const experimentalParams
+   const double * const experimentalParams,
+   InteractionCore ** const ppInteractionCoreOut
 ) {
    // experimentalParams isn't used by default.  It's meant to provide an easy way for python or other higher
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
@@ -80,7 +70,8 @@ ErrorEbm InteractionCore::Create(
 
    LOG_0(Trace_Info, "Entered InteractionCore::Allocate");
 
-   EBM_ASSERT(nullptr != pInteractionShell);
+   EBM_ASSERT(nullptr != ppInteractionCoreOut);
+   EBM_ASSERT(nullptr == *ppInteractionCoreOut);
    EBM_ASSERT(nullptr != pDataSetShared);
 
    ErrorEbm error;
@@ -100,8 +91,8 @@ ErrorEbm InteractionCore::Create(
       LOG_0(Trace_Warning, "WARNING InteractionCore::Create nullptr == pInteractionCore");
       return Error_OutOfMemory;
    }
-   // give ownership of our object to pInteractionShell
-   pInteractionShell->SetInteractionCore(pRet);
+   // give ownership of our object back to the caller, even if there is a failure
+   *ppInteractionCoreOut = pRet;
 
    size_t cSamples = 0;
    size_t cFeatures = 0;

@@ -7,9 +7,12 @@
 
 #include <random>
 
+#include "ebm_native.h" // SeedEbm
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // INLINE_ALWAYS
 #include "zones.h"
-#include "common_cpp.hpp"
-#include "ebm_internal.hpp" // INLINE_ALWAYS
+
+#include "common_cpp.hpp" // CountBitsRequiredPositiveMax
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

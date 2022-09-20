@@ -7,11 +7,9 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // UIntEbm
+#include "common_c.h" // FloatFast
 #include "zones.h"
-
-#include "ebm_internal.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

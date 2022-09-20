@@ -7,14 +7,9 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "common_c.h"
-#include "bridge_c.h"
 #include "zones.h"
 
-#include "common_cpp.hpp"
-#include "bridge_cpp.hpp"
+#include "bridge_cpp.hpp" // k_cBitsForStorageType
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -68,7 +63,7 @@ static_assert(
 // if we cover the entire range of possible bit packing, then we don't need the dynamic case!
 static constexpr ptrdiff_t k_cItemsPerBitPackLast = (ptrdiff_t { k_cBitsForStorageType } == k_cItemsPerBitPackMax2 &&
    ptrdiff_t { 1 } == k_cItemsPerBitPackMin2) ? ptrdiff_t { 1 } : k_cItemsPerBitPackDynamic2;
-INLINE_ALWAYS constexpr static ptrdiff_t GetNextBitPack(const ptrdiff_t cItemsBitPackedPrev) noexcept {
+inline constexpr static ptrdiff_t GetNextBitPack(const ptrdiff_t cItemsBitPackedPrev) noexcept {
    // for 64 bits, the progression is: 64,32,21,16,12,10,9,8,7,6,5,4,3,2,1,0 (optionaly),-1 (never occurs in this function)
    // [there are 15 of these + the dynamic case + onebin case]
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1,0 (optionaly),-1 (never occurs in this function)

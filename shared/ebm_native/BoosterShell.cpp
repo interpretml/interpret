@@ -8,26 +8,22 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <string.h> // memcpy
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "zones.h"
+#include "RandomDeterministic.hpp" // RandomDeterministic
+#include "RandomNondeterministic.hpp" // RandomNondeterministic
 
-#include "ebm_internal.hpp"
+#include "Feature.hpp" // Feature
+#include "Term.hpp" // Term
+#include "Tensor.hpp" // Tensor
 
-#include "RandomDeterministic.hpp"
-#include "RandomNondeterministic.hpp"
-
-#include "Tensor.hpp"
-
-#include "Bin.hpp"
-
-#include "BoosterCore.hpp"
+#include "BoosterCore.hpp" // BoosterCore
 #include "BoosterShell.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
+
+struct BinBase;
 
 void BoosterShell::Free(BoosterShell * const pBoosterShell) {
    LOG_0(Trace_Info, "Entered BoosterShell::Free");
@@ -51,13 +47,16 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
    LOG_0(Trace_Info, "Exited BoosterShell::Free");
 }
 
-BoosterShell * BoosterShell::Create() {
+BoosterShell * BoosterShell::Create(BoosterCore * const pBoosterCore) {
    LOG_0(Trace_Info, "Entered BoosterShell::Create");
 
    BoosterShell * const pNew = EbmMalloc<BoosterShell>();
-   if(LIKELY(nullptr != pNew)) {
-      pNew->InitializeUnfailing();
+   if(UNLIKELY(nullptr == pNew)) {
+      LOG_0(Trace_Error, "ERROR BoosterShell::Create nullptr == pNew");
+      return nullptr;
    }
+
+   pNew->InitializeUnfailing(pBoosterCore); // take full ownership of the BoosterCore
 
    LOG_0(Trace_Info, "Exited BoosterShell::Create");
 
@@ -225,14 +224,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       }
    }
 
-   BoosterShell * const pBoosterShell = BoosterShell::Create();
-   if(UNLIKELY(nullptr == pBoosterShell)) {
-      return Error_OutOfMemory;
-   }
-
+   // TODO: since BoosterCore is a non-POD C++ class, we should probably move the call to new from inside
+   //       BoosterCore::Create to here and wrap it with a try catch at this level and rely on standard C++ behavior
+   BoosterCore * pBoosterCore = nullptr;
    error = BoosterCore::Create(
-      pRng, 
-      pBoosterShell,
+      pRng,
       cTerms,
       cInnerBags,
       experimentalParams,
@@ -240,13 +236,22 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       featureIndexes,
       static_cast<const unsigned char *>(dataSet),
       bag,
-      initScores
+      initScores,
+      &pBoosterCore
    );
    if(UNLIKELY(Error_None != error)) {
-      BoosterShell::Free(pBoosterShell);
+      BoosterCore::Free(pBoosterCore); // legal if nullptr.  On error we can get back a legal pBoosterCore to delete
       return error;
    }
 
+   BoosterShell * const pBoosterShell = BoosterShell::Create(pBoosterCore);
+   if(UNLIKELY(nullptr == pBoosterShell)) {
+      // if the memory allocation for pBoosterShell failed then there was no place to put the pBoosterCore, so free it
+      BoosterCore::Free(pBoosterCore);
+      return Error_OutOfMemory;
+   }
+
+   // TODO: move this into the BoosterShell::Create function
    error = pBoosterShell->FillAllocations();
    if(Error_None != error) {
       BoosterShell::Free(pBoosterShell);
@@ -288,16 +293,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBoosterView(
       // already logged
       return Error_IllegalParamVal;
    }
+   BoosterCore * const pBoosterCore = pBoosterShellOriginal->GetBoosterCore();
 
-   BoosterShell * const pBoosterShellNew = BoosterShell::Create();
+   BoosterShell * const pBoosterShellNew = BoosterShell::Create(pBoosterCore);
    if(UNLIKELY(nullptr == pBoosterShellNew)) {
       LOG_0(Trace_Warning, "WARNING CreateBooster nullptr == pBoosterShellNew");
       return Error_OutOfMemory;
    }
-
-   BoosterCore * const pBoosterCore = pBoosterShellOriginal->GetBoosterCore();
    pBoosterCore->AddReferenceCount();
-   pBoosterShellNew->SetBoosterCore(pBoosterCore); // assume ownership of pBoosterCore reference count increment
 
    error = pBoosterShellNew->FillAllocations();
    if(Error_None != error) {

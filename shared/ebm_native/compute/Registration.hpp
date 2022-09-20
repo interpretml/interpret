@@ -11,9 +11,9 @@
 #include <memory>
 
 #include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
 #include "common_c.h" // INLINE_ALWAYS
-#include "bridge_c.h"
+#include "bridge_c.h" // Config
 #include "zones.h"
 
 #include "registration_exceptions.hpp"

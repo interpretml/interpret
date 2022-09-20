@@ -10,22 +10,11 @@
 #include <cmath> // abs
 #include <string.h> // memcpy
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // UNUSED
 #include "zones.h"
 
-#include "common_cpp.hpp"
-#include "ebm_internal.hpp"
-
 #include "GradientPair.hpp"
-#include "Feature.hpp"
-#include "Term.hpp"
-#include "DataSetBoosting.hpp"
-#include "DataSetInteraction.hpp"
-#include "InnerBag.hpp"
-
-#include "BoosterCore.hpp"
-#include "InteractionCore.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -42,15 +31,15 @@ struct BinBase {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    template<typename TFloat, bool bClassification, size_t cCompilerScores = 1>
-   INLINE_ALWAYS Bin<TFloat, bClassification, cCompilerScores> * Specialize() {
+   inline Bin<TFloat, bClassification, cCompilerScores> * Specialize() {
       return static_cast<Bin<TFloat, bClassification, cCompilerScores> *>(this);
    }
    template<typename TFloat, bool bClassification, size_t cCompilerScores = 1>
-   INLINE_ALWAYS const Bin<TFloat, bClassification, cCompilerScores> * Specialize() const {
+   inline const Bin<TFloat, bClassification, cCompilerScores> * Specialize() const {
       return static_cast<const Bin<TFloat, bClassification, cCompilerScores> *>(this);
    }
 
-   INLINE_ALWAYS void ZeroMem(const size_t cBytesPerBin, const size_t cBins = 1, const size_t iBin = 0) {
+   inline void ZeroMem(const size_t cBytesPerBin, const size_t cBins = 1, const size_t iBin = 0) {
       // The C standard guarantees that memset to 0 on integer types is a zero, and IEEE-754 guarantees 
       // that mem zeroing a floating point is zero.  Our Bin objects are POD and also only contain floating point
       // and unsigned integer types, so memset is legal. We do not use pointers which would be implementation defined.
@@ -98,35 +87,35 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS size_t GetCountSamples() const {
+   inline size_t GetCountSamples() const {
       return m_cSamples;
    }
-   INLINE_ALWAYS void SetCountSamples(const size_t cSamples) {
+   inline void SetCountSamples(const size_t cSamples) {
       m_cSamples = cSamples;
    }
 
-   INLINE_ALWAYS TFloat GetWeight() const {
+   inline TFloat GetWeight() const {
       return m_weight;
    }
-   INLINE_ALWAYS void SetWeight(const TFloat weight) {
+   inline void SetWeight(const TFloat weight) {
       m_weight = weight;
    }
 
-   INLINE_ALWAYS const GradientPair<TFloat, bClassification> * GetGradientPairs() const {
+   inline const GradientPair<TFloat, bClassification> * GetGradientPairs() const {
       return ArrayToPointer(m_aGradientPairs);
    }
-   INLINE_ALWAYS GradientPair<TFloat, bClassification> * GetGradientPairs() {
+   inline GradientPair<TFloat, bClassification> * GetGradientPairs() {
       return ArrayToPointer(m_aGradientPairs);
    }
 
-   INLINE_ALWAYS const Bin<TFloat, bClassification, 1> * Downgrade() const {
+   inline const Bin<TFloat, bClassification, 1> * Downgrade() const {
       return reinterpret_cast<const Bin<TFloat, bClassification, 1> *>(this);
    }
-   INLINE_ALWAYS Bin<TFloat, bClassification, 1> * Downgrade() {
+   inline Bin<TFloat, bClassification, 1> * Downgrade() {
       return reinterpret_cast<Bin<TFloat, bClassification, 1> *>(this);
    }
 
-   INLINE_ALWAYS void Add(
+   inline void Add(
       const size_t cScores,
       const Bin & other,
       const GradientPair<TFloat, bClassification> * const aOtherGradientPairs,
@@ -146,18 +135,18 @@ public:
          ++iScore;
       } while(cScores != iScore);
    }
-   INLINE_ALWAYS void Add(
+   inline void Add(
       const size_t cScores,
       const Bin & other,
       const GradientPair<TFloat, bClassification> * const aOtherGradientPairs
    ) {
       Add(cScores, other, aOtherGradientPairs, GetGradientPairs());
    }
-   INLINE_ALWAYS void Add(const size_t cScores, const Bin & other) {
+   inline void Add(const size_t cScores, const Bin & other) {
       Add(cScores, other, other.GetGradientPairs(), GetGradientPairs());
    }
 
-   INLINE_ALWAYS void Subtract(
+   inline void Subtract(
       const size_t cScores,
       const Bin & other,
       const GradientPair<TFloat, bClassification> * const aOtherGradientPairs,
@@ -177,18 +166,18 @@ public:
          ++iScore;
       } while(cScores != iScore);
    }
-   INLINE_ALWAYS void Subtract(
+   inline void Subtract(
       const size_t cScores,
       const Bin & other,
       const GradientPair<TFloat, bClassification> * const aOtherGradientPairs
    ) {
       Subtract(cScores, other, aOtherGradientPairs, GetGradientPairs());
    }
-   INLINE_ALWAYS void Subtract(const size_t cScores, const Bin & other) {
+   inline void Subtract(const size_t cScores, const Bin & other) {
       Subtract(cScores, other, other.GetGradientPairs(), GetGradientPairs());
    }
 
-   INLINE_ALWAYS void Copy(
+   inline void Copy(
       const size_t cScores,
       const Bin & other,
       const GradientPair<TFloat, bClassification> * const aOtherGradientPairs,
@@ -208,18 +197,18 @@ public:
          ++iScore;
       } while(cScores != iScore);
    }
-   INLINE_ALWAYS void Copy(
+   inline void Copy(
       const size_t cScores,
       const Bin & other,
       const GradientPair<TFloat, bClassification> * const aOtherGradientPairs
    ) {
       Copy(cScores, other, aOtherGradientPairs, GetGradientPairs());
    }
-   INLINE_ALWAYS void Copy(const size_t cScores, const Bin & other) {
+   inline void Copy(const size_t cScores, const Bin & other) {
       Copy(cScores, other, other.GetGradientPairs(), GetGradientPairs());
    }
 
-   INLINE_ALWAYS void Zero(
+   inline void Zero(
       const size_t cScores,
       GradientPair<TFloat, bClassification> * const aThisGradientPairs
    ) {
@@ -230,11 +219,11 @@ public:
       m_weight = 0;
       ZeroGradientPairs(aThisGradientPairs, cScores);
    }
-   INLINE_ALWAYS void Zero(const size_t cScores) {
+   inline void Zero(const size_t cScores) {
       Zero(cScores, GetGradientPairs());
    }
 
-   INLINE_ALWAYS void AssertZero(
+   inline void AssertZero(
       const size_t cScores,
       const GradientPair<TFloat, bClassification> * const aThisGradientPairs
    ) const {
@@ -255,7 +244,7 @@ public:
       } while(cScores != iScore);
 #endif // NDEBUG
    }
-   INLINE_ALWAYS void AssertZero(const size_t cScores) const {
+   inline void AssertZero(const size_t cScores) const {
       AssertZero(cScores, GetGradientPairs());
    }
 };
@@ -274,7 +263,7 @@ static_assert(std::is_pod<Bin<double, false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<typename TFloat>
-INLINE_ALWAYS static bool IsOverflowBinSize(const bool bClassification, const size_t cScores) {
+inline static bool IsOverflowBinSize(const bool bClassification, const size_t cScores) {
    const size_t cBytesPerGradientPair = GetGradientPairSize<TFloat>(bClassification);
 
    if(UNLIKELY(IsMultiplyError(cBytesPerGradientPair, cScores))) {
@@ -298,7 +287,7 @@ INLINE_ALWAYS static bool IsOverflowBinSize(const bool bClassification, const si
 }
 
 template<typename TFloat>
-INLINE_ALWAYS static size_t GetBinSize(const bool bClassification, const size_t cScores) {
+inline static size_t GetBinSize(const bool bClassification, const size_t cScores) {
    // TODO: someday try out bin sizes that are a power of two.  This would allow us to use a shift when using bins
    //       instead of using multiplications.  In that version return the number of bits to shift here to make it easy
    //       to get either the shift required for indexing OR the number of bytes (shift 1 << num_bits)
@@ -318,7 +307,7 @@ INLINE_ALWAYS static size_t GetBinSize(const bool bClassification, const size_t 
 }
 
 template<typename TFloat, bool bClassification, size_t cCompilerScores>
-INLINE_ALWAYS static Bin<TFloat, bClassification, cCompilerScores> * IndexBin(
+inline static Bin<TFloat, bClassification, cCompilerScores> * IndexBin(
    Bin<TFloat, bClassification, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
@@ -326,23 +315,23 @@ INLINE_ALWAYS static Bin<TFloat, bClassification, cCompilerScores> * IndexBin(
 }
 
 template<typename TFloat, bool bClassification, size_t cCompilerScores>
-INLINE_ALWAYS static const Bin<TFloat, bClassification, cCompilerScores> * IndexBin(
+inline static const Bin<TFloat, bClassification, cCompilerScores> * IndexBin(
    const Bin<TFloat, bClassification, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
    return reinterpret_cast<const Bin<TFloat, bClassification, cCompilerScores> *>(reinterpret_cast<const char *>(aBins) + iByte);
 }
 
-INLINE_ALWAYS static BinBase * IndexBin(BinBase * const aBins, const size_t iByte) {
+inline static BinBase * IndexBin(BinBase * const aBins, const size_t iByte) {
    return reinterpret_cast<BinBase *>(reinterpret_cast<char *>(aBins) + iByte);
 }
 
-INLINE_ALWAYS static const BinBase * IndexBin(const BinBase * const aBins, const size_t iByte) {
+inline static const BinBase * IndexBin(const BinBase * const aBins, const size_t iByte) {
    return reinterpret_cast<const BinBase *>(reinterpret_cast<const char *>(aBins) + iByte);
 }
 
 template<typename TFloat, bool bClassification, size_t cCompilerScores>
-INLINE_ALWAYS static const Bin<TFloat, bClassification, cCompilerScores> * NegativeIndexBin(
+inline static const Bin<TFloat, bClassification, cCompilerScores> * NegativeIndexBin(
    const Bin<TFloat, bClassification, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
@@ -350,7 +339,7 @@ INLINE_ALWAYS static const Bin<TFloat, bClassification, cCompilerScores> * Negat
 }
 
 template<typename TFloat, bool bClassification, size_t cCompilerScores>
-INLINE_ALWAYS static Bin<TFloat, bClassification, cCompilerScores> * NegativeIndexBin(
+inline static Bin<TFloat, bClassification, cCompilerScores> * NegativeIndexBin(
    Bin<TFloat, bClassification, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
@@ -358,7 +347,7 @@ INLINE_ALWAYS static Bin<TFloat, bClassification, cCompilerScores> * NegativeInd
 }
 
 template<typename TFloat, bool bClassification, size_t cCompilerScores>
-INLINE_ALWAYS static size_t CountBins(
+inline static size_t CountBins(
    const Bin<TFloat, bClassification, cCompilerScores> * const pBinLow,
    const Bin<TFloat, bClassification, cCompilerScores> * const pBinHigh,
    const size_t cBytesPerBin

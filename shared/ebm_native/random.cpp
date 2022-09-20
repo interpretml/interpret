@@ -154,7 +154,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateGaussianRandom(
             ++pRandom;
          } while(pRandomEnd != pRandom);
       } catch(const std::bad_alloc &) {
-         LOG_0(Trace_Warning, "WARNING GenerateGaussianRandom Out of memory allocating BoosterCore");
+         LOG_0(Trace_Warning, "WARNING GenerateGaussianRandom Out of memory allocating randomGenerator");
          return Error_OutOfMemory;
       } catch(...) {
          LOG_0(Trace_Warning, "WARNING GenerateGaussianRandom Unknown error");

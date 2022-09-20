@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "ebm_native.h" // LogCallbackFunction
 #include "logging.h"
 
 #ifdef __cplusplus

@@ -9,11 +9,12 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <type_traits>
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // SeedEbm
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // INLINE_ALWAYS
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "common_cpp.hpp" // CountBitsRequiredPositiveMax
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

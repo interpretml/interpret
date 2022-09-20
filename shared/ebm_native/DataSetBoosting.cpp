@@ -8,15 +8,12 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <string.h> // memcpy
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "zones.h"
+#include "common_cpp.hpp" // INLINE_RELEASE_UNTEMPLATED
+#include "bridge_cpp.hpp" // GetCountScores
 
-#include "ebm_internal.hpp"
-
-#include "dataset_shared.hpp"
-#include "Feature.hpp"
-#include "Term.hpp"
+#include "Feature.hpp" // Feature
+#include "Term.hpp" // Term
+#include "dataset_shared.hpp" // SharedStorageDataType
 #include "DataSetBoosting.hpp"
 
 namespace DEFINED_ZONE_NAME {

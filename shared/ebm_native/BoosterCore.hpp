@@ -10,28 +10,22 @@
 #include <limits> // numeric_limits
 #include <atomic>
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // ErrorEbm
+#include "common_c.h" // ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
 #include "zones.h"
 
-#include "ebm_internal.hpp"
-
-#include "Tensor.hpp"
-// feature includes
-#include "Feature.hpp"
-// Term.hpp depends on Feature.h
-#include "Term.hpp"
-// dataset depends on features
 #include "DataSetBoosting.hpp"
-// samples is somewhat independent from datasets, but relies on an indirect coupling with them
-#include "InnerBag.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-class BoosterShell;
+class RandomDeterministic;
+class Feature;
+class Term;
+class InnerBag;
+class Tensor;
 
 class BoosterCore final {
 
@@ -78,26 +72,11 @@ class BoosterCore final {
       Tensor *** papTensorsOut
    );
 
-   INLINE_ALWAYS ~BoosterCore() {
-      // this only gets called after our reference count has been decremented to zero
-
-      m_trainingSet.Destruct();
-      m_validationSet.Destruct();
-
-      InnerBag::FreeInnerBags(m_cInnerBags, m_apInnerBags);
-      free(m_aValidationWeights);
-
-      Term::FreeTerms(m_cTerms, m_apTerms);
-
-      free(m_aFeatures);
-
-      DeleteTensors(m_cTerms, m_apCurrentTermTensors);
-      DeleteTensors(m_cTerms, m_apBestTermTensors);
-   };
+   ~BoosterCore();
 
    WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
-   INLINE_ALWAYS BoosterCore() noexcept :
+   inline BoosterCore() noexcept :
       m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
       m_cClasses(0),
       m_cFeatures(0),
@@ -123,78 +102,78 @@ class BoosterCore final {
 
 public:
 
-   INLINE_ALWAYS void AddReferenceCount() {
+   inline void AddReferenceCount() {
       // incrementing reference counts can be relaxed memory order since we're guaranteed to be above 1, 
       // so no result will change our behavior below
       // https://www.boost.org/doc/libs/1_59_0/doc/html/atomic/usage_examples.html
       m_REFERENCE_COUNT.fetch_add(1, std::memory_order_relaxed);
    };
 
-   INLINE_ALWAYS ptrdiff_t GetCountClasses() const {
+   inline ptrdiff_t GetCountClasses() const {
       return m_cClasses;
    }
 
-   INLINE_ALWAYS size_t GetCountBytesFastBins() const {
+   inline size_t GetCountBytesFastBins() const {
       return m_cBytesFastBins;
    }
 
-   INLINE_ALWAYS size_t GetCountBytesBigBins() const {
+   inline size_t GetCountBytesBigBins() const {
       return m_cBytesBigBins;
    }
 
-   INLINE_ALWAYS size_t GetCountBytesSplitPositions() const {
+   inline size_t GetCountBytesSplitPositions() const {
       return m_cBytesSplitPositions;
    }
 
-   INLINE_ALWAYS size_t GetCountBytesTreeNodes() const {
+   inline size_t GetCountBytesTreeNodes() const {
       return m_cBytesTreeNodes;
    }
 
-   INLINE_ALWAYS size_t GetCountTerms() const {
+   inline size_t GetCountTerms() const {
       return m_cTerms;
    }
 
-   INLINE_ALWAYS Term * const * GetTerms() const {
+   inline Term * const * GetTerms() const {
       return m_apTerms;
    }
 
-   INLINE_ALWAYS DataSetBoosting * GetTrainingSet() {
+   inline DataSetBoosting * GetTrainingSet() {
       return &m_trainingSet;
    }
 
-   INLINE_ALWAYS DataSetBoosting * GetValidationSet() {
+   inline DataSetBoosting * GetValidationSet() {
       return &m_validationSet;
    }
 
-   INLINE_ALWAYS size_t GetCountInnerBags() const {
+   inline size_t GetCountInnerBags() const {
       return m_cInnerBags;
    }
 
-   INLINE_ALWAYS const InnerBag * const * GetInnerBags() const {
+   inline const InnerBag * const * GetInnerBags() const {
       return m_apInnerBags;
    }
 
-   INLINE_ALWAYS FloatBig GetValidationWeightTotal() const {
+   inline FloatBig GetValidationWeightTotal() const {
       return m_validationWeightTotal;
    }
 
-   INLINE_ALWAYS const FloatFast * GetValidationWeights() const {
+   inline const FloatFast * GetValidationWeights() const {
       return m_aValidationWeights;
    }
 
-   INLINE_ALWAYS Tensor * const * GetCurrentModel() const {
+   inline Tensor * const * GetCurrentModel() const {
       return m_apCurrentTermTensors;
    }
 
-   INLINE_ALWAYS Tensor * const * GetBestModel() const {
+   inline Tensor * const * GetBestModel() const {
       return m_apBestTermTensors;
    }
 
-   INLINE_ALWAYS double GetBestModelMetric() const {
+   inline double GetBestModelMetric() const {
       return m_bestModelMetric;
    }
 
-   INLINE_ALWAYS void SetBestModelMetric(const double bestModelMetric) {
+   inline void SetBestModelMetric(const double bestModelMetric) {
       m_bestModelMetric = bestModelMetric;
    }
 
@@ -202,7 +181,6 @@ public:
 
    static ErrorEbm Create(
       RandomDeterministic * const pRng,
-      BoosterShell * const pBoosterShell,
       const size_t cTerms,
       const size_t cInnerBags,
       const double * const experimentalParams,
@@ -210,7 +188,8 @@ public:
       const IntEbm * const aiTermFeatures,
       const unsigned char * const pDataSetShared,
       const BagEbm * const aBag,
-      const double * const aInitScores
+      const double * const aInitScores,
+      BoosterCore ** const ppBoosterCoreOut
    );
 };
 

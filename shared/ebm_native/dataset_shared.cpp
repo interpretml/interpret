@@ -8,11 +8,11 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <string.h> // memcpy
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "zones.h"
+#include "logging.h" // EBM_ASSERT
 
-#include "ebm_internal.hpp"
+#include "common_cpp.hpp" // IsConvertError
+#include "bridge_cpp.hpp" // k_regression
+
 #include "dataset_shared.hpp"
 
 namespace DEFINED_ZONE_NAME {

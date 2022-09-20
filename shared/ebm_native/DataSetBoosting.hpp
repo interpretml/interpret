@@ -8,18 +8,18 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // ErrorEbm
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // FloatFast
+#include "bridge_c.h" // StorageDataType
 #include "zones.h"
-
-#include "ebm_internal.hpp"
-
-#include "Term.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
+
+class Term;
 
 class DataSetBoosting final {
    FloatFast * m_aGradientsAndHessians;
@@ -36,7 +36,7 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS void InitializeUnfailing() {
+   inline void InitializeUnfailing() {
       m_aGradientsAndHessians = nullptr;
       m_aSampleScores = nullptr;
       m_aTargetData = nullptr;
@@ -63,31 +63,31 @@ public:
       const Term * const * const apTerms
    );
 
-   INLINE_ALWAYS FloatFast * GetGradientsAndHessiansPointer() {
+   inline FloatFast * GetGradientsAndHessiansPointer() {
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
    }
-   INLINE_ALWAYS const FloatFast * GetGradientsAndHessiansPointer() const {
+   inline const FloatFast * GetGradientsAndHessiansPointer() const {
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
    }
-   INLINE_ALWAYS FloatFast * GetSampleScores() {
+   inline FloatFast * GetSampleScores() {
       EBM_ASSERT(nullptr != m_aSampleScores);
       return m_aSampleScores;
    }
-   INLINE_ALWAYS const StorageDataType * GetTargetDataPointer() const {
+   inline const StorageDataType * GetTargetDataPointer() const {
       EBM_ASSERT(nullptr != m_aTargetData);
       return m_aTargetData;
    }
-   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const size_t iTerm) const {
+   inline const StorageDataType * GetInputDataPointer(const size_t iTerm) const {
       EBM_ASSERT(iTerm < m_cTerms);
       EBM_ASSERT(nullptr != m_aaInputData);
       return m_aaInputData[iTerm];
    }
-   INLINE_ALWAYS size_t GetCountSamples() const {
+   inline size_t GetCountSamples() const {
       return m_cSamples;
    }
-   INLINE_ALWAYS size_t GetCountTerms() const {
+   inline size_t GetCountTerms() const {
       return m_cTerms;
    }
 };

@@ -10,9 +10,6 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <stdlib.h> // malloc
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "common_c.h"
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {
@@ -68,32 +65,32 @@ namespace DEFINED_ZONE_NAME {
 // which is required in order to use the offsetof macro, or in our case array to pointer conversion.
 // 
 template<typename T>
-INLINE_ALWAYS static T * ArrayToPointer(T * const a) noexcept {
+inline static T * ArrayToPointer(T * const a) noexcept {
    return a;
 }
 template<typename T>
-INLINE_ALWAYS static const T * ArrayToPointer(const T * const a) noexcept {
+inline static const T * ArrayToPointer(const T * const a) noexcept {
    return a;
 }
 
 // TODO : replace all std::min and std::max and similar comparions that get the min/max with this function
 // unlike std::min/std::max, our version has explicit noexcept semantics, constexpr static, and is variadic
 template<typename T>
-INLINE_ALWAYS constexpr static T EbmMin(T v1, T v2) noexcept {
+inline constexpr static T EbmMin(T v1, T v2) noexcept {
    return v1 < v2 ? v1 : v2;
 }
 template<typename T>
-INLINE_ALWAYS constexpr static T EbmMax(T v1, T v2) noexcept {
+inline constexpr static T EbmMax(T v1, T v2) noexcept {
    return v1 < v2 ? v2 : v1;
 }
 
 template<typename T, typename... Args>
-INLINE_ALWAYS constexpr static T EbmMin(const T v1, const T v2, const Args...args) noexcept {
+inline constexpr static T EbmMin(const T v1, const T v2, const Args...args) noexcept {
    return EbmMin(EbmMin(v1, v2), args...);
 }
 
 template<typename T, typename... Args>
-INLINE_ALWAYS constexpr static T EbmMax(const T v1, const T v2, const Args...args) noexcept {
+inline constexpr static T EbmMax(const T v1, const T v2, const Args...args) noexcept {
    return EbmMax(EbmMax(v1, v2), args...);
 }
 
@@ -112,23 +109,23 @@ static_assert(EbmMax(2.5, 3.75, 1.25) == 3.75, "automated test with compiler");
 static_assert(EbmMax(1.25, 2.5, 3.75) == 3.75, "automated test with compiler");
 
 template<typename T>
-INLINE_ALWAYS constexpr static T EbmAbs(T v) noexcept {
+inline constexpr static T EbmAbs(T v) noexcept {
    return T { 0 } <= v ? v : -v;
 }
 
 template<typename T>
-INLINE_ALWAYS static bool IsClose(
+inline static bool IsClose(
    T v1, 
    T v2, 
    T threshold = T { 1e-10 }, 
    T additiveError = T { 1e-15 },
    T multipleError = T { 0.9999 }
 ) noexcept {
-   EBM_ASSERT(T { 0 } < threshold);
-   EBM_ASSERT(T { 0 } < additiveError);
-   EBM_ASSERT(additiveError < threshold);
-   EBM_ASSERT(T { 0 } < multipleError);
-   EBM_ASSERT(multipleError < T { 1 });
+   //EBM_ASSERT(T { 0 } < threshold);
+   //EBM_ASSERT(T { 0 } < additiveError);
+   //EBM_ASSERT(additiveError < threshold);
+   //EBM_ASSERT(T { 0 } < multipleError);
+   //EBM_ASSERT(multipleError < T { 1 });
 
    if(threshold <= v1) {
       if(v1 < v2) {
@@ -172,7 +169,7 @@ using InternalCheckSSN = typename std::enable_if<
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()
 , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckSSN<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
+inline constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be negative");
@@ -203,7 +200,7 @@ using InternalCheckSSY = typename std::enable_if<
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max())
 , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckSSY<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
+inline constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be negative");
@@ -237,7 +234,7 @@ using InternalCheckUSN = typename std::enable_if<
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()
 , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckUSN<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
+inline constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(0 == std::numeric_limits<TTo>::lowest(), "TTo::lowest must be zero");
@@ -264,7 +261,7 @@ using InternalCheckUSY = typename std::enable_if<
    std::numeric_limits<TTo>::max() < std::numeric_limits<TFrom>::max()
 , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckUSY<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
+inline constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(0 == std::numeric_limits<TTo>::lowest(), "TTo::lowest must be zero");
@@ -291,7 +288,7 @@ using InternalCheckSUN = typename std::enable_if<
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()
 , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckSUN<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
+inline constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be negative");
@@ -318,7 +315,7 @@ using InternalCheckSUY = typename std::enable_if<
    std::numeric_limits<TTo>::max() < std::numeric_limits<TFrom>::max()
    , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckSUY<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
+inline constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be negative");
@@ -351,7 +348,7 @@ using InternalCheckUUN = typename std::enable_if<
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()
 , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckUUN<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
+inline constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(0 == std::numeric_limits<TTo>::lowest(), "TTo::lowest must be zero");
@@ -379,7 +376,7 @@ using InternalCheckUUY = typename std::enable_if<
    std::numeric_limits<TTo>::max() < std::numeric_limits<TFrom>::max()
    , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckUUY<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
+inline constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(0 == std::numeric_limits<TTo>::lowest(), "TTo::lowest must be zero");
@@ -400,7 +397,7 @@ static_assert(!IsConvertError<uint8_t>(uint16_t { 0 }), "automated test with com
 
 
 template<typename TTo1, typename TTo2, typename TFrom>
-INLINE_ALWAYS constexpr static bool IsConvertErrorDual(const TFrom number) noexcept {
+inline constexpr static bool IsConvertErrorDual(const TFrom number) noexcept {
    return IsConvertError<TTo1>(number) || IsConvertError<TTo2>(number);
 }
 
@@ -412,7 +409,7 @@ constexpr static size_t CountBitsRequired(const T maxValue) noexcept {
 }
 
 template<typename T>
-INLINE_ALWAYS constexpr static size_t CountBitsRequiredPositiveMax() noexcept {
+inline constexpr static size_t CountBitsRequiredPositiveMax() noexcept {
    return CountBitsRequired(std::numeric_limits<T>::max());
 }
 static_assert(CountBitsRequiredPositiveMax<uint8_t>() == 8, "automated test with compiler");
@@ -425,7 +422,7 @@ static_assert(CountBitsRequiredPositiveMax<int32_t>() == 31, "automated test wit
 static_assert(CountBitsRequiredPositiveMax<int64_t>() == 63, "automated test with compiler");
 
 template<typename T>
-INLINE_ALWAYS constexpr static T MaxFromCountBits(const size_t cBits) noexcept {
+inline constexpr static T MaxFromCountBits(const size_t cBits) noexcept {
    return 0 == cBits ? T { 0 } : (MaxFromCountBits<T>(cBits - 1) << 1 | T { 1 });
 }
 static_assert(MaxFromCountBits<uint8_t>(0) == 0, "automated test with compiler");
@@ -451,10 +448,10 @@ static constexpr size_t k_cDimensionsMax =
    k_cBitsForSizeT - CountBitsRequired(sizeof(double) / sizeof(uint8_t) - 1) - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
-WARNING_PUSH
-WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
+//WARNING_PUSH
+//WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 template<typename T>
-INLINE_ALWAYS constexpr static bool IsMultiplyError(const T num1PreferredConstexpr, const T num2) noexcept {
+inline constexpr static bool IsMultiplyError(const T num1PreferredConstexpr, const T num2) noexcept {
    static_assert(std::is_integral<T>::value, "T must be integral");
    static_assert(std::numeric_limits<T>::is_specialized, "T must be specialized");
    static_assert(!std::is_signed<T>::value, "T must be unsigned in the current implementation");
@@ -462,7 +459,7 @@ INLINE_ALWAYS constexpr static bool IsMultiplyError(const T num1PreferredConstex
    // it will never overflow if num1 is zero or 1.  We need to check zero to avoid division by zero
    return T { 0 } != num1PreferredConstexpr && static_cast<T>(std::numeric_limits<T>::max() / num1PreferredConstexpr) < num2;
 }
-WARNING_POP
+//WARNING_POP
 
 static_assert(!IsMultiplyError(uint8_t { 0 }, uint8_t { 0 }), "automated test with compiler");
 static_assert(!IsMultiplyError(uint8_t { 0 }, uint8_t { 1 }), "automated test with compiler");
@@ -485,7 +482,7 @@ static_assert(!IsMultiplyError(uint32_t { 640 }, uint32_t { 6700417 }), "automat
 static_assert(!IsMultiplyError(uint32_t { 641 }, uint32_t { 6700416 }), "automated test with compiler");
 
 template<typename T, typename... Args>
-INLINE_ALWAYS constexpr static bool IsMultiplyError(const T num1PreferredConstexpr, const T num2, const Args...args) noexcept {
+inline constexpr static bool IsMultiplyError(const T num1PreferredConstexpr, const T num2, const Args...args) noexcept {
    // we allow zeros in the parameters, but we report an error if there's an overflow before the 0 is reached
    // since multiplication will overflow if we proceed in the order specified by IsMultiplyError
    return IsMultiplyError(num1PreferredConstexpr, num2) || IsMultiplyError(static_cast<T>(num1PreferredConstexpr * num2), args...);
@@ -503,7 +500,7 @@ static_assert(!IsMultiplyError(uint8_t { 16 }, uint8_t { 0 }, uint8_t { 16 }), "
 
 
 template<typename T>
-INLINE_ALWAYS constexpr static bool IsAddError(const T num1PreferredConstexpr, const T num2) noexcept {
+inline constexpr static bool IsAddError(const T num1PreferredConstexpr, const T num2) noexcept {
    static_assert(std::is_integral<T>::value, "T must be integral");
    static_assert(std::numeric_limits<T>::is_specialized, "T must be specialized");
    static_assert(!std::is_signed<T>::value, "T must be unsigned in the current implementation");
@@ -527,7 +524,7 @@ static_assert(IsAddError(uint8_t { 128 }, uint8_t { 128 }), "automated test with
 static_assert(IsAddError(uint8_t { 255 }, uint8_t { 255 }), "automated test with compiler");
 
 template<typename T, typename... Args>
-INLINE_ALWAYS constexpr static bool IsAddError(const T num1PreferredConstexpr, const T num2, const Args...args) noexcept {
+inline constexpr static bool IsAddError(const T num1PreferredConstexpr, const T num2, const Args...args) noexcept {
    return IsAddError(num1PreferredConstexpr, num2) || IsAddError(static_cast<T>(num1PreferredConstexpr + num2), args...);
 }
 
@@ -552,13 +549,13 @@ static_assert(IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 2 }, uint8_
 // in which case we use pure malloc and then free instead of these helper functions.  In both cases we still
 // use free though, so it's less likely to create bugs by accident.
 template<typename T>
-INLINE_ALWAYS static T * EbmMalloc() noexcept {
+inline static T * EbmMalloc() noexcept {
    static_assert(!std::is_same<T, void>::value, "don't try allocating a single void item with EbmMalloc");
    T * const a = static_cast<T *>(malloc(sizeof(T)));
    return a;
 }
 template<typename T>
-INLINE_ALWAYS static T * EbmMalloc(const size_t cItems) noexcept {
+inline static T * EbmMalloc(const size_t cItems) noexcept {
    static constexpr size_t cBytesPerItem = sizeof(typename std::conditional<std::is_same<T, void>::value, char, T>::type);
    static_assert(0 < cBytesPerItem, "can't have a zero sized item");
    bool bOneByte = 1 == cBytesPerItem;
@@ -568,20 +565,20 @@ INLINE_ALWAYS static T * EbmMalloc(const size_t cItems) noexcept {
       T * const a = static_cast<T *>(malloc(cBytes));
       return a;
    } else {
-      if(UNLIKELY(IsMultiplyError(cBytesPerItem, cItems))) {
+      if(IsMultiplyError(cBytesPerItem, cItems)) {
          return nullptr;
       } else {
          const size_t cBytes = cBytesPerItem * cItems;
-         // TODO: !! BEWARE: we do use realloc in some parts of our program still!!
-         StopClangAnalysis(); // for some reason Clang-analysis thinks cBytes can be zero, despite the assert above.
+         //// TODO: !! BEWARE: we do use realloc in some parts of our program still!!
+         //StopClangAnalysis(); // for some reason Clang-analysis thinks cBytes can be zero, despite the assert above.
          T * const a = static_cast<T *>(malloc(cBytes));
          return a;
       }
    }
 }
 template<typename T>
-INLINE_ALWAYS static T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) noexcept {
-   if(UNLIKELY(IsMultiplyError(cBytesPerItem, cItems))) {
+inline static T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) noexcept {
+   if(IsMultiplyError(cBytesPerItem, cItems)) {
       return nullptr;
    } else {
       const size_t cBytes = cBytesPerItem * cItems;

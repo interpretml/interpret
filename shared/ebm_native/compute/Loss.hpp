@@ -10,16 +10,13 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <memory> // shared_ptr, unique_ptr
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // ErrorEbm
+#include "logging.h" // EBM_ASSERT
 #include "common_c.h" // INLINE_ALWAYS
-#include "bridge_c.h"
 #include "zones.h"
 
-#include "compute.hpp"
-
-#include "zoned_bridge_cpp_functions.hpp"
-#include "registration_exceptions.hpp"
+#include "zoned_bridge_cpp_functions.hpp" // FunctionPointersCpp
+#include "compute.hpp" // GPU_GLOBAL
 
 // Nomenclature used in this package:
 // - objective: We can use any metric for early stopping, so our list of objectives is identical to the
@@ -35,6 +32,9 @@
 //   and objectives are extraneous information when using the model to make predictions.  
 // - In this package the choice of objective determines the loss function, which determines the link function.
 //   If more flexibility is needed, custom objectives can be used.
+
+struct ApplyTrainingData;
+struct ApplyValidationData;
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

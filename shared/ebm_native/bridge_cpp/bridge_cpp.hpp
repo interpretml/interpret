@@ -5,13 +5,11 @@
 #ifndef BRIDGE_CPP_HPP
 #define BRIDGE_CPP_HPP
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "common_c.h"
-#include "bridge_c.h"
+#include "ebm_native.h" // bridge_c.h depends on ebm_native.h and we probably will eventually too
+#include "bridge_c.h" // StorageDataType
 #include "zones.h"
 
-#include "common_cpp.hpp"
+#include "common_cpp.hpp" // CountBitsRequiredPositiveMax
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -21,24 +19,24 @@ namespace DEFINED_ZONE_NAME {
 static constexpr ptrdiff_t k_regression = -1;
 static constexpr ptrdiff_t k_dynamicClassification = 0;
 static constexpr ptrdiff_t k_oneScore = 1;
-INLINE_ALWAYS constexpr static bool IsRegression(const ptrdiff_t cClasses) noexcept {
+inline constexpr static bool IsRegression(const ptrdiff_t cClasses) noexcept {
    return k_regression == cClasses;
 }
-INLINE_ALWAYS constexpr static bool IsClassification(const ptrdiff_t cClasses) noexcept {
+inline constexpr static bool IsClassification(const ptrdiff_t cClasses) noexcept {
    return 0 <= cClasses;
 }
-INLINE_ALWAYS constexpr static bool IsBinaryClassification(const ptrdiff_t cClasses) noexcept {
+inline constexpr static bool IsBinaryClassification(const ptrdiff_t cClasses) noexcept {
 #ifdef EXPAND_BINARY_LOGITS
    return UNUSED(cClasses), false;
 #else // EXPAND_BINARY_LOGITS
    return 2 == cClasses;
 #endif // EXPAND_BINARY_LOGITS
 }
-INLINE_ALWAYS constexpr static bool IsMulticlass(const ptrdiff_t cClasses) noexcept {
+inline constexpr static bool IsMulticlass(const ptrdiff_t cClasses) noexcept {
    return IsClassification(cClasses) && !IsBinaryClassification(cClasses);
 }
 
-INLINE_ALWAYS constexpr static size_t GetCountScores(const ptrdiff_t cClasses) noexcept {
+inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) noexcept {
    // this will work for anything except if cClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the 
    // dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
@@ -79,7 +77,7 @@ INLINE_ALWAYS constexpr static size_t GetCountScores(const ptrdiff_t cClasses) n
 
 static constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 
-INLINE_ALWAYS constexpr static size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
+inline constexpr static size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
    return k_cBitsForStorageType / cItemsBitPacked;
 }
 

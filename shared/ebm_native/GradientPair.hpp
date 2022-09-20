@@ -7,11 +7,8 @@
 
 #include <type_traits> // std::is_standard_layout
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
 #include "zones.h"
-
-#include "ebm_internal.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -72,30 +69,30 @@ struct GradientPair<TFloat, true> final {
    // nicely from eachother and match other package naming.  ThirdDerivative is nice since it's distinctly named
    // and easy to see rather than Derivative1, Derivative2, Derivative3, etc..
 
-   INLINE_ALWAYS TFloat GetHess() const {
+   inline TFloat GetHess() const {
       return m_sumHessians;
    }
-   INLINE_ALWAYS void SetHess(const TFloat sumHessians) {
+   inline void SetHess(const TFloat sumHessians) {
       m_sumHessians = sumHessians;
    }
-   INLINE_ALWAYS GradientPair & operator+=(const GradientPair & other) {
+   inline GradientPair & operator+=(const GradientPair & other) {
       m_sumGradients += other.m_sumGradients;
       m_sumHessians += other.m_sumHessians;
       return *this;
    }
-   INLINE_ALWAYS GradientPair & operator-=(const GradientPair & other) {
+   inline GradientPair & operator-=(const GradientPair & other) {
       m_sumGradients -= other.m_sumGradients;
       m_sumHessians -= other.m_sumHessians;
       return *this;
    }
-   INLINE_ALWAYS bool IsGradientsClose(const GradientPair & other) const {
+   inline bool IsGradientsClose(const GradientPair & other) const {
       return IsClose(m_sumGradients, other.m_sumGradients) && IsClose(m_sumHessians, other.m_sumHessians);
    }
-   INLINE_ALWAYS void Zero() {
+   inline void Zero() {
       m_sumGradients = 0;
       m_sumHessians = 0;
    }
-   INLINE_ALWAYS void AssertZero() const {
+   inline void AssertZero() const {
       EBM_ASSERT(0 == m_sumGradients);
       EBM_ASSERT(0 == m_sumHessians);
    }
@@ -133,29 +130,29 @@ struct GradientPair<TFloat, false> final {
 
    TFloat m_sumGradients;
 
-   INLINE_ALWAYS TFloat GetHess() const {
+   inline TFloat GetHess() const {
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
       return TFloat { 0 };
    }
-   INLINE_ALWAYS void SetHess(const TFloat sumHessians) {
+   inline void SetHess(const TFloat sumHessians) {
       UNUSED(sumHessians);
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
    }
-   INLINE_ALWAYS GradientPair & operator+=(const GradientPair & other) {
+   inline GradientPair & operator+=(const GradientPair & other) {
       m_sumGradients += other.m_sumGradients;
       return *this;
    }
-   INLINE_ALWAYS GradientPair & operator-=(const GradientPair & other) {
+   inline GradientPair & operator-=(const GradientPair & other) {
       m_sumGradients -= other.m_sumGradients;
       return *this;
    }
-   INLINE_ALWAYS bool IsGradientsClose(const GradientPair & other) const {
+   inline bool IsGradientsClose(const GradientPair & other) const {
       return IsClose(m_sumGradients, other.m_sumGradients);
    }
-   INLINE_ALWAYS void Zero() {
+   inline void Zero() {
       m_sumGradients = 0;
    }
-   INLINE_ALWAYS void AssertZero() const {
+   inline void AssertZero() const {
       EBM_ASSERT(0 == m_sumGradients);
    }
 };
@@ -174,7 +171,7 @@ static_assert(std::is_pod<GradientPair<float, false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<typename TFloat, bool bClassification>
-INLINE_ALWAYS static void ZeroGradientPairs(
+inline static void ZeroGradientPairs(
    GradientPair<TFloat, bClassification> * const aGradientPairs, 
    const size_t cScores
 ) {
@@ -187,7 +184,7 @@ INLINE_ALWAYS static void ZeroGradientPairs(
 }
 
 template<typename TFloat>
-INLINE_ALWAYS static size_t GetGradientPairSize(const bool bClassification) {
+inline static size_t GetGradientPairSize(const bool bClassification) {
    if(bClassification) {
       return sizeof(GradientPair<TFloat, true>);
    } else {

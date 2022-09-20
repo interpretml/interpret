@@ -13,9 +13,6 @@
 
 #include "ebm_internal.hpp"
 
-#include "Feature.hpp"
-#include "Term.hpp"
-
 #include "GradientPair.hpp"
 #include "Bin.hpp"
 

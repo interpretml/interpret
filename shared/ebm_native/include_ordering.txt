@@ -1,0 +1,53 @@
+- Periodically, we should try including each of these files below into a blank cpp file and see if the include
+  can be cleanly included alone
+- For cpp files, if they have an associated include file eg: Tensor.hpp and Tensor.cpp then we don't need
+  to include in the cpp file any of the files included in the hpp file since they are implicitly included
+  AND they should include their associated hpp file first and then all other include files in order below
+
+// anywhere
+#include "ebm_native.h" // PUBLIC. Cannot have dependencies on our other private include files
+#include "logging.h" // ONLY depends on ebm_native.h. Designed to be included everywhere else
+#include "common_c.h" // Currently has no dependencies, but could someday depend on ebm_native.h and logging.h. Designed to be included everywhere except logging.h with signatures for shared extern functions
+#include "bridge_c.h" // Currently only depends on ebm_native.h, but could see dependencies on logging.h, common_c.h in the future
+
+// zone control
+#include "zones.h" // no dependencies, but there is no reason to include it above any hpp files
+
+// common and bridge that depend on zoning
+#include "common_cpp.hpp" // depends only on zones.h, but could someday also depend on ebm_native.h, logging.h, common_c.h
+#include "bridge_cpp.hpp" // depends on ebm_native.h (via bridge_c.h), bridge_c.h, zones.h, common_cpp.hpp.  Could someday depend on logging.h, common_c.h
+
+// everything below here more or less depends on all the above includes
+
+// compute side include files
+#include "zoned_bridge_c_functions.h" // ONLY depends on ebm_native.h, bridge_c.h, zones.h
+#include "zoned_bridge_cpp_functions.hpp" // depends on ebm_native.h, zones.h    circular pointer to Loss.hpp.  pointers to structs in bridge_c.h
+#include "compute.hpp" // GENERAL include file in the compute zones.  Depends on zones.h, and bridge_cpp.hpp, and indirectly through bridge_cpp.hpp depends on ebm_native.h, bridge_c.h, common_cpp.hpp
+#include "registration_exceptions.hpp"
+#include "Registration.hpp" // depends on registration_exceptions.hpp
+#include "Loss.hpp" // depends on zoned_bridge_cpp_functions.hpp, compute.hpp.  The cpp file depends on: zoned_bridge_c_functions.h, registration_exceptions.hpp, Registration.hpp
+
+// main side include files
+#include "compute_accessors.hpp"
+#include "ebm_internal.hpp" // GENERAL include file in the non-compute zones.  Almost all the below depend on it
+#include "RandomDeterministic.hpp"
+#include "RandomNondeterministic.hpp"
+#include "GaussianDistribution.hpp" // implicitly depends on RandomDeterministic.hpp and RandomNondeterministic.hpp but the dependency is templated away
+#include "approximate_math.hpp"
+#include "ebm_stats.hpp" // depends on approximate_math.hpp
+#include "Feature.hpp" // ONLY zones.h
+#include "Term.hpp" // ONLY zones.h and Feature.hpp
+#include "dataset_shared.hpp"
+#include "DataSetBoosting.hpp" // depends on dataset_shared.hpp, Feature.hpp, Term.hpp
+#include "DataSetInteraction.hpp" // depends on dataset_shared.hpp
+#include "InnerBag.hpp" // depends on RandomDeterministic.hpp
+#include "Tensor.hpp" // depends on Term.hpp and Feature.hpp
+#include "GradientPair.hpp"
+#include "Bin.hpp" // depends on GradientPair.hpp
+#include "TreeNode.hpp" // depends on Bin.hpp
+#include "SplitPosition.hpp" // depends on Bin.hpp
+#include "TensorTotalsSum.hpp" // depends on GradientPair.hpp and Bin.hpp
+#include "BoosterCore.hpp" // depends on many of the above
+#include "BoosterShell.hpp" // depends on many of the above
+#include "InteractionCore.hpp" // depends on many of the above
+#include "InteractionShell.hpp" // depends on many of the above

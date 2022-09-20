@@ -7,9 +7,7 @@
 
 #include <stdlib.h> // free
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "common_c.h"
+#include "ebm_native.h" // ErrorEbm, BoolEbm, etc..
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,12 +57,12 @@ struct LossWrapper {
    void * m_pFunctionPointersCpp;
 };
 
-INLINE_ALWAYS static void InitializeLossWrapperUnfailing(LossWrapper * const pLossWrapper) {
+inline static void InitializeLossWrapperUnfailing(LossWrapper * const pLossWrapper) {
    pLossWrapper->m_pLoss = NULL;
    pLossWrapper->m_pFunctionPointersCpp = NULL;
 }
 
-INLINE_ALWAYS static void FreeLossWrapperInternals(LossWrapper * const pLossWrapper) {
+inline static void FreeLossWrapperInternals(LossWrapper * const pLossWrapper) {
    free(pLossWrapper->m_pLoss);
    free(pLossWrapper->m_pFunctionPointersCpp);
 }

@@ -12,11 +12,9 @@
 #include <cmath> // std::exp, std::log
 #include <string.h> // memcpy
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // INLINE_ALWAYS, LIKELY, UNLIKELY
 #include "zones.h"
-
-#include "ebm_internal.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

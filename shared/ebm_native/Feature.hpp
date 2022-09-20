@@ -7,11 +7,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
 #include "zones.h"
-
-#include "ebm_internal.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -31,7 +27,7 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS void Initialize(
+   inline void Initialize(
       const size_t cBins, 
       const bool bMissing, 
       const bool bUnknown, 
@@ -43,20 +39,20 @@ public:
       m_bNominal = bNominal;
    }
 
-   INLINE_ALWAYS size_t GetCountBins() const noexcept {
-      StopClangAnalysis(); // clang seems to think we're reading uninitialized data here, but we aren't
+   inline size_t GetCountBins() const noexcept {
+      //StopClangAnalysis(); // clang seems to think we're reading uninitialized data here, but we aren't
       return m_cBins;
    }
 
-   INLINE_ALWAYS bool IsMissing() const noexcept {
+   inline bool IsMissing() const noexcept {
       return m_bMissing;
    }
 
-   INLINE_ALWAYS bool IsUnknown() const noexcept {
+   inline bool IsUnknown() const noexcept {
       return m_bUnknown;
    }
 
-   INLINE_ALWAYS bool IsNominal() const noexcept {
+   inline bool IsNominal() const noexcept {
       return m_bNominal;
    }
 };

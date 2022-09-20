@@ -8,11 +8,11 @@
 #include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // FloatBig
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "common_cpp.hpp" // IsAddError
 
 #include "Bin.hpp"
 
@@ -42,14 +42,14 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS const Bin<FloatBig, bClassification, cCompilerScores> * GetBinPosition() const {
+   inline const Bin<FloatBig, bClassification, cCompilerScores> * GetBinPosition() const {
       return m_pBinPosition;
    }
-   INLINE_ALWAYS void SetBinPosition(const Bin<FloatBig, bClassification, cCompilerScores> * const pBinPosition) {
+   inline void SetBinPosition(const Bin<FloatBig, bClassification, cCompilerScores> * const pBinPosition) {
       m_pBinPosition = pBinPosition;
    }
 
-   INLINE_ALWAYS Bin<FloatBig, bClassification, cCompilerScores> * GetLeftSum() {
+   inline Bin<FloatBig, bClassification, cCompilerScores> * GetLeftSum() {
       return &m_leftSum;
    }
 };
@@ -60,7 +60,7 @@ static_assert(std::is_trivial<SplitPosition<true>>::value && std::is_trivial<Spl
 static_assert(std::is_pod<SplitPosition<true>>::value && std::is_pod<SplitPosition<false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-INLINE_ALWAYS static bool IsOverflowSplitPositionSize(const bool bClassification, const size_t cScores) {
+inline static bool IsOverflowSplitPositionSize(const bool bClassification, const size_t cScores) {
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // check this before calling us
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
@@ -80,7 +80,7 @@ INLINE_ALWAYS static bool IsOverflowSplitPositionSize(const bool bClassification
    return false;
 }
 
-INLINE_ALWAYS static size_t GetSplitPositionSize(bool bClassification, const size_t cScores) {
+inline static size_t GetSplitPositionSize(bool bClassification, const size_t cScores) {
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
    size_t cBytesSplitPositionComponent;
@@ -96,7 +96,7 @@ INLINE_ALWAYS static size_t GetSplitPositionSize(bool bClassification, const siz
 }
 
 template<bool bClassification, size_t cCompilerScores>
-INLINE_ALWAYS static SplitPosition<bClassification, cCompilerScores> * IndexSplitPosition(
+inline static SplitPosition<bClassification, cCompilerScores> * IndexSplitPosition(
    SplitPosition<bClassification, cCompilerScores> * const pSplitPosition,
    const size_t iByte
 ) {
@@ -104,7 +104,7 @@ INLINE_ALWAYS static SplitPosition<bClassification, cCompilerScores> * IndexSpli
 }
 
 template<bool bClassification, size_t cCompilerScores>
-INLINE_ALWAYS static size_t CountSplitPositions(
+inline static size_t CountSplitPositions(
    const SplitPosition<bClassification, cCompilerScores> * const pSplitPositionLow,
    const SplitPosition<bClassification, cCompilerScores> * const pSplitPositionHigh,
    const size_t cBytesPerSplitPosition

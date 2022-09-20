@@ -10,18 +10,20 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <string.h> // memcpy
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // ErrorEbm
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // FloatFast
+#include "bridge_c.h" // ActiveDataType
 #include "zones.h"
 
-#include "ebm_internal.hpp"
-
-#include "Term.hpp"
+#include "common_cpp.hpp" // ArrayToPointer
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
+
+class Term;
 
 // TODO: we need to radically change this data structure so that we can efficiently pass it between machines in a 
 // cluster AND within/between a GPU/CPU.  This stucture should be:
@@ -160,10 +162,10 @@ class Tensor final {
    // IMPORTANT: m_aDimensions must be in the last position for the struct hack and this must be standard layout
    DimensionInfo m_aDimensions[1];
 
-   INLINE_ALWAYS const DimensionInfo * GetDimensions() const {
+   inline const DimensionInfo * GetDimensions() const {
       return ArrayToPointer(m_aDimensions);
    }
-   INLINE_ALWAYS DimensionInfo * GetDimensions() {
+   inline DimensionInfo * GetDimensions() {
       return ArrayToPointer(m_aDimensions);
    }
 
@@ -202,26 +204,26 @@ public:
    bool IsEqual(const Tensor & rhs) const;
 #endif // NDEBUG
 
-   INLINE_ALWAYS bool GetExpanded() {
+   inline bool GetExpanded() {
       return m_bExpanded;
    }
 
-   INLINE_ALWAYS void SetCountDimensions(const size_t cDimensions) {
+   inline void SetCountDimensions(const size_t cDimensions) {
       EBM_ASSERT(cDimensions <= m_cDimensionsMax);
       m_cDimensions = cDimensions;
    }
 
-   INLINE_ALWAYS ActiveDataType * GetSplitPointer(const size_t iDimension) {
+   inline ActiveDataType * GetSplitPointer(const size_t iDimension) {
       EBM_ASSERT(iDimension < m_cDimensions);
       return GetDimensions()[iDimension].m_aSplits;
    }
 
-   INLINE_ALWAYS size_t GetCountSplits(const size_t iDimension) {
+   inline size_t GetCountSplits(const size_t iDimension) {
       EBM_ASSERT(iDimension < m_cDimensions);
       return GetDimensions()[iDimension].m_cSplits;
    }
 
-   INLINE_ALWAYS FloatFast * GetTensorScoresPointer() {
+   inline FloatFast * GetTensorScoresPointer() {
       return m_aTensorScores;
    }
 };

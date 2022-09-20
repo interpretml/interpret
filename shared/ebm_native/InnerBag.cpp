@@ -8,14 +8,11 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <string.h> // memcpy
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
-#include "ebm_internal.hpp"
-
-#include "RandomDeterministic.hpp" // our header didn't need the full definition, but we use the RandomDeterministic in here, so we need it
-#include "DataSetBoosting.hpp"
+#include "ebm_internal.hpp" // AddPositiveFloatsSafeBig
+#include "RandomDeterministic.hpp" // RandomDeterministic
 #include "InnerBag.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -25,13 +22,12 @@ namespace DEFINED_ZONE_NAME {
 
 InnerBag * InnerBag::GenerateSingleInnerBag(
    RandomDeterministic * const pRng,
-   const DataSetBoosting * const pOriginDataSet,
+   const size_t cSamples,
    const FloatFast * const aWeights
 ) {
    LOG_0(Trace_Verbose, "Entered InnerBag::GenerateSingleInnerBag");
 
    EBM_ASSERT(nullptr != pRng);
-   EBM_ASSERT(nullptr != pOriginDataSet);
 
    InnerBag * pRet = EbmMalloc<InnerBag>();
    if(nullptr == pRet) {
@@ -40,7 +36,6 @@ InnerBag * InnerBag::GenerateSingleInnerBag(
    }
    pRet->InitializeUnfailing();
 
-   const size_t cSamples = pOriginDataSet->GetCountSamples();
    EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
 
    size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
@@ -108,13 +103,12 @@ InnerBag * InnerBag::GenerateSingleInnerBag(
 }
 
 InnerBag * InnerBag::GenerateFlatInnerBag(
-   const DataSetBoosting * const pOriginDataSet,
+   const size_t cSamples,
    const FloatFast * const aWeights
 ) {
    LOG_0(Trace_Info, "Entered InnerBag::GenerateFlatInnerBag");
 
    // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
-   EBM_ASSERT(nullptr != pOriginDataSet);
 
    InnerBag * const pRet = EbmMalloc<InnerBag>();
    if(nullptr == pRet) {
@@ -123,7 +117,6 @@ InnerBag * InnerBag::GenerateFlatInnerBag(
    }
    pRet->InitializeUnfailing();
 
-   const size_t cSamples = pOriginDataSet->GetCountSamples();
    EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
 
    size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
@@ -202,14 +195,13 @@ WARNING_POP
 
 InnerBag ** InnerBag::GenerateInnerBags(
    RandomDeterministic * const pRng,
-   const DataSetBoosting * const pOriginDataSet, 
+   const size_t cSamples,
    const FloatFast * const aWeights,
    const size_t cInnerBags
 ) {
    LOG_0(Trace_Info, "Entered InnerBag::GenerateInnerBags");
 
    EBM_ASSERT(nullptr != pRng);
-   EBM_ASSERT(nullptr != pOriginDataSet);
 
    const size_t cInnerBagsAfterZero = 0 == cInnerBags ? size_t { 1 } : cInnerBags;
 
@@ -224,7 +216,7 @@ InnerBag ** InnerBag::GenerateInnerBags(
 
    if(0 == cInnerBags) {
       // zero is a special value that really means allocate one set that contains all samples.
-      InnerBag * const pSingleInnerBag = GenerateFlatInnerBag(pOriginDataSet, aWeights);
+      InnerBag * const pSingleInnerBag = GenerateFlatInnerBag(cSamples, aWeights);
       if(UNLIKELY(nullptr == pSingleInnerBag)) {
          LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == pSingleInnerBag");
          free(apInnerBags);
@@ -233,7 +225,7 @@ InnerBag ** InnerBag::GenerateInnerBags(
       apInnerBags[0] = pSingleInnerBag;
    } else {
       for(size_t iInnerBag = 0; iInnerBag < cInnerBags; ++iInnerBag) {
-         InnerBag * const pSingleInnerBag = GenerateSingleInnerBag(pRng, pOriginDataSet, aWeights);
+         InnerBag * const pSingleInnerBag = GenerateSingleInnerBag(pRng, cSamples, aWeights);
          if(UNLIKELY(nullptr == pSingleInnerBag)) {
             LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == pSingleInnerBag");
             FreeInnerBags(cInnerBags, apInnerBags);

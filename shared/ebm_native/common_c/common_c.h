@@ -7,8 +7,6 @@
 
 #include <string.h>
 
-#include "ebm_native.h"
-
 #ifdef __cplusplus
 extern "C" {
 #define EBM_NOEXCEPT noexcept

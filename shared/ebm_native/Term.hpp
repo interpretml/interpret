@@ -7,18 +7,17 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
 #include "zones.h"
-
-#include "ebm_internal.hpp"
-
-#include "Feature.hpp"
+#include "common_cpp.hpp" // k_cDimensionsMax
+#include "bridge_cpp.hpp" // k_cItemsPerBitPackDynamic2
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
+
+class Feature;
 
 class Term final {
    ptrdiff_t m_cItemsPerBitPack;
@@ -41,15 +40,15 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS constexpr static size_t GetTermCountBytes(const size_t cFeatures) noexcept {
+   inline constexpr static size_t GetTermCountBytes(const size_t cFeatures) noexcept {
       return offsetof(Term, m_apFeature) + sizeof(Term::m_apFeature[0]) * cFeatures;
    }
 
-   INLINE_ALWAYS static void Free(Term * const pTerm) noexcept {
+   inline static void Free(Term * const pTerm) noexcept {
       free(pTerm);
    }
 
-   INLINE_ALWAYS void Initialize(const size_t cFeatures) noexcept {
+   inline void Initialize(const size_t cFeatures) noexcept {
       m_cDimensions = cFeatures;
       m_cLogEnterGenerateTermUpdateMessages = 2;
       m_cLogExitGenerateTermUpdateMessages = 2;
@@ -61,67 +60,67 @@ public:
    static Term ** AllocateTerms(const size_t cTerms) noexcept;
    static void FreeTerms(const size_t cTerms, Term ** apTerms) noexcept;
 
-   INLINE_ALWAYS void SetBitPack(const ptrdiff_t cItemsPerBitPack) noexcept {
+   inline void SetBitPack(const ptrdiff_t cItemsPerBitPack) noexcept {
       EBM_ASSERT(k_cItemsPerBitPackDynamic2 != cItemsPerBitPack);
       m_cItemsPerBitPack = cItemsPerBitPack;
    }
 
-   INLINE_ALWAYS ptrdiff_t GetBitPack() const noexcept {
+   inline ptrdiff_t GetBitPack() const noexcept {
       // don't check the legal value for m_cItemsPerBitPack here since we call this function from a huge
       // number of templates.  We check this value when SetBitPack is called
       return m_cItemsPerBitPack;
    }
 
-   INLINE_ALWAYS size_t GetCountDimensions() const noexcept {
+   inline size_t GetCountDimensions() const noexcept {
       EBM_ASSERT(m_cRealDimensions <= m_cDimensions);
       return m_cDimensions;
    }
 
-   INLINE_ALWAYS size_t GetCountRealDimensions() const noexcept {
+   inline size_t GetCountRealDimensions() const noexcept {
       EBM_ASSERT(m_cRealDimensions <= m_cDimensions);
       return m_cRealDimensions;
    }
 
-   INLINE_ALWAYS void SetCountRealDimensions(const size_t cRealDimensions) noexcept {
+   inline void SetCountRealDimensions(const size_t cRealDimensions) noexcept {
       m_cRealDimensions = cRealDimensions;
    }
 
-   INLINE_ALWAYS size_t GetCountTensorBins() const noexcept {
+   inline size_t GetCountTensorBins() const noexcept {
       return m_cTensorBins;
    }
 
-   INLINE_ALWAYS void SetCountTensorBins(const size_t cTensorBins) noexcept {
+   inline void SetCountTensorBins(const size_t cTensorBins) noexcept {
       m_cTensorBins = cTensorBins;
    }
 
-   INLINE_ALWAYS size_t GetCountAuxillaryBins() const noexcept {
+   inline size_t GetCountAuxillaryBins() const noexcept {
       return m_cAuxillaryBins;
    }
 
-   INLINE_ALWAYS void SetCountAuxillaryBins(const size_t cAuxillaryBins) noexcept {
+   inline void SetCountAuxillaryBins(const size_t cAuxillaryBins) noexcept {
       m_cAuxillaryBins = cAuxillaryBins;
    }
 
-   INLINE_ALWAYS const Feature * const * GetFeatures() const noexcept {
+   inline const Feature * const * GetFeatures() const noexcept {
       return ArrayToPointer(m_apFeature);
    }
-   INLINE_ALWAYS const Feature ** GetFeatures() noexcept {
+   inline const Feature ** GetFeatures() noexcept {
       return ArrayToPointer(m_apFeature);
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogEnterGenerateTermUpdateMessages() noexcept {
+   inline int * GetPointerCountLogEnterGenerateTermUpdateMessages() noexcept {
       return &m_cLogEnterGenerateTermUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogExitGenerateTermUpdateMessages() noexcept {
+   inline int * GetPointerCountLogExitGenerateTermUpdateMessages() noexcept {
       return &m_cLogExitGenerateTermUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogEnterApplyTermUpdateMessages() noexcept {
+   inline int * GetPointerCountLogEnterApplyTermUpdateMessages() noexcept {
       return &m_cLogEnterApplyTermUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogExitApplyTermUpdateMessages() noexcept {
+   inline int * GetPointerCountLogExitApplyTermUpdateMessages() noexcept {
       return &m_cLogExitApplyTermUpdateMessages;
    }
 };

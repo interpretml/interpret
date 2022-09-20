@@ -7,11 +7,8 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "common_c.h" // FloatFast
 #include "zones.h"
-
-#include "ebm_internal.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -19,7 +16,6 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class RandomDeterministic;
-class DataSetBoosting;
 
 class InnerBag final {
    // Sampling with replacement is the more theoretically correct method of sampling, but it has the drawback that 
@@ -36,11 +32,11 @@ class InnerBag final {
    // we take owernship of the aWeights array
    static InnerBag * GenerateSingleInnerBag(
       RandomDeterministic * const pRng,
-      const DataSetBoosting * const pOriginDataSet,
+      const size_t cSamples,
       const FloatFast * const aWeights
    );
    static InnerBag * GenerateFlatInnerBag(
-      const DataSetBoosting * const pOriginDataSet,
+      const size_t cSamples,
       const FloatFast * const aWeights
    );
    void Free();
@@ -65,7 +61,7 @@ public:
 
    static InnerBag ** GenerateInnerBags(
       RandomDeterministic * const pRng,
-      const DataSetBoosting * const pOriginDataSet, 
+      const size_t cSamples,
       const FloatFast * const aWeights,
       const size_t cInnerBags
    );

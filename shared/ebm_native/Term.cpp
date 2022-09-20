@@ -6,13 +6,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "zones.h"
-
-#include "ebm_internal.hpp"
-
-#include "Feature.hpp"
+#include "common_c.h" // UNLIKELY
 #include "Term.hpp"
 
 namespace DEFINED_ZONE_NAME {

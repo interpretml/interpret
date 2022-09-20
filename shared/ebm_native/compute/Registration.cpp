@@ -8,10 +8,6 @@
 #include <vector>
 #include <algorithm>
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "zones.h"
-
 #include "Registration.hpp"
 
 namespace DEFINED_ZONE_NAME {

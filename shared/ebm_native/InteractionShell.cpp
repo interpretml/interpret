@@ -7,11 +7,7 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "zones.h"
-
-#include "ebm_internal.hpp"
+#include "common_cpp.hpp"
 
 #include "InteractionCore.hpp"
 #include "InteractionShell.hpp"
@@ -38,13 +34,16 @@ void InteractionShell::Free(InteractionShell * const pInteractionShell) {
    LOG_0(Trace_Info, "Exited InteractionShell::Free");
 }
 
-InteractionShell * InteractionShell::Create() {
+InteractionShell * InteractionShell::Create(InteractionCore * const pInteractionCore) {
    LOG_0(Trace_Info, "Entered InteractionShell::Create");
 
    InteractionShell * const pNew = EbmMalloc<InteractionShell>();
-   if(nullptr != pNew) {
-      pNew->InitializeUnfailing();
+   if(UNLIKELY(nullptr == pNew)) {
+      LOG_0(Trace_Error, "ERROR InteractionShell::Create nullptr == pNew");
+      return nullptr;
    }
+
+   pNew->InitializeUnfailing(pInteractionCore);
 
    LOG_0(Trace_Info, "Exited InteractionShell::Create");
 
@@ -137,22 +136,26 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       return Error_IllegalParamVal;
    }
 
-   InteractionShell * const pInteractionShell = InteractionShell::Create();
-   if(UNLIKELY(nullptr == pInteractionShell)) {
-      LOG_0(Trace_Warning, "WARNING CreateInteractionDetector nullptr == pInteractionShell");
-      return Error_OutOfMemory;
-   }
-
+   InteractionCore * pInteractionCore = nullptr;
    error = InteractionCore::Create(
-      pInteractionShell,
       static_cast<const unsigned char *>(dataSet),
       bag,
       initScores,
-      experimentalParams
+      experimentalParams,
+      &pInteractionCore
    );
    if(Error_None != error) {
-      InteractionShell::Free(pInteractionShell);
+      // legal to call if nullptr. On error we can get back a legal pInteractionCore to delete
+      InteractionCore::Free(pInteractionCore);
       return error;
+   }
+
+   InteractionShell * const pInteractionShell = InteractionShell::Create(pInteractionCore);
+   if(UNLIKELY(nullptr == pInteractionShell)) {
+      // if the memory allocation for pInteractionShell failed then 
+      // there was no place to put the pInteractionCore, so free it
+      InteractionCore::Free(pInteractionCore);
+      return Error_OutOfMemory;
    }
 
    const InteractionHandle handle = pInteractionShell->GetHandle();

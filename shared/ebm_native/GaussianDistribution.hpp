@@ -231,13 +231,8 @@
 #include <string.h> // memcpy
 #include <float.h> // DBL_MANT_DIG
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
 #include "zones.h"
-
-#include "ebm_internal.hpp"
-#include "RandomDeterministic.hpp"
-#include "RandomNondeterministic.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -260,17 +255,17 @@ static constexpr uint64_t kMantissaMask = (uint64_t { 1 } << kMantDigits) - 1ULL
 
 static constexpr double kPi = 3.14159265358979323846;
 
-INLINE_ALWAYS static double GetNextPowerOfTwo(double n) { 
+inline static double GetNextPowerOfTwo(double n) { 
    return std::pow(2.0, ceil(log2(n))); 
 }
 
 template<typename TRng>
-INLINE_ALWAYS static bool CoinFlip(TRng & rng) {
+inline static bool CoinFlip(TRng & rng) {
    // Google's code uses a Bernoulli with probability 0.5, which is the same as a coin flip
    return static_cast<bool>(rng.Next(uint64_t { 1 }));
 }
 
-INLINE_ALWAYS static double ApproximateBinomialProbability(double sqrt_n, int64_t m) {
+inline static double ApproximateBinomialProbability(double sqrt_n, int64_t m) {
    // Approximates the probability of a random sample m + n / 2 drawn from a
    // binomial distribution of n Bernoulli trials that have a success probability
    // of 1 / 2 each. The approximation is taken from Lemma 7 of the noise
@@ -284,7 +279,7 @@ INLINE_ALWAYS static double ApproximateBinomialProbability(double sqrt_n, int64_
    return std::sqrt(2 / kPi) / sqrt_n * std::exp(-2.0 * m * m / n) * (1 - (0.4 * std::pow(std::log(n), 1.5) / sqrt_n));
 }
 
-INLINE_ALWAYS static int CountLeadingZeroes64(uint64_t x) {
+inline static int CountLeadingZeroes64(uint64_t x) {
    // FROM: https://github.com/abseil/abseil-cpp/blob/628a2825f8dc0219964886e7cc3f7f519e3bd950/absl/numeric/internal/bits.h
 
    int zeroes = 60;
@@ -308,7 +303,7 @@ INLINE_ALWAYS static int CountLeadingZeroes64(uint64_t x) {
 }
 
 template<typename TRng>
-INLINE_ALWAYS static uint64_t Geometric(TRng & rng) {
+inline static uint64_t Geometric(TRng & rng) {
    // FROM: https://github.com/google/differential-privacy/blob/327972c1ae710e8cd0a4754fffdd78c3500272ee/cc/algorithms/rand.cc#L73
 
    uint64_t result = 1;
@@ -321,7 +316,7 @@ INLINE_ALWAYS static uint64_t Geometric(TRng & rng) {
 }
 
 template<typename TRng>
-INLINE_ALWAYS static double UniformDouble(TRng & rng) {
+inline static double UniformDouble(TRng & rng) {
    // FROM: https://github.com/google/differential-privacy/blob/327972c1ae710e8cd0a4754fffdd78c3500272ee/cc/algorithms/rand.cc
 
    uint64_t uint_64_number = rng.Next(std::numeric_limits<uint64_t>::max());
@@ -360,7 +355,7 @@ class GaussianDistribution final {
 public:
 
    template<typename TRng>
-   INLINE_ALWAYS int SampleGeometric(TRng & rng) {
+   inline int SampleGeometric(TRng & rng) {
       int geom_sample = 0;
       while(CoinFlip(rng)) {
          ++geom_sample;
@@ -368,13 +363,13 @@ public:
       return geom_sample;
    }
 
-   INLINE_ALWAYS double GetGranularity(double scale) const {
+   inline double GetGranularity(double scale) const {
       double sigma = scale * stddev_;
       return GetNextPowerOfTwo(2 * sigma / kBinomialBound);
    }
 
    template<typename TRng>
-   INLINE_ALWAYS double Sample(TRng & rng, double scale) {
+   inline double Sample(TRng & rng, double scale) {
       EBM_ASSERT(0 < scale);
 
       double sigma = scale * stddev_;
@@ -391,7 +386,7 @@ public:
    }
 
    template<typename TRng>
-   INLINE_ALWAYS double SampleBinomial(TRng & rng, double sqrt_n) {
+   inline double SampleBinomial(TRng & rng, double sqrt_n) {
       // Returns a random sample m where {@code m + n / 2} is drawn from a binomial
       // distribution of n Bernoulli trials that have a success probability of 1 / 2
       // each. The sampling technique is based on Bringmann et al.'s rejection
@@ -419,7 +414,7 @@ public:
       }
    }
 
-   INLINE_ALWAYS GaussianDistribution(double stddev) : stddev_(stddev) {
+   inline GaussianDistribution(double stddev) : stddev_(stddev) {
       EBM_ASSERT(0 <= stddev);
    }
 };

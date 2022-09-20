@@ -16,8 +16,8 @@
 
 #include "Feature.hpp"
 #include "Term.hpp"
-#include "DataSetBoosting.hpp"
-
+#include "InnerBag.hpp"
+#include "Tensor.hpp"
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"
 

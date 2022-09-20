@@ -8,16 +8,17 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // ErrorEbm
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // FloatFast
 #include "zones.h"
-
-#include "ebm_internal.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
+
+class Tensor;
 
 struct BinBase;
 class BoosterCore;
@@ -63,9 +64,9 @@ public:
 
    static constexpr size_t k_illegalTermIndex = size_t { static_cast<size_t>(ptrdiff_t { -1 }) };
 
-   INLINE_ALWAYS void InitializeUnfailing() {
+   INLINE_ALWAYS void InitializeUnfailing(BoosterCore * const pBoosterCore) {
       m_handleVerification = k_handleVerificationOk;
-      m_pBoosterCore = nullptr;
+      m_pBoosterCore = pBoosterCore;
       m_iTerm = k_illegalTermIndex;
       m_pTermUpdate = nullptr;
       m_pInnerTermUpdate = nullptr;
@@ -77,7 +78,7 @@ public:
    }
 
    static void Free(BoosterShell * const pBoosterShell);
-   static BoosterShell * Create();
+   static BoosterShell * Create(BoosterCore * const pBoosterCore);
    ErrorEbm FillAllocations();
 
    INLINE_ALWAYS static BoosterShell * GetBoosterShellFromHandle(const BoosterHandle boosterHandle) {
@@ -103,12 +104,6 @@ public:
    INLINE_ALWAYS BoosterCore * GetBoosterCore() {
       EBM_ASSERT(nullptr != m_pBoosterCore);
       return m_pBoosterCore;
-   }
-
-   INLINE_ALWAYS void SetBoosterCore(BoosterCore * const pBoosterCore) {
-      EBM_ASSERT(nullptr != pBoosterCore);
-      EBM_ASSERT(nullptr == m_pBoosterCore); // only set it once
-      m_pBoosterCore = pBoosterCore;
    }
 
    INLINE_ALWAYS size_t GetTermIndex() {

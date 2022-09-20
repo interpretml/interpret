@@ -11,14 +11,11 @@
 #include "zones.h"
 
 #include "ebm_internal.hpp"
-
 #include "approximate_math.hpp"
 #include "ebm_stats.hpp"
-// Term.hpp depends on Feature.h
 #include "Term.hpp"
-// dataset depends on features
 #include "DataSetBoosting.hpp"
-
+#include "Tensor.hpp"
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"
 

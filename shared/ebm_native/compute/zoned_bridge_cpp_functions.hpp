@@ -5,9 +5,11 @@
 #ifndef ZONED_BRIDGE_CPP_FUNCTIONS_HPP
 #define ZONED_BRIDGE_CPP_FUNCTIONS_HPP
 
-#include "ebm_native.h"
-#include "bridge_c.h"
+#include "ebm_native.h" // ErrorEbm
 #include "zones.h"
+
+struct ApplyTrainingData;
+struct ApplyValidationData;
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

@@ -8,15 +8,11 @@
 #include <memory> // shared_ptr, unique_ptr
 #include <vector>
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "zones.h"
+#include "Loss.hpp"
 
 #include "zoned_bridge_c_functions.h"
-#include "zoned_bridge_cpp_functions.hpp"
 #include "registration_exceptions.hpp"
 #include "Registration.hpp"
-#include "Loss.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
