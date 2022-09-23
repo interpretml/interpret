@@ -47,17 +47,23 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateSeed(void * rng, SeedEbm * 
       return Error_None;
    }
    if(nullptr == rng) {
+      SeedEbm seed;
       try {
          RandomNondeterministic<USeedEbm> randomGenerator;
-         *seedOut = randomGenerator.NextSeed();
-         return Error_None;
+         seed = randomGenerator.NextSeed();
       } catch(const std::bad_alloc &) {
          LOG_0(Trace_Warning, "WARNING GenerateSeed Out of memory in std::random_device");
+         // this cannot be relied on by the caller but hopefully a zero seed will be more obviously an error
+         *seedOut = SeedEbm { 0 };
          return Error_OutOfMemory;
       } catch(...) {
          LOG_0(Trace_Warning, "WARNING GenerateSeed Unknown error in std::random_device");
+         // this cannot be relied on by the caller but hopefully a zero seed will be more obviously an error
+         *seedOut = SeedEbm { 0 };
          return Error_UnexpectedInternal;
       }
+      *seedOut = seed;
+      return Error_None;
    } else {
       RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rng);
       *seedOut = pRng->NextSeed();

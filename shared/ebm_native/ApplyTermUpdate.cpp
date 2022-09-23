@@ -387,7 +387,7 @@ static int g_cLogSetTermUpdate = 10;
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
    BoosterHandle boosterHandle,
    IntEbm indexTerm,
-   double * updateScoresTensor
+   const double * updateScoresTensor
 ) {
    LOG_COUNTED_N(
       &g_cLogSetTermUpdate,
@@ -400,7 +400,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
       ,
       static_cast<void *>(boosterHandle),
       indexTerm,
-      static_cast<void *>(updateScoresTensor)
+      static_cast<const void *>(updateScoresTensor)
    );
 
    ErrorEbm error;

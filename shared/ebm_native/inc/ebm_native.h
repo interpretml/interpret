@@ -343,7 +343,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratifi
    IntEbm countClasses,
    IntEbm countTrainingSamples,
    IntEbm countValidationSamples,
-   IntEbm * targets,
+   const IntEbm * targets,
    BagEbm * bagOut
 );
 
@@ -390,7 +390,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
    BoosterHandle boosterHandle,
    IntEbm indexTerm,
-   double * updateScoresTensor
+   const double * updateScoresTensor
 );
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
    BoosterHandle boosterHandle,

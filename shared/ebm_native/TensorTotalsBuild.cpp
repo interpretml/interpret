@@ -314,11 +314,13 @@ public:
             pFastTotalState->m_iCur = 0;
 
             EBM_ASSERT(pFastTotalState->m_pDimensionalFirst == pFastTotalState->m_pDimensionalCur);
-            char * pCur = reinterpret_cast<char *>(pFastTotalState->m_pDimensionalFirst);
-            const char * const pEnd = reinterpret_cast<char *>(pFastTotalState->m_pDimensionalWrap);
-            EBM_ASSERT(pCur != pEnd);
-            memset(pCur, 0, pEnd - pCur);
 
+            auto * const pDimensionalFirst = pFastTotalState->m_pDimensionalFirst;
+            const auto * const pDimensionalWrap = pFastTotalState->m_pDimensionalWrap;
+            EBM_ASSERT(pDimensionalFirst != pDimensionalWrap);
+            const size_t cBytesToZero = 
+               reinterpret_cast<const char *>(pDimensionalWrap) - reinterpret_cast<const char *>(pDimensionalFirst);
+            pDimensionalFirst->ZeroMem(cBytesToZero);
             ++pFastTotalState;
 
             if(UNLIKELY(pFastTotalStateInitialize == pFastTotalState)) {

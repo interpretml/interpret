@@ -60,9 +60,9 @@ TEST_CASE("Discretize, increasing lengths") {
 
    ErrorEbm error;
 
-   double * cutsLowerBoundInclusive = new double[cCutsEnd];
-   double * featureVals = new double[cData];
-   IntEbm * aiBins = new IntEbm[cData];
+   double cutsLowerBoundInclusive[cCutsEnd];
+   double featureVals[cData];
+   IntEbm aiBins[cData];
    for(size_t iCutPoint = 0; iCutPoint < cCutsEnd; ++iCutPoint) {
       const double cutPoint = static_cast<double>(iCutPoint);
       cutsLowerBoundInclusive[iCutPoint] = cutPoint;
@@ -120,9 +120,5 @@ TEST_CASE("Discretize, increasing lengths") {
          CHECK(aiBins[11 * iCutPoint + 10] == IntEbm { 1 });
       }
    }
-
-   delete[] cutsLowerBoundInclusive;
-   delete[] featureVals;
-   delete[] aiBins;
 }
 

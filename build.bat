@@ -31,7 +31,7 @@ IF %build_64_bit% EQU 1 (
       ECHO MSBuild for Release x64 FAILED
       EXIT /B 101
    )
-   MSBuild.exe "%root_path%shared\ebm_native\ebm_native.vcxproj" /p:Configuration=Debug /p:Platform=x64 %extra_analysis%
+   MSBuild.exe "%root_path%shared\ebm_native\ebm_native.vcxproj" /p:Configuration=Debug /p:Platform=x64
    IF ERRORLEVEL 1 (
       ECHO MSBuild for Debug x64 FAILED
       EXIT /B 102
@@ -43,7 +43,7 @@ IF %build_32_bit% EQU 1 (
       ECHO MSBuild for Release x86 FAILED
       EXIT /B 103
    )
-   MSBuild.exe "%root_path%shared\ebm_native\ebm_native.vcxproj" /p:Configuration=Debug /p:Platform=Win32 %extra_analysis%
+   MSBuild.exe "%root_path%shared\ebm_native\ebm_native.vcxproj" /p:Configuration=Debug /p:Platform=Win32
    IF ERRORLEVEL 1 (
       ECHO MSBuild for Debug x86 FAILED
       EXIT /B 104

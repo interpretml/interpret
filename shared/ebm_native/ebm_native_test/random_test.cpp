@@ -64,12 +64,6 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
 
    ErrorEbm error;
 
-   IntEbm targets[cSamples];
-   BagEbm sampleCounts[cSamples];
-   size_t trainingCount[cClasses];
-   size_t valCount[cClasses];
-   size_t classCount[cClasses];
-
    RandomStreamTest randomStream(k_seed);
    if(!randomStream.IsSuccess()) {
       exit(1);
@@ -78,14 +72,19 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
    SeedEbm seed = k_seed;
 
    for(IntEbm iRun = 0; iRun < 10000; ++iRun) {
+      IntEbm targets[cSamples] = { 0 };
+      BagEbm sampleCounts[cSamples];
+
+      size_t classCount[cClasses] = { 0 };
+      size_t trainingCount[cClasses] = { 0 };
+      size_t valCount[cClasses] = { 0 };
+
       size_t cRandomSamples = randomStream.Next(cSamples + 1);
       size_t cClassSize = randomStream.Next(cClasses) + 1;
       size_t cTrainingSamples = randomStream.Next(cRandomSamples + size_t { 1 });
+      EBM_ASSERT(0 <= cTrainingSamples && cTrainingSamples <= cSamples);
       size_t cValidationSamples = cRandomSamples - cTrainingSamples;
-
-      memset(trainingCount, 0, sizeof(trainingCount));
-      memset(valCount, 0, sizeof(valCount));
-      memset(classCount, 0, sizeof(classCount));
+      EBM_ASSERT(0 <= cValidationSamples && cValidationSamples <= cSamples);
 
       ++seed;
 
@@ -279,7 +278,6 @@ TEST_CASE("test random number generator equivalency") {
 
 TEST_CASE("GenerateGaussianRandom") {
    static constexpr int cIterations = 1000;
-   static constexpr int offset = 0;
 
    std::vector<unsigned char> rng(static_cast<size_t>(MeasureRNG()));
    InitRNG(k_seed, &rng[0]);

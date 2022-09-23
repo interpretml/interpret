@@ -767,6 +767,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    if(nullptr != ppInnerBag) {
       RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
       RandomDeterministic rngInternal;
+      // TODO: move this code down into our called functions since we can happily pass down nullptr into there and then use the rng CPU register trick at the lowest function level
       if(nullptr == pRng) {
          // We use the RNG for two things during the boosting update, and none of them requires
          // a cryptographically secure random number generator. We use the RNG for:
@@ -778,11 +779,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          //     choosing the splits.
          //
          // Since we do not need high-quality non-determinism, generate a non-deterministic seed
+         uint64_t seed;
          try {
             RandomNondeterministic<uint64_t> randomGenerator;
-            const uint64_t seed = randomGenerator.Next(std::numeric_limits<uint64_t>::max());
-            rngInternal.Initialize(seed);
-            pRng = &rngInternal;
+            seed = randomGenerator.Next(std::numeric_limits<uint64_t>::max());
          } catch(const std::bad_alloc &) {
             LOG_0(Trace_Warning, "WARNING GenerateTermUpdate Out of memory in std::random_device");
             return Error_OutOfMemory;
@@ -790,6 +790,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             LOG_0(Trace_Warning, "WARNING GenerateTermUpdate Unknown error in std::random_device");
             return Error_UnexpectedInternal;
          }
+         rngInternal.Initialize(seed);
+         pRng = &rngInternal;
       }
 
       pBoosterShell->GetInnerTermUpdate()->SetCountDimensions(cDimensions);

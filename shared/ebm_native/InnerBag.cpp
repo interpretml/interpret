@@ -53,10 +53,7 @@ InnerBag * InnerBag::GenerateSingleInnerBag(
    }
    pRet->m_aWeights = aWeightsInternal;
 
-   for(size_t i = 0; i < cSamples; ++i) {
-      // TODO: use memset
-      aCountOccurrences[i] = size_t { 0 };
-   }
+   memset(aCountOccurrences, 0, cSamples * sizeof(aCountOccurrences[0]));
 
    // the compiler understands the internal state of this RNG and can locate its internal state into CPU registers
    RandomDeterministic cpuRng;

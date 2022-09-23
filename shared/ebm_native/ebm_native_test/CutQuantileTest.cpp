@@ -1215,7 +1215,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
    double featureValsReversed[countSamples];
 
    static constexpr IntEbm randomMaxMax = countSamples - 1; // this doesn't need to be exactly countSamples - 1, but this number gives us chunky sets
-   size_t cutHistogram[randomMaxMax];
+   size_t cutHistogram[randomMaxMax] = { 0 };
    static constexpr size_t cCutHistogram = sizeof(cutHistogram) / sizeof(cutHistogram[0]);
    // our random numbers can be any numbers from 0 to randomMaxMax (inclusive), which gives us randomMaxMax - 1 possible cut points between them
    static_assert(1 == cCutHistogram % 2, "cutHistogram must have a center value that is perfectly in the middle");
@@ -1223,8 +1223,6 @@ TEST_CASE("CutQuantile, randomized fairness check") {
    static constexpr size_t cCuts = 9;
    double cutsLowerBoundInclusiveForward[cCuts];
    double cutsLowerBoundInclusiveReversed[cCuts];
-
-   memset(cutHistogram, 0, sizeof(cutHistogram));
 
    for(int iIteration = 0; iIteration < 100; ++iIteration) {
       for(size_t randomMax = 1; randomMax <= randomMaxMax; randomMax += 2) {
@@ -1354,11 +1352,12 @@ TEST_CASE("CutQuantile, chunky randomized check") {
    double cutsLowerBoundInclusiveForward[cCutsMax];
    double cutsLowerBoundInclusiveReversed[cCutsMax];
 
-   double featureVals[cSamplesMax]; // preserve these for debugging purposes
    double featureValsForward[cSamplesMax];
    double featureValsReversed[cSamplesMax];
 
    for(size_t iIteration = 0; iIteration < 30000; ++iIteration) {
+      double featureVals[cSamplesMax] = { 0 }; // preserve these for debugging purposes
+
       const size_t cSamples = randomStream.Next(cSamplesMax - cSamplesMin + 1) + cSamplesMin;
       const size_t cCuts = randomStream.Next(cCutsMax - cCutsMin + 1) + cCutsMin;
       const IntEbm minSamplesBin = randomStream.Next(minSamplesBinMax - minSamplesBinMin + 1) + minSamplesBinMin;
@@ -1366,8 +1365,6 @@ TEST_CASE("CutQuantile, chunky randomized check") {
       const size_t denominator = cCuts + size_t { 1 };
       const size_t cLongBinLength = static_cast<size_t>(
          std::ceil(static_cast<double>(cSamples) / static_cast<double>(denominator)));
-
-      memset(featureVals, 0, sizeof(featureVals));
 
       size_t i = 0;
       size_t cLongRanges = randomStream.Next(6);
