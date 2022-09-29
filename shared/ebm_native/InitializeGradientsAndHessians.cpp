@@ -290,13 +290,18 @@ extern ErrorEbm InitializeGradientsAndHessians(
    const size_t cSetSamples,
    FloatFast * const aGradientAndHessian
 ) {
+   // TODO: see if we can eliminate this function by re-using the ApplyTermUpdate function with a zeroed tensor update
+   //       one wrinkle is that we also use this function for interactions where ApplyTermUpdate is only for boosting
+   //       so it might or might not be possible.  This will be more important when we move this function to
+   //       the separate SIMD zones
+
+   EBM_ASSERT(1 <= cSetSamples);
+
    ptrdiff_t cRuntimeClasses;
-   const void * const aTargets = GetDataSetSharedTarget(
-      pDataSetShared,
-      0,
-      &cRuntimeClasses
-   );
+   const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses);
    EBM_ASSERT(nullptr != aTargets);
+   EBM_ASSERT(0 != cRuntimeClasses); // no gradients if 0 == cRuntimeClasses
+   EBM_ASSERT(1 != cRuntimeClasses); // no gradients if 1 == cRuntimeClasses
 
    if(IsClassification(cRuntimeClasses)) {
       if(IsBinaryClassification(cRuntimeClasses)) {

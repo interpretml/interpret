@@ -262,6 +262,7 @@ public:
             pcBytesInSliceEnd = acItemsInNextSliceOrBytesInCurrentSlice + cFirstSlices;
             size_t iPrev = size_t { 0 };
             do {
+               StopClangAnalysis(); // TODO: check if pcItemsInNextSliceOrBytesInCurrentSlice3 is undefined
                const size_t iCur = *pcItemsInNextSliceOrBytesInCurrentSlice3;
                EBM_ASSERT(iPrev < iCur);
                // turn these into bytes from the previous

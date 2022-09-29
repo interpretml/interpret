@@ -174,6 +174,9 @@ static ErrorEbm Flatten(
          // if the pointer points to the space within the bins, then the TreeNode could not be split
          // and this TreeNode never had children and we never wrote a pointer to the children in this memory
          if(pBinLastOrChildren < aBins || pBinsEnd <= pBinLastOrChildren) {
+            EBM_ASSERT(pTreeNode <= pBinLastOrChildren && pBinLastOrChildren < 
+               reinterpret_cast<char *>(pTreeNode) + pBoosterCore->GetCountBytesTreeNodes());
+
             // the node was examined and a gain calculated, so it has left and right children.
             // We can retrieve the split location by looking at where the right child would end its range
             const auto * const pRightChild = GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);

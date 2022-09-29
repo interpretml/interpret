@@ -89,7 +89,7 @@ ErrorEbm BoosterCore::InitializeTensors(
 {
    LOG_0(Trace_Info, "Entered InitializeTensors");
 
-   EBM_ASSERT(0 < cTerms);
+   EBM_ASSERT(1 <= cTerms);
    EBM_ASSERT(nullptr != apTerms);
    EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(nullptr != papTensorsOut);
@@ -110,20 +110,23 @@ ErrorEbm BoosterCore::InitializeTensors(
    Tensor ** ppTensor = apTensors;
    for(size_t iTerm = 0; iTerm < cTerms; ++iTerm) {
       const Term * const pTerm = apTerms[iTerm];
-      Tensor * const pTensors = 
-         Tensor::Allocate(pTerm->GetCountDimensions(), cScores);
-      if(UNLIKELY(nullptr == pTensors)) {
-         LOG_0(Trace_Warning, "WARNING InitializeTensors nullptr == pTensors");
-         return Error_OutOfMemory;
-      }
-      *ppTensor = pTensors; // transfer ownership for future deletion
+      if(size_t { 0 } != pTerm->GetCountTensorBins()) {
+         // if there are any dimensions with features having 0 bins then do not allocate the tensor
+         // since it will have 0 scores
 
-      error = pTensors->Expand(pTerm);
-      if(Error_None != error) {
-         // already logged
-         return error;
-      }
+         Tensor * const pTensors = Tensor::Allocate(pTerm->GetCountDimensions(), cScores);
+         if(UNLIKELY(nullptr == pTensors)) {
+            LOG_0(Trace_Warning, "WARNING InitializeTensors nullptr == pTensors");
+            return Error_OutOfMemory;
+         }
+         *ppTensor = pTensors; // transfer ownership for future deletion
 
+         error = pTensors->Expand(pTerm);
+         if(Error_None != error) {
+            // already logged
+            return error;
+         }
+      }
       ++ppTensor;
    }
 
@@ -297,7 +300,7 @@ ErrorEbm BoosterCore::Create(
             &cNonDefaultsSparse
          );
          if(0 == cBins) {
-            if(0 != cTrainingSamples || 0 != cValidationSamples) {
+            if(0 != cSamples) {
                LOG_0(Trace_Error, "ERROR BoosterCore::Create countBins cannot be zero if either 0 < cTrainingSamples OR 0 < cValidationSamples");
                return Error_IllegalParamVal;
             }
@@ -318,7 +321,6 @@ ErrorEbm BoosterCore::Create(
    }
    LOG_0(Trace_Info, "BoosterCore::Create done feature processing");
 
-   const size_t cScores = GetCountScores(cClasses);
    const bool bClassification = IsClassification(cClasses);
 
    EBM_ASSERT(nullptr == pBoosterCore->m_apCurrentTermTensors);
@@ -326,15 +328,6 @@ ErrorEbm BoosterCore::Create(
 
    LOG_0(Trace_Info, "BoosterCore::Create starting feature group processing");
    if(0 != cTerms) {
-      if(IsOverflowBinSize<FloatFast>(bClassification, cScores) ||
-         IsOverflowBinSize<FloatBig>(bClassification, cScores) ||
-         IsOverflowTreeNodeSize(bClassification, cScores) ||
-         IsOverflowSplitPositionSize(bClassification, cScores)) 
-      {
-         LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
-         return Error_OutOfMemory;
-      }
-
       pBoosterCore->m_cTerms = cTerms;
       pBoosterCore->m_apTerms = Term::AllocateTerms(cTerms);
       if(UNLIKELY(nullptr == pBoosterCore->m_apTerms)) {
@@ -342,8 +335,8 @@ ErrorEbm BoosterCore::Create(
          return Error_OutOfMemory;
       }
 
-      size_t cFastBinsMax = 1; // even zero dimensions has 1 bin
-      size_t cBigBinsMax = 1; // even zero dimensions has 1 bin
+      size_t cFastBinsMax = 0;
+      size_t cBigBinsMax = 0;
       size_t cSingleDimensionBinsMax = 0;
 
       const IntEbm * piTermFeature = aiTermFeatures;
@@ -375,6 +368,9 @@ ErrorEbm BoosterCore::Create(
          size_t cTensorBins = 1;
          if(UNLIKELY(0 == cDimensions)) {
             LOG_0(Trace_Info, "INFO BoosterCore::Create empty feature group");
+
+            cFastBinsMax = EbmMax(cFastBinsMax, size_t { 1 });
+            cBigBinsMax = EbmMax(cBigBinsMax, size_t { 1 });
          } else {
             if(nullptr == piTermFeature) {
                LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures is null when there are Terms with non-zero numbers of features");
@@ -400,10 +396,10 @@ ErrorEbm BoosterCore::Create(
                   return Error_IllegalParamVal;
                }
 
-               EBM_ASSERT(1 <= cFeatures);
+               EBM_ASSERT(1 <= cFeatures); // since our iFeature is valid and index 0 would mean cFeatures == 1
                EBM_ASSERT(nullptr != pBoosterCore->m_aFeatures);
 
-               Feature * const pInputFeature = &pBoosterCore->m_aFeatures[iFeature];
+               const Feature * const pInputFeature = &pBoosterCore->m_aFeatures[iFeature];
                *ppFeature = pInputFeature;
 
                const size_t cBins = pInputFeature->GetCountBins();
@@ -421,53 +417,56 @@ ErrorEbm BoosterCore::Create(
                   }
 
                   // mathematically, cTensorBins grows faster than cAuxillaryBinsForBuildFastTotals
-                  EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTensorBins);
+                  EBM_ASSERT(0 == cTensorBins || cAuxillaryBinsForBuildFastTotals < cTensorBins);
 
                   // since cBins must be 2 or more, cAuxillaryBinsForBuildFastTotals must grow slower than 
                   // cTensorBins, and we checked above that cTensorBins would not overflow
                   EBM_ASSERT(!IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins));
 
                   cAuxillaryBinsForBuildFastTotals += cTensorBins;
-                  cTensorBins *= cBins;
-
-                  // same reasoning as above: cAuxillaryBinsForBuildFastTotals grows slower than cTensorBins
-                  EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTensorBins);
                } else {
                   LOG_0(Trace_Info, "INFO BoosterCore::Create feature group with no useful features");
                }
+               cTensorBins *= cBins;
+               // same reasoning as above: cAuxillaryBinsForBuildFastTotals grows slower than cTensorBins
+               EBM_ASSERT(0 == cTensorBins || cAuxillaryBinsForBuildFastTotals < cTensorBins);
 
                ++piTermFeature;
                ++ppFeature;
             } while(ppFeaturesEnd != ppFeature);
 
-            if(LIKELY(1 <= cRealDimensions)) {
-               EBM_ASSERT(1 < cTensorBins);
-
+            if(LIKELY(size_t { 0 } != cTensorBins)) {
                cFastBinsMax = EbmMax(cFastBinsMax, cTensorBins);
 
                size_t cTotalBigBins = cTensorBins;
-               if(1 == cRealDimensions) {
-                  cSingleDimensionBinsMax = EbmMax(cSingleDimensionBinsMax, cSingleDimensionBins);
-               } else {
-                  // we only use AuxillaryBins for pairs.  We wouldn't use them for random pairs, but we
-                  // don't know yet if the caller will set the random boosting flag on all pairs, so allocate it
+               if(LIKELY(size_t { 1 } != cTensorBins)) {
+                  EBM_ASSERT(1 <= cRealDimensions);
 
-                  // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20 at max, so we need 24
-                  static constexpr size_t cAuxillaryBinsForSplitting = 24;
-                  const size_t cAuxillaryBins = EbmMax(cAuxillaryBinsForBuildFastTotals, cAuxillaryBinsForSplitting);
-                  pTerm->SetCountAuxillaryBins(cAuxillaryBins);
+                  const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
+                  EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
+                  cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked(cBitsRequiredMin));
 
-                  if(IsAddError(cTensorBins, cAuxillaryBins)) {
-                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cTensorBins, cAuxillaryBins)");
-                     return Error_OutOfMemory;
+                  if(size_t { 1 } == cRealDimensions) {
+                     cSingleDimensionBinsMax = EbmMax(cSingleDimensionBinsMax, cSingleDimensionBins);
+                  } else {
+                     // we only use AuxillaryBins for pairs.  We wouldn't use them for random pairs, but we
+                     // don't know yet if the caller will set the random boosting flag on all pairs, so allocate it
+
+                     // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20 at max, so we need 24
+                     static constexpr size_t cAuxillaryBinsForSplitting = 24;
+                     const size_t cAuxillaryBins = EbmMax(cAuxillaryBinsForBuildFastTotals, cAuxillaryBinsForSplitting);
+                     pTerm->SetCountAuxillaryBins(cAuxillaryBins);
+
+                     if(IsAddError(cTensorBins, cAuxillaryBins)) {
+                        LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cTensorBins, cAuxillaryBins)");
+                        return Error_OutOfMemory;
+                     }
+                     cTotalBigBins += cAuxillaryBins;
                   }
-                  cTotalBigBins += cAuxillaryBins;
+               } else {
+                  EBM_ASSERT(0 == cRealDimensions);
                }
                cBigBinsMax = EbmMax(cBigBinsMax, cTotalBigBins);
-
-               const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
-               EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
-               cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked(cBitsRequiredMin));
             }
          }
          pTerm->SetCountRealDimensions(cRealDimensions);
@@ -477,58 +476,74 @@ ErrorEbm BoosterCore::Create(
          ++iTerm;
       } while(iTerm < cTerms);
 
-      const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
-      if(IsMultiplyError(cBytesPerFastBin, cFastBinsMax)) {
-         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerFastBin, cFastBinsMax)");
-         return Error_OutOfMemory;
-      }
-      pBoosterCore->m_cBytesFastBins = cBytesPerFastBin * cFastBinsMax;
+      if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
+         const size_t cScores = GetCountScores(cClasses);
 
-      const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
-      if(IsMultiplyError(cBytesPerBigBin, cBigBinsMax)) {
-         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerBigBin, cBigBinsMax)");
-         return Error_OutOfMemory;
-      }
-      pBoosterCore->m_cBytesBigBins = cBytesPerBigBin * cBigBinsMax;
-
-      if(0 != cSingleDimensionBinsMax) {
-         const size_t cSingleDimensionSplitsMax = cSingleDimensionBinsMax - 1;
-         const size_t cBytesPerSplitPosition = GetSplitPositionSize(bClassification, cScores);
-         if(IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)");
+         if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || 
+            IsOverflowBinSize<FloatBig>(bClassification, cScores))
+         {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
             return Error_OutOfMemory;
          }
-         // TODO : someday add equal gain multidimensional randomized picking.  I think for that we should generate
-         //        random numbers as we find equal gains, so we won't need this memory if we do that
-         pBoosterCore->m_cBytesSplitPositions = cBytesPerSplitPosition * cSingleDimensionSplitsMax;
+
+         const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
+         if(IsMultiplyError(cBytesPerFastBin, cFastBinsMax)) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerFastBin, cFastBinsMax)");
+            return Error_OutOfMemory;
+         }
+         pBoosterCore->m_cBytesFastBins = cBytesPerFastBin * cFastBinsMax;
+
+         const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
+         if(IsMultiplyError(cBytesPerBigBin, cBigBinsMax)) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerBigBin, cBigBinsMax)");
+            return Error_OutOfMemory;
+         }
+         pBoosterCore->m_cBytesBigBins = cBytesPerBigBin * cBigBinsMax;
+
+         if(0 != cSingleDimensionBinsMax) {
+            if(IsOverflowTreeNodeSize(bClassification, cScores) ||
+               IsOverflowSplitPositionSize(bClassification, cScores)) 
+            {
+               LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin tracking size overflow");
+               return Error_OutOfMemory;
+            }
+
+            const size_t cSingleDimensionSplitsMax = cSingleDimensionBinsMax - 1;
+            const size_t cBytesPerSplitPosition = GetSplitPositionSize(bClassification, cScores);
+            if(IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)) {
+               LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)");
+               return Error_OutOfMemory;
+            }
+            // TODO : someday add equal gain multidimensional randomized picking.  I think for that we should generate
+            //        random numbers as we find equal gains, so we won't need this memory if we do that
+            pBoosterCore->m_cBytesSplitPositions = cBytesPerSplitPosition * cSingleDimensionSplitsMax;
 
 
-         // If we have N bins, then we can have at most N - 1 splits.
-         // At maximum if all splits are made, then we'll have a tree with N - 1 nodes.
-         // Each node will contain a the total gradient sums of their left and right sides
-         // Each of the N bins will also have a leaf in the tree, which will also consume a TreeNode structure
-         // because each split needs to preserve the gradient sums of its left and right sides, which in this
-         // case are individual bins.
-         // So, in total we consume N + N - 1 TreeNodes
+            // If we have N bins, then we can have at most N - 1 splits.
+            // At maximum if all splits are made, then we'll have a tree with N - 1 nodes.
+            // Each node will contain a the total gradient sums of their left and right sides
+            // Each of the N bins will also have a leaf in the tree, which will also consume a TreeNode structure
+            // because each split needs to preserve the gradient sums of its left and right sides, which in this
+            // case are individual bins.
+            // So, in total we consume N + N - 1 TreeNodes
          
-         if(IsAddError(cSingleDimensionSplitsMax, cSingleDimensionBinsMax)) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cSingleDimensionSplitsMax, cSingleDimensionBinsMax)");
-            return Error_OutOfMemory;
-         }
-         const size_t cTreeNodes = cSingleDimensionSplitsMax + cSingleDimensionBinsMax;
+            if(IsAddError(cSingleDimensionSplitsMax, cSingleDimensionBinsMax)) {
+               LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cSingleDimensionSplitsMax, cSingleDimensionBinsMax)");
+               return Error_OutOfMemory;
+            }
+            const size_t cTreeNodes = cSingleDimensionSplitsMax + cSingleDimensionBinsMax;
 
-         const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
-         if(IsMultiplyError(cBytesPerTreeNode, cTreeNodes)) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerTreeNode, cTreeNodes)");
-            return Error_OutOfMemory;
+            const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
+            if(IsMultiplyError(cBytesPerTreeNode, cTreeNodes)) {
+               LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerTreeNode, cTreeNodes)");
+               return Error_OutOfMemory;
+            }
+            pBoosterCore->m_cBytesTreeNodes = cTreeNodes * cBytesPerTreeNode;
+         } else {
+            EBM_ASSERT(0 == pBoosterCore->m_cBytesSplitPositions);
+            EBM_ASSERT(0 == pBoosterCore->m_cBytesTreeNodes);
          }
-         pBoosterCore->m_cBytesTreeNodes = cTreeNodes * cBytesPerTreeNode;
-      } else {
-         EBM_ASSERT(0 == pBoosterCore->m_cBytesSplitPositions);
-         EBM_ASSERT(0 == pBoosterCore->m_cBytesTreeNodes);
-      }
 
-      if(!bClassification || ptrdiff_t { 2 } <= cClasses) {
          error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apCurrentTermTensors);
          if(Error_None != error) {
             LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == m_apCurrentTermTensors");
@@ -545,9 +560,9 @@ ErrorEbm BoosterCore::Create(
 
    error = pBoosterCore->m_trainingSet.Initialize(
       cClasses,
-      true,
-      bClassification,
-      bClassification,
+      ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses, // regression, binary, multiclass
+      ptrdiff_t { 1 } < cClasses, // binary, multiclass
+      ptrdiff_t { 1 } < cClasses, // binary, multiclass
       bClassification,
       pDataSetShared,
       BagEbm { 1 },
@@ -567,7 +582,7 @@ ErrorEbm BoosterCore::Create(
       cClasses,
       !bClassification,
       false,
-      bClassification,
+      ptrdiff_t { 1 } < cClasses, // binary, multiclass
       bClassification,
       pDataSetShared,
       BagEbm { -1 },
@@ -643,51 +658,34 @@ ErrorEbm BoosterCore::Create(
       }
    }
 
-   if(bClassification) {
-      if(0 != cTrainingSamples) {
-         error = InitializeGradientsAndHessians(
-            pDataSetShared,
-            BagEbm { 1 },
-            aBag,
-            aInitScores,
-            cTrainingSamples,
-            pBoosterCore->m_trainingSet.GetGradientsAndHessiansPointer()
-         );
-         if(Error_None != error) {
-            // error already logged
-            return error;
-         }
+   // TODO: move the calls to InitializeGradientsAndHessians to our caller AFTER the BoosterShell has been constructed because then we could use the booster shell temporary arrays and eliminate the error return since we wouldn't be allocating anything inside of InitializeGradientsAndHessians anymore
+   if(!pBoosterCore->m_trainingSet.IsGradientsAndHessiansNull()) {
+      error = InitializeGradientsAndHessians(
+         pDataSetShared,
+         BagEbm { 1 },
+         aBag,
+         aInitScores,
+         cTrainingSamples,
+         pBoosterCore->m_trainingSet.GetGradientsAndHessiansPointer()
+      );
+      if(Error_None != error) {
+         // error already logged
+         return error;
       }
-   } else {
-      EBM_ASSERT(IsRegression(cClasses));
-      if(0 != cTrainingSamples) {
+   }
+   if(!pBoosterCore->m_validationSet.IsGradientsAndHessiansNull()) {
 #ifndef NDEBUG
-         const ErrorEbm errorDebug =
+      const ErrorEbm errorDebug =
 #endif // NDEBUG
-         InitializeGradientsAndHessians(
-            pDataSetShared,
-            BagEbm { 1 },
-            aBag,
-            aInitScores,
-            cTrainingSamples,
-            pBoosterCore->m_trainingSet.GetGradientsAndHessiansPointer()
-         );
-         EBM_ASSERT(Error_None == errorDebug); // InitializeGradientsAndHessians doesn't allocate on regression
-      }
-      if(0 != cValidationSamples) {
-#ifndef NDEBUG
-         const ErrorEbm errorDebug =
-#endif // NDEBUG
-         InitializeGradientsAndHessians(
-            pDataSetShared,
-            BagEbm { -1 },
-            aBag,
-            aInitScores,
-            cValidationSamples,
-            pBoosterCore->m_validationSet.GetGradientsAndHessiansPointer()
-         );
-         EBM_ASSERT(Error_None == errorDebug); // InitializeGradientsAndHessians doesn't allocate on regression
-      }
+      InitializeGradientsAndHessians(
+         pDataSetShared,
+         BagEbm { -1 },
+         aBag,
+         aInitScores,
+         cValidationSamples,
+         pBoosterCore->m_validationSet.GetGradientsAndHessiansPointer()
+      );
+      EBM_ASSERT(Error_None == errorDebug); // InitializeGradientsAndHessians doesn't allocate on regression
    }
 
    pBoosterCore->m_cClasses = cClasses;

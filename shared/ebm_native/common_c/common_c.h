@@ -29,6 +29,8 @@ extern "C" {
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
+#define WARNING_BUFFER_OVERRUN
+#define WARNING_REDUNDANT_CODE
 #define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
 
 #if __has_feature(attribute_analyzer_noreturn)
@@ -44,6 +46,8 @@ extern "C" {
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE _Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
+#define WARNING_BUFFER_OVERRUN
+#define WARNING_REDUNDANT_CODE
 #define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
 
 #define ANALYZER_NORETURN
@@ -61,6 +65,8 @@ extern "C" {
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
+#define WARNING_BUFFER_OVERRUN
+#define WARNING_REDUNDANT_CODE
 #define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
 
 #define ANALYZER_NORETURN
@@ -72,6 +78,8 @@ extern "C" {
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE __pragma(warning(disable: 4701))
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO __pragma(warning(disable: 4723))
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY __pragma(warning(disable: 6001))
+#define WARNING_BUFFER_OVERRUN __pragma(warning(disable: 6386))
+#define WARNING_REDUNDANT_CODE __pragma(warning(disable: 6287))
 #define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER [[gsl::suppress(type.6)]]
 
 #define ANALYZER_NORETURN
@@ -97,12 +105,12 @@ extern "C" {
 #define __has_builtin(x) 0 // __has_builtin is supported in newer compilers.  On older compilers diable anything we would check with it
 #endif // __has_builtin
 
-#define LIKELY(b) __builtin_expect((b), 1)
-#define UNLIKELY(b) __builtin_expect((b), 0)
+#define LIKELY(b) __builtin_expect(!!(b), 1)
+#define UNLIKELY(b) __builtin_expect(!!(b), 0)
 #define PREDICTABLE(b) (b)
 
 #if __has_builtin(__builtin_unpredictable)
-#define UNPREDICTABLE(b) __builtin_unpredictable(b)
+#define UNPREDICTABLE(b) __builtin_unpredictable(!!(b))
 #else // __has_builtin(__builtin_unpredictable)
 #define UNPREDICTABLE(b) (b)
 #endif // __has_builtin(__builtin_unpredictable)
@@ -143,6 +151,13 @@ INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * const dest, const char * c
    StopClangAnalysis();
    return strcpy(dest, src);
 }
+
+#define ANALYSIS_ASSERT(b) \
+   do { \
+      if(!(b)) \
+         StopClangAnalysis(); \
+   } while( (void)0, 0)
+
 
 #define FAST_EXP
 #define FAST_LOG

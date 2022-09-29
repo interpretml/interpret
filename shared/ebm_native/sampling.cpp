@@ -91,7 +91,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
       do {
          const size_t iRandom = cpuRng.NextFast(cSamplesRemaining);
          const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
-         cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
+         cTrainingRemaining -= UNPREDICTABLE(bTrainingSample) ? size_t { 1 } : size_t { 0 };
          *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbm { 1 } : BagEbm { -1 };
          ++pSampleReplicationOut;
          --cSamplesRemaining;
@@ -103,7 +103,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
          do {
             const size_t iRandom = randomGenerator.NextFast(cSamplesRemaining);
             const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
-            cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
+            cTrainingRemaining -= UNPREDICTABLE(bTrainingSample) ? size_t { 1 } : size_t { 0 };
             *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbm { 1 } : BagEbm { -1 };
             ++pSampleReplicationOut;
             --cSamplesRemaining;
@@ -131,8 +131,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
 static int g_cLogEnterSampleWithoutReplacementStratified = 5;
 static int g_cLogExitSampleWithoutReplacementStratified = 5;
 
-WARNING_PUSH
-WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    void * rng,
@@ -185,7 +183,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    }
 
    const size_t cSamples = cTrainingSamples + cValidationSamples;
-   if(UNLIKELY(0 == cSamples)) {
+   if(UNLIKELY(size_t { 0 } == cSamples)) {
       LOG_COUNTED_0(
          &g_cLogExitSampleWithoutReplacementStratified,
          Trace_Info,
@@ -210,9 +208,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
       return Error_IllegalParamVal;
    }
 
-   if(UNLIKELY(countClasses <= 0)) {
+   if(UNLIKELY(countClasses <= IntEbm { 0 })) {
       // countClasses cannot be zero since 1 <= cSamples
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified countClasses <= 0");
+      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified countClasses <= IntEbm { 0 }");
       return Error_IllegalParamVal;
    }
    if(IsConvertError<size_t>(countClasses)) {
@@ -220,6 +218,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
       return Error_IllegalParamVal;
    }
    const size_t cClasses = static_cast<size_t>(countClasses);
+   EBM_ASSERT(1 <= cClasses);
 
    if(UNLIKELY(IsMultiplyError(sizeof(TargetClass), cClasses))) {
       LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified IsMultiplyError(sizeof(TargetClass), cClasses)");
@@ -365,7 +364,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
 
             double idealClassTraining = idealTrainingProportion * static_cast<double>(cClassSamples);
             double curTrainingDiff = idealClassTraining - cClassTrainingSamples;
-            double newTrainingDiff = idealClassTraining - (cClassTrainingSamples + 1);
+            const size_t cClassTrainingSamplesPlusOne = cClassTrainingSamples + 1;
+            double newTrainingDiff = idealClassTraining - cClassTrainingSamplesPlusOne;
             double improvement = (curTrainingDiff * curTrainingDiff) - (newTrainingDiff * newTrainingDiff);
 
             if(0 == cClassTrainingSamples) {
@@ -423,7 +423,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
       const bool bTrainingSample = UNPREDICTABLE(iRandom < pTargetClass->m_cTrainingSamples);
 
       *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbm { 1 } : BagEbm { -1 };
-      const size_t cSubtract = UNPREDICTABLE(bTrainingSample) ? 1 : 0;
+      const size_t cSubtract = UNPREDICTABLE(bTrainingSample) ? size_t { 1 } : size_t { 0 };
       pTargetClass->m_cTrainingSamples -= cSubtract;
       --pTargetClass->m_cSamples;
 
@@ -455,7 +455,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
 
    return Error_None;
 }
-WARNING_POP
 
 extern ErrorEbm Unbag(
    const size_t cSamples,
@@ -565,9 +564,9 @@ extern ErrorEbm ExtractWeights(
 ) {
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
-   EBM_ASSERT(0 < cSetSamples);
+   EBM_ASSERT(1 <= cSetSamples);
    EBM_ASSERT(cSetSamples <= cAllSamples);
-   EBM_ASSERT(0 < cAllSamples); // from the previous two rules
+   EBM_ASSERT(1 <= cAllSamples); // from the previous two rules
    EBM_ASSERT(nullptr != ppWeightsOut);
    EBM_ASSERT(nullptr == *ppWeightsOut);
 

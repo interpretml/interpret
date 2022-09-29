@@ -63,6 +63,10 @@ public:
       const Term * const * const apTerms
    );
 
+   inline bool IsGradientsAndHessiansNull() {
+      return nullptr == m_aGradientsAndHessians;
+   }
+
    inline FloatFast * GetGradientsAndHessiansPointer() {
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
@@ -86,9 +90,6 @@ public:
    }
    inline size_t GetCountSamples() const {
       return m_cSamples;
-   }
-   inline size_t GetCountTerms() const {
-      return m_cTerms;
    }
 };
 static_assert(std::is_standard_layout<DataSetBoosting>::value,

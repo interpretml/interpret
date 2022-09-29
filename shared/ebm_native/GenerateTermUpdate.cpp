@@ -274,6 +274,7 @@ static ErrorEbm BoostMultiDimensional(
    ErrorEbm error;
 
    const size_t cTensorBins = pTerm->GetCountTensorBins();
+   EBM_ASSERT(1 <= cTensorBins);
 
    size_t acBins[k_cDimensionsMax];
    size_t * pcBins = acBins;
@@ -523,7 +524,8 @@ static ErrorEbm BoostRandom(
    EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
 
-   size_t cTotalBins = pTerm->GetCountTensorBins();
+   const size_t cTotalBins = pTerm->GetCountTensorBins();
+   EBM_ASSERT(1 <= cTotalBins);
 
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
    const bool bClassification = IsClassification(cClasses);
@@ -535,9 +537,8 @@ static ErrorEbm BoostRandom(
    BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
    EBM_ASSERT(nullptr != aFastBins);
 
-   aFastBins->ZeroMem(cBytesPerFastBin, cTotalBins);
-
    EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTotalBins));
+   aFastBins->ZeroMem(cBytesPerFastBin, cTotalBins);
 
 #ifndef NDEBUG
    pBoosterShell->SetDebugFastBinsEnd(reinterpret_cast<unsigned char *>(aFastBins) + cBytesPerFastBin * cTotalBins);
@@ -698,6 +699,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
 
    if(ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses) {
+      EBM_ASSERT(nullptr == pBoosterShell->GetTermUpdate());
+      EBM_ASSERT(nullptr == pBoosterShell->GetInnerTermUpdate());
+
+      // if there are 0 classes, then there must be zero samples, but our caller can still specify 0 != cBins below
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetTrainingSet()->GetCountSamples());
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetValidationSet()->GetCountSamples());
+
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  
       // The term scores are a tensor with zero length array logits, which means for our representation that we have 
       // zero items in the array total. Since we can predit the output with 100% accuracy, our gain will be 0.
@@ -706,12 +714,29 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       }
       pBoosterShell->SetTermIndex(iTerm);
 
-      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate pBoosterCore->m_cClasses <= ptrdiff_t { 1 }");
+      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses");
+      return Error_None;
+   }
+   EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
+   EBM_ASSERT(nullptr != pBoosterShell->GetInnerTermUpdate());
+
+   if(size_t { 0 } == pTerm->GetCountTensorBins()) {
+      // there are zero samples and 0 bins in one of the features in the dimensions, so the update tensor has 0 bins
+
+      // if GetCountTensorBins is 0, then we leave pBoosterShell->GetTermUpdate() with invalid data since
+      // out Tensor class does not support tensors of zero elements
+
+      if(LIKELY(nullptr != avgGainOut)) {
+         *avgGainOut = 0.0;
+      }
+      pBoosterShell->SetTermIndex(iTerm);
+
+      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate size_t { 0 } == pTerm->GetCountTensorBins()");
       return Error_None;
    }
 
    const size_t cInnerBagsAfterZero =
-      (0 == pBoosterCore->GetCountInnerBags()) ? size_t { 1 } : pBoosterCore->GetCountInnerBags();
+      size_t { 0 } == pBoosterCore->GetCountInnerBags() ? size_t { 1 } : pBoosterCore->GetCountInnerBags();
    const size_t cRealDimensions = pTerm->GetCountRealDimensions();
    const size_t cDimensions = pTerm->GetCountDimensions();
 
@@ -734,6 +759,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             const Feature * const pFeature = *ppFeature;
             const size_t cBins = pFeature->GetCountBins();
             if(size_t { 1 } < cBins) {
+               // if there is only 1 dimension then this is our first time here and lastDimensionLeavesMax must be zero
                EBM_ASSERT(size_t { 2 } <= cRealDimensions || IntEbm { 0 } == lastDimensionLeavesMax);
 
                iDimensionImportant = iDimensionInit;

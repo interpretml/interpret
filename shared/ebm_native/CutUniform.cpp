@@ -543,7 +543,8 @@ EBM_API_BODY IntEbm EBM_CALLING_CONVENTION CutUniform(
       walkVal = FloatTickIncrement(walkVal);
       cutsLowerBoundInclusiveOut[iCut] = walkVal;
       if(walkVal == valMax) {
-         return static_cast<IntEbm>(iCut + 1);
+         ++iCut;
+         return static_cast<IntEbm>(iCut);
       }
    }
    EBM_ASSERT(walkVal < valMax);
@@ -590,7 +591,8 @@ EBM_API_BODY IntEbm EBM_CALLING_CONVENTION CutUniform(
    // integers cannot be identified since the float tick is larger than an integer.  We would want to eliminate
    // any extended precision bits, if there were any. We'd also get float bunching, but meh, it's hard to fix,
    // so avoid having 2^53 cuts.
-   cBinsFloat = CleanFloat(static_cast<double>(cCuts + 1));
+   const size_t cBinsInt = cCuts + 1;
+   cBinsFloat = CleanFloat(static_cast<double>(cBinsInt));
 
    // make the first cut subtract from valMax so that we do not need to check for forward progress on the first loop
    cHalfCuts = cCuts / 2;
@@ -599,7 +601,8 @@ EBM_API_BODY IntEbm EBM_CALLING_CONVENTION CutUniform(
    iCut = cCuts;
    while(cHalfCuts < iCut) {
       --iCut;
-      numerator = CleanFloat(static_cast<double>((cCuts - iCut) * 2)); // clear for > 2^53 cuts
+      const size_t numeratorInt = (cCuts - iCut) << 1;
+      numerator = CleanFloat(static_cast<double>(numeratorInt)); // clear for > 2^53 cuts
       fraction = CleanFloat(numerator / cBinsFloat); // clear extended precision bits
       EBM_ASSERT(fraction <= 1.0);
       shift = CleanFloat(fraction * halfDiff); // clear extended precision bits
@@ -621,7 +624,8 @@ EBM_API_BODY IntEbm EBM_CALLING_CONVENTION CutUniform(
       cutPrev = cut;
    }
    while(0 != iCut) {
-      numerator = CleanFloat(static_cast<double>(iCut * 2)); // clear for > 2^53 cuts
+      const size_t numeratorInt = iCut << 1;
+      numerator = CleanFloat(static_cast<double>(numeratorInt)); // clear for > 2^53 cuts
       fraction = CleanFloat(numerator / cBinsFloat); // clear extended precision bits
       EBM_ASSERT(fraction <= 1.0);
       shift = CleanFloat(fraction * halfDiff); // clear extended precision bits

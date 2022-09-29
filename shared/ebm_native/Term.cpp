@@ -15,21 +15,21 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-Term * Term::Allocate(const size_t cFeatures) noexcept {
-   const size_t cBytes = GetTermCountBytes(cFeatures);
-   EBM_ASSERT(0 < cBytes);
+Term * Term::Allocate(const size_t cDimensions) noexcept {
+   const size_t cBytes = GetTermCountBytes(cDimensions);
+   EBM_ASSERT(1 <= cBytes);
    Term * const pTerm = static_cast<Term *>(EbmMalloc<void>(cBytes));
    if(UNLIKELY(nullptr == pTerm)) {
       return nullptr;
    }
-   pTerm->Initialize(cFeatures);
+   pTerm->Initialize(cDimensions);
    return pTerm;
 }
 
 Term ** Term::AllocateTerms(const size_t cTerms) noexcept {
    LOG_0(Trace_Info, "Entered Term::AllocateTerms");
 
-   EBM_ASSERT(0 < cTerms);
+   EBM_ASSERT(1 <= cTerms);
    Term ** const apTerms = EbmMalloc<Term *>(cTerms);
    if(nullptr != apTerms) {
       for(size_t iTerm = 0; iTerm < cTerms; ++iTerm) {

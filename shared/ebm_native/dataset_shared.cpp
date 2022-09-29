@@ -174,8 +174,8 @@ static_assert(std::is_standard_layout<HeaderDataSetShared>::value,
    "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 static_assert(std::is_trivial<HeaderDataSetShared>::value,
    "These structs are shared between processes, so they definetly need to be standard layout and trivial");
-static constexpr size_t k_cBytesHeaderNoOffset = offsetof(HeaderDataSetShared, m_offsets);
-static constexpr SharedStorageDataType k_unfilledOffset = k_cBytesHeaderNoOffset - 1;
+static const size_t k_cBytesHeaderNoOffset = offsetof(HeaderDataSetShared, m_offsets);
+static const SharedStorageDataType k_unfilledOffset = k_cBytesHeaderNoOffset - 1;
 
 struct FeatureDataSetShared {
    SharedStorageDataType m_id; // dense or sparse?  nominal, missing, unknown or not?
@@ -377,6 +377,8 @@ static void LockDataSetShared(unsigned char * const pFillMem) {
    pHeaderDataSetShared->m_id = k_sharedDataSetDoneId; // signal that we finished construction of the data set
 }
 
+WARNING_PUSH
+WARNING_REDUNDANT_CODE
 static IntEbm AppendHeader(
    const IntEbm countFeatures,
    const IntEbm countWeights,
@@ -402,19 +404,19 @@ static IntEbm AppendHeader(
       static_cast<void *>(pFillMem)
    );
 
-   if(IsConvertErrorDual<size_t, SharedStorageDataType>(countFeatures)) {
+   if(IsConvertError<size_t>(countFeatures) || IsConvertError<SharedStorageDataType>(countFeatures)) {
       LOG_0(Trace_Error, "ERROR AppendHeader countFeatures is outside the range of a valid index");
       return Error_IllegalParamVal;
    }
    const size_t cFeatures = static_cast<size_t>(countFeatures);
 
-   if(IsConvertErrorDual<size_t, SharedStorageDataType>(countWeights)) {
+   if(IsConvertError<size_t>(countWeights) || IsConvertError<SharedStorageDataType>(countWeights)) {
       LOG_0(Trace_Error, "ERROR AppendHeader countWeights is outside the range of a valid index");
       return Error_IllegalParamVal;
    }
    const size_t cWeights = static_cast<size_t>(countWeights);
 
-   if(IsConvertErrorDual<size_t, SharedStorageDataType>(countTargets)) {
+   if(IsConvertError<size_t>(countTargets) || IsConvertError<SharedStorageDataType>(countTargets)) {
       LOG_0(Trace_Error, "ERROR AppendHeader countTargets is outside the range of a valid index");
       return Error_IllegalParamVal;
    }
@@ -470,7 +472,7 @@ static IntEbm AppendHeader(
          // zero targets we expect the booster or interaction detector constructors to give errors
          LockDataSetShared(pFillMem);
       } else {
-         SharedStorageDataType * pCur = pHeaderDataSetShared->m_offsets;
+         SharedStorageDataType * pCur = ArrayToPointer(pHeaderDataSetShared->m_offsets);
          const SharedStorageDataType * const pEnd = pCur + cOffsets;
          do {
             *pCur = k_unfilledOffset;
@@ -491,6 +493,7 @@ static IntEbm AppendHeader(
    }
    return cBytesHeader;
 }
+WARNING_POP
 
 static bool DecideIfSparse(const size_t cSamples, const IntEbm * binIndexes) {
    // For sparsity in the data set shared memory the only thing that matters is compactness since we don't use
@@ -503,6 +506,8 @@ static bool DecideIfSparse(const size_t cSamples, const IntEbm * binIndexes) {
    return false;
 }
 
+WARNING_PUSH
+WARNING_REDUNDANT_CODE
 static IntEbm AppendFeature(
    const IntEbm countBins,
    const BoolEbm isMissing,
@@ -539,7 +544,7 @@ static IntEbm AppendFeature(
    );
 
    {
-      if(IsConvertErrorDual<size_t, SharedStorageDataType>(countBins)) {
+      if(IsConvertError<size_t>(countBins) || IsConvertError<SharedStorageDataType>(countBins)) {
          LOG_0(Trace_Error, "ERROR AppendFeature countBins is outside the range of a valid index");
          goto return_bad;
       }
@@ -556,7 +561,7 @@ static IntEbm AppendFeature(
          LOG_0(Trace_Error, "ERROR AppendFeature isNominal is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
       }
-      if(IsConvertErrorDual<size_t, SharedStorageDataType>(countSamples)) {
+      if(IsConvertError<size_t>(countSamples) || IsConvertError<SharedStorageDataType>(countSamples)) {
          LOG_0(Trace_Error, "ERROR AppendFeature countSamples is outside the range of a valid index");
          goto return_bad;
       }
@@ -726,7 +731,10 @@ return_bad:;
    }
    return Error_IllegalParamVal;
 }
+WARNING_POP
 
+WARNING_PUSH
+WARNING_REDUNDANT_CODE
 static IntEbm AppendWeight(
    const IntEbm countSamples,
    const double * aWeights,
@@ -751,7 +759,7 @@ static IntEbm AppendWeight(
    );
 
    {
-      if(IsConvertErrorDual<size_t, SharedStorageDataType>(countSamples)) {
+      if(IsConvertError<size_t>(countSamples) || IsConvertError<SharedStorageDataType>(countSamples)) {
          LOG_0(Trace_Error, "ERROR AppendWeight countSamples is outside the range of a valid index");
          goto return_bad;
       }
@@ -888,7 +896,10 @@ return_bad:;
    }
    return Error_IllegalParamVal;
 }
+WARNING_POP
 
+WARNING_PUSH
+WARNING_REDUNDANT_CODE
 static IntEbm AppendTarget(
    const bool bClassification,
    const IntEbm countClasses,
@@ -919,11 +930,11 @@ static IntEbm AppendTarget(
    );
 
    {
-      if(IsConvertErrorDual<size_t, SharedStorageDataType>(countClasses)) {
+      if(countClasses < IntEbm { 0 } || IsConvertError<ptrdiff_t>(countClasses) || IsConvertError<SharedStorageDataType>(countClasses)) {
          LOG_0(Trace_Error, "ERROR AppendTarget countClasses is outside the range of a valid index");
          goto return_bad;
       }
-      if(IsConvertErrorDual<size_t, SharedStorageDataType>(countSamples)) {
+      if(IsConvertError<size_t>(countSamples) || IsConvertError<SharedStorageDataType>(countSamples)) {
          LOG_0(Trace_Error, "ERROR AppendTarget countSamples is outside the range of a valid index");
          goto return_bad;
       }
@@ -1100,6 +1111,7 @@ return_bad:;
    }
    return Error_IllegalParamVal;
 }
+WARNING_POP
 
 EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureDataSetHeader(
    IntEbm countFeatures,
@@ -1436,7 +1448,7 @@ extern ErrorEbm GetDataSetSharedHeader(
    }
    iOffsetNext += k_cBytesHeaderNoOffset;
 
-   const SharedStorageDataType * pOffset = pHeaderDataSetShared->m_offsets;
+   const SharedStorageDataType * pOffset = ArrayToPointer(pHeaderDataSetShared->m_offsets);
    while(0 != cFeatures) {
       const SharedStorageDataType indexOffsetCur = *pOffset;
       if(IsConvertError<size_t>(indexOffsetCur)) {
@@ -1691,7 +1703,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
          return Error_IllegalParamVal;
       }
 
-      const SharedStorageDataType * pOffset = pHeaderDataSetShared->m_offsets;
+      const SharedStorageDataType * pOffset = ArrayToPointer(pHeaderDataSetShared->m_offsets);
       IntEbm * pcBins = binCountsOut;
       const IntEbm * const pcBinsEnd = binCountsOut + cFeatures;
       do {
@@ -1864,8 +1876,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
          LOG_0(Trace_Error, "ERROR ExtractTargetClasses nullptr == classCountsOut");
          return Error_IllegalParamVal;
       }
-
-      const SharedStorageDataType * pOffset = &pHeaderDataSetShared->m_offsets[cFeatures + cWeights];
+      
+      const SharedStorageDataType * pOffset = &ArrayToPointer(pHeaderDataSetShared->m_offsets)[cFeatures + cWeights];
       IntEbm * pcClasses = classCountsOut;
       const IntEbm * const pcClassesEnd = classCountsOut + cTargets;
       do {

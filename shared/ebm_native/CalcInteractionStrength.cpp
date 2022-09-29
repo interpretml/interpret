@@ -180,18 +180,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       aiFeatures[iDimension] = iFeature;
 
       const size_t cBins = pFeature->GetCountBins();
-      if(cBins <= size_t { 1 }) {
-         LOG_0(Trace_Info, "INFO CalcInteractionStrength feature group contains a feature with only 1 bin");
-         if(nullptr != avgInteractionStrengthOut) {
-            *avgInteractionStrengthOut = 0.0;
-         }
-         return Error_None;
+      if(UNLIKELY(cBins <= size_t { 1 })) {
+         // stay in the loop to detect errors in the featureIndexes array and check if cTensorBins is 0 at the end
+         cTensorBins = 0;
       }
       acBins[iDimension] = cBins;
 
       // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBinsForBuildFastTotals
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins) at runtime
-      EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTensorBins);
+      EBM_ASSERT(0 == cTensorBins || cAuxillaryBinsForBuildFastTotals < cTensorBins);
       // since cBins must be 2 or more, cAuxillaryBinsForBuildFastTotals must grow slower than cTensorBins, and we checked at allocation 
       // that cTensorBins would not overflow
       EBM_ASSERT(!IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins));
@@ -206,10 +203,18 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       }
       cTensorBins *= cBins;
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins) at runtime
-      EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTensorBins);
+      EBM_ASSERT(0 == cTensorBins || cAuxillaryBinsForBuildFastTotals < cTensorBins);
 
       ++iDimension;
    } while(cDimensions != iDimension);
+
+   if(size_t { 0 } == cTensorBins) {
+      LOG_0(Trace_Info, "INFO CalcInteractionStrength feature group contains a feature with only 1 or 0 bins");
+      if(nullptr != avgInteractionStrengthOut) {
+         *avgInteractionStrengthOut = 0.0;
+      }
+      return Error_None;
+   }
 
    if(size_t { 0 } == pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
       // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
@@ -221,10 +226,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    }
 
    const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
-
-   // cClasses cannot be zero if there is 1 or more samples
-   EBM_ASSERT(ptrdiff_t { 0 } != cClasses);
-
+   EBM_ASSERT(ptrdiff_t { 0 } != cClasses); // cClasses cannot be zero if there is 1 or more samples
    if(ptrdiff_t { 1 } == cClasses) {
       LOG_0(Trace_Info, "INFO CalcInteractionStrength target with 1 class perfectly predicts the target");
       if(nullptr != avgInteractionStrengthOut) {

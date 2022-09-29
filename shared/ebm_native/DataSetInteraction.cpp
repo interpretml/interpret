@@ -51,6 +51,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm ConstructGradientsAndHessians(
 
    // cClasses can only be zero if there are zero samples and we shouldn't get here
    EBM_ASSERT(0 != cClasses);
+   EBM_ASSERT(1 != cClasses);
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(1 <= cSetSamples);
    EBM_ASSERT(nullptr != paGradientsAndHessiansOut);
@@ -101,8 +102,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    LOG_0(Trace_Info, "Entered DataSetInteraction::ConstructInputData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(0 < cSetSamples);
-   EBM_ASSERT(0 < cFeatures);
+   EBM_ASSERT(1 <= cSetSamples);
+   EBM_ASSERT(1 <= cFeatures);
 
    StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatures);
    if(nullptr == aaInputDataTo) {
@@ -217,6 +218,7 @@ void DataSetInteraction::Destruct() {
 WARNING_POP
 
 ErrorEbm DataSetInteraction::Initialize(
+   const bool bAllocateGradients,
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
    const size_t cAllSamples,
@@ -237,14 +239,7 @@ ErrorEbm DataSetInteraction::Initialize(
 
    ErrorEbm error;
 
-   ptrdiff_t cClasses;
-   GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
-
    if(0 != cSetSamples) {
-      // cClasses can only be zero if 
-      // there are zero samples and we shouldn't get past this point
-      EBM_ASSERT(0 != cClasses);
-
       // if cSamples is zero, then we don't need to allocate anything since we won't use them anyways
 
       EBM_ASSERT(nullptr == m_aWeights);
@@ -264,7 +259,7 @@ ErrorEbm DataSetInteraction::Initialize(
          }
          if(nullptr != m_aWeights) {
             const FloatBig total = AddPositiveFloatsSafeBig(cSetSamples, m_aWeights);
-            if(std::isnan(total) || std::isinf(total) || total <= 0) {
+            if(std::isnan(total) || std::isinf(total) || total <= FloatBig { 0 }) {
                LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= 0");
                return Error_UserParamVal;
             }
@@ -275,18 +270,29 @@ ErrorEbm DataSetInteraction::Initialize(
          }
       }
 
-      error = ConstructGradientsAndHessians(
-         cClasses,
-         bAllocateHessians,
-         pDataSetShared,
-         aBag,
-         aInitScores,
-         cSetSamples,
-         &m_aGradientsAndHessians
-      );
-      if(Error_None != error) {
-         // we should have already logged the failure
-         return error;
+      if(bAllocateGradients) {
+         ptrdiff_t cClasses;
+         GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
+
+         // if there are 0 or 1 classes, then with reduction there should be zero scores and the caller should disable
+         EBM_ASSERT(0 != cClasses);
+         EBM_ASSERT(1 != cClasses);
+
+         error = ConstructGradientsAndHessians(
+            cClasses,
+            bAllocateHessians,
+            pDataSetShared,
+            aBag,
+            aInitScores,
+            cSetSamples,
+            &m_aGradientsAndHessians
+         );
+         if(Error_None != error) {
+            // we should have already logged the failure
+            return error;
+         }
+      } else {
+         EBM_ASSERT(!bAllocateHessians);
       }
 
       if(0 != cFeatures) {
@@ -300,11 +306,10 @@ ErrorEbm DataSetInteraction::Initialize(
             return Error_OutOfMemory;
          }
          m_aaInputData = aaInputData;
+         m_cFeatures = cFeatures; // only needed if nullptr != m_aaInputData
       }
-
       m_cSamples = cSetSamples;
    }
-   m_cFeatures = cFeatures;
 
    LOG_0(Trace_Info, "Exited DataSetInteraction::Initialize");
    return Error_None;

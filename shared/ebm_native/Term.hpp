@@ -40,23 +40,23 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   inline constexpr static size_t GetTermCountBytes(const size_t cFeatures) noexcept {
-      return offsetof(Term, m_apFeature) + sizeof(Term::m_apFeature[0]) * cFeatures;
+   inline static size_t GetTermCountBytes(const size_t cDimensions) noexcept {
+      return offsetof(Term, m_apFeature) + sizeof(Term::m_apFeature[0]) * cDimensions;
    }
 
    inline static void Free(Term * const pTerm) noexcept {
       free(pTerm);
    }
 
-   inline void Initialize(const size_t cFeatures) noexcept {
-      m_cDimensions = cFeatures;
+   inline void Initialize(const size_t cDimensions) noexcept {
+      m_cDimensions = cDimensions;
       m_cLogEnterGenerateTermUpdateMessages = 2;
       m_cLogExitGenerateTermUpdateMessages = 2;
       m_cLogEnterApplyTermUpdateMessages = 2;
       m_cLogExitApplyTermUpdateMessages = 2;
    }
 
-   static Term * Allocate(const size_t cFeatures) noexcept;
+   static Term * Allocate(const size_t cDimensions) noexcept;
    static Term ** AllocateTerms(const size_t cTerms) noexcept;
    static void FreeTerms(const size_t cTerms, Term ** apTerms) noexcept;
 

@@ -27,6 +27,8 @@ public:
 
    PartitionTwoDimensionalInteractionInternal() = delete; // this is a static class.  Do not construct
 
+   WARNING_PUSH
+   WARNING_BUFFER_OVERRUN
    INLINE_RELEASE_UNTEMPLATED static double Func(
       InteractionCore * const pInteractionCore,
       const size_t cRealDimensions,
@@ -372,6 +374,7 @@ public:
       // we clean up bestGain in the caller, since this function is templated and created many times
       return static_cast<double>(bestGain);
    }
+   WARNING_POP
 };
 
 template<ptrdiff_t cPossibleClasses>

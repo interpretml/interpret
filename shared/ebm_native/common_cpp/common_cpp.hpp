@@ -395,13 +395,6 @@ static_assert(IsConvertError<uint8_t>(uint16_t { 256 }), "automated test with co
 static_assert(!IsConvertError<uint8_t>(uint16_t { 255 }), "automated test with compiler");
 static_assert(!IsConvertError<uint8_t>(uint16_t { 0 }), "automated test with compiler");
 
-
-template<typename TTo1, typename TTo2, typename TFrom>
-inline constexpr static bool IsConvertErrorDual(const TFrom number) noexcept {
-   return IsConvertError<TTo1>(number) || IsConvertError<TTo2>(number);
-}
-
-
 template<typename T>
 constexpr static size_t CountBitsRequired(const T maxValue) noexcept {
    // this is a bit inefficient when called in the runtime, but we don't call it anywhere that's important performance wise.

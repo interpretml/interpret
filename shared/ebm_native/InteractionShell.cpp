@@ -52,6 +52,7 @@ InteractionShell * InteractionShell::Create(InteractionCore * const pInteraction
 
 BinBase * InteractionShell::GetInteractionFastBinsTemp(const size_t cBytesPerFastBin, const size_t cFastBins) {
    BinBase * aBuffer = m_aInteractionFastBinsTemp;
+   StopClangAnalysis(); // TODO: check this out, but cFastBins can be smaller than m_cAllocatedFastBins
    if(UNLIKELY(m_cAllocatedFastBins < cFastBins)) {
       free(aBuffer);
       m_aInteractionFastBinsTemp = nullptr;
@@ -78,6 +79,7 @@ BinBase * InteractionShell::GetInteractionFastBinsTemp(const size_t cBytesPerFas
 
 BinBase * InteractionShell::GetInteractionBigBins(const size_t cBytesPerBigBin, const size_t cBigBins) {
    BinBase * aBuffer = m_aInteractionBigBins;
+   StopClangAnalysis(); // TODO: check this out, but cBigBins can be smaller than m_cAllocatedBigBins
    if(UNLIKELY(m_cAllocatedBigBins < cBigBins)) {
       free(aBuffer);
       m_aInteractionBigBins = nullptr;

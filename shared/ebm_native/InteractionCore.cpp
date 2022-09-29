@@ -161,11 +161,11 @@ ErrorEbm InteractionCore::Create(
             &defaultValSparse,
             &cNonDefaultsSparse
          );
-         if(0 == cBins && 0 != cSamples) {
-            LOG_0(Trace_Error, "ERROR InteractionCore::Allocate countBins cannot be zero if 0 < cSamples");
-            return Error_IllegalParamVal;
-         }
          if(0 == cBins) {
+            if(0 != cSamples) {
+               LOG_0(Trace_Error, "ERROR InteractionCore::Allocate countBins cannot be zero if 0 < cSamples");
+               return Error_IllegalParamVal;
+            }
             // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
             // can only occur if there were zero training and zero validation cases since the 
             // features would require a value, even if it was 0.
@@ -183,7 +183,8 @@ ErrorEbm InteractionCore::Create(
    LOG_0(Trace_Info, "InteractionCore::Allocate done feature processing");
 
    error = pRet->m_dataFrame.Initialize(
-      bClassification,
+      ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses,  // regression, binary, multiclass
+      ptrdiff_t { 1 } < cClasses,  // binary, multiclass
       pDataSetShared,
       cSamples,
       aBag,

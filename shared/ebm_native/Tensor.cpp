@@ -30,8 +30,8 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
    const size_t cTensorScoreCapacity = k_initialTensorCapacity * cScores;
 
    // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
-   const size_t cBytesTensor = sizeof(Tensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
-   Tensor * const pTensor = EbmMalloc<Tensor>(1, cBytesTensor);
+   const size_t cBytesTensor = offsetof(Tensor, m_aDimensions) + sizeof(DimensionInfo) * cDimensionsMax;
+   Tensor * const pTensor = reinterpret_cast<Tensor *>(malloc(cBytesTensor));
    if(UNLIKELY(nullptr == pTensor)) {
       LOG_0(Trace_Warning, "WARNING Allocate nullptr == pTensor");
       return nullptr;
@@ -264,17 +264,17 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
       DimensionInfoStackExpand * pDimensionInfoStackFirst = aDimensionInfoStackExpand;
       const DimensionInfo * pDimensionFirst1 = GetDimensions();
       size_t cTensorScores1 = m_cScores;
-      size_t cNewTensorScores = m_cScores;
-
+#ifndef NDEBUG
+      size_t cNewTensorScoresDebug = m_cScores;
+#endif // NDEBUG
       // first, get basic counts of how many splits and scores we'll have in our final result
       do {
          const Feature * const pFeature = *ppFeature1;
          const size_t cBins = pFeature->GetCountBins();
 
-         // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack 
-         // featureIndexes and in CalcInteractionStrength for interactions
-         EBM_ASSERT(!IsMultiplyError(cNewTensorScores, cBins));
-         cNewTensorScores *= cBins;
+#ifndef NDEBUG
+         cNewTensorScoresDebug *= cBins;
+#endif // NDEBUG
 
          const size_t cSplits1 = pDimensionFirst1->m_cSplits;
 
@@ -291,137 +291,135 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
          ++pDimensionInfoStackFirst;
          ++ppFeature1;
       } while(ppFeaturesEnd != ppFeature1);
-      
-      if(size_t { 0 } == cNewTensorScores) {
-         // there's a really degenerate case where we have zero training and zero validation samples, and the user 
-         // specifies zero bins which is legal since there are no bins in the training or validation, in this case
-         // the tensor has zero bins in one dimension, so there are zero bins in the entire tensor.
-         LOG_0(Trace_Warning, "WARNING Expand Zero sized tensor");
-      } else {
-         // call EnsureTensorScoreCapacity before using the m_aTensorScores pointer since m_aTensorScores might change inside EnsureTensorScoreCapacity
-         error = EnsureTensorScoreCapacity(cNewTensorScores);
-         if(UNLIKELY(Error_None != error)) {
-            // already logged
-            return error;
+
+      EBM_ASSERT(!IsMultiplyError(m_cScores, pTerm->GetCountTensorBins()));
+      const size_t cNewTensorScores = m_cScores * pTerm->GetCountTensorBins();
+      EBM_ASSERT(cNewTensorScoresDebug == cNewTensorScores);
+      EBM_ASSERT(1 <= cNewTensorScores);
+
+      // call EnsureTensorScoreCapacity before using the m_aTensorScores pointer since m_aTensorScores might change inside EnsureTensorScoreCapacity
+      error = EnsureTensorScoreCapacity(cNewTensorScores);
+      if(UNLIKELY(Error_None != error)) {
+         // already logged
+         return error;
+      }
+
+      FloatFast * const aTensorScores = m_aTensorScores;
+      const DimensionInfo * const aDimension1 = GetDimensions();
+
+      EBM_ASSERT(cTensorScores1 <= cNewTensorScores);
+      const FloatFast * pTensorScore1 = &aTensorScores[cTensorScores1];
+      FloatFast * pTensorScoreTop = &aTensorScores[cNewTensorScores];
+
+      // traverse the scores in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our 
+      // existing scores which we still need to copy first do the scores because we need to refer to the old splits when making decisions about 
+      // where to move next
+      while(true) {
+         const FloatFast * pTensorScore1Move = pTensorScore1;
+         const FloatFast * const pTensorScoreTopEnd = pTensorScoreTop - m_cScores;
+         do {
+            --pTensorScore1Move;
+            --pTensorScoreTop;
+            EBM_ASSERT(aTensorScores <= pTensorScore1Move);
+            EBM_ASSERT(aTensorScores <= pTensorScoreTop);
+            *pTensorScoreTop = *pTensorScore1Move;
+         } while(pTensorScoreTopEnd != pTensorScoreTop);
+
+         // For a single dimensional Tensor checking here is best.  
+         // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus 
+         // eliminating the check on most loops. We'll spend most of our time working on single features though, so we optimize for that case, but 
+         // if we special cased the single dimensional case, then we would want to move this check into the loop below in the case of 
+         // multi-dimensioncal Tensors
+         if(UNLIKELY(aTensorScores == pTensorScoreTop)) {
+            // we've written our final tensor cell, so we're done
+            break;
          }
 
-         FloatFast * const aTensorScores = m_aTensorScores;
-         const DimensionInfo * const aDimension1 = GetDimensions();
+         DimensionInfoStackExpand * pDimensionInfoStackSecond = aDimensionInfoStackExpand;
+         const DimensionInfo * pDimensionSecond1 = aDimension1;
 
-         EBM_ASSERT(cTensorScores1 <= cNewTensorScores);
-         const FloatFast * pTensorScore1 = &aTensorScores[cTensorScores1];
-         FloatFast * pTensorScoreTop = &aTensorScores[cNewTensorScores];
+         size_t multiplication1 = m_cScores;
 
-         // traverse the scores in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our 
-         // existing scores which we still need to copy first do the scores because we need to refer to the old splits when making decisions about 
-         // where to move next
          while(true) {
-            const FloatFast * pTensorScore1Move = pTensorScore1;
-            const FloatFast * const pTensorScoreTopEnd = pTensorScoreTop - m_cScores;
-            do {
-               --pTensorScore1Move;
-               --pTensorScoreTop;
-               EBM_ASSERT(aTensorScores <= pTensorScore1Move);
-               EBM_ASSERT(aTensorScores <= pTensorScoreTop);
-               *pTensorScoreTop = *pTensorScore1Move;
-            } while(pTensorScoreTopEnd != pTensorScoreTop);
+            const ActiveDataType * const pSplit1 = pDimensionInfoStackSecond->m_pSplit1;
+            size_t iSplit2 = pDimensionInfoStackSecond->m_iSplit2;
 
-            // For a single dimensional Tensor checking here is best.  
-            // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus 
-            // eliminating the check on most loops. We'll spend most of our time working on single features though, so we optimize for that case, but 
-            // if we special cased the single dimensional case, then we would want to move this check into the loop below in the case of 
-            // multi-dimensioncal Tensors
-            if(UNLIKELY(aTensorScores == pTensorScoreTop)) {
-               // we've written our final tensor cell, so we're done
+            ActiveDataType * const aSplits1 = pDimensionSecond1->m_aSplits;
+
+            EBM_ASSERT(static_cast<size_t>(pSplit1 - aSplits1) <= iSplit2);
+            if(UNPREDICTABLE(aSplits1 < pSplit1)) {
+               EBM_ASSERT(0 < iSplit2);
+
+               const ActiveDataType * const pSplit1MinusOne = pSplit1 - 1;
+
+               const size_t d1 = static_cast<size_t>(*pSplit1MinusOne);
+
+               --iSplit2;
+
+               const bool bMove = UNPREDICTABLE(iSplit2 <= d1);
+               pDimensionInfoStackSecond->m_pSplit1 = bMove ? pSplit1MinusOne : pSplit1;
+               pTensorScore1 = bMove ? pTensorScore1 - multiplication1 : pTensorScore1;
+
+               pDimensionInfoStackSecond->m_iSplit2 = iSplit2;
                break;
-            }
-
-            DimensionInfoStackExpand * pDimensionInfoStackSecond = aDimensionInfoStackExpand;
-            const DimensionInfo * pDimensionSecond1 = aDimension1;
-
-            size_t multiplication1 = m_cScores;
-
-            while(true) {
-               const ActiveDataType * const pSplit1 = pDimensionInfoStackSecond->m_pSplit1;
-               size_t iSplit2 = pDimensionInfoStackSecond->m_iSplit2;
-
-               ActiveDataType * const aSplits1 = pDimensionSecond1->m_aSplits;
-
-               EBM_ASSERT(static_cast<size_t>(pSplit1 - aSplits1) <= iSplit2);
-               if(UNPREDICTABLE(aSplits1 < pSplit1)) {
-                  EBM_ASSERT(0 < iSplit2);
-
-                  const ActiveDataType * const pSplit1MinusOne = pSplit1 - 1;
-
-                  const size_t d1 = static_cast<size_t>(*pSplit1MinusOne);
-
-                  --iSplit2;
-
-                  const bool bMove = UNPREDICTABLE(iSplit2 <= d1);
-                  pDimensionInfoStackSecond->m_pSplit1 = bMove ? pSplit1MinusOne : pSplit1;
-                  pTensorScore1 = bMove ? pTensorScore1 - multiplication1 : pTensorScore1;
-
-                  pDimensionInfoStackSecond->m_iSplit2 = iSplit2;
+            } else {
+               if(UNPREDICTABLE(0 < iSplit2)) {
+                  pDimensionInfoStackSecond->m_iSplit2 = iSplit2 - 1;
                   break;
                } else {
-                  if(UNPREDICTABLE(0 < iSplit2)) {
-                     pDimensionInfoStackSecond->m_iSplit2 = iSplit2 - 1;
-                     break;
-                  } else {
-                     pTensorScore1 -= multiplication1; // put us before the beginning.  We'll add the full row first
+                  pTensorScore1 -= multiplication1; // put us before the beginning.  We'll add the full row first
 
-                     const size_t cSplits1 = pDimensionSecond1->m_cSplits;
+                  const size_t cSplits1 = pDimensionSecond1->m_cSplits;
 
-                     // we're already allocated scores, so this is accessing what we've already allocated, so it must not overflow
-                     EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cSplits1));
-                     multiplication1 *= 1 + cSplits1;
+                  // we're already allocated scores, so this is accessing what we've already allocated, so it must not overflow
+                  EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cSplits1));
+                  multiplication1 *= 1 + cSplits1;
 
-                     // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
-                     pTensorScore1 += multiplication1;
+                  // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
+                  pTensorScore1 += multiplication1;
 
-                     pDimensionInfoStackSecond->m_pSplit1 = &aSplits1[cSplits1];
-                     pDimensionInfoStackSecond->m_iSplit2 = pDimensionInfoStackSecond->m_cNewSplits;
+                  pDimensionInfoStackSecond->m_pSplit1 = &aSplits1[cSplits1];
+                  pDimensionInfoStackSecond->m_iSplit2 = pDimensionInfoStackSecond->m_cNewSplits;
 
-                     ++pDimensionSecond1;
-                     ++pDimensionInfoStackSecond;
-                     continue;
-                  }
+                  ++pDimensionSecond1;
+                  ++pDimensionInfoStackSecond;
+                  continue;
                }
             }
          }
-
-         EBM_ASSERT(pTensorScoreTop == m_aTensorScores);
-         EBM_ASSERT(pTensorScore1 == m_aTensorScores + m_cScores);
-
-         const Feature * const * ppFeature2 = pTerm->GetFeatures();
-         size_t iDimension = 0;
-         do {
-            const Feature * const pFeature = *ppFeature2;
-            const size_t cBins = pFeature->GetCountBins();
-            EBM_ASSERT(size_t { 1 } <= cBins); // we exited above on tensors with zero bins in any dimension
-            const size_t cSplits = cBins - size_t { 1 };
-            const DimensionInfo * const pDimension = &aDimension1[iDimension];
-            if(cSplits != pDimension->m_cSplits) {
-               error = SetCountSplits(iDimension, cSplits);
-               if(UNLIKELY(Error_None != error)) {
-                  // already logged
-                  return error;
-               }
-
-               // if cSplits is zero then pDimension->m_cSplits must be zero and we'd be filtered out above
-               EBM_ASSERT(size_t { 1 } <= cSplits);
-
-               ActiveDataType * const aSplit = pDimension->m_aSplits;
-               size_t iSplit = 0;
-               do {
-                  aSplit[iSplit] = iSplit;
-                  ++iSplit;
-               } while(cSplits != iSplit);
-            }
-            ++iDimension;
-            ++ppFeature2;
-         } while(ppFeaturesEnd != ppFeature2);
       }
+
+      EBM_ASSERT(pTensorScoreTop == m_aTensorScores);
+      EBM_ASSERT(pTensorScore1 == m_aTensorScores + m_cScores);
+
+      const Feature * const * ppFeature2 = pTerm->GetFeatures();
+      size_t iDimension = 0;
+      do {
+         const Feature * const pFeature = *ppFeature2;
+         const size_t cBins = pFeature->GetCountBins();
+         EBM_ASSERT(size_t { 1 } <= cBins); // we exited above on tensors with zero bins in any dimension
+         const size_t cSplits = cBins - size_t { 1 };
+         const DimensionInfo * const pDimension = &aDimension1[iDimension];
+         if(cSplits != pDimension->m_cSplits) {
+            error = SetCountSplits(iDimension, cSplits);
+            if(UNLIKELY(Error_None != error)) {
+               // already logged
+               return error;
+            }
+
+            // if cSplits is zero then pDimension->m_cSplits must be zero and we'd be filtered out above
+            EBM_ASSERT(size_t { 1 } <= cSplits);
+
+            ActiveDataType * const aSplit = pDimension->m_aSplits;
+            size_t iSplit = 0;
+            do {
+               aSplit[iSplit] = iSplit;
+               ++iSplit;
+            } while(cSplits != iSplit);
+         }
+         ++iDimension;
+         ++ppFeature2;
+      } while(ppFeaturesEnd != ppFeature2);
    }
    m_bExpanded = true;
    
@@ -434,7 +432,6 @@ void Tensor::AddExpandedWithBadValueProtection(const FloatFast * const aFromScor
    size_t cItems = m_cScores;
 
    const DimensionInfo * const aDimension = GetDimensions();
-
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       // this can't overflow since we've already allocated them!
       cItems *= aDimension[iDimension].m_cSplits + 1;
@@ -509,7 +506,7 @@ ErrorEbm Tensor::Add(const Tensor & rhs) {
    size_t cTensorScores2 = m_cScores;
    size_t cNewTensorScores = m_cScores;
 
-   EBM_ASSERT(0 < m_cDimensions);
+   EBM_ASSERT(1 <= m_cDimensions);
    // first, get basic counts of how many splits and values we'll have in our final result
    do {
       const size_t cSplits1 = pDimensionFirst1->m_cSplits;

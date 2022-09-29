@@ -35,7 +35,7 @@ InnerBag * InnerBag::GenerateSingleInnerBag(
    }
    pRet->InitializeUnfailing();
 
-   EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
+   EBM_ASSERT(1 <= cSamples); // if there were no samples, we wouldn't be called
 
    size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
    if(nullptr == aCountOccurrences) {
@@ -113,7 +113,7 @@ InnerBag * InnerBag::GenerateFlatInnerBag(
    }
    pRet->InitializeUnfailing();
 
-   EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
+   EBM_ASSERT(1 <= cSamples); // if there were no samples, we wouldn't be called
 
    size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
    if(nullptr == aCountOccurrences) {
@@ -176,13 +176,15 @@ WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag ** const apInnerBags) {
    LOG_0(Trace_Info, "Entered InnerBag::FreeInnerBags");
    if(LIKELY(nullptr != apInnerBags)) {
-      const size_t cInnerBagsAfterZero = 0 == cInnerBags ? size_t { 1 } : cInnerBags;
-      for(size_t iInnerBag = 0; iInnerBag < cInnerBagsAfterZero; ++iInnerBag) {
+      const size_t cInnerBagsAfterZero = size_t { 0 } == cInnerBags ? size_t { 1 } : cInnerBags;
+      size_t iInnerBag = 0;
+      do {
          InnerBag * const pInnerBag = apInnerBags[iInnerBag];
          if(nullptr != pInnerBag) {
             pInnerBag->Free();
          }
-      }
+         ++iInnerBag;
+      } while(cInnerBagsAfterZero != iInnerBag);
       free(apInnerBags);
    }
    LOG_0(Trace_Info, "Exited InnerBag::FreeInnerBags");
@@ -199,7 +201,8 @@ InnerBag ** InnerBag::GenerateInnerBags(
 
    EBM_ASSERT(nullptr != pRng);
 
-   const size_t cInnerBagsAfterZero = 0 == cInnerBags ? size_t { 1 } : cInnerBags;
+   StopClangAnalysis(); // cInnerBags can be 0
+   const size_t cInnerBagsAfterZero = size_t { 0 } == cInnerBags ? size_t { 1 } : cInnerBags;
 
    InnerBag ** apInnerBags = EbmMalloc<InnerBag *>(cInnerBagsAfterZero);
    if(UNLIKELY(nullptr == apInnerBags)) {
@@ -210,7 +213,7 @@ InnerBag ** InnerBag::GenerateInnerBags(
       apInnerBags[i] = nullptr;
    }
 
-   if(0 == cInnerBags) {
+   if(size_t { 0 } == cInnerBags) {
       // zero is a special value that really means allocate one set that contains all samples.
       InnerBag * const pSingleInnerBag = GenerateFlatInnerBag(cSamples, aWeights);
       if(UNLIKELY(nullptr == pSingleInnerBag)) {
@@ -220,7 +223,8 @@ InnerBag ** InnerBag::GenerateInnerBags(
       }
       apInnerBags[0] = pSingleInnerBag;
    } else {
-      for(size_t iInnerBag = 0; iInnerBag < cInnerBags; ++iInnerBag) {
+      size_t iInnerBag = 0;
+      do {
          InnerBag * const pSingleInnerBag = GenerateSingleInnerBag(pRng, cSamples, aWeights);
          if(UNLIKELY(nullptr == pSingleInnerBag)) {
             LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == pSingleInnerBag");
@@ -228,7 +232,8 @@ InnerBag ** InnerBag::GenerateInnerBags(
             return nullptr;
          }
          apInnerBags[iInnerBag] = pSingleInnerBag;
-      }
+         ++iInnerBag;
+      } while(cInnerBags != iInnerBag);
    }
    LOG_0(Trace_Info, "Exited InnerBag::GenerateInnerBags");
    return apInnerBags;

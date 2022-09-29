@@ -62,6 +62,7 @@ static FloatBig SweepMultiDimensional(
    do {
       // move data to a local variable that the compiler can reason about and then eliminate by moving to CPU registers
 
+      StopClangAnalysis(); // TODO: check if aiPoint is garbage or undefined
       aDimensions[iDimensionInit].m_iPoint = aiPoint[iDimensionInit];
       aDimensions[iDimensionInit].m_cBins = acBins[iDimensionInit];
 
@@ -223,6 +224,7 @@ public:
       size_t aiStart[k_cDimensionsMax];
 
       EBM_ASSERT(2 == pTerm->GetCountRealDimensions());
+      EBM_ASSERT(2 <= pTerm->GetCountDimensions());
       size_t iDimensionLoop = 0;
       size_t iDimension1 = 0;
       size_t iDimension2 = 0;
@@ -234,6 +236,7 @@ public:
          const Feature * const pFeature = *ppFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
+         StopClangAnalysis(); // TODO: Check this out, but cBins can be numbers more than 1
          if(size_t { 1 } < cBins) {
             EBM_ASSERT(0 == cBinsDimension2);
             if(0 == cBinsDimension1) {
@@ -613,6 +616,7 @@ public:
                         // already logged
                         return error;
                      }
+                     StopClangAnalysis(); // TODO: check if splitFirst1Best can be undefined
                      pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst1Best;
 
                      if(splitFirst1LowBest < splitFirst1HighBest) {

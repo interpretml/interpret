@@ -129,8 +129,8 @@ static IntEbm CountInts(const SEXP a) {
       error("CountInts INTSXP != TYPEOF(a)");
    }
    const R_xlen_t c = xlength(a);
-   if(IsConvertErrorDual<size_t, IntEbm>(c)) {
-      error("CountInts IsConvertErrorDual<size_t, IntEbm>(c)");
+   if(IsConvertError<size_t>(c) || IsConvertError<IntEbm>(c)) {
+      error("CountInts IsConvertError<size_t>(c) || IsConvertError<IntEbm>(c)");
    }
    return static_cast<IntEbm>(c);
 }
@@ -141,8 +141,8 @@ static IntEbm CountDoubles(const SEXP a) {
       error("CountDoubles REALSXP != TYPEOF(a)");
    }
    const R_xlen_t c = xlength(a);
-   if(IsConvertErrorDual<size_t, IntEbm>(c)) {
-      error("CountDoubles IsConvertErrorDual<size_t, IntEbm>(c)");
+   if(IsConvertError<size_t>(c) || IsConvertError<IntEbm>(c)) {
+      error("CountDoubles IsConvertError<size_t>(c) || IsConvertError<IntEbm>(c)");
    }
    return static_cast<IntEbm>(c);
 }

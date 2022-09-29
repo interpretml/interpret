@@ -40,7 +40,6 @@ public:
    }
 
    inline size_t GetCountBins() const noexcept {
-      //StopClangAnalysis(); // clang seems to think we're reading uninitialized data here, but we aren't
       return m_cBins;
    }
 

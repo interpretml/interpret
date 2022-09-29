@@ -46,6 +46,7 @@ public:
    }
 
    ErrorEbm Initialize(
+      const bool bAllocateGradients,
       const bool bAllocateHessians,
       const unsigned char * const pDataSetShared,
       const size_t cAllSamples,
@@ -74,9 +75,6 @@ public:
    }
    INLINE_ALWAYS size_t GetCountSamples() const {
       return m_cSamples;
-   }
-   INLINE_ALWAYS size_t GetCountFeatures() const {
-      return m_cFeatures;
    }
 };
 static_assert(std::is_standard_layout<DataSetInteraction>::value,

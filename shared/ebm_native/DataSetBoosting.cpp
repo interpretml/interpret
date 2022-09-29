@@ -114,7 +114,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
-   EBM_ASSERT(0 < cSetSamples);
+   EBM_ASSERT(1 <= cSetSamples);
 
    ptrdiff_t cClasses;
    const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
@@ -414,10 +414,15 @@ ErrorEbm DataSetBoosting::Initialize(
    EBM_ASSERT(nullptr == m_aaInputData);
 
    LOG_0(Trace_Info, "Entered DataSetBoosting::Initialize");
-   const size_t cScores = GetCountScores(cClasses);
 
    if(0 != cSetSamples) {
+      const size_t cScores = GetCountScores(cClasses);
+
       if(bAllocateGradients) {
+         // if there are 0 or 1 classes, then with reduction there should be zero scores and the caller should disable
+         EBM_ASSERT(0 != cClasses);
+         EBM_ASSERT(1 != cClasses);
+
          FloatFast * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSetSamples, cScores);
          if(nullptr == aGradientsAndHessians) {
             LOG_0(Trace_Warning, "WARNING Exited DataSetBoosting::Initialize nullptr == aGradientsAndHessians");
@@ -428,6 +433,10 @@ ErrorEbm DataSetBoosting::Initialize(
          EBM_ASSERT(!bAllocateHessians);
       }
       if(bAllocateSampleScores) {
+         // if there are 0 or 1 classes, then with reduction there should be zero scores and the caller should disable
+         EBM_ASSERT(0 != cClasses);
+         EBM_ASSERT(1 != cClasses);
+
          FloatFast * const aSampleScores = ConstructSampleScores(
             cScores, 
             direction, 
@@ -469,9 +478,9 @@ ErrorEbm DataSetBoosting::Initialize(
             return Error_OutOfMemory;
          }
          m_aaInputData = aaInputData;
+         m_cTerms = cTerms; // only needed if nullptr != m_aaInputData
       }
       m_cSamples = cSetSamples;
-      m_cTerms = cTerms;
    }
 
    LOG_0(Trace_Info, "Exited DataSetBoosting::Initialize");
@@ -489,7 +498,7 @@ void DataSetBoosting::Destruct() {
    free(m_aTargetData);
 
    if(nullptr != m_aaInputData) {
-      EBM_ASSERT(0 < m_cTerms);
+      EBM_ASSERT(1 <= m_cTerms);
       StorageDataType * * paInputData = m_aaInputData;
       const StorageDataType * const * const paInputDataEnd = m_aaInputData + m_cTerms;
       do {

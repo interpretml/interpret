@@ -91,6 +91,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
    );
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
+      EBM_ASSERT(nullptr == pBoosterShell->GetTermUpdate());
+      EBM_ASSERT(nullptr == pBoosterCore->GetCurrentModel());
+
+      // if there are 0 classes, then there must be zero samples, but our caller can still specify 0 != cBins below
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetTrainingSet()->GetCountSamples());
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetValidationSet()->GetCountSamples());
+
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  
       // The term scores are a tensor with zero length array logits, which means for our representation that we 
       // have zero items in the array total. Since we can predit the output with 100% accuracy, our log loss is 0.
@@ -105,18 +112,32 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       );
       return Error_None;
    }
+   EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
+   EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel());
+
+   if(size_t { 0 } == pTerm->GetCountTensorBins()) {
+      EBM_ASSERT(nullptr == pBoosterCore->GetCurrentModel()[iTerm]);
+      
+      // if GetCountTensorBins is 0, then pBoosterShell->GetTermUpdate() does not contain valid data
+
+      // if we have zero samples and one of the dimensions has 0 bins then there is no tensor, so return now
+      if(nullptr != avgValidationMetricOut) {
+         *avgValidationMetricOut = 0.0;
+      }
+      LOG_COUNTED_0(
+         pTerm->GetPointerCountLogExitApplyTermUpdateMessages(),
+         Trace_Info,
+         Trace_Verbose,
+         "Exited ApplyTermUpdate. dimension with a feature that has 0 bins"
+      );
+      return Error_None;
+   }
+   EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel()[iTerm]);
 
    error = pBoosterShell->GetTermUpdate()->Expand(pTerm);
    if(Error_None != error) {
       return error;
    }
-
-   // m_apCurrentTermTensors can be null if there are no terms (but we have an feature group index), 
-   // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
-   EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel());
-   // m_apCurrentTermTensors can be null if there are no terms (but we have an feature group index), 
-   // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
-   EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
 
    const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
 
@@ -177,10 +198,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
          size_t iTermCopy = 0;
          size_t iTermCopyEnd = pBoosterCore->GetCountTerms();
          do {
-            error = pBoosterCore->GetBestModel()[iTermCopy]->Copy(*pBoosterCore->GetCurrentModel()[iTermCopy]);
-            if(Error_None != error) {
-               LOG_0(Trace_Verbose, "Exited ApplyTermUpdateInternal with memory allocation error in copy");
-               return error;
+            if(nullptr != pBoosterCore->GetCurrentModel()[iTermCopy]) {
+               EBM_ASSERT(nullptr != pBoosterCore->GetBestModel()[iTermCopy]);
+               error = pBoosterCore->GetBestModel()[iTermCopy]->Copy(*pBoosterCore->GetCurrentModel()[iTermCopy]);
+               if(Error_None != error) {
+                  LOG_0(Trace_Verbose, "Exited ApplyTermUpdateInternal with memory allocation error in copy");
+                  return error;
+               }
+            } else {
+               EBM_ASSERT(nullptr == pBoosterCore->GetBestModel()[iTermCopy]);
             }
             ++iTermCopy;
          } while(iTermCopy != iTermCopyEnd);
@@ -268,12 +294,38 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
    }
    const size_t iDimension = static_cast<size_t>(indexDimension);
 
-   const size_t cBins = pTerm->GetFeatures()[iDimension]->GetCountBins();
+   size_t cBins = pTerm->GetFeatures()[iDimension]->GetCountBins();
+   cBins = size_t { 0 } == cBins ? size_t { 1 } : cBins; // for our purposes here, 0 bins means 0 splits
+
    // cBins started from IntEbm, so we should be able to convert back safely
    if(*countSplitsInOut != static_cast<IntEbm>(cBins - size_t { 1 })) {
       *countSplitsInOut = IntEbm { 0 };
       LOG_0(Trace_Error, "ERROR GetTermUpdateSplits bad split array length");
       return Error_IllegalParamVal;
+   }
+
+   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
+      EBM_ASSERT(nullptr == pBoosterShell->GetTermUpdate());
+
+      // if there are 0 classes, then there must be zero samples, but our caller can still specify 0 != cBins below
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetTrainingSet()->GetCountSamples());
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetValidationSet()->GetCountSamples());
+
+      // if we have 0 or 1 classes then there is no tensor, so return now
+      *countSplitsInOut = 0;
+      LOG_0(Trace_Warning, "ERROR GetTermUpdateSplits ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()");
+      return Error_None;
+   }
+   EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
+
+   if(size_t { 0 } == pTerm->GetCountTensorBins()) {
+      // if we have zero samples and one of the dimensions has 0 bins then there is no tensor, so return now
+
+      // if GetCountTensorBins is 0, then pBoosterShell->GetTermUpdate() does not contain valid data
+
+      *countSplitsInOut = 0;
+      LOG_0(Trace_Warning, "ERROR GetTermUpdateSplits size_t { 0 } == pTerm->GetCountTensorBins()");
+      return Error_None;
    }
 
    const size_t cSplits = pBoosterShell->GetTermUpdate()->GetCountSplits(iDimension);
@@ -298,9 +350,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
          ++pSplitIndexesTo;
       } while(pSplitIndexesToEnd != pSplitIndexesTo);
    }
-
    EBM_ASSERT(!IsConvertError<IntEbm>(cSplits)); // cSplits originally came from an IntEbm
-
    *countSplitsInOut = static_cast<IntEbm>(cSplits);
    return Error_None;
 }
@@ -346,29 +396,35 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(
    EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
+      EBM_ASSERT(nullptr == pBoosterShell->GetTermUpdate());
+
+      // if there are 0 classes, then there must be zero samples, but our caller can still specify 0 != cBins below
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetTrainingSet()->GetCountSamples());
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetValidationSet()->GetCountSamples());
+
+      return Error_None;
+   }
+   EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
+
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+
+   size_t cTensorScores = pTerm->GetCountTensorBins();
+   if(size_t { 0 } == cTensorScores) {
+      // if we have zero samples and one of the dimensions has 0 bins then there is no tensor, so return now
+
+      // if GetCountTensorBins is 0, then pBoosterShell->GetTermUpdate() does not contain valid data
+
       return Error_None;
    }
 
-   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
    error = pBoosterShell->GetTermUpdate()->Expand(pTerm);
    if(Error_None != error) {
       return error;
    }
 
-   const size_t cDimensions = pTerm->GetCountDimensions();
-   size_t cTensorScores = GetCountScores(pBoosterCore->GetCountClasses());
-   if(0 != cDimensions) {
-      const Feature * const * ppFeature = pTerm->GetFeatures();
-      const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
-      do {
-         const Feature * const pFeature = *ppFeature;
-         const size_t cBins = pFeature->GetCountBins();
-         // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins));
-         cTensorScores *= cBins;
-         ++ppFeature;
-      } while(ppFeaturesEnd != ppFeature);
-   }
+   EBM_ASSERT(!IsMultiplyError(cTensorScores, GetCountScores(pBoosterCore->GetCountClasses())));
+   cTensorScores *= GetCountScores(pBoosterCore->GetCountClasses());
+
    const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
    EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensorOut), cTensorScores));
@@ -431,15 +487,37 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
       LOG_0(Trace_Error, "ERROR SetTermUpdate indexTerm above the number of feature groups that we have");
       return Error_IllegalParamVal;
    }
-   // pBoosterCore->GetTerms() can be null if 0 == pBoosterCore->m_cTerms, but we checked that condition above
-   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
+      EBM_ASSERT(nullptr == pBoosterShell->GetTermUpdate());
+
+      // if there are 0 classes, then there must be zero samples, but our caller can still specify 0 != cBins below
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetTrainingSet()->GetCountSamples());
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetValidationSet()->GetCountSamples());
+
+      pBoosterShell->SetTermIndex(iTerm);
+      return Error_None;
+   }
+   EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
+
+   // pBoosterCore->GetTerms() can be null if 0 == pBoosterCore->m_cTerms, but we checked that condition above
+   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+
+   size_t cTensorScores = pTerm->GetCountTensorBins();
+   if(size_t { 0 } == cTensorScores) {
+      // if we have zero samples and one of the dimensions has 0 bins then there is no tensor, so return now
+
+      // if GetCountTensorBins is 0, then we leave pBoosterShell->GetTermUpdate() with invalid data since
+      // out Tensor class does not support tensors of zero elements
+
       pBoosterShell->SetTermIndex(iTerm);
       return Error_None;
    }
 
-   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   pBoosterShell->GetTermUpdate()->SetCountDimensions(pTerm->GetCountDimensions());
+   pBoosterShell->GetTermUpdate()->Reset();
+
    error = pBoosterShell->GetTermUpdate()->Expand(pTerm);
    if(Error_None != error) {
       // already logged
@@ -447,21 +525,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
       return error;
    }
 
-   const size_t cDimensions = pTerm->GetCountDimensions();
-   const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
-   size_t cTensorScores = cScores;
-   if(0 != cDimensions) {
-      const Feature * const * ppFeature = pTerm->GetFeatures();
-      const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
-      do {
-         const Feature * const pFeature = *ppFeature;
-         const size_t cBins = pFeature->GetCountBins();
-         // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins));
-         cTensorScores *= cBins;
-         ++ppFeature;
-      } while(ppFeaturesEnd != ppFeature);
-   }
+   EBM_ASSERT(!IsMultiplyError(cTensorScores, GetCountScores(pBoosterCore->GetCountClasses())));
+   cTensorScores *= GetCountScores(pBoosterCore->GetCountClasses());
+
    FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
    EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cTensorScores));
    EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensor), cTensorScores));

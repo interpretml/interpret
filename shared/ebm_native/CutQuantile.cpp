@@ -554,6 +554,7 @@ static void BuildNeighbourhoodPlan(
 
    const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iValStart + iValAspirationalCur];
 
+   StopClangAnalysis(); // TODO: check that index "aNeighbourJumps[iValStart + iValAspirationalCur]" above is legal
    const size_t iStartCur = pNeighbourJump->m_iStartCur;
    const size_t iStartNext = pNeighbourJump->m_iStartNext;
 
@@ -2942,6 +2943,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
 
                      const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iCenterOfRange];
 
+                     StopClangAnalysis(); // TODO: check if aNeighbourJumps[iCenterOfRange] is a legal index
                      const size_t iStartCur = pNeighbourJump->m_iStartCur;
                      const size_t iStartNext = pNeighbourJump->m_iStartNext;
 

@@ -328,7 +328,7 @@ inline static double UniformDouble(TRng & rng) {
    uint64_t j = uint_64_number >> kMantDigits;
 
    // exponent is the number of leading zeros in the first 11 bits plus one.
-   uint64_t exponent = CountLeadingZeroes64(j) - kMantDigits + 1;
+   uint64_t exponent = static_cast<uint64_t>(CountLeadingZeroes64(j)) - static_cast<uint64_t>(kMantDigits) + 1;
 
    // Extra geometric sampling is needed only when the leading 11 bits are all 0.
    if(j == 0) {

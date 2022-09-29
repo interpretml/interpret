@@ -69,48 +69,50 @@ ErrorEbm BoosterShell::FillAllocations() {
    LOG_0(Trace_Info, "Entered BoosterShell::FillAllocations");
 
    const ptrdiff_t cClasses = m_pBoosterCore->GetCountClasses();
-   const size_t cScores = GetCountScores(cClasses);
-      
-   m_pTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
-   if(nullptr == m_pTermUpdate) {
-      goto failed_allocation;
-   }
+   if(size_t { 0 } != cClasses && size_t { 1 } != cClasses) {
+      const size_t cScores = GetCountScores(cClasses);
 
-   m_pInnerTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
-   if(nullptr == m_pInnerTermUpdate) {
-      goto failed_allocation;
-   }
-
-   if(0 != m_pBoosterCore->GetCountBytesFastBins()) {
-      m_aBoostingFastBinsTemp = static_cast<BinBase *>(EbmMalloc<void>(m_pBoosterCore->GetCountBytesFastBins()));
-      if(nullptr == m_aBoostingFastBinsTemp) {
+      m_pTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
+      if(nullptr == m_pTermUpdate) {
          goto failed_allocation;
       }
-   }
 
-   if(0 != m_pBoosterCore->GetCountBytesBigBins()) {
-      m_aBoostingBigBins = static_cast<BinBase *>(EbmMalloc<void>(m_pBoosterCore->GetCountBytesBigBins()));
-      if(nullptr == m_aBoostingBigBins) {
+      m_pInnerTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
+      if(nullptr == m_pInnerTermUpdate) {
          goto failed_allocation;
       }
-   }
 
-   m_aMulticlassMidwayTemp = EbmMalloc<FloatFast>(cScores);
-   if(nullptr == m_aMulticlassMidwayTemp) {
-      goto failed_allocation;
-   }
+      if(0 != m_pBoosterCore->GetCountBytesFastBins()) {
+         m_aBoostingFastBinsTemp = static_cast<BinBase *>(EbmMalloc<void>(m_pBoosterCore->GetCountBytesFastBins()));
+         if(nullptr == m_aBoostingFastBinsTemp) {
+            goto failed_allocation;
+         }
+      }
 
-   if(0 != m_pBoosterCore->GetCountBytesSplitPositions()) {
-      m_aSplitPositionsTemp = EbmMalloc<void>(m_pBoosterCore->GetCountBytesSplitPositions());
-      if(nullptr == m_aSplitPositionsTemp) {
+      if(0 != m_pBoosterCore->GetCountBytesBigBins()) {
+         m_aBoostingBigBins = static_cast<BinBase *>(EbmMalloc<void>(m_pBoosterCore->GetCountBytesBigBins()));
+         if(nullptr == m_aBoostingBigBins) {
+            goto failed_allocation;
+         }
+      }
+
+      m_aMulticlassMidwayTemp = EbmMalloc<FloatFast>(cScores);
+      if(nullptr == m_aMulticlassMidwayTemp) {
          goto failed_allocation;
       }
-   }
 
-   if(0 != m_pBoosterCore->GetCountBytesTreeNodes()) {
-      m_aTreeNodesTemp = EbmMalloc<void>(m_pBoosterCore->GetCountBytesTreeNodes());
-      if(nullptr == m_aTreeNodesTemp) {
-         goto failed_allocation;
+      if(0 != m_pBoosterCore->GetCountBytesSplitPositions()) {
+         m_aSplitPositionsTemp = EbmMalloc<void>(m_pBoosterCore->GetCountBytesSplitPositions());
+         if(nullptr == m_aSplitPositionsTemp) {
+            goto failed_allocation;
+         }
+      }
+
+      if(0 != m_pBoosterCore->GetCountBytesTreeNodes()) {
+         m_aTreeNodesTemp = EbmMalloc<void>(m_pBoosterCore->GetCountBytesTreeNodes());
+         if(nullptr == m_aTreeNodesTemp) {
+            goto failed_allocation;
+         }
       }
    }
 
@@ -173,37 +175,27 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       return Error_IllegalParamVal;
    }
 
-   if(countTerms < IntEbm { 0 }) {
-      LOG_0(Trace_Error, "ERROR CreateBooster countTerms must be positive");
+   if(IsConvertError<size_t>(countTerms)) {
+      // the caller should not have been able to allocate memory for dimensionCounts if this wasn't fittable in size_t
+      LOG_0(Trace_Error, "ERROR CreateBooster IsConvertError<size_t>(countTerms)");
       return Error_IllegalParamVal;
    }
-   if(IntEbm { 0 } != countTerms && nullptr == dimensionCounts) {
+   const size_t cTerms = static_cast<size_t>(countTerms);
+
+   if(nullptr == dimensionCounts && size_t { 0 } != cTerms) {
       LOG_0(Trace_Error, "ERROR CreateBooster dimensionCounts cannot be null if 0 < countTerms");
       return Error_IllegalParamVal;
    }
    // it's legal for featureIndexes to be null if there are no features indexed by our feature groups
    // dimensionCounts can have zero features, so it could be legal for this to be null even if 0 < countTerms
 
-   if(countInnerBags < IntEbm { 0 }) {
-      // 0 means use the full set. 1 means make a single bag which is useless, but allowed for comparison purposes
-      LOG_0(Trace_Error, "ERROR CreateBooster countInnerBags cannot be negative");
-      return Error_UserParamVal;
-   }
-
-   if(IsConvertError<size_t>(countTerms)) {
-      // the caller should not have been able to allocate memory for dimensionCounts if this wasn't fittable in size_t
-      LOG_0(Trace_Error, "ERROR CreateBooster IsConvertError<size_t>(countTerms)");
-      return Error_IllegalParamVal;
-   }
    if(IsConvertError<size_t>(countInnerBags)) {
       // this is just a warning since the caller doesn't pass us anything material, but if it's this high
       // then our allocation would fail since it can't even in pricipal fit into memory
       LOG_0(Trace_Warning, "WARNING CreateBooster IsConvertError<size_t>(countInnerBags)");
       return Error_OutOfMemory;
    }
-
-   size_t cTerms = static_cast<size_t>(countTerms);
-   size_t cInnerBags = static_cast<size_t>(countInnerBags);
+   const size_t cInnerBags = static_cast<size_t>(countInnerBags);
 
    // TODO: move this code down into BoosterCore::Create since we can happily pass down nullptr into there and then use the CPU register trick at the lowest function level
    RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
@@ -340,10 +332,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
       return Error_IllegalParamVal;
    }
 
-   if(indexTerm < 0) {
-      LOG_0(Trace_Error, "ERROR GetBestTermScores indexTerm must be positive");
-      return Error_IllegalParamVal;
-   }
    if(IsConvertError<size_t>(indexTerm)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(Trace_Error, "ERROR GetBestTermScores indexTerm is too high to index");
@@ -358,47 +346,51 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
    }
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
+      EBM_ASSERT(nullptr == pBoosterCore->GetBestModel());
+
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
+
+      // if there are 0 classes, then there must be zero samples, but our caller can still specify 0 != cBins below
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetTrainingSet()->GetCountSamples());
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetValidationSet()->GetCountSamples());
+
       LOG_0(Trace_Info, "Exited GetBestTermScores no scores");
       return Error_None;
    }
+   // if pBoosterCore->GetBestModel() is nullptr, then either:
+   //    1) m_cTerms was 0, but we checked above that iTerm was less than cTerms
+   //    2) If m_cClasses was either 1 or 0, but we checked for this above too
+   EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
+
+   // if pBoosterCore->GetTerms() is nullptr, then m_cTerms was 0, but we checked above that 
+   // iTerm was less than cTerms
+   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+
+   size_t cTensorScores = pTerm->GetCountTensorBins();
+   if(size_t { 0 } == cTensorScores) {
+      EBM_ASSERT(nullptr == pBoosterCore->GetBestModel()[iTerm]);
+
+      // if one of the dimensions has zero bins then the tensor has zero tensor bins and there is nothing to do
+      LOG_0(Trace_Warning, "WARNING GetBestTermScores feature with zero bins");
+      return Error_None;
+   }
+   EBM_ASSERT(nullptr != pBoosterCore->GetBestModel()[iTerm]);
 
    if(nullptr == termScoresTensorOut) {
       LOG_0(Trace_Error, "ERROR GetBestTermScores termScoresTensorOut cannot be nullptr");
       return Error_IllegalParamVal;
    }
 
-   // if pBoosterCore->GetTerms() is nullptr, then m_cTerms was 0, but we checked above that 
-   // iTerm was less than cTerms
-   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
+   EBM_ASSERT(!IsMultiplyError(cTensorScores, GetCountScores(pBoosterCore->GetCountClasses())));
+   cTensorScores *= GetCountScores(pBoosterCore->GetCountClasses());
 
-   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-   const size_t cDimensions = pTerm->GetCountDimensions();
-   size_t cTensorScores = GetCountScores(pBoosterCore->GetCountClasses());
-   if(0 != cDimensions) {
-      const Feature * const * ppFeature = pTerm->GetFeatures();
-      const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
-      do {
-         const Feature * const pFeature = *ppFeature;
-         const size_t cBins = pFeature->GetCountBins();
-         // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins));
-         cTensorScores *= cBins;
-         ++ppFeature;
-      } while(ppFeaturesEnd != ppFeature);
-   }
-
-   // if pBoosterCore->GetBestModel() is nullptr, then either:
-   //    1) m_cTerms was 0, but we checked above that iTerm was less than cTerms
-   //    2) If m_cClasses was either 1 or 0, but we checked for this above too
-   EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
-
-   Tensor * const pBestTermTensor = pBoosterCore->GetBestModel()[iTerm];
-   EBM_ASSERT(nullptr != pBestTermTensor);
-   EBM_ASSERT(pBestTermTensor->GetExpanded()); // the tensor should have been expanded at startup
-   FloatFast * const aTermScores = pBestTermTensor->GetTensorScoresPointer();
+   Tensor * const pTensor = pBoosterCore->GetBestModel()[iTerm];
+   EBM_ASSERT(nullptr != pTensor);
+   EBM_ASSERT(pTensor->GetExpanded()); // the tensor should have been expanded at startup
+   FloatFast * const aTermScores = pTensor->GetTensorScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
    EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cTensorScores));
@@ -433,10 +425,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
       return Error_IllegalParamVal;
    }
 
-   if(indexTerm < 0) {
-      LOG_0(Trace_Error, "ERROR GetCurrentTermScores indexTerm must be positive");
-      return Error_IllegalParamVal;
-   }
    if(IsConvertError<size_t>(indexTerm)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(Trace_Error, "ERROR GetCurrentTermScores indexTerm is too high to index");
@@ -451,47 +439,51 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
    }
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
+      EBM_ASSERT(nullptr == pBoosterCore->GetCurrentModel());
+
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
+
+      // if there are 0 classes, then there must be zero samples, but our caller can still specify 0 != cBins below
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetTrainingSet()->GetCountSamples());
+      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetValidationSet()->GetCountSamples());
+
       LOG_0(Trace_Info, "Exited GetCurrentTermScores no scores");
       return Error_None;
    }
+   // if pBoosterCore->GetCurrentModel() is nullptr, then either:
+   //    1) m_cTerms was 0, but we checked above that iTerm was less than cTerms
+   //    2) If m_cClasses was either 1 or 0, but we checked for this above too
+   EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel());
+
+   // if pBoosterCore->GetTerms() is nullptr, then m_cTerms was 0, but we checked above that 
+   // iTerm was less than cTerms
+   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+
+   size_t cTensorScores = pTerm->GetCountTensorBins();
+   if(size_t { 0 } == cTensorScores) {
+      EBM_ASSERT(nullptr == pBoosterCore->GetCurrentModel()[iTerm]);
+
+      // if one of the dimensions has zero bins then the tensor has zero tensor bins and there is nothing to do
+      LOG_0(Trace_Warning, "WARNING GetCurrentTermScores feature with zero bins");
+      return Error_None;
+   }
+   EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel()[iTerm]);
 
    if(nullptr == termScoresTensorOut) {
       LOG_0(Trace_Error, "ERROR GetCurrentTermScores termScoresTensorOut cannot be nullptr");
       return Error_IllegalParamVal;
    }
 
-   // if pBoosterCore->GetTerms() is nullptr, then m_cTerms was 0, but we checked above that 
-   // iTerm was less than cTerms
-   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
+   EBM_ASSERT(!IsMultiplyError(cTensorScores, GetCountScores(pBoosterCore->GetCountClasses())));
+   cTensorScores *= GetCountScores(pBoosterCore->GetCountClasses());
 
-   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-   const size_t cDimensions = pTerm->GetCountDimensions();
-   size_t cTensorScores = GetCountScores(pBoosterCore->GetCountClasses());
-   if(0 != cDimensions) {
-      const Feature * const * ppFeature = pTerm->GetFeatures();
-      const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
-      do {
-         const Feature * const pFeature = *ppFeature;
-         const size_t cBins = pFeature->GetCountBins();
-         // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins));
-         cTensorScores *= cBins;
-         ++ppFeature;
-      } while(ppFeaturesEnd != ppFeature);
-   }
-
-   // if pBoosterCore->GetCurrentModel() is nullptr, then either:
-   //    1) m_cTerms was 0, but we checked above that iTerm was less than cTerms
-   //    2) If m_cClasses was either 1 or 0, but we checked for this above too
-   EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel());
-
-   Tensor * const pCurrentTermTensor = pBoosterCore->GetCurrentModel()[iTerm];
-   EBM_ASSERT(nullptr != pCurrentTermTensor);
-   EBM_ASSERT(pCurrentTermTensor->GetExpanded()); // the tensor should have been expanded at startup
-   FloatFast * const aTermScores = pCurrentTermTensor->GetTensorScoresPointer();
+   Tensor * const pTensor = pBoosterCore->GetCurrentModel()[iTerm];
+   EBM_ASSERT(nullptr != pTensor);
+   EBM_ASSERT(pTensor->GetExpanded()); // the tensor should have been expanded at startup
+   FloatFast * const aTermScores = pTensor->GetTensorScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
    EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cTensorScores));
