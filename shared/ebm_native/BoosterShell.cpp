@@ -50,7 +50,7 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
 BoosterShell * BoosterShell::Create(BoosterCore * const pBoosterCore) {
    LOG_0(Trace_Info, "Entered BoosterShell::Create");
 
-   BoosterShell * const pNew = EbmMalloc<BoosterShell>();
+   BoosterShell * const pNew = static_cast<BoosterShell *>(malloc(sizeof(BoosterShell)));
    if(UNLIKELY(nullptr == pNew)) {
       LOG_0(Trace_Error, "ERROR BoosterShell::Create nullptr == pNew");
       return nullptr;
@@ -83,33 +83,36 @@ ErrorEbm BoosterShell::FillAllocations() {
       }
 
       if(0 != m_pBoosterCore->GetCountBytesFastBins()) {
-         m_aBoostingFastBinsTemp = static_cast<BinBase *>(EbmMalloc<void>(m_pBoosterCore->GetCountBytesFastBins()));
+         m_aBoostingFastBinsTemp = static_cast<BinBase *>(malloc(m_pBoosterCore->GetCountBytesFastBins()));
          if(nullptr == m_aBoostingFastBinsTemp) {
             goto failed_allocation;
          }
       }
 
       if(0 != m_pBoosterCore->GetCountBytesBigBins()) {
-         m_aBoostingBigBins = static_cast<BinBase *>(EbmMalloc<void>(m_pBoosterCore->GetCountBytesBigBins()));
+         m_aBoostingBigBins = static_cast<BinBase *>(malloc(m_pBoosterCore->GetCountBytesBigBins()));
          if(nullptr == m_aBoostingBigBins) {
             goto failed_allocation;
          }
       }
 
-      m_aMulticlassMidwayTemp = EbmMalloc<FloatFast>(cScores);
+      if(IsMultiplyError(sizeof(FloatFast), cScores)) {
+         goto failed_allocation;
+      }
+      m_aMulticlassMidwayTemp = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cScores));
       if(nullptr == m_aMulticlassMidwayTemp) {
          goto failed_allocation;
       }
 
       if(0 != m_pBoosterCore->GetCountBytesSplitPositions()) {
-         m_aSplitPositionsTemp = EbmMalloc<void>(m_pBoosterCore->GetCountBytesSplitPositions());
+         m_aSplitPositionsTemp = malloc(m_pBoosterCore->GetCountBytesSplitPositions());
          if(nullptr == m_aSplitPositionsTemp) {
             goto failed_allocation;
          }
       }
 
       if(0 != m_pBoosterCore->GetCountBytesTreeNodes()) {
-         m_aTreeNodesTemp = EbmMalloc<void>(m_pBoosterCore->GetCountBytesTreeNodes());
+         m_aTreeNodesTemp = malloc(m_pBoosterCore->GetCountBytesTreeNodes());
          if(nullptr == m_aTreeNodesTemp) {
             goto failed_allocation;
          }

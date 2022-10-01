@@ -62,7 +62,6 @@ static FloatBig SweepMultiDimensional(
    do {
       // move data to a local variable that the compiler can reason about and then eliminate by moving to CPU registers
 
-      StopClangAnalysis(); // TODO: check if aiPoint is garbage or undefined
       aDimensions[iDimensionInit].m_iPoint = aiPoint[iDimensionInit];
       aDimensions[iDimensionInit].m_cBins = acBins[iDimensionInit];
 
@@ -222,6 +221,12 @@ public:
 #endif // NDEBUG
 
       size_t aiStart[k_cDimensionsMax];
+      // technically this assignment to zero might not be needed, but if we left it uninitialized, then we would later
+      // be copying an unitialized memory location into another unitialized memory location which the static clang 
+      // analysis does not like and which seems might be problematic in some compilers even though not technically
+      // undefined behavior according to the standard
+      // https://stackoverflow.com/questions/11962457/why-is-using-an-uninitialized-variable-undefined-behavior
+      aiStart[1] = 0;
 
       EBM_ASSERT(2 == pTerm->GetCountRealDimensions());
       EBM_ASSERT(2 <= pTerm->GetCountDimensions());
@@ -236,7 +241,6 @@ public:
          const Feature * const pFeature = *ppFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
-         StopClangAnalysis(); // TODO: Check this out, but cBins can be numbers more than 1
          if(size_t { 1 } < cBins) {
             EBM_ASSERT(0 == cBinsDimension2);
             if(0 == cBinsDimension1) {
@@ -616,7 +620,13 @@ public:
                         // already logged
                         return error;
                      }
-                     StopClangAnalysis(); // TODO: check if splitFirst1Best can be undefined
+
+                     // The Clang static analyzer believes that splitFirst1Best could contain uninitialized garbage
+                     // We can only reach here if bSplitFirst2 is false and if k_illegalGainFloat != bestGain
+                     // Since bestGain is only set in two places, and since in one of those bSplitFirst2 is set to true
+                     // our code path above must have gone through the section that set both bestGain and 
+                     // splitFirst1Best.  The Clang static analyzer does not seem to recognize this, so stop it
+                     StopClangAnalysis();
                      pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst1Best;
 
                      if(splitFirst1LowBest < splitFirst1HighBest) {

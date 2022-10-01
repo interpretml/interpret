@@ -34,7 +34,11 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructGradientsAndHessians(cons
    }
    const size_t cElements = cScores * cStorageItems * cSamples;
 
-   FloatFast * aGradientsAndHessians = EbmMalloc<FloatFast>(cElements);
+   if(IsMultiplyError(sizeof(FloatFast), cElements)) {
+      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cElements)");
+      return nullptr;
+   }
+   FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cElements));
 
    LOG_0(Trace_Info, "Exited ConstructGradientsAndHessians");
    return aGradientsAndHessians;
@@ -59,7 +63,12 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
    }
 
    const size_t cElements = cScores * cSetSamples;
-   FloatFast * const aSampleScores = EbmMalloc<FloatFast>(cElements);
+
+   if(IsMultiplyError(sizeof(FloatFast), cElements)) {
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(sizeof(FloatFast), cElements)");
+      return nullptr;
+   }
+   FloatFast * const aSampleScores = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cElements));
    if(nullptr == aSampleScores) {
       LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == aSampleScores");
       return nullptr;
@@ -123,9 +132,13 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
 
    const size_t countClasses = static_cast<size_t>(cClasses);
 
-   StorageDataType * const aTargetData = EbmMalloc<StorageDataType>(cSetSamples);
+   if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
+      return nullptr;
+   }
+   StorageDataType * const aTargetData = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
    if(nullptr == aTargetData) {
-      LOG_0(Trace_Warning, "WARNING nullptr == aTargetData");
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == aTargetData");
       return nullptr;
    }
 
@@ -207,7 +220,11 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    EBM_ASSERT(0 < cTerms);
    EBM_ASSERT(nullptr != apTerms);
 
-   StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cTerms);
+   if(IsMultiplyError(sizeof(StorageDataType *), cTerms)) {
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType *), cTerms)");
+      return nullptr;
+   }
+   StorageDataType ** const aaInputDataTo = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cTerms));
    if(nullptr == aaInputDataTo) {
       LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
@@ -239,7 +256,11 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          EBM_ASSERT(0 < cSetSamples);
          const size_t cDataUnits = (cSetSamples - 1) / cItemsPerBitPack + 1; // this can't overflow or underflow
 
-         StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cDataUnits);
+         if(IsMultiplyError(sizeof(StorageDataType), cDataUnits)) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnits)");
+            goto free_all;
+         }
+         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnits));
          if(nullptr == pInputDataTo) {
             LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == pInputDataTo");
             goto free_all;

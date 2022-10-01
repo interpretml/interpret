@@ -187,7 +187,7 @@ public:
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          size_t cPossibleSplitLocations = cBins - size_t { 1 };
-         if(size_t { 0 } < cPossibleSplitLocations) {
+         if(size_t { 0 } != cPossibleSplitLocations) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
             if(size_t { 0 } != cTreeSplitsMax) {
@@ -262,7 +262,15 @@ public:
             pcBytesInSliceEnd = acItemsInNextSliceOrBytesInCurrentSlice + cFirstSlices;
             size_t iPrev = size_t { 0 };
             do {
-               StopClangAnalysis(); // TODO: check if pcItemsInNextSliceOrBytesInCurrentSlice3 is undefined
+               // The Clang static analysis tool does not like our access here to the 
+               // acItemsInNextSliceOrBytesInCurrentSlice buffer via the pcItemsInNextSliceOrBytesInCurrentSlice3
+               // pointer. I think this is because we allocate the buffer to contain both the split information
+               // and also the tensor information, and above this point we have only filled in the split information
+               // which leaves the buffer only partly initialized as we use it here. If we put a 
+               // memset(acItemsInNextSliceOrBytesInCurrentSlice, 0, cBytesBuffer) after allocation then
+               // this analysis warning goes away which reinforces this suspicion.
+               StopClangAnalysis();
+
                const size_t iCur = *pcItemsInNextSliceOrBytesInCurrentSlice3;
                EBM_ASSERT(iPrev < iCur);
                // turn these into bytes from the previous

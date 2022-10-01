@@ -343,8 +343,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    }
    EBM_ASSERT(cLeftoverTrainingSamples <= cSamples);
 
-   const size_t cBytesMostImprovedClassesCapacity = sizeof(TargetClass *) * cClasses;
-   TargetClass ** const apMostImprovedClasses = static_cast<TargetClass **>(malloc(cBytesMostImprovedClassesCapacity));
+   if(IsMultiplyError(sizeof(TargetClass *), cClasses)) {
+      LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified IsMultiplyError(sizeof(TargetClass *), cClasses)");
+      free(aTargetClasses);
+      return Error_OutOfMemory;
+   }
+   TargetClass ** const apMostImprovedClasses = static_cast<TargetClass **>(malloc(sizeof(TargetClass *) * cClasses));
    if(UNLIKELY(nullptr == apMostImprovedClasses)) {
       LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified out of memory on apMostImprovedClasses");
       free(aTargetClasses);
@@ -573,8 +577,11 @@ extern ErrorEbm ExtractWeights(
    const FloatFast * const aWeights = GetDataSetSharedWeight(pDataSetShared, 0);
    EBM_ASSERT(nullptr != aWeights);
    if(!CheckWeightsEqual(direction, cAllSamples, aBag, aWeights)) {
-      const size_t cBytes = sizeof(*aWeights) * cSetSamples;
-      FloatFast * const aRet = static_cast<FloatFast *>(malloc(cBytes));
+      if(IsMultiplyError(sizeof(FloatFast), cSetSamples)) {
+         LOG_0(Trace_Warning, "WARNING ExtractWeights IsMultiplyError(sizeof(FloatFast), cSetSamples)");
+         return Error_OutOfMemory;
+      }
+      FloatFast * const aRet = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSetSamples));
       if(UNLIKELY(nullptr == aRet)) {
          LOG_0(Trace_Warning, "WARNING ExtractWeights nullptr == aRet");
          return Error_OutOfMemory;

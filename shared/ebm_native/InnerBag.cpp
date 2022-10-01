@@ -28,7 +28,7 @@ InnerBag * InnerBag::GenerateSingleInnerBag(
 
    EBM_ASSERT(nullptr != pRng);
 
-   InnerBag * pRet = EbmMalloc<InnerBag>();
+   InnerBag * pRet = static_cast<InnerBag *>(malloc(sizeof(InnerBag)));
    if(nullptr == pRet) {
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag nullptr == pRet");
       return nullptr;
@@ -37,7 +37,13 @@ InnerBag * InnerBag::GenerateSingleInnerBag(
 
    EBM_ASSERT(1 <= cSamples); // if there were no samples, we wouldn't be called
 
-   size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
+   if(IsMultiplyError(sizeof(size_t), cSamples)) {
+      pRet->Free();
+      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag IsMultiplyError(sizeof(size_t), cSamples)");
+      return nullptr;
+   }
+   const size_t cBytesCountOccurrencesCapacity = sizeof(size_t) * cSamples;
+   size_t * const aCountOccurrences = static_cast<size_t *>(malloc(cBytesCountOccurrencesCapacity));
    if(nullptr == aCountOccurrences) {
       pRet->Free();
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag nullptr == aCountOccurrences");
@@ -45,7 +51,12 @@ InnerBag * InnerBag::GenerateSingleInnerBag(
    }
    pRet->m_aCountOccurrences = aCountOccurrences;
 
-   FloatFast * const aWeightsInternal = EbmMalloc<FloatFast>(cSamples);
+   if(IsMultiplyError(sizeof(FloatFast), cSamples)) {
+      pRet->Free();
+      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag IsMultiplyError(sizeof(FloatFast), cSamples)");
+      return nullptr;
+   }
+   FloatFast * const aWeightsInternal = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSamples));
    if(nullptr == aWeightsInternal) {
       pRet->Free();
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag nullptr == aWeightsInternal");
@@ -53,34 +64,42 @@ InnerBag * InnerBag::GenerateSingleInnerBag(
    }
    pRet->m_aWeights = aWeightsInternal;
 
-   memset(aCountOccurrences, 0, cSamples * sizeof(aCountOccurrences[0]));
+   memset(aCountOccurrences, 0, cBytesCountOccurrencesCapacity);
 
    // the compiler understands the internal state of this RNG and can locate its internal state into CPU registers
    RandomDeterministic cpuRng;
    cpuRng.Initialize(*pRng); // move the RNG from memory into CPU registers
-   for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+   size_t iSample = 0;
+   do {
       const size_t iCountOccurrences = cpuRng.NextFast(cSamples);
       ++aCountOccurrences[iCountOccurrences];
-   }
+      ++iSample;
+   } while(cSamples != iSample);
    pRng->Initialize(cpuRng); // move the RNG from the CPU registers back into memory
 
+   const size_t * pCountOccurrences = aCountOccurrences;
+   const size_t * const pCountOccurrencesEnd = &aCountOccurrences[cSamples];
+   FloatFast * pWeightsInternal = aWeightsInternal;
    FloatBig total;
    if(nullptr == aWeights) {
-      for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-         const FloatFast weight = static_cast<FloatFast>(aCountOccurrences[iSample]);
-         aWeightsInternal[iSample] = weight;
-      }
+      do {
+         *pWeightsInternal = static_cast<FloatFast>(*pCountOccurrences);
+         ++pWeightsInternal;
+         ++pCountOccurrences;
+      } while(pCountOccurrencesEnd != pCountOccurrences);
       total = static_cast<FloatBig>(cSamples);
 #ifndef NDEBUG
       const FloatBig debugTotal = AddPositiveFloatsSafeBig(cSamples, aWeightsInternal);
       EBM_ASSERT(debugTotal * 0.999 <= total && total <= 1.0001 * debugTotal);
 #endif // NDEBUG
    } else {
-      for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-         FloatFast weight = static_cast<FloatFast>(aCountOccurrences[iSample]);
-         weight *= aWeights[iSample];
-         aWeightsInternal[iSample] = weight;
-      }
+      const FloatFast * pWeight = aWeights;
+      do {
+         *pWeightsInternal = *pWeight * static_cast<FloatFast>(*pCountOccurrences);
+         ++pWeight;
+         ++pWeightsInternal;
+         ++pCountOccurrences;
+      } while(pCountOccurrencesEnd != pCountOccurrences);
       total = AddPositiveFloatsSafeBig(cSamples, aWeightsInternal);
       if(std::isnan(total) || std::isinf(total) || total <= 0) {
          pRet->Free();
@@ -106,7 +125,7 @@ InnerBag * InnerBag::GenerateFlatInnerBag(
 
    // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
 
-   InnerBag * const pRet = EbmMalloc<InnerBag>();
+   InnerBag * const pRet = static_cast<InnerBag *>(malloc(sizeof(InnerBag)));
    if(nullptr == pRet) {
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag nullptr == pRet");
       return nullptr;
@@ -115,7 +134,12 @@ InnerBag * InnerBag::GenerateFlatInnerBag(
 
    EBM_ASSERT(1 <= cSamples); // if there were no samples, we wouldn't be called
 
-   size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
+   if(IsMultiplyError(sizeof(size_t), cSamples)) {
+      pRet->Free();
+      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag IsMultiplyError(sizeof(size_t), cSamples)");
+      return nullptr;
+   }
+   size_t * const aCountOccurrences = static_cast<size_t *>(malloc(sizeof(size_t) * cSamples));
    if(nullptr == aCountOccurrences) {
       pRet->Free();
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag nullptr == aCountOccurrences");
@@ -123,7 +147,13 @@ InnerBag * InnerBag::GenerateFlatInnerBag(
    }
    pRet->m_aCountOccurrences = aCountOccurrences;
 
-   FloatFast * const aWeightsInternal = EbmMalloc<FloatFast>(cSamples);
+   if(IsMultiplyError(sizeof(FloatFast), cSamples)) {
+      pRet->Free();
+      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag IsMultiplyError(sizeof(FloatFast), cSamples)");
+      return nullptr;
+   }
+   const size_t cBytesWeightsInternalCapacity = sizeof(FloatFast) * cSamples;
+   FloatFast * const aWeightsInternal = static_cast<FloatFast *>(malloc(cBytesWeightsInternalCapacity));
    if(nullptr == aWeightsInternal) {
       pRet->Free();
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag nullptr == aWeightsInternal");
@@ -131,12 +161,18 @@ InnerBag * InnerBag::GenerateFlatInnerBag(
    }
    pRet->m_aWeights = aWeightsInternal;
 
+   size_t * pCountOccurrences = aCountOccurrences;
+   const size_t * const pCountOccurrencesEnd = &aCountOccurrences[cSamples];
    FloatBig total;
    if(nullptr == aWeights) {
-      for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-         aCountOccurrences[iSample] = 1;
-         aWeightsInternal[iSample] = 1;
-      }
+      FloatFast * pWeightsInternal = aWeightsInternal;
+      do {
+         *pWeightsInternal = 1;
+         *pCountOccurrences = 1;
+
+         ++pWeightsInternal;
+         ++pCountOccurrences;
+      } while(pCountOccurrencesEnd != pCountOccurrences);
       total = static_cast<FloatBig>(cSamples);
    } else {
       total = AddPositiveFloatsSafeBig(cSamples, aWeights);
@@ -145,10 +181,11 @@ InnerBag * InnerBag::GenerateFlatInnerBag(
          LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag std::isnan(total) || std::isinf(total) || total <= 0");
          return nullptr;
       }
-      memcpy(aWeightsInternal, aWeights, sizeof(aWeights[0]) * cSamples);
-      for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-         aCountOccurrences[iSample] = 1;
-      }
+      memcpy(aWeightsInternal, aWeights, cBytesWeightsInternalCapacity);
+      do {
+         *pCountOccurrences = 1;
+         ++pCountOccurrences;
+      } while(pCountOccurrencesEnd != pCountOccurrences);
    }
    // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
    // to zero though so check it after checking for negative
@@ -201,17 +238,24 @@ InnerBag ** InnerBag::GenerateInnerBags(
 
    EBM_ASSERT(nullptr != pRng);
 
-   StopClangAnalysis(); // cInnerBags can be 0
    const size_t cInnerBagsAfterZero = size_t { 0 } == cInnerBags ? size_t { 1 } : cInnerBags;
 
-   InnerBag ** apInnerBags = EbmMalloc<InnerBag *>(cInnerBagsAfterZero);
+   if(IsMultiplyError(sizeof(InnerBag *), cInnerBagsAfterZero)) {
+      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags IsMultiplyError(sizeof(InnerBag *), cInnerBagsAfterZero)");
+      return nullptr;
+   }
+   InnerBag ** apInnerBags = static_cast<InnerBag **>(malloc(sizeof(InnerBag *) * cInnerBagsAfterZero));
    if(UNLIKELY(nullptr == apInnerBags)) {
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == apInnerBags");
       return nullptr;
    }
-   for(size_t i = 0; i < cInnerBagsAfterZero; ++i) {
-      apInnerBags[i] = nullptr;
-   }
+
+   InnerBag ** ppInnerBagInit = apInnerBags;
+   const InnerBag * const * const ppInnerBagsEnd = &apInnerBags[cInnerBagsAfterZero];
+   do {
+      *ppInnerBagInit = nullptr;
+      ++ppInnerBagInit;
+   } while(ppInnerBagsEnd != ppInnerBagInit);
 
    if(size_t { 0 } == cInnerBags) {
       // zero is a special value that really means allocate one set that contains all samples.
@@ -223,7 +267,7 @@ InnerBag ** InnerBag::GenerateInnerBags(
       }
       apInnerBags[0] = pSingleInnerBag;
    } else {
-      size_t iInnerBag = 0;
+      InnerBag ** ppInnerBag = apInnerBags;
       do {
          InnerBag * const pSingleInnerBag = GenerateSingleInnerBag(pRng, cSamples, aWeights);
          if(UNLIKELY(nullptr == pSingleInnerBag)) {
@@ -231,9 +275,9 @@ InnerBag ** InnerBag::GenerateInnerBags(
             FreeInnerBags(cInnerBags, apInnerBags);
             return nullptr;
          }
-         apInnerBags[iInnerBag] = pSingleInnerBag;
-         ++iInnerBag;
-      } while(cInnerBags != iInnerBag);
+         *ppInnerBag = pSingleInnerBag;
+         ++ppInnerBag;
+      } while(ppInnerBagsEnd != ppInnerBag);
    }
    LOG_0(Trace_Info, "Exited InnerBag::GenerateInnerBags");
    return apInnerBags;

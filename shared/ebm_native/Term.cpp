@@ -18,7 +18,7 @@ namespace DEFINED_ZONE_NAME {
 Term * Term::Allocate(const size_t cDimensions) noexcept {
    const size_t cBytes = GetTermCountBytes(cDimensions);
    EBM_ASSERT(1 <= cBytes);
-   Term * const pTerm = static_cast<Term *>(EbmMalloc<void>(cBytes));
+   Term * const pTerm = static_cast<Term *>(malloc(cBytes));
    if(UNLIKELY(nullptr == pTerm)) {
       return nullptr;
    }
@@ -29,12 +29,20 @@ Term * Term::Allocate(const size_t cDimensions) noexcept {
 Term ** Term::AllocateTerms(const size_t cTerms) noexcept {
    LOG_0(Trace_Info, "Entered Term::AllocateTerms");
 
+   if(IsMultiplyError(sizeof(Term *), cTerms)) {
+      LOG_0(Trace_Warning, "WARNING Term::AllocateTerms IsMultiplyError(sizeof(Term *), cTerms)");
+      return nullptr;
+   }
+
    EBM_ASSERT(1 <= cTerms);
-   Term ** const apTerms = EbmMalloc<Term *>(cTerms);
+   Term ** const apTerms = static_cast<Term **>(malloc(sizeof(Term *) * cTerms));
    if(nullptr != apTerms) {
-      for(size_t iTerm = 0; iTerm < cTerms; ++iTerm) {
-         apTerms[iTerm] = nullptr;
-      }
+      Term ** ppTerm = apTerms;
+      const Term * const * const ppTermsEnd = &apTerms[cTerms];
+      do {
+         *ppTerm = nullptr;
+         ++ppTerm;
+      } while(ppTermsEnd != ppTerm);
    }
 
    LOG_0(Trace_Info, "Exited Term::AllocateTerms");

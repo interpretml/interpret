@@ -43,19 +43,20 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
    pTensor->m_cTensorScoreCapacity = cTensorScoreCapacity;
    pTensor->m_bExpanded = false;
 
-   FloatFast * const aTensorScores = EbmMalloc<FloatFast>(cTensorScoreCapacity);
+   FloatFast * const aTensorScores = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cTensorScoreCapacity));
    if(UNLIKELY(nullptr == aTensorScores)) {
       LOG_0(Trace_Warning, "WARNING Allocate nullptr == aTensorScores");
       free(pTensor); // don't need to call the full Free(*) yet
       return nullptr;
    }
    pTensor->m_aTensorScores = aTensorScores;
+
    // we only need to set the base case to zero, not our entire initial allocation
    // we checked for cScores * k_initialTensorCapacity * sizeof(FloatFast), and 1 <= k_initialTensorCapacity, 
    // so sizeof(FloatFast) * cScores can't overflow
-   for(size_t i = 0; i < cScores; ++i) {
-      aTensorScores[i] = 0;
-   }
+   //
+   // we check elsewhere that IEEE754 is used, so bit zeroing is making zeroed floats
+   memset(aTensorScores, 0, sizeof(*aTensorScores) * cScores);
 
    if(0 != cDimensionsMax) {
       DimensionInfo * pDimension = pTensor->GetDimensions();
@@ -71,7 +72,7 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
       pDimension = pTensor->GetDimensions();
       iDimension = 0;
       do {
-         ActiveDataType * const aSplits = EbmMalloc<ActiveDataType>(k_initialSplitCapacity);
+         ActiveDataType * const aSplits = static_cast<ActiveDataType *>(malloc(sizeof(ActiveDataType) * k_initialSplitCapacity));
          if(UNLIKELY(nullptr == aSplits)) {
             LOG_0(Trace_Warning, "WARNING Allocate nullptr == aSplits");
             Free(pTensor); // free everything!

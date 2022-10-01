@@ -441,8 +441,6 @@ static constexpr size_t k_cDimensionsMax =
    k_cBitsForSizeT - CountBitsRequired(sizeof(double) / sizeof(uint8_t) - 1) - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
-//WARNING_PUSH
-//WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 template<typename T>
 inline constexpr static bool IsMultiplyError(const T num1PreferredConstexpr, const T num2) noexcept {
    static_assert(std::is_integral<T>::value, "T must be integral");
@@ -452,7 +450,6 @@ inline constexpr static bool IsMultiplyError(const T num1PreferredConstexpr, con
    // it will never overflow if num1 is zero or 1.  We need to check zero to avoid division by zero
    return T { 0 } != num1PreferredConstexpr && static_cast<T>(std::numeric_limits<T>::max() / num1PreferredConstexpr) < num2;
 }
-//WARNING_POP
 
 static_assert(!IsMultiplyError(uint8_t { 0 }, uint8_t { 0 }), "automated test with compiler");
 static_assert(!IsMultiplyError(uint8_t { 0 }, uint8_t { 1 }), "automated test with compiler");
@@ -527,59 +524,6 @@ static_assert(!IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 1 }), "aut
 static_assert(!IsAddError(uint8_t { 127 }, uint8_t { 126 }, uint8_t { 1 }, uint8_t { 1 }), "automated test with compiler");
 static_assert(IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 1 }, uint8_t { 1 }), "automated test with compiler");
 static_assert(IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 2 }, uint8_t { 0 }), "automated test with compiler");
-
-// we use the struct hack in a number of places in this code base for putting memory in the optimial location
-// the struct hack isn't valid unless a class/struct is standard layout.  standard layout objects cannot
-// be allocated with new and delete, so we need to use malloc and free for a number of our objects.  It was
-// getting confusing to having some objects free with free and other objects use delete, so we just turned
-// everything into malloc/free to keep to a single convention.
-// 
-// Also, using std::nothrow on new apparently doesn't always return nullptr on all compilers.  Sometimes it just 
-// exits. This library sometimes allocates large amounts of memory and we'd like to gracefully handle the case where
-// that large amount of memory is too large.  So, instead of using new[] and delete[] we use malloc and free.
-//
-// There's also a small subset of cases where we allocate a chunk of memory and use it for heterogenious types
-// in which case we use pure malloc and then free instead of these helper functions.  In both cases we still
-// use free though, so it's less likely to create bugs by accident.
-template<typename T>
-inline static T * EbmMalloc() noexcept {
-   static_assert(!std::is_same<T, void>::value, "don't try allocating a single void item with EbmMalloc");
-   T * const a = static_cast<T *>(malloc(sizeof(T)));
-   return a;
-}
-template<typename T>
-inline static T * EbmMalloc(const size_t cItems) noexcept {
-   static constexpr size_t cBytesPerItem = sizeof(typename std::conditional<std::is_same<T, void>::value, char, T>::type);
-   static_assert(0 < cBytesPerItem, "can't have a zero sized item");
-   bool bOneByte = 1 == cBytesPerItem;
-   if(bOneByte) {
-      const size_t cBytes = cItems;
-      // TODO: !! BEWARE: we do use realloc in some parts of our program still!!
-      T * const a = static_cast<T *>(malloc(cBytes));
-      return a;
-   } else {
-      if(IsMultiplyError(cBytesPerItem, cItems)) {
-         return nullptr;
-      } else {
-         const size_t cBytes = cBytesPerItem * cItems;
-         //// TODO: !! BEWARE: we do use realloc in some parts of our program still!!
-         //StopClangAnalysis(); // for some reason Clang-analysis thinks cBytes can be zero, despite the assert above.
-         T * const a = static_cast<T *>(malloc(cBytes));
-         return a;
-      }
-   }
-}
-template<typename T>
-inline static T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) noexcept {
-   if(IsMultiplyError(cBytesPerItem, cItems)) {
-      return nullptr;
-   } else {
-      const size_t cBytes = cBytesPerItem * cItems;
-      // TODO: !! BEWARE: we do use realloc in some parts of our program still!!
-      T * const a = static_cast<T *>(malloc(cBytes));
-      return a;
-   }
-}
 
 } // DEFINED_ZONE_NAME
 

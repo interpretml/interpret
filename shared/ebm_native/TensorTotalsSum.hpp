@@ -142,7 +142,7 @@ void TensorTotalsCompareDebug(
       ++iDimension;
    } while(cRealDimensions != iDimension);
 
-   auto * const pComparison2 = EbmMalloc<Bin<FloatBig, bClassification>>(1, cBytesPerBin);
+   auto * const pComparison2 = static_cast<Bin<FloatBig, bClassification> *>(malloc(cBytesPerBin));
    if(nullptr != pComparison2) {
       // if we can't obtain the memory, then don't do the comparison and exit
       TensorTotalsSumDebugSlow<bClassification>(
@@ -204,6 +204,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
    EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
+   EBM_ASSERT(cRealDimensions <= k_cDimensionsMax);
 
    size_t cTensorBytesInitialize = cBytesPerBin;
    const unsigned char * pStartingBin = reinterpret_cast<const unsigned char *>(aBins);
@@ -276,6 +277,14 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
    }
    const unsigned int cProcessingDimensions = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
    EBM_ASSERT(cProcessingDimensions < k_cBitsForSizeT);
+   EBM_ASSERT(cProcessingDimensions <= cRealDimensions);
+   EBM_ASSERT(1 <= cProcessingDimensions);
+   // The Clang static analyer just knows that directionVectorDestroy is not zero in the loop above, but it doesn't
+   // know if some of the very high bits are set or some of the low ones, so when it iterates by the number of
+   // dimesions it doesn't know if it'll hit any bits that would increment pTotalsDimensionEnd.  If pTotalsDimensionEnd
+   // is never incremented, then cProcessingDimensions would be zero, and the shift below would become equal to
+   // k_cBitsForSizeT, which would be illegal
+   ANALYSIS_ASSERT(0 != cProcessingDimensions);
 
    binOut.Zero(cScores, aGradientPairsOut);
 

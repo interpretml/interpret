@@ -300,10 +300,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
 #ifndef NDEBUG
    // make a copy of the original bins for debugging purposes
-   BinBase * const aDebugCopyBins = EbmMalloc<BinBase>(cTensorBins, cBytesPerBigBin);
-   if(nullptr != aDebugCopyBins) {
-      // if we can't allocate, don't fail.. just stop checking
-      memcpy(aDebugCopyBins, aBigBins, cTensorBins * cBytesPerBigBin);
+
+   BinBase * aDebugCopyBins = nullptr;
+   if(!IsMultiplyError(cBytesPerBigBin, cTensorBins)) {
+      aDebugCopyBins = static_cast<BinBase *>(malloc(cBytesPerBigBin * cTensorBins));
+      if(nullptr != aDebugCopyBins) {
+         // if we can't allocate, don't fail.. just stop checking
+         memcpy(aDebugCopyBins, aBigBins, cTensorBins * cBytesPerBigBin);
+      }
    }
 #endif // NDEBUG
 

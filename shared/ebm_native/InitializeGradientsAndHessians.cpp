@@ -48,8 +48,12 @@ public:
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
 
-      // TODO: we could eliminate this memory by doing the calculation twice below and then this code could return on error value (or would that work with the loss function stuff?)
-      FloatFast * const aExps = EbmMalloc<FloatFast>(cScores);
+      if(IsMultiplyError(sizeof(FloatFast), cScores)) {
+         LOG_0(Trace_Warning, "WARNING InitializeGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores)");
+         return Error_OutOfMemory;
+      }
+      // TODO: change this to use the more permanent memory that we allocate in the Booster/Interaction shell objects
+      FloatFast * const aExps = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cScores));
       if(UNLIKELY(nullptr == aExps)) {
          LOG_0(Trace_Warning, "WARNING InitializeGradientsAndHessians nullptr == aExps");
          return Error_OutOfMemory;

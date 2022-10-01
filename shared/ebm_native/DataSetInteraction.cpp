@@ -69,7 +69,11 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm ConstructGradientsAndHessians(
    }
    const size_t cElements = cScores * cStorageItems * cSetSamples;
 
-   FloatFast * aGradientsAndHessians = EbmMalloc<FloatFast>(cElements);
+   if(IsMultiplyError(sizeof(FloatFast), cElements)) {
+      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cElements)");
+      return Error_OutOfMemory;
+   }
+   FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cElements));
    if(UNLIKELY(nullptr == aGradientsAndHessians)) {
       LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
       return Error_OutOfMemory;
@@ -105,20 +109,33 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    EBM_ASSERT(1 <= cSetSamples);
    EBM_ASSERT(1 <= cFeatures);
 
-   StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatures);
+   if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
+      // this is to check the allocation inside the loop below
+      LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
+      return nullptr;
+   }
+
+   if(IsMultiplyError(sizeof(StorageDataType *), cFeatures)) {
+      LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType *), cFeatures)");
+      return nullptr;
+   }
+   StorageDataType ** const aaInputDataTo = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cFeatures));
    if(nullptr == aaInputDataTo) {
       LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
    size_t iFeature = 0;
+   StorageDataType ** paInputDataTo = aaInputDataTo;
    do {
-      StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cSetSamples);
+      // NOTE: we check this multiplication above just once and not in the loop
+      StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
       if(nullptr == pInputDataTo) {
          LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData nullptr == pInputDataTo");
          goto free_all;
       }
-      aaInputDataTo[iFeature] = pInputDataTo;
+      *paInputDataTo = pInputDataTo;
+      ++paInputDataTo;
 
       size_t cBins;
       bool bMissing;
@@ -140,8 +157,6 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       );
       EBM_ASSERT(nullptr != aInputDataFrom);
       EBM_ASSERT(!bSparse); // we don't support sparse yet
-
-      ++iFeature;
 
       const BagEbm * pSampleReplication = aBag;
       BagEbm replication = 0;
@@ -180,15 +195,16 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          ++pInputDataTo;
       } while(pInputDataToEnd != pInputDataTo);
       EBM_ASSERT(0 == replication);
+      ++iFeature;
    } while(cFeatures != iFeature);
 
    LOG_0(Trace_Info, "Exited DataSetInteraction::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
-   while(0 != iFeature) {
-      --iFeature;
-      free(aaInputDataTo[iFeature]);
+   while(aaInputDataTo != paInputDataTo) {
+      --paInputDataTo;
+      free(*paInputDataTo);
    }
    free(aaInputDataTo);
    return nullptr;

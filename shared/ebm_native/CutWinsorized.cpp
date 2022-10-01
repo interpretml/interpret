@@ -91,14 +91,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutWinsorized(
 
          const size_t cSamplesIncludingMissingVals = static_cast<size_t>(countSamples);
 
-         double * const aFeatureVals = EbmMalloc<double>(cSamplesIncludingMissingVals);
+         if(IsMultiplyError(sizeof(double), cSamplesIncludingMissingVals)) {
+            LOG_0(Trace_Warning, "WARNING CutWinsorized IsMultiplyError(sizeof(double), cSamplesIncludingMissingVals)");
+            error = Error_OutOfMemory;
+            goto exit_with_log;
+         }
+         const size_t cBytesFeatureVals = sizeof(double) * cSamplesIncludingMissingVals;
+         double * const aFeatureVals = static_cast<double *>(malloc(cBytesFeatureVals));
          if(UNLIKELY(nullptr == aFeatureVals)) {
             LOG_0(Trace_Error, "ERROR CutWinsorized nullptr == aFeatureVals");
 
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
-         const size_t cBytesFeatureVals = sizeof(*featureVals) * cSamplesIncludingMissingVals;
          memcpy(aFeatureVals, featureVals, cBytesFeatureVals);
 
          // if there are +infinity values in the data we won't be able to separate them

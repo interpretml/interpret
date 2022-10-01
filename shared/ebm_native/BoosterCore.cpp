@@ -97,19 +97,28 @@ ErrorEbm BoosterCore::InitializeTensors(
 
    ErrorEbm error;
 
-   Tensor ** const apTensors = EbmMalloc<Tensor *>(cTerms);
+   if(IsMultiplyError(sizeof(Tensor *), cTerms)) {
+      LOG_0(Trace_Warning, "WARNING InitializeTensors IsMultiplyError(sizeof(Tensor *), cTerms)");
+      return Error_OutOfMemory;
+   }
+   Tensor ** const apTensors = static_cast<Tensor **>(malloc(sizeof(Tensor *) * cTerms));
    if(UNLIKELY(nullptr == apTensors)) {
       LOG_0(Trace_Warning, "WARNING InitializeTensors nullptr == apTensors");
       return Error_OutOfMemory;
    }
-   for(size_t iTerm = 0; iTerm < cTerms; ++iTerm) {
-      apTensors[iTerm] = nullptr;
-   }
+
+   Tensor ** ppTensorInit = apTensors;
+   const Tensor * const * const ppTensorsEnd = &apTensors[cTerms];
+   do {
+      *ppTensorInit = nullptr;
+      ++ppTensorInit;
+   } while(ppTensorsEnd != ppTensorInit);
    *papTensorsOut = apTensors; // transfer ownership for future deletion
 
    Tensor ** ppTensor = apTensors;
-   for(size_t iTerm = 0; iTerm < cTerms; ++iTerm) {
-      const Term * const pTerm = apTerms[iTerm];
+   const Term * const * ppTerm = apTerms;
+   do {
+      const Term * const pTerm = *ppTerm;
       if(size_t { 0 } != pTerm->GetCountTensorBins()) {
          // if there are any dimensions with features having 0 bins then do not allocate the tensor
          // since it will have 0 scores
@@ -127,8 +136,9 @@ ErrorEbm BoosterCore::InitializeTensors(
             return error;
          }
       }
+      ++ppTerm;
       ++ppTensor;
-   }
+   } while(ppTensorsEnd != ppTensor);
 
    LOG_0(Trace_Info, "Exited InitializeTensors");
    return Error_None;
@@ -273,11 +283,17 @@ ErrorEbm BoosterCore::Create(
    LOG_0(Trace_Info, "BoosterCore::Create starting feature processing");
    if(0 != cFeatures) {
       pBoosterCore->m_cFeatures = cFeatures;
-      pBoosterCore->m_aFeatures = EbmMalloc<Feature>(cFeatures);
-      if(nullptr == pBoosterCore->m_aFeatures) {
-         LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == pBoosterCore->m_aFeatures");
+
+      if(IsMultiplyError(sizeof(Feature), cFeatures)) {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(sizeof(Feature), cFeatures)");
          return Error_OutOfMemory;
       }
+      Feature * const aFeatures = static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures));
+      if(nullptr == aFeatures) {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == aFeatures");
+         return Error_OutOfMemory;
+      }
+      pBoosterCore->m_aFeatures = aFeatures;
 
       size_t iFeatureInitialize = size_t { 0 };
       do {
@@ -314,7 +330,7 @@ ErrorEbm BoosterCore::Create(
             // the user can specify interactions, so we handle them anyways in a consistent way by boosting on them
             LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 1 value");
          }
-         pBoosterCore->m_aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnknown, bNominal);
+         aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnknown, bNominal);
 
          ++iFeatureInitialize;
       } while(cFeatures != iFeatureInitialize);

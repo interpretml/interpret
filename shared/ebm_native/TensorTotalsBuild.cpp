@@ -238,7 +238,7 @@ public:
 
 #ifndef NDEBUG
 
-      auto * const pDebugBin = EbmMalloc<Bin<FloatBig, bClassification, cCompilerScores>>(1, cBytesPerBin);
+      auto * const pDebugBin = static_cast<Bin<FloatBig, bClassification, cCompilerScores> *>(malloc(cBytesPerBin));
 
       auto * aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
 

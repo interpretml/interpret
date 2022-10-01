@@ -554,7 +554,12 @@ static void BuildNeighbourhoodPlan(
 
    const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iValStart + iValAspirationalCur];
 
-   StopClangAnalysis(); // TODO: check that index "aNeighbourJumps[iValStart + iValAspirationalCur]" above is legal
+   // The Clang analyzer seems to not understand that ConstructJumps fully initializeses the
+   // part of the aNeighbourJumps buffer.  If I put a memset(aNeighbourJumps, 0, cBytesNeighbourJumps);
+   // then the warning is resolved.  Given ConstructJumps fully initializes this buffer this seems
+   // to be a suprious static analysis warning.  ConstructJumps does have a funny form that I 
+   // could see the compiler having a difficult time analyzing.
+   StopClangAnalysis();
    const size_t iStartCur = pNeighbourJump->m_iStartCur;
    const size_t iStartNext = pNeighbourJump->m_iStartNext;
 
@@ -2294,6 +2299,7 @@ INLINE_RELEASE_UNTEMPLATED static void ConstructJumps(
          ++pVal;
          if(UNLIKELY(pValsEnd == pVal)) {
             const size_t iStartNext = pVal - aVals;
+            EBM_ASSERT(iStartNext == cSamples);
             const NeighbourJump * const pNeighbourJumpEnd = aNeighbourJump + iStartNext;
             do {
                pNeighbourJump->m_iStartCur = iStartCur;
@@ -2301,6 +2307,7 @@ INLINE_RELEASE_UNTEMPLATED static void ConstructJumps(
                ++pNeighbourJump;
             } while(PREDICTABLE(pNeighbourJumpEnd != pNeighbourJump));
 
+            EBM_ASSERT(aNeighbourJump + cSamples == pNeighbourJump);
             return;
          }
          valNext = *pVal;
@@ -2522,7 +2529,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
 
          const size_t cSamplesIncludingMissingVals = static_cast<size_t>(countSamples);
 
-         double * const aFeatureVals = EbmMalloc<double>(cSamplesIncludingMissingVals);
+
+         if(IsMultiplyError(sizeof(double), cSamplesIncludingMissingVals)) {
+            LOG_0(Trace_Error, "ERROR CutQuantile IsMultiplyError(sizeof(double), cSamplesIncludingMissingVals)");
+
+            countCutsRet = IntEbm { 0 };
+            error = Error_OutOfMemory;
+            goto exit_with_log;
+         }
+         const size_t cBytesFeatureVals = sizeof(double) * cSamplesIncludingMissingVals;
+         double * const aFeatureVals = static_cast<double *>(malloc(cBytesFeatureVals));
          if(UNLIKELY(nullptr == aFeatureVals)) {
             LOG_0(Trace_Error, "ERROR CutQuantile nullptr == aFeatureVals");
 
@@ -2530,7 +2546,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
             error = Error_OutOfMemory;
             goto exit_with_log;
          }
-         const size_t cBytesFeatureVals = sizeof(*featureVals) * cSamplesIncludingMissingVals;
          memcpy(aFeatureVals, featureVals, cBytesFeatureVals);
 
          // if there are +infinity values in the data we won't be able to separate them
@@ -2943,7 +2958,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
 
                      const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iCenterOfRange];
 
-                     StopClangAnalysis(); // TODO: check if aNeighbourJumps[iCenterOfRange] is a legal index
+                     // The Clang analyzer seems to not understand that ConstructJumps fully initializeses the
+                     // part of the aNeighbourJumps buffer.  If I put a memset(aNeighbourJumps, 0, cBytesNeighbourJumps);
+                     // then the warning is resolved.  Given ConstructJumps fully initializes this buffer this seems
+                     // to be a suprious static analysis warning.  ConstructJumps does have a funny form that I 
+                     // could see the compiler having a difficult time analyzing.
+                     StopClangAnalysis();
                      const size_t iStartCur = pNeighbourJump->m_iStartCur;
                      const size_t iStartNext = pNeighbourJump->m_iStartNext;
 

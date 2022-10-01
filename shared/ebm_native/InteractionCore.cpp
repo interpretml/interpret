@@ -133,8 +133,12 @@ ErrorEbm InteractionCore::Create(
          return Error_OutOfMemory;
       }
 
+      if(IsMultiplyError(sizeof(Feature), cFeatures)) {
+         LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate IsMultiplyError(sizeof(Feature), cFeatures)");
+         return Error_OutOfMemory;
+      }
       pRet->m_cFeatures = cFeatures;
-      Feature * const aFeatures = EbmMalloc<Feature>(cFeatures);
+      Feature * const aFeatures = static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures));
       if(nullptr == aFeatures) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate nullptr == aFeatures");
          return Error_OutOfMemory;

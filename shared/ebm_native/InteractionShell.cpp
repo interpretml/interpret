@@ -37,7 +37,7 @@ void InteractionShell::Free(InteractionShell * const pInteractionShell) {
 InteractionShell * InteractionShell::Create(InteractionCore * const pInteractionCore) {
    LOG_0(Trace_Info, "Entered InteractionShell::Create");
 
-   InteractionShell * const pNew = EbmMalloc<InteractionShell>();
+   InteractionShell * const pNew = static_cast<InteractionShell *>(malloc(sizeof(InteractionShell)));
    if(UNLIKELY(nullptr == pNew)) {
       LOG_0(Trace_Error, "ERROR InteractionShell::Create nullptr == pNew");
       return nullptr;
@@ -51,8 +51,9 @@ InteractionShell * InteractionShell::Create(InteractionCore * const pInteraction
 }
 
 BinBase * InteractionShell::GetInteractionFastBinsTemp(const size_t cBytesPerFastBin, const size_t cFastBins) {
+   ANALYSIS_ASSERT(0 != cBytesPerFastBin);
+
    BinBase * aBuffer = m_aInteractionFastBinsTemp;
-   StopClangAnalysis(); // TODO: check this out, but cFastBins can be smaller than m_cAllocatedFastBins
    if(UNLIKELY(m_cAllocatedFastBins < cFastBins)) {
       free(aBuffer);
       m_aInteractionFastBinsTemp = nullptr;
@@ -67,7 +68,11 @@ BinBase * InteractionShell::GetInteractionFastBinsTemp(const size_t cBytesPerFas
       m_cAllocatedFastBins = cNewAllocatedFastBins;
       LOG_N(Trace_Info, "Growing Interaction fast bins to %zu", cNewAllocatedFastBins);
 
-      aBuffer = EbmMalloc<BinBase>(cNewAllocatedFastBins, cBytesPerFastBin);
+      if(IsMultiplyError(cBytesPerFastBin, cNewAllocatedFastBins)) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp IsMultiplyError(cBytesPerFastBin, cNewAllocatedFastBins)");
+         return nullptr;
+      }
+      aBuffer = static_cast<BinBase *>(malloc(cBytesPerFastBin * cNewAllocatedFastBins));
       if(nullptr == aBuffer) {
          LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp OutOfMemory");
          return nullptr;
@@ -78,8 +83,9 @@ BinBase * InteractionShell::GetInteractionFastBinsTemp(const size_t cBytesPerFas
 }
 
 BinBase * InteractionShell::GetInteractionBigBins(const size_t cBytesPerBigBin, const size_t cBigBins) {
+   ANALYSIS_ASSERT(0 != cBytesPerBigBin);
+
    BinBase * aBuffer = m_aInteractionBigBins;
-   StopClangAnalysis(); // TODO: check this out, but cBigBins can be smaller than m_cAllocatedBigBins
    if(UNLIKELY(m_cAllocatedBigBins < cBigBins)) {
       free(aBuffer);
       m_aInteractionBigBins = nullptr;
@@ -94,7 +100,11 @@ BinBase * InteractionShell::GetInteractionBigBins(const size_t cBytesPerBigBin, 
       m_cAllocatedBigBins = cNewAllocatedBigBins;
       LOG_N(Trace_Info, "Growing Interaction big bins to %zu", cNewAllocatedBigBins);
 
-      aBuffer = EbmMalloc<BinBase>(cNewAllocatedBigBins, cBytesPerBigBin);
+      if(IsMultiplyError(cBytesPerBigBin, cNewAllocatedBigBins)) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionBigBins IsMultiplyError(cBytesPerBigBin, cNewAllocatedBigBins)");
+         return nullptr;
+      }
+      aBuffer = static_cast<BinBase *>(malloc(cBytesPerBigBin * cNewAllocatedBigBins));
       if(nullptr == aBuffer) {
          LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionBigBins OutOfMemory");
          return nullptr;

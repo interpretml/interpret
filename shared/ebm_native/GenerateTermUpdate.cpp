@@ -334,20 +334,24 @@ static ErrorEbm BoostMultiDimensional(
    memcpy(aBigBins, aFastBins, cBytesPerFastBin * cTensorBins);
 
 
-   // we also need to zero the auxillary bins
-   aBigBins->ZeroMem(cBytesPerBigBin, cAuxillaryBins, cTensorBins);
-
 
    // TODO: we can exit here back to python to allow caller modification to our histograms
 
 
+
+   // we also need to zero the auxillary bins
+   aBigBins->ZeroMem(cBytesPerBigBin, cAuxillaryBins, cTensorBins);
+ 
 #ifndef NDEBUG
    // make a copy of the original bins for debugging purposes
 
-   BinBase * const aDebugCopyBins = EbmMalloc<BinBase>(cTensorBins, cBytesPerBigBin);
-   if(nullptr != aDebugCopyBins) {
-      // if we can't allocate, don't fail.. just stop checking
-      memcpy(aDebugCopyBins, aBigBins, cTensorBins * cBytesPerBigBin);
+   BinBase * aDebugCopyBins = nullptr;
+   if(!IsMultiplyError(cBytesPerBigBin, cTensorBins)) {
+      aDebugCopyBins = static_cast<BinBase *>(malloc(cBytesPerBigBin * cTensorBins));
+      if(nullptr != aDebugCopyBins) {
+         // if we can't allocate, don't fail.. just stop checking
+         memcpy(aDebugCopyBins, aBigBins, cBytesPerBigBin * cTensorBins);
+      }
    }
 #endif // NDEBUG
 
