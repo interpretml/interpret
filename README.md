@@ -595,6 +595,7 @@ We also build on top of many great packages. Please check them out!
 - [Dealing with Imbalanced Data (Mortgage loans defaults)](https://mikewlange.github.io/ImbalancedData-/index.html)
 - [The right way to compute your Shapley Values](https://towardsdatascience.com/the-right-way-to-compute-your-shapley-values-cfea30509254)
 - [The Art of Sprezzatura for Machine Learning](https://towardsdatascience.com/the-art-of-sprezzatura-for-machine-learning-e2494c0db727)
+- [Mixing Art into the Science of Model Explainability](https://towardsdatascience.com/mixing-art-into-the-science-of-model-explainability-312b8216fa95)
 
 # Papers that use or compare EBMs
 
@@ -622,6 +623,8 @@ We also build on top of many great packages. Please check them out!
 - [Interpretable Prediction of Goals in Soccer](http://statsbomb.com/wp-content/uploads/2019/10/decroos-interpretability-statsbomb.pdf)
 - [Extending the Tsetlin Machine with Integer-Weighted Clauses for Increased Interpretability](https://arxiv.org/pdf/2005.05131.pdf)
 - [In Pursuit of Interpretable, Fair and Accurate Machine Learning for Criminal Recidivism Prediction](https://arxiv.org/pdf/2005.04176.pdf)
+- [From Shapley Values to Generalized Additive Models and back](https://arxiv.org/pdf/2209.04012.pdf)
+- [An Explainable Machine Learning Approach to Visual-Interactive Labeling: A Case Study on Non-communicable Disease Data](https://arxiv.org/pdf/2209.12778.pdf)
 - [Development and Validation of an Interpretable 3-day Intensive Care Unit Readmission Prediction Model Using Explainable Boosting Machines](https://www.medrxiv.org/content/10.1101/2021.11.01.21265700v1.full.pdf)
 - [Death by Round Numbers and Sharp Thresholds: How to Avoid Dangerous AI EHR Recommendations](https://www.medrxiv.org/content/10.1101/2022.04.30.22274520v1.full.pdf)
 - [Building a predictive model to identify clinical indicators for COVID-19 using machine learning method](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9037972/pdf/11517_2022_Article_2568.pdf)
@@ -629,7 +632,7 @@ We also build on top of many great packages. Please check them out!
 - [Explainable Boosting Machine for Predicting Alzheimer’s Disease from MRI Hippocampal Subfields](https://link.springer.com/chapter/10.1007/978-3-030-86993-9_31)
 - [Impact of Accuracy on Model Interpretations](https://arxiv.org/pdf/2011.09903.pdf)
 
-# Books that include EBMs
+# Books that discuss EBMs
 
 - [Interpretable Machine Learning with Python](https://www.amazon.com/Interpretable-Machine-Learning-Python-hands/dp/180020390X)
 - [Explainable Artificial Intelligence: An Introduction to Interpretable Machine Learning](https://www.amazon.com/Explainable-Artificial-Intelligence_-An-Introduction-to-Interpretable-XAI/dp/3030833550)
