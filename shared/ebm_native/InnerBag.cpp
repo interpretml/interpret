@@ -12,6 +12,7 @@
 
 #include "ebm_internal.hpp" // AddPositiveFloatsSafeBig
 #include "RandomDeterministic.hpp" // RandomDeterministic
+#include "RandomNondeterministic.hpp" // RandomNondeterministic
 #include "InnerBag.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -19,48 +20,47 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-InnerBag * InnerBag::GenerateSingleInnerBag(
-   RandomDeterministic * const pRng,
+ErrorEbm InnerBag::GenerateSingleInnerBag(
+   void * const rng,
    const size_t cSamples,
-   const FloatFast * const aWeights
+   const FloatFast * const aWeights,
+   InnerBag ** const ppOut
 ) {
    LOG_0(Trace_Verbose, "Entered InnerBag::GenerateSingleInnerBag");
 
-   EBM_ASSERT(nullptr != pRng);
+   EBM_ASSERT(nullptr != ppOut);
+   EBM_ASSERT(nullptr == *ppOut);
 
    InnerBag * pRet = static_cast<InnerBag *>(malloc(sizeof(InnerBag)));
    if(nullptr == pRet) {
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag nullptr == pRet");
-      return nullptr;
+      return Error_OutOfMemory;
    }
    pRet->InitializeUnfailing();
+   *ppOut = pRet;
 
    EBM_ASSERT(1 <= cSamples); // if there were no samples, we wouldn't be called
 
    if(IsMultiplyError(sizeof(size_t), cSamples)) {
-      pRet->Free();
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag IsMultiplyError(sizeof(size_t), cSamples)");
-      return nullptr;
+      return Error_OutOfMemory;
    }
    const size_t cBytesCountOccurrencesCapacity = sizeof(size_t) * cSamples;
    size_t * const aCountOccurrences = static_cast<size_t *>(malloc(cBytesCountOccurrencesCapacity));
    if(nullptr == aCountOccurrences) {
-      pRet->Free();
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag nullptr == aCountOccurrences");
-      return nullptr;
+      return Error_OutOfMemory;
    }
    pRet->m_aCountOccurrences = aCountOccurrences;
 
    if(IsMultiplyError(sizeof(FloatFast), cSamples)) {
-      pRet->Free();
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag IsMultiplyError(sizeof(FloatFast), cSamples)");
-      return nullptr;
+      return Error_OutOfMemory;
    }
    FloatFast * const aWeightsInternal = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSamples));
    if(nullptr == aWeightsInternal) {
-      pRet->Free();
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag nullptr == aWeightsInternal");
-      return nullptr;
+      return Error_OutOfMemory;
    }
    pRet->m_aWeights = aWeightsInternal;
 
@@ -68,14 +68,37 @@ InnerBag * InnerBag::GenerateSingleInnerBag(
 
    // the compiler understands the internal state of this RNG and can locate its internal state into CPU registers
    RandomDeterministic cpuRng;
-   cpuRng.Initialize(*pRng); // move the RNG from memory into CPU registers
+   if(nullptr == rng) {
+      // Inner bags are not used when building a differentially private model, so
+      // we can use low-quality non-determinism.  Generate a non-deterministic seed
+      uint64_t seed;
+      try {
+         RandomNondeterministic<uint64_t> randomGenerator;
+         seed = randomGenerator.Next(std::numeric_limits<uint64_t>::max());
+      } catch(const std::bad_alloc &) {
+         LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag Out of memory in std::random_device");
+         return Error_OutOfMemory;
+      } catch(...) {
+         LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag Unknown error in std::random_device");
+         return Error_UnexpectedInternal;
+      }
+      cpuRng.Initialize(seed);
+   } else {
+      const RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rng);
+      cpuRng.Initialize(*pRng); // move the RNG from memory into CPU registers
+   }
+
    size_t iSample = 0;
    do {
       const size_t iCountOccurrences = cpuRng.NextFast(cSamples);
       ++aCountOccurrences[iCountOccurrences];
       ++iSample;
    } while(cSamples != iSample);
-   pRng->Initialize(cpuRng); // move the RNG from the CPU registers back into memory
+
+   if(nullptr != rng) {
+      RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
+      pRng->Initialize(cpuRng); // move the RNG from memory into CPU registers
+   }
 
    const size_t * pCountOccurrences = aCountOccurrences;
    const size_t * const pCountOccurrencesEnd = &aCountOccurrences[cSamples];
@@ -102,9 +125,8 @@ InnerBag * InnerBag::GenerateSingleInnerBag(
       } while(pCountOccurrencesEnd != pCountOccurrences);
       total = AddPositiveFloatsSafeBig(cSamples, aWeightsInternal);
       if(std::isnan(total) || std::isinf(total) || total <= 0) {
-         pRet->Free();
          LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag std::isnan(total) || std::isinf(total) || total <= 0");
-         return nullptr;
+         return Error_UserParamVal;
       }
    }
    // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
@@ -114,7 +136,7 @@ InnerBag * InnerBag::GenerateSingleInnerBag(
    pRet->m_weightTotal = total;
 
    LOG_0(Trace_Verbose, "Exited InnerBag::GenerateSingleInnerBag");
-   return pRet;
+   return Error_None;
 }
 
 InnerBag * InnerBag::GenerateFlatInnerBag(
@@ -228,26 +250,28 @@ void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag ** const apInnerB
 }
 WARNING_POP
 
-InnerBag ** InnerBag::GenerateInnerBags(
-   RandomDeterministic * const pRng,
+ErrorEbm InnerBag::GenerateInnerBags(
+   void * const rng,
    const size_t cSamples,
    const FloatFast * const aWeights,
-   const size_t cInnerBags
+   const size_t cInnerBags,
+   InnerBag *** const papOut
 ) {
    LOG_0(Trace_Info, "Entered InnerBag::GenerateInnerBags");
 
-   EBM_ASSERT(nullptr != pRng);
+   EBM_ASSERT(nullptr != papOut);
+   EBM_ASSERT(nullptr == *papOut);
 
    const size_t cInnerBagsAfterZero = size_t { 0 } == cInnerBags ? size_t { 1 } : cInnerBags;
 
    if(IsMultiplyError(sizeof(InnerBag *), cInnerBagsAfterZero)) {
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags IsMultiplyError(sizeof(InnerBag *), cInnerBagsAfterZero)");
-      return nullptr;
+      return Error_OutOfMemory;
    }
    InnerBag ** apInnerBags = static_cast<InnerBag **>(malloc(sizeof(InnerBag *) * cInnerBagsAfterZero));
    if(UNLIKELY(nullptr == apInnerBags)) {
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == apInnerBags");
-      return nullptr;
+      return Error_OutOfMemory;
    }
 
    InnerBag ** ppInnerBagInit = apInnerBags;
@@ -257,30 +281,28 @@ InnerBag ** InnerBag::GenerateInnerBags(
       ++ppInnerBagInit;
    } while(ppInnerBagsEnd != ppInnerBagInit);
 
+   *papOut = apInnerBags;
+
    if(size_t { 0 } == cInnerBags) {
       // zero is a special value that really means allocate one set that contains all samples.
       InnerBag * const pSingleInnerBag = GenerateFlatInnerBag(cSamples, aWeights);
       if(UNLIKELY(nullptr == pSingleInnerBag)) {
          LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == pSingleInnerBag");
-         free(apInnerBags);
-         return nullptr;
+         return Error_OutOfMemory;
       }
       apInnerBags[0] = pSingleInnerBag;
    } else {
       InnerBag ** ppInnerBag = apInnerBags;
       do {
-         InnerBag * const pSingleInnerBag = GenerateSingleInnerBag(pRng, cSamples, aWeights);
-         if(UNLIKELY(nullptr == pSingleInnerBag)) {
-            LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == pSingleInnerBag");
-            FreeInnerBags(cInnerBags, apInnerBags);
-            return nullptr;
+         const ErrorEbm error = GenerateSingleInnerBag(rng, cSamples, aWeights, ppInnerBag);
+         if(UNLIKELY(Error_None != error)) {
+            return error;
          }
-         *ppInnerBag = pSingleInnerBag;
          ++ppInnerBag;
       } while(ppInnerBagsEnd != ppInnerBag);
    }
    LOG_0(Trace_Info, "Exited InnerBag::GenerateInnerBags");
-   return apInnerBags;
+   return Error_None;
 }
 
 } // DEFINED_ZONE_NAME

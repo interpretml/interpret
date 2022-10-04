@@ -191,7 +191,7 @@ void BoosterCore::Free(BoosterCore * const pBoosterCore) {
 //}
 
 ErrorEbm BoosterCore::Create(
-   RandomDeterministic * const pRng,
+   void * const rng,
    const size_t cTerms,
    const size_t cInnerBags,
    const double * const experimentalParams,
@@ -633,16 +633,17 @@ ErrorEbm BoosterCore::Create(
       }
       pBoosterCore->m_cInnerBags = cInnerBags;
       // TODO: we could steal the aWeights in GenerateInnerBags for flat sampling sets
-      pBoosterCore->m_apInnerBags = InnerBag::GenerateInnerBags(
-         pRng,
+      error = InnerBag::GenerateInnerBags(
+         rng,
          pBoosterCore->m_trainingSet.GetCountSamples(), 
          aWeights, 
-         cInnerBags
+         cInnerBags,
+         &pBoosterCore->m_apInnerBags
       );
       free(aWeights);
-      if(UNLIKELY(nullptr == pBoosterCore->m_apInnerBags)) {
-         LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == m_apInnerBags");
-         return Error_OutOfMemory;
+      if(UNLIKELY(Error_None != error)) {
+         // already logged
+         return error;
       }
    }
 

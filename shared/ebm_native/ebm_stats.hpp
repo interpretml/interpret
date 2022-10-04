@@ -493,8 +493,6 @@ public:
       return partialGain;
    }
 
-   WARNING_PUSH
-   WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
    INLINE_ALWAYS static FloatBig ComputeSinglePartitionUpdate(
       const FloatBig sumGradient, 
@@ -584,7 +582,7 @@ public:
       // all the weights can be zero in which case even if we have no splits our sumHessian can be zero
       EBM_ASSERT(0 <= sumHessian);
 
-      return (0 == sumHessian) ? FloatBig { 0 } : (-sumGradient / sumHessian);
+      return (FloatBig { 0 } == sumHessian) ? FloatBig { 0 } : (-sumGradient / sumHessian);
 
       // return can be NaN if both sumGradient and sumHessian are zero, or if we're propagating a NaN value.  Neither sumGradient nor 
       //   sumHessian can be infinity, so that's not a source of NaN
@@ -593,7 +591,6 @@ public:
       // return can be any other positive or negative number
    }
 
-   WARNING_POP
 
    INLINE_ALWAYS static FloatBig ComputeSinglePartitionUpdateGradientSum(const FloatBig sumGradient) {
       // this is NOT a performance critical call.  It only gets called AFTER we've decided where to split, so only a few times per term boost

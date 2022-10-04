@@ -30,10 +30,12 @@ class InnerBag final {
    FloatBig m_weightTotal;
 
    // we take owernship of the aWeights array
-   static InnerBag * GenerateSingleInnerBag(
-      RandomDeterministic * const pRng,
+
+   static ErrorEbm GenerateSingleInnerBag(
+      void * const rng,
       const size_t cSamples,
-      const FloatFast * const aWeights
+      const FloatFast * const aWeights,
+      InnerBag ** const ppOut
    );
    static InnerBag * GenerateFlatInnerBag(
       const size_t cSamples,
@@ -59,11 +61,12 @@ public:
       return m_weightTotal;
    }
 
-   static InnerBag ** GenerateInnerBags(
-      RandomDeterministic * const pRng,
+   static ErrorEbm GenerateInnerBags(
+      void * const rng,
       const size_t cSamples,
       const FloatFast * const aWeights,
-      const size_t cInnerBags
+      const size_t cInnerBags,
+      InnerBag *** const papOut
    );
    static void FreeInnerBags(const size_t cInnerBags, InnerBag ** const apInnerBags);
 };

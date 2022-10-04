@@ -9,7 +9,6 @@
 #include <string.h> // memcpy
 
 #include "RandomDeterministic.hpp" // RandomDeterministic
-#include "RandomNondeterministic.hpp" // RandomNondeterministic
 
 #include "Feature.hpp" // Feature
 #include "Term.hpp" // Term
@@ -200,32 +199,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    }
    const size_t cInnerBags = static_cast<size_t>(countInnerBags);
 
-   // TODO: move this code down into BoosterCore::Create since we can happily pass down nullptr into there and then use the CPU register trick at the lowest function level
-   RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
-   RandomDeterministic rngInternal;
-   if(nullptr == pRng) {
-      // We use the seed for creating inner bags. Inner bags are not used in DP-EBMs.
-      // Since we do not need high-quality non-determinism, generate a non-deterministic seed
-      uint64_t seed;
-      try {
-         RandomNondeterministic<uint64_t> randomGenerator;
-         seed = randomGenerator.Next(std::numeric_limits<uint64_t>::max());
-      } catch(const std::bad_alloc &) {
-         LOG_0(Trace_Warning, "WARNING CreateBooster Out of memory in std::random_device");
-         return Error_OutOfMemory;
-      } catch(...) {
-         LOG_0(Trace_Warning, "WARNING CreateBooster Unknown error in std::random_device");
-         return Error_UnexpectedInternal;
-      }
-      rngInternal.Initialize(seed);
-      pRng = &rngInternal;
-   }
-
    // TODO: since BoosterCore is a non-POD C++ class, we should probably move the call to new from inside
    //       BoosterCore::Create to here and wrap it with a try catch at this level and rely on standard C++ behavior
    BoosterCore * pBoosterCore = nullptr;
    error = BoosterCore::Create(
-      pRng,
+      rng,
       cTerms,
       cInnerBags,
       experimentalParams,
