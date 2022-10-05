@@ -2281,13 +2281,6 @@ INLINE_RELEASE_UNTEMPLATED static void ConstructJumps(
    EBM_ASSERT(nullptr != aVals);
    EBM_ASSERT(nullptr != aNeighbourJump);
 
-   // The Clang static analyzer seems to not understand that ConstructJumps fully initializes the
-   // aNeighbourJumps buffer.  If I put a memset(aNeighbourJumps, 0, cBytesNeighbourJumps);
-   // then the warning is resolved.  Given ConstructJumps fully initializes this buffer this seems
-   // to be a spurious static analysis warning.  ConstructJumps does have odd processing logic that I 
-   // could see the compiler having a difficult time analyzing.
-   StopClangAnalysis();
-
    double valNext = aVals[0];
    const double * pVal = aVals;
    const double * const pValsEnd = aVals + cSamples;
@@ -2309,6 +2302,14 @@ INLINE_RELEASE_UNTEMPLATED static void ConstructJumps(
             } while(PREDICTABLE(pNeighbourJumpEnd != pNeighbourJump));
 
             EBM_ASSERT(aNeighbourJump + cSamples == pNeighbourJump);
+
+            // The Clang static analyzer seems to not understand that ConstructJumps fully initializes the
+            // aNeighbourJumps buffer.  If I put a memset(aNeighbourJumps, 0, cBytesNeighbourJumps);
+            // then the warning is resolved.  Given ConstructJumps fully initializes this buffer this seems
+            // to be a spurious static analysis warning.  ConstructJumps does have odd processing logic that I 
+            // could see the compiler having a difficult time analyzing.
+            StopClangAnalysis();
+
             return;
          }
          valNext = *pVal;

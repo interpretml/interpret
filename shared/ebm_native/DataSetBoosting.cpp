@@ -27,18 +27,15 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructGradientsAndHessians(cons
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(1 <= cScores);
 
-   const size_t cStorageItems = bAllocateHessians ? 2 : 1;
-   if(IsMultiplyError(cScores, cStorageItems, cSamples)) {
-      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cScores, cStorageItems, cSamples)");
+   const size_t cStorageItems = bAllocateHessians ? size_t { 2 } : size_t { 1 };
+   if(IsMultiplyError(sizeof(FloatFast), cScores, cStorageItems, cSamples)) {
+      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores, cStorageItems, cSamples)");
       return nullptr;
    }
-   const size_t cElements = cScores * cStorageItems * cSamples;
+   const size_t cBytesGradientsAndHessians = sizeof(FloatFast) * cScores * cStorageItems * cSamples;
+   ANALYSIS_ASSERT(0 != cBytesGradientsAndHessians);
 
-   if(IsMultiplyError(sizeof(FloatFast), cElements)) {
-      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cElements)");
-      return nullptr;
-   }
-   FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cElements));
+   FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(malloc(cBytesGradientsAndHessians));
 
    LOG_0(Trace_Info, "Exited ConstructGradientsAndHessians");
    return aGradientsAndHessians;

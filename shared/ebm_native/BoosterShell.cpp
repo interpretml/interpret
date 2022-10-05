@@ -68,7 +68,7 @@ ErrorEbm BoosterShell::FillAllocations() {
    LOG_0(Trace_Info, "Entered BoosterShell::FillAllocations");
 
    const ptrdiff_t cClasses = m_pBoosterCore->GetCountClasses();
-   if(size_t { 0 } != cClasses && size_t { 1 } != cClasses) {
+   if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
       const size_t cScores = GetCountScores(cClasses);
 
       m_pTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);

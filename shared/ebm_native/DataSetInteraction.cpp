@@ -62,18 +62,15 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm ConstructGradientsAndHessians(
    const size_t cScores = GetCountScores(cClasses);
    EBM_ASSERT(1 <= cScores);
 
-   const size_t cStorageItems = bAllocateHessians ? 2 : 1;
-   if(IsMultiplyError(cScores, cStorageItems, cSetSamples)) {
-      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cScores, cStorageItems, cSamples)");
+   const size_t cStorageItems = bAllocateHessians ? size_t { 2 } : size_t { 1 };
+   if(IsMultiplyError(sizeof(FloatFast), cScores, cStorageItems, cSetSamples)) {
+      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores, cStorageItems, cSamples)");
       return Error_OutOfMemory;
    }
-   const size_t cElements = cScores * cStorageItems * cSetSamples;
+   const size_t cBytesGradientsAndHessians = sizeof(FloatFast) * cScores * cStorageItems * cSetSamples;
+   ANALYSIS_ASSERT(0 != cBytesGradientsAndHessians);
 
-   if(IsMultiplyError(sizeof(FloatFast), cElements)) {
-      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cElements)");
-      return Error_OutOfMemory;
-   }
-   FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cElements));
+   FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(malloc(cBytesGradientsAndHessians));
    if(UNLIKELY(nullptr == aGradientsAndHessians)) {
       LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
       return Error_OutOfMemory;
