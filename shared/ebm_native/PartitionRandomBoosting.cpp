@@ -99,8 +99,10 @@ public:
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          const size_t cSlices = EbmMin(cLeavesMax, cBins);
+         EBM_ASSERT(1 <= cSlices);
+
          const size_t cPossibleSplitLocations = cBins - size_t { 1 };
-         if(size_t { 0 } < cPossibleSplitLocations) {
+         if(size_t { 0 } != cPossibleSplitLocations) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
             if(IsAddError(cSlicesTotal, cPossibleSplitLocations)) {
@@ -149,6 +151,13 @@ public:
          LOG_0(Trace_Warning, "WARNING PartitionRandomBoostingInternal IsAddError(cBytesSlices, cBytesCollapsedTensor1)");
          return Error_OutOfMemory;
       }
+
+      // We previously handled conditions where a dimension had 0 bins in one of the features, so 
+      // all dimensions should have had 1 bin and we set the number of leaves to 1 minimum, and
+      // the cBytesPerBin value must be greater than 0, so cCollapsedTensorCells must be non-zero
+      // The Clang static analyzer seems to not understand these things, so specify it here
+      ANALYSIS_ASSERT(0 != cCollapsedTensorCells);
+
       const size_t cBytesSlicesAndCollapsedTensor = cBytesSlices + cCollapsedTensorCells;
 
       const size_t cBytesBuffer = EbmMax(cBytesSlicesAndCollapsedTensor, cBytesSlicesPlusRandom);

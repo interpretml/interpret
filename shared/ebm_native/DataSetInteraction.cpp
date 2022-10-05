@@ -210,8 +210,6 @@ free_all:
    return nullptr;
 }
 
-WARNING_PUSH
-WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 void DataSetInteraction::Destruct() {
    LOG_0(Trace_Info, "Entered DataSetInteraction::Destruct");
 
@@ -231,7 +229,6 @@ void DataSetInteraction::Destruct() {
 
    LOG_0(Trace_Info, "Exited DataSetInteraction::Destruct");
 }
-WARNING_POP
 
 ErrorEbm DataSetInteraction::Initialize(
    const bool bAllocateGradients,

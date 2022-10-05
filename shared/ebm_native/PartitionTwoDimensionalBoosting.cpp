@@ -185,7 +185,6 @@ public:
 
    WARNING_PUSH
    WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
-
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,

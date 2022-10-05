@@ -303,6 +303,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
    BinBase * aDebugCopyBins = nullptr;
    if(!IsMultiplyError(cBytesPerBigBin, cTensorBins)) {
+      ANALYSIS_ASSERT(0 != cBytesPerBigBin);
       aDebugCopyBins = static_cast<BinBase *>(malloc(cBytesPerBigBin * cTensorBins));
       if(nullptr != aDebugCopyBins) {
          // if we can't allocate, don't fail.. just stop checking

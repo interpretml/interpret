@@ -230,8 +230,6 @@ void InnerBag::InitializeUnfailing() {
    m_aWeights = nullptr;
 }
 
-WARNING_PUSH
-WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag ** const apInnerBags) {
    LOG_0(Trace_Info, "Entered InnerBag::FreeInnerBags");
    if(LIKELY(nullptr != apInnerBags)) {
@@ -248,7 +246,6 @@ void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag ** const apInnerB
    }
    LOG_0(Trace_Info, "Exited InnerBag::FreeInnerBags");
 }
-WARNING_POP
 
 ErrorEbm InnerBag::GenerateInnerBags(
    void * const rng,

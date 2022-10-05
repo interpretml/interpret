@@ -27,11 +27,9 @@ public:
 
    PartitionTwoDimensionalInteractionInternal() = delete; // this is a static class.  Do not construct
 
-   WARNING_PUSH
-   WARNING_BUFFER_OVERRUN
    INLINE_RELEASE_UNTEMPLATED static double Func(
       InteractionCore * const pInteractionCore,
-      const size_t cRealDimensions,
+      const size_t cRuntimeRealDimensions,
       const size_t * const acBins,
       const InteractionFlags flags,
       const size_t cSamplesLeafMin,
@@ -58,15 +56,14 @@ public:
       const size_t cScores = GetCountScores(cClasses);
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-      EBM_ASSERT(cCompilerDimensions == cRealDimensions);
+      const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
+      EBM_ASSERT(k_dynamicDimensions == cCompilerDimensions || cCompilerDimensions == cRuntimeRealDimensions);
 
       TensorSumDimension aDimensions[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
       size_t iDimensionInit = 0;
       do {
          // move data to a local variable that the compiler can reason about and then eliminate by moving to CPU registers
-
          aDimensions[iDimensionInit].m_cBins = acBins[iDimensionInit];
-
          ++iDimensionInit;
       } while(cRealDimensions != iDimensionInit);
 
@@ -374,7 +371,6 @@ public:
       // we clean up bestGain in the caller, since this function is templated and created many times
       return static_cast<double>(bestGain);
    }
-   WARNING_POP
 };
 
 template<ptrdiff_t cPossibleClasses>

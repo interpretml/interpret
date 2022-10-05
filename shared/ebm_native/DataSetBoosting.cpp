@@ -44,6 +44,9 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructGradientsAndHessians(cons
    return aGradientsAndHessians;
 }
 
+WARNING_PUSH
+// NOTE: This warning seems to be flagged by the DEBUG 32 bit build
+WARNING_BUFFER_OVERRUN
 INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
    const size_t cScores,
    const BagEbm direction,
@@ -53,21 +56,16 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
 ) {
    LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructSampleScores");
 
-   EBM_ASSERT(0 < cScores);
+   EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
-   EBM_ASSERT(0 < cSetSamples);
+   EBM_ASSERT(1 <= cSetSamples);
 
-   if(IsMultiplyError(cScores, cSetSamples)) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(cScores, cSetSamples)");
+   if(IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)) {
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)");
       return nullptr;
    }
-
    const size_t cElements = cScores * cSetSamples;
 
-   if(IsMultiplyError(sizeof(FloatFast), cElements)) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(sizeof(FloatFast), cElements)");
-      return nullptr;
-   }
    FloatFast * const aSampleScores = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cElements));
    if(nullptr == aSampleScores) {
       LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == aSampleScores");
@@ -78,7 +76,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
 
    const BagEbm * pSampleReplication = aBag;
    FloatFast * pSampleScore = aSampleScores;
-   const FloatFast * const pSampleScoresEnd = aSampleScores + cScores * cSetSamples;
+   const FloatFast * const pSampleScoresEnd = &aSampleScores[cElements];
    const double * pInitScore = aInitScores;
    const bool isLoopTraining = BagEbm { 0 } < direction;
    do {
@@ -91,7 +89,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
          const bool isItemTraining = BagEbm { 0 } < replication;
          if(isLoopTraining == isItemTraining) {
             do {
-               EBM_ASSERT(pSampleScore < aSampleScores + cScores * cSetSamples);
+               EBM_ASSERT(pSampleScore < pSampleScoresEnd);
                if(nullptr == pInitScore) {
                   static_assert(std::numeric_limits<FloatFast>::is_iec559, "IEEE 754 guarantees zeros means a zero float");
                   memset(pSampleScore, 0, cBytesPerItem);
@@ -112,6 +110,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
    LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructSampleScores");
    return aSampleScores;
 }
+WARNING_POP
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
    const unsigned char * const pDataSetShared,
@@ -509,8 +508,6 @@ ErrorEbm DataSetBoosting::Initialize(
    return Error_None;
 }
 
-WARNING_PUSH
-WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 void DataSetBoosting::Destruct() {
    LOG_0(Trace_Info, "Entered DataSetBoosting::Destruct");
 
@@ -531,6 +528,5 @@ void DataSetBoosting::Destruct() {
 
    LOG_0(Trace_Info, "Exited DataSetBoosting::Destruct");
 }
-WARNING_POP
 
 } // DEFINED_ZONE_NAME
