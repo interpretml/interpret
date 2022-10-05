@@ -51,7 +51,6 @@ public:
       const unsigned char * const pDataSetShared,
       const size_t cAllSamples,
       const BagEbm * const aBag,
-      const double * const aInitScores,
       const size_t cSetSamples,
       const size_t cWeights,
       const size_t cFeatures
@@ -64,10 +63,19 @@ public:
       return m_weightTotal;
    }
 
+   INLINE_ALWAYS bool IsGradientsAndHessiansNull() const {
+      return nullptr == m_aGradientsAndHessians;
+   }
+
    INLINE_ALWAYS const FloatFast * GetGradientsAndHessiansPointer() const {
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
    }
+   INLINE_ALWAYS FloatFast * GetGradientsAndHessiansPointer() {
+      EBM_ASSERT(nullptr != m_aGradientsAndHessians);
+      return m_aGradientsAndHessians;
+   }
+
    INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const size_t iFeature) const {
       EBM_ASSERT(iFeature < m_cFeatures);
       EBM_ASSERT(nullptr != m_aaInputData);

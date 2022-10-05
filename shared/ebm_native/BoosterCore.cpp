@@ -35,11 +35,12 @@ namespace DEFINED_ZONE_NAME {
 
 class RandomDeterministic;
 
-extern ErrorEbm InitializeGradientsAndHessians(
+extern void InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
    const BagEbm * const aBag,
    const double * const aInitScores,
+   FloatFast * const aMulticlassMidwayTemp,
    const size_t cSetSamples,
    FloatFast * const aGradientAndHessian
 );
@@ -675,41 +676,41 @@ ErrorEbm BoosterCore::Create(
       }
    }
 
-   // TODO: move the calls to InitializeGradientsAndHessians to our caller AFTER the BoosterShell has been constructed because then we could use the booster shell temporary arrays and eliminate the error return since we wouldn't be allocating anything inside of InitializeGradientsAndHessians anymore
-   if(!pBoosterCore->m_trainingSet.IsGradientsAndHessiansNull()) {
-      error = InitializeGradientsAndHessians(
-         pDataSetShared,
-         BagEbm { 1 },
-         aBag,
-         aInitScores,
-         cTrainingSamples,
-         pBoosterCore->m_trainingSet.GetGradientsAndHessiansPointer()
-      );
-      if(Error_None != error) {
-         // error already logged
-         return error;
-      }
-   }
-   if(!pBoosterCore->m_validationSet.IsGradientsAndHessiansNull()) {
-#ifndef NDEBUG
-      const ErrorEbm errorDebug =
-#endif // NDEBUG
-      InitializeGradientsAndHessians(
-         pDataSetShared,
-         BagEbm { -1 },
-         aBag,
-         aInitScores,
-         cValidationSamples,
-         pBoosterCore->m_validationSet.GetGradientsAndHessiansPointer()
-      );
-      EBM_ASSERT(Error_None == errorDebug); // InitializeGradientsAndHessians doesn't allocate on regression
-   }
-
    pBoosterCore->m_cClasses = cClasses;
    pBoosterCore->m_bestModelMetric = std::numeric_limits<double>::infinity();
 
    LOG_0(Trace_Info, "Exited BoosterCore::Create");
    return Error_None;
+}
+
+void BoosterCore::InitializeBoosterGradientsAndHessians(
+   const unsigned char * const pDataSetShared,
+   const BagEbm * const aBag,
+   const double * const aInitScores,
+   FloatFast * const aMulticlassMidwayTemp
+) {
+   if(!m_trainingSet.IsGradientsAndHessiansNull()) {
+      InitializeGradientsAndHessians(
+         pDataSetShared,
+         BagEbm { 1 },
+         aBag,
+         aInitScores,
+         aMulticlassMidwayTemp,
+         m_trainingSet.GetCountSamples(),
+         m_trainingSet.GetGradientsAndHessiansPointer()
+      );
+   }
+   if(!m_validationSet.IsGradientsAndHessiansNull()) {
+      InitializeGradientsAndHessians(
+         pDataSetShared,
+         BagEbm { -1 },
+         aBag,
+         aInitScores,
+         aMulticlassMidwayTemp,
+         m_validationSet.GetCountSamples(),
+         m_validationSet.GetGradientsAndHessiansPointer()
+      );
+   }
 }
 
 } // DEFINED_ZONE_NAME

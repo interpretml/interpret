@@ -29,6 +29,16 @@ extern ErrorEbm Unbag(
    size_t * const pcValidationSamplesOut
 );
 
+extern void InitializeGradientsAndHessians(
+   const unsigned char * const pDataSetShared,
+   const BagEbm direction,
+   const BagEbm * const aBag,
+   const double * const aInitScores,
+   FloatFast * const aMulticlassMidwayTemp,
+   const size_t cSetSamples,
+   FloatFast * const aGradientAndHessian
+);
+
 void InteractionCore::Free(InteractionCore * const pInteractionCore) {
    LOG_0(Trace_Info, "Entered InteractionCore::Free");
 
@@ -58,7 +68,6 @@ void InteractionCore::Free(InteractionCore * const pInteractionCore) {
 ErrorEbm InteractionCore::Create(
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
-   const double * const aInitScores,
    const double * const experimentalParams,
    InteractionCore ** const ppInteractionCoreOut
 ) {
@@ -192,7 +201,6 @@ ErrorEbm InteractionCore::Create(
       pDataSetShared,
       cSamples,
       aBag,
-      aInitScores,
       cTrainingSamples,
       cWeights,
       cFeatures
@@ -203,6 +211,40 @@ ErrorEbm InteractionCore::Create(
    }
 
    LOG_0(Trace_Info, "Exited InteractionCore::Allocate");
+   return Error_None;
+}
+
+ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
+   const unsigned char * const pDataSetShared,
+   const BagEbm * const aBag,
+   const double * const aInitScores
+) {
+   if(!m_dataFrame.IsGradientsAndHessiansNull()) {
+      const ptrdiff_t cClasses = GetCountClasses();
+      FloatFast * aMulticlassMidwayTemp = nullptr;
+      if(IsMulticlass(cClasses)) {
+         const size_t cScores = GetCountScores(cClasses);
+         if(IsMultiplyError(sizeof(FloatFast), cScores)) {
+            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores)");
+            return Error_OutOfMemory;
+         }
+         aMulticlassMidwayTemp = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cScores));
+         if(UNLIKELY(nullptr == aMulticlassMidwayTemp)) {
+            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aMulticlassMidwayTemp");
+            return Error_OutOfMemory;
+         }
+      }
+      InitializeGradientsAndHessians(
+         pDataSetShared,
+         BagEbm { 1 },
+         aBag,
+         aInitScores,
+         aMulticlassMidwayTemp,
+         m_dataFrame.GetCountSamples(),
+         m_dataFrame.GetGradientsAndHessiansPointer()
+      );
+      free(aMulticlassMidwayTemp); // nullptr ok
+   }
    return Error_None;
 }
 

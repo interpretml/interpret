@@ -95,12 +95,14 @@ ErrorEbm BoosterShell::FillAllocations() {
          }
       }
 
-      if(IsMultiplyError(sizeof(FloatFast), cScores)) {
-         goto failed_allocation;
-      }
-      m_aMulticlassMidwayTemp = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cScores));
-      if(nullptr == m_aMulticlassMidwayTemp) {
-         goto failed_allocation;
+      if(IsMulticlass(cClasses)) {
+         if(IsMultiplyError(sizeof(FloatFast), cScores)) {
+            goto failed_allocation;
+         }
+         m_aMulticlassMidwayTemp = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cScores));
+         if(nullptr == m_aMulticlassMidwayTemp) {
+            goto failed_allocation;
+         }
       }
 
       if(0 != m_pBoosterCore->GetCountBytesSplitPositions()) {
@@ -232,6 +234,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       BoosterShell::Free(pBoosterShell);
       return error;
    }
+
+   pBoosterCore->InitializeBoosterGradientsAndHessians(
+      static_cast<const unsigned char *>(dataSet),
+      bag,
+      initScores,
+      pBoosterShell->GetMulticlassMidwayTemp()
+   );
 
    const BoosterHandle handle = pBoosterShell->GetHandle();
 

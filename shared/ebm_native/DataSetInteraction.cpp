@@ -20,15 +20,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern ErrorEbm InitializeGradientsAndHessians(
-   const unsigned char * const pDataSetShared,
-   const BagEbm direction,
-   const BagEbm * const aBag,
-   const double * const aInitScores,
-   const size_t cSetSamples,
-   FloatFast * const aGradientAndHessian
-);
-
 extern ErrorEbm ExtractWeights(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
@@ -41,9 +32,6 @@ extern ErrorEbm ExtractWeights(
 INLINE_RELEASE_UNTEMPLATED static ErrorEbm ConstructGradientsAndHessians(
    const ptrdiff_t cClasses,
    const bool bAllocateHessians,
-   const unsigned char * const pDataSetShared,
-   const BagEbm * const aBag,
-   const double * const aInitScores,
    const size_t cSetSamples,
    FloatFast ** paGradientsAndHessiansOut
 ) {
@@ -52,12 +40,9 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm ConstructGradientsAndHessians(
    // cClasses can only be zero if there are zero samples and we shouldn't get here
    EBM_ASSERT(0 != cClasses);
    EBM_ASSERT(1 != cClasses);
-   EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(1 <= cSetSamples);
    EBM_ASSERT(nullptr != paGradientsAndHessiansOut);
    EBM_ASSERT(nullptr == *paGradientsAndHessiansOut);
-
-   ErrorEbm error;
 
    const size_t cScores = GetCountScores(cClasses);
    EBM_ASSERT(1 <= cScores);
@@ -76,19 +61,6 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm ConstructGradientsAndHessians(
       return Error_OutOfMemory;
    }
    *paGradientsAndHessiansOut = aGradientsAndHessians; // transfer ownership for future deletion
-
-   error = InitializeGradientsAndHessians(
-      pDataSetShared,
-      BagEbm { 1 },
-      aBag,
-      aInitScores,
-      cSetSamples,
-      aGradientsAndHessians
-   );
-   if(UNLIKELY(Error_None != error)) {
-      // error already logged
-      return error;
-   }
 
    LOG_0(Trace_Info, "Exited ConstructGradientsAndHessians");
    return Error_None;
@@ -233,7 +205,6 @@ ErrorEbm DataSetInteraction::Initialize(
    const unsigned char * const pDataSetShared,
    const size_t cAllSamples,
    const BagEbm * const aBag,
-   const double * const aInitScores,
    const size_t cSetSamples,
    const size_t cWeights,
    const size_t cFeatures
@@ -291,9 +262,6 @@ ErrorEbm DataSetInteraction::Initialize(
          error = ConstructGradientsAndHessians(
             cClasses,
             bAllocateHessians,
-            pDataSetShared,
-            aBag,
-            aInitScores,
             cSetSamples,
             &m_aGradientsAndHessians
          );

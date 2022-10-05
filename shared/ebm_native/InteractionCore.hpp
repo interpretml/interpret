@@ -83,9 +83,14 @@ public:
    static ErrorEbm Create(
       const unsigned char * const pDataSetShared,
       const BagEbm * const aBag,
-      const double * const aInitScores,
       const double * const experimentalParams,
       InteractionCore ** const ppInteractionCoreOut
+   );
+
+   ErrorEbm InitializeInteractionGradientsAndHessians(
+      const unsigned char * const pDataSetShared,
+      const BagEbm * const aBag,
+      const double * const aInitScores
    );
 };
 

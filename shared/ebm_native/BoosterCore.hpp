@@ -188,6 +188,13 @@ public:
       const double * const aInitScores,
       BoosterCore ** const ppBoosterCoreOut
    );
+
+   void InitializeBoosterGradientsAndHessians(
+      const unsigned char * const pDataSetShared,
+      const BagEbm * const aBag,
+      const double * const aInitScores,
+      FloatFast * const aMulticlassMidwayTemp
+   );
 };
 
 } // DEFINED_ZONE_NAME

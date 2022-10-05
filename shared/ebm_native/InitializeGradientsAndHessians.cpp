@@ -26,12 +26,13 @@ public:
 
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       const ptrdiff_t cRuntimeClasses,
       const BagEbm direction,
       const BagEbm * const aBag,
       const void * const aTargets,
       const double * const aInitScores,
+      FloatFast * const aMulticlassMidwayTemp,
       const size_t cSetSamples,
       FloatFast * const aGradientAndHessian
    ) {
@@ -41,23 +42,13 @@ public:
       LOG_0(Trace_Info, "Entered InitializeGradientsAndHessians");
 
       EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
-      EBM_ASSERT(0 < cSetSamples);
+      EBM_ASSERT(nullptr != aMulticlassMidwayTemp);
+      EBM_ASSERT(1 <= cSetSamples);
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != aGradientAndHessian);
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
-
-      if(IsMultiplyError(sizeof(FloatFast), cScores)) {
-         LOG_0(Trace_Warning, "WARNING InitializeGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores)");
-         return Error_OutOfMemory;
-      }
-      // TODO: change this to use the more permanent memory that we allocate in the Booster/Interaction shell objects
-      FloatFast * const aExps = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cScores));
-      if(UNLIKELY(nullptr == aExps)) {
-         LOG_0(Trace_Warning, "WARNING InitializeGradientsAndHessians nullptr == aExps");
-         return Error_OutOfMemory;
-      }
 
       const BagEbm * pSampleReplication = aBag;
       const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
@@ -79,7 +70,7 @@ public:
                EBM_ASSERT(!IsConvertError<size_t>(targetOriginal));
                const size_t target = static_cast<size_t>(targetOriginal);
                EBM_ASSERT(target < static_cast<size_t>(cClasses));
-               FloatFast * pExp = aExps;
+               FloatFast * pExp = aMulticlassMidwayTemp;
 
                FloatFast sumExp = 0;
 
@@ -127,10 +118,7 @@ public:
          ++pTargetData;
       } while(pGradientAndHessianEnd != pGradientAndHessian);
 
-      free(aExps);
-
       LOG_0(Trace_Info, "Exited InitializeGradientsAndHessians");
-      return Error_None;
    }
 };
 
@@ -141,16 +129,18 @@ public:
 
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       const ptrdiff_t cRuntimeClasses,
       const BagEbm direction,
       const BagEbm * const aBag,
       const void * const aTargets,
       const double * const aInitScores,
+      FloatFast * const aMulticlassMidwayTemp,
       const size_t cSetSamples,
       FloatFast * const aGradientAndHessian
    ) {
       UNUSED(cRuntimeClasses);
+      UNUSED(aMulticlassMidwayTemp);
       LOG_0(Trace_Info, "Entered InitializeGradientsAndHessians");
 
       // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pInitScore (I assume so), 
@@ -159,6 +149,7 @@ public:
       // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
 
       EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
+      EBM_ASSERT(nullptr == aMulticlassMidwayTemp);
       EBM_ASSERT(0 < cSetSamples);
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != aGradientAndHessian);
@@ -206,7 +197,6 @@ public:
       } while(pGradientAndHessianEnd != pGradientAndHessian);
 
       LOG_0(Trace_Info, "Exited InitializeGradientsAndHessians");
-      return Error_None;
    }
 };
 #endif // EXPAND_BINARY_LOGITS
@@ -217,24 +207,22 @@ public:
 
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
+   INLINE_RELEASE_UNTEMPLATED static void Func(
       const ptrdiff_t cRuntimeClasses,
       const BagEbm direction,
       const BagEbm * const aBag,
       const void * const aTargets,
       const double * const aInitScores,
+      FloatFast * const aMulticlassMidwayTemp,
       const size_t cSetSamples,
       FloatFast * const aGradientAndHessian
    ) {
       UNUSED(cRuntimeClasses);
+      UNUSED(aMulticlassMidwayTemp);
       LOG_0(Trace_Info, "Entered InitializeGradientsAndHessians");
 
-      // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pInitScore (I assume so), 
-      //   and does it affect any calculations below like sumExp += std::exp(initScore) and the equivalent.  Should we use cScores or 
-      //   cRuntimeClasses for some of the addition
-      // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
-
       EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
+      EBM_ASSERT(nullptr == aMulticlassMidwayTemp);
       EBM_ASSERT(0 < cSetSamples);
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != aGradientAndHessian);
@@ -282,15 +270,15 @@ public:
       } while(pGradientAndHessianEnd != pGradientAndHessian);
 
       LOG_0(Trace_Info, "Exited InitializeGradientsAndHessians");
-      return Error_None;
    }
 };
 
-extern ErrorEbm InitializeGradientsAndHessians(
+extern void InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
    const BagEbm * const aBag,
    const double * const aInitScores,
+   FloatFast * const aMulticlassMidwayTemp,
    const size_t cSetSamples,
    FloatFast * const aGradientAndHessian
 ) {
@@ -309,44 +297,48 @@ extern ErrorEbm InitializeGradientsAndHessians(
 
    if(IsClassification(cRuntimeClasses)) {
       if(IsBinaryClassification(cRuntimeClasses)) {
-         return InitializeGradientsAndHessiansInternal<2>::Func(
+         InitializeGradientsAndHessiansInternal<2>::Func(
             cRuntimeClasses,
             direction,
             aBag,
             aTargets,
             aInitScores,
+            aMulticlassMidwayTemp,
             cSetSamples,
             aGradientAndHessian
          );
       } else if(3 == cRuntimeClasses) {
-         return InitializeGradientsAndHessiansInternal<3>::Func(
+         InitializeGradientsAndHessiansInternal<3>::Func(
             cRuntimeClasses,
             direction,
             aBag,
             aTargets,
             aInitScores,
+            aMulticlassMidwayTemp,
             cSetSamples,
             aGradientAndHessian
          );
       } else {
-         return InitializeGradientsAndHessiansInternal<k_dynamicClassification>::Func(
+         InitializeGradientsAndHessiansInternal<k_dynamicClassification>::Func(
             cRuntimeClasses,
             direction,
             aBag,
             aTargets,
             aInitScores,
+            aMulticlassMidwayTemp,
             cSetSamples,
             aGradientAndHessian
          );
       }
    } else {
       EBM_ASSERT(IsRegression(cRuntimeClasses));
-      return InitializeGradientsAndHessiansInternal<k_regression>::Func(
+      InitializeGradientsAndHessiansInternal<k_regression>::Func(
          cRuntimeClasses,
          direction,
          aBag,
          aTargets,
          aInitScores,
+         aMulticlassMidwayTemp,
          cSetSamples,
          aGradientAndHessian
       );

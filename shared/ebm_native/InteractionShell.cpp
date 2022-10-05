@@ -152,7 +152,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    error = InteractionCore::Create(
       static_cast<const unsigned char *>(dataSet),
       bag,
-      initScores,
       experimentalParams,
       &pInteractionCore
    );
@@ -168,6 +167,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       // there was no place to put the pInteractionCore, so free it
       InteractionCore::Free(pInteractionCore);
       return Error_OutOfMemory;
+   }
+
+   error = pInteractionCore->InitializeInteractionGradientsAndHessians(
+      static_cast<const unsigned char *>(dataSet),
+      bag,
+      initScores
+   );
+   if(Error_None != error) {
+      InteractionCore::Free(pInteractionCore);
+      return error;
    }
 
    const InteractionHandle handle = pInteractionShell->GetHandle();
