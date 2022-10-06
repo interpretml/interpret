@@ -22,12 +22,12 @@ TEST_CASE("zero learning rate, boosting, regression") {
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
          validationMetric = test.Boost(iTerm, BoostFlags_Default, 0).validationMetric;
-         CHECK_APPROX(validationMetric, 144);
+         CHECK(144 == validationMetric);
          termScore = test.GetCurrentTermScore(iTerm, {}, 0);
-         CHECK_APPROX(termScore, 0);
+         CHECK(0 == termScore);
 
          termScore = test.GetBestTermScore(iTerm, {}, 0);
-         CHECK_APPROX(termScore, 0);
+         CHECK(0 == termScore);
       }
    }
 }
@@ -47,14 +47,14 @@ TEST_CASE("zero learning rate, boosting, binary") {
          validationMetric = test.Boost(iTerm, BoostFlags_Default, 0).validationMetric;
          CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529, double { 1e-1 });
          termScore = test.GetCurrentTermScore(iTerm, {}, 0);
-         CHECK_APPROX(termScore, 0);
+         CHECK(0 == termScore);
          termScore = test.GetCurrentTermScore(iTerm, {}, 1);
-         CHECK_APPROX(termScore, 0);
+         CHECK(0 == termScore);
 
          termScore = test.GetBestTermScore(iTerm, {}, 0);
-         CHECK_APPROX(termScore, 0);
+         CHECK(0 == termScore);
          termScore = test.GetBestTermScore(iTerm, {}, 1);
-         CHECK_APPROX(termScore, 0);
+         CHECK(0 == termScore);
       }
    }
 }
@@ -74,18 +74,18 @@ TEST_CASE("zero learning rate, boosting, multiclass") {
          validationMetric = test.Boost(iTerm, BoostFlags_Default, 0).validationMetric;
          CHECK_APPROX_TOLERANCE(validationMetric, 1.0986122886681098, double { 1e-1 });
          termScore = test.GetCurrentTermScore(iTerm, {}, 0);
-         CHECK_APPROX(termScore, 0);
+         CHECK(0 == termScore);
          termScore = test.GetCurrentTermScore(iTerm, {}, 1);
-         CHECK_APPROX(termScore, 0);
+         CHECK(0 == termScore);
          termScore = test.GetCurrentTermScore(iTerm, {}, 2);
-         CHECK_APPROX(termScore, 0);
+         CHECK(0 == termScore);
 
          termScore = test.GetBestTermScore(iTerm, {}, 0);
-         CHECK_APPROX(termScore, 0);
+         CHECK(0 == termScore);
          termScore = test.GetBestTermScore(iTerm, {}, 1);
-         CHECK_APPROX(termScore, 0);
+         CHECK(0 == termScore);
          termScore = test.GetBestTermScore(iTerm, {}, 2);
-         CHECK_APPROX(termScore, 0);
+         CHECK(0 == termScore);
       }
    }
 }
@@ -136,14 +136,14 @@ TEST_CASE("negative learning rate, boosting, binary") {
          if(0 == iTerm && 0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 0.70319717972663420, double { 1e-1 });
             termScore = test.GetCurrentTermScore(iTerm, {}, 0);
-            CHECK_APPROX(termScore, 0);
+            CHECK(0 == termScore);
             termScore = test.GetCurrentTermScore(iTerm, {}, 1);
             CHECK_APPROX_TOLERANCE(termScore, 0.020000000000000000, double { 1.5e-1 });
          }
          if(0 == iTerm && 1 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 0.71345019889199235, double { 1e-1 });
             termScore = test.GetCurrentTermScore(iTerm, {}, 0);
-            CHECK_APPROX(termScore, 0);
+            CHECK(0 == termScore);
             termScore = test.GetCurrentTermScore(iTerm, {}, 1);
             CHECK_APPROX_TOLERANCE(termScore, 0.040202013400267564, double { 1.5e-1 });
          }
@@ -152,7 +152,7 @@ TEST_CASE("negative learning rate, boosting, binary") {
 
    CHECK_APPROX_TOLERANCE(validationMetric, 1.7158914513238979, double { 1e-1 });
    termScore = test.GetCurrentTermScore(0, {}, 0);
-   CHECK_APPROX(termScore, 0);
+   CHECK(0 == termScore);
    termScore = test.GetCurrentTermScore(0, {}, 1);
    CHECK_APPROX_TOLERANCE(termScore, 1.5176802847035755, double { 1e-2 });
 }
@@ -561,7 +561,7 @@ TEST_CASE("Zero training samples, boosting, regression") {
       CHECK_APPROX(validationMetric, 144);
       double termScore;
       termScore = test.GetCurrentTermScore(0, { 0 }, 0);
-      CHECK_APPROX(termScore, 0);
+      CHECK(0 == termScore);
       CHECK_APPROX(termScore, test.GetCurrentTermScore(0, { 1 }, 0));
    }
 }
@@ -579,11 +579,11 @@ TEST_CASE("Zero training samples, boosting, binary") {
       CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529, double { 1e-1 });
       double termScore;
       termScore = test.GetCurrentTermScore(0, { 0 }, 0);
-      CHECK_APPROX(termScore, 0);
+      CHECK(0 == termScore);
       CHECK_APPROX(termScore, test.GetCurrentTermScore(0, { 1 }, 0));
 
       termScore = test.GetCurrentTermScore(0, { 0 }, 1);
-      CHECK_APPROX(termScore, 0);
+      CHECK(0 == termScore);
       CHECK_APPROX(termScore, test.GetCurrentTermScore(0, { 1 }, 1));
    }
 }
@@ -602,13 +602,13 @@ TEST_CASE("Zero training samples, boosting, multiclass") {
       double termScore;
 
       termScore = test.GetCurrentTermScore(0, { 0 }, 0);
-      CHECK_APPROX(termScore, 0);
+      CHECK(0 == termScore);
       CHECK_APPROX(termScore, test.GetCurrentTermScore(0, { 1 }, 0));
       termScore = test.GetCurrentTermScore(0, { 0 }, 1);
-      CHECK_APPROX(termScore, 0);
+      CHECK(0 == termScore);
       CHECK_APPROX(termScore, test.GetCurrentTermScore(0, { 1 }, 1));
       termScore = test.GetCurrentTermScore(0, { 0 }, 2);
-      CHECK_APPROX(termScore, 0);
+      CHECK(0 == termScore);
       CHECK_APPROX(termScore, test.GetCurrentTermScore(0, { 1 }, 2));
    }
 }
@@ -637,7 +637,7 @@ TEST_CASE("Zero validation samples, boosting, regression") {
 
       // the best term doesn't update since we don't have any basis to validate any changes
       termScore = test.GetBestTermScore(0, { 0 }, 0);
-      CHECK_APPROX(termScore, 0);
+      CHECK(0 == termScore);
       CHECK_APPROX(termScore, test.GetBestTermScore(0, { 1 }, 0));
    }
 }
@@ -657,7 +657,7 @@ TEST_CASE("Zero validation samples, boosting, binary") {
       double termScore;
 
       termScore = test.GetCurrentTermScore(0, { 0 }, 0);
-      CHECK_APPROX(termScore, 0);
+      CHECK(0 == termScore);
       CHECK_APPROX(termScore, test.GetCurrentTermScore(0, { 1 }, 0));
 
       termScore = test.GetCurrentTermScore(0, { 0 }, 1);
@@ -671,11 +671,11 @@ TEST_CASE("Zero validation samples, boosting, binary") {
 
       // the best term doesn't update since we don't have any basis to validate any changes
       termScore = test.GetBestTermScore(0, { 0 }, 0);
-      CHECK_APPROX(termScore, 0);
+      CHECK(0 == termScore);
       CHECK_APPROX(termScore, test.GetBestTermScore(0, { 1 }, 0));
 
       termScore = test.GetBestTermScore(0, { 0 }, 1);
-      CHECK_APPROX(termScore, 0);
+      CHECK(0 == termScore);
       CHECK_APPROX(termScore, test.GetBestTermScore(0, { 1 }, 1));
    }
 }
@@ -715,13 +715,13 @@ TEST_CASE("Zero validation samples, boosting, multiclass") {
       }
       // the best term doesn't update since we don't have any basis to validate any changes
       termScore = test.GetBestTermScore(0, { 0 }, 0);
-      CHECK_APPROX(termScore, 0);
+      CHECK(0 == termScore);
       CHECK_APPROX(termScore, test.GetBestTermScore(0, { 1 }, 0));
       termScore = test.GetBestTermScore(0, { 0 }, 1);
-      CHECK_APPROX(termScore, 0);
+      CHECK(0 == termScore);
       CHECK_APPROX(termScore, test.GetBestTermScore(0, { 1 }, 1));
       termScore = test.GetBestTermScore(0, { 0 }, 2);
-      CHECK_APPROX(termScore, 0);
+      CHECK(0 == termScore);
       CHECK_APPROX(termScore, test.GetBestTermScore(0, { 1 }, 2));
    }
 }
@@ -916,14 +916,14 @@ TEST_CASE("Term with zero features, boosting, binary") {
          if(0 == iTerm && 0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 0.68319717972663419, double { 1e-1 });
             termScore = test.GetCurrentTermScore(iTerm, {}, 0);
-            CHECK_APPROX(termScore, 0);
+            CHECK(0 == termScore);
             termScore = test.GetCurrentTermScore(iTerm, {}, 1);
             CHECK_APPROX_TOLERANCE(termScore, -0.020000000000000000, double { 1e-1 });
          }
          if(0 == iTerm && 1 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 0.67344419889200957, double { 1e-1 });
             termScore = test.GetCurrentTermScore(iTerm, {}, 0);
-            CHECK_APPROX(termScore, 0);
+            CHECK(0 == termScore);
             termScore = test.GetCurrentTermScore(iTerm, {}, 1);
             CHECK_APPROX_TOLERANCE(termScore, -0.039801986733067563, double { 1e-1 });
          }
@@ -931,7 +931,7 @@ TEST_CASE("Term with zero features, boosting, binary") {
    }
    CHECK_APPROX_TOLERANCE(validationMetric, 2.2621439908125974e-05, double { 1e+1 });
    termScore = test.GetCurrentTermScore(0, {}, 0);
-   CHECK_APPROX(termScore, 0);
+   CHECK(0 == termScore);
    termScore = test.GetCurrentTermScore(0, {}, 1);
    CHECK_APPROX_TOLERANCE(termScore, -10.696601122148364, double { 1e-2 });
 }
@@ -1529,10 +1529,10 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
             // we set our update to zero since we're getting the sum
 
             double termScore0 = test.GetCurrentTermScore(iTerm, { 0 }, 0);
-            CHECK_APPROX(termScore0, 0.0);
+            CHECK(0 == termScore0);
 
             double termScore1 = test.GetCurrentTermScore(iTerm, { 0 }, 1);
-            CHECK_APPROX(termScore1, 0.0);
+            CHECK(0 == termScore1);
          }
       }
    }

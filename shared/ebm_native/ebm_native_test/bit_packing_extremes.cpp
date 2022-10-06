@@ -69,7 +69,7 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
 
             double termScore;
             termScore = test.GetCurrentTermScore(0, { static_cast<size_t>(cBins - 1) }, 0);
-            CHECK_APPROX(termScore, 0);
+            CHECK(0 == termScore);
             termScore = test.GetCurrentTermScore(0, { static_cast<size_t>(cBins - 1) }, 1);
             CHECK_APPROX_TOLERANCE(termScore, -0.02, double { 1e-1 });
          }
