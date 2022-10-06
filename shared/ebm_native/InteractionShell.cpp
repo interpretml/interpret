@@ -8,6 +8,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "common_cpp.hpp"
+#include "bridge_cpp.hpp"
 
 #include "InteractionCore.hpp"
 #include "InteractionShell.hpp"
@@ -16,6 +17,15 @@ namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
+
+extern void InitializeMSEGradientsAndHessians(
+   const unsigned char * const pDataSetShared,
+   const BagEbm direction,
+   const BagEbm * const aBag,
+   const double * const aInitScores,
+   const size_t cSetSamples,
+   FloatFast * const aGradientAndHessian
+);
 
 void InteractionShell::Free(InteractionShell * const pInteractionShell) {
    LOG_0(Trace_Info, "Entered InteractionShell::Free");
@@ -169,14 +179,28 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       return Error_OutOfMemory;
    }
 
-   error = pInteractionCore->InitializeInteractionGradientsAndHessians(
-      static_cast<const unsigned char *>(dataSet),
-      bag,
-      initScores
-   );
-   if(Error_None != error) {
-      InteractionCore::Free(pInteractionCore);
-      return error;
+   const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
+   if(IsClassification(cClasses)) {
+      error = pInteractionCore->InitializeInteractionGradientsAndHessians(
+         static_cast<const unsigned char *>(dataSet),
+         bag,
+         initScores
+      );
+      if(Error_None != error) {
+         InteractionCore::Free(pInteractionCore);
+         return error;
+      }
+   } else {
+      if(!pInteractionCore->GetDataSetInteraction()->IsGradientsAndHessiansNull()) {
+         InitializeMSEGradientsAndHessians(
+            static_cast<const unsigned char *>(dataSet),
+            BagEbm { 1 },
+            bag,
+            initScores,
+            pInteractionCore->GetDataSetInteraction()->GetCountSamples(),
+            pInteractionCore->GetDataSetInteraction()->GetGradientsAndHessiansPointer()
+         );
+      }
    }
 
    const InteractionHandle handle = pInteractionShell->GetHandle();

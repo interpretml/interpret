@@ -70,6 +70,9 @@ public:
    inline const DataSetInteraction * GetDataSetInteraction() const {
       return &m_dataFrame;
    }
+   inline DataSetInteraction * GetDataSetInteraction() {
+      return &m_dataFrame;
+   }
 
    inline const Feature * GetFeatures() const {
       return m_aFeatures;

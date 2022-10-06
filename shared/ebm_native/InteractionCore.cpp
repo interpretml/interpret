@@ -221,6 +221,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
 ) {
    if(!m_dataFrame.IsGradientsAndHessiansNull()) {
       const ptrdiff_t cClasses = GetCountClasses();
+      EBM_ASSERT(IsClassification(cClasses));
       FloatFast * aMulticlassMidwayTemp = nullptr;
       if(IsMulticlass(cClasses)) {
          const size_t cScores = GetCountScores(cClasses);

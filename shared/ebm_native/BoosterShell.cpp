@@ -24,6 +24,15 @@ namespace DEFINED_ZONE_NAME {
 
 struct BinBase;
 
+extern void InitializeMSEGradientsAndHessians(
+   const unsigned char * const pDataSetShared,
+   const BagEbm direction,
+   const BagEbm * const aBag,
+   const double * const aInitScores,
+   const size_t cSetSamples,
+   FloatFast * const aGradientAndHessian
+);
+
 void BoosterShell::Free(BoosterShell * const pBoosterShell) {
    LOG_0(Trace_Info, "Entered BoosterShell::Free");
 
@@ -235,12 +244,36 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       return error;
    }
 
-   pBoosterCore->InitializeBoosterGradientsAndHessians(
-      static_cast<const unsigned char *>(dataSet),
-      bag,
-      initScores,
-      pBoosterShell->GetMulticlassMidwayTemp()
-   );
+   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
+   if(IsClassification(cClasses)) {
+      pBoosterCore->InitializeBoosterGradientsAndHessians(
+         static_cast<const unsigned char *>(dataSet),
+         bag,
+         initScores,
+         pBoosterShell->GetMulticlassMidwayTemp()
+      );
+   } else {
+      if(!pBoosterCore->GetTrainingSet()->IsGradientsAndHessiansNull()) {
+         InitializeMSEGradientsAndHessians(
+            static_cast<const unsigned char *>(dataSet),
+            BagEbm { 1 },
+            bag,
+            initScores,
+            pBoosterCore->GetTrainingSet()->GetCountSamples(),
+            pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer()
+         );
+      }
+      if(!pBoosterCore->GetValidationSet()->IsGradientsAndHessiansNull()) {
+         InitializeMSEGradientsAndHessians(
+            static_cast<const unsigned char *>(dataSet),
+            BagEbm { -1 },
+            bag,
+            initScores,
+            pBoosterCore->GetValidationSet()->GetCountSamples(),
+            pBoosterCore->GetValidationSet()->GetGradientsAndHessiansPointer()
+         );
+      }
+   }
 
    const BoosterHandle handle = pBoosterShell->GetHandle();
 
