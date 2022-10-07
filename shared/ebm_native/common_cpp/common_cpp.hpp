@@ -525,6 +525,57 @@ static_assert(!IsAddError(uint8_t { 127 }, uint8_t { 126 }, uint8_t { 1 }, uint8
 static_assert(IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 1 }, uint8_t { 1 }), "automated test with compiler");
 static_assert(IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 2 }, uint8_t { 0 }), "automated test with compiler");
 
+/*
+* These are not used currently, but perhaps someday if our trick to use macros to merge compiler and runtime
+* values via templating (see GET_COUNT_CLASSES and GET_ITEMS_PER_BIT_PACK and GET_COUNT_DIMENSIONS) gets too many
+* warnings, we might want to change over to passing in std::integral_constant with template<typename TConstantType>
+* the way that catboost does for this kind of thing
+* 
+
+template<typename T>
+struct is_null {
+   static constexpr bool value = false;
+};
+template<>
+struct is_null<std::nullptr_t> {
+   // C++14 has std::is_null_pointer, but we support C++11, so implement this here
+   static constexpr bool value = true;
+};
+static_assert(!is_null<int>::value, "is_null failed on int");
+static_assert(!is_null<int *>::value, "is_null failed on int *");
+static_assert(is_null<nullptr_t>::value, "is_null failed on nullptr_t");
+
+template<typename T>
+struct extract_integral_constant {
+   static constexpr bool is_type = false;
+   static constexpr T value = T { 0 };
+   using value_type = T;
+};
+template<typename T, T TVal>
+struct extract_integral_constant<std::integral_constant<T, TVal>> {
+   static constexpr bool is_type = true;
+   static constexpr T value = TVal;
+   using value_type = T;
+};
+static_assert(!extract_integral_constant<int>::is_type, "failed on int is_type");
+static_assert(extract_integral_constant<std::integral_constant<int, 5>>::is_type, "failed on integral_constant is_type");
+static_assert(extract_integral_constant<int>::value == 0, "failed on int value");
+static_assert(extract_integral_constant<std::integral_constant<int, 5>>::value == 5, "failed on integral_constant value");
+static_assert(std::is_same<extract_integral_constant<int>::value_type, int>::value, "failed on int value_type");
+static_assert(std::is_same<extract_integral_constant<std::integral_constant<int, 5>>::value_type, int>::value, "failed on integral_constant value_type");
+
+template<typename T>
+inline constexpr static typename std::enable_if<!extract_integral_constant<T>::is_type, T>::type GetConstexpr(const T defaultNonConst) noexcept {
+   return defaultNonConst;
+}
+template<typename T>
+inline constexpr static typename std::enable_if<extract_integral_constant<T>::is_type, typename extract_integral_constant<T>::value_type>::type GetConstexpr(const typename extract_integral_constant<T>::value_type defaultNonConst) noexcept {
+   return extract_integral_constant<T>::value;
+}
+static_assert(int { 9 } == GetConstexpr<int>(int { 9 }), "GetConstexpr failed on int 9");
+static_assert(int { 4 } == GetConstexpr<std::integral_constant<int, 4>>(int { 9 }), "GetConstexpr failed on int 9");
+*/
+
 } // DEFINED_ZONE_NAME
 
 #endif // COMMON_CPP_HPP
