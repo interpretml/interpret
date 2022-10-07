@@ -564,19 +564,8 @@ extern void BinSumsBoosting(
    } else {
       EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
       EBM_ASSERT(1 <= pBoosterCore->GetTerms()[iTerm]->GetCountRealDimensions());
-      if(k_bUseSIMD) {
-         // TODO : enable SIMD(AVX-512) to work
-
-         // 64 - do 8 at a time and unroll the loop 8 times.  These are bool features and are common.  Put the unrolled inner loop into a function
-         // 32 - do 8 at a time and unroll the loop 4 times.  These are bool features and are common.  Put the unrolled inner loop into a function
-         // 21 - do 8 at a time and unroll the loop 3 times (ignore the last 3 with a mask)
-         // 16 - do 8 at a time and unroll the loop 2 times.  These are bool features and are common.  Put the unrolled inner loop into a function
-         // 12 - do 8 of them, shift the low 4 upwards and then load the next 12 and take the top 4, repeat.
-         // 10 - just drop this down to packing 8 together
-         // 9 - just drop this down to packing 8 together
-         // 8 - do all 8 at a time without an inner loop.  This is one of the most common values.  256 binned values
-         // 7,6,5,4,3,2,1 - use a mask to exclude the non-used conditions and process them like the 8.  These are rare since they require more than 256 values
-
+      constexpr bool k_bTemplateBitPacking = false; // TODO: make this work in the future
+      if(k_bTemplateBitPacking) {
          if(IsClassification(cRuntimeClasses)) {
             BinSumsBoostingSIMDTarget<2>::Func(
                pBoosterShell,
@@ -592,12 +581,6 @@ extern void BinSumsBoosting(
             );
          }
       } else {
-         // there isn't much benefit in eliminating the loop that unpacks a data unit unless we're also unpacking that to SIMD code
-         // Our default packing structure is to bin continuous values to 256 values, and we have 64 bit packing structures, so we usually
-         // have more than 8 values per memory fetch.  Eliminating the inner loop for multiclass is valuable since we can have low numbers like 3 class,
-         // 4 class, etc, but by the time we get to 8 loops with exp inside and a lot of other instructures we should worry that our code expansion
-         // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
-
          if(IsClassification(cRuntimeClasses)) {
             BinSumsBoostingNormalTarget<2>::Func(
                pBoosterShell,

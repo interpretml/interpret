@@ -652,182 +652,6 @@ public:
    }
 };
 
-template<ptrdiff_t cCompilerClasses, size_t compilerBitPack>
-class ApplyTermUpdateTrainingSIMDPacking final {
-public:
-
-   ApplyTermUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
-
-   INLINE_RELEASE_UNTEMPLATED static void Func(
-      const ptrdiff_t cRuntimeClasses,
-      const ptrdiff_t runtimeBitPack,
-      FloatFast * const aMulticlassMidwayTemp,
-      const FloatFast * const aUpdateScores,
-      const size_t cSamples,
-      const StorageDataType * const aInputData,
-      const void * const aTargetData,
-      FloatFast * const aSampleScore,
-      FloatFast * const aGradientAndHessian
-   ) {
-      EBM_ASSERT(1 <= runtimeBitPack);
-      EBM_ASSERT(runtimeBitPack <= k_cBitsForStorageType);
-      static_assert(compilerBitPack <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
-      if(compilerBitPack == runtimeBitPack) {
-         ApplyTermUpdateTrainingInternal<cCompilerClasses, compilerBitPack>::Func(
-            cRuntimeClasses,
-            runtimeBitPack,
-            aMulticlassMidwayTemp,
-            aUpdateScores,
-            cSamples,
-            aInputData,
-            aTargetData,
-            aSampleScore,
-            aGradientAndHessian
-         );
-      } else {
-         ApplyTermUpdateTrainingSIMDPacking<
-            cCompilerClasses,
-            GetNextCountItemsBitPacked(compilerBitPack)
-         >::Func(
-            cRuntimeClasses,
-            runtimeBitPack,
-            aMulticlassMidwayTemp,
-            aUpdateScores,
-            cSamples,
-            aInputData,
-            aTargetData,
-            aSampleScore,
-            aGradientAndHessian
-         );
-      }
-   }
-};
-
-template<ptrdiff_t cCompilerClasses>
-class ApplyTermUpdateTrainingSIMDPacking<cCompilerClasses, k_cItemsPerBitPackDynamic> final {
-public:
-
-   ApplyTermUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
-
-   INLINE_RELEASE_UNTEMPLATED static void Func(
-      const ptrdiff_t cRuntimeClasses,
-      const ptrdiff_t runtimeBitPack,
-      FloatFast * const aMulticlassMidwayTemp,
-      const FloatFast * const aUpdateScores,
-      const size_t cSamples,
-      const StorageDataType * const aInputData,
-      const void * const aTargetData,
-      FloatFast * const aSampleScore,
-      FloatFast * const aGradientAndHessian
-   ) {
-      EBM_ASSERT(1 <= runtimeBitPack);
-      EBM_ASSERT(runtimeBitPack <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
-      ApplyTermUpdateTrainingInternal<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(
-         cRuntimeClasses,
-         runtimeBitPack,
-         aMulticlassMidwayTemp,
-         aUpdateScores,
-         cSamples,
-         aInputData,
-         aTargetData,
-         aSampleScore,
-         aGradientAndHessian
-      );
-   }
-};
-
-template<ptrdiff_t cPossibleClasses>
-class ApplyTermUpdateTrainingSIMDTarget final {
-public:
-
-   ApplyTermUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
-
-   INLINE_RELEASE_UNTEMPLATED static void Func(
-      const ptrdiff_t cRuntimeClasses,
-      const ptrdiff_t runtimeBitPack,
-      FloatFast * const aMulticlassMidwayTemp,
-      const FloatFast * const aUpdateScores,
-      const size_t cSamples,
-      const StorageDataType * const aInputData,
-      const void * const aTargetData,
-      FloatFast * const aSampleScore,
-      FloatFast * const aGradientAndHessian
-   ) {
-      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
-      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
-
-      EBM_ASSERT(IsClassification(cRuntimeClasses));
-      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
-
-      if(cPossibleClasses == cRuntimeClasses) {
-         ApplyTermUpdateTrainingSIMDPacking<
-            cPossibleClasses,
-            k_cItemsPerBitPackMax
-         >::Func(
-            cRuntimeClasses,
-            runtimeBitPack,
-            aMulticlassMidwayTemp,
-            aUpdateScores,
-            cSamples,
-            aInputData,
-            aTargetData,
-            aSampleScore,
-            aGradientAndHessian
-         );
-      } else {
-         ApplyTermUpdateTrainingSIMDTarget<
-            cPossibleClasses + 1
-         >::Func(
-            cRuntimeClasses,
-            runtimeBitPack,
-            aMulticlassMidwayTemp,
-            aUpdateScores,
-            cSamples,
-            aInputData,
-            aTargetData,
-            aSampleScore,
-            aGradientAndHessian
-         );
-      }
-   }
-};
-
-template<>
-class ApplyTermUpdateTrainingSIMDTarget<k_cCompilerClassesMax + 1> final {
-public:
-
-   ApplyTermUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
-
-   INLINE_RELEASE_UNTEMPLATED static void Func(
-      const ptrdiff_t cRuntimeClasses,
-      const ptrdiff_t runtimeBitPack,
-      FloatFast * const aMulticlassMidwayTemp,
-      const FloatFast * const aUpdateScores,
-      const size_t cSamples,
-      const StorageDataType * const aInputData,
-      const void * const aTargetData,
-      FloatFast * const aSampleScore,
-      FloatFast * const aGradientAndHessian
-   ) {
-      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
-
-      EBM_ASSERT(IsClassification(cRuntimeClasses));
-      EBM_ASSERT(k_cCompilerClassesMax < cRuntimeClasses);
-
-      ApplyTermUpdateTrainingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackMax>::Func(
-         cRuntimeClasses,
-         runtimeBitPack,
-         aMulticlassMidwayTemp,
-         aUpdateScores,
-         cSamples,
-         aInputData,
-         aTargetData,
-         aSampleScore,
-         aGradientAndHessian
-      );
-   }
-};
-
 extern void ApplyTermUpdateTraining(
    const ptrdiff_t cRuntimeClasses,
    const ptrdiff_t runtimeBitPack,
@@ -869,78 +693,31 @@ extern void ApplyTermUpdateTraining(
          );
       }
    } else {
-      if(k_bUseSIMD) {
-         // TODO : enable SIMD(AVX-512) to work
-
-         // 64 - do 8 at a time and unroll the loop 8 times.  These are bool features and are common.  Put the unrolled inner loop into a function
-         // 32 - do 8 at a time and unroll the loop 4 times.  These are bool features and are common.  Put the unrolled inner loop into a function
-         // 21 - do 8 at a time and unroll the loop 3 times (ignore the last 3 with a mask)
-         // 16 - do 8 at a time and unroll the loop 2 times.  These are bool features and are common.  Put the unrolled inner loop into a function
-         // 12 - do 8 of them, shift the low 4 upwards and then load the next 12 and take the top 4, repeat.
-         // 10 - just drop this down to packing 8 together
-         // 9 - just drop this down to packing 8 together
-         // 8 - do all 8 at a time without an inner loop.  This is one of the most common values.  256 binned values
-         // 7,6,5,4,3,2,1 - use a mask to exclude the non-used conditions and process them like the 8.  These are rare since they require more than 256 values
-
-         if(IsClassification(cRuntimeClasses)) {
-            ApplyTermUpdateTrainingSIMDTarget<2>::Func(
-               cRuntimeClasses,
-               runtimeBitPack,
-               aMulticlassMidwayTemp,
-               aUpdateScores,
-               cSamples,
-               aInputData,
-               aTargetData,
-               aSampleScore,
-               aGradientAndHessian
-            );
-         } else {
-            EBM_ASSERT(IsRegression(cRuntimeClasses));
-            ApplyTermUpdateTrainingSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
-               cRuntimeClasses,
-               runtimeBitPack,
-               aMulticlassMidwayTemp,
-               aUpdateScores,
-               cSamples,
-               aInputData,
-               aTargetData,
-               aSampleScore,
-               aGradientAndHessian
-            );
-         }
+      if(IsClassification(cRuntimeClasses)) {
+         ApplyTermUpdateTrainingNormalTarget<2>::Func(
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aSampleScore,
+            aGradientAndHessian
+         );
       } else {
-         // there isn't much benefit in eliminating the loop that unpacks a data unit unless we're also unpacking that to SIMD code
-         // Our default packing structure is to bin continuous values to 256 values, and we have 64 bit packing structures, so we usually
-         // have more than 8 values per memory fetch.  Eliminating the inner loop for multiclass is valuable since we can have low numbers like 3 class,
-         // 4 class, etc, but by the time we get to 8 loops with exp inside and a lot of other instructures we should worry that our code expansion
-         // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
-
-         if(IsClassification(cRuntimeClasses)) {
-            ApplyTermUpdateTrainingNormalTarget<2>::Func(
-               cRuntimeClasses,
-               runtimeBitPack,
-               aMulticlassMidwayTemp,
-               aUpdateScores,
-               cSamples,
-               aInputData,
-               aTargetData,
-               aSampleScore,
-               aGradientAndHessian
-            );
-         } else {
-            EBM_ASSERT(IsRegression(cRuntimeClasses));
-            ApplyTermUpdateTrainingInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
-               cRuntimeClasses,
-               runtimeBitPack,
-               aMulticlassMidwayTemp,
-               aUpdateScores,
-               cSamples,
-               aInputData,
-               aTargetData,
-               aSampleScore,
-               aGradientAndHessian
-            );
-         }
+         EBM_ASSERT(IsRegression(cRuntimeClasses));
+         ApplyTermUpdateTrainingInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aSampleScore,
+            aGradientAndHessian
+         );
       }
    }
 

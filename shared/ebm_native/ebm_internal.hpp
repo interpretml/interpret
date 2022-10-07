@@ -110,15 +110,6 @@ INLINE_ALWAYS constexpr static size_t GetNextCountItemsBitPacked(const size_t cI
 #endif
 
 
-
-
-// TODO: figure out if we really want/need to template the handling of different bit packing sizes.  It might
-//       be the case that for specific bit sizes, like 8x8, we want to keep our memory stride as small as possible
-//       but we might also find that we can apply SIMD at the outer loop level in the places where we use bit
-//       packing, so we'd load eight 64-bit numbers at a time and then keep all the interior loops.  In this case
-//       the only penalty would be one branch mispredict, but we'd be able to loop over 8 bit extractions at a time
-//       We might also pay a penalty if our stride length for the outputs is too long, but we'll have to test that
-static constexpr bool k_bUseSIMD = false;
 static constexpr bool k_bUseLogitboost = false;
 
 //template<typename T>
