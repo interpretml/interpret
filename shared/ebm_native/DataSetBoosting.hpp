@@ -64,23 +64,20 @@ public:
    );
 
    inline bool IsGradientsAndHessiansNull() {
+      // TODO: remove this and just use GetGradientsAndHessiansPointer
       return nullptr == m_aGradientsAndHessians;
    }
 
    inline FloatFast * GetGradientsAndHessiansPointer() {
-      EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
    }
    inline const FloatFast * GetGradientsAndHessiansPointer() const {
-      EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
    }
    inline FloatFast * GetSampleScores() {
-      EBM_ASSERT(nullptr != m_aSampleScores);
       return m_aSampleScores;
    }
    inline const StorageDataType * GetTargetDataPointer() const {
-      EBM_ASSERT(nullptr != m_aTargetData);
       return m_aTargetData;
    }
    inline const StorageDataType * GetInputDataPointer(const size_t iTerm) const {

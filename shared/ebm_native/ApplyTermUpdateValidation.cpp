@@ -11,11 +11,6 @@
 
 #include "approximate_math.hpp"
 #include "ebm_stats.hpp"
-#include "Term.hpp"
-#include "DataSetBoosting.hpp"
-#include "Tensor.hpp"
-#include "BoosterCore.hpp"
-#include "BoosterShell.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -30,29 +25,37 @@ public:
 
    ApplyTermUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static double Func(BoosterShell * const pBoosterShell) {
+   INLINE_RELEASE_UNTEMPLATED static double Func(
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
+   ) {
+      UNUSED(runtimeBitPack);
+      UNUSED(aMulticlassMidwayTemp);
+      UNUSED(aInputData);
+      UNUSED(aGradientAndHessian);
+
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
 
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
-      DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
-      const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
-#ifndef NDEBUG
-      FloatFast weightTotalDebug = 0;
-#endif // NDEBUG
+      const FloatFast * pWeight = aWeight;
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
-      const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
       FloatFast sumLogLoss = 0;
-      const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
-      FloatFast * pSampleScore = pValidationSet->GetSampleScores();
+      const StorageDataType * pTargetData = reinterpret_cast<const StorageDataType *>(aTargetData);
+      FloatFast * pSampleScore = aSampleScore;
       const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples * cScores;
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
@@ -88,16 +91,9 @@ public:
             // TODO: template this check away
             weight = *pWeight;
             ++pWeight;
-#ifndef NDEBUG
-            weightTotalDebug += weight;
-#endif // NDEBUG
          }
          sumLogLoss += sampleLogLoss * weight;
       } while(pSampleScoresEnd != pSampleScore);
-
-      EBM_ASSERT(nullptr == pWeight || pBoosterCore->GetValidationWeightTotal() * 0.999 <= weightTotalDebug &&
-         weightTotalDebug <= 1.001 * pBoosterCore->GetValidationWeightTotal());
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == pBoosterCore->GetValidationWeightTotal());
 
       return static_cast<double>(sumLogLoss);
    }
@@ -110,23 +106,33 @@ public:
 
    ApplyTermUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static double Func(BoosterShell * const pBoosterShell) {
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
+   INLINE_RELEASE_UNTEMPLATED static double Func(
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
+   ) {
+      UNUSED(cRuntimeClasses);
+      UNUSED(runtimeBitPack);
+      UNUSED(aMulticlassMidwayTemp);
+      UNUSED(aInputData);
+      UNUSED(aGradientAndHessian);
+
       EBM_ASSERT(nullptr != aUpdateScores);
 
-      DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
-      const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
-      const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
-#ifndef NDEBUG
-      FloatFast weightTotalDebug = 0;
-#endif // NDEBUG
+      const FloatFast * pWeight = aWeight;
 
       FloatFast sumLogLoss = 0;
-      const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
-      FloatFast * pSampleScore = pValidationSet->GetSampleScores();
+      const StorageDataType * pTargetData = reinterpret_cast<const StorageDataType *>(aTargetData);
+      FloatFast * pSampleScore = aSampleScore;
       const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples;
       const FloatFast updateScore = aUpdateScores[0];
       do {
@@ -144,16 +150,9 @@ public:
             // TODO: template this check away
             weight = *pWeight;
             ++pWeight;
-#ifndef NDEBUG
-            weightTotalDebug += weight;
-#endif // NDEBUG
          }
          sumLogLoss += sampleLogLoss * weight;
       } while(pSampleScoresEnd != pSampleScore);
-
-      EBM_ASSERT(nullptr == pWeight || pBoosterCore->GetValidationWeightTotal() * 0.999 <= weightTotalDebug &&
-         weightTotalDebug <= 1.001 * pBoosterCore->GetValidationWeightTotal());
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == pBoosterCore->GetValidationWeightTotal());
 
       return static_cast<double>(sumLogLoss);
    }
@@ -166,23 +165,33 @@ public:
 
    ApplyTermUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static double Func(BoosterShell * const pBoosterShell) {
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
-      EBM_ASSERT(nullptr != aUpdateScores);
+   INLINE_RELEASE_UNTEMPLATED static double Func(
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
+   ) {
+      UNUSED(cRuntimeClasses);
+      UNUSED(runtimeBitPack);
+      UNUSED(aMulticlassMidwayTemp);
+      UNUSED(aInputData);
+      UNUSED(aTargetData);
+      UNUSED(aSampleScore);
 
-      DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
-      const size_t cSamples = pValidationSet->GetCountSamples();
+      EBM_ASSERT(nullptr != aUpdateScores);
       EBM_ASSERT(0 < cSamples);
 
-      const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
-#ifndef NDEBUG
-      FloatFast weightTotalDebug = 0;
-#endif // NDEBUG
+      const FloatFast * pWeight = aWeight;
 
       FloatFast sumSquareError = 0;
       // no hessians for regression
-      FloatFast * pGradient = pValidationSet->GetGradientsAndHessiansPointer();
+      FloatFast * pGradient = aGradientAndHessian;
       const FloatFast * const pGradientsEnd = pGradient + cSamples;
       const FloatFast updateScore = aUpdateScores[0];
       do {
@@ -196,18 +205,11 @@ public:
             // TODO: template this check away
             weight = *pWeight;
             ++pWeight;
-#ifndef NDEBUG
-            weightTotalDebug += weight;
-#endif // NDEBUG
          }
          sumSquareError += singleSampleSquaredError * weight;
          *pGradient = gradient;
          ++pGradient;
       } while(pGradientsEnd != pGradient);
-
-      EBM_ASSERT(nullptr == pWeight || pBoosterCore->GetValidationWeightTotal() * 0.999 <= weightTotalDebug &&
-         weightTotalDebug <= 1.001 * pBoosterCore->GetValidationWeightTotal());
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == pBoosterCore->GetValidationWeightTotal());
 
       return static_cast<double>(sumSquareError);
    }
@@ -219,24 +221,51 @@ public:
 
    ApplyTermUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static double Func(BoosterShell * const pBoosterShell) {
+   INLINE_RELEASE_UNTEMPLATED static double Func(
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
+   ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
       EBM_ASSERT(IsClassification(cRuntimeClasses));
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
       if(cPossibleClasses == cRuntimeClasses) {
          return ApplyTermUpdateValidationZeroFeatures<cPossibleClasses>::Func(
-            pBoosterShell
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aWeight,
+            aSampleScore,
+            aGradientAndHessian
          );
       } else {
          return ApplyTermUpdateValidationZeroFeaturesTarget<
             cPossibleClasses + 1
          >::Func(
-            pBoosterShell
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aWeight,
+            aSampleScore,
+            aGradientAndHessian
          );
       }
    }
@@ -248,13 +277,35 @@ public:
 
    ApplyTermUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static double Func(BoosterShell * const pBoosterShell) {
+   INLINE_RELEASE_UNTEMPLATED static double Func(
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
+   ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
-      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(k_cCompilerClassesMax < cRuntimeClasses);
 
-      return ApplyTermUpdateValidationZeroFeatures<k_dynamicClassification>::Func(pBoosterShell);
+      return ApplyTermUpdateValidationZeroFeatures<k_dynamicClassification>::Func(
+         cRuntimeClasses,
+         runtimeBitPack,
+         aMulticlassMidwayTemp,
+         aUpdateScores,
+         cSamples,
+         aInputData,
+         aTargetData,
+         aWeight,
+         aSampleScore,
+         aGradientAndHessian
+      );
    }
 };
 
@@ -265,32 +316,30 @@ public:
    ApplyTermUpdateValidationInternal() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
+      UNUSED(aMulticlassMidwayTemp);
+      UNUSED(aGradientAndHessian);
+
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
 
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-      const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-
-      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
-      const size_t runtimeBitPack = pTerm->GetBitPack();
-      DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
-      const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
-#ifndef NDEBUG
-      FloatFast weightTotalDebug = 0;
-#endif // NDEBUG
+      const FloatFast * pWeight = aWeight;
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
-      const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -301,9 +350,9 @@ public:
       const StorageDataType maskBits = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMax);
 
       FloatFast sumLogLoss = 0;
-      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(iTerm);
-      const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
-      FloatFast * pSampleScore = pValidationSet->GetSampleScores();
+      const StorageDataType * pInputData = aInputData;
+      const StorageDataType * pTargetData = reinterpret_cast<const StorageDataType *>(aTargetData);
+      FloatFast * pSampleScore = aSampleScore;
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatFast * const pSampleScoresTrueEnd = pSampleScore + cSamples * cScores;
@@ -357,9 +406,6 @@ public:
                // TODO: template this check away
                weight = *pWeight;
                ++pWeight;
-#ifndef NDEBUG
-               weightTotalDebug += weight;
-#endif // NDEBUG
             }
             sumLogLoss += sampleLogLoss * weight;
             iTensorBinCombined >>= cBitsPerItemMax;
@@ -373,10 +419,6 @@ public:
          goto one_last_loop;
       }
 
-      EBM_ASSERT(nullptr == pWeight || pBoosterCore->GetValidationWeightTotal() * 0.999 <= weightTotalDebug &&
-         weightTotalDebug <= 1.001 * pBoosterCore->GetValidationWeightTotal());
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == pBoosterCore->GetValidationWeightTotal());
-
       return static_cast<double>(sumLogLoss);
    }
 };
@@ -389,26 +431,26 @@ public:
    ApplyTermUpdateValidationInternal() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-      const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+      UNUSED(cRuntimeClasses);
+      UNUSED(aMulticlassMidwayTemp);
+      UNUSED(aGradientAndHessian);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
-      const size_t runtimeBitPack = pTerm->GetBitPack();
-      DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
-      const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
-#ifndef NDEBUG
-      FloatFast weightTotalDebug = 0;
-#endif // NDEBUG
+      const FloatFast * pWeight = aWeight;
 
-      const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -419,9 +461,9 @@ public:
       const StorageDataType maskBits = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMax);
 
       FloatFast sumLogLoss = 0;
-      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(iTerm);
-      const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
-      FloatFast * pSampleScore = pValidationSet->GetSampleScores();
+      const StorageDataType * pInputData = aInputData;
+      const StorageDataType * pTargetData = reinterpret_cast<const StorageDataType *>(aTargetData);
+      FloatFast * pSampleScore = aSampleScore;
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatFast * const pSampleScoresTrueEnd = pSampleScore + cSamples;
@@ -462,9 +504,6 @@ public:
                // TODO: template this check away
                weight = *pWeight;
                ++pWeight;
-#ifndef NDEBUG
-               weightTotalDebug += weight;
-#endif // NDEBUG
             }
             sumLogLoss += sampleLogLoss * weight;
 
@@ -479,10 +518,6 @@ public:
          goto one_last_loop;
       }
 
-      EBM_ASSERT(nullptr == pWeight || pBoosterCore->GetValidationWeightTotal() * 0.999 <= weightTotalDebug &&
-         weightTotalDebug <= 1.001 * pBoosterCore->GetValidationWeightTotal());
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == pBoosterCore->GetValidationWeightTotal());
-
       return static_cast<double>(sumLogLoss);
    }
 };
@@ -495,26 +530,27 @@ public:
    ApplyTermUpdateValidationInternal() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-      const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+      UNUSED(cRuntimeClasses);
+      UNUSED(aMulticlassMidwayTemp);
+      UNUSED(aTargetData);
+      UNUSED(aSampleScore);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
-      const size_t runtimeBitPack = pTerm->GetBitPack();
-      DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
-      const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
-#ifndef NDEBUG
-      FloatFast weightTotalDebug = 0;
-#endif // NDEBUG
+      const FloatFast * pWeight = aWeight;
 
-      const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -526,8 +562,8 @@ public:
 
       FloatFast sumSquareError = 0;
       // no hessians for regression
-      FloatFast * pGradient = pValidationSet->GetGradientsAndHessiansPointer();
-      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(iTerm);
+      FloatFast * pGradient = aGradientAndHessian;
+      const StorageDataType * pInputData = aInputData;
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatFast * const pGradientsTrueEnd = pGradient + cSamples;
@@ -562,9 +598,6 @@ public:
                // TODO: template this check away
                weight = *pWeight;
                ++pWeight;
-#ifndef NDEBUG
-               weightTotalDebug += weight;
-#endif // NDEBUG
             }
             sumSquareError += sampleSquaredError * weight;
             *pGradient = gradient;
@@ -581,10 +614,6 @@ public:
          goto one_last_loop;
       }
 
-      EBM_ASSERT(nullptr == pWeight || pBoosterCore->GetValidationWeightTotal() * 0.999 <= weightTotalDebug &&
-         weightTotalDebug <= 1.001 * pBoosterCore->GetValidationWeightTotal());
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == pBoosterCore->GetValidationWeightTotal());
-
       return static_cast<double>(sumSquareError);
    }
 };
@@ -596,28 +625,50 @@ public:
    ApplyTermUpdateValidationNormalTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
       EBM_ASSERT(IsClassification(cRuntimeClasses));
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
       if(cPossibleClasses == cRuntimeClasses) {
          return ApplyTermUpdateValidationInternal<cPossibleClasses, k_cItemsPerBitPackDynamic>::Func(
-            pBoosterShell,
-            iTerm
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aWeight,
+            aSampleScore,
+            aGradientAndHessian
          );
       } else {
          return ApplyTermUpdateValidationNormalTarget<
             cPossibleClasses + 1
          >::Func(
-            pBoosterShell,
-            iTerm
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aWeight,
+            aSampleScore,
+            aGradientAndHessian
          );
       }
    }
@@ -630,17 +681,33 @@ public:
    ApplyTermUpdateValidationNormalTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
-      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(k_cCompilerClassesMax < cRuntimeClasses);
 
       return ApplyTermUpdateValidationInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
-         pBoosterShell,
-         iTerm
+         cRuntimeClasses,
+         runtimeBitPack,
+         aMulticlassMidwayTemp,
+         aUpdateScores,
+         cSamples,
+         aInputData,
+         aTargetData,
+         aWeight,
+         aSampleScore,
+         aGradientAndHessian
       );
    }
 };
@@ -652,29 +719,48 @@ public:
    ApplyTermUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-      const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-      const size_t runtimeBitPack = pTerm->GetBitPack();
-
       EBM_ASSERT(1 <= runtimeBitPack);
       EBM_ASSERT(runtimeBitPack <= k_cBitsForStorageType);
       static_assert(compilerBitPack <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
       if(compilerBitPack == runtimeBitPack) {
          return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack>::Func(
-            pBoosterShell,
-            iTerm
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aWeight,
+            aSampleScore,
+            aGradientAndHessian
          );
       } else {
          return ApplyTermUpdateValidationSIMDPacking<
             cCompilerClasses,
             GetNextCountItemsBitPacked(compilerBitPack)
          >::Func(
-            pBoosterShell,
-            iTerm
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aWeight,
+            aSampleScore,
+            aGradientAndHessian
          );
       }
    }
@@ -687,18 +773,33 @@ public:
    ApplyTermUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
-      EBM_ASSERT(iTerm < pBoosterShell->GetBoosterCore()->GetCountTerms());
-      EBM_ASSERT(1 <= pBoosterShell->GetBoosterCore()->GetTerms()[iTerm]->GetBitPack());
-      EBM_ASSERT(pBoosterShell->GetBoosterCore()->GetTerms()[iTerm]->GetBitPack() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
+      EBM_ASSERT(1 <= runtimeBitPack);
+      EBM_ASSERT(runtimeBitPack <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
       return ApplyTermUpdateValidationInternal<
          cCompilerClasses, 
          k_cItemsPerBitPackDynamic
       >::Func(
-         pBoosterShell,
-         iTerm
+         cRuntimeClasses,
+         runtimeBitPack,
+         aMulticlassMidwayTemp,
+         aUpdateScores,
+         cSamples,
+         aInputData,
+         aTargetData,
+         aWeight,
+         aSampleScore,
+         aGradientAndHessian
       );
    }
 };
@@ -710,14 +811,20 @@ public:
    ApplyTermUpdateValidationSIMDTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
       EBM_ASSERT(IsClassification(cRuntimeClasses));
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
@@ -726,15 +833,31 @@ public:
             cPossibleClasses,
             k_cItemsPerBitPackMax
          >::Func(
-            pBoosterShell,
-            iTerm
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aWeight,
+            aSampleScore,
+            aGradientAndHessian
          );
       } else {
          return ApplyTermUpdateValidationSIMDTarget<
             cPossibleClasses + 1
          >::Func(
-            pBoosterShell,
-            iTerm
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aWeight,
+            aSampleScore,
+            aGradientAndHessian
          );
       }
    }
@@ -747,40 +870,83 @@ public:
    ApplyTermUpdateValidationSIMDTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      const FloatFast * const aWeight,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
-      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(k_cCompilerClassesMax < cRuntimeClasses);
 
       return ApplyTermUpdateValidationSIMDPacking<
          k_dynamicClassification,
          k_cItemsPerBitPackMax
       >::Func(
-         pBoosterShell,
-         iTerm
+         cRuntimeClasses,
+         runtimeBitPack,
+         aMulticlassMidwayTemp,
+         aUpdateScores,
+         cSamples,
+         aInputData,
+         aTargetData,
+         aWeight,
+         aSampleScore,
+         aGradientAndHessian
       );
    }
 };
 
-extern double ApplyTermUpdateValidation(BoosterShell * const pBoosterShell, const size_t iTerm) {
+extern double ApplyTermUpdateValidation(
+   const ptrdiff_t cRuntimeClasses,
+   const ptrdiff_t runtimeBitPack,
+   FloatFast * const aMulticlassMidwayTemp,
+   const FloatFast * const aUpdateScores,
+   const size_t cSamples,
+   const StorageDataType * const aInputData,
+   const void * const aTargetData,
+   const FloatFast * const aWeight,
+   FloatFast * const aSampleScore,
+   FloatFast * const aGradientAndHessian
+) {
    LOG_0(Trace_Verbose, "Entered ApplyTermUpdateValidation");
 
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-
-   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
-
    double ret;
-   if(0 == pTerm->GetCountRealDimensions()) {
+   if(k_cItemsPerBitPackNone == runtimeBitPack) {
       if(IsClassification(cRuntimeClasses)) {
-         ret = ApplyTermUpdateValidationZeroFeaturesTarget<2>::Func(pBoosterShell);
+         ret = ApplyTermUpdateValidationZeroFeaturesTarget<2>::Func(
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aWeight,
+            aSampleScore,
+            aGradientAndHessian
+         );
       } else {
          EBM_ASSERT(IsRegression(cRuntimeClasses));
-         ret = ApplyTermUpdateValidationZeroFeatures<k_regression>::Func(pBoosterShell);
+         ret = ApplyTermUpdateValidationZeroFeatures<k_regression>::Func(
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aWeight,
+            aSampleScore,
+            aGradientAndHessian
+         );
       }
    } else {
       if(k_bUseSIMD) {
@@ -798,14 +964,30 @@ extern double ApplyTermUpdateValidation(BoosterShell * const pBoosterShell, cons
 
          if(IsClassification(cRuntimeClasses)) {
             ret = ApplyTermUpdateValidationSIMDTarget<2>::Func(
-               pBoosterShell,
-               iTerm
+               cRuntimeClasses,
+               runtimeBitPack,
+               aMulticlassMidwayTemp,
+               aUpdateScores,
+               cSamples,
+               aInputData,
+               aTargetData,
+               aWeight,
+               aSampleScore,
+               aGradientAndHessian
             );
          } else {
             EBM_ASSERT(IsRegression(cRuntimeClasses));
             ret = ApplyTermUpdateValidationSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
-               pBoosterShell,
-               iTerm
+               cRuntimeClasses,
+               runtimeBitPack,
+               aMulticlassMidwayTemp,
+               aUpdateScores,
+               cSamples,
+               aInputData,
+               aTargetData,
+               aWeight,
+               aSampleScore,
+               aGradientAndHessian
             );
          }
       } else {
@@ -817,14 +999,30 @@ extern double ApplyTermUpdateValidation(BoosterShell * const pBoosterShell, cons
 
          if(IsClassification(cRuntimeClasses)) {
             ret = ApplyTermUpdateValidationNormalTarget<2>::Func(
-               pBoosterShell,
-               iTerm
+               cRuntimeClasses,
+               runtimeBitPack,
+               aMulticlassMidwayTemp,
+               aUpdateScores,
+               cSamples,
+               aInputData,
+               aTargetData,
+               aWeight,
+               aSampleScore,
+               aGradientAndHessian
             );
          } else {
             EBM_ASSERT(IsRegression(cRuntimeClasses));
             ret = ApplyTermUpdateValidationInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
-               pBoosterShell,
-               iTerm
+               cRuntimeClasses,
+               runtimeBitPack,
+               aMulticlassMidwayTemp,
+               aUpdateScores,
+               cSamples,
+               aInputData,
+               aTargetData,
+               aWeight,
+               aSampleScore,
+               aGradientAndHessian
             );
          }
       }

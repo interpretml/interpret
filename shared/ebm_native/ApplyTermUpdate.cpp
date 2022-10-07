@@ -23,13 +23,28 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 extern void ApplyTermUpdateTraining(
-   BoosterShell * const pBoosterShell,
-   const size_t iTerm
+   const ptrdiff_t cRuntimeClasses,
+   const ptrdiff_t runtimeBitPack,
+   FloatFast * const aMulticlassMidwayTemp,
+   const FloatFast * const aUpdateScores,
+   const size_t cSamples,
+   const StorageDataType * const aInputData,
+   const void * const aTargetData,
+   FloatFast * const aSampleScore,
+   FloatFast * const aGradientAndHessian
 );
 
 extern double ApplyTermUpdateValidation(
-   BoosterShell * const pBoosterShell,
-   const size_t iTerm
+   const ptrdiff_t cRuntimeClasses,
+   const ptrdiff_t runtimeBitPack,
+   FloatFast * const aMulticlassMidwayTemp,
+   const FloatFast * const aUpdateScores,
+   const size_t cSamples,
+   const StorageDataType * const aInputData,
+   const void * const aTargetData,
+   const FloatFast * const aWeight,
+   FloatFast * const aSampleScore,
+   FloatFast * const aGradientAndHessian
 );
 
 // we made this a global because if we had put this variable inside the BoosterCore object, then we would need to dereference that before 
@@ -157,7 +172,17 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
    pBoosterCore->GetCurrentModel()[iTerm]->AddExpandedWithBadValueProtection(aUpdateScores);
 
    if(0 != pBoosterCore->GetTrainingSet()->GetCountSamples()) {
-      ApplyTermUpdateTraining(pBoosterShell, iTerm);
+      ApplyTermUpdateTraining(
+         pBoosterCore->GetCountClasses(),
+         pTerm->GetBitPack(),
+         pBoosterShell->GetMulticlassMidwayTemp(),
+         pBoosterShell->GetTermUpdate()->GetTensorScoresPointer(),
+         pBoosterCore->GetTrainingSet()->GetCountSamples(),
+         pBoosterCore->GetTrainingSet()->GetInputDataPointer(iTerm),
+         pBoosterCore->GetTrainingSet()->GetTargetDataPointer(),
+         pBoosterCore->GetTrainingSet()->GetSampleScores(),
+         pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer()
+      );
    }
 
    double validationMetricAvg = 0.0;
@@ -173,7 +198,18 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       // but it isn't guaranteed, so let's check for zero samples in the validation set this better way
       // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
-      validationMetricAvg = ApplyTermUpdateValidation(pBoosterShell, iTerm);
+      validationMetricAvg = ApplyTermUpdateValidation(
+         pBoosterCore->GetCountClasses(),
+         pTerm->GetBitPack(),
+         pBoosterShell->GetMulticlassMidwayTemp(),
+         pBoosterShell->GetTermUpdate()->GetTensorScoresPointer(),
+         pBoosterCore->GetValidationSet()->GetCountSamples(),
+         pBoosterCore->GetValidationSet()->GetInputDataPointer(iTerm),
+         pBoosterCore->GetValidationSet()->GetTargetDataPointer(),
+         pBoosterCore->GetValidationWeights(),
+         pBoosterCore->GetValidationSet()->GetSampleScores(),
+         pBoosterCore->GetValidationSet()->GetGradientsAndHessiansPointer()
+      );
 
       EBM_ASSERT(!std::isnan(validationMetricAvg)); // NaNs can happen, but we should have cleaned them up
       EBM_ASSERT(0.0 <= validationMetricAvg); // negatives can happen, but we should have cleaned them up

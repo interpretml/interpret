@@ -11,11 +11,6 @@
 
 #include "approximate_math.hpp"
 #include "ebm_stats.hpp"
-#include "Term.hpp"
-#include "DataSetBoosting.hpp"
-#include "Tensor.hpp"
-#include "BoosterCore.hpp"
-#include "BoosterShell.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -30,30 +25,37 @@ public:
 
    ApplyTermUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static void Func(BoosterShell * const pBoosterShell) {
+   INLINE_RELEASE_UNTEMPLATED static void Func(
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
+   ) {
+      UNUSED(runtimeBitPack);
+      UNUSED(aInputData);
+
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
       static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
-      DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
-
       FloatFast aLocalExpVector[cCompilerScores];
       FloatFast * const aExps = 
-         k_dynamicClassification == cCompilerClasses ? pBoosterShell->GetMulticlassMidwayTemp() : aLocalExpVector;
+         k_dynamicClassification == cCompilerClasses ? aMulticlassMidwayTemp : aLocalExpVector;
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
-      const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
-      FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
-      const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
-      FloatFast * pSampleScore = pTrainingSet->GetSampleScores();
+      FloatFast * pGradientAndHessian = aGradientAndHessian;
+      const StorageDataType * pTargetData = reinterpret_cast<const StorageDataType *>(aTargetData);
+      FloatFast * pSampleScore = aSampleScore;
       const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples * cScores;
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
@@ -108,18 +110,28 @@ public:
 
    ApplyTermUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static void Func(BoosterShell * const pBoosterShell) {
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
-      const size_t cSamples = pTrainingSet->GetCountSamples();
-      EBM_ASSERT(1 <= cSamples);
+   INLINE_RELEASE_UNTEMPLATED static void Func(
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
+   ) {
+      UNUSED(cRuntimeClasses);
+      UNUSED(runtimeBitPack);
+      UNUSED(aMulticlassMidwayTemp);
+      UNUSED(aInputData);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
+      EBM_ASSERT(1 <= cSamples);
       EBM_ASSERT(nullptr != aUpdateScores);
 
-      FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
-      const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
-      FloatFast * pSampleScore = pTrainingSet->GetSampleScores();
+      FloatFast * pGradientAndHessian = aGradientAndHessian;
+      const StorageDataType * pTargetData = reinterpret_cast<const StorageDataType *>(aTargetData);
+      FloatFast * pSampleScore = aSampleScore;
       const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples;
       const FloatFast updateScore = aUpdateScores[0];
       do {
@@ -144,17 +156,29 @@ public:
 
    ApplyTermUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static void Func(BoosterShell * const pBoosterShell) {
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
-      const size_t cSamples = pTrainingSet->GetCountSamples();
-      EBM_ASSERT(1 <= cSamples);
+   INLINE_RELEASE_UNTEMPLATED static void Func(
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
+   ) {
+      UNUSED(cRuntimeClasses);
+      UNUSED(runtimeBitPack);
+      UNUSED(aMulticlassMidwayTemp);
+      UNUSED(aSampleScore);
+      UNUSED(aInputData);
+      UNUSED(aTargetData);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
+      EBM_ASSERT(1 <= cSamples);
       EBM_ASSERT(nullptr != aUpdateScores);
 
       // no hessian for regression
-      FloatFast * pGradient = pTrainingSet->GetGradientsAndHessiansPointer();
+      FloatFast * pGradient = aGradientAndHessian;
       const FloatFast * const pGradientsEnd = pGradient + cSamples;
       const FloatFast updateScore = aUpdateScores[0];
       do {
@@ -172,24 +196,48 @@ public:
 
    ApplyTermUpdateTrainingZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static void Func(BoosterShell * const pBoosterShell) {
+   INLINE_RELEASE_UNTEMPLATED static void Func(
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
+   ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
       EBM_ASSERT(IsClassification(cRuntimeClasses));
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
       if(cPossibleClasses == cRuntimeClasses) {
          ApplyTermUpdateTrainingZeroFeatures<cPossibleClasses>::Func(
-            pBoosterShell
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aSampleScore,
+            aGradientAndHessian
          );
       } else {
          ApplyTermUpdateTrainingZeroFeaturesTarget<
             cPossibleClasses + 1
          >::Func(
-            pBoosterShell
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aSampleScore,
+            aGradientAndHessian
          );
       }
    }
@@ -201,13 +249,33 @@ public:
 
    ApplyTermUpdateTrainingZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static void Func(BoosterShell * const pBoosterShell) {
+   INLINE_RELEASE_UNTEMPLATED static void Func(
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
+   ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
-      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(k_cCompilerClassesMax < cRuntimeClasses);
 
-      ApplyTermUpdateTrainingZeroFeatures<k_dynamicClassification>::Func(pBoosterShell);
+      ApplyTermUpdateTrainingZeroFeatures<k_dynamicClassification>::Func(
+         cRuntimeClasses,
+         runtimeBitPack,
+         aMulticlassMidwayTemp,
+         aUpdateScores,
+         cSamples,
+         aInputData,
+         aTargetData,
+         aSampleScore,
+         aGradientAndHessian
+      );
    }
 };
 
@@ -218,30 +286,29 @@ public:
    ApplyTermUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static void Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
       static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-      const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
-      DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
-
       FloatFast aLocalExpVector[cCompilerScores];
       FloatFast * const aExps = 
-         k_dynamicClassification == cCompilerClasses ? pBoosterShell->GetMulticlassMidwayTemp() : aLocalExpVector;
+         k_dynamicClassification == cCompilerClasses ? aMulticlassMidwayTemp : aLocalExpVector;
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
-      const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
 
-      const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pTerm->GetBitPack());
+      const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
       EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
       const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
@@ -249,13 +316,12 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const StorageDataType maskBits = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
-      FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
-      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(iTerm);
-      const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
-      FloatFast * pSampleScore = pTrainingSet->GetSampleScores();
+      FloatFast * pGradientAndHessian = aGradientAndHessian;
+      const StorageDataType * pInputData = aInputData;
+      const StorageDataType * pTargetData = reinterpret_cast<const StorageDataType *>(aTargetData);
+      FloatFast * pSampleScore = aSampleScore;
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatFast * const pSampleScoresTrueEnd = pSampleScore + cSamples * cScores;
@@ -339,18 +405,19 @@ public:
    ApplyTermUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static void Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-      const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-      const size_t runtimeBitPack = pTerm->GetBitPack();
-      DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
-
-      const size_t cSamples = pTrainingSet->GetCountSamples();
+      UNUSED(cRuntimeClasses);
+      UNUSED(aMulticlassMidwayTemp);
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -360,13 +427,12 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const StorageDataType maskBits = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
-      FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
-      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(iTerm);
-      const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
-      FloatFast * pSampleScore = pTrainingSet->GetSampleScores();
+      FloatFast * pGradientAndHessian = aGradientAndHessian;
+      const StorageDataType * pInputData = aInputData;
+      const StorageDataType * pTargetData = reinterpret_cast<const StorageDataType *>(aTargetData);
+      FloatFast * pSampleScore = aSampleScore;
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatFast * const pSampleScoresTrueEnd = pSampleScore + cSamples;
@@ -425,18 +491,21 @@ public:
    ApplyTermUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static void Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-      const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-      const size_t runtimeBitPack = pTerm->GetBitPack();
-      DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
-
-      const size_t cSamples = pTrainingSet->GetCountSamples();
+      UNUSED(cRuntimeClasses);
+      UNUSED(aMulticlassMidwayTemp);
+      UNUSED(aTargetData);
+      UNUSED(aSampleScore);
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -446,12 +515,11 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const StorageDataType maskBits = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
       // No hessians for regression
-      FloatFast * pGradient = pTrainingSet->GetGradientsAndHessiansPointer();
-      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(iTerm);
+      FloatFast * pGradient = aGradientAndHessian;
+      const StorageDataType * pInputData = aInputData;
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatFast * const pGradientTrueEnd = pGradient + cSamples;
@@ -502,28 +570,47 @@ public:
    ApplyTermUpdateTrainingNormalTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static void Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
       EBM_ASSERT(IsClassification(cRuntimeClasses));
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
       if(cPossibleClasses == cRuntimeClasses) {
          ApplyTermUpdateTrainingInternal<cPossibleClasses, k_cItemsPerBitPackDynamic>::Func(
-            pBoosterShell,
-            iTerm
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aSampleScore,
+            aGradientAndHessian
          );
       } else {
          ApplyTermUpdateTrainingNormalTarget<
             cPossibleClasses + 1
          >::Func(
-            pBoosterShell,
-            iTerm
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aSampleScore,
+            aGradientAndHessian
          );
       }
    }
@@ -536,17 +623,31 @@ public:
    ApplyTermUpdateTrainingNormalTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static void Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
-      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(k_cCompilerClassesMax < cRuntimeClasses);
 
       ApplyTermUpdateTrainingInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
-         pBoosterShell,
-         iTerm
+         cRuntimeClasses,
+         runtimeBitPack,
+         aMulticlassMidwayTemp,
+         aUpdateScores,
+         cSamples,
+         aInputData,
+         aTargetData,
+         aSampleScore,
+         aGradientAndHessian
       );
    }
 };
@@ -558,29 +659,45 @@ public:
    ApplyTermUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static void Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-      const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-      const size_t runtimeBitPack = pTerm->GetBitPack();
-
       EBM_ASSERT(1 <= runtimeBitPack);
       EBM_ASSERT(runtimeBitPack <= k_cBitsForStorageType);
       static_assert(compilerBitPack <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
       if(compilerBitPack == runtimeBitPack) {
          ApplyTermUpdateTrainingInternal<cCompilerClasses, compilerBitPack>::Func(
-            pBoosterShell,
-            iTerm
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aSampleScore,
+            aGradientAndHessian
          );
       } else {
          ApplyTermUpdateTrainingSIMDPacking<
             cCompilerClasses,
             GetNextCountItemsBitPacked(compilerBitPack)
          >::Func(
-            pBoosterShell,
-            iTerm
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aSampleScore,
+            aGradientAndHessian
          );
       }
    }
@@ -593,15 +710,28 @@ public:
    ApplyTermUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static void Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
-      EBM_ASSERT(iTerm < pBoosterShell->GetBoosterCore()->GetCountTerms());
-      EBM_ASSERT(1 <= pBoosterShell->GetBoosterCore()->GetTerms()[iTerm]->GetBitPack());
-      EBM_ASSERT(pBoosterShell->GetBoosterCore()->GetTerms()[iTerm]->GetBitPack() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
+      EBM_ASSERT(1 <= runtimeBitPack);
+      EBM_ASSERT(runtimeBitPack <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
       ApplyTermUpdateTrainingInternal<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(
-         pBoosterShell,
-         iTerm
+         cRuntimeClasses,
+         runtimeBitPack,
+         aMulticlassMidwayTemp,
+         aUpdateScores,
+         cSamples,
+         aInputData,
+         aTargetData,
+         aSampleScore,
+         aGradientAndHessian
       );
    }
 };
@@ -613,14 +743,19 @@ public:
    ApplyTermUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static void Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
       EBM_ASSERT(IsClassification(cRuntimeClasses));
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
@@ -629,15 +764,29 @@ public:
             cPossibleClasses,
             k_cItemsPerBitPackMax
          >::Func(
-            pBoosterShell,
-            iTerm
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aSampleScore,
+            aGradientAndHessian
          );
       } else {
          ApplyTermUpdateTrainingSIMDTarget<
             cPossibleClasses + 1
          >::Func(
-            pBoosterShell,
-            iTerm
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aSampleScore,
+            aGradientAndHessian
          );
       }
    }
@@ -650,39 +799,74 @@ public:
    ApplyTermUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static void Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm
+      const ptrdiff_t cRuntimeClasses,
+      const ptrdiff_t runtimeBitPack,
+      FloatFast * const aMulticlassMidwayTemp,
+      const FloatFast * const aUpdateScores,
+      const size_t cSamples,
+      const StorageDataType * const aInputData,
+      const void * const aTargetData,
+      FloatFast * const aSampleScore,
+      FloatFast * const aGradientAndHessian
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
-      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
+      EBM_ASSERT(IsClassification(cRuntimeClasses));
+      EBM_ASSERT(k_cCompilerClassesMax < cRuntimeClasses);
 
       ApplyTermUpdateTrainingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackMax>::Func(
-         pBoosterShell,
-         iTerm
+         cRuntimeClasses,
+         runtimeBitPack,
+         aMulticlassMidwayTemp,
+         aUpdateScores,
+         cSamples,
+         aInputData,
+         aTargetData,
+         aSampleScore,
+         aGradientAndHessian
       );
    }
 };
 
 extern void ApplyTermUpdateTraining(
-   BoosterShell * const pBoosterShell,
-   const size_t iTerm
+   const ptrdiff_t cRuntimeClasses,
+   const ptrdiff_t runtimeBitPack,
+   FloatFast * const aMulticlassMidwayTemp,
+   const FloatFast * const aUpdateScores,
+   const size_t cSamples,
+   const StorageDataType * const aInputData,
+   const void * const aTargetData,
+   FloatFast * const aSampleScore,
+   FloatFast * const aGradientAndHessian
 ) {
    LOG_0(Trace_Verbose, "Entered ApplyTermUpdateTraining");
 
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
-
-   EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-
-   if(0 == pTerm->GetCountRealDimensions()) {
+   if(k_cItemsPerBitPackNone == runtimeBitPack) {
       if(IsClassification(cRuntimeClasses)) {
-         ApplyTermUpdateTrainingZeroFeaturesTarget<2>::Func(pBoosterShell);
+         ApplyTermUpdateTrainingZeroFeaturesTarget<2>::Func(
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aSampleScore,
+            aGradientAndHessian
+         );
       } else {
          EBM_ASSERT(IsRegression(cRuntimeClasses));
-         ApplyTermUpdateTrainingZeroFeatures<k_regression>::Func(pBoosterShell);
+         ApplyTermUpdateTrainingZeroFeatures<k_regression>::Func(
+            cRuntimeClasses,
+            runtimeBitPack,
+            aMulticlassMidwayTemp,
+            aUpdateScores,
+            cSamples,
+            aInputData,
+            aTargetData,
+            aSampleScore,
+            aGradientAndHessian
+         );
       }
    } else {
       if(k_bUseSIMD) {
@@ -699,12 +883,29 @@ extern void ApplyTermUpdateTraining(
          // 7,6,5,4,3,2,1 - use a mask to exclude the non-used conditions and process them like the 8.  These are rare since they require more than 256 values
 
          if(IsClassification(cRuntimeClasses)) {
-            ApplyTermUpdateTrainingSIMDTarget<2>::Func(pBoosterShell, iTerm);
+            ApplyTermUpdateTrainingSIMDTarget<2>::Func(
+               cRuntimeClasses,
+               runtimeBitPack,
+               aMulticlassMidwayTemp,
+               aUpdateScores,
+               cSamples,
+               aInputData,
+               aTargetData,
+               aSampleScore,
+               aGradientAndHessian
+            );
          } else {
             EBM_ASSERT(IsRegression(cRuntimeClasses));
             ApplyTermUpdateTrainingSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
-               pBoosterShell,
-               iTerm
+               cRuntimeClasses,
+               runtimeBitPack,
+               aMulticlassMidwayTemp,
+               aUpdateScores,
+               cSamples,
+               aInputData,
+               aTargetData,
+               aSampleScore,
+               aGradientAndHessian
             );
          }
       } else {
@@ -715,12 +916,29 @@ extern void ApplyTermUpdateTraining(
          // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
 
          if(IsClassification(cRuntimeClasses)) {
-            ApplyTermUpdateTrainingNormalTarget<2>::Func(pBoosterShell, iTerm);
+            ApplyTermUpdateTrainingNormalTarget<2>::Func(
+               cRuntimeClasses,
+               runtimeBitPack,
+               aMulticlassMidwayTemp,
+               aUpdateScores,
+               cSamples,
+               aInputData,
+               aTargetData,
+               aSampleScore,
+               aGradientAndHessian
+            );
          } else {
             EBM_ASSERT(IsRegression(cRuntimeClasses));
             ApplyTermUpdateTrainingInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
-               pBoosterShell,
-               iTerm
+               cRuntimeClasses,
+               runtimeBitPack,
+               aMulticlassMidwayTemp,
+               aUpdateScores,
+               cSamples,
+               aInputData,
+               aTargetData,
+               aSampleScore,
+               aGradientAndHessian
             );
          }
       }
