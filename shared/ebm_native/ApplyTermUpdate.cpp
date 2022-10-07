@@ -34,7 +34,7 @@ extern void ApplyTermUpdateTraining(
    FloatFast * const aGradientAndHessian
 );
 
-extern double ApplyTermUpdateValidation(
+extern ErrorEbm ApplyTermUpdateValidation(
    const ptrdiff_t cRuntimeClasses,
    const ptrdiff_t runtimeBitPack,
    FloatFast * const aMulticlassMidwayTemp,
@@ -44,7 +44,8 @@ extern double ApplyTermUpdateValidation(
    const void * const aTargetData,
    const FloatFast * const aWeight,
    FloatFast * const aSampleScore,
-   FloatFast * const aGradientAndHessian
+   FloatFast * const aGradientAndHessian,
+   double * const pMetricOut
 );
 
 // we made this a global because if we had put this variable inside the BoosterCore object, then we would need to dereference that before 
@@ -198,7 +199,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       // but it isn't guaranteed, so let's check for zero samples in the validation set this better way
       // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
-      validationMetricAvg = ApplyTermUpdateValidation(
+      error = ApplyTermUpdateValidation(
          pBoosterCore->GetCountClasses(),
          pTerm->GetBitPack(),
          pBoosterShell->GetMulticlassMidwayTemp(),
@@ -208,8 +209,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
          pBoosterCore->GetValidationSet()->GetTargetDataPointer(),
          pBoosterCore->GetValidationWeights(),
          pBoosterCore->GetValidationSet()->GetSampleScores(),
-         pBoosterCore->GetValidationSet()->GetGradientsAndHessiansPointer()
+         pBoosterCore->GetValidationSet()->GetGradientsAndHessiansPointer(),
+         &validationMetricAvg
       );
+      if(Error_None != error) {
+         return error;
+      }
 
       EBM_ASSERT(!std::isnan(validationMetricAvg)); // NaNs can happen, but we should have cleaned them up
       EBM_ASSERT(0.0 <= validationMetricAvg); // negatives can happen, but we should have cleaned them up
