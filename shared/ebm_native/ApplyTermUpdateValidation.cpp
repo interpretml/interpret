@@ -40,15 +40,14 @@ struct ApplyTermUpdateValidationInternal final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pData->m_cClasses);
+      const size_t cScores = GetCountScores(cClasses);
 
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
 
       const FloatFast * pWeight = pData->m_aWeights;
-
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pData->m_cClasses);
-      const size_t cScores = GetCountScores(cClasses);
 
       FloatFast sumLogLoss = 0;
       const StorageDataType * pTargetData = reinterpret_cast<const StorageDataType *>(pData->m_aTargets);
@@ -100,6 +99,7 @@ struct ApplyTermUpdateValidationInternal final {
             ++pTargetData;
 
             const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
+
             const FloatFast * pUpdateScore = &aUpdateTensorScores[iTensorBin * cScores];
             FloatFast itemExp = 0;
             FloatFast sumExp = 0;
@@ -111,15 +111,14 @@ struct ApplyTermUpdateValidationInternal final {
                const FloatFast sampleScore = *pSampleScore + updateScore;
                *pSampleScore = sampleScore;
                ++pSampleScore;
+
                const FloatFast oneExp = ExpForLogLossMulticlass<false>(sampleScore);
                itemExp = iScore == targetData ? oneExp : itemExp;
                sumExp += oneExp;
                ++iScore;
             } while(iScore < cScores);
-            const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(
-               sumExp,
-               itemExp
-            );
+
+            const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(sumExp, itemExp);
 
             EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
 
@@ -130,6 +129,7 @@ struct ApplyTermUpdateValidationInternal final {
                ++pWeight;
             }
             sumLogLoss += sampleLogLoss * weight;
+
             iTensorBinCombined >>= cBitsPerItemMax;
          } while(pSampleScoresInnerEnd != pSampleScore);
       } while(pSampleScoresExit != pSampleScore);
@@ -212,6 +212,7 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack> final {
             const FloatFast sampleScore = *pSampleScore + updateScore;
             *pSampleScore = sampleScore;
             ++pSampleScore;
+
             const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(sampleScore, targetData);
 
             EBM_ASSERT(std::isnan(sampleLogLoss) || 0 <= sampleLogLoss);
@@ -301,7 +302,11 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack> final {
             const FloatFast updateScore = aUpdateTensorScores[iTensorBin];
             // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
             const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, updateScore);
+            *pGradient = gradient;
+            ++pGradient;
+
             const FloatFast sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
+
             EBM_ASSERT(std::isnan(sampleSquaredError) || 0 <= sampleSquaredError);
 
             FloatFast weight = 1;
@@ -311,8 +316,6 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack> final {
                ++pWeight;
             }
             sumSquareError += sampleSquaredError * weight;
-            *pGradient = gradient;
-            ++pGradient;
 
             iTensorBinCombined >>= cBitsPerItemMax;
          } while(pGradientsInnerEnd != pGradient);
