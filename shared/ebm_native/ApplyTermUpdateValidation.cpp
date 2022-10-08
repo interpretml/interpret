@@ -35,7 +35,7 @@ struct ApplyValidation {
 
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
-template<ptrdiff_t cCompilerClasses, size_t compilerBitPack>
+template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
 struct ApplyTermUpdateValidationInternal final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
@@ -133,7 +133,7 @@ struct ApplyTermUpdateValidationInternal final {
 };
 
 #ifndef EXPAND_BINARY_LOGITS
-template<size_t compilerBitPack>
+template<ptrdiff_t compilerBitPack>
 struct ApplyTermUpdateValidationInternal<2, compilerBitPack> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
@@ -214,7 +214,7 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack> final {
 };
 #endif // EXPAND_BINARY_LOGITS
 
-template<size_t compilerBitPack>
+template<ptrdiff_t compilerBitPack>
 struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);

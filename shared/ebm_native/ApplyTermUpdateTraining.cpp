@@ -279,7 +279,7 @@ public:
    }
 };
 
-template<ptrdiff_t cCompilerClasses, size_t compilerBitPack>
+template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
 class ApplyTermUpdateTrainingInternal final {
 public:
 
@@ -398,7 +398,7 @@ public:
 };
 
 #ifndef EXPAND_BINARY_LOGITS
-template<size_t compilerBitPack>
+template<ptrdiff_t compilerBitPack>
 class ApplyTermUpdateTrainingInternal<2, compilerBitPack> final {
 public:
 
@@ -484,7 +484,7 @@ public:
 };
 #endif // EXPAND_BINARY_LOGITS
 
-template<size_t compilerBitPack>
+template<ptrdiff_t compilerBitPack>
 class ApplyTermUpdateTrainingInternal<k_regression, compilerBitPack> final {
 public:
 
