@@ -22,6 +22,7 @@ struct ApplyValidation {
 
    ptrdiff_t m_cClasses;
    ptrdiff_t m_cPack;
+   bool m_bCalcMetric;
    FloatFast * m_aMulticlassMidwayTemp;
    const FloatFast * m_aUpdateTensorScores;
    size_t m_cSamples;
@@ -35,7 +36,7 @@ struct ApplyValidation {
 
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
-template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
+template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bCalcMetric>
 struct ApplyTermUpdateValidationInternal final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
@@ -95,8 +96,11 @@ struct ApplyTermUpdateValidationInternal final {
          do {
          zero_dimensional:;
 
-            size_t targetData = static_cast<size_t>(*pTargetData);
-            ++pTargetData;
+            size_t targetData;
+            if(bCalcMetric) {
+               targetData = static_cast<size_t>(*pTargetData);
+               ++pTargetData;
+            }
 
             const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
 
@@ -107,28 +111,34 @@ struct ApplyTermUpdateValidationInternal final {
             do {
                const FloatFast updateScore = *pUpdateScore;
                ++pUpdateScore;
+
                // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
                const FloatFast sampleScore = *pSampleScore + updateScore;
                *pSampleScore = sampleScore;
                ++pSampleScore;
 
-               const FloatFast oneExp = ExpForLogLossMulticlass<false>(sampleScore);
-               itemExp = iScore == targetData ? oneExp : itemExp;
-               sumExp += oneExp;
+               if(bCalcMetric) {
+                  const FloatFast oneExp = ExpForLogLossMulticlass<false>(sampleScore);
+                  itemExp = iScore == targetData ? oneExp : itemExp;
+                  sumExp += oneExp;
+               }
+
                ++iScore;
             } while(iScore < cScores);
 
-            const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(sumExp, itemExp);
+            if(bCalcMetric) {
+               const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(sumExp, itemExp);
 
-            EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
+               EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
 
-            FloatFast weight = 1;
-            if(nullptr != pWeight) {
-               // TODO: template this check away
-               weight = *pWeight;
-               ++pWeight;
+               FloatFast weight = 1;
+               if(nullptr != pWeight) {
+                  // TODO: template this check away
+                  weight = *pWeight;
+                  ++pWeight;
+               }
+               sumLogLoss += sampleLogLoss * weight;
             }
-            sumLogLoss += sampleLogLoss * weight;
 
             iTensorBinCombined >>= cBitsPerItemMax;
          } while(pSampleScoresInnerEnd != pSampleScore);
@@ -147,8 +157,8 @@ struct ApplyTermUpdateValidationInternal final {
 };
 
 #ifndef EXPAND_BINARY_LOGITS
-template<ptrdiff_t compilerBitPack>
-struct ApplyTermUpdateValidationInternal<2, compilerBitPack> final {
+template<ptrdiff_t compilerBitPack, bool bCalcMetric>
+struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
@@ -202,8 +212,11 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack> final {
          do {
          zero_dimensional:;
 
-            size_t targetData = static_cast<size_t>(*pTargetData);
-            ++pTargetData;
+            size_t targetData;
+            if(bCalcMetric) {
+               targetData = static_cast<size_t>(*pTargetData);
+               ++pTargetData;
+            }
 
             const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
 
@@ -213,17 +226,19 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack> final {
             *pSampleScore = sampleScore;
             ++pSampleScore;
 
-            const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(sampleScore, targetData);
+            if(bCalcMetric) {
+               const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(sampleScore, targetData);
 
-            EBM_ASSERT(std::isnan(sampleLogLoss) || 0 <= sampleLogLoss);
+               EBM_ASSERT(std::isnan(sampleLogLoss) || 0 <= sampleLogLoss);
 
-            FloatFast weight = 1;
-            if(nullptr != pWeight) {
-               // TODO: template this check away
-               weight = *pWeight;
-               ++pWeight;
+               FloatFast weight = 1;
+               if(nullptr != pWeight) {
+                  // TODO: template this check away
+                  weight = *pWeight;
+                  ++pWeight;
+               }
+               sumLogLoss += sampleLogLoss * weight;
             }
-            sumLogLoss += sampleLogLoss * weight;
 
             iTensorBinCombined >>= cBitsPerItemMax;
          } while(pSampleScoresInnerEnd != pSampleScore);
@@ -242,8 +257,8 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack> final {
 };
 #endif // EXPAND_BINARY_LOGITS
 
-template<ptrdiff_t compilerBitPack>
-struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack> final {
+template<ptrdiff_t compilerBitPack, bool bCalcMetric>
+struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMetric> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
@@ -305,17 +320,19 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack> final {
             *pGradient = gradient;
             ++pGradient;
 
-            const FloatFast sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
+            if(bCalcMetric) {
+               const FloatFast sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
 
-            EBM_ASSERT(std::isnan(sampleSquaredError) || 0 <= sampleSquaredError);
+               EBM_ASSERT(std::isnan(sampleSquaredError) || 0 <= sampleSquaredError);
 
-            FloatFast weight = 1;
-            if(nullptr != pWeight) {
-               // TODO: template this check away
-               weight = *pWeight;
-               ++pWeight;
+               FloatFast weight = 1;
+               if(nullptr != pWeight) {
+                  // TODO: template this check away
+                  weight = *pWeight;
+                  ++pWeight;
+               }
+               sumSquareError += sampleSquaredError * weight;
             }
-            sumSquareError += sampleSquaredError * weight;
 
             iTensorBinCombined >>= cBitsPerItemMax;
          } while(pGradientsInnerEnd != pGradient);
@@ -333,12 +350,21 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack> final {
    }
 };
 
-template<ptrdiff_t cCompilerClasses>
-INLINE_RELEASE_TEMPLATED static ErrorEbm BitPackPre(ApplyValidation * const pData) {
-   if(k_cItemsPerBitPackNone == pData->m_cPack) {
-      return ApplyTermUpdateValidationInternal<cCompilerClasses, k_cItemsPerBitPackNone>::Func(pData);
+template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
+INLINE_RELEASE_TEMPLATED static ErrorEbm DecideMetric(ApplyValidation * const pData) {
+   if(pData->m_bCalcMetric) {
+      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, true>::Func(pData);
    } else {
-      return ApplyTermUpdateValidationInternal<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(pData);
+      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, false>::Func(pData);
+   }
+}
+
+template<ptrdiff_t cCompilerClasses>
+INLINE_RELEASE_TEMPLATED static ErrorEbm BitPack(ApplyValidation * const pData) {
+   if(k_cItemsPerBitPackNone == pData->m_cPack) {
+      return DecideMetric<cCompilerClasses, k_cItemsPerBitPackNone>(pData);
+   } else {
+      return DecideMetric<cCompilerClasses, k_cItemsPerBitPackDynamic>(pData);
    }
 }
 
@@ -346,7 +372,7 @@ template<ptrdiff_t cPossibleClasses>
 struct CountClasses final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       if(cPossibleClasses == pData->m_cClasses) {
-         return BitPackPre<cPossibleClasses>(pData);
+         return BitPack<cPossibleClasses>(pData);
       } else {
          return CountClasses<cPossibleClasses + 1>::Func(pData);
       }
@@ -356,13 +382,14 @@ struct CountClasses final {
 template<>
 struct CountClasses<k_cCompilerClassesMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
-      return BitPackPre<k_dynamicClassification>(pData);
+      return BitPack<k_dynamicClassification>(pData);
    }
 };
 
 extern ErrorEbm ApplyTermUpdateValidation(
    const ptrdiff_t cRuntimeClasses,
    const ptrdiff_t runtimeBitPack,
+   const bool bCalcMetric,
    FloatFast * const aMulticlassMidwayTemp,
    const FloatFast * const aUpdateScores,
    const size_t cSamples,
@@ -378,6 +405,7 @@ extern ErrorEbm ApplyTermUpdateValidation(
    ApplyValidation data;
    data.m_cClasses = cRuntimeClasses;
    data.m_cPack = runtimeBitPack;
+   data.m_bCalcMetric = bCalcMetric;
    data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
    data.m_aUpdateTensorScores = aUpdateScores;
    data.m_cSamples = cSamples;
@@ -392,7 +420,7 @@ extern ErrorEbm ApplyTermUpdateValidation(
       error = CountClasses<2>::Func(&data);
    } else {
       EBM_ASSERT(IsRegression(cRuntimeClasses));
-      error = BitPackPre<k_regression>(&data);
+      error = BitPack<k_regression>(&data);
    }
 
    if(Error_None != error) {

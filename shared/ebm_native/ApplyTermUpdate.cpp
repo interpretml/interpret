@@ -37,6 +37,7 @@ extern void ApplyTermUpdateTraining(
 extern ErrorEbm ApplyTermUpdateValidation(
    const ptrdiff_t cRuntimeClasses,
    const ptrdiff_t runtimeBitPack,
+   const bool bCalcMetric,
    FloatFast * const aMulticlassMidwayTemp,
    const FloatFast * const aUpdateScores,
    const size_t cSamples,
@@ -202,6 +203,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       error = ApplyTermUpdateValidation(
          pBoosterCore->GetCountClasses(),
          pTerm->GetBitPack(),
+         true, // TODO: expose/use this bCalcMetric
          pBoosterShell->GetMulticlassMidwayTemp(),
          pBoosterShell->GetTermUpdate()->GetTensorScoresPointer(),
          pBoosterCore->GetValidationSet()->GetCountSamples(),
