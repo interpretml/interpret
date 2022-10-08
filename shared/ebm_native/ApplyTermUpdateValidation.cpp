@@ -62,6 +62,7 @@ struct ApplyTermUpdateValidationInternal final {
       StorageDataType maskBits = 0;
       const StorageDataType * pInputData = nullptr;
       StorageDataType iTensorBinCombined = 0;
+      const FloatFast * aBinScores = aUpdateTensorScores;
 
       constexpr bool bZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
       if(bZeroDimensional) {
@@ -102,15 +103,17 @@ struct ApplyTermUpdateValidationInternal final {
                ++pTargetData;
             }
 
-            const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
+            if(!bZeroDimensional) {
+               const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
+               aBinScores = &aUpdateTensorScores[iTensorBin * cScores];
+               iTensorBinCombined >>= cBitsPerItemMax;
+            }
 
-            const FloatFast * pUpdateScore = &aUpdateTensorScores[iTensorBin * cScores];
             FloatFast itemExp = 0;
             FloatFast sumExp = 0;
             size_t iScore = 0;
             do {
-               const FloatFast updateScore = *pUpdateScore;
-               ++pUpdateScore;
+               const FloatFast updateScore = aBinScores[iScore];
 
                // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
                const FloatFast sampleScore = *pSampleScore + updateScore;
@@ -124,7 +127,7 @@ struct ApplyTermUpdateValidationInternal final {
                }
 
                ++iScore;
-            } while(iScore < cScores);
+            } while(cScores != iScore);
 
             if(bCalcMetric) {
                const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(sumExp, itemExp);
@@ -138,8 +141,6 @@ struct ApplyTermUpdateValidationInternal final {
                }
                sumLogLoss += sampleLogLoss * weight;
             }
-
-            iTensorBinCombined >>= cBitsPerItemMax;
          } while(pSampleScoresInnerEnd != pSampleScore);
       } while(pSampleScoresExit != pSampleScore);
 
@@ -177,6 +178,7 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
       StorageDataType maskBits = 0;
       const StorageDataType * pInputData = nullptr;
       StorageDataType iTensorBinCombined = 0;
+      FloatFast updateScore = aUpdateTensorScores[0];
 
       constexpr bool bZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
       if(bZeroDimensional) {
@@ -217,9 +219,12 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
                ++pTargetData;
             }
 
-            const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
+            if(!bZeroDimensional) {
+               const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
+               updateScore = aUpdateTensorScores[iTensorBin];
+               iTensorBinCombined >>= cBitsPerItemMax;
+            }
 
-            const FloatFast updateScore = aUpdateTensorScores[iTensorBin];
             // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
             const FloatFast sampleScore = *pSampleScore + updateScore;
             *pSampleScore = sampleScore;
@@ -237,8 +242,6 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
                }
                sumLogLoss += sampleLogLoss * weight;
             }
-
-            iTensorBinCombined >>= cBitsPerItemMax;
          } while(pSampleScoresInnerEnd != pSampleScore);
       } while(pSampleScoresExit != pSampleScore);
 
@@ -276,6 +279,7 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
       StorageDataType maskBits = 0;
       const StorageDataType * pInputData = nullptr;
       StorageDataType iTensorBinCombined = 0;
+      FloatFast updateScore = aUpdateTensorScores[0];
 
       constexpr bool bZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
       if(bZeroDimensional) {
@@ -310,9 +314,12 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
          do {
          zero_dimensional:;
 
-            const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
+            if(!bZeroDimensional) {
+               const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
+               updateScore = aUpdateTensorScores[iTensorBin];
+               iTensorBinCombined >>= cBitsPerItemMax;
+            }
 
-            const FloatFast updateScore = aUpdateTensorScores[iTensorBin];
             // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
             const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, updateScore);
             *pGradient = gradient;
@@ -330,8 +337,6 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
                }
                sumSquareError += sampleSquaredError * weight;
             }
-
-            iTensorBinCombined >>= cBitsPerItemMax;
          } while(pGradientsInnerEnd != pGradient);
       } while(pGradientsExit != pGradient);
 
