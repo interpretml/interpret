@@ -36,7 +36,7 @@ struct ApplyValidation {
 
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
-template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bCalcMetric>
+template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight>
 struct ApplyTermUpdateValidationInternal final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
@@ -132,8 +132,7 @@ struct ApplyTermUpdateValidationInternal final {
                EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
 
                FloatFast weight = 1;
-               if(nullptr != pWeight) {
-                  // TODO: template this check away
+               if(bWeight) {
                   weight = *pWeight;
                   ++pWeight;
                }
@@ -157,8 +156,8 @@ struct ApplyTermUpdateValidationInternal final {
 };
 
 #ifndef EXPAND_BINARY_LOGITS
-template<ptrdiff_t compilerBitPack, bool bCalcMetric>
-struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric> final {
+template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight>
+struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeight> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
@@ -232,8 +231,7 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric> final 
                EBM_ASSERT(std::isnan(sampleLogLoss) || 0 <= sampleLogLoss);
 
                FloatFast weight = 1;
-               if(nullptr != pWeight) {
-                  // TODO: template this check away
+               if(bWeight) {
                   weight = *pWeight;
                   ++pWeight;
                }
@@ -257,8 +255,8 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric> final 
 };
 #endif // EXPAND_BINARY_LOGITS
 
-template<ptrdiff_t compilerBitPack, bool bCalcMetric>
-struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMetric> final {
+template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight>
+struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMetric, bWeight> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
@@ -326,8 +324,7 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
                EBM_ASSERT(std::isnan(sampleSquaredError) || 0 <= sampleSquaredError);
 
                FloatFast weight = 1;
-               if(nullptr != pWeight) {
-                  // TODO: template this check away
+               if(bWeight) {
                   weight = *pWeight;
                   ++pWeight;
                }
@@ -350,12 +347,24 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
    }
 };
 
+
+template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bCalcMetric>
+INLINE_RELEASE_TEMPLATED static ErrorEbm DecideWeights(ApplyValidation * const pData) {
+   if(nullptr != pData->m_aWeights) {
+      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, true>::Func(pData);
+   } else {
+      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, false>::Func(pData);
+   }
+}
+
+
 template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
 INLINE_RELEASE_TEMPLATED static ErrorEbm DecideMetric(ApplyValidation * const pData) {
    if(pData->m_bCalcMetric) {
-      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, true>::Func(pData);
+      return DecideWeights<cCompilerClasses, compilerBitPack, true>(pData);
    } else {
-      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, false>::Func(pData);
+      // if we are not calculating the metric then we never need the weights
+      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, false, false>::Func(pData);
    }
 }
 
