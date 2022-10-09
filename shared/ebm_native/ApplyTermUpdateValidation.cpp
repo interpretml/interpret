@@ -127,16 +127,15 @@ struct ApplyTermUpdateValidationInternal final {
                ++pSampleScore;
 
                constexpr bool bGetExp = bCalcMetric || bKeepGradHess;
-               FloatFast oneExp;
                if(bGetExp) {
-                  oneExp = ExpForLogLossMulticlass<false>(sampleScore);
+                  const FloatFast oneExp = ExpForLogLossMulticlass<false>(sampleScore);
                   sumExp += oneExp;
-               }
-               if(bKeepGradHess) {
-                  aExps[iScore1] = oneExp;
-               }
-               if(bCalcMetric) {
-                  itemExp = iScore1 == targetData ? oneExp : itemExp;
+                  if(bKeepGradHess) {
+                     aExps[iScore1] = oneExp;
+                  }
+                  if(bCalcMetric) {
+                     itemExp = iScore1 == targetData ? oneExp : itemExp;
+                  }
                }
 
                ++iScore1;
@@ -303,6 +302,8 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
 template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
 struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
+      static_assert(bKeepGradHess, "for MSE regression we should always keep the gradients");
+
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
@@ -362,16 +363,10 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
                iTensorBinCombined >>= cBitsPerItemMax;
             }
 
-            constexpr bool bGetGradient = bKeepGradHess || bCalcMetric;
-            FloatFast gradient;
-            if(bGetGradient) {
-               gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, updateScore);
-            }
-            if(bKeepGradHess) {
-               // TODO: for validation we always keep the gradient, so we should eliminate templated instanciations without this
-               *pGradient = gradient;
-               ++pGradient;
-            }
+            FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, updateScore);
+            *pGradient = gradient;
+            ++pGradient;
+
             if(bCalcMetric) {
                const FloatFast sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
 
@@ -399,40 +394,76 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
    }
 };
 
-template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight>
-INLINE_RELEASE_TEMPLATED static ErrorEbm DecideGradHess(ApplyValidation * const pData) {
-   if(nullptr != pData->m_aGradientsAndHessians) {
-      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, true>::Func(pData);
-   } else {
-      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, false>::Func(pData);
-   }
-}
-
-template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bCalcMetric>
-INLINE_RELEASE_TEMPLATED static ErrorEbm DecideWeights(ApplyValidation * const pData) {
-   if(nullptr != pData->m_aWeights) {
-      return DecideGradHess<cCompilerClasses, compilerBitPack, bCalcMetric, true>(pData);
-   } else {
-      return DecideGradHess<cCompilerClasses, compilerBitPack, bCalcMetric, false>(pData);
-   }
-}
-
 template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
-INLINE_RELEASE_TEMPLATED static ErrorEbm DecideMetric(ApplyValidation * const pData) {
-   if(pData->m_bCalcMetric) {
-      return DecideWeights<cCompilerClasses, compilerBitPack, true>(pData);
-   } else {
-      // if we are not calculating the metric then we never need the weights
-      return DecideGradHess<cCompilerClasses, compilerBitPack, false, false>(pData);
+struct FinalOptions final {
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
+      if(pData->m_bCalcMetric) {
+         constexpr bool bCalcMetric = true;
+         if(nullptr != pData->m_aWeights) {
+            constexpr bool bWeight = true;
+            // if we are calculating the metric then we are doing validation and we do not need the gradients
+            EBM_ASSERT(nullptr == pData->m_aGradientsAndHessians);
+            constexpr bool bKeepGradHess = false;
+            return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+         } else {
+            constexpr bool bWeight = false;
+            // if we are calculating the metric then we are doing validation and we do not need the gradients
+            EBM_ASSERT(nullptr == pData->m_aGradientsAndHessians);
+            constexpr bool bKeepGradHess = false;
+            return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+         }
+      } else {
+         constexpr bool bCalcMetric = false;
+         EBM_ASSERT(nullptr == pData->m_aWeights);
+         constexpr bool bWeight = false; // if we are not calculating the metric then we never need the weights
+         if(nullptr != pData->m_aGradientsAndHessians) {
+            constexpr bool bKeepGradHess = true;
+            return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+         } else {
+            // currently this branch is not taken, but if would be if we wanted to allow in the future
+            // non-metric calculating validation boosting.  For instance if we wanted to substitute an alternate
+            // metric or if for performance reasons we only want to calculate the metric every N rounds of boosting
+            constexpr bool bKeepGradHess = false;
+            return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+         }
+      }
    }
-}
+};
+
+template<ptrdiff_t compilerBitPack>
+struct FinalOptions<k_regression, compilerBitPack> final {
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
+      constexpr ptrdiff_t cCompilerClasses = k_regression;
+      if(pData->m_bCalcMetric) {
+         constexpr bool bCalcMetric = true;
+         if(nullptr != pData->m_aWeights) {
+            constexpr bool bWeight = true;
+            EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
+            constexpr bool bKeepGradHess = true;
+            return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+         } else {
+            constexpr bool bWeight = false;
+            EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
+            constexpr bool bKeepGradHess = true;
+            return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+         }
+      } else {
+         constexpr bool bCalcMetric = false;
+         EBM_ASSERT(nullptr == pData->m_aWeights);
+         constexpr bool bWeight = false; // if we are not calculating the metric then we never need the weights
+         EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
+         constexpr bool bKeepGradHess = true;
+         return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+      }
+   }
+};
 
 template<ptrdiff_t cCompilerClasses>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BitPack(ApplyValidation * const pData) {
    if(k_cItemsPerBitPackNone == pData->m_cPack) {
-      return DecideMetric<cCompilerClasses, k_cItemsPerBitPackNone>(pData);
+      return FinalOptions<cCompilerClasses, k_cItemsPerBitPackNone>::Func(pData);
    } else {
-      return DecideMetric<cCompilerClasses, k_cItemsPerBitPackDynamic>(pData);
+      return FinalOptions<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(pData);
    }
 }
 
@@ -490,7 +521,6 @@ extern ErrorEbm ApplyTermUpdateValidation(
       EBM_ASSERT(IsRegression(cRuntimeClasses));
       error = BitPack<k_regression>(&data);
    }
-
    if(Error_None != error) {
       return error;
    }
