@@ -323,7 +323,6 @@ EXIT /B 0
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApplyTermUpdate.cpp" />
-    <ClCompile Include="ApplyTermUpdateTraining.cpp" />
     <ClCompile Include="ApplyTermUpdateValidation.cpp" />
     <ClCompile Include="BinSumsBoosting.cpp" />
     <ClCompile Include="BinSumsInteraction.cpp" />

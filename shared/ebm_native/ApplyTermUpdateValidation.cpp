@@ -36,11 +36,15 @@ struct ApplyValidation {
 
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
-template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight>
+template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
 struct ApplyTermUpdateValidationInternal final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
+
+      FloatFast aLocalExpVector[GetCountScores(cCompilerClasses)];
+      FloatFast * const aExps = k_dynamicClassification == cCompilerClasses ? pData->m_aMulticlassMidwayTemp : aLocalExpVector;
+
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pData->m_cClasses);
       const size_t cScores = GetCountScores(cClasses);
 
@@ -51,6 +55,7 @@ struct ApplyTermUpdateValidationInternal final {
       const FloatFast * pWeight = pData->m_aWeights;
 
       FloatFast sumLogLoss = 0;
+      FloatFast * pGradientAndHessian = pData->m_aGradientsAndHessians;
       const StorageDataType * pTargetData = reinterpret_cast<const StorageDataType *>(pData->m_aTargets);
       FloatFast * pSampleScore = pData->m_aSampleScores;
       const FloatFast * const pSampleScoresTrueEnd = pSampleScore + pData->m_cSamples * cScores;
@@ -97,8 +102,9 @@ struct ApplyTermUpdateValidationInternal final {
          do {
          zero_dimensional:;
 
+            constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
             size_t targetData;
-            if(bCalcMetric) {
+            if(bGetTarget) {
                targetData = static_cast<size_t>(*pTargetData);
                ++pTargetData;
             }
@@ -111,23 +117,50 @@ struct ApplyTermUpdateValidationInternal final {
 
             FloatFast itemExp = 0;
             FloatFast sumExp = 0;
-            size_t iScore = 0;
+            size_t iScore1 = 0;
             do {
-               const FloatFast updateScore = aBinScores[iScore];
+               const FloatFast updateScore = aBinScores[iScore1];
 
                // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
                const FloatFast sampleScore = *pSampleScore + updateScore;
                *pSampleScore = sampleScore;
                ++pSampleScore;
 
-               if(bCalcMetric) {
-                  const FloatFast oneExp = ExpForLogLossMulticlass<false>(sampleScore);
-                  itemExp = iScore == targetData ? oneExp : itemExp;
+               constexpr bool bGetExp = bCalcMetric || bKeepGradHess;
+               FloatFast oneExp;
+               if(bGetExp) {
+                  oneExp = ExpForLogLossMulticlass<false>(sampleScore);
                   sumExp += oneExp;
                }
+               if(bKeepGradHess) {
+                  aExps[iScore1] = oneExp;
+               }
+               if(bCalcMetric) {
+                  itemExp = iScore1 == targetData ? oneExp : itemExp;
+               }
 
-               ++iScore;
-            } while(cScores != iScore);
+               ++iScore1;
+            } while(cScores != iScore1);
+
+            if(bKeepGradHess) {
+               size_t iScore2 = 0;
+               do {
+                  FloatFast gradient;
+                  FloatFast hessian;
+                  EbmStats::InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(
+                     sumExp,
+                     aExps[iScore2],
+                     targetData,
+                     iScore2,
+                     gradient,
+                     hessian
+                  );
+                  *pGradientAndHessian = gradient;
+                  *(pGradientAndHessian + 1) = hessian;
+                  pGradientAndHessian += 2;
+                  ++iScore2;
+               } while(cScores != iScore2);
+            }
 
             if(bCalcMetric) {
                const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(sumExp, itemExp);
@@ -157,8 +190,8 @@ struct ApplyTermUpdateValidationInternal final {
 };
 
 #ifndef EXPAND_BINARY_LOGITS
-template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight>
-struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeight> final {
+template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
+struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
@@ -167,6 +200,7 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
       const FloatFast * pWeight = pData->m_aWeights;
 
       FloatFast sumLogLoss = 0;
+      FloatFast * pGradientAndHessian = pData->m_aGradientsAndHessians;
       const StorageDataType * pTargetData = reinterpret_cast<const StorageDataType *>(pData->m_aTargets);
       FloatFast * pSampleScore = pData->m_aSampleScores;
       const FloatFast * const pSampleScoresTrueEnd = pSampleScore + pData->m_cSamples;
@@ -213,8 +247,9 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
          do {
          zero_dimensional:;
 
+            constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
             size_t targetData;
-            if(bCalcMetric) {
+            if(bGetTarget) {
                targetData = static_cast<size_t>(*pTargetData);
                ++pTargetData;
             }
@@ -229,6 +264,13 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
             const FloatFast sampleScore = *pSampleScore + updateScore;
             *pSampleScore = sampleScore;
             ++pSampleScore;
+
+            if(bKeepGradHess) {
+               const FloatFast gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(sampleScore, targetData);
+               *pGradientAndHessian = gradient;
+               *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
+               pGradientAndHessian += 2;
+            }
 
             if(bCalcMetric) {
                const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(sampleScore, targetData);
@@ -258,8 +300,8 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
 };
 #endif // EXPAND_BINARY_LOGITS
 
-template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight>
-struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMetric, bWeight> final {
+template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
+struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
@@ -320,11 +362,16 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
                iTensorBinCombined >>= cBitsPerItemMax;
             }
 
-            // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
-            const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, updateScore);
-            *pGradient = gradient;
-            ++pGradient;
-
+            constexpr bool bGetGradient = bKeepGradHess || bCalcMetric;
+            FloatFast gradient;
+            if(bGetGradient) {
+               gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, updateScore);
+            }
+            if(bKeepGradHess) {
+               // TODO: for validation we always keep the gradient, so we should eliminate templated instanciations without this
+               *pGradient = gradient;
+               ++pGradient;
+            }
             if(bCalcMetric) {
                const FloatFast sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
 
@@ -352,16 +399,23 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
    }
 };
 
+template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight>
+INLINE_RELEASE_TEMPLATED static ErrorEbm DecideGradHess(ApplyValidation * const pData) {
+   if(nullptr != pData->m_aGradientsAndHessians) {
+      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, true>::Func(pData);
+   } else {
+      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, false>::Func(pData);
+   }
+}
 
 template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bCalcMetric>
 INLINE_RELEASE_TEMPLATED static ErrorEbm DecideWeights(ApplyValidation * const pData) {
    if(nullptr != pData->m_aWeights) {
-      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, true>::Func(pData);
+      return DecideGradHess<cCompilerClasses, compilerBitPack, bCalcMetric, true>(pData);
    } else {
-      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, false>::Func(pData);
+      return DecideGradHess<cCompilerClasses, compilerBitPack, bCalcMetric, false>(pData);
    }
 }
-
 
 template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
 INLINE_RELEASE_TEMPLATED static ErrorEbm DecideMetric(ApplyValidation * const pData) {
@@ -369,7 +423,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm DecideMetric(ApplyValidation * const pD
       return DecideWeights<cCompilerClasses, compilerBitPack, true>(pData);
    } else {
       // if we are not calculating the metric then we never need the weights
-      return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, false, false>::Func(pData);
+      return DecideGradHess<cCompilerClasses, compilerBitPack, false, false>(pData);
    }
 }
 

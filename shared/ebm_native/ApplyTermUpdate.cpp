@@ -22,18 +22,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void ApplyTermUpdateTraining(
-   const ptrdiff_t cRuntimeClasses,
-   const ptrdiff_t runtimeBitPack,
-   FloatFast * const aMulticlassMidwayTemp,
-   const FloatFast * const aUpdateScores,
-   const size_t cSamples,
-   const StorageDataType * const aInputData,
-   const void * const aTargetData,
-   FloatFast * const aSampleScore,
-   FloatFast * const aGradientAndHessian
-);
-
 extern ErrorEbm ApplyTermUpdateValidation(
    const ptrdiff_t cRuntimeClasses,
    const ptrdiff_t runtimeBitPack,
@@ -174,17 +162,24 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
    pBoosterCore->GetCurrentModel()[iTerm]->AddExpandedWithBadValueProtection(aUpdateScores);
 
    if(0 != pBoosterCore->GetTrainingSet()->GetCountSamples()) {
-      ApplyTermUpdateTraining(
+      double unused;
+      error = ApplyTermUpdateValidation(
          pBoosterCore->GetCountClasses(),
          pTerm->GetBitPack(),
+         false,
          pBoosterShell->GetMulticlassMidwayTemp(),
          pBoosterShell->GetTermUpdate()->GetTensorScoresPointer(),
          pBoosterCore->GetTrainingSet()->GetCountSamples(),
          pBoosterCore->GetTrainingSet()->GetInputDataPointer(iTerm),
          pBoosterCore->GetTrainingSet()->GetTargetDataPointer(),
+         nullptr,
          pBoosterCore->GetTrainingSet()->GetSampleScores(),
-         pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer()
+         pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer(),
+         &unused
       );
+      if(Error_None != error) {
+         return error;
+      }
    }
 
    double validationMetricAvg = 0.0;
@@ -203,8 +198,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       error = ApplyTermUpdateValidation(
          pBoosterCore->GetCountClasses(),
          pTerm->GetBitPack(),
-         true, // TODO: expose/use this bCalcMetric
-         pBoosterShell->GetMulticlassMidwayTemp(),
+         true,
+         nullptr,
          pBoosterShell->GetTermUpdate()->GetTensorScoresPointer(),
          pBoosterCore->GetValidationSet()->GetCountSamples(),
          pBoosterCore->GetValidationSet()->GetInputDataPointer(iTerm),
