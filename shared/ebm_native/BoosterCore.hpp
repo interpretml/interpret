@@ -189,11 +189,9 @@ public:
       BoosterCore ** const ppBoosterCoreOut
    );
 
-   void InitializeBoosterGradientsAndHessians(
-      const unsigned char * const pDataSetShared,
-      const BagEbm * const aBag,
-      const double * const aInitScores,
-      FloatFast * const aMulticlassMidwayTemp
+   ErrorEbm InitializeBoosterGradientsAndHessians(
+      FloatFast * const aMulticlassMidwayTemp,
+      FloatFast * const aUpdateScores
    );
 };
 

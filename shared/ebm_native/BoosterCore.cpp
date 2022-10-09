@@ -35,14 +35,19 @@ namespace DEFINED_ZONE_NAME {
 
 class RandomDeterministic;
 
-extern void InitializeGradientsAndHessians(
-   const unsigned char * const pDataSetShared,
-   const BagEbm direction,
-   const BagEbm * const aBag,
-   const double * const aInitScores,
+extern ErrorEbm ApplyTermUpdateValidation(
+   const ptrdiff_t cRuntimeClasses,
+   const ptrdiff_t runtimeBitPack,
+   const bool bCalcMetric,
    FloatFast * const aMulticlassMidwayTemp,
-   const size_t cSetSamples,
-   FloatFast * const aGradientAndHessian
+   const FloatFast * const aUpdateScores,
+   const size_t cSamples,
+   const StorageDataType * const aInputData,
+   const void * const aTargetData,
+   const FloatFast * const aWeight,
+   FloatFast * const aSampleScore,
+   FloatFast * const aGradientAndHessian,
+   double * const pMetricOut
 );
 
 extern ErrorEbm Unbag(
@@ -683,34 +688,36 @@ ErrorEbm BoosterCore::Create(
    return Error_None;
 }
 
-void BoosterCore::InitializeBoosterGradientsAndHessians(
-   const unsigned char * const pDataSetShared,
-   const BagEbm * const aBag,
-   const double * const aInitScores,
-   FloatFast * const aMulticlassMidwayTemp
+ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
+   FloatFast * const aMulticlassMidwayTemp,
+   FloatFast * const aUpdateScores
 ) {
-   if(!m_trainingSet.IsGradientsAndHessiansNull()) {
-      InitializeGradientsAndHessians(
-         pDataSetShared,
-         BagEbm { 1 },
-         aBag,
-         aInitScores,
+   ErrorEbm error = Error_None;
+   if(!GetTrainingSet()->IsGradientsAndHessiansNull()) {
+#ifndef NDEBUG
+      const size_t cScores = GetCountScores(GetCountClasses());
+      // we should be initted to zero
+      for(size_t iScore = 0; iScore < cScores; ++iScore) {
+         EBM_ASSERT(0 == aUpdateScores[iScore]);
+      }
+#endif // NDEBUG
+      double unused;
+      error = ApplyTermUpdateValidation(
+         GetCountClasses(),
+         k_cItemsPerBitPackNone,
+         false,
          aMulticlassMidwayTemp,
-         m_trainingSet.GetCountSamples(),
-         m_trainingSet.GetGradientsAndHessiansPointer()
+         aUpdateScores,
+         GetTrainingSet()->GetCountSamples(),
+         nullptr,
+         GetTrainingSet()->GetTargetDataPointer(),
+         nullptr,
+         GetTrainingSet()->GetSampleScores(),
+         GetTrainingSet()->GetGradientsAndHessiansPointer(),
+         &unused
       );
    }
-   if(!m_validationSet.IsGradientsAndHessiansNull()) {
-      InitializeGradientsAndHessians(
-         pDataSetShared,
-         BagEbm { -1 },
-         aBag,
-         aInitScores,
-         aMulticlassMidwayTemp,
-         m_validationSet.GetCountSamples(),
-         m_validationSet.GetGradientsAndHessiansPointer()
-      );
-   }
+   return error;
 }
 
 } // DEFINED_ZONE_NAME
