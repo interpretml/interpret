@@ -565,9 +565,11 @@ INLINE_ALWAYS static T ExpForBinaryClassification(const T val) {
    // the optimal addExpSchraudolphTerm would be different between binary 
    // and multiclass since the softmax form we use is different
 
-   // TODO : Tune ExpApproxSchraudolph specifically for binary classification
+   // TODO : tune addExpSchraudolphTerm specifically for binary classification.  
+   //        k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit was tuned for softmax with 3 classes and one of them zeroed.  
+   //        For binary classification we can assume large positive logits typically, unlike multiclass
 
-   return ExpApproxSchraudolph<bNegateInput, true, true, true, false, T>(val);
+   return ExpApproxSchraudolph<bNegateInput, true, true, true, false, T>(val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
 #else // FAST_EXP
    return std::exp(bNegateInput ? -val : val);
 #endif // FAST_EXP
@@ -579,9 +581,12 @@ INLINE_ALWAYS static T ExpForMulticlass(const T val) {
    // the optimal addExpSchraudolphTerm would be different between binary
    // and multiclass since the softmax form we use is different
 
-   // TODO : Tune ExpApproxSchraudolph specifically for multiclass classification
+   // TODO : tune addExpSchraudolphTerm specifically for multiclass classification.  Currently (at the time that 
+   //        I'm writing this, although we have plans to change it) we aren't zeroing a 
+   //        logit and k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit is really the wrong constant since it was
+   //        tuned for softmax with a zeroed logit
 
-   return ExpApproxSchraudolph<bNegateInput, true, true, true, false, T>(val);
+   return ExpApproxSchraudolph<bNegateInput, true, true, true, false, T>(val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
 #else // FAST_EXP
    return std::exp(bNegateInput ? -val : val);
 #endif // FAST_EXP
@@ -721,44 +726,6 @@ INLINE_ALWAYS static T LogApproxSchraudolph(T val, const float addLogSchraudolph
       }
    }
    return val;
-}
-
-template<bool bNegateInput = false, typename T>
-INLINE_ALWAYS static T ExpForLogLossBinaryClassification(const T val) {
-#ifdef FAST_LOG
-   // the optimal addExpSchraudolphTerm is different between binary and multiclass 
-   // since the softmax form we use is different
-
-   // TODO : tune addExpSchraudolphTerm specifically for binary classification.  
-   //        k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit was tuned for softmax with 3 classes and one of them zeroed.  
-   //        For binary classification we can assume large positive logits typically, unlike multiclass
-
-   return ExpApproxSchraudolph<bNegateInput, true, true, true, false, T>(val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
-#else // FAST_LOG
-   // if we're using the non-approximate std::log function, we might as well use std::exp as well for the
-   // places that we compute Exp for the log loss
-   return std::exp(bNegateInput ? -val : val);
-#endif // FAST_LOG
-}
-
-template<bool bNegateInput = false, typename T>
-INLINE_ALWAYS static T ExpForLogLossMulticlass(const T val) {
-#ifdef FAST_LOG
-   // the optimal addExpSchraudolphTerm is different between binary and multiclass 
-   // since the softmax form we use is different
-
-   // TODO : tune addExpSchraudolphTerm specifically for multiclass classification.  Currently (at the time that 
-   //        I'm writing this, although we have plans to change it) we aren't zeroing a 
-   //        logit and k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit is really the wrong constant since it was
-   //        tuned for softmax with a zeroed logit, but it probably doesn't matter much because we don't
-   //        care much about shifts in the log loss metric provided the shifts are stable
-
-   return ExpApproxSchraudolph<bNegateInput, true, true, true, false, T>(val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
-#else // FAST_LOG
-   // if we're using the non-approximate std::log function, we might as well use std::exp as well for the
-   // places that we compute Exp for the log loss
-   return std::exp(bNegateInput ? -val : val);
-#endif // FAST_LOG
 }
 
 template<bool bNegateOutput = false, typename T>

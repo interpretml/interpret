@@ -14,7 +14,7 @@
 
 #include "ebm_internal.hpp" // k_epsilonGradient
 
-#include "approximate_math.hpp" // ExpForLogLossBinaryClassification, ...
+#include "approximate_math.hpp" // ExpForBinaryClassification, ...
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -814,7 +814,7 @@ public:
 
       EBM_ASSERT(0 == target || 1 == target);
 
-      const FloatFast ourExp = ExpForLogLossBinaryClassification<false>(UNPREDICTABLE(0 == target) ? sampleScore : -sampleScore);
+      const FloatFast ourExp = ExpForBinaryClassification<false>(UNPREDICTABLE(0 == target) ? sampleScore : -sampleScore);
       // no reasonable implementation of exp should lead to a negative value
       EBM_ASSERT(std::isnan(sampleScore) || 0 <= ourExp);
 

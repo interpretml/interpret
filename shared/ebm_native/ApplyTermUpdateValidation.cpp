@@ -128,7 +128,7 @@ struct ApplyTermUpdateValidationInternal final {
 
                constexpr bool bGetExp = bCalcMetric || bKeepGradHess;
                if(bGetExp) {
-                  const FloatFast oneExp = ExpForLogLossMulticlass<false>(sampleScore);
+                  const FloatFast oneExp = ExpForMulticlass<false>(sampleScore);
                   sumExp += oneExp;
                   if(bKeepGradHess) {
                      aExps[iScore1] = oneExp;
