@@ -292,9 +292,9 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       const BagEbm * pSampleReplication = aBag;
       const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargetsFrom);
       StorageDataType * pTargetTo = aTargetsTo;
+      const StorageDataType * const pTargetToEnd = &aTargetsTo[cSamples];
       const double * pInitScoreFrom = aInitScores;
       FloatFast * pSampleScoreTo = aSampleScoreTo;
-      FloatFast * pSampleScoreToEnd = reinterpret_cast<FloatFast *>(reinterpret_cast<char *>(aSampleScoreTo) + cBytesAllScores);
       do {
          BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
@@ -333,7 +333,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             }
          }
          ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
-      } while(pSampleScoreToEnd != pSampleScoreTo);
+      } while(pTargetToEnd != pTargetTo);
 
       double unused;
       const ErrorEbm error = ApplyTermUpdateValidation(
