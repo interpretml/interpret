@@ -72,8 +72,7 @@ inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) noexcept
 // having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in 
 // places where you couldn't do so with variable loop iterations
 #define GET_ITEMS_PER_BIT_PACK(MACRO_compilerBitPack, MACRO_runtimeBitPack) \
-   (k_cItemsPerBitPackDynamic2 == (MACRO_compilerBitPack) ? \
-      static_cast<size_t>(MACRO_runtimeBitPack) : static_cast<size_t>(MACRO_compilerBitPack))
+   (k_cItemsPerBitPackDynamic2 == (MACRO_compilerBitPack) ? (MACRO_runtimeBitPack) : (MACRO_compilerBitPack))
 
 static constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 

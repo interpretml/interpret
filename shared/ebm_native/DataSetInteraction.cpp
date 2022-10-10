@@ -126,6 +126,14 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       );
       EBM_ASSERT(nullptr != aInputDataFrom);
       EBM_ASSERT(!bSparse); // we don't support sparse yet
+      EBM_ASSERT(1 <= cBins); // we have samples, and cBins can only be 0 if there are 0 samples
+
+      if(IsConvertError<StorageDataType>(cBins - 1)) {
+         // if we check this here, we can be guaranteed that any inputData will convert to StorageDataType
+         // since the shared datastructure would not allow data items equal or greater than cBins
+         LOG_0(Trace_Error, "ERROR DataSetInteraction::ConstructInputData IsConvertError<StorageDataType>(cBins - 1)");
+         goto free_all;
+      }
 
       const BagEbm * pSampleReplication = aBag;
       BagEbm replication = 0;
@@ -140,25 +148,19 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
             EBM_ASSERT(!IsConvertError<size_t>(inputData));
             iData = static_cast<size_t>(inputData);
-            if(cBins <= iData) {
-               LOG_0(Trace_Error, "ERROR DataSetInteraction::ConstructInputData iData value must be less than the number of bins");
-               goto free_all;
-            }
+            EBM_ASSERT(iData < cBins); // enforced by shared data creator
+            EBM_ASSERT(!IsConvertError<StorageDataType>(iData)); // since it is smaller than cBins this is guaranteed
 
             replication = 1;
-            if(nullptr != pSampleReplication) {
+            if(nullptr == pSampleReplication) {
+               break;
+            } else {
                replication = *pSampleReplication;
                ++pSampleReplication;
             }
          }
          EBM_ASSERT(0 < replication);
          --replication;
-
-         if(IsConvertError<StorageDataType>(iData)) {
-            // we can remove this check once we get into bit packing this since we'll have checked it beforehand
-            LOG_0(Trace_Error, "ERROR DataSetInteraction::ConstructInputData iData value too big to reference memory");
-            goto free_all;
-         }
 
          *pInputDataTo = static_cast<StorageDataType>(iData);
          ++pInputDataTo;

@@ -215,7 +215,7 @@ public:
       EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
       const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
 
-      const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pTerm->GetBitPack());
+      const size_t cItemsPerBitPack = static_cast<size_t>(GET_ITEMS_PER_BIT_PACK(compilerBitPack, pTerm->GetBitPack()));
       EBM_ASSERT(size_t { 1 } <= cItemsPerBitPack);
       EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
       const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);

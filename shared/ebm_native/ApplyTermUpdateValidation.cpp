@@ -48,6 +48,8 @@ struct ApplyTermUpdateValidationInternal final {
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pData->m_cClasses);
       const size_t cScores = GetCountScores(cClasses);
 
+      const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
+
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
@@ -69,12 +71,12 @@ struct ApplyTermUpdateValidationInternal final {
       StorageDataType iTensorBinCombined = 0;
       const FloatFast * aBinScores = aUpdateTensorScores;
 
-      constexpr bool bZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
-      if(bZeroDimensional) {
+      const bool bRuntimeZeroDimensional = k_cItemsPerBitPackNone == cPack;
+      if(bRuntimeZeroDimensional) {
          goto zero_dimensional;
       }
 
-      cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
+      cItemsPerBitPack = static_cast<size_t>(cPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
       EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
       cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
@@ -109,7 +111,11 @@ struct ApplyTermUpdateValidationInternal final {
                ++pTargetData;
             }
 
-            if(!bZeroDimensional) {
+            constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
+            if(!bCompilerZeroDimensional) {
+               // we only use the compiler version of compilerBitPack since we do not want this if statement
+               // injected into the code for the dynamic version of this compilation.  This will work even if
+               // the runtime bit pack is k_cItemsPerBitPackNone since then iTensorBinCombined will be zero
                const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
                aBinScores = &aUpdateTensorScores[iTensorBin * cScores];
                iTensorBinCombined >>= cBitsPerItemMax;
@@ -162,16 +168,15 @@ struct ApplyTermUpdateValidationInternal final {
             }
 
             if(bCalcMetric) {
-               const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(sumExp, itemExp);
-
+               FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(sumExp, itemExp);
                EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
 
-               FloatFast weight = 1;
                if(bWeight) {
-                  weight = *pWeight;
+                  const FloatFast weight = *pWeight;
+                  sampleLogLoss *= weight;
                   ++pWeight;
                }
-               sumLogLoss += sampleLogLoss * weight;
+               sumLogLoss += sampleLogLoss;
             }
          } while(pSampleScoresInnerEnd != pSampleScore);
       } while(pSampleScoresExit != pSampleScore);
@@ -192,6 +197,8 @@ struct ApplyTermUpdateValidationInternal final {
 template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
 struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
+      const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
+
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
@@ -213,12 +220,12 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
       StorageDataType iTensorBinCombined = 0;
       FloatFast updateScore = aUpdateTensorScores[0];
 
-      constexpr bool bZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
-      if(bZeroDimensional) {
+      const bool bRuntimeZeroDimensional = k_cItemsPerBitPackNone == cPack;
+      if(bRuntimeZeroDimensional) {
          goto zero_dimensional;
       }
 
-      cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
+      cItemsPerBitPack = static_cast<size_t>(cPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
       EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
       cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
@@ -253,7 +260,11 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
                ++pTargetData;
             }
 
-            if(!bZeroDimensional) {
+            constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
+            if(!bCompilerZeroDimensional) {
+               // we only use the compiler version of compilerBitPack since we do not want this if statement
+               // injected into the code for the dynamic version of this compilation.  This will work even if
+               // the runtime bit pack is k_cItemsPerBitPackNone since then iTensorBinCombined will be zero
                const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
                updateScore = aUpdateTensorScores[iTensorBin];
                iTensorBinCombined >>= cBitsPerItemMax;
@@ -272,16 +283,15 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
             }
 
             if(bCalcMetric) {
-               const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(sampleScore, targetData);
-
+               FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(sampleScore, targetData);
                EBM_ASSERT(std::isnan(sampleLogLoss) || 0 <= sampleLogLoss);
 
-               FloatFast weight = 1;
                if(bWeight) {
-                  weight = *pWeight;
+                  const FloatFast weight = *pWeight;
+                  sampleLogLoss *= weight;
                   ++pWeight;
                }
-               sumLogLoss += sampleLogLoss * weight;
+               sumLogLoss += sampleLogLoss;
             }
          } while(pSampleScoresInnerEnd != pSampleScore);
       } while(pSampleScoresExit != pSampleScore);
@@ -304,6 +314,8 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       static_assert(bKeepGradHess, "for MSE regression we should always keep the gradients");
 
+      const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
+
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
@@ -324,12 +336,12 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
       StorageDataType iTensorBinCombined = 0;
       FloatFast updateScore = aUpdateTensorScores[0];
 
-      constexpr bool bZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
-      if(bZeroDimensional) {
+      const bool bRuntimeZeroDimensional = k_cItemsPerBitPackNone == cPack;
+      if(bRuntimeZeroDimensional) {
          goto zero_dimensional;
       }
 
-      cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
+      cItemsPerBitPack = static_cast<size_t>(cPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
       EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
       cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
@@ -357,7 +369,11 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
          do {
          zero_dimensional:;
 
-            if(!bZeroDimensional) {
+            constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
+            if(!bCompilerZeroDimensional) {
+               // we only use the compiler version of compilerBitPack since we do not want this if statement
+               // injected into the code for the dynamic version of this compilation.  This will work even if
+               // the runtime bit pack is k_cItemsPerBitPackNone since then iTensorBinCombined will be zero
                const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
                updateScore = aUpdateTensorScores[iTensorBin];
                iTensorBinCombined >>= cBitsPerItemMax;
@@ -368,16 +384,15 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
             ++pGradient;
 
             if(bCalcMetric) {
-               const FloatFast sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
-
+               FloatFast sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
                EBM_ASSERT(std::isnan(sampleSquaredError) || 0 <= sampleSquaredError);
 
-               FloatFast weight = 1;
                if(bWeight) {
-                  weight = *pWeight;
+                  const FloatFast weight = *pWeight;
+                  sampleSquaredError *= weight;
                   ++pWeight;
                }
-               sumSquareError += sampleSquaredError * weight;
+               sumSquareError += sampleSquaredError;
             }
          } while(pGradientsInnerEnd != pGradient);
       } while(pGradientsExit != pGradient);
@@ -460,11 +475,10 @@ struct FinalOptions<k_regression, compilerBitPack> final {
 
 template<ptrdiff_t cCompilerClasses>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BitPack(ApplyValidation * const pData) {
-   if(k_cItemsPerBitPackNone == pData->m_cPack) {
-      return FinalOptions<cCompilerClasses, k_cItemsPerBitPackNone>::Func(pData);
-   } else {
-      return FinalOptions<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(pData);
-   }
+   // there shouldn't be a huge benefit to using compile time bit packing constants.  Most of the time there
+   // will be 8 or more data items in a bitpack anyways, and at the extreme end with 64 bits in the pack we
+   // don't get much benefit from unwinding the loop.  We might get some benefit in terms of register availability
+   return FinalOptions<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(pData);
 }
 
 template<ptrdiff_t cPossibleClasses>

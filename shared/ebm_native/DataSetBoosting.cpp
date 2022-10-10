@@ -69,40 +69,40 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
       return nullptr;
    }
 
-   const size_t cBytesPerItem = sizeof(*aSampleScores) * cScores;
+   if(nullptr == aInitScores) {
+      static_assert(std::numeric_limits<FloatFast>::is_iec559, "IEEE 754 guarantees zeros means a zero float");
+      memset(aSampleScores, 0, sizeof(FloatFast) * cElements);
+   } else {
+      const size_t cBytesPerItem = sizeof(*aSampleScores) * cScores;
 
-   const BagEbm * pSampleReplication = aBag;
-   FloatFast * pSampleScore = aSampleScores;
-   const FloatFast * const pSampleScoresEnd = &aSampleScores[cElements];
-   const double * pInitScore = aInitScores;
-   const bool isLoopTraining = BagEbm { 0 } < direction;
-   do {
-      BagEbm replication = 1;
-      if(nullptr != pSampleReplication) {
-         replication = *pSampleReplication;
-         ++pSampleReplication;
-      }
-      if(BagEbm { 0 } != replication) {
-         const bool isItemTraining = BagEbm { 0 } < replication;
-         if(isLoopTraining == isItemTraining) {
-            do {
-               EBM_ASSERT(pSampleScore < pSampleScoresEnd);
-               if(nullptr == pInitScore) {
-                  static_assert(std::numeric_limits<FloatFast>::is_iec559, "IEEE 754 guarantees zeros means a zero float");
-                  memset(pSampleScore, 0, cBytesPerItem);
-               } else {
+      const BagEbm * pSampleReplication = aBag;
+      FloatFast * pSampleScore = aSampleScores;
+      const FloatFast * const pSampleScoresEnd = &aSampleScores[cElements];
+      const double * pInitScore = aInitScores;
+      const bool isLoopTraining = BagEbm { 0 } < direction;
+      do {
+         BagEbm replication = 1;
+         if(nullptr != pSampleReplication) {
+            replication = *pSampleReplication;
+            ++pSampleReplication;
+         }
+         if(BagEbm { 0 } != replication) {
+            const bool isItemTraining = BagEbm { 0 } < replication;
+            if(isLoopTraining == isItemTraining) {
+               do {
+                  EBM_ASSERT(pSampleScore < pSampleScoresEnd);
+
                   static_assert(sizeof(*pSampleScore) == sizeof(*pInitScore), "float mismatch");
                   memcpy(pSampleScore, pInitScore, cBytesPerItem);
-               }
-               pSampleScore += cScores;
-               replication -= direction;
-            } while(BagEbm { 0 } != replication);
-         }
-         if(nullptr != pInitScore) {
+
+                  pSampleScore += cScores;
+                  replication -= direction;
+               } while(BagEbm { 0 } != replication);
+            }
             pInitScore += cScores;
          }
-      }
-   } while(pSampleScoresEnd != pSampleScore);
+      } while(pSampleScoresEnd != pSampleScore);
+   }
 
    LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructSampleScores");
    return aSampleScores;

@@ -67,7 +67,7 @@ extern void InitializeMSEGradientsAndHessians(
             // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
             // There is no need to check it here since we already have graceful detection later for other reasons.
 
-            const FloatFast data = *pTargetData;
+            const FloatFast data = *pTargetData; // TODO: is this faster if we always fetch data thus making the load more predictable
             // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
             //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
             const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEInit(initScore, data);

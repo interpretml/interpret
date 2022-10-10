@@ -284,56 +284,81 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
 
       memset(aUpdateScores, 0, cBytesScores);
 
-      if(nullptr == aInitScores) {
-         // if aInitScores is nullptr then all initial scores are zero
-         memset(aSampleScoreTo, 0, cBytesAllScores);
-      }
 
       const BagEbm * pSampleReplication = aBag;
       const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargetsFrom);
       StorageDataType * pTargetTo = aTargetsTo;
       const StorageDataType * const pTargetToEnd = &aTargetsTo[cSamples];
-      const double * pInitScoreFrom = aInitScores;
-      FloatFast * pSampleScoreTo = aSampleScoreTo;
-      do {
-         BagEbm replication = 1;
-         if(nullptr != pSampleReplication) {
-            replication = *pSampleReplication;
-            ++pSampleReplication;
-         }
-         if(BagEbm { 0 } != replication) {
-            if(BagEbm { 0 } < replication) {
-               const SharedStorageDataType targetOriginal = *pTargetFrom;
-               // the shared data storage structure ensures that all target values are less than the number of classes
-               // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
-               // so we do not need the runtime to check this
-               EBM_ASSERT(targetOriginal < static_cast<SharedStorageDataType>(cClasses));
-               // since cClasses must be below StorageDataType, it follows that..
-               EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
-               const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
-               const double * pInitScoreFromEnd = nullptr == pInitScoreFrom ? nullptr : pInitScoreFrom + cScores;
-               do {
-                  *pTargetTo = target;
-                  ++pTargetTo;
 
-                  if(nullptr != pInitScoreFrom) {
+      if(nullptr == aInitScores) {
+         // if aInitScores is nullptr then all initial scores are zero
+         memset(aSampleScoreTo, 0, cBytesAllScores);
+
+         do {
+            BagEbm replication = 1;
+            if(nullptr != pSampleReplication) {
+               replication = *pSampleReplication;
+               ++pSampleReplication;
+            }
+            if(BagEbm { 0 } != replication) {
+               if(BagEbm { 0 } < replication) {
+                  const SharedStorageDataType targetOriginal = *pTargetFrom;
+                  // the shared data storage structure ensures that all target values are less than the number of classes
+                  // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
+                  // so we do not need the runtime to check this
+                  EBM_ASSERT(targetOriginal < static_cast<SharedStorageDataType>(cClasses));
+                  // since cClasses must be below StorageDataType, it follows that..
+                  EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
+                  const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
+                  do {
+                     *pTargetTo = target;
+                     ++pTargetTo;
+
+                     --replication;
+                  } while(BagEbm { 0 } != replication);
+               }
+            }
+            ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
+         } while(pTargetToEnd != pTargetTo);
+      } else {
+         const double * pInitScoreFrom = aInitScores;
+         FloatFast * pSampleScoreTo = aSampleScoreTo;
+         do {
+            BagEbm replication = 1;
+            if(nullptr != pSampleReplication) {
+               replication = *pSampleReplication;
+               ++pSampleReplication;
+            }
+            if(BagEbm { 0 } != replication) {
+               if(BagEbm { 0 } < replication) {
+                  const SharedStorageDataType targetOriginal = *pTargetFrom;
+                  // the shared data storage structure ensures that all target values are less than the number of classes
+                  // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
+                  // so we do not need the runtime to check this
+                  EBM_ASSERT(targetOriginal < static_cast<SharedStorageDataType>(cClasses));
+                  // since cClasses must be below StorageDataType, it follows that..
+                  EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
+                  const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
+                  const double * pInitScoreFromEnd = pInitScoreFrom + cScores;
+                  do {
+                     *pTargetTo = target;
+                     ++pTargetTo;
+
                      do {
                         *pSampleScoreTo = SafeConvertFloat<FloatFast>(*pInitScoreFrom);
                         ++pSampleScoreTo;
                         ++pInitScoreFrom;
                      } while(pInitScoreFromEnd != pInitScoreFrom);
                      pInitScoreFrom -= cScores; // in case replication is more than 1 and we do another loop
-                  }
 
-                  --replication;
-               } while(BagEbm { 0 } != replication);
-            }
-            if(nullptr != pInitScoreFrom) {
+                     --replication;
+                  } while(BagEbm { 0 } != replication);
+               }
                pInitScoreFrom += cScores;
             }
-         }
-         ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
-      } while(pTargetToEnd != pTargetTo);
+            ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
+         } while(pTargetToEnd != pTargetTo);
+      }
 
       double unused;
       const ErrorEbm error = ApplyTermUpdateValidation(

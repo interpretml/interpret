@@ -544,9 +544,9 @@ INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
             const FloatFast weight = *pWeights;
             // this relies on the property that NaN is not equal to everything, including NaN
             if(UNLIKELY(firstWeight != weight)) {
-               if(!std::isnan(firstWeight)) {
-                  // if firstWeight or *pWeight is NaN this should trigger, which is good since we don't want to
-                  // replace arrays containing all NaN weights with weights of 1
+               // we need the check of weight as NaN to handle the case [NaN, 9]
+               if(!std::isnan(firstWeight) || std::isnan(weight)) {
+                  // if there are any NaN values exit and do not replace with weights of 1 even if all values are NaN
                   return false;
                }
                firstWeight = weight;
@@ -603,6 +603,7 @@ extern ErrorEbm ExtractWeights(
             const bool isItemTraining = BagEbm { 0 } < replication;
             if(isLoopTraining == isItemTraining) {
                const FloatFast weight = *pWeightFrom;
+               // if weight is NaN or +-inf then we'll find that out when we sum the weights
                do {
                   EBM_ASSERT(pWeightTo < pWeightToEnd);
                   *pWeightTo = weight;
