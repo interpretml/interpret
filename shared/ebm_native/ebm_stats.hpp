@@ -700,7 +700,10 @@ public:
       const FloatFast expVal = std::exp(sampleScore);
       FloatFast gradientDebug;
       FloatFast hessianDebug;
-      InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(FloatFast { 1 } + expVal, expVal, target, 1, gradientDebug, hessianDebug);
+      InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(FloatFast { 1 } + expVal, expVal, gradientDebug, hessianDebug);
+      if(1 == target) {
+         gradientDebug = MulticlassFixTargetGradient(gradientDebug);
+      }
       // the TransformScoreToGradientMulticlass can't be +-infinity per notes in TransformScoreToGradientMulticlass, 
       // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
       // if either is a NaN value, then don't compare since we aren't sure that we're exactly equal in those cases because of numeric instability reasons
@@ -709,11 +712,9 @@ public:
       return gradient;
    }
 
-   INLINE_ALWAYS static void InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(
+   INLINE_ALWAYS static void InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(
       const FloatFast sumExp, 
       const FloatFast itemExp, 
-      const size_t target, 
-      const size_t iScore,
       FloatFast & gradientOut,
       FloatFast & hessianOut
    ) {
@@ -779,11 +780,12 @@ public:
          !std::isinf(probability) && 0 <= probability && probability <= 1 + k_epsilonGradient);
 
 
-      const FloatFast yi = UNPREDICTABLE(iScore == target) ? FloatFast { 1 } : FloatFast { 0 };
+      //const FloatFast yi = UNPREDICTABLE(iScore == target) ? FloatFast { 1 } : FloatFast { 0 };
 
       // if probability cannot be +infinity, and needs to be between 0 and 1 + small_value, or NaN, then gradient can't be inifinity either
 
-      const FloatFast gradient = probability - yi;
+      //const FloatFast gradient = probability - yi;
+      const FloatFast gradient = probability; // we will later fix this value for when iScore == target by subtracing 1
 
       // mathematicaly we're limited to the range of range 0 <= probability && probability <= 1, but with floating point issues
       // we can get an probability value slightly larger than 1, which could lead to -1.00000000001-ish results
@@ -796,6 +798,10 @@ public:
 
       gradientOut = gradient;
       hessianOut = hessian;
+   }
+
+   INLINE_ALWAYS static FloatFast MulticlassFixTargetGradient(const FloatFast oldGradient) {
+      return oldGradient - FloatFast { 1 };
    }
 
    INLINE_ALWAYS static FloatFast ComputeSingleSampleLogLossBinaryClassification(
