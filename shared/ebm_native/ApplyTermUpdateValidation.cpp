@@ -121,31 +121,24 @@ struct ApplyTermUpdateValidationInternal final {
                iTensorBinCombined >>= cBitsPerItemMax;
             }
 
-            FloatFast itemExp = 0;
             FloatFast sumExp = 0;
             size_t iScore1 = 0;
             do {
                const FloatFast updateScore = aBinScores[iScore1];
 
-               // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
-               const FloatFast sampleScore = *pSampleScore + updateScore;
-               *pSampleScore = sampleScore;
-               ++pSampleScore;
+               const FloatFast sampleScore = pSampleScore[iScore1] + updateScore;
+               pSampleScore[iScore1] = sampleScore;
 
                constexpr bool bGetExp = bCalcMetric || bKeepGradHess;
                if(bGetExp) {
                   const FloatFast oneExp = ExpForMulticlass<false>(sampleScore);
+                  aExps[iScore1] = oneExp;
                   sumExp += oneExp;
-                  if(bKeepGradHess) {
-                     aExps[iScore1] = oneExp;
-                  }
-                  if(bCalcMetric) {
-                     itemExp = iScore1 == targetData ? oneExp : itemExp;
-                  }
                }
 
                ++iScore1;
             } while(cScores != iScore1);
+            pSampleScore += cScores;
 
             if(bKeepGradHess) {
                size_t iScore2 = 0;
@@ -160,14 +153,16 @@ struct ApplyTermUpdateValidationInternal final {
                      gradient,
                      hessian
                   );
-                  *pGradientAndHessian = gradient;
-                  *(pGradientAndHessian + 1) = hessian;
-                  pGradientAndHessian += 2;
+                  pGradientAndHessian[iScore2 << 1] = gradient;
+                  pGradientAndHessian[(iScore2 << 1) + 1] = hessian;
                   ++iScore2;
                } while(cScores != iScore2);
+               pGradientAndHessian += cScores << 1;
             }
 
             if(bCalcMetric) {
+               const FloatFast itemExp = aExps[targetData];
+
                FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(sumExp, itemExp);
                EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
 
@@ -270,7 +265,6 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
                iTensorBinCombined >>= cBitsPerItemMax;
             }
 
-            // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
             const FloatFast sampleScore = *pSampleScore + updateScore;
             *pSampleScore = sampleScore;
             ++pSampleScore;
