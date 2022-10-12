@@ -264,9 +264,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          *paInputDataTo = pInputDataTo;
          ++paInputDataTo;
 
-         // stop on the last item in our array AND then do one special last loop with less or equal iterations to the normal loop
-         const StorageDataType * const pInputDataToLast = pInputDataTo + cDataUnits - 1;
-         EBM_ASSERT(pInputDataTo <= pInputDataToLast); // we have 1 item or more, and therefore the last one can't be before the first item
+         const StorageDataType * const pInputDataToEnd = pInputDataTo + cDataUnits;
 
          const Feature * const * ppFeature = pTerm->GetFeatures();
          EBM_ASSERT(1 <= pTerm->GetCountDimensions());
@@ -318,13 +316,11 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          BagEbm replication = 0;
          size_t tensorIndex = 0;
 
-         size_t shiftEnd = cBitsPerItemMax * cItemsPerBitPack;
-         while(pInputDataTo < pInputDataToLast) /* do the last iteration AFTER we re-enter this loop through the goto label! */ {
-         one_last_loop:;
-            EBM_ASSERT(shiftEnd <= CountBitsRequiredPositiveMax<StorageDataType>());
+         ptrdiff_t cShift = (cSetSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
+         const ptrdiff_t cShiftReset = cBitsPerItemMax * (cItemsPerBitPack - 1);
 
+         do {
             StorageDataType bits = 0;
-            size_t shift = 0;
             do {
                if(BagEbm { 0 } == replication) {
                   while(true) {
@@ -370,26 +366,17 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                EBM_ASSERT(0 < replication && 0 < direction || replication < 0 && direction < 0);
                replication -= direction;
 
-               // put our first item in the least significant bits.  We do this so that later when
-               // unpacking the indexes, we can just AND our mask with the bitfield to get the index and in subsequent loops
-               // we can just shift down.  This eliminates one extra shift that we'd otherwise need to make if the first
-               // item was in the MSB
-               EBM_ASSERT(shift < CountBitsRequiredPositiveMax<StorageDataType>());
+               EBM_ASSERT(0 <= cShift);
+               EBM_ASSERT(static_cast<size_t>(cShift) < CountBitsRequiredPositiveMax<StorageDataType>());
                // the tensor index needs to fit in memory, but concivably StorageDataType does not
                EBM_ASSERT(!IsConvertError<StorageDataType>(tensorIndex)); // this was checked when determining packing
-               bits |= static_cast<StorageDataType>(tensorIndex) << shift;
-               shift += cBitsPerItemMax;
-            } while(shiftEnd != shift);
+               bits |= static_cast<StorageDataType>(tensorIndex) << cShift;
+               cShift -= cBitsPerItemMax;
+            } while(ptrdiff_t { 0 } <= cShift);
+            cShift = cShiftReset;
             *pInputDataTo = bits;
             ++pInputDataTo;
-         }
-
-         if(pInputDataTo == pInputDataToLast) {
-            // if this is the first time we've exited the loop, then re-enter it to do our last loop, but reduce the number of times we do the inner loop
-            shiftEnd = cBitsPerItemMax * ((cSetSamples - 1) % cItemsPerBitPack + 1);
-            goto one_last_loop;
-         }
-
+         } while(pInputDataToEnd != pInputDataTo);
          EBM_ASSERT(0 == replication);
       }
       ++ppTerm;

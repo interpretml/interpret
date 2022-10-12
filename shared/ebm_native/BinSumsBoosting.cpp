@@ -199,6 +199,14 @@ public:
       const size_t iTerm,
       const InnerBag * const pInnerBag
    ) {
+      // TODO: work to do here:
+      //        1) merge this function with BinSumsBoostingZeroDimensions above following the style in ApplyTermUpdateValidation
+      //        2) finish writing BinSumsInteractionsInternal to handle bit compressed data which should look similar to this function
+      //        3) merge this function into ApplyTermUpdateValidation so that you can optionally avoid creating the per sample gradients and hessians and 
+      //           boost on the next feature while simultaneously applying the previous one.  This could allow us to
+      //           avoid extra memory accesses and also bury long running computations like random access fetches
+      //           and divisions into the CPU pipeline
+
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
       static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
@@ -221,7 +229,7 @@ public:
       const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
-      const StorageDataType maskBits = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMax);
+      const size_t maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
       EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
 
@@ -239,15 +247,10 @@ public:
       const FloatFast * pGradientAndHessian = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatFast * const pGradientAndHessiansTrueEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
-      const FloatFast * pGradientAndHessiansExit = pGradientAndHessiansTrueEnd;
-      size_t cItemsRemaining = cSamples;
-      if(cSamples <= cItemsPerBitPack) {
-         goto one_last_loop;
-      }
-      pGradientAndHessiansExit = pGradientAndHessiansTrueEnd - (bClassification ? 2 : 1) * cScores * ((cSamples - 1) % cItemsPerBitPack + 1);
-      EBM_ASSERT(pGradientAndHessian < pGradientAndHessiansExit);
-      EBM_ASSERT(pGradientAndHessiansExit < pGradientAndHessiansTrueEnd);
+      const FloatFast * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
+
+      ptrdiff_t cShift = (cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
+      const ptrdiff_t cShiftReset = cBitsPerItemMax * (cItemsPerBitPack - 1);
 
       do {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
@@ -261,16 +264,13 @@ public:
          // TODO : try using a sampling method with non-repeating samples, and put the count into a bit.  Then unwind that loop either at the byte level 
          //   (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
 
-         cItemsRemaining = cItemsPerBitPack;
-         // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
-         // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
-      one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
-         StorageDataType iTensorBinCombined = *pInputData;
+         const StorageDataType iTensorBinCombined = *pInputData;
          ++pInputData;
          do {
             // TODO: we should assert at least that we can convert to size_t after the shift
-            const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
+
+            const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined >> cShift) & maskBits;
 
             auto * const pBin = IndexBin(aBins, cBytesPerBin * iTensorBin);
 
@@ -327,26 +327,10 @@ public:
                -k_epsilonGradient < gradientTotalDebug && gradientTotalDebug < k_epsilonGradient
             );
 
-            iTensorBinCombined >>= cBitsPerItemMax;
-            // TODO : try replacing cItemsRemaining with a pGradientAndHessiansExit which eliminates one subtact operation, but might make it harder for 
-            //   the compiler to optimize the loop away
-            --cItemsRemaining;
-         } while(0 != cItemsRemaining);
-      } while(pGradientAndHessiansExit != pGradientAndHessian);
-
-      // first time through?
-      if(pGradientAndHessiansTrueEnd != pGradientAndHessian) {
-         LOG_0(Trace_Verbose, "Handling last BinSumsBoostingInternal loop");
-
-         EBM_ASSERT(0 == (pGradientAndHessiansTrueEnd - pGradientAndHessian) % (cScores * (bClassification ? 2 : 1)));
-         cItemsRemaining = (pGradientAndHessiansTrueEnd - pGradientAndHessian) / (cScores * (bClassification ? 2 : 1));
-         EBM_ASSERT(0 < cItemsRemaining);
-         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPack);
-
-         pGradientAndHessiansExit = pGradientAndHessiansTrueEnd;
-
-         goto one_last_loop;
-      }
+            cShift -= cBitsPerItemMax;
+         } while(0 <= cShift);
+         cShift = cShiftReset;
+      } while(pGradientAndHessiansEnd != pGradientAndHessian);
 
       EBM_ASSERT(0 < weightTotalDebug);
       EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pInnerBag->GetWeightTotal() &&

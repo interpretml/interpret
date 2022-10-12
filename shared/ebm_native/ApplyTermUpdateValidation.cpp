@@ -41,7 +41,7 @@ struct ApplyTermUpdateValidationInternal final {
    WARNING_PUSH
    WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
    WARNING_DISABLE_UNINITIALIZED_LOCAL_POINTER
-      INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
       constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
@@ -78,70 +78,43 @@ struct ApplyTermUpdateValidationInternal final {
          pTargetData = reinterpret_cast<const StorageDataType *>(pData->m_aTargets);
       }
       FloatFast * pSampleScore = pData->m_aSampleScores;
-      const FloatFast * pSampleScoresInnerEnd = pSampleScore + pData->m_cSamples * cScores;
-      const FloatFast * pSampleScoresExit;
-      const FloatFast * pSampleScoresTrueEnd;
-      if(!bCompilerZeroDimensional) {
-         pSampleScoresExit = pSampleScoresInnerEnd;
-         pSampleScoresTrueEnd = pSampleScoresInnerEnd;
-      }
+      const FloatFast * pSampleScoresEnd = pSampleScore + pData->m_cSamples * cScores;
 
-      size_t cItemsPerBitPack;
-      size_t cBytesPerBitPack;
       size_t cBitsPerItemMax;
-      StorageDataType maskBits;
-      if(!bCompilerZeroDimensional) {
-         cBitsPerItemMax = 0;
-         maskBits = 0;
-      }
+      size_t maskBits;
+      ptrdiff_t cShift;
+      ptrdiff_t cShiftReset;
+
       const StorageDataType * pInputData;
-      StorageDataType iTensorBinCombined;
-      if(!bCompilerZeroDimensional) {
-         iTensorBinCombined = 0;
-      }
       const FloatFast * aBinScores;
       if(bCompilerZeroDimensional) {
          aBinScores = aUpdateTensorScores;
       }
 
-      const bool bRuntimeZeroDimensional = k_cItemsPerBitPackNone == cPack;
-      if(bRuntimeZeroDimensional) {
-         goto zero_dimensional;
-      }
-
       if(!bCompilerZeroDimensional) {
-         cItemsPerBitPack = static_cast<size_t>(cPack);
+         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
+
+         const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
          cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
          EBM_ASSERT(1 <= cBitsPerItemMax);
          EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
-         maskBits = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMax);
+         maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
+
+         cShift = (pData->m_cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
+         cShiftReset = cBitsPerItemMax * (cItemsPerBitPack - 1);
 
          pInputData = pData->m_aPacked;
-
-         if(pData->m_cSamples <= cItemsPerBitPack) {
-            goto one_last_loop;
-         }
-         cBytesPerBitPack = sizeof(*pSampleScore) * cScores * cItemsPerBitPack;
-
-         pSampleScoresExit = pSampleScoresTrueEnd - ((pData->m_cSamples - 1) % cItemsPerBitPack + 1) * cScores;
-         EBM_ASSERT(pSampleScore < pSampleScoresExit);
-         EBM_ASSERT(pSampleScoresExit < pSampleScoresTrueEnd);
       }
-      while(true) {
+      do {
+         StorageDataType iTensorBinCombined;
          if(!bCompilerZeroDimensional) {
-            pSampleScoresInnerEnd = reinterpret_cast<FloatFast *>(reinterpret_cast<char *>(pSampleScore) + cBytesPerBitPack);
-            // jumping back into this loop and changing pSampleScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
-            // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
-         one_last_loop:;
             // we store the already multiplied dimensional value in *pInputData
             iTensorBinCombined = *pInputData;
             ++pInputData;
          }
-         do {
-         zero_dimensional:;
-
+         while(true) {
             size_t targetData;
             if(bGetTarget) {
                targetData = static_cast<size_t>(*pTargetData);
@@ -149,12 +122,8 @@ struct ApplyTermUpdateValidationInternal final {
             }
 
             if(!bCompilerZeroDimensional) {
-               // we only use the compiler version of compilerBitPack since we do not want this if statement
-               // injected into the code for the dynamic version of this compilation.  This will work even if
-               // the runtime bit pack is k_cItemsPerBitPackNone since then iTensorBinCombined will be zero
-               const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
+               const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined >> cShift) & maskBits;
                aBinScores = &aUpdateTensorScores[iTensorBin * cScores];
-               iTensorBinCombined >>= cBitsPerItemMax;
             }
 
             FloatFast sumExp = 0;
@@ -215,25 +184,22 @@ struct ApplyTermUpdateValidationInternal final {
                }
                sumLogLoss += sampleLogLoss;
             }
-         } while(pSampleScoresInnerEnd != pSampleScore);
-
-         if(!bCompilerZeroDimensional) {
-            if(pSampleScoresExit == pSampleScore) {
-               break;
+            if(bCompilerZeroDimensional) {
+               if(pSampleScoresEnd == pSampleScore) {
+                  break;
+               }
+            } else {
+               cShift -= cBitsPerItemMax;
+               if(cShift < 0) {
+                  break;
+               }
             }
-         } else {
+         }
+         if(bCompilerZeroDimensional) {
             break;
          }
-      }
-
-      if(!bCompilerZeroDimensional) {
-         // first time through?
-         if(pSampleScoresTrueEnd != pSampleScore) {
-            pSampleScoresInnerEnd = pSampleScoresTrueEnd;
-            pSampleScoresExit = pSampleScoresTrueEnd;
-            goto one_last_loop;
-         }
-      }
+         cShift = cShiftReset;
+      } while(pSampleScoresEnd != pSampleScore);
 
       if(bCalcMetric) {
          pData->m_metricOut = static_cast<double>(sumLogLoss);
@@ -249,6 +215,7 @@ template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGr
 struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       // TODO: optimize this function like we do for multiclass above by leaving variables that can stay uninitialized as uninitialized 
+      constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
 
       const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
 
@@ -262,50 +229,41 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
       FloatFast * pGradientAndHessian = pData->m_aGradientsAndHessians;
       const StorageDataType * pTargetData = reinterpret_cast<const StorageDataType *>(pData->m_aTargets);
       FloatFast * pSampleScore = pData->m_aSampleScores;
-      const FloatFast * const pSampleScoresTrueEnd = pSampleScore + pData->m_cSamples;
-      const FloatFast * pSampleScoresExit = pSampleScoresTrueEnd;
-      const FloatFast * pSampleScoresInnerEnd = pSampleScoresTrueEnd;
+      const FloatFast * const pSampleScoresEnd = pSampleScore + pData->m_cSamples;
 
-      size_t cItemsPerBitPack = 0;
       size_t cBitsPerItemMax = 0;
-      StorageDataType maskBits = 0;
+      size_t maskBits = 0;
       const StorageDataType * pInputData = nullptr;
-      StorageDataType iTensorBinCombined = 0;
       FloatFast updateScore = aUpdateTensorScores[0];
 
-      const bool bRuntimeZeroDimensional = k_cItemsPerBitPackNone == cPack;
-      if(bRuntimeZeroDimensional) {
-         goto zero_dimensional;
+      ptrdiff_t cShift = 0;
+      ptrdiff_t cShiftReset = 0;
+
+      if(!bCompilerZeroDimensional) {
+         EBM_ASSERT(k_cItemsPerBitPackNone != cPack);
+
+         const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
+         EBM_ASSERT(1 <= cItemsPerBitPack);
+         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+         cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
+         EBM_ASSERT(1 <= cBitsPerItemMax);
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+         maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
+
+         cShift = (pData->m_cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
+         cShiftReset = cBitsPerItemMax * (cItemsPerBitPack - 1);
+
+         pInputData = pData->m_aPacked;
       }
-
-      cItemsPerBitPack = static_cast<size_t>(cPack);
-      EBM_ASSERT(1 <= cItemsPerBitPack);
-      EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
-      cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
-      EBM_ASSERT(1 <= cBitsPerItemMax);
-      EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
-      maskBits = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMax);
-
-      pInputData = pData->m_aPacked;
-
-      if(pData->m_cSamples <= cItemsPerBitPack) {
-         goto one_last_loop;
-      }
-      pSampleScoresExit = pSampleScoresTrueEnd - ((pData->m_cSamples - 1) % cItemsPerBitPack + 1);
-      EBM_ASSERT(pSampleScore < pSampleScoresExit);
-      EBM_ASSERT(pSampleScoresExit < pSampleScoresTrueEnd);
 
       do {
-         pSampleScoresInnerEnd = pSampleScore + cItemsPerBitPack;
-         // jumping back into this loop and changing pSampleScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
-         // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
-      one_last_loop:;
-         // we store the already multiplied dimensional value in *pInputData
-         iTensorBinCombined = *pInputData;
-         ++pInputData;
-         do {
-         zero_dimensional:;
-
+         StorageDataType iTensorBinCombined;
+         if(!bCompilerZeroDimensional) {
+            // we store the already multiplied dimensional value in *pInputData
+            iTensorBinCombined = *pInputData;
+            ++pInputData;
+         }
+         while(true) {
             constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
             size_t targetData;
             if(bGetTarget) {
@@ -313,14 +271,9 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
                ++pTargetData;
             }
 
-            constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
             if(!bCompilerZeroDimensional) {
-               // we only use the compiler version of compilerBitPack since we do not want this if statement
-               // injected into the code for the dynamic version of this compilation.  This will work even if
-               // the runtime bit pack is k_cItemsPerBitPackNone since then iTensorBinCombined will be zero
-               const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
+               const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined >> cShift) & maskBits;
                updateScore = aUpdateTensorScores[iTensorBin];
-               iTensorBinCombined >>= cBitsPerItemMax;
             }
 
             const FloatFast sampleScore = *pSampleScore + updateScore;
@@ -345,15 +298,23 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
                }
                sumLogLoss += sampleLogLoss;
             }
-         } while(pSampleScoresInnerEnd != pSampleScore);
-      } while(pSampleScoresExit != pSampleScore);
 
-      // first time through?
-      if(pSampleScoresTrueEnd != pSampleScore) {
-         pSampleScoresInnerEnd = pSampleScoresTrueEnd;
-         pSampleScoresExit = pSampleScoresTrueEnd;
-         goto one_last_loop;
-      }
+            if(bCompilerZeroDimensional) {
+               if(pSampleScoresEnd == pSampleScore) {
+                  break;
+               }
+            } else {
+               cShift -= cBitsPerItemMax;
+               if(cShift < 0) {
+                  break;
+               }
+            }
+         }
+         if(bCompilerZeroDimensional) {
+            break;
+         }
+         cShift = cShiftReset;
+      } while(pSampleScoresEnd != pSampleScore);
 
       pData->m_metricOut = static_cast<double>(sumLogLoss);
       return Error_None;
@@ -368,6 +329,8 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
 
       static_assert(bKeepGradHess, "for MSE regression we should always keep the gradients");
 
+      constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
+
       const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
 
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
@@ -379,58 +342,43 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
       FloatFast sumSquareError = 0;
       // no hessians for regression
       FloatFast * pGradient = pData->m_aGradientsAndHessians;
-      const FloatFast * const pGradientsTrueEnd = pGradient + pData->m_cSamples;
-      const FloatFast * pGradientsExit = pGradientsTrueEnd;
-      const FloatFast * pGradientsInnerEnd = pGradientsTrueEnd;
+      const FloatFast * const pGradientsEnd = pGradient + pData->m_cSamples;
 
-      size_t cItemsPerBitPack = 0;
       size_t cBitsPerItemMax = 0;
-      StorageDataType maskBits = 0;
+      size_t maskBits = 0;
       const StorageDataType * pInputData = nullptr;
-      StorageDataType iTensorBinCombined = 0;
       FloatFast updateScore = aUpdateTensorScores[0];
 
-      const bool bRuntimeZeroDimensional = k_cItemsPerBitPackNone == cPack;
-      if(bRuntimeZeroDimensional) {
-         goto zero_dimensional;
+      ptrdiff_t cShift = 0;
+      ptrdiff_t cShiftReset = 0;
+
+      if(!bCompilerZeroDimensional) {
+         EBM_ASSERT(k_cItemsPerBitPackNone != cPack);
+
+         const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
+         EBM_ASSERT(1 <= cItemsPerBitPack);
+         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+         cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
+         EBM_ASSERT(1 <= cBitsPerItemMax);
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+         maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
+
+         cShift = (pData->m_cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
+         cShiftReset = cBitsPerItemMax * (cItemsPerBitPack - 1);
+
+         pInputData = pData->m_aPacked;
       }
-
-      cItemsPerBitPack = static_cast<size_t>(cPack);
-      EBM_ASSERT(1 <= cItemsPerBitPack);
-      EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
-      cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
-      EBM_ASSERT(1 <= cBitsPerItemMax);
-      EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
-      maskBits = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMax);
-
-      pInputData = pData->m_aPacked;
-
-      if(pData->m_cSamples <= cItemsPerBitPack) {
-         goto one_last_loop;
-      }
-      pGradientsExit = pGradientsTrueEnd - ((pData->m_cSamples - 1) % cItemsPerBitPack + 1);
-      EBM_ASSERT(pGradient < pGradientsExit);
-      EBM_ASSERT(pGradientsExit < pGradientsTrueEnd);
-
       do {
-         pGradientsInnerEnd = pGradient + cItemsPerBitPack;
-         // jumping back into this loop and changing pSampleScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
-         // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
-      one_last_loop:;
-         // we store the already multiplied dimensional value in *pInputData
-         iTensorBinCombined = *pInputData;
-         ++pInputData;
-         do {
-         zero_dimensional:;
-
-            constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
+         StorageDataType iTensorBinCombined;
+         if(!bCompilerZeroDimensional) {
+            // we store the already multiplied dimensional value in *pInputData
+            iTensorBinCombined = *pInputData;
+            ++pInputData;
+         }
+         while(true) {
             if(!bCompilerZeroDimensional) {
-               // we only use the compiler version of compilerBitPack since we do not want this if statement
-               // injected into the code for the dynamic version of this compilation.  This will work even if
-               // the runtime bit pack is k_cItemsPerBitPackNone since then iTensorBinCombined will be zero
-               const size_t iTensorBin = static_cast<size_t>(maskBits & iTensorBinCombined);
+               const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined >> cShift) & maskBits;
                updateScore = aUpdateTensorScores[iTensorBin];
-               iTensorBinCombined >>= cBitsPerItemMax;
             }
 
             FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, updateScore);
@@ -448,15 +396,22 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
                }
                sumSquareError += sampleSquaredError;
             }
-         } while(pGradientsInnerEnd != pGradient);
-      } while(pGradientsExit != pGradient);
-
-      // first time through?
-      if(pGradientsTrueEnd != pGradient) {
-         pGradientsInnerEnd = pGradientsTrueEnd;
-         pGradientsExit = pGradientsTrueEnd;
-         goto one_last_loop;
-      }
+            if(bCompilerZeroDimensional) {
+               if(pGradientsEnd == pGradient) {
+                  break;
+               }
+            } else {
+               cShift -= cBitsPerItemMax;
+               if(cShift < 0) {
+                  break;
+               }
+            }
+         }
+         if(bCompilerZeroDimensional) {
+            break;
+         }
+         cShift = cShiftReset;
+      } while(pGradientsEnd != pGradient);
 
       pData->m_metricOut = static_cast<double>(sumSquareError);
       return Error_None;
@@ -529,10 +484,12 @@ struct FinalOptions<k_regression, compilerBitPack> final {
 
 template<ptrdiff_t cCompilerClasses>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BitPack(ApplyValidation * const pData) {
-   // there shouldn't be a huge benefit to using compile time bit packing constants.  Most of the time there
-   // will be 8 or more data items in a bitpack anyways, and at the extreme end with 64 bits in the pack we
-   // don't get much benefit from unwinding the loop.  We might get some benefit in terms of register availability
-   return FinalOptions<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(pData);
+   if(k_cItemsPerBitPackNone != pData->m_cPack) {
+      return FinalOptions<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(pData);
+   } else {
+      // this needs to be special cased because otherwise we would inject comparisons into the dynamic version
+      return FinalOptions<cCompilerClasses, k_cItemsPerBitPackNone>::Func(pData);
+   }
 }
 
 template<ptrdiff_t cPossibleClasses>
