@@ -49,7 +49,6 @@ public:
       const bool bAllocateGradients,
       const bool bAllocateHessians,
       const unsigned char * const pDataSetShared,
-      const size_t cAllSamples,
       const BagEbm * const aBag,
       const size_t cSetSamples,
       const size_t cWeights,

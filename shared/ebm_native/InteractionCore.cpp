@@ -206,7 +206,6 @@ ErrorEbm InteractionCore::Create(
       ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses,  // regression, binary, multiclass
       ptrdiff_t { 1 } < cClasses,  // binary, multiclass
       pDataSetShared,
-      cSamples,
       aBag,
       cTrainingSamples,
       cWeights,
@@ -227,8 +226,8 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
    const double * const aInitScores
 ) {
    if(!m_dataFrame.IsGradientsAndHessiansNull()) {
-      size_t cSamples = m_dataFrame.GetCountSamples();
-      EBM_ASSERT(1 <= cSamples); // if m_dataFrame.IsGradientsAndHessiansNull
+      size_t cSetSamples = m_dataFrame.GetCountSamples();
+      EBM_ASSERT(1 <= cSetSamples); // if m_dataFrame.IsGradientsAndHessiansNull
 
       ptrdiff_t cClasses;
       const void * const aTargetsFrom = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
@@ -237,15 +236,15 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       EBM_ASSERT(1 != cClasses); // no gradients if 1 == cClasses
       EBM_ASSERT(IsClassification(cClasses));
       const size_t cScores = GetCountScores(cClasses);
-      if(IsMultiplyError(sizeof(FloatFast), cScores, cSamples)) {
-         LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores, cSamples)");
+      if(IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)) {
+         LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)");
          return Error_OutOfMemory;
       }
       const size_t cBytesScores = sizeof(FloatFast) * cScores;
-      const size_t cBytesAllScores = cBytesScores * cSamples;
+      const size_t cBytesAllScores = cBytesScores * cSetSamples;
 
-      if(IsMultiplyError(sizeof(StorageDataType), cSamples)) {
-         LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(StorageDataType), cSamples)");
+      if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
+         LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
          return Error_OutOfMemory;
       }
 
@@ -255,7 +254,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          return Error_OutOfMemory;
       }
 
-      StorageDataType * const aTargetsTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSamples));
+      StorageDataType * const aTargetsTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
       if(UNLIKELY(nullptr == aTargetsTo)) {
          free(aSampleScoreTo);
          LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aTargetsTo");
@@ -288,7 +287,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       const BagEbm * pSampleReplication = aBag;
       const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargetsFrom);
       StorageDataType * pTargetTo = aTargetsTo;
-      const StorageDataType * const pTargetToEnd = &aTargetsTo[cSamples];
+      const StorageDataType * const pTargetToEnd = &aTargetsTo[cSetSamples];
 
       if(nullptr == aInitScores) {
          // if aInitScores is nullptr then all initial scores are zero
@@ -297,28 +296,29 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          do {
             BagEbm replication = 1;
             if(nullptr != pSampleReplication) {
-               replication = *pSampleReplication;
-               ++pSampleReplication;
+               do {
+                  replication = *pSampleReplication;
+                  ++pSampleReplication;
+                  ++pTargetFrom;
+               } while(replication <= BagEbm { 0 });
+               --pTargetFrom;
             }
-            if(BagEbm { 0 } != replication) {
-               if(BagEbm { 0 } < replication) {
-                  const SharedStorageDataType targetOriginal = *pTargetFrom;
-                  // the shared data storage structure ensures that all target values are less than the number of classes
-                  // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
-                  // so we do not need the runtime to check this
-                  EBM_ASSERT(targetOriginal < static_cast<SharedStorageDataType>(cClasses));
-                  // since cClasses must be below StorageDataType, it follows that..
-                  EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
-                  const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
-                  do {
-                     *pTargetTo = target;
-                     ++pTargetTo;
-
-                     --replication;
-                  } while(BagEbm { 0 } != replication);
-               }
-            }
+            const SharedStorageDataType targetOriginal = *pTargetFrom;
             ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
+
+            // the shared data storage structure ensures that all target values are less than the number of classes
+            // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
+            // so we do not need the runtime to check this
+            EBM_ASSERT(targetOriginal < static_cast<SharedStorageDataType>(cClasses));
+            // since cClasses must be below StorageDataType, it follows that..
+            EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
+            const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
+            do {
+               *pTargetTo = target;
+               ++pTargetTo;
+
+               --replication;
+            } while(BagEbm { 0 } != replication);
          } while(pTargetToEnd != pTargetTo);
       } else {
          const double * pInitScoreFrom = aInitScores;
@@ -326,37 +326,43 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          do {
             BagEbm replication = 1;
             if(nullptr != pSampleReplication) {
-               replication = *pSampleReplication;
-               ++pSampleReplication;
-            }
-            if(BagEbm { 0 } != replication) {
-               if(BagEbm { 0 } < replication) {
-                  const SharedStorageDataType targetOriginal = *pTargetFrom;
-                  // the shared data storage structure ensures that all target values are less than the number of classes
-                  // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
-                  // so we do not need the runtime to check this
-                  EBM_ASSERT(targetOriginal < static_cast<SharedStorageDataType>(cClasses));
-                  // since cClasses must be below StorageDataType, it follows that..
-                  EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
-                  const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
-                  const double * pInitScoreFromEnd = pInitScoreFrom + cScores;
+               do {
                   do {
-                     *pTargetTo = target;
-                     ++pTargetTo;
-
-                     do {
-                        *pSampleScoreTo = SafeConvertFloat<FloatFast>(*pInitScoreFrom);
-                        ++pSampleScoreTo;
-                        ++pInitScoreFrom;
-                     } while(pInitScoreFromEnd != pInitScoreFrom);
-                     pInitScoreFrom -= cScores; // in case replication is more than 1 and we do another loop
-
-                     --replication;
-                  } while(BagEbm { 0 } != replication);
-               }
-               pInitScoreFrom += cScores;
+                     replication = *pSampleReplication;
+                     ++pSampleReplication;
+                     ++pTargetFrom;
+                  } while(BagEbm { 0 } == replication);
+                  pInitScoreFrom += cScores;
+               } while(replication < BagEbm { 0 });
+               --pTargetFrom;
+               pInitScoreFrom -= cScores;
             }
+
+            const SharedStorageDataType targetOriginal = *pTargetFrom;
             ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
+
+            // the shared data storage structure ensures that all target values are less than the number of classes
+            // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
+            // so we do not need the runtime to check this
+            EBM_ASSERT(targetOriginal < static_cast<SharedStorageDataType>(cClasses));
+            // since cClasses must be below StorageDataType, it follows that..
+            EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
+            const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
+            const double * pInitScoreFromEnd = pInitScoreFrom + cScores;
+            do {
+               *pTargetTo = target;
+               ++pTargetTo;
+
+               do {
+                  *pSampleScoreTo = SafeConvertFloat<FloatFast>(*pInitScoreFrom);
+                  ++pSampleScoreTo;
+                  ++pInitScoreFrom;
+               } while(pInitScoreFromEnd != pInitScoreFrom);
+               pInitScoreFrom -= cScores; // in case replication is more than 1 and we do another loop
+
+               --replication;
+            } while(BagEbm { 0 } != replication);
+            pInitScoreFrom += cScores;
          } while(pTargetToEnd != pTargetTo);
       }
 
@@ -367,7 +373,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          false,
          aMulticlassMidwayTemp,
          aUpdateScores,
-         cSamples,
+         cSetSamples,
          nullptr,
          aTargetsTo,
          nullptr,

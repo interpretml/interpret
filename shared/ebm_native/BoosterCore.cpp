@@ -60,7 +60,6 @@ extern ErrorEbm Unbag(
 extern ErrorEbm ExtractWeights(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
-   const size_t cAllSamples,
    const BagEbm * const aBag,
    const size_t cSetSamples,
    FloatFast ** ppWeightsOut
@@ -627,7 +626,6 @@ ErrorEbm BoosterCore::Create(
          error = ExtractWeights(
             pDataSetShared,
             BagEbm { 1 },
-            cSamples, 
             aBag, 
             cTrainingSamples,
             &aWeights
@@ -659,7 +657,6 @@ ErrorEbm BoosterCore::Create(
       error = ExtractWeights(
          pDataSetShared,
          BagEbm { -1 },
-         cSamples, 
          aBag, 
          cValidationSamples,
          &pBoosterCore->m_aValidationWeights

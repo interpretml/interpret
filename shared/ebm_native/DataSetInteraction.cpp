@@ -23,7 +23,6 @@ namespace DEFINED_ZONE_NAME {
 extern ErrorEbm ExtractWeights(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
-   const size_t cAllSamples,
    const BagEbm * const aBag,
    const size_t cSetSamples,
    FloatFast ** ppWeightsOut
@@ -136,36 +135,37 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       }
 
       const BagEbm * pSampleReplication = aBag;
-      BagEbm replication = 0;
-      size_t iData = 0;
 
       const SharedStorageDataType * pInputDataFrom = static_cast<const SharedStorageDataType *>(aInputDataFrom);
       const StorageDataType * pInputDataToEnd = &pInputDataTo[cSetSamples];
       do {
-         while(replication <= BagEbm { 0 }) {
-            const SharedStorageDataType inputData = *pInputDataFrom;
-            ++pInputDataFrom;
-
-            EBM_ASSERT(!IsConvertError<size_t>(inputData));
-            iData = static_cast<size_t>(inputData);
-            EBM_ASSERT(iData < cBins); // enforced by shared data creator
-            EBM_ASSERT(!IsConvertError<StorageDataType>(iData)); // since it is smaller than cBins this is guaranteed
-
-            replication = 1;
-            if(nullptr == pSampleReplication) {
-               break;
-            } else {
+         BagEbm replication = 1;
+         if(nullptr != pSampleReplication) {
+            const BagEbm * pSampleReplicationOriginal = pSampleReplication;
+            do {
                replication = *pSampleReplication;
                ++pSampleReplication;
-            }
+            } while(replication <= BagEbm { 0 });
+            const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
+            pInputDataFrom += cAdvances;
          }
          EBM_ASSERT(0 < replication);
-         --replication;
 
-         *pInputDataTo = static_cast<StorageDataType>(iData);
-         ++pInputDataTo;
+         const SharedStorageDataType inputData = *pInputDataFrom;
+         ++pInputDataFrom;
+
+         EBM_ASSERT(!IsConvertError<size_t>(inputData));
+         const StorageDataType iData = static_cast<StorageDataType>(inputData);
+         EBM_ASSERT(iData < cBins); // enforced by shared data creator
+         EBM_ASSERT(!IsConvertError<StorageDataType>(iData)); // since it is smaller than cBins this is guaranteed
+
+         do {
+            *pInputDataTo = iData;
+            ++pInputDataTo;
+
+            --replication;
+         } while(BagEbm { 0 } != replication);
       } while(pInputDataToEnd != pInputDataTo);
-      EBM_ASSERT(0 == replication);
       ++iFeature;
    } while(cFeatures != iFeature);
 
@@ -205,14 +205,12 @@ ErrorEbm DataSetInteraction::Initialize(
    const bool bAllocateGradients,
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
-   const size_t cAllSamples,
    const BagEbm * const aBag,
    const size_t cSetSamples,
    const size_t cWeights,
    const size_t cFeatures
 ) {
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(cSetSamples <= cAllSamples);
 
    EBM_ASSERT(nullptr == m_aGradientsAndHessians); // we expect to start with zeroed values
    EBM_ASSERT(nullptr == m_aaInputData); // we expect to start with zeroed values
@@ -231,7 +229,6 @@ ErrorEbm DataSetInteraction::Initialize(
          error = ExtractWeights(
             pDataSetShared,
             BagEbm { 1 },
-            cAllSamples,
             aBag,
             cSetSamples,
             &m_aWeights

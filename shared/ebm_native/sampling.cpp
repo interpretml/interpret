@@ -520,48 +520,58 @@ extern ErrorEbm Unbag(
 
 INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
    const BagEbm direction,
-   const size_t cAllSamples,
    const BagEbm * const aBag,
-   const FloatFast * pWeights
+   const FloatFast * pWeights,
+   const size_t cSetSamples
 ) {
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
-   EBM_ASSERT(1 <= cAllSamples);
+   EBM_ASSERT(1 <= cSetSamples);
    EBM_ASSERT(nullptr != pWeights);
 
    FloatFast firstWeight = std::numeric_limits<FloatFast>::quiet_NaN();
-   const FloatFast * const pWeightsEnd = pWeights + cAllSamples;
    const bool isLoopTraining = BagEbm { 0 } < direction;
+   ptrdiff_t cSetSamplesRemaining = static_cast<ptrdiff_t>(cSetSamples);
+   if(!isLoopTraining) {
+      // make cSetSamplesRemaining the same sign as the bags we want to match
+      cSetSamplesRemaining = -cSetSamplesRemaining;
+   }
    const BagEbm * pSampleReplication = aBag;
+   EBM_ASSERT(nullptr != aBag || isLoopTraining); // if pSampleReplication is nullptr then we have no validation samples
    do {
       BagEbm replication = 1;
       if(nullptr != pSampleReplication) {
-         replication = *pSampleReplication;
-         ++pSampleReplication;
+         bool isItemTraining;
+         do {
+            do {
+               replication = *pSampleReplication;
+               ++pSampleReplication;
+               ++pWeights;
+            } while(BagEbm { 0 } == replication);
+            isItemTraining = BagEbm { 0 } < replication;
+         } while(isLoopTraining != isItemTraining);
+         --pWeights;
       }
-      if(BagEbm { 0 } != replication) {
-         const bool isItemTraining = BagEbm { 0 } < replication;
-         if(isLoopTraining == isItemTraining) {
-            const FloatFast weight = *pWeights;
-            // this relies on the property that NaN is not equal to everything, including NaN
-            if(UNLIKELY(firstWeight != weight)) {
-               // we need the check of weight as NaN to handle the case [NaN, 9]
-               if(!std::isnan(firstWeight) || std::isnan(weight)) {
-                  // if there are any NaN values exit and do not replace with weights of 1 even if all values are NaN
-                  return false;
-               }
-               firstWeight = weight;
-            }
-         }
-      }
+
+      const FloatFast weight = *pWeights;
       ++pWeights;
-   } while(LIKELY(pWeightsEnd != pWeights));
+
+      // this relies on the property that NaN is not equal to everything, including NaN
+      if(UNLIKELY(firstWeight != weight)) {
+         // we need the check of weight as NaN to handle the case [NaN, 9]
+         if(!std::isnan(firstWeight) || std::isnan(weight)) {
+            // if there are any NaN values exit and do not replace with weights of 1 even if all values are NaN
+            return false;
+         }
+         firstWeight = weight;
+      }
+      cSetSamplesRemaining -= static_cast<ptrdiff_t>(replication);
+   } while(LIKELY(0 != cSetSamplesRemaining));
    return true;
 }
 
 extern ErrorEbm ExtractWeights(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
-   const size_t cAllSamples,
    const BagEbm * const aBag,
    const size_t cSetSamples,
    FloatFast ** ppWeightsOut
@@ -569,14 +579,12 @@ extern ErrorEbm ExtractWeights(
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
    EBM_ASSERT(1 <= cSetSamples);
-   EBM_ASSERT(cSetSamples <= cAllSamples);
-   EBM_ASSERT(1 <= cAllSamples); // from the previous two rules
    EBM_ASSERT(nullptr != ppWeightsOut);
    EBM_ASSERT(nullptr == *ppWeightsOut);
 
    const FloatFast * const aWeights = GetDataSetSharedWeight(pDataSetShared, 0);
    EBM_ASSERT(nullptr != aWeights);
-   if(!CheckWeightsEqual(direction, cAllSamples, aBag, aWeights)) {
+   if(!CheckWeightsEqual(direction, aBag, aWeights, cSetSamples)) {
       if(IsMultiplyError(sizeof(FloatFast), cSetSamples)) {
          LOG_0(Trace_Warning, "WARNING ExtractWeights IsMultiplyError(sizeof(FloatFast), cSetSamples)");
          return Error_OutOfMemory;
@@ -593,30 +601,36 @@ extern ErrorEbm ExtractWeights(
       FloatFast * pWeightTo = aRet;
       FloatFast * pWeightToEnd = aRet + cSetSamples;
       const bool isLoopTraining = BagEbm { 0 } < direction;
+      EBM_ASSERT(nullptr != aBag || isLoopTraining); // if aBag is nullptr then we have no validation samples
       do {
          BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
-            replication = *pSampleReplication;
-            ++pSampleReplication;
-         }
-         if(BagEbm { 0 } != replication) {
-            const bool isItemTraining = BagEbm { 0 } < replication;
-            if(isLoopTraining == isItemTraining) {
-               const FloatFast weight = *pWeightFrom;
-               // if weight is NaN or +-inf then we'll find that out when we sum the weights
+            bool isItemTraining;
+            do {
                do {
-                  EBM_ASSERT(pWeightTo < pWeightToEnd);
-                  *pWeightTo = weight;
-                  ++pWeightTo;
-                  replication -= direction;
-               } while(BagEbm { 0 } != replication);
-            }
+                  replication = *pSampleReplication;
+                  ++pSampleReplication;
+                  ++pWeightFrom;
+               } while(BagEbm { 0 } == replication);
+               isItemTraining = BagEbm { 0 } < replication;
+            } while(isLoopTraining != isItemTraining);
+            --pWeightFrom;
          }
+
+         const FloatFast weight = *pWeightFrom;
          ++pWeightFrom;
+
+         // if weight is NaN or +-inf then we'll find that out when we sum the weights
+         do {
+            EBM_ASSERT(pWeightTo < pWeightToEnd);
+            *pWeightTo = weight;
+            ++pWeightTo;
+
+            replication -= direction;
+         } while(BagEbm { 0 } != replication);
       } while(pWeightToEnd != pWeightTo);
    }
    return Error_None;
 }
-
 
 } // DEFINED_ZONE_NAME

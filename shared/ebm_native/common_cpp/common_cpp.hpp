@@ -73,6 +73,16 @@ inline static const T * ArrayToPointer(const T * const a) noexcept {
    return a;
 }
 
+template<typename T>
+inline static T * AddBytes(T * const p, const size_t c) noexcept {
+   // TODO: use this pretty much anywhere we can. Search for "reinterpret_cast"
+   return reinterpret_cast<T *>(reinterpret_cast<char *>(p) + c);
+}
+template<typename T>
+inline static const T * AddBytes(const T * const p, const size_t c) noexcept {
+   return reinterpret_cast<const T *>(reinterpret_cast<const char *>(p) + c);
+}
+
 // TODO : replace all std::min and std::max and similar comparions that get the min/max with this function
 // unlike std::min/std::max, our version has explicit noexcept semantics, constexpr static, and is variadic
 template<typename T>

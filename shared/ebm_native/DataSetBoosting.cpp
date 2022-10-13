@@ -70,6 +70,8 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
    }
 
    if(nullptr == aInitScores) {
+      EBM_ASSERT(BagEbm { 0 } < direction); // if aBag is nullptr then we have no validation samples
+
       static_assert(std::numeric_limits<FloatFast>::is_iec559, "IEEE 754 guarantees zeros means a zero float");
       memset(aSampleScores, 0, sizeof(FloatFast) * cElements);
    } else {
@@ -83,24 +85,27 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
       do {
          BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
-            replication = *pSampleReplication;
-            ++pSampleReplication;
-         }
-         if(BagEbm { 0 } != replication) {
-            const bool isItemTraining = BagEbm { 0 } < replication;
-            if(isLoopTraining == isItemTraining) {
+            bool isItemTraining;
+            do {
                do {
-                  EBM_ASSERT(pSampleScore < pSampleScoresEnd);
-
-                  static_assert(sizeof(*pSampleScore) == sizeof(*pInitScore), "float mismatch");
-                  memcpy(pSampleScore, pInitScore, cBytesPerItem);
-
-                  pSampleScore += cScores;
-                  replication -= direction;
-               } while(BagEbm { 0 } != replication);
-            }
-            pInitScore += cScores;
+                  replication = *pSampleReplication;
+                  ++pSampleReplication;
+               } while(BagEbm { 0 } == replication);
+               isItemTraining = BagEbm { 0 } < replication;
+               pInitScore += cScores;
+            } while(isLoopTraining != isItemTraining);
+            pInitScore -= cScores;
          }
+         do {
+            EBM_ASSERT(pSampleScore < pSampleScoresEnd);
+
+            static_assert(sizeof(*pSampleScore) == sizeof(*pInitScore), "float mismatch");
+            memcpy(pSampleScore, pInitScore, cBytesPerItem);
+
+            pSampleScore += cScores;
+            replication -= direction;
+         } while(BagEbm { 0 } != replication);
+         pInitScore += cScores;
       } while(pSampleScoresEnd != pSampleScore);
    }
 
@@ -143,39 +148,43 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
    StorageDataType * pTargetTo = aTargetData;
    StorageDataType * pTargetToEnd = aTargetData + cSetSamples;
    const bool isLoopTraining = BagEbm { 0 } < direction;
+   EBM_ASSERT(nullptr != aBag || isLoopTraining); // if aBag is nullptr then we have no validation samples
    do {
       BagEbm replication = 1;
       if(nullptr != pSampleReplication) {
-         replication = *pSampleReplication;
-         ++pSampleReplication;
-      }
-      if(BagEbm { 0 } != replication) {
-         const bool isItemTraining = BagEbm { 0 } < replication;
-         if(isLoopTraining == isItemTraining) {
-            const SharedStorageDataType data = *pTargetFrom;
-            EBM_ASSERT(!IsConvertError<size_t>(data));
-            if(IsConvertError<StorageDataType>(data)) {
-               // this shouldn't be possible since we previously checked that we could convert our target,
-               // so if this is failing then we'll be larger than the maximum number of classes
-               LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
-               free(aTargetData);
-               return nullptr;
-            }
-            const StorageDataType iData = static_cast<StorageDataType>(data);
-            if(countClasses <= static_cast<size_t>(iData)) {
-               LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData target value larger than number of classes");
-               free(aTargetData);
-               return nullptr;
-            }
+         bool isItemTraining;
+         do {
             do {
-               EBM_ASSERT(pTargetTo < aTargetData + cSetSamples);
-               *pTargetTo = iData;
-               ++pTargetTo;
-               replication -= direction;
-            } while(BagEbm { 0 } != replication);
-         }
+               replication = *pSampleReplication;
+               ++pSampleReplication;
+               ++pTargetFrom;
+            } while(BagEbm { 0 } == replication);
+            isItemTraining = BagEbm { 0 } < replication;
+         } while(isLoopTraining != isItemTraining);
+         --pTargetFrom;
       }
+      const SharedStorageDataType data = *pTargetFrom;
       ++pTargetFrom;
+      EBM_ASSERT(!IsConvertError<size_t>(data));
+      if(IsConvertError<StorageDataType>(data)) {
+         // this shouldn't be possible since we previously checked that we could convert our target,
+         // so if this is failing then we'll be larger than the maximum number of classes
+         LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
+         free(aTargetData);
+         return nullptr;
+      }
+      const StorageDataType iData = static_cast<StorageDataType>(data);
+      if(countClasses <= static_cast<size_t>(iData)) {
+         LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData target value larger than number of classes");
+         free(aTargetData);
+         return nullptr;
+      }
+      do {
+         EBM_ASSERT(pTargetTo < aTargetData + cSetSamples);
+         *pTargetTo = iData;
+         ++pTargetTo;
+         replication -= direction;
+      } while(BagEbm { 0 } != replication);
    } while(pTargetToEnd != pTargetTo);
 
    LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
@@ -199,6 +208,8 @@ static_assert(std::is_trivial<InputDataPointerAndCountBins>::value,
 static_assert(std::is_pod<InputDataPointerAndCountBins>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
@@ -212,8 +223,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
-   EBM_ASSERT(0 < cSetSamples);
-   EBM_ASSERT(0 < cTerms);
+   EBM_ASSERT(1 <= cSetSamples);
+   EBM_ASSERT(1 <= cTerms);
    EBM_ASSERT(nullptr != apTerms);
 
    if(IsMultiplyError(sizeof(StorageDataType *), cTerms)) {
@@ -312,9 +323,10 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          } while(ppFeaturesEnd != ppFeature);
          EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pTerm->GetCountRealDimensions()]);
 
+         EBM_ASSERT(nullptr != aBag || isLoopTraining); // if aBag is nullptr then we have no validation samples
          const BagEbm * pSampleReplication = aBag;
          BagEbm replication = 0;
-         size_t tensorIndex = 0;
+         size_t tensorIndex;
 
          ptrdiff_t cShift = (cSetSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
          const ptrdiff_t cShiftReset = cBitsPerItemMax * (cItemsPerBitPack - 1);
@@ -323,45 +335,54 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             StorageDataType bits = 0;
             do {
                if(BagEbm { 0 } == replication) {
-                  while(true) {
-                     tensorIndex = 0;
-                     size_t tensorMultiple = 1;
-                     InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
+                  replication = 1;
+                  if(nullptr != pSampleReplication) {
+                     const BagEbm * pSampleReplicationOriginal = pSampleReplication;
+                     bool isItemTraining;
                      do {
-                        const SharedStorageDataType * pInputData = pDimensionInfo->m_pInputData;
-                        const SharedStorageDataType inputData = *pInputData;
-                        pDimensionInfo->m_pInputData = pInputData + 1;
-                        EBM_ASSERT(!IsConvertError<size_t>(inputData));
-                        const size_t iData = static_cast<size_t>(inputData);
-
-                        if(pDimensionInfo->m_cBins <= iData) {
-                           // TODO: I think this check has been moved to constructing the shared dataset
-                           LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructInputData iData value must be less than the number of bins");
-                           goto free_all;
-                        }
-                        // we check for overflows during Term construction, but let's check here again
-                        EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
-
-                        // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
-                        tensorIndex += tensorMultiple * iData;
-                        tensorMultiple *= pDimensionInfo->m_cBins;
-
-                        ++pDimensionInfo;
-                     } while(pDimensionInfoInit != pDimensionInfo);
-
-                     replication = 1;
-                     if(nullptr != pSampleReplication) {
-                        replication = *pSampleReplication;
-                        ++pSampleReplication;
-                     }
-                     if(BagEbm { 0 } != replication) {
-                        const bool isItemTraining = BagEbm { 0 } < replication;
-                        if(isLoopTraining == isItemTraining) {
-                           break;
-                        }
+                        do {
+                           replication = *pSampleReplication;
+                           ++pSampleReplication;
+                        } while(BagEbm { 0 } == replication);
+                        isItemTraining = BagEbm { 0 } < replication;
+                     } while(isLoopTraining != isItemTraining);
+                     const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
+                     if(0 != cAdvances) {
+                        InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
+                        do {
+                           const SharedStorageDataType * pInputData = pDimensionInfo->m_pInputData;
+                           pDimensionInfo->m_pInputData = pInputData + cAdvances;
+                           ++pDimensionInfo;
+                        } while(pDimensionInfoInit != pDimensionInfo);
                      }
                   }
+               
+                  tensorIndex = 0;
+                  size_t tensorMultiple = 1;
+                  InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
+                  do {
+                     const SharedStorageDataType * pInputData = pDimensionInfo->m_pInputData;
+                     const SharedStorageDataType inputData = *pInputData;
+                     pDimensionInfo->m_pInputData = pInputData + 1;
+                     EBM_ASSERT(!IsConvertError<size_t>(inputData));
+                     const size_t iData = static_cast<size_t>(inputData);
+
+                     if(pDimensionInfo->m_cBins <= iData) {
+                        // TODO: I think this check has been moved to constructing the shared dataset
+                        LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructInputData iData value must be less than the number of bins");
+                        goto free_all;
+                     }
+                     // we check for overflows during Term construction, but let's check here again
+                     EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
+
+                     // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
+                     tensorIndex += tensorMultiple * iData;
+                     tensorMultiple *= pDimensionInfo->m_cBins;
+
+                     ++pDimensionInfo;
+                  } while(pDimensionInfoInit != pDimensionInfo);
                }
+
                EBM_ASSERT(0 != replication);
                EBM_ASSERT(0 < replication && 0 < direction || replication < 0 && direction < 0);
                replication -= direction;
@@ -393,6 +414,7 @@ free_all:
    free(aaInputDataTo);
    return nullptr;
 }
+WARNING_POP
 
 ErrorEbm DataSetBoosting::Initialize(
    const ptrdiff_t cClasses,
