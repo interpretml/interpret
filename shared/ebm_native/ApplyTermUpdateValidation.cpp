@@ -146,16 +146,14 @@ struct ApplyTermUpdateValidationInternal final {
             pSampleScore += cScores;
 
             if(bKeepGradHess) {
-               // TODO: make      FloatFast sumExpInverted = FloatFast { 1 } / sumExp;
-               //       so that we only have one division that is shared for all classes and then we can multiply 
-               //       inside InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget instead of divide
+               const FloatFast sumExpInverted = FloatFast { 1 } / sumExp;
 
                size_t iScore2 = 0;
                do {
                   FloatFast gradient;
                   FloatFast hessian;
                   EbmStats::InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(
-                     sumExp,
+                     sumExpInverted,
                      aExps[iScore2],
                      gradient,
                      hessian

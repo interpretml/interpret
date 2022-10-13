@@ -700,7 +700,7 @@ public:
       const FloatFast expVal = std::exp(sampleScore);
       FloatFast gradientDebug;
       FloatFast hessianDebug;
-      InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(FloatFast { 1 } + expVal, expVal, gradientDebug, hessianDebug);
+      InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(FloatFast { 1 } / (FloatFast { 1 } + expVal), expVal, gradientDebug, hessianDebug);
       if(1 == target) {
          gradientDebug = MulticlassFixTargetGradient(gradientDebug);
       }
@@ -713,7 +713,7 @@ public:
    }
 
    INLINE_ALWAYS static void InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(
-      const FloatFast sumExp, 
+      const FloatFast sumExpInverted,
       const FloatFast itemExp, 
       FloatFast & gradientOut,
       FloatFast & hessianOut
@@ -730,7 +730,7 @@ public:
 
       // sumExp can be any number from 0 to +infinity -> each e^logit term can't be less than zero, and I can't imagine any implementation 
       //   that would result in a negative exp result from adding a series of positive values.
-      EBM_ASSERT(std::isnan(sumExp) || 0 <= sumExp);
+      EBM_ASSERT(std::isnan(sumExpInverted) || 0 <= sumExpInverted);
 
       // itemExp can be anything from 0 to +infinity, or NaN (through propagation)
       EBM_ASSERT(std::isnan(itemExp) || 0 <= itemExp); // no reasonable implementation should lead to a negative exp value
@@ -743,9 +743,9 @@ public:
       //   added to numbers below the threshold of epsilon at the value of EbmExp(trainingLogWeight), then by the time we get to the division of 
       //   EbmExp(trainingLogWeight) / sumExp could see the numerator as higher, and result in a value slightly greater than 1!
 
-      EBM_ASSERT(std::isnan(sumExp) || itemExp - k_epsilonGradient <= sumExp);
+      EBM_ASSERT(std::isnan(sumExpInverted) || itemExp - k_epsilonGradient <= FloatFast { 1 } / sumExpInverted);
 
-      const FloatFast probability = itemExp / sumExp;
+      const FloatFast probability = itemExp * sumExpInverted;
 
       // probability can be NaN -> 
       // - If itemExp AND sumExp are exactly zero or exactly infinity then itemExp / sumExp will lead to NaN
