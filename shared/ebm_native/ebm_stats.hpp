@@ -434,7 +434,7 @@ public:
       // !!! IMPORTANT: Newton-Raphson step, as illustrated in Friedman's original paper (https://statweb.stanford.edu/~jhf/ftp/trebst.pdf, page 9). Note that
       //   they are using t * (2 - t) since they have a 2 in their objective
       const FloatFast absGradient = std::abs(gradient); // abs will return the same type that it is given, either float or double
-      const FloatFast hessian = absGradient * (1 - absGradient);
+      const FloatFast hessian = absGradient * (FloatFast { 1 } - absGradient);
 
       // - it would be somewhat bad if absGradient could get larger than 1, even if just due to floating point error reasons, 
       //   since this would flip the sign on ret to negative.  Later in ComputeSinglePartitionUpdate, 
@@ -616,7 +616,7 @@ public:
       return gradient;
    }
 
-   INLINE_ALWAYS static FloatFast ComputeGradientRegressionMSEFromOriginalGradient(const FloatFast originalGradient, const FloatFast update) {
+   INLINE_ALWAYS static FloatFast ComputeGradientRegressionMSEFromOriginalGradient(const FloatFast originalGradient) {
       // this function IS performance critical as it's called on every sample
 
       // for MSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
@@ -626,7 +626,7 @@ public:
 
       // this function is here to document where we're calculating regression, like InverseLinkFunctionThenCalculateGradientBinaryClassification below.  It doesn't do anything, 
       //   but it serves as an indication that the calculation would be placed here if we changed it in the future
-      return originalGradient + update;
+      return originalGradient;
    }
 
    INLINE_ALWAYS static FloatFast InverseLinkFunctionThenCalculateGradientBinaryClassification(
@@ -677,8 +677,8 @@ public:
       //                formula is changed in the code without reading this comment
       //                const FloatFast gradient = (UNPREDICTABLE(0 == target) ? FloatFast { -1 } : FloatFast { 1 }) / (FloatFast{ 1 } + ExpForBinaryClassification(UNPREDICTABLE(0 == target) ? -sampleScore : sampleScore));
       // !!! IMPORTANT: SEE ABOVE
-      const FloatFast gradient = (UNPREDICTABLE(0 == target) ? FloatFast { 1 } : FloatFast { -1 }) / (FloatFast { 1 } +
-         ExpForBinaryClassification<false>(UNPREDICTABLE(0 == target) ? -sampleScore : sampleScore));
+      const FloatFast gradient = (UNPREDICTABLE(size_t { 0 } == target) ? FloatFast { 1 } : FloatFast { -1 }) / (FloatFast { 1 } +
+         ExpForBinaryClassification<false>(UNPREDICTABLE(size_t { 0 } == target) ? -sampleScore : sampleScore));
 
       // exp always yields a positive number or zero, and I can't imagine any reasonable implementation that would violate this by returning a negative number
       // given that 1.0 is an exactly representable number in IEEE 754, I can't see 1 + exp(anything) ever being less than 1, even with floating point jitter
@@ -726,9 +726,9 @@ public:
       
       // trainingLogWeight (which calculates itemExp) can be any number from -infinity to +infinity -> through addition, it can overflow to +-infinity
 
-      // sumExp can be NaN -> sampleScore is used when calculating sumExp, so if sampleScore can be NaN, then sumExp can be NaN
+      // sumExpInverted can be NaN -> sampleScore is used when calculating sumExp, so if sampleScore can be NaN, then sumExp can be NaN
 
-      // sumExp can be any number from 0 to +infinity -> each e^logit term can't be less than zero, and I can't imagine any implementation 
+      // sumExpInverted can be any number from 0 to +infinity -> each e^logit term can't be less than zero, and I can't imagine any implementation 
       //   that would result in a negative exp result from adding a series of positive values.
       EBM_ASSERT(std::isnan(sumExpInverted) || 0 <= sumExpInverted);
 
@@ -820,7 +820,7 @@ public:
 
       EBM_ASSERT(0 == target || 1 == target);
 
-      const FloatFast ourExp = ExpForBinaryClassification<false>(UNPREDICTABLE(0 == target) ? sampleScore : -sampleScore);
+      const FloatFast ourExp = ExpForBinaryClassification<false>(UNPREDICTABLE(size_t { 0 } == target) ? sampleScore : -sampleScore);
       // no reasonable implementation of exp should lead to a negative value
       EBM_ASSERT(std::isnan(sampleScore) || 0 <= ourExp);
 
@@ -829,7 +829,7 @@ public:
       // one way to a very very certain outcome (essentially 100%) and the validation set has the opposite, but in that case our ultimate convergence is 
       // infinity anyways, and we'll be generaly driving up the log loss, so we legitimately want our loop to terminate training since we're getting a 
       // worse and worse model, so going to infinity isn't bad in that case
-      const FloatFast singleSampleLogLoss = LogForLogLoss<false>(1 + ourExp); // log & exp will return the same type that it is given, either float or double
+      const FloatFast singleSampleLogLoss = LogForLogLoss<false>(FloatFast { 1 } + ourExp); // log & exp will return the same type that it is given, either float or double
 
       // singleSampleLogLoss can be NaN, but only though propagation -> we're never taking the log of any number close to a negative, 
       // so we should only get propagation NaN values

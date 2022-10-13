@@ -38,14 +38,12 @@ struct ApplyValidation {
 
 template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
 struct ApplyTermUpdateValidationInternal final {
-   WARNING_PUSH
-   WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
-   WARNING_DISABLE_UNINITIALIZED_LOCAL_POINTER
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
-      constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
       constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
+      constexpr bool bGetExp = bCalcMetric || bKeepGradHess;
+      constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
       FloatFast aLocalExpVector[GetCountScores(cCompilerClasses)];
       FloatFast * const aExps = k_dynamicClassification == cCompilerClasses ? pData->m_aMulticlassMidwayTemp : aLocalExpVector;
@@ -57,7 +55,50 @@ struct ApplyTermUpdateValidationInternal final {
 
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
-      EBM_ASSERT(1 <= pData->m_cSamples);
+
+      const size_t cSamples = pData->m_cSamples;
+      EBM_ASSERT(1 <= cSamples);
+      FloatFast * pSampleScore = pData->m_aSampleScores;
+      const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples * cScores;
+
+      size_t cBitsPerItemMax;
+      ptrdiff_t cShift;
+      ptrdiff_t cShiftReset;
+      size_t maskBits;
+      const StorageDataType * pInputData;
+
+      FloatFast updateScore;
+      const FloatFast * aBinScores;
+
+      if(bCompilerZeroDimensional) {
+         aBinScores = aUpdateTensorScores;
+      } else {
+         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
+
+         const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
+         EBM_ASSERT(1 <= cItemsPerBitPack);
+         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+         cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
+
+         cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
+         cShiftReset = static_cast<ptrdiff_t>(cBitsPerItemMax * (cItemsPerBitPack - 1));
+
+         EBM_ASSERT(1 <= cBitsPerItemMax);
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSizeT);
+         maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
+
+         pInputData = pData->m_aPacked;
+      }
+
+      const StorageDataType * pTargetData;
+      if(bGetTarget) {
+         pTargetData = reinterpret_cast<const StorageDataType *>(pData->m_aTargets);
+      }
+
+      FloatFast * pGradientAndHessian;
+      if(bKeepGradHess) {
+         pGradientAndHessian = pData->m_aGradientsAndHessians;
+      }
 
       const FloatFast * pWeight;
       if(bWeight) {
@@ -68,45 +109,6 @@ struct ApplyTermUpdateValidationInternal final {
       if(bCalcMetric) {
          sumLogLoss = 0;
       }
-
-      FloatFast * pGradientAndHessian;
-      if(bKeepGradHess) {
-         pGradientAndHessian = pData->m_aGradientsAndHessians;
-      }
-      const StorageDataType * pTargetData;
-      if(bGetTarget) {
-         pTargetData = reinterpret_cast<const StorageDataType *>(pData->m_aTargets);
-      }
-      FloatFast * pSampleScore = pData->m_aSampleScores;
-      const FloatFast * pSampleScoresEnd = pSampleScore + pData->m_cSamples * cScores;
-
-      size_t cBitsPerItemMax;
-      size_t maskBits;
-      ptrdiff_t cShift;
-      ptrdiff_t cShiftReset;
-
-      const StorageDataType * pInputData;
-      const FloatFast * aBinScores;
-      if(bCompilerZeroDimensional) {
-         aBinScores = aUpdateTensorScores;
-      }
-
-      if(!bCompilerZeroDimensional) {
-         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
-
-         const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
-         EBM_ASSERT(1 <= cItemsPerBitPack);
-         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
-         cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
-         EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
-         maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
-
-         cShift = (pData->m_cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
-         cShiftReset = cBitsPerItemMax * (cItemsPerBitPack - 1);
-
-         pInputData = pData->m_aPacked;
-      }
       do {
          StorageDataType iTensorBinCombined;
          if(!bCompilerZeroDimensional) {
@@ -115,34 +117,37 @@ struct ApplyTermUpdateValidationInternal final {
             ++pInputData;
          }
          while(true) {
+            if(!bCompilerZeroDimensional) {
+               const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined >> cShift) & maskBits;
+               aBinScores = &aUpdateTensorScores[iTensorBin * cScores];
+            }
+
+            FloatFast sumExp;
+            if(bGetExp) {
+               sumExp = 0;
+            }
+            size_t iScore1 = 0;
+            do {
+               updateScore = aBinScores[iScore1];
+
+               const FloatFast sampleScore = pSampleScore[iScore1] + updateScore;
+               pSampleScore[iScore1] = sampleScore;
+
+               if(bGetExp) {
+                  const FloatFast oneExp = ExpForMulticlass<false>(sampleScore);
+                  sumExp += oneExp;
+                  aExps[iScore1] = oneExp;
+               }
+
+               ++iScore1;
+            } while(cScores != iScore1);
+
             size_t targetData;
             if(bGetTarget) {
                targetData = static_cast<size_t>(*pTargetData);
                ++pTargetData;
             }
 
-            if(!bCompilerZeroDimensional) {
-               const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined >> cShift) & maskBits;
-               aBinScores = &aUpdateTensorScores[iTensorBin * cScores];
-            }
-
-            FloatFast sumExp = 0;
-            size_t iScore1 = 0;
-            do {
-               const FloatFast updateScore = aBinScores[iScore1];
-
-               const FloatFast sampleScore = pSampleScore[iScore1] + updateScore;
-               pSampleScore[iScore1] = sampleScore;
-
-               constexpr bool bGetExp = bCalcMetric || bKeepGradHess;
-               if(bGetExp) {
-                  const FloatFast oneExp = ExpForMulticlass<false>(sampleScore);
-                  aExps[iScore1] = oneExp;
-                  sumExp += oneExp;
-               }
-
-               ++iScore1;
-            } while(cScores != iScore1);
             pSampleScore += cScores;
 
             if(bKeepGradHess) {
@@ -182,6 +187,7 @@ struct ApplyTermUpdateValidationInternal final {
                }
                sumLogLoss += sampleLogLoss;
             }
+
             if(bCompilerZeroDimensional) {
                if(pSampleScoresEnd == pSampleScore) {
                   break;
@@ -205,55 +211,72 @@ struct ApplyTermUpdateValidationInternal final {
 
       return Error_None;
    }
-   WARNING_POP
 };
 
 #ifndef EXPAND_BINARY_LOGITS
 template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
 struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
-      // TODO: optimize this function like we do for multiclass above by leaving variables that can stay uninitialized as uninitialized 
       constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
+      constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
       const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
 
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
-      EBM_ASSERT(1 <= pData->m_cSamples);
 
-      const FloatFast * pWeight = pData->m_aWeights;
-
-      FloatFast sumLogLoss = 0;
-      FloatFast * pGradientAndHessian = pData->m_aGradientsAndHessians;
-      const StorageDataType * pTargetData = reinterpret_cast<const StorageDataType *>(pData->m_aTargets);
+      const size_t cSamples = pData->m_cSamples;
+      EBM_ASSERT(1 <= cSamples);
       FloatFast * pSampleScore = pData->m_aSampleScores;
-      const FloatFast * const pSampleScoresEnd = pSampleScore + pData->m_cSamples;
+      const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples;
 
-      size_t cBitsPerItemMax = 0;
-      size_t maskBits = 0;
-      const StorageDataType * pInputData = nullptr;
-      FloatFast updateScore = aUpdateTensorScores[0];
+      size_t cBitsPerItemMax;
+      ptrdiff_t cShift;
+      ptrdiff_t cShiftReset;
+      size_t maskBits;
+      const StorageDataType * pInputData;
 
-      ptrdiff_t cShift = 0;
-      ptrdiff_t cShiftReset = 0;
+      FloatFast updateScore;
 
-      if(!bCompilerZeroDimensional) {
-         EBM_ASSERT(k_cItemsPerBitPackNone != cPack);
+      if(bCompilerZeroDimensional) {
+         updateScore = aUpdateTensorScores[0];
+      } else {
+         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
 
          const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
          cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
-         EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
-         maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
 
-         cShift = (pData->m_cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
-         cShiftReset = cBitsPerItemMax * (cItemsPerBitPack - 1);
+         cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
+         cShiftReset = static_cast<ptrdiff_t>(cBitsPerItemMax * (cItemsPerBitPack - 1));
+
+         EBM_ASSERT(1 <= cBitsPerItemMax);
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSizeT);
+         maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
 
          pInputData = pData->m_aPacked;
       }
 
+      const StorageDataType * pTargetData;
+      if(bGetTarget) {
+         pTargetData = reinterpret_cast<const StorageDataType *>(pData->m_aTargets);
+      }
+
+      FloatFast * pGradientAndHessian;
+      if(bKeepGradHess) {
+         pGradientAndHessian = pData->m_aGradientsAndHessians;
+      }
+
+      const FloatFast * pWeight;
+      if(bWeight) {
+         pWeight = pData->m_aWeights;
+      }
+
+      FloatFast sumLogLoss;
+      if(bCalcMetric) {
+         sumLogLoss = 0;
+      }
       do {
          StorageDataType iTensorBinCombined;
          if(!bCompilerZeroDimensional) {
@@ -262,16 +285,15 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
             ++pInputData;
          }
          while(true) {
-            constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
+            if(!bCompilerZeroDimensional) {
+               const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined >> cShift) & maskBits;
+               updateScore = aUpdateTensorScores[iTensorBin];
+            }
+
             size_t targetData;
             if(bGetTarget) {
                targetData = static_cast<size_t>(*pTargetData);
                ++pTargetData;
-            }
-
-            if(!bCompilerZeroDimensional) {
-               const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined >> cShift) & maskBits;
-               updateScore = aUpdateTensorScores[iTensorBin];
             }
 
             const FloatFast sampleScore = *pSampleScore + updateScore;
@@ -314,7 +336,10 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
          cShift = cShiftReset;
       } while(pSampleScoresEnd != pSampleScore);
 
-      pData->m_metricOut = static_cast<double>(sumLogLoss);
+      if(bCalcMetric) {
+         pData->m_metricOut = static_cast<double>(sumLogLoss);
+      }
+
       return Error_None;
    }
 };
@@ -323,8 +348,6 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
 template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
 struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
-      // TODO: optimize this function like we do for multiclass above by leaving variables that can stay uninitialized as uninitialized 
-
       static_assert(bKeepGradHess, "for MSE regression we should always keep the gradients");
 
       constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
@@ -333,38 +356,48 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
 
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
-      EBM_ASSERT(1 <= pData->m_cSamples);
 
-      const FloatFast * pWeight = pData->m_aWeights;
+      const size_t cSamples = pData->m_cSamples;
+      EBM_ASSERT(1 <= cSamples);
+      FloatFast * pGradient = pData->m_aGradientsAndHessians; // no hessians for regression
+      const FloatFast * const pGradientsEnd = pGradient + cSamples;
 
-      FloatFast sumSquareError = 0;
-      // no hessians for regression
-      FloatFast * pGradient = pData->m_aGradientsAndHessians;
-      const FloatFast * const pGradientsEnd = pGradient + pData->m_cSamples;
+      size_t cBitsPerItemMax;
+      ptrdiff_t cShift;
+      ptrdiff_t cShiftReset;
+      size_t maskBits;
+      const StorageDataType * pInputData;
 
-      size_t cBitsPerItemMax = 0;
-      size_t maskBits = 0;
-      const StorageDataType * pInputData = nullptr;
-      FloatFast updateScore = aUpdateTensorScores[0];
+      FloatFast updateScore;
 
-      ptrdiff_t cShift = 0;
-      ptrdiff_t cShiftReset = 0;
-
-      if(!bCompilerZeroDimensional) {
-         EBM_ASSERT(k_cItemsPerBitPackNone != cPack);
+      if(bCompilerZeroDimensional) {
+         updateScore = aUpdateTensorScores[0];
+      } else {
+         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
 
          const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
          cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
+
+         cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
+         cShiftReset = static_cast<ptrdiff_t>(cBitsPerItemMax * (cItemsPerBitPack - 1));
+
          EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSizeT);
          maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
 
-         cShift = (pData->m_cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
-         cShiftReset = cBitsPerItemMax * (cItemsPerBitPack - 1);
-
          pInputData = pData->m_aPacked;
+      }
+
+      const FloatFast * pWeight;
+      if(bWeight) {
+         pWeight = pData->m_aWeights;
+      }
+
+      FloatFast sumSquareError;
+      if(bCalcMetric) {
+         sumSquareError = 0;
       }
       do {
          StorageDataType iTensorBinCombined;
@@ -379,7 +412,7 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
                updateScore = aUpdateTensorScores[iTensorBin];
             }
 
-            FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, updateScore);
+            const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient) + updateScore;
             *pGradient = gradient;
             ++pGradient;
 
@@ -394,6 +427,7 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
                }
                sumSquareError += sampleSquaredError;
             }
+
             if(bCompilerZeroDimensional) {
                if(pGradientsEnd == pGradient) {
                   break;
@@ -411,7 +445,10 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
          cShift = cShiftReset;
       } while(pGradientsEnd != pGradient);
 
-      pData->m_metricOut = static_cast<double>(sumSquareError);
+      if(bCalcMetric) {
+         pData->m_metricOut = static_cast<double>(sumSquareError);
+      }
+
       return Error_None;
    }
 };
