@@ -264,8 +264,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    // the C++ says memset legal to use for setting classes with unsigned integer types
    memset(aTargetClasses, 0, cBytesAllTargetClasses);
 
-   const TargetClass * const pTargetClassesEnd =
-      reinterpret_cast<TargetClass *>(reinterpret_cast<char *>(aTargetClasses) + cBytesAllTargetClasses);
+   const TargetClass * const pTargetClassesEnd = IndexByte(aTargetClasses, cBytesAllTargetClasses);
    EBM_ASSERT(pTargetClassesEnd != aTargetClasses);
 
    // determine number of samples per class in the target

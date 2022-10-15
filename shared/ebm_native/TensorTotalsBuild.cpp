@@ -157,7 +157,7 @@ public:
       BinBase * const aBinsBase
 #ifndef NDEBUG
       , BinBase * const aDebugCopyBinsBase
-      , const unsigned char * const pBinsEndDebug
+      , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
@@ -212,14 +212,13 @@ public:
                // this is the last iteration, so pAuxiliaryBin should normally point to the memory address one byte past the legal buffer 
                // (normally pBinsEndDebug), BUT in rare cases we allocate more memory for the BinAuxiliaryBuildZone than we use in this 
                // function, so the only thing that we can guarantee is that we're equal or less than pBinsEndDebug
-               EBM_ASSERT(reinterpret_cast<unsigned char *>(pAuxiliaryBin) <= pBinsEndDebug);
+               EBM_ASSERT(pAuxiliaryBin <= pBinsEndDebug);
             } else {
                // if this isn't the last iteration, then we'll actually be using this memory, so the entire bin had better be useable
-               EBM_ASSERT(reinterpret_cast<unsigned char *>(IndexBin(pAuxiliaryBin, cBytesPerBin)) <= pBinsEndDebug);
+               EBM_ASSERT(IndexBin(pAuxiliaryBin, cBytesPerBin) <= pBinsEndDebug);
             }
             for(auto * pDimensionalCur = pFastTotalStateInitialize->m_pDimensionalCur;
-               pAuxiliaryBin != pDimensionalCur;
-               pDimensionalCur = IndexBin(pDimensionalCur, cBytesPerBin))
+               pAuxiliaryBin != pDimensionalCur; pDimensionalCur = IndexBin(pDimensionalCur, cBytesPerBin))
             {
                pDimensionalCur->AssertZero(cScores);
             }
@@ -318,8 +317,7 @@ public:
             auto * const pDimensionalFirst = pFastTotalState->m_pDimensionalFirst;
             const auto * const pDimensionalWrap = pFastTotalState->m_pDimensionalWrap;
             EBM_ASSERT(pDimensionalFirst != pDimensionalWrap);
-            const size_t cBytesToZero = 
-               reinterpret_cast<const char *>(pDimensionalWrap) - reinterpret_cast<const char *>(pDimensionalFirst);
+            const size_t cBytesToZero = CountBytes(pDimensionalWrap, pDimensionalFirst);
             pDimensionalFirst->ZeroMem(cBytesToZero);
             ++pFastTotalState;
 
@@ -350,7 +348,7 @@ public:
       BinBase * const aBinsBase
 #ifndef NDEBUG
       , BinBase * const aDebugCopyBinsBase
-      , const unsigned char * const pBinsEndDebug
+      , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       static_assert(1 <= cCompilerDimensionsPossible, "can't have less than 1 dimension");
@@ -400,7 +398,7 @@ public:
       BinBase * const aBinsBase
 #ifndef NDEBUG
       , BinBase * const aDebugCopyBinsBase
-      , const unsigned char * const pBinsEndDebug
+      , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       EBM_ASSERT(1 <= cRealDimensions);
@@ -433,7 +431,7 @@ public:
       BinBase * const aBinsBase
 #ifndef NDEBUG
       , BinBase * const aDebugCopyBinsBase
-      , const unsigned char * const pBinsEndDebug
+      , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
@@ -484,7 +482,7 @@ public:
       BinBase * const aBinsBase
 #ifndef NDEBUG
       , BinBase * const aDebugCopyBinsBase
-      , const unsigned char * const pBinsEndDebug
+      , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
@@ -514,7 +512,7 @@ extern void TensorTotalsBuild(
    BinBase * const aBinsBase
 #ifndef NDEBUG
    , BinBase * const aDebugCopyBinsBase
-   , const unsigned char * const pBinsEndDebug
+   , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
    if(IsClassification(cClasses)) {

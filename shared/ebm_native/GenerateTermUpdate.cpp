@@ -46,7 +46,7 @@ extern void TensorTotalsBuild(
    BinBase * const aBinsBase
 #ifndef NDEBUG
    , BinBase * const aDebugCopyBinsBase
-   , const unsigned char * const pBinsEndDebug
+   , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 );
 
@@ -105,7 +105,7 @@ static void BoostZeroDimensional(
    pFastBin->ZeroMem(cBytesPerFastBin);
 
 #ifndef NDEBUG
-   pBoosterShell->SetDebugFastBinsEnd(reinterpret_cast<unsigned char *>(pFastBin) + cBytesPerFastBin);
+   pBoosterShell->SetDebugFastBinsEnd(IndexBin(pFastBin, cBytesPerFastBin));
 #endif // NDEBUG
 
    BinSumsBoosting(pBoosterShell, BoosterShell::k_illegalTermIndex, pInnerBag);
@@ -116,7 +116,7 @@ static void BoostZeroDimensional(
 #ifndef NDEBUG
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster
    const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
-   pBoosterShell->SetDebugBigBinsEnd(reinterpret_cast<unsigned char *>(pBigBin) + cBytesPerBigBin);
+   pBoosterShell->SetDebugBigBinsEnd(IndexBin(pBigBin, cBytesPerBigBin));
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
@@ -210,7 +210,7 @@ static ErrorEbm BoostSingleDimensional(
    aFastBins->ZeroMem(cBytesPerFastBin, cBins);
 
 #ifndef NDEBUG
-   pBoosterShell->SetDebugFastBinsEnd(reinterpret_cast<unsigned char *>(aFastBins) + cBytesPerFastBin * cBins);
+   pBoosterShell->SetDebugFastBinsEnd(IndexBin(aFastBins, cBytesPerFastBin * cBins));
 #endif // NDEBUG
 
    BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
@@ -222,7 +222,7 @@ static ErrorEbm BoostSingleDimensional(
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
    const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
    EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cBins));
-   pBoosterShell->SetDebugBigBinsEnd(reinterpret_cast<unsigned char *>(aBigBins) + cBytesPerBigBin * cBins);
+   pBoosterShell->SetDebugBigBinsEnd(IndexBin(aBigBins, cBytesPerBigBin * cBins));
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
@@ -306,7 +306,7 @@ static ErrorEbm BoostMultiDimensional(
    aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
 
 #ifndef NDEBUG
-   pBoosterShell->SetDebugFastBinsEnd(reinterpret_cast<unsigned char *>(aFastBins) + cBytesPerFastBin * cTensorBins);
+   pBoosterShell->SetDebugFastBinsEnd(IndexBin(aFastBins, cBytesPerFastBin * cTensorBins));
 #endif // NDEBUG
 
    BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
@@ -324,8 +324,7 @@ static ErrorEbm BoostMultiDimensional(
 #ifndef NDEBUG
    EBM_ASSERT(!IsAddError(cTensorBins, cAuxillaryBins));
    EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTensorBins + cAuxillaryBins));
-   const unsigned char * const pDebugBigBinsEnd = 
-      reinterpret_cast<unsigned char *>(aBigBins) + cBytesPerBigBin * (cTensorBins + cAuxillaryBins);
+   const auto * const pDebugBigBinsEnd = IndexBin(aBigBins, cBytesPerBigBin * (cTensorBins + cAuxillaryBins));
    pBoosterShell->SetDebugBigBinsEnd(pDebugBigBinsEnd);
 #endif // NDEBUG
 
@@ -546,7 +545,7 @@ static ErrorEbm BoostRandom(
    aFastBins->ZeroMem(cBytesPerFastBin, cTotalBins);
 
 #ifndef NDEBUG
-   pBoosterShell->SetDebugFastBinsEnd(reinterpret_cast<unsigned char *>(aFastBins) + cBytesPerFastBin * cTotalBins);
+   pBoosterShell->SetDebugFastBinsEnd(IndexBin(aFastBins, cBytesPerFastBin * cTotalBins));
 #endif // NDEBUG
 
    BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
@@ -558,7 +557,7 @@ static ErrorEbm BoostRandom(
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
    const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
    EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTotalBins));
-   pBoosterShell->SetDebugBigBinsEnd(reinterpret_cast<unsigned char *>(aBigBins) + cBytesPerBigBin * cTotalBins);
+   pBoosterShell->SetDebugBigBinsEnd(IndexBin(aBigBins, cBytesPerBigBin * cTotalBins));
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats

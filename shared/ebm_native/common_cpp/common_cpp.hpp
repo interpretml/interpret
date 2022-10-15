@@ -74,13 +74,27 @@ inline static const T * ArrayToPointer(const T * const a) noexcept {
 }
 
 template<typename T>
-inline static T * AddBytes(T * const p, const size_t c) noexcept {
-   // TODO: use this pretty much anywhere we can. Search for "reinterpret_cast"
-   return reinterpret_cast<T *>(reinterpret_cast<char *>(p) + c);
+inline static T * IndexByte(T * const p, const size_t iByte) noexcept {
+   return reinterpret_cast<T *>(reinterpret_cast<char *>(p) + iByte);
 }
 template<typename T>
-inline static const T * AddBytes(const T * const p, const size_t c) noexcept {
-   return reinterpret_cast<const T *>(reinterpret_cast<const char *>(p) + c);
+inline static const T * IndexByte(const T * const p, const size_t iByte) noexcept {
+   return reinterpret_cast<const T *>(reinterpret_cast<const char *>(p) + iByte);
+}
+
+template<typename T>
+inline static T * NegativeIndexByte(T * const p, const size_t iByte) noexcept {
+   return reinterpret_cast<T *>(reinterpret_cast<char *>(p) - iByte);
+}
+template<typename T>
+inline static const T * NegativeIndexByte(const T * const p, const size_t iByte) noexcept {
+   return reinterpret_cast<const T *>(reinterpret_cast<const char *>(p) - iByte);
+}
+
+template<typename T>
+inline static size_t CountBytes(const T * const pHigh, const T * const pLow) noexcept {
+   EBM_ASSERT(pLow <= pHigh);
+   return reinterpret_cast<const char *>(pHigh) - reinterpret_cast<const char *>(pLow);
 }
 
 // TODO : replace all std::min and std::max and similar comparions that get the min/max with this function

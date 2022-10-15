@@ -173,7 +173,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
    GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
 #ifndef NDEBUG
    , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
-   , const unsigned char * const pBinsEndDebug
+   , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
    // TODO: build a version of this function that can get the sum of any interior volume.  This function
@@ -342,7 +342,7 @@ INLINE_ALWAYS static void TensorTotalsSumTripple(
    GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
 #ifndef NDEBUG
    , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
-   , const unsigned char * const pBinsEndDebug
+   , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
    // TODO: make a tripple specific version of this function
@@ -371,7 +371,7 @@ INLINE_ALWAYS static void TensorTotalsSumPair(
    GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
 #ifndef NDEBUG
    , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
-   , const unsigned char * const pBinsEndDebug
+   , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
    // TODO: make a pair specific version of this function
@@ -405,7 +405,7 @@ INLINE_ALWAYS static void TensorTotalsSum(
    GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
 #ifndef NDEBUG
    , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
-   , const unsigned char * const pBinsEndDebug
+   , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
    static constexpr bool bPair = (2 == cCompilerDimensions);

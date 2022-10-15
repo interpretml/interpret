@@ -260,7 +260,7 @@ inline static TreeNode<bClassification, cCompilerScores> * IndexTreeNode(
    TreeNode<bClassification, cCompilerScores> * const pTreeNode,
    const size_t iByte
 ) {
-   return reinterpret_cast<TreeNode<bClassification, cCompilerScores> *>(reinterpret_cast<char *>(pTreeNode) + iByte);
+   return IndexByte(pTreeNode, iByte);
 }
 
 template<bool bClassification, size_t cCompilerScores>
@@ -268,7 +268,7 @@ inline static const TreeNode<bClassification, cCompilerScores> * IndexTreeNode(
    const TreeNode<bClassification, cCompilerScores> * const pTreeNode,
    const size_t iByte
 ) {
-   return reinterpret_cast<const TreeNode<bClassification, cCompilerScores> *>(reinterpret_cast<const char *>(pTreeNode) + iByte);
+   return IndexByte(pTreeNode, iByte);
 }
 
 template<bool bClassification, size_t cCompilerScores>

@@ -37,7 +37,7 @@ public:
       BinBase * const aBinsBase
 #ifndef NDEBUG
       , const BinBase * const aDebugCopyBinsBase
-      , const unsigned char * const pBinsEndDebug
+      , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
@@ -389,7 +389,7 @@ public:
       BinBase * const aBinsBase
 #ifndef NDEBUG
       , const BinBase * const aDebugCopyBinsBase
-      , const unsigned char * const pBinsEndDebug
+      , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
@@ -447,7 +447,7 @@ public:
       BinBase * const aBinsBase
 #ifndef NDEBUG
       , const BinBase * const aDebugCopyBinsBase
-      , const unsigned char * const pBinsEndDebug
+      , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
@@ -481,7 +481,7 @@ extern double PartitionTwoDimensionalInteraction(
    BinBase * const aBinsBase
 #ifndef NDEBUG
    , const BinBase * const aDebugCopyBinsBase
-   , const unsigned char * const pBinsEndDebug
+   , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
    const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();

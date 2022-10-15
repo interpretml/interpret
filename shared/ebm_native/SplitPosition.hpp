@@ -100,18 +100,16 @@ inline static SplitPosition<bClassification, cCompilerScores> * IndexSplitPositi
    SplitPosition<bClassification, cCompilerScores> * const pSplitPosition,
    const size_t iByte
 ) {
-   return reinterpret_cast<SplitPosition<bClassification, cCompilerScores> *>(reinterpret_cast<char *>(pSplitPosition) + iByte);
+   return IndexByte(pSplitPosition, iByte);
 }
 
 template<bool bClassification, size_t cCompilerScores>
 inline static size_t CountSplitPositions(
-   const SplitPosition<bClassification, cCompilerScores> * const pSplitPositionLow,
    const SplitPosition<bClassification, cCompilerScores> * const pSplitPositionHigh,
+   const SplitPosition<bClassification, cCompilerScores> * const pSplitPositionLow,
    const size_t cBytesPerSplitPosition
 ) {
-   EBM_ASSERT(pSplitPositionLow <= pSplitPositionHigh);
-   const size_t cBytesDiff = reinterpret_cast<const char *>(pSplitPositionHigh) - 
-      reinterpret_cast<const char *>(pSplitPositionLow);
+   const size_t cBytesDiff = CountBytes(pSplitPositionHigh, pSplitPositionLow);
    EBM_ASSERT(0 == cBytesDiff % cBytesPerSplitPosition);
    return cBytesDiff / cBytesPerSplitPosition;
 }

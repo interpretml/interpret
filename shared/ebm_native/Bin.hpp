@@ -51,7 +51,7 @@ struct BinBase {
       // of the value zero in that type.
 
       static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
-      memset(reinterpret_cast<char *>(this) + iBin * cBytesPerBin, 0, cBytesPerBin * cBins);
+      memset(IndexByte(this, iBin * cBytesPerBin), 0, cBytesPerBin * cBins);
    }
 };
 static_assert(std::is_standard_layout<BinBase>::value,
@@ -311,7 +311,7 @@ inline static Bin<TFloat, bClassification, cCompilerScores> * IndexBin(
    Bin<TFloat, bClassification, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
-   return reinterpret_cast<Bin<TFloat, bClassification, cCompilerScores> *>(reinterpret_cast<char *>(aBins) + iByte);
+   return IndexByte(aBins, iByte);
 }
 
 template<typename TFloat, bool bClassification, size_t cCompilerScores>
@@ -319,15 +319,15 @@ inline static const Bin<TFloat, bClassification, cCompilerScores> * IndexBin(
    const Bin<TFloat, bClassification, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
-   return reinterpret_cast<const Bin<TFloat, bClassification, cCompilerScores> *>(reinterpret_cast<const char *>(aBins) + iByte);
+   return IndexByte(aBins, iByte);
 }
 
 inline static BinBase * IndexBin(BinBase * const aBins, const size_t iByte) {
-   return reinterpret_cast<BinBase *>(reinterpret_cast<char *>(aBins) + iByte);
+   return IndexByte(aBins, iByte);
 }
 
 inline static const BinBase * IndexBin(const BinBase * const aBins, const size_t iByte) {
-   return reinterpret_cast<const BinBase *>(reinterpret_cast<const char *>(aBins) + iByte);
+   return IndexByte(aBins, iByte);
 }
 
 template<typename TFloat, bool bClassification, size_t cCompilerScores>
@@ -335,7 +335,7 @@ inline static const Bin<TFloat, bClassification, cCompilerScores> * NegativeInde
    const Bin<TFloat, bClassification, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
-   return reinterpret_cast<const Bin<TFloat, bClassification, cCompilerScores> *>(reinterpret_cast<const char *>(aBins) - iByte);
+   return NegativeIndexByte(aBins, iByte);
 }
 
 template<typename TFloat, bool bClassification, size_t cCompilerScores>
@@ -343,17 +343,16 @@ inline static Bin<TFloat, bClassification, cCompilerScores> * NegativeIndexBin(
    Bin<TFloat, bClassification, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
-   return reinterpret_cast<Bin<TFloat, bClassification, cCompilerScores> *>(reinterpret_cast<char *>(aBins) - iByte);
+   return NegativeIndexByte(aBins, iByte);
 }
 
 template<typename TFloat, bool bClassification, size_t cCompilerScores>
 inline static size_t CountBins(
-   const Bin<TFloat, bClassification, cCompilerScores> * const pBinLow,
    const Bin<TFloat, bClassification, cCompilerScores> * const pBinHigh,
+   const Bin<TFloat, bClassification, cCompilerScores> * const pBinLow,
    const size_t cBytesPerBin
 ) {
-   EBM_ASSERT(pBinLow <= pBinHigh);
-   const size_t cBytesDiff = reinterpret_cast<const char *>(pBinHigh) - reinterpret_cast<const char *>(pBinLow);
+   const size_t cBytesDiff = CountBytes(pBinHigh, pBinLow);
    EBM_ASSERT(0 == cBytesDiff % cBytesPerBin);
    return cBytesDiff / cBytesPerBin;
 }

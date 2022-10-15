@@ -985,7 +985,8 @@ static IntEbm AppendTarget(
          pTargetDataSetShared->m_id = GetTargetId(bClassification);
 
          if(bClassification) {
-            ClassificationTargetDataSetShared * pClassificationTargetDataSetShared = reinterpret_cast<ClassificationTargetDataSetShared *>(pFillMemTemp + sizeof(TargetDataSetShared));
+            ClassificationTargetDataSetShared * pClassificationTargetDataSetShared = 
+               reinterpret_cast<ClassificationTargetDataSetShared *>(pFillMemTemp + sizeof(TargetDataSetShared));
             pClassificationTargetDataSetShared->m_cClasses = static_cast<SharedStorageDataType>(countClasses);
          }
       }

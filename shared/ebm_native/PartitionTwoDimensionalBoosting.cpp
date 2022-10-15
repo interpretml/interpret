@@ -41,7 +41,7 @@ static FloatBig SweepMultiDimensional(
    size_t * const piBestSplit
 #ifndef NDEBUG
    , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
-   , const unsigned char * const pBinsEndDebug
+   , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
    static constexpr bool bClassification = IsClassification(cCompilerClasses);

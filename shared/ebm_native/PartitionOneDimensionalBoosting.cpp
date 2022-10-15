@@ -68,7 +68,7 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
-   EBM_ASSERT(2 <= CountBins(aBins, pBinsEnd, cBytesPerBin)); // we pre-filter out features with only one bin
+   EBM_ASSERT(2 <= CountBins(pBinsEnd, aBins, cBytesPerBin)); // we pre-filter out features with only one bin
 
    const auto * pBin = aBins;
    do {
@@ -175,7 +175,7 @@ static ErrorEbm Flatten(
          // and this TreeNode never had children and we never wrote a pointer to the children in this memory
          if(pBinLastOrChildren < aBins || pBinsEnd <= pBinLastOrChildren) {
             EBM_ASSERT(pTreeNode <= pBinLastOrChildren && pBinLastOrChildren < 
-               reinterpret_cast<char *>(pTreeNode) + pBoosterCore->GetCountBytesTreeNodes());
+               IndexTreeNode(pTreeNode, pBoosterCore->GetCountBytesTreeNodes()));
 
             // the node was examined and a gain calculated, so it has left and right children.
             // We can retrieve the split location by looking at where the right child would end its range
@@ -186,7 +186,7 @@ static ErrorEbm Flatten(
 
          EBM_ASSERT(aBins <= pBinLast);
          EBM_ASSERT(pBinLast < pBinsEnd);
-         iSplit = CountBins(aBins, pBinLast, cBytesPerBin);
+         iSplit = CountBins(pBinLast, aBins, cBytesPerBin);
             
          const auto * aGradientPair = pTreeNode->GetGradientPairs();
          size_t iScore = 0;
@@ -481,7 +481,7 @@ static int FindBestSplitGain(
    EBM_ASSERT(!std::isinf(bestGain));
    EBM_ASSERT(0 <= bestGain);
 
-   const size_t cTies = CountSplitPositions(pBestSplitsStart, pBestSplitsCur, cBytesPerSplitPosition);
+   const size_t cTies = CountSplitPositions(pBestSplitsCur, pBestSplitsStart, cBytesPerSplitPosition);
    if(UNLIKELY(1 < cTies)) {
       const size_t iRandom = pRng->NextFast(cTies);
       pBestSplitsStart = IndexSplitPosition(pBestSplitsStart, cBytesPerSplitPosition * iRandom);
@@ -711,9 +711,7 @@ public:
             EBM_ASSERT(!std::isnan(totalGain));
             EBM_ASSERT(0 <= totalGain);
 
-            EBM_ASSERT(static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeScratchSpace) -
-               reinterpret_cast<char *>(pRootTreeNode)) <= pBoosterCore->GetCountBytesTreeNodes());
-
+            EBM_ASSERT(CountBytes(pTreeNodeScratchSpace, pRootTreeNode) <= pBoosterCore->GetCountBytesTreeNodes());
          } catch(const std::bad_alloc &) {
             // calling anything inside nodeGainRanking can throw exceptions
             LOG_0(Trace_Warning, "WARNING PartitionOneDimensionalBoosting out of memory exception");

@@ -41,7 +41,7 @@ extern void TensorTotalsBuild(
    BinBase * const aBinsBase
 #ifndef NDEBUG
    , BinBase * const aDebugCopyBinsBase
-   , const unsigned char * const pBinsEndDebug
+   , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 );
 
@@ -55,7 +55,7 @@ extern double PartitionTwoDimensionalInteraction(
    BinBase * const aBinsBase
 #ifndef NDEBUG
    , const BinBase * const aDebugCopyBinsBase
-   , const unsigned char * const pBinsEndDebug
+   , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 );
 
@@ -254,9 +254,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
 
 #ifndef NDEBUG
-   const unsigned char * const pDebugFastBinsEnd = 
-      reinterpret_cast<unsigned char *>(aFastBins) + cBytesPerFastBin * cTensorBins;
-   pInteractionShell->SetDebugFastBinsEnd(pDebugFastBinsEnd);
+   const auto * const pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
+   pInteractionShell->SetDebugFastBinsEnd(reinterpret_cast<const unsigned char *>(pDebugFastBinsEnd));
 #endif // NDEBUG
 
    BinSumsInteraction(pInteractionShell, cDimensions, aiFeatures, acBins);
@@ -284,8 +283,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    }
 
 #ifndef NDEBUG
-   const unsigned char * const pDebugBigBinsEnd = 
-      reinterpret_cast<unsigned char *>(aBigBins) + cBytesPerBigBin * cTotalBigBins;
+   const auto * const pDebugBigBinsEnd = IndexBin(aBigBins, cBytesPerBigBin * cTotalBigBins);
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
