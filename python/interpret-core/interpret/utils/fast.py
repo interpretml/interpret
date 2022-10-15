@@ -1,3 +1,6 @@
+# Copyright (c) 2019 Microsoft Corporation
+# Distributed under the MIT software license
+
 """ FAST - Interaction Detection
 
 This module exposes a method called FAST [1] to measure and rank the strengths
@@ -5,10 +8,13 @@ of the interaction of all pairs of features in a dataset.
 
 [1] http://www.cs.cornell.edu/~yinlou/papers/lou-kdd13.pdf
 """
+
 import numpy as np
 from itertools import combinations
 
 from sklearn.base import is_classifier
+from sklearn.utils.multiclass import type_of_target
+from sklearn.base import is_classifier, is_regressor
 
 from ..glassbox.ebm.bin import clean_X, clean_vector, construct_bins, bin_native_by_dimension
 from ..glassbox.ebm.internal import Native, InteractionDetector
@@ -38,6 +44,7 @@ def _prepare_sample_weight(sample_weight, num_samples):
     return sample_weight
 
 def _get_scores(X, init_scores, init_model):
+    # TODO: remove this
     if init_model is not None:
         if is_classifier(init_model):
             scores = init_model.decision_function(X)
@@ -78,48 +85,94 @@ def _get_ranked_interactions(
     # TODO put this in a priority queue to reduce memory consumption which might be important for tripples
     return interaction_strengths[:num_interactions]
 
-def measure_interactions(X,
-         y,
-         is_classification,
-         sample_weight=None,
-         feature_names=None,
-         feature_types=None,
-         num_output_interactions=0,
-         max_interaction_bins=32,
-         binning='quantile',
-         min_samples_leaf=2,
-         **kwargs
+def measure_interactions(
+        X,
+        y,
+        interactions=None,
+        init_score=None,
+        sample_weight=None,
+        feature_names=None,
+        feature_types=None,
+        max_interaction_bins=32,
+        binning='quantile',
+        min_samples_leaf=2,
+        objective=None,
     ):
     """Run the FAST algorithm and return the ranked interactions and their strengths as a dictionary.
 
     Args:
-        X (numpy array): Array for training samples
-        y (numpy array): Array as training labels
-        is_classification: True if the task is a classification task, False otherwise
-        sample_weight (numpy array): Optional array of weights per sample. Should be the same length as X and y
+        X: Array of training samples
+        y: Array of training targets
+        interactions: Interactions to evaluate
+            Either a list of lists of feature indices, or an integer for the max number of pairs returned.
+            None evaluates all pairwise interactions
+        init_score: Either a model that can generate scores or per-sample initialization score. 
+            If samples scores it should be the same length as X and y.
+        sample_weight: Optional array of weights per sample. Should be the same length as X and y
         feature_names: List of feature names
         feature_types: List of feature types, for example "continuous" or "nominal"
-        num_output_interactions: Number of ranked interactions returned by the function. Set 0 for all interactions.
         max_interaction_bins: Max number of bins per interaction terms
         binning: Method to bin values for pre-processing - "uniform", "quantile", or "rounded_quantile".
-           'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
+            'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
         min_samples_leaf: Minimum number of cases for tree splits used in boosting
+        objective: 'regression' (RMSE) or 'classification' (log loss) or None for auto
     Returns:
-        Dictionary with a pair of indices as keys and strengths as values, e.g. { (1, 2) : 0.134 }
+        Dictionary with a pair of indices as keys and strengths as values, e.g. { (1, 2) : 0.134 }.
+            Ordered by decreasing strengths
     """
+
+    is_classification = None
+    if objective in ['classification']:
+        is_classification = True
+    elif objective in ['regression']:
+        is_classification = False
+
+    if is_classifier(init_score):
+        if is_classification == False:
+            raise ValueError("objective is for regresion but the init_score is a classification model")
+        is_classification = True
+        try:
+            init_score = np.array(init_score.decision_function(X), dtype=np.float64)
+        except AttributeError:
+            probs = np.array(init_score.predict_proba(X), dtype=np.float64)
+            maxes = np.amax(probs, axis=1)
+            init_score = np.log(probs / maxes[:,np.newaxis])
+            if init_score.shape[1] == 2: # binary classification
+                init_score = init_score[:,1] - init_score[:,0]
+    elif is_regressor(init_score):
+        if is_classification == True:
+            raise ValueError("objective is for classification but the init_score is a regression model")
+        is_classification = False
+        init_score = np.array(init_score.predict(X), dtype=np.float64)
+        init_score = clean_vector(init_score, False, "init_score")
+        # TODO Add link function to operate on predict's output when needed
+    elif init_score is not None:
+        init_score = np.array(init_score, dtype=np.float64)
+
     if is_classification is None:
-        raise ValueError("is_classification should be provided.")
-
-    init_scores = kwargs.get("init_scores", None)
-    init_model = kwargs.get("init_model", None)
-    if init_model is not None:
-        if is_classification != is_classifier(init_model):
-            raise ValueError(f"is_classification is {is_classification} bu init_model's task type is {is_classifier(init_model)}.")
-
-    scores = _get_scores(X, init_scores, init_model)
+        target_type = type_of_target(y)
+        if target_type in ['binary', 'multiclass']:
+            is_classification = True
+        elif target_type in ['continuous']:
+            is_classification = False
+        else:
+            raise ValueError("unrecognized target type in y")
 
     # num_classes is -1 for regression
     X, y, num_samples, num_classes = _prepare_X_y(X, y, is_classification)
+
+    if init_score is not None:
+        if is_classification:
+            if num_classes == 2:
+                # should be 1 dimensionable, and our clean_vector will force that
+                init_score = clean_vector(init_score, False, "init_score")
+            elif init_score.ndim != 2:
+                raise ValueError("for multiclass init_score should have 2 dimensions")
+            elif init_score.shape[1] != num_classes:
+                raise ValueError("for multiclass init_score.shape[1] should be the number of classes")
+        else:
+            # clean_vector will fail if it is not one dimenionable
+            init_score = clean_vector(init_score, False, "init_score")
 
     if sample_weight is not None:
         sample_weight = _prepare_sample_weight(sample_weight, num_samples)
@@ -149,11 +202,21 @@ def measure_interactions(X,
         feature_types_in=feature_types_in
     )
 
+    if isinstance(interactions, int):
+        num_output_interactions = interactions
+        iter_term_features=combinations(range(n_features_in), 2)
+    elif interactions is None:
+        num_output_interactions = 0
+        iter_term_features=combinations(range(n_features_in), 2)
+    else:
+        num_output_interactions = 0
+        iter_term_features = interactions
+
     ranked_interactions = _get_ranked_interactions(
         dataset=dataset,
         bag=None,
-        scores=scores,
-        iter_term_features=combinations(range(n_features_in), 2),
+        scores=init_score,
+        iter_term_features=iter_term_features,
         interaction_flags=Native.InteractionFlags_Pure,
         min_samples_leaf=min_samples_leaf,
         experimental_params=None,
