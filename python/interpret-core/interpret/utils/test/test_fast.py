@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 
 from ...test.utils import synthetic_regression
-from ..fast import fast, _get_scores
+from ..fast import measure_interactions, _get_scores
 
 @pytest.fixture(scope="module")
 def regression_data():
@@ -42,18 +42,18 @@ def test_kwargs(regression_data):
     lr = LinearRegression()
     lr.fit(X, y)
 
-    ranked_pairs_dict = fast(X, y, is_classification=False, init_model=lr)
+    ranked_pairs_dict = measure_interactions(X, y, is_classification=False, init_model=lr)
     # 4 features
     assert 6 == len(ranked_pairs_dict)
 
-    ranked_pairs_dict = fast(X, y, is_classification=False, init_scores=init_scores)
+    ranked_pairs_dict = measure_interactions(X, y, is_classification=False, init_scores=init_scores)
     assert 6 == len(ranked_pairs_dict)
 
 def test_missing_is_classification(regression_data):
     X, y = regression_data
 
     with pytest.raises(ValueError):
-        fast(X, y, is_classification=None)
+        measure_interactions(X, y, is_classification=None)
 
 def test_inconsistent_is_classification(regression_data):
     X, y = regression_data
@@ -61,27 +61,27 @@ def test_inconsistent_is_classification(regression_data):
     lr = LinearRegression()
 
     with pytest.raises(ValueError):
-        fast(X, y, init_model=lr, is_classification=True)
+        measure_interactions(X, y, init_model=lr, is_classification=True)
 
 def test_inconsistent_X_and_y(regression_data):
     X, y = regression_data
     y = y.head(10)
 
     with pytest.raises(ValueError):
-        fast(X, y, is_classification=False)
+        measure_interactions(X, y, is_classification=False)
 
 def test_inconsistent_sample_weigth(regression_data):
     X, y = regression_data
     sample_weight = np.random.rand(X.shape[0] - 10)
 
     with pytest.raises(ValueError):
-        fast(X, y, is_classification=False, sample_weight=sample_weight)
+        measure_interactions(X, y, is_classification=False, sample_weight=sample_weight)
 
 def test_sample_weigth(regression_data):
     X, y = regression_data
     sample_weight = np.random.rand(X.shape[0])
 
-    ranked_pairs_dict = fast(X, y, is_classification=False, sample_weight=sample_weight)
+    ranked_pairs_dict = measure_interactions(X, y, is_classification=False, sample_weight=sample_weight)
     # 4 features
     assert 6 == len(ranked_pairs_dict)
 
@@ -92,7 +92,7 @@ def test_feature_names_and_types(regression_data):
     feature_names = ["FtA", "FtB", "FtC", "FtD"]
     feature_types = ["continuous", "continuous", "continuous", "continuous"]
 
-    ranked_pairs_dict = fast(X, y, is_classification=False, feature_names=feature_names, feature_types=feature_types)
+    ranked_pairs_dict = measure_interactions(X, y, is_classification=False, feature_names=feature_names, feature_types=feature_types)
     assert 6 == len(ranked_pairs_dict)
 
 def test_max_bins_and_binning_options(regression_data):
@@ -101,12 +101,12 @@ def test_max_bins_and_binning_options(regression_data):
     max_interaction_bins = 64
     binning = "uniform"
 
-    ranked_pairs_dict = fast(X, y, is_classification=False, max_interaction_bins=max_interaction_bins, binning=binning)
+    ranked_pairs_dict = measure_interactions(X, y, is_classification=False, max_interaction_bins=max_interaction_bins, binning=binning)
     assert 6 == len(ranked_pairs_dict)
 
     binning = "rounded_quantile"
 
-    ranked_pairs_dict = fast(X, y, is_classification=False, max_interaction_bins=max_interaction_bins, binning=binning)
+    ranked_pairs_dict = measure_interactions(X, y, is_classification=False, max_interaction_bins=max_interaction_bins, binning=binning)
     assert 6 == len(ranked_pairs_dict)
 
 def test_min_samples_leaf(regression_data):
@@ -114,28 +114,28 @@ def test_min_samples_leaf(regression_data):
 
     min_samples_leaf = 4
 
-    ranked_pairs_dict = fast(X, y, is_classification=False, min_samples_leaf=min_samples_leaf)
+    ranked_pairs_dict = measure_interactions(X, y, is_classification=False, min_samples_leaf=min_samples_leaf)
     assert 6 == len(ranked_pairs_dict)
 
 def test_num_output_interactions(regression_data):
     X, y = regression_data
 
-    ranked_pairs_dict = fast(X, y, is_classification=False, num_output_interactions=3)
+    ranked_pairs_dict = measure_interactions(X, y, is_classification=False, num_output_interactions=3)
     assert 3 == len(ranked_pairs_dict)
 
-    ranked_pairs_dict = fast(X, y, is_classification=False, num_output_interactions=100)
+    ranked_pairs_dict = measure_interactions(X, y, is_classification=False, num_output_interactions=100)
     assert 6 == len(ranked_pairs_dict)
 
-    ranked_pairs_dict = fast(X, y, is_classification=False, num_output_interactions=0)
+    ranked_pairs_dict = measure_interactions(X, y, is_classification=False, num_output_interactions=0)
     assert 6 == len(ranked_pairs_dict)
 
-    ranked_pairs_dict = fast(X, y, is_classification=False, num_output_interactions=-2)
+    ranked_pairs_dict = measure_interactions(X, y, is_classification=False, num_output_interactions=-2)
     assert 6 == len(ranked_pairs_dict)
 
 def test_output_dict(regression_data):
     X, y = regression_data
 
-    ranked_pairs_dict = fast(X, y, is_classification=False)
+    ranked_pairs_dict = measure_interactions(X, y, is_classification=False)
     assert 6 == len(ranked_pairs_dict)
     for key, value in ranked_pairs_dict.items():
         assert isinstance(key, tuple)
@@ -147,7 +147,7 @@ def test_regression_task():
     X = diabetes_data[0]
     y = diabetes_data[1]
 
-    ranked_strengths = fast(X, y, is_classification=False)
+    ranked_strengths = measure_interactions(X, y, is_classification=False)
 
     # 10 features
     assert 45 == len(ranked_strengths)
@@ -158,7 +158,7 @@ def test_classification_task():
     X = breast_cancer_data[0]
     y = breast_cancer_data[1]
 
-    ranked_strengths = fast(X, y, is_classification=True)
+    ranked_strengths = measure_interactions(X, y, is_classification=True)
 
     # 30 features
     assert 435 == len(ranked_strengths)
@@ -167,7 +167,7 @@ def test_nulticlass_task():
     from sklearn.datasets import make_classification
     X, y = make_classification(n_samples=100, n_features=10, n_informative=3, n_classes=3, random_state=2022)
 
-    ranked_strengths = fast(X, y, is_classification=True)
+    ranked_strengths = measure_interactions(X, y, is_classification=True)
 
     assert 45 == len(ranked_strengths)
 
@@ -191,7 +191,7 @@ def test_impure_interaction_is_zero():
         11.625
     ]
 
-    ranked_strengths = fast(X, y, is_classification=False, min_samples_leaf=1, sample_weight=sample_weight)
+    ranked_strengths = measure_interactions(X, y, is_classification=False, min_samples_leaf=1, sample_weight=sample_weight)
     assert ranked_strengths[(0, 1)] == 0.0
 
 def test_added_impure_contribution_is_zero():
@@ -214,7 +214,7 @@ def test_added_impure_contribution_is_zero():
         5
     ]
 
-    ranked_strengths_pure_int = fast(X, y, is_classification=False, min_samples_leaf=1, sample_weight=sample_weight)
+    ranked_strengths_pure_int = measure_interactions(X, y, is_classification=False, min_samples_leaf=1, sample_weight=sample_weight)
 
     y = [
         -16.0 + 3.0 + 11.0,
@@ -223,5 +223,5 @@ def test_added_impure_contribution_is_zero():
         -8.0 + 5.0 + 7.0
     ]
 
-    ranked_strengths_impure = fast(X, y, is_classification=False, min_samples_leaf=1, sample_weight=sample_weight)
+    ranked_strengths_impure = measure_interactions(X, y, is_classification=False, min_samples_leaf=1, sample_weight=sample_weight)
     assert ranked_strengths_pure_int[(0, 1)] == ranked_strengths_impure[(0, 1)]

@@ -15,6 +15,7 @@ from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_global_selector2, gen_local_selector
+from ...utils.fast import _get_ranked_interactions
 
 import json
 from math import isnan
@@ -521,7 +522,6 @@ class EBMModel(BaseEstimator):
 
             if isinstance(interactions, int):
                 _log.info("Estimating with FAST")
-                from ...utils.fast import _get_ranked_interactions
 
                 parallel_args = []
                 for idx in range(self.outer_bags):
@@ -648,7 +648,7 @@ class EBMModel(BaseEstimator):
                 term_features
             )
 
-        term_scores, term_standard_deviations, intercept, bagged_scores = _process_terms(
+        term_scores, standard_deviations, intercept, bagged_scores = _process_terms(
             n_classes, 
             n_samples, 
             bagged_scores, 
@@ -696,7 +696,7 @@ class EBMModel(BaseEstimator):
         self.bin_weights_ = bin_weights
         self.bagged_scores_ = bagged_scores
         self.term_scores_ = term_scores
-        self.term_standard_deviations_ = term_standard_deviations
+        self.standard_deviations_ = standard_deviations
 
         # general
         self.intercept_ = intercept
@@ -916,7 +916,7 @@ class EBMModel(BaseEstimator):
             features.append(feature)
         j['features'] = features
 
-        standard_deviations_all = getattr(self, 'term_standard_deviations_', None)
+        standard_deviations_all = getattr(self, 'standard_deviations_', None)
         bagged_scores_all = getattr(self, 'bagged_scores_', None)
         bin_counts_all = getattr(self, 'bin_counts_', None)
 
@@ -1067,16 +1067,16 @@ class EBMModel(BaseEstimator):
 
         mod_counts = remove_last2(getattr(self, 'bin_counts_', self.bin_weights_), self.bin_weights_)
         mod_term_scores = remove_last2(self.term_scores_, self.bin_weights_)
-        mod_term_standard_deviations = remove_last2(self.term_standard_deviations_, self.bin_weights_)
+        mod_standard_deviations = remove_last2(self.standard_deviations_, self.bin_weights_)
         for term_idx, feature_idxs in enumerate(self.term_features_):
             mod_term_scores[term_idx] = trim_tensor(mod_term_scores[term_idx], trim_low=[True] * len(feature_idxs))
-            mod_term_standard_deviations[term_idx] = trim_tensor(mod_term_standard_deviations[term_idx], trim_low=[True] * len(feature_idxs))
+            mod_standard_deviations[term_idx] = trim_tensor(mod_standard_deviations[term_idx], trim_low=[True] * len(feature_idxs))
             mod_counts[term_idx] = trim_tensor(mod_counts[term_idx], trim_low=[True] * len(feature_idxs))
 
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
-        for errors, scores in zip(mod_term_standard_deviations, mod_term_scores):
+        for errors, scores in zip(mod_standard_deviations, mod_term_scores):
             lower_bound = min(lower_bound, np.min(scores - errors))
             upper_bound = max(upper_bound, np.max(scores + errors))
 
@@ -1096,7 +1096,7 @@ class EBMModel(BaseEstimator):
             model_graph = mod_term_scores[term_idx]
 
             # NOTE: This uses stddev. for bounds, consider issue warnings.
-            errors = mod_term_standard_deviations[term_idx]
+            errors = mod_standard_deviations[term_idx]
 
             if len(feature_idxs) == 1:
                 keep_idxs.append(term_idx)
@@ -1125,7 +1125,7 @@ class EBMModel(BaseEstimator):
                     min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_feature_val, max_feature_val)
                     bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
 
-                    histogram_edges = self.get_histogram_edges(feature_index0)
+                    histogram_edges = self.histogram_edges(feature_index0)
                     if histogram_edges is not None:
                         names = list(histogram_edges)
                         densities = list(self.histogram_counts_[feature_index0][1:-1])
@@ -1239,7 +1239,7 @@ class EBMModel(BaseEstimator):
             else:  # pragma: no cover
                 warn(f"Dropping feature {term_names[term_idx]} from explanation since we can't graph more than 2 dimensions.")
 
-        importances = self.get_importances()
+        importances = self.term_importances()
 
         overall_dict = {
             "type": "univariate",
@@ -1400,7 +1400,7 @@ class EBMModel(BaseEstimator):
             selector=selector,
         )
 
-    def get_histogram_edges(self, feature_idx):
+    def histogram_edges(self, feature_idx):
         """ Provides the histogram edges used in the model
 
         Args:
@@ -1422,7 +1422,7 @@ class EBMModel(BaseEstimator):
                         return make_histogram_edges(min_feature_val, max_feature_val, histogram_bin_counts)
         return None
 
-    def get_importances(self, importance_type='avg_weight'):
+    def term_importances(self, importance_type='avg_weight'):
         """ Provides the term importances
 
         Args:

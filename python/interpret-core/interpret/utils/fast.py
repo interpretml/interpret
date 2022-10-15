@@ -75,9 +75,10 @@ def _get_ranked_interactions(
     if (num_output_interactions > 0):
         num_interactions = min(num_output_interactions, num_interactions)
 
+    # TODO put this in a priority queue to reduce memory consumption which might be important for tripples
     return interaction_strengths[:num_interactions]
 
-def fast(X,
+def measure_interactions(X,
          y,
          is_classification,
          sample_weight=None,

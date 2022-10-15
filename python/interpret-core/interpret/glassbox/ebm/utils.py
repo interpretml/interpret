@@ -202,7 +202,7 @@ def _create_proportional_tensor(axis_weights):
 
 def _process_terms(n_classes, n_samples, bagged_scores, bin_weights, bag_weights):
     term_scores = []
-    term_standard_deviations = []
+    standard_deviations = []
     new_bagged_scores = []
     for score_tensors, weights in zip(bagged_scores, bin_weights):
         # if the missing/unknown bin has zero weight then whatever number was generated via boosting is 
@@ -222,10 +222,10 @@ def _process_terms(n_classes, n_samples, bagged_scores, bin_weights, bag_weights
             # if all the bags have the same total weight we can avoid some numeracy issues
             # by using a non-weighted standard deviation
             term_scores.append(np.average(score_tensors, axis=0))
-            term_standard_deviations.append(np.std(score_tensors, axis=0))
+            standard_deviations.append(np.std(score_tensors, axis=0))
         else:
             term_scores.append(np.average(score_tensors, axis=0, weights=bag_weights))
-            term_standard_deviations.append(_weighted_std(score_tensors, axis=0, weights=bag_weights))
+            standard_deviations.append(_weighted_std(score_tensors, axis=0, weights=bag_weights))
 
     intercept = np.zeros(Native.get_count_scores_c(n_classes), np.float64)
 
@@ -248,7 +248,7 @@ def _process_terms(n_classes, n_samples, bagged_scores, bin_weights, bag_weights
         # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
         intercept = float(intercept)
 
-    return term_scores, term_standard_deviations, intercept, new_bagged_scores
+    return term_scores, standard_deviations, intercept, new_bagged_scores
 
 def _generate_term_names(feature_names, term_features):
     return [" & ".join(feature_names[i] for i in grp) for grp in term_features]
@@ -935,7 +935,7 @@ def merge_ebms(models):
         ebm.bin_weights_.append(np.sum(new_bin_weights, axis=0))
         ebm.bagged_scores_.append(np.array(new_bagged_scores, np.float64))
 
-    ebm.term_scores_, ebm.term_standard_deviations_, ebm.intercept_, ebm.bagged_scores_ = _process_terms(
+    ebm.term_scores_, ebm.standard_deviations_, ebm.intercept_, ebm.bagged_scores_ = _process_terms(
         n_classes, 
         ebm.n_samples_, 
         ebm.bagged_scores_, 

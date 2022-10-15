@@ -171,7 +171,7 @@ def _check_group_importance(X, y, ebm):
 
     # For one term, its importance should be approx. equal to the one computed by interpret
     # TODO For multiclass this is currently consistent with interpret, but might be changed
-    assert pytest.approx(ebm.get_importances()[0]) == compute_group_importance(["A"], ebm, X)
+    assert pytest.approx(ebm.term_importances()[0]) == compute_group_importance(["A"], ebm, X)
 
     mixed_list = ["A", 1]
     assert compute_group_importance(["A", "B"], ebm, X) == \
