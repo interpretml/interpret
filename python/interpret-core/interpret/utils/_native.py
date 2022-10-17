@@ -543,7 +543,7 @@ class Native:
         is_64_bit = bitsize == 64
 
         script_path = os.path.dirname(os.path.abspath(__file__))
-        package_path = os.path.join(script_path, "..", "..")
+        package_path = os.path.join(script_path, "..")
 
         debug_str = "_debug" if debug else ""
         log.info("Loading native on {0} | debug = {1}".format(platform.system(), debug))

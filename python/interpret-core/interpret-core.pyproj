@@ -114,8 +114,10 @@
     <Compile Include="interpret\utils\shap.py" />
     <Compile Include="interpret\utils\test\test_environment.py" />
     <Compile Include="interpret\utils\test\test_fast.py" />
+    <Compile Include="interpret\utils\test\test_native.py" />
     <Compile Include="interpret\utils\test\test_utils.py" />
     <Compile Include="interpret\utils\test\__init__.py" />
+    <Compile Include="interpret\utils\_native.py" />
     <Compile Include="interpret\utils\__init__.py" />
     <Compile Include="interpret\version.py" />
     <Compile Include="interpret\visual\dashboard.py" />
