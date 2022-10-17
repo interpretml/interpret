@@ -17,7 +17,7 @@ from sklearn.utils.multiclass import type_of_target
 from sklearn.base import is_classifier, is_regressor
 
 from ..glassbox.ebm.bin import clean_X, clean_vector, construct_bins, bin_native_by_dimension
-from ..glassbox.ebm.internal import Native, InteractionDetector
+from ._native import Native, InteractionDetector
 
 def _prepare_X_y(X, y, is_classification):
     X, n_samples = clean_X(X)

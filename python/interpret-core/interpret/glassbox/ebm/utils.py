@@ -4,7 +4,7 @@
 # TODO: Test EBMUtils
 
 from math import ceil, floor, isnan, isinf, exp, log
-from .internal import Native, Booster
+from ...utils._native import Native, Booster
 
 # from scipy.special import expit
 from sklearn.utils.extmath import softmax

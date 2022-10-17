@@ -29,7 +29,7 @@ try:
 except ImportError:
     _scipy_installed = False
 
-from .internal import Native
+from ...utils._native import Native
 from .utils import DPUtils, EBMUtils, _deduplicate_bins
 
 # BIG TODO LIST:
