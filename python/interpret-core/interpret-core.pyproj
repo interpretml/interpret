@@ -114,7 +114,7 @@
     <Compile Include="interpret\utils\shap.py" />
     <Compile Include="interpret\utils\test\test_binning.py" />
     <Compile Include="interpret\utils\test\test_environment.py" />
-    <Compile Include="interpret\utils\test\test_fast.py" />
+    <Compile Include="interpret\utils\test\test_interaction.py" />
     <Compile Include="interpret\utils\test\test_native.py" />
     <Compile Include="interpret\utils\test\test_utils.py" />
     <Compile Include="interpret\utils\test\__init__.py" />
