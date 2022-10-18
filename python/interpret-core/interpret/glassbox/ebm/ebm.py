@@ -6,9 +6,10 @@ from typing import DefaultDict
 
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
-from .utils import DPUtils, EBMUtils
-from .utils import _process_terms, make_histogram_edges, _order_terms, _remove_unused_higher_bins, _deduplicate_bins, _generate_term_names, _generate_term_types
-from .bin import clean_X, clean_vector, construct_bins, bin_native_by_dimension, ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, unify_data2, eval_terms
+from .utils import EBMUtils
+from .utils import _process_terms, make_histogram_edges, _order_terms, _remove_unused_higher_bins, _generate_term_names, _generate_term_types
+from ...utils._binning import clean_X, clean_vector, construct_bins, bin_native_by_dimension, unify_data2, _deduplicate_bins, normalize_initial_seed
+from .bin import ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, eval_terms
 from ...utils._native import Native
 from ...utils import unify_data, autogen_schema, unify_vector
 from ...api.base import ExplainerMixin
@@ -16,6 +17,7 @@ from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_global_selector2, gen_local_selector
 from ...utils.fast import _get_ranked_interactions
+from ...utils._privacy import validate_eps_delta, calc_classic_noise_multi, calc_gdp_noise_multi
 
 import json
 from math import isnan
@@ -285,7 +287,7 @@ class EBMModel(BaseEstimator):
         # Privacy calculations
         is_differential_privacy = is_private(self)
         if is_differential_privacy:
-            DPUtils.validate_eps_delta(self.epsilon, self.delta)
+            validate_eps_delta(self.epsilon, self.delta)
 
             if is_classifier(self):
                 if n_classes > 2:  # pragma: no cover
@@ -318,7 +320,7 @@ class EBMModel(BaseEstimator):
 
             bin_levels = [self.max_bins, self.max_interaction_bins]
 
-        init_random_state = EBMUtils.normalize_initial_seed(self.random_state)
+        init_random_state = normalize_initial_seed(self.random_state)
 
         # after normalizing to a 32-bit signed integer, we pass the random_state into the EBMPreprocessor
         # exactly as passed to us. This means that we should get the same preprocessed data for the mains
@@ -362,14 +364,14 @@ class EBMModel(BaseEstimator):
             training_eps = self.epsilon - bin_eps
             training_delta = self.delta / 2
             if self.composition == 'classic':
-                noise_scale = DPUtils.calc_classic_noise_multi(
+                noise_scale = calc_classic_noise_multi(
                     total_queries = self.max_rounds * len(term_features) * self.outer_bags, 
                     target_epsilon = training_eps, 
                     delta = training_delta, 
                     sensitivity = domain_size * self.learning_rate * max_weight
                 )
             elif self.composition == 'gdp':
-                noise_scale = DPUtils.calc_gdp_noise_multi(
+                noise_scale = calc_gdp_noise_multi(
                     total_queries = self.max_rounds * len(term_features) * self.outer_bags, 
                     target_epsilon = training_eps, 
                     delta = training_delta

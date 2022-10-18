@@ -120,6 +120,7 @@
     <Compile Include="interpret\utils\test\__init__.py" />
     <Compile Include="interpret\utils\_binning.py" />
     <Compile Include="interpret\utils\_native.py" />
+    <Compile Include="interpret\utils\_privacy.py" />
     <Compile Include="interpret\utils\__init__.py" />
     <Compile Include="interpret\version.py" />
     <Compile Include="interpret\visual\dashboard.py" />
