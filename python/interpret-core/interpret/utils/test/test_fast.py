@@ -5,7 +5,8 @@ from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.dummy import DummyClassifier
 
 from ...test.utils import synthetic_regression, synthetic_classification, synthetic_multiclass
-from ..fast import measure_interactions, _get_scores
+from ...utils import measure_interactions
+from .._interaction import _get_scores
 
 @pytest.fixture(scope="module")
 def regression_data():

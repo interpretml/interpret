@@ -16,7 +16,7 @@ from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_global_selector2, gen_local_selector
-from ...utils.fast import _get_ranked_interactions
+from ...utils._interaction import _get_ranked_interactions
 from ...utils._privacy import validate_eps_delta, calc_classic_noise_multi, calc_gdp_noise_multi
 
 import json

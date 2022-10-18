@@ -110,7 +110,7 @@
     <Compile Include="interpret\test\__init__.py" />
     <Compile Include="interpret\utils\all.py" />
     <Compile Include="interpret\utils\environment.py" />
-    <Compile Include="interpret\utils\fast.py" />
+    <Compile Include="interpret\utils\_interaction.py" />
     <Compile Include="interpret\utils\shap.py" />
     <Compile Include="interpret\utils\test\test_binning.py" />
     <Compile Include="interpret\utils\test\test_environment.py" />
