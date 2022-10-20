@@ -1,41 +1,17 @@
 import pytest
 import numpy as np
+from math import isclose
 
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.dummy import DummyClassifier
 
 from ...test.utils import synthetic_regression, synthetic_classification, synthetic_multiclass
 from ...utils import measure_interactions
-from .._interaction import _get_scores
 
 @pytest.fixture(scope="module")
 def regression_data():
     data = synthetic_regression()
     return data["full"]["X"], data["full"]["y"]
-
-def test_get_model_scores_if_provided(regression_data):
-    X, y = regression_data
-    init_scores = np.random.rand(X.shape[0])
-
-    lr = LinearRegression()
-    lr.fit(X, y)
-
-    # squeeze() removes axes of length one
-    predictions = lr.predict(X).squeeze()
-    scores = _get_scores(X, init_scores, lr)
-
-    assert np.array_equal(scores, predictions)
-
-def test_get_init_scores_if_no_model(regression_data):
-    X, _ = regression_data
-
-    init_scores = np.random.rand(X.shape[0])
-    scores = _get_scores(X, init_scores, init_model=None)
-    assert np.array_equal(scores, init_scores)
-
-    init_scores = None
-    scores = _get_scores(X, init_scores, init_model=None)
-    assert scores is None
 
 def test_init_regression_model(regression_data):
     X, y = regression_data
@@ -202,15 +178,28 @@ def test_num_output_interactions(regression_data):
     ranked_pairs_dict = measure_interactions(X, y, interactions=-2)
     assert 6 == len(ranked_pairs_dict)
 
-def test_output_dict(regression_data):
+def test_output_list(regression_data):
     X, y = regression_data
 
-    ranked_pairs_dict = measure_interactions(X, y)
-    assert 6 == len(ranked_pairs_dict)
-    for key, value in ranked_pairs_dict.items():
+    ranked_pairs_list = measure_interactions(X, y)
+    assert type(ranked_pairs_list) is list
+    assert 6 == len(ranked_pairs_list)
+    for key, value in ranked_pairs_list:
         assert isinstance(key, tuple)
         assert isinstance(value, float)
 
+def test_specific_results(regression_data):
+    X, y = regression_data
+
+    baseline = dict(measure_interactions(X, y))
+    assert 6 == len(baseline)
+
+    specific = dict(measure_interactions(X, y, interactions=[(2, 1), (2, 0)]))
+    assert 2 == len(specific)
+
+    assert isclose(specific[(2, 1)], baseline[(1, 2)])
+    assert isclose(specific[(2, 0)], baseline[(0, 2)])
+    
 def test_regression_task():
     from sklearn.datasets import load_diabetes
     diabetes_data = load_diabetes(return_X_y=True)
@@ -261,7 +250,7 @@ def test_impure_interaction_is_zero():
         11.625
     ]
 
-    ranked_strengths = measure_interactions(X, y, min_samples_leaf=1, sample_weight=sample_weight, objective='regression')
+    ranked_strengths = dict(measure_interactions(X, y, min_samples_leaf=1, sample_weight=sample_weight, objective='regression'))
     assert ranked_strengths[(0, 1)] == 0.0
 
 def test_added_impure_contribution_is_zero():
@@ -284,7 +273,7 @@ def test_added_impure_contribution_is_zero():
         5
     ]
 
-    ranked_strengths_pure_int = measure_interactions(X, y, min_samples_leaf=1, sample_weight=sample_weight)
+    ranked_strengths_pure_int = dict(measure_interactions(X, y, min_samples_leaf=1, sample_weight=sample_weight))
 
     y = [
         -16.0 + 3.0 + 11.0,
@@ -293,5 +282,5 @@ def test_added_impure_contribution_is_zero():
         -8.0 + 5.0 + 7.0
     ]
 
-    ranked_strengths_impure = measure_interactions(X, y, min_samples_leaf=1, sample_weight=sample_weight)
+    ranked_strengths_impure = dict(measure_interactions(X, y, min_samples_leaf=1, sample_weight=sample_weight))
     assert ranked_strengths_pure_int[(0, 1)] == ranked_strengths_impure[(0, 1)]

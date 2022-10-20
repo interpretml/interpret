@@ -10,9 +10,9 @@ of the interaction of all pairs of features in a dataset.
 """
 
 import numpy as np
+import heapq
 from itertools import combinations
 
-from sklearn.base import is_classifier
 from sklearn.utils.multiclass import type_of_target
 from sklearn.base import is_classifier, is_regressor
 
@@ -43,21 +43,6 @@ def _prepare_sample_weight(sample_weight, num_samples):
         raise ValueError(f"X has {num_samples} samples and sample_weight has {len(sample_weight)} samples")
     return sample_weight
 
-def _get_scores(X, init_scores, init_model):
-    # TODO: remove this
-    if init_model is not None:
-        if is_classifier(init_model):
-            scores = init_model.decision_function(X)
-        else:
-            # TODO Add link function to operate on predict's output when needed
-            scores = init_model.predict(X)
-    else:
-        scores = init_scores
-
-    if scores is not None:
-        return clean_vector(scores, False, "scores")
-    return None
-
 def _get_ranked_interactions(
         dataset,
         bag,
@@ -74,16 +59,17 @@ def _get_ranked_interactions(
             strength = interaction_detector.calc_interaction_strength(
                 feature_idxs, interaction_flags, min_samples_leaf,
             )
-            interaction_strengths.append((strength, feature_idxs))
+            item = (strength, feature_idxs)
+            if(num_output_interactions <= 0):
+                interaction_strengths.append(item)
+            else:
+                if len(interaction_strengths) == num_output_interactions:
+                    heapq.heappushpop(interaction_strengths, item)
+                else:
+                    heapq.heappush(interaction_strengths, item)
 
     interaction_strengths.sort(reverse=True)
-
-    num_interactions = len(interaction_strengths)
-    if (num_output_interactions > 0):
-        num_interactions = min(num_output_interactions, num_interactions)
-
-    # TODO put this in a priority queue to reduce memory consumption which might be important for tripples
-    return interaction_strengths[:num_interactions]
+    return interaction_strengths
 
 def measure_interactions(
         X,
@@ -104,7 +90,7 @@ def measure_interactions(
         X: Array of training samples
         y: Array of training targets
         interactions: Interactions to evaluate
-            Either a list of lists of feature indices, or an integer for the max number of pairs returned.
+            Either a list of tuples of feature indices, or an integer for the max number of pairs returned.
             None evaluates all pairwise interactions
         init_score: Either a model that can generate scores or per-sample initialization score. 
             If samples scores it should be the same length as X and y.
@@ -113,12 +99,11 @@ def measure_interactions(
         feature_types: List of feature types, for example "continuous" or "nominal"
         max_interaction_bins: Max number of bins per interaction terms
         binning: Method to bin values for pre-processing - "uniform", "quantile", or "rounded_quantile".
-            'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
-        min_samples_leaf: Minimum number of cases for tree splits used in boosting
-        objective: 'regression' (RMSE) or 'classification' (log loss) or None for auto
+        min_samples_leaf: Minimum number of samples for tree splits used when calculating gain
+        objective: 'regression' (RMSE) or 'classification' (log loss) or None for auto. More objectives to come
     Returns:
-        Dictionary with a pair of indices as keys and strengths as values, e.g. { (1, 2) : 0.134 }.
-            Ordered by decreasing strengths
+        List containing a tuple of feature indices for the terms and interaction strengths, 
+            e.g. [((1, 2), 0.134), ((3, 7), 0.0842)].  Ordered by decreasing interaction strengths.
     """
 
     is_classification = None
@@ -223,8 +208,4 @@ def measure_interactions(
         num_output_interactions=num_output_interactions
     )
 
-    ranked_interactions_dict = {}
-    for strength, indices in ranked_interactions:
-        ranked_interactions_dict[indices] = strength
-
-    return ranked_interactions_dict
+    return list(map(tuple, map(reversed, ranked_interactions)))

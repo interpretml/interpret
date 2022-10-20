@@ -63,7 +63,6 @@
     <Compile Include="interpret\glassbox\decisiontree.py" />
     <Compile Include="interpret\glassbox\ebm\bin.py" />
     <Compile Include="interpret\glassbox\ebm\ebm.py" />
-    <Compile Include="interpret\glassbox\ebm\internal.py" />
     <Compile Include="interpret\glassbox\ebm\postprocessing.py" />
     <Compile Include="interpret\glassbox\ebm\research\composite_importance.py" />
     <Compile Include="interpret\glassbox\ebm\research\purify.py" />
@@ -74,7 +73,6 @@
     <Compile Include="interpret\glassbox\ebm\test\test_bin.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_ebm.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_ebm_utils.py" />
-    <Compile Include="interpret\glassbox\ebm\test\test_internal.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_postprocessing.py" />
     <Compile Include="interpret\glassbox\ebm\test\__init__.py" />
     <Compile Include="interpret\glassbox\ebm\utils.py" />
