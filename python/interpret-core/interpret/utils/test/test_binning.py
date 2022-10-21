@@ -12,6 +12,20 @@ from itertools import repeat, chain
 from .._binning import *
 from .._binning import _process_column_initial, _encode_categorical_existing, _process_continuous, _deduplicate_bins
 
+def test_clean_dimensions_2d():
+    init_score = [[[[((x,) for x in [1, 2])]]], [3, 4], (np.array([5, 6]),), np.array([[[(7,), (8,)]]])]
+    init_score = clean_dimensions(init_score, "init_score")
+    init_score = init_score.astype(np.float64, copy=False)
+    assert init_score.shape == (4, 2)
+    assert init_score[0, 0] == 1
+    assert init_score[0, 1] == 2
+    assert init_score[1, 0] == 3
+    assert init_score[1, 1] == 4
+    assert init_score[2, 0] == 5
+    assert init_score[2, 1] == 6
+    assert init_score[3, 0] == 7
+    assert init_score[3, 1] == 8
+
 class StringHolder:
     def __init__(self, internal_str):
         self.internal_str = internal_str
@@ -2173,11 +2187,17 @@ def test_bin_native():
 
     X, n_samples = clean_X(X)
 
-    y = clean_vector(y, True, "y")
+    y = clean_dimensions(y, "y")
+    assert(y.ndim == 1)
+    y = typify_classification(y)
+
     classes, y = np.unique(y, return_inverse=True)
     n_classes = len(classes)
 
-    sample_weight = clean_vector(sample_weight, False, "sample_weight")
+    sample_weight = clean_dimensions(sample_weight, "sample_weight")
+    assert(sample_weight.ndim == 1)
+
+    sample_weight = sample_weight.astype(np.float64, copy=False)
 
     feature_names_in, feature_types_in, bins, bin_weights, feature_bounds, histogram_counts, unique_val_counts, zero_val_counts = construct_bins(
         X,

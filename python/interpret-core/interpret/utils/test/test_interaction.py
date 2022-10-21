@@ -20,29 +20,29 @@ def test_init_regression_model(regression_data):
     lr = LinearRegression()
     lr.fit(X, y)
 
-    ranked_pairs_dict = measure_interactions(X, y, init_score=lr)
+    ranked_pairs = measure_interactions(X, y, init_score=lr)
     # 4 features
-    assert 6 == len(ranked_pairs_dict)
+    assert 6 == len(ranked_pairs)
 
-    ranked_pairs_dict = measure_interactions(X, y, init_score=init_scores)
-    assert 6 == len(ranked_pairs_dict)
+    ranked_pairs = measure_interactions(X, y, init_score=init_scores)
+    assert 6 == len(ranked_pairs)
 
 def test_init_binary_model():
     data = synthetic_classification()
     X = data["full"]["X"]
-    y = data["full"]["y"]
+    y = np.array(data["full"]["y"]).reshape(-1)
 
     init_scores = np.random.rand(X.shape[0])
 
-    lr = LogisticRegression()
+    lr = LogisticRegression(solver='lbfgs')
     lr.fit(X, y)
 
-    ranked_pairs_dict = measure_interactions(X, y, init_score=lr)
+    ranked_pairs = measure_interactions(X, y, init_score=lr)
     # 4 features
-    assert 6 == len(ranked_pairs_dict)
+    assert 6 == len(ranked_pairs)
 
-    ranked_pairs_dict = measure_interactions(X, y, init_score=init_scores)
-    assert 6 == len(ranked_pairs_dict)
+    ranked_pairs = measure_interactions(X, y, init_score=init_scores)
+    assert 6 == len(ranked_pairs)
 
 def test_init_multiclass_model():
     data = synthetic_multiclass()
@@ -52,36 +52,14 @@ def test_init_multiclass_model():
     classes, y = np.unique(y, return_inverse=True)
     n_classes = len(classes)
 
-    init_scores = np.random.rand(X.shape[0], n_classes)
-
-    lr = LogisticRegression()
+    lr = LogisticRegression(solver='lbfgs', multi_class='auto')
     lr.fit(X, y)
 
-    ranked_pairs_dict = measure_interactions(X, y, init_score=lr)
+    ranked_pairs = measure_interactions(X, y, init_score=lr)
     # 4 features
-    assert 6 == len(ranked_pairs_dict)
+    assert 6 == len(ranked_pairs)
 
-    ranked_pairs_dict = measure_interactions(X, y, init_score=init_scores)
-    assert 6 == len(ranked_pairs_dict)
-
-def test_init_binary_dummy_model():
-    data = synthetic_classification()
-    X = data["full"]["X"]
-    y = data["full"]["y"]
-
-    init_scores = np.random.rand(X.shape[0])
-
-    lr = DummyClassifier() # has no decision_function only predict_proba
-    lr.fit(X, y)
-
-    ranked_pairs_dict = measure_interactions(X, y, init_score=lr)
-    # 4 features
-    assert 6 == len(ranked_pairs_dict)
-
-    ranked_pairs_dict = measure_interactions(X, y, init_score=init_scores)
-    assert 6 == len(ranked_pairs_dict)
-
-def test_init_multiclass_dummy_model():
+def test_init_multiclass_scores():
     data = synthetic_multiclass()
     X = data["full"]["X"]
     y = data["full"]["y"]
@@ -91,15 +69,58 @@ def test_init_multiclass_dummy_model():
 
     init_scores = np.random.rand(X.shape[0], n_classes)
 
+    ranked_pairs = measure_interactions(X, y, init_score=init_scores)
+    assert 6 == len(ranked_pairs)
+
+def test_init_binary_dummy_model():
+    data = synthetic_classification()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
     lr = DummyClassifier() # has no decision_function only predict_proba
     lr.fit(X, y)
 
-    ranked_pairs_dict = measure_interactions(X, y, init_score=lr)
+    ranked_pairs = measure_interactions(X, y, init_score=lr)
     # 4 features
-    assert 6 == len(ranked_pairs_dict)
+    assert 6 == len(ranked_pairs)
 
-    ranked_pairs_dict = measure_interactions(X, y, init_score=init_scores)
-    assert 6 == len(ranked_pairs_dict)
+def test_init_binary_dummy_scores():
+    data = synthetic_classification()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    init_scores = np.random.rand(X.shape[0])
+
+    ranked_pairs = measure_interactions(X, y, init_score=init_scores)
+    assert 6 == len(ranked_pairs)
+
+def test_init_multiclass_dummy_model():
+    data = synthetic_multiclass()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    classes, y = np.unique(y, return_inverse=True)
+    n_classes = len(classes)
+
+    lr = DummyClassifier() # has no decision_function only predict_proba
+    lr.fit(X, y)
+
+    ranked_pairs = measure_interactions(X, y, init_score=lr)
+    # 4 features
+    assert 6 == len(ranked_pairs)
+
+def test_init_multiclass_dummy_scores():
+    data = synthetic_multiclass()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    classes, y = np.unique(y, return_inverse=True)
+    n_classes = len(classes)
+
+    init_scores = np.random.rand(X.shape[0], n_classes)
+
+    ranked_pairs = measure_interactions(X, y, init_score=init_scores)
+    assert 6 == len(ranked_pairs)
 
 def test_inconsistent_objective(regression_data):
     X, y = regression_data
@@ -127,9 +148,9 @@ def test_sample_weigth(regression_data):
     X, y = regression_data
     sample_weight = np.random.rand(X.shape[0])
 
-    ranked_pairs_dict = measure_interactions(X, y, sample_weight=sample_weight)
+    ranked_pairs = measure_interactions(X, y, sample_weight=sample_weight)
     # 4 features
-    assert 6 == len(ranked_pairs_dict)
+    assert 6 == len(ranked_pairs)
 
 def test_feature_names_and_types(regression_data):
     X, y = regression_data
@@ -138,8 +159,8 @@ def test_feature_names_and_types(regression_data):
     feature_names = ["FtA", "FtB", "FtC", "FtD"]
     feature_types = ["continuous", "continuous", "continuous", "continuous"]
 
-    ranked_pairs_dict = measure_interactions(X, y, feature_names=feature_names, feature_types=feature_types)
-    assert 6 == len(ranked_pairs_dict)
+    ranked_pairs = measure_interactions(X, y, feature_names=feature_names, feature_types=feature_types)
+    assert 6 == len(ranked_pairs)
 
 def test_max_bins_and_binning_options(regression_data):
     X, y = regression_data
@@ -147,36 +168,36 @@ def test_max_bins_and_binning_options(regression_data):
     max_interaction_bins = 64
     binning = "uniform"
 
-    ranked_pairs_dict = measure_interactions(X, y, max_interaction_bins=max_interaction_bins, binning=binning)
-    assert 6 == len(ranked_pairs_dict)
+    ranked_pairs = measure_interactions(X, y, max_interaction_bins=max_interaction_bins, binning=binning)
+    assert 6 == len(ranked_pairs)
 
     binning = "rounded_quantile"
 
-    ranked_pairs_dict = measure_interactions(X, y, max_interaction_bins=max_interaction_bins, binning=binning)
-    assert 6 == len(ranked_pairs_dict)
+    ranked_pairs = measure_interactions(X, y, max_interaction_bins=max_interaction_bins, binning=binning)
+    assert 6 == len(ranked_pairs)
 
 def test_min_samples_leaf(regression_data):
     X, y = regression_data
 
     min_samples_leaf = 4
 
-    ranked_pairs_dict = measure_interactions(X, y, min_samples_leaf=min_samples_leaf)
-    assert 6 == len(ranked_pairs_dict)
+    ranked_pairs = measure_interactions(X, y, min_samples_leaf=min_samples_leaf)
+    assert 6 == len(ranked_pairs)
 
 def test_num_output_interactions(regression_data):
     X, y = regression_data
 
-    ranked_pairs_dict = measure_interactions(X, y, interactions=3)
-    assert 3 == len(ranked_pairs_dict)
+    ranked_pairs = measure_interactions(X, y, interactions=3)
+    assert 3 == len(ranked_pairs)
 
-    ranked_pairs_dict = measure_interactions(X, y, interactions=100)
-    assert 6 == len(ranked_pairs_dict)
+    ranked_pairs = measure_interactions(X, y, interactions=100)
+    assert 6 == len(ranked_pairs)
 
-    ranked_pairs_dict = measure_interactions(X, y, interactions=0)
-    assert 6 == len(ranked_pairs_dict)
+    ranked_pairs = measure_interactions(X, y, interactions=0)
+    assert 6 == len(ranked_pairs)
 
-    ranked_pairs_dict = measure_interactions(X, y, interactions=-2)
-    assert 6 == len(ranked_pairs_dict)
+    ranked_pairs = measure_interactions(X, y, interactions=-2)
+    assert 6 == len(ranked_pairs)
 
 def test_output_list(regression_data):
     X, y = regression_data

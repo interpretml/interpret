@@ -12,6 +12,7 @@ from sklearn.base import (
     TransformerMixin,
 )
 from sklearn.utils.validation import check_is_fitted
+from sklearn.base import is_classifier, is_regressor
 
 import logging
 _log = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ from ._privacy import validate_eps_delta, calc_classic_noise_multi, calc_gdp_noi
 #- review this entire bin.py file
 #- write a cython single instance prediction pathway
 #- consider re-writing most of this bin.py functionality in cython for anything that gets used during prediction for speed
-#- test: clean_vector with ma.masked_array... and other stuff in there
+#- test: clean_dimensions with ma.masked_array... and other stuff in there
 #- test: clean_X with pd.Series with missing values and maybe a categorical -> gets converted as N features and 1 sample
 #- test: clean_X with list that CONTAINS a ma.masked_array sample entry with missing data and without missing data
 #- add better processing for ignored columsn where we return the existing data if we can, and we return all None
@@ -404,7 +405,7 @@ def _densify_object_ndarray(X_col):
         # TODO: handle ints here too which need to be checked if they are larger than the safe int max value
 
         X_col = X_col.copy()
-        places = np.fromiter((val_type is float or issubclass(val_type, np.floating) for val_type in map(type, X_col)), dtype=np.bool_, count=len(X_col))
+        places = np.fromiter((val_type is float or issubclass(val_type, np.floating) for val_type in map(type, X_col)), np.bool_, count=len(X_col))
         np.place(X_col, places, X_col[places].astype(np.float64))
 
     # TODO: converting object types first to pd.CatigoricalDType is somewhat faster than our code here which converts
@@ -492,7 +493,7 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
         categories.sort()
 
     categories = dict(zip(categories, count(1)))
-    mapping = np.fromiter((categories[val] for val in uniques), dtype=np.int64, count=len(uniques))
+    mapping = np.fromiter((categories[val] for val in uniques), np.int64, count=len(uniques))
     encoded = mapping[indexes]
 
     if nonmissings is not None:
@@ -522,7 +523,7 @@ def _encode_categorical_existing(X_col, nonmissings, categories):
         uniques = uniques.astype(np.float64, copy=False)
     uniques = uniques.astype(np.unicode_, copy=False)
 
-    mapping = np.fromiter((categories.get(val, -1) for val in uniques), dtype=np.int64, count=len(uniques))
+    mapping = np.fromiter((categories.get(val, -1) for val in uniques), np.int64, count=len(uniques))
     encoded = mapping[indexes]
 
     if (mapping < 0).any():
@@ -618,7 +619,7 @@ def _encode_pandas_categorical_existing(X_col, pd_categories, categories):
     # TODO: add special case handling if there is only 1 sample to make that faster
     # if we have just 1 sample, we can avoid making the mapping below
 
-    mapping = np.fromiter((categories.get(val, -1) for val in pd_categories), dtype=np.int64, count=len(pd_categories))
+    mapping = np.fromiter((categories.get(val, -1) for val in pd_categories), np.int64, count=len(pd_categories))
 
     if len(mapping) <= len(categories):
         mapping_cmp = np.arange(1, len(mapping) + 1, dtype=np.int64)
@@ -752,7 +753,7 @@ def _process_ndarray(X_col, nonmissings, categories, processing, min_unique_cont
     elif processing == 'ignore':
         # called under: fit or predict
         X_col, categories = _process_column_initial(X_col, nonmissings, None, None)
-        mapping = np.empty(len(categories) + 1, dtype=np.object_)
+        mapping = np.empty(len(categories) + 1, np.object_)
         mapping.itemset(0, None)
         for category, idx in categories.items():
             mapping.itemset(idx, category)
@@ -813,6 +814,20 @@ def _reshape_1D_if_possible(col):
                 is_found = True
         col = col.reshape(-1)
     return col
+
+def _remove_extra_dimensions(arr):
+    shape = arr.shape
+    if len(shape) == 0 or 0 in shape: 
+        # 0 dimensional items exist, but are weird/unexpected. len fails, shape is length 0.
+        # arrays with dimension having 0 length exist, but cannot contain anything
+        return np.empty(0, arr.dtype)
+
+    shape = [x for x in arr.shape if x != 1]
+    if len(shape) == 0:
+        shape = (1,)
+
+    # reshape returns a view
+    return arr.reshape(shape)
 
 def _process_numpy_column(X_col, categories, feature_type, min_unique_continuous):
     nonmissings = None
@@ -946,10 +961,10 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
             _log.error(msg)
             raise ValueError(msg)
     elif isinstance(X_col, list) or isinstance(X_col, tuple):
-        X_col = np.array(X_col, dtype=np.object_)
+        X_col = np.array(X_col, np.object_)
     elif isinstance(X_col, str):
         # don't allow strings to get to the np.array conversion below
-        X_col_tmp = np.empty(shape=1, dtype=np.object_)
+        X_col_tmp = np.empty(1, np.object_)
         X_col_tmp.itemset(0, X_col)
         X_col = X_col_tmp
     else:
@@ -958,10 +973,10 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
             # should be detected though in clean_X where we get the length or bin_native where we check the
             # number of samples on the 2nd run through the generator
             X_col = list(X_col)
-            X_col = np.array(X_col, dtype=np.object_)
+            X_col = np.array(X_col, np.object_)
         except TypeError:
             # if our item isn't iterable, assume it has just 1 item and we'll check below if that's consistent
-            X_col_tmp = np.empty(shape=1, dtype=np.object_)
+            X_col_tmp = np.empty(1, np.object_)
             X_col_tmp.itemset(0, X_col)
             X_col = X_col_tmp
 
@@ -998,13 +1013,13 @@ def unify_columns(X, requests, feature_names_in, feature_types=None, min_unique_
             # during fit time unify_feature_names would only allow us to get here if this was legal, which requires 
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need 
             # to check for legality on the dimensions of X
-            keep_cols = np.fromiter((val != 'ignore' for val in feature_types), dtype=np.bool_, count=len(feature_types))
+            keep_cols = np.fromiter((val != 'ignore' for val in feature_types), np.bool_, count=len(feature_types))
             if n_cols != keep_cols.sum():
                 # called under: predict
                 msg = f"The model has {len(feature_types)} features, but X has {n_cols} columns"
                 _log.error(msg)
                 raise ValueError(msg)
-            col_map = np.empty(len(feature_types), dtype=np.int64)
+            col_map = np.empty(len(feature_types), np.int64)
             np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
         # TODO: I'm not sure that simply checking X.flags.c_contiguous handles all the situations that we'd want
@@ -1091,12 +1106,12 @@ def unify_columns(X, requests, feature_names_in, feature_types=None, min_unique_
             # during fit time unify_feature_names would only allow us to get here if this was legal, which requires 
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need 
             # to check for legality on the dimensions of X
-            keep_cols = np.fromiter((val != 'ignore' for val in feature_types), dtype=np.bool_, count=len(feature_types))
+            keep_cols = np.fromiter((val != 'ignore' for val in feature_types), np.bool_, count=len(feature_types))
             if n_cols != keep_cols.sum():
                 msg = f"The model has {len(feature_types)} features, but X has {n_cols} columns"
                 _log.error(msg)
                 raise ValueError(msg)
-            col_map = np.empty(len(feature_types), dtype=np.int64)
+            col_map = np.empty(len(feature_types), np.int64)
             np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
         for feature_idx, categories in requests:
@@ -1227,136 +1242,305 @@ def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
 
     return feature_names_in
 
-def clean_vector(vec, is_y_for_classification, param_name):
+# TODO: rename vec to data or something like that since it isn't a vector anymore
+def clean_dimensions(vec, param_name):
     # called under: fit
 
-    if isinstance(vec, ma.masked_array):
-        # do this before np.ndarray since ma.masked_array is a subclass of np.ndarray
-        mask = vec.mask
-        if mask is not ma.nomask:
-            if mask.any():
-                msg = f"{param_name} cannot contain missing values"
-                _log.error(msg)
-                raise ValueError(msg)
-        vec = vec.data
-    elif isinstance(vec, np.ndarray):
-        pass
-    elif _pandas_installed and isinstance(vec, pd.Series):
-        if vec.hasnans:
-            # if hasnans is true then there is definetly a real missing value in there and not just a mask
-            msg = f"{param_name} cannot contain missing values"
-            _log.error(msg)
-            raise ValueError(msg)
-        # this can result in be a non-numpy datatype, but we use astype below to ensure numpyness
-        vec = vec.values
-    elif _pandas_installed and isinstance(vec, pd.DataFrame):
-        if vec.shape[1] == 1:
-            vec = vec.iloc[:, 0]
+    while True:
+        if isinstance(vec, ma.masked_array):
+            # do this before np.ndarray since ma.masked_array is a subclass of np.ndarray
+            mask = vec.mask
+            if mask is not ma.nomask:
+                if mask.any():
+                    msg = f"{param_name} cannot contain missing values"
+                    _log.error(msg)
+                    raise ValueError(msg)
+            vec = vec.data
+        elif isinstance(vec, np.ndarray):
+            pass
+        elif _pandas_installed and isinstance(vec, pd.Series):
             if vec.hasnans:
                 # if hasnans is true then there is definetly a real missing value in there and not just a mask
                 msg = f"{param_name} cannot contain missing values"
                 _log.error(msg)
                 raise ValueError(msg)
-            # this can result in be a non-numpy datatype, but we use astype below to ensure numpyness
+            # can be a non-numpy datatype, but has enough conformance for us to work on it
             vec = vec.values
-        elif vec.shape[0] == 1:
-            # transition to np.object_ first to detect any missing values
-            vec = vec.astype(np.object_, copy=False).values
-        elif vec.shape[1] == 0 or vec.shape[0] == 0:
-            vec = np.empty(0, np.object)
-        else:
-            msg = f"{param_name} cannot be a multidimensional pandas.DataFrame"
-            _log.error(msg)
-            raise ValueError(msg)
-    elif _scipy_installed and isinstance(vec, sp.sparse.spmatrix):
-        if vec.shape[1] == 1 or vec.shape[0] == 1:
+        elif _pandas_installed and isinstance(vec, pd.DataFrame):
+            if vec.shape[1] == 1:
+                vec = vec.iloc[:, 0]
+                if vec.hasnans:
+                    # if hasnans is true then there is definetly a real missing value in there and not just a mask
+                    msg = f"{param_name} cannot contain missing values"
+                    _log.error(msg)
+                    raise ValueError(msg)
+                # can be a non-numpy datatype, but has enough conformance for us to work on it
+                vec = vec.values
+            else:
+                # can be a non-numpy datatype, but has enough conformance for us to work on it
+                vec = vec.astype(np.object_, copy=False).values
+        elif _scipy_installed and isinstance(vec, sp.sparse.spmatrix):
             vec = vec.toarray()
-        elif vec.shape[1] == 0 or vec.shape[0] == 0:
-            vec = np.empty(0, np.object)
+        elif isinstance(vec, list) or isinstance(vec, tuple):
+            vec = np.array(vec, np.object_)
+        elif callable(getattr(vec, '__array__', None)):
+            vec = vec.__array__()
+        elif isinstance(vec, str):
+            # we have just 1 item, so re-pack it and return
+            ret = np.empty(1, np.object_)
+            ret.itemset(0, vec)
+            return ret
         else:
-            msg = f"{param_name} cannot be a multidimensional scipy.sparse.spmatrix"
-            _log.error(msg)
-            raise ValueError(msg)
-    elif isinstance(vec, list) or isinstance(vec, tuple):
-        # transition to np.object_ first to detect any missing values
-        vec = np.array(vec, dtype=np.object_)
-    elif callable(getattr(vec, '__array__', None)):
-        vec = vec.__array__()
-    elif isinstance(vec, str):
-        msg = f"{param_name} cannot be a single object"
-        _log.error(msg)
-        raise TypeError(msg)
-    else:
+            try:
+                vec = list(vec)
+            except TypeError:
+                # we have just 1 item, so re-pack it and return
+                ret = np.empty(1, np.object_)
+                ret.itemset(0, vec)
+                return ret
+            vec = np.array(vec, np.object_)
+
+        vec = _remove_extra_dimensions(vec)
+
+        if vec.shape[0] == 0:
+            # vec.ndim must be 1
+            return vec
+
+        if vec.dtype.type is not np.object_:
+            if 3 <= vec.ndim:
+                msg = f"{param_name} cannot have 3rd dimension"
+                _log.error(msg)
+                raise TypeError(msg)
+            if issubclass(vec.dtype.type, np.floating) and np.isnan(vec).any():
+                msg = f"{param_name} cannot contain missing values"
+                _log.error(msg)
+                raise ValueError(msg)
+            return vec
+            
+        if vec.shape[0] != 1:
+            break
+
+        vec = vec[0]
+
+    n_second_dim = None
+
+    # check the interior items
+    idx = 0
+    n = len(vec)
+    while idx < n:
+        item = vec[idx]
+
+        if isinstance(item, str):
+            if n_second_dim is not None and n_second_dim != 1:
+                msg = f"{param_name} is not consistent in length for the second dimension"
+                _log.error(msg)
+                raise TypeError(msg)
+            n_second_dim = 1
+            idx = idx + 1
+            continue
+
+        # TODO: if we checked item for various types like numpy, and those types were not of type np.object_
+        # then we could avoid iterating the list contents below, or if the list contained only list
+        # then sometimes we would not have to re-convert vec to a list, which we need to do below incase
+        # item is an iterator and therefore must modify vec[idx] to insert the list we created from the iterator
+
         try:
-            vec = list(vec)
+            item = list(item)
         except TypeError:
-            msg = f"{param_name} cannot be a single object"
+            if n_second_dim is not None and n_second_dim != 1:
+                msg = f"{param_name} is not consistent in length for the second dimension"
+                _log.error(msg)
+                raise TypeError(msg)
+            n_second_dim = 1
+            idx = idx + 1
+            continue
+
+        if vec is not list:
+            vec = list(vec)
+
+        n_items = len(item)
+        if n_items == 1:
+            vec[idx] = item[0] # keep iterating down into them until they hit a non-1 length
+            continue
+
+        if n_second_dim is not None and n_second_dim != n_items:
+            msg = f"{param_name} is not consistent in length for the second dimension"
             _log.error(msg)
             raise TypeError(msg)
-        # transition to np.object_ first to detect any missing values
-        vec = np.array(vec, dtype=np.object_)
+        n_second_dim = n_items
 
-    vec = _reshape_1D_if_possible(vec)
+        # now check if any of the sub-items are iterable
+        sub_idx = 0
+        while sub_idx < n_items:
+            subitem = item[sub_idx]
 
-    if vec.dtype.type is np.object_:
-        if _pandas_installed:
-            # pandas also has the pd.NA value that indicates missing.  If Pandas is available though
-            # we can use it's function that checks for pd.NA, np.nan, and None
-            if pd.isna(vec).any():
-                msg = f"{param_name} cannot contain missing values"
+            if isinstance(subitem, str):
+                sub_idx = sub_idx + 1
+                continue
+                    
+            try:
+                subitem = list(subitem)
+            except TypeError:
+                sub_idx = sub_idx + 1
+                continue
+                    
+            if len(subitem) != 1:
+                msg = f"{param_name} cannot have 3rd dimension"
                 _log.error(msg)
-                raise ValueError(msg)
-        else:
-            # vec != vec is a check for nan that works even with mixed types, since nan != nan
-            if (vec == _none_ndarray).any() or (vec != vec).any():
-                msg = f"{param_name} cannot contain missing values"
-                _log.error(msg)
-                raise ValueError(msg)
-    elif issubclass(vec.dtype.type, np.floating):
-        if np.isnan(vec).any():
+                raise TypeError(msg)
+
+            item[sub_idx] = subitem[0] # keep iterating down into them until they hit a non-1 length
+
+        vec[idx] = item # if it was an iterable or we dug into any of the items, we need to replace it
+        idx = idx + 1
+
+    if n_second_dim == 0:
+        return np.empty(0, np.object_)
+
+    vec = np.array(vec, np.object_, copy=False) # in case it was converted to list
+
+    if _pandas_installed:
+        # pandas also has the pd.NA value that indicates missing.  If Pandas is available though
+        # we can use it's function that checks for pd.NA, np.nan, and None
+        if pd.isna(vec).any():
+            msg = f"{param_name} cannot contain missing values"
+            _log.error(msg)
+            raise ValueError(msg)
+    else:
+        # vec != vec is a check for nan that works even with mixed types, since nan != nan
+        if (vec == _none_ndarray).any() or (vec != vec).any():
             msg = f"{param_name} cannot contain missing values"
             _log.error(msg)
             raise ValueError(msg)
 
-    if is_y_for_classification:
-        # Per scikit-learn, we need to accept y of list or numpy array that contains either strings or integers.
-        # We want to serialize these models to/from JSON, and JSON allows us to differentiate between string
-        # and integer types with just the JSON type, so that's nice.  JSON also allows boolean types,
-        # and that seems like a type someone might pass us for binary classification, so accept bools too.
-        # https://scikit-learn.org/stable/developers/develop.html
+    return vec
 
-        if issubclass(vec.dtype.type, np.integer):
-            # this also handles pandas Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype
-            # JSON has a number datatype, so we can preserve this information in JSON!
+def typify_classification(vec):
+    # Per scikit-learn, we need to accept y of list or numpy array that contains either strings or integers.
+    # We want to serialize these models to/from JSON, and JSON allows us to differentiate between string
+    # and integer types with just the JSON type, so that's nice.  JSON also allows boolean types,
+    # and that seems like a type someone might pass us for binary classification, so accept bools too.
+    # https://scikit-learn.org/stable/developers/develop.html
+
+    if issubclass(vec.dtype.type, np.integer):
+        # this also handles pandas Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype
+        # JSON has a number datatype, so we can preserve this information in JSON!
+        dtype = np.int64
+    elif issubclass(vec.dtype.type, np.bool_):
+        # this also handles pandas BooleanDtype
+        # JSON has a boolean datatype, so we can preserve this information in JSON!
+        dtype = np.bool_
+    elif issubclass(vec.dtype.type, np.object_):
+        types = set(map(type, vec))
+        if all(one_type is int or issubclass(one_type, np.integer) for one_type in types):
+            # the vec.astype call below can fail if we're passed an unsigned np.uint64
+            # array with big values, but we don't want to surprise anyone by converting to
+            # strings in that special case, so throw if we're presented this unusual type
             dtype = np.int64
-        elif issubclass(vec.dtype.type, np.bool_):
-            # this also handles pandas BooleanDtype
-            # JSON has a boolean datatype, so we can preserve this information in JSON!
+        elif all(one_type is bool or issubclass(one_type, np.bool_) for one_type in types):
             dtype = np.bool_
-        elif issubclass(vec.dtype.type, np.object_):
-            types = set(map(type, vec))
-            if all(one_type is int or issubclass(one_type, np.integer) for one_type in types):
-                # the vec.astype call below can fail if we're passed an unsigned np.uint64
-                # array with big values, but we don't want to surprise anyone by converting to
-                # strings in that special case, so throw if we're presented this unusual type
-                dtype = np.int64
-            elif all(one_type is bool or issubclass(one_type, np.bool_) for one_type in types):
-                dtype = np.bool_
-            else:
-                dtype = np.unicode_
         else:
             dtype = np.unicode_
     else:
-        dtype = np.float64
+        dtype = np.unicode_
 
     return vec.astype(dtype, copy=False)
+
+def clean_init_score(init_score, n_samples, X_unclean):
+    if is_classifier(init_score):
+        # scikit-learn estimators either have predict_proba or decision_function
+        # first try predict_proba since we can more reliably detect mono-classification
+        try:
+            probs = clean_dimensions(init_score.predict_proba(X_unclean), "init_score")
+            if n_samples == 1: # then the sample dimension would have been eliminated
+                if probs.ndim != 1:
+                    msg = f"init_score.predict_proba(X) returned inconsistent number of dimensions"
+                    _log.error(msg)
+                    raise ValueError(msg)
+                if probs.shape[0] <= 1: # 0 or 1 means 1 class
+                    # only 1 class to predict means perfect prediction, and no scores for EBMs
+                    # do not check if probs are all one in case there is floating point noise
+                    return np.empty((1, 0), np.float64)
+                probs = probs.reshape([1] + probs.shape)
+            else:
+                if probs.shape[0] == 0:
+                    # having any dimension as zero length probably means 1 class, so treat it that way
+                    return np.empty((n_samples, 0), np.float64)
+                if probs.shape[0] != n_samples:
+                    msg = f"init_score.predict_proba(X) returned inconsistent number of samples compared to y"
+                    _log.error(msg)
+                    raise ValueError(msg)
+                if probs.ndim == 1:
+                    # only 1 class to predict means perfect prediction, and no scores for EBMs
+                    # do not check if probs are all one in case there is floating point noise
+                    return np.empty((n_samples, 0), np.float64)
+            probs = probs.astype(np.float64, copy=False)
+            maxes = np.amax(probs, axis=1)
+            with np.errstate(divide='ignore'):
+                init_score = np.log(probs / maxes[:,np.newaxis])
+            if init_score.shape[1] == 2: # binary classification
+                init_score = init_score[:, 1] - init_score[:, 0]
+            return init_score
+        except AttributeError:
+            init_score = clean_dimensions(init_score.decision_function(X_unclean), "init_score")
+            if n_samples == 1: # then the sample dimension would have been eliminated
+                if init_score.ndim != 1:
+                    msg = f"init_score.decision_function(X) returned inconsistent number of dimensions"
+                    _log.error(msg)
+                    raise ValueError(msg)
+                if init_score.shape[0] != 1:
+                    init_score = init_score.reshape([1] + init_score.shape)
+            else:
+                if init_score.shape[0] == 0:
+                    # must be a 1 class problem
+                    return np.empty((n_samples, 0), np.float64)
+                if init_score.shape[0] != n_samples:
+                    msg = f"init_score.decision_function(X) returned inconsistent number of samples compared to y"
+                    _log.error(msg)
+                    raise ValueError(msg)
+            init_score = init_score.astype(np.float64, copy=False)
+            return init_score
+    elif is_regressor(init_score):
+        init_score = clean_dimensions(init_score.predict(X_unclean), "init_score")
+        if init_score.ndim != 1:
+            msg = f"init_score.predict(X) must have only 1 dimension"
+            _log.error(msg)
+            raise ValueError(msg)
+        if init_score.shape[0] != n_samples:
+            msg = f"init_score.predict(X) returned inconsistent number of samples compared to y"
+            _log.error(msg)
+            raise ValueError(msg)
+        init_score = init_score.astype(np.float64, copy=False)
+
+        # TODO Add link function to operate on predict's output when needed
+
+        return init_score
+
+    init_score = clean_dimensions(init_score, "init_score")
+    if n_samples == 1: # then the sample dimension would have been eliminated
+        if init_score.ndim != 1:
+            msg = f"init_score has an inconsistent number of samples compared to y"
+            _log.error(msg)
+            raise ValueError(msg)
+        if init_score.shape[0] != 1:
+            init_score = init_score.reshape([1] + init_score.shape)
+    else:
+        if init_score.shape[0] == 0:
+            # must be a 1 class problem
+            return np.empty((n_samples, 0), np.float64)
+        if init_score.shape[0] != n_samples:
+            msg = f"init_score has an inconsistent number of samples compared to y"
+            _log.error(msg)
+            raise ValueError(msg)
+    init_score = init_score.astype(np.float64, copy=False)
+    return init_score
 
 def clean_X(X):
     # called under: fit or predict
 
     if isinstance(X, np.ndarray): # this includes ma.masked_array
-        if X.ndim == 0:
-            return np.empty(0, X.dtype), 0
+        if X.ndim == 0: # zero dimensional arrays are possible, but really weird
+            return np.empty((0, 0), X.dtype), 0
         return X, 1 if X.ndim == 1 else X.shape[0]
     elif _pandas_installed and isinstance(X, pd.DataFrame):
         return X, X.shape[0]
@@ -1373,8 +1557,8 @@ def clean_X(X):
         is_copied = False
     elif callable(getattr(X, '__array__', None)):
         X = X.__array__()
-        if X.ndim == 0:
-            return np.empty(0, X.dtype), 0
+        if X.ndim == 0: # zero dimensional arrays are possible, but really weird
+            return np.empty((0, 0), X.dtype), 0
         return X, 1 if X.ndim == 1 else X.shape[0]
     elif X is None:
         msg = "X cannot be None"
@@ -1455,6 +1639,12 @@ def clean_X(X):
                 msg = f"Cannot reshape to 1D. Original shape was {sample.shape}"
                 _log.error(msg)
                 raise ValueError(msg)
+        elif callable(getattr(sample, '__array__', None)):
+            sample = sample.__array__()
+            if not is_copied:
+                is_copied = True
+                X = list(X)
+            X[idx] = _reshape_1D_if_possible(sample)
         elif isinstance(sample, str):
             break # this only legal if we have one sample
         else:
@@ -1469,7 +1659,7 @@ def clean_X(X):
 
     # leave these as np.object_ for now and we'll try to densify per column where we're more likely to 
     # succeed in densification since columns should generally be a single type
-    X = np.array(X, dtype=np.object_)
+    X = np.array(X, np.object_)
     return X, 1 if X.ndim == 1 else X.shape[0]
 
 def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bin):
@@ -1497,7 +1687,7 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
     elif isinstance(processing, np.ndarray):
         cuts = processing.astype(dtype=np.float64, copy=False)
     elif isinstance(processing, list):
-        cuts = np.array(processing, dtype=np.float64)
+        cuts = np.array(processing, np.float64)
     else:
         msg = f"illegal binning type {processing}"
         _log.error(msg)
@@ -1598,7 +1788,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             raise ValueError(msg)
 
         if sample_weight is not None:
-            sample_weight = clean_vector(sample_weight, False, "sample_weight")
+            sample_weight = clean_dimensions(sample_weight, "sample_weight")
+            if sample_weight.ndim != 1:
+                raise ValueError("sample_weight must be 1 dimensional")
+            sample_weight = sample_weight.astype(np.float64, copy=False)
+
             if n_samples != len(sample_weight):
                 msg = f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
                 _log.error(msg)
@@ -1690,7 +1884,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         max_feature_val = bounds[1]
                     cuts, feature_bin_weights = private_numeric_binning(X_col, sample_weight, noise_scale, max_bins - 1, min_feature_val, max_feature_val, rng)
                     feature_bin_weights.append(0)
-                    feature_bin_weights = np.array(feature_bin_weights, dtype=np.float64)
+                    feature_bin_weights = np.array(feature_bin_weights, np.float64)
                 else:
                     min_feature_val = np.nanmin(X_col)
                     max_feature_val = np.nanmax(X_col)
@@ -1739,7 +1933,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     keep_bins = keep_bins.astype(np.int64)
                     keep_bins = dict(zip(keep_bins, old_feature_bin_weights))
 
-                    feature_bin_weights = np.empty(len(keep_bins) + 2, dtype=np.float64)
+                    feature_bin_weights = np.empty(len(keep_bins) + 2, np.float64)
                     feature_bin_weights[0] = 0
                     feature_bin_weights[-1] = unknown_weight
 
@@ -1809,7 +2003,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
         X, n_samples = clean_X(X)
 
-        X_binned = np.empty((n_samples, len(self.feature_names_in_)), dtype=np.int64, order='F')
+        X_binned = np.empty((n_samples, len(self.feature_names_in_)), np.int64, order='F')
 
         if 0 < n_samples:
             native = Native.get_native_singleton()
@@ -2099,7 +2293,7 @@ def unify_data2(X, n_samples, feature_names=None, feature_types=None, missing_da
     # TODO: this could be made more efficient by storing continuous and categorical values in separate numpy arrays
     # and merging afterwards.  Categoricals are going to share the same objects, but we don't want object
     # fragmentation for continuous values which generates a lot of garbage to collect later
-    X_unified = np.empty((n_samples, len(feature_names_in)), dtype=np.object_, order='F')
+    X_unified = np.empty((n_samples, len(feature_names_in)), np.object_, order='F')
 
     for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(unify_columns(X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in, feature_types, min_unique_continuous, False)):
         if n_samples != len(X_col):
@@ -2133,7 +2327,7 @@ def unify_data2(X, n_samples, feature_names=None, feature_types=None, missing_da
                 _log.error(msg)
                 raise ValueError(msg)
 
-            mapping = np.empty(len(categories) + 1, dtype=np.object_)
+            mapping = np.empty(len(categories) + 1, np.object_)
             mapping.itemset(0, np.nan)
             for category, idx in categories.items():
                 mapping.itemset(idx, category)

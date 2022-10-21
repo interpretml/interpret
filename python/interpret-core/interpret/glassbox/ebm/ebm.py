@@ -8,7 +8,7 @@ from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
 from .utils import EBMUtils
 from .utils import _process_terms, make_histogram_edges, _order_terms, _remove_unused_higher_bins, _generate_term_names, _generate_term_types
-from ...utils._binning import clean_X, clean_vector, construct_bins, bin_native_by_dimension, unify_data2, _deduplicate_bins, normalize_initial_seed
+from ...utils._binning import clean_X, clean_dimensions, typify_classification, construct_bins, bin_native_by_dimension, unify_data2, _deduplicate_bins, normalize_initial_seed
 from .bin import ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, eval_terms
 from ...utils._native import Native
 from ...utils import unify_data, autogen_schema, unify_vector
@@ -259,7 +259,10 @@ class EBMModel(BaseEstimator):
             raise ValueError(msg)
 
         if is_classifier(self):
-            y = clean_vector(y, True, "y")
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            y = typify_classification(y)
             # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
             # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
             # in two separate runs, which would flip the ordering of the classes within our score tensors.
@@ -267,7 +270,10 @@ class EBMModel(BaseEstimator):
             n_classes = len(classes)
             class_idx = {x: index for index, x in enumerate(classes)}
         else:
-            y = clean_vector(y, False, "y")
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            y = y.astype(np.float64, copy=False)
             min_target = y.min()
             max_target = y.max()
             n_classes = -1
@@ -278,7 +284,10 @@ class EBMModel(BaseEstimator):
             raise ValueError(msg)
 
         if sample_weight is not None:
-            sample_weight = clean_vector(sample_weight, False, "sample_weight")
+            sample_weight = clean_dimensions(sample_weight, "sample_weight")
+            if sample_weight.ndim != 1:
+                raise ValueError("sample_weight must be 1 dimensional")
+            sample_weight = sample_weight.astype(np.float64, copy=False)
             if n_samples != len(sample_weight):
                 msg = f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
                 _log.error(msg)
@@ -1291,10 +1300,16 @@ class EBMModel(BaseEstimator):
 
         if y is not None:
             if is_classifier(self):
-                y = clean_vector(y, True, "y")
+                y = clean_dimensions(y, "y")
+                if y.ndim != 1:
+                    raise ValueError("y must be 1 dimensional")
+                y = typify_classification(y)
                 y = np.array([self._class_idx_[el] for el in y], dtype=np.int64)
             else:
-                y = clean_vector(y, False, "y")
+                y = clean_dimensions(y, "y")
+                if y.ndim != 1:
+                    raise ValueError("y must be 1 dimensional")
+                y = y.astype(np.float64, copy=False)
 
             if n_samples != len(y):
                 msg = f"X has {n_samples} samples and y has {len(y)} samples"

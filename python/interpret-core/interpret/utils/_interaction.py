@@ -16,32 +16,8 @@ from itertools import combinations
 from sklearn.utils.multiclass import type_of_target
 from sklearn.base import is_classifier, is_regressor
 
-from ._binning import clean_X, clean_vector, construct_bins, bin_native_by_dimension
+from ._binning import clean_X, clean_dimensions, typify_classification, clean_init_score, construct_bins, bin_native_by_dimension
 from ._native import Native, InteractionDetector
-
-def _prepare_X_y(X, y, is_classification):
-    X, n_samples = clean_X(X)
-    if n_samples == 0:
-        raise ValueError("X has 0 samples")
-
-    if is_classification:
-        y = clean_vector(y, True, "y")
-        classes, y = np.unique(y, return_inverse=True)
-        n_classes = len(classes)
-    else:
-        y = clean_vector(y, False, "y")
-        n_classes = -1
-
-    if n_samples != len(y):
-        raise ValueError(f"X has {n_samples} samples and y has {len(y)} samples")
-
-    return X, y, n_samples, n_classes
-
-def _prepare_sample_weight(sample_weight, num_samples):
-    sample_weight = clean_vector(sample_weight, False, "sample_weight")
-    if num_samples != len(sample_weight):
-        raise ValueError(f"X has {num_samples} samples and sample_weight has {len(sample_weight)} samples")
-    return sample_weight
 
 def _get_ranked_interactions(
         dataset,
@@ -51,7 +27,7 @@ def _get_ranked_interactions(
         interaction_flags,
         min_samples_leaf,
         experimental_params=None,
-        num_output_interactions=0
+        n_output_interactions=0
     ):
     interaction_strengths = []
     with InteractionDetector(dataset, bag, scores, experimental_params) as interaction_detector:
@@ -60,10 +36,10 @@ def _get_ranked_interactions(
                 feature_idxs, interaction_flags, min_samples_leaf,
             )
             item = (strength, feature_idxs)
-            if(num_output_interactions <= 0):
+            if(n_output_interactions <= 0):
                 interaction_strengths.append(item)
             else:
-                if len(interaction_strengths) == num_output_interactions:
+                if len(interaction_strengths) == n_output_interactions:
                     heapq.heappushpop(interaction_strengths, item)
                 else:
                     heapq.heappush(interaction_strengths, item)
@@ -105,6 +81,12 @@ def measure_interactions(
         List containing a tuple of feature indices for the terms and interaction strengths, 
             e.g. [((1, 2), 0.134), ((3, 7), 0.0842)].  Ordered by decreasing interaction strengths.
     """
+        
+    y = clean_dimensions(y, "y")
+    if y.ndim != 1:
+        raise ValueError("y must be 1 dimensional")
+    if len(y) == 0:
+        raise ValueError("y cannot have 0 samples")
 
     is_classification = None
     if objective in ['classification']:
@@ -116,51 +98,77 @@ def measure_interactions(
         if is_classification == False:
             raise ValueError("objective is for regresion but the init_score is a classification model")
         is_classification = True
-        try:
-            init_score = np.array(init_score.decision_function(X), dtype=np.float64)
-        except AttributeError:
-            probs = np.array(init_score.predict_proba(X), dtype=np.float64)
-            maxes = np.amax(probs, axis=1)
-            init_score = np.log(probs / maxes[:,np.newaxis])
-            if init_score.shape[1] == 2: # binary classification
-                init_score = init_score[:,1] - init_score[:,0]
     elif is_regressor(init_score):
         if is_classification == True:
             raise ValueError("objective is for classification but the init_score is a regression model")
         is_classification = False
-        init_score = np.array(init_score.predict(X), dtype=np.float64)
-        init_score = clean_vector(init_score, False, "init_score")
-        # TODO Add link function to operate on predict's output when needed
-    elif init_score is not None:
-        init_score = np.array(init_score, dtype=np.float64)
+
+    if init_score is not None:
+        # use the uncleaned X since scikit-learn Estimators need the original data format
+        init_score = clean_init_score(init_score, len(y), X)
+        if init_score.ndim == 2:
+            # it must be multiclass, or mono-classification
+            if is_classification == False:
+                raise ValueError("objective is for regresion but the init_score is for a multiclass model")
+            is_classification = True
+
+    X, n_samples = clean_X(X)
+    if n_samples != len(y):
+        raise ValueError(f"X has {n_samples} samples and y has {len(y)} samples")
 
     if is_classification is None:
-        target_type = type_of_target(y)
-        if target_type in ['binary', 'multiclass']:
-            is_classification = True
-        elif target_type in ['continuous']:
+        # type_of_target does not seem to like no.object_, so convert it to something that works
+        try:
+            y_discard = y.astype(dtype=np.float64, copy=False)
+        except (TypeError, ValueError):
+            y_discard = y.astype(dtype=np.unicode_, copy=False)
+
+        target_type = type_of_target(y_discard)
+        if target_type == 'continuous':
             is_classification = False
+        elif target_type == 'binary':
+            is_classification = True
+        elif target_type == 'multiclass':
+            if init_score is not None:
+                # type_of_target is guessing the model type. if init_score was multiclass then it
+                # should have a 2nd dimension, but it does not, so the guess made by type_of_target was wrong. 
+                # The only other option is for it to be regression, so force that.
+                is_classification = False
+            else:
+                is_classification = True
         else:
             raise ValueError("unrecognized target type in y")
 
-    # num_classes is -1 for regression
-    X, y, num_samples, num_classes = _prepare_X_y(X, y, is_classification)
+
+    if is_classification:
+        y = typify_classification(y)
+        classes, y = np.unique(y, return_inverse=True)
+        n_classes = len(classes)
+    else:
+        y = y.astype(np.float64, copy=False)
+        n_classes = -1
 
     if init_score is not None:
-        if is_classification:
-            if num_classes == 2:
-                # should be 1 dimensionable, and our clean_vector will force that
-                init_score = clean_vector(init_score, False, "init_score")
-            elif init_score.ndim != 2:
-                raise ValueError("for multiclass init_score should have 2 dimensions")
-            elif init_score.shape[1] != num_classes:
-                raise ValueError("for multiclass init_score.shape[1] should be the number of classes")
-        else:
-            # clean_vector will fail if it is not one dimenionable
-            init_score = clean_vector(init_score, False, "init_score")
+        if n_classes == 2 or n_classes == -1:
+            if init_score.ndim != 1:
+                raise ValueError("diagreement between the number of classes in y and in the init_score shape")
+        elif 3 <= n_classes:
+            if init_score.ndim != 2 or init_score.shape[1] != n_classes:
+                raise ValueError("diagreement between the number of classes in y and in the init_score shape")
+        else: # 1 class
+            # what the init_score should be for mono-classifiction is somewhat abiguous, 
+            # so allow either 0 or 1 (which means the dimension is eliminated)
+            if init_score.ndim == 2 and 2 <= init_score.shape[1]:
+                raise ValueError("diagreement between the number of classes in y and in the init_score shape")
+            init_score = None
 
     if sample_weight is not None:
-        sample_weight = _prepare_sample_weight(sample_weight, num_samples)
+        sample_weight = clean_dimensions(sample_weight, "sample_weight")
+        if sample_weight.ndim != 1:
+            raise ValueError("sample_weight must be 1 dimensional")
+        if n_samples != len(sample_weight):
+            raise ValueError(f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples")
+        sample_weight = sample_weight.astype(np.float64, copy=False)
 
     binning_result = construct_bins(
         X=X,
@@ -177,7 +185,7 @@ def measure_interactions(
     n_features_in = len(bins)
 
     dataset = bin_native_by_dimension(
-        n_classes=num_classes,
+        n_classes=n_classes,
         n_dimensions=2,
         bins=bins,
         X=X,
@@ -188,13 +196,13 @@ def measure_interactions(
     )
 
     if isinstance(interactions, int):
-        num_output_interactions = interactions
+        n_output_interactions = interactions
         iter_term_features=combinations(range(n_features_in), 2)
     elif interactions is None:
-        num_output_interactions = 0
+        n_output_interactions = 0
         iter_term_features=combinations(range(n_features_in), 2)
     else:
-        num_output_interactions = 0
+        n_output_interactions = 0
         iter_term_features = interactions
 
     ranked_interactions = _get_ranked_interactions(
@@ -205,7 +213,7 @@ def measure_interactions(
         interaction_flags=Native.InteractionFlags_Pure,
         min_samples_leaf=min_samples_leaf,
         experimental_params=None,
-        num_output_interactions=num_output_interactions
+        n_output_interactions=n_output_interactions
     )
 
     return list(map(tuple, map(reversed, ranked_interactions)))
