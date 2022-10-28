@@ -252,16 +252,21 @@ class EBMModel(BaseEstimator):
             Itself.
         """
 
+        y = clean_dimensions(y, "y")
+        if y.ndim != 1:
+            raise ValueError("y must be 1 dimensional")
+
         X, n_samples = clean_X(X)
         if n_samples == 0:
             msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
+        if n_samples != len(y):
+            msg = f"y has {len(y)} samples and X has {n_samples} samples"
+            _log.error(msg)
+            raise ValueError(msg)
 
         if is_classifier(self):
-            y = clean_dimensions(y, "y")
-            if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
             y = typify_classification(y)
             # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
             # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
@@ -270,28 +275,20 @@ class EBMModel(BaseEstimator):
             n_classes = len(classes)
             class_idx = {x: index for index, x in enumerate(classes)}
         else:
-            y = clean_dimensions(y, "y")
-            if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
             y = y.astype(np.float64, copy=False)
             min_target = y.min()
             max_target = y.max()
             n_classes = -1
 
-        if n_samples != len(y):
-            msg = f"X has {n_samples} samples and y has {len(y)} samples"
-            _log.error(msg)
-            raise ValueError(msg)
-
         if sample_weight is not None:
             sample_weight = clean_dimensions(sample_weight, "sample_weight")
             if sample_weight.ndim != 1:
                 raise ValueError("sample_weight must be 1 dimensional")
-            sample_weight = sample_weight.astype(np.float64, copy=False)
             if n_samples != len(sample_weight):
-                msg = f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
+                msg = f"y has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
                 _log.error(msg)
                 raise ValueError(msg)
+            sample_weight = sample_weight.astype(np.float64, copy=False)
 
         # Privacy calculations
         is_differential_privacy = is_private(self)
@@ -337,6 +334,7 @@ class EBMModel(BaseEstimator):
         # so it can be replicated without creating an EBM
         binning_result = construct_bins(
             X=X,
+            y=y,
             sample_weight=sample_weight,
             feature_names_given=self.feature_names, 
             feature_types_given=self.feature_types, 
@@ -1296,25 +1294,25 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
-
+        n_samples = None
         if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            n_samples = len(y)
+
             if is_classifier(self):
-                y = clean_dimensions(y, "y")
-                if y.ndim != 1:
-                    raise ValueError("y must be 1 dimensional")
                 y = typify_classification(y)
                 y = np.array([self._class_idx_[el] for el in y], dtype=np.int64)
             else:
-                y = clean_dimensions(y, "y")
-                if y.ndim != 1:
-                    raise ValueError("y must be 1 dimensional")
                 y = y.astype(np.float64, copy=False)
 
-            if n_samples != len(y):
-                msg = f"X has {n_samples} samples and y has {len(y)} samples"
-                _log.error(msg)
-                raise ValueError(msg)
+        X, n_samples_X = clean_X(X)
+        if n_samples is not None and n_samples != n_samples_X:
+            msg = f"y has {n_samples} samples and X has {n_samples_X}"
+            _log.error(msg)
+            raise ValueError(msg)
+        n_samples = n_samples_X
 
         term_names = self.term_names_
         term_types = _generate_term_types(self.feature_types_in_, self.term_features_)

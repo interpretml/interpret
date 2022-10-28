@@ -1242,93 +1242,92 @@ def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
 
     return feature_names_in
 
-# TODO: rename vec to data or something like that since it isn't a vector anymore
-def clean_dimensions(vec, param_name):
+def clean_dimensions(data, param_name):
     # called under: fit
 
     while True:
-        if isinstance(vec, ma.masked_array):
+        if isinstance(data, ma.masked_array):
             # do this before np.ndarray since ma.masked_array is a subclass of np.ndarray
-            mask = vec.mask
+            mask = data.mask
             if mask is not ma.nomask:
                 if mask.any():
                     msg = f"{param_name} cannot contain missing values"
                     _log.error(msg)
                     raise ValueError(msg)
-            vec = vec.data
-        elif isinstance(vec, np.ndarray):
+            data = data.data
+        elif isinstance(data, np.ndarray):
             pass
-        elif _pandas_installed and isinstance(vec, pd.Series):
-            if vec.hasnans:
+        elif _pandas_installed and isinstance(data, pd.Series):
+            if data.hasnans:
                 # if hasnans is true then there is definetly a real missing value in there and not just a mask
                 msg = f"{param_name} cannot contain missing values"
                 _log.error(msg)
                 raise ValueError(msg)
             # can be a non-numpy datatype, but has enough conformance for us to work on it
-            vec = vec.values
-        elif _pandas_installed and isinstance(vec, pd.DataFrame):
-            if vec.shape[1] == 1:
-                vec = vec.iloc[:, 0]
-                if vec.hasnans:
+            data = data.values
+        elif _pandas_installed and isinstance(data, pd.DataFrame):
+            if data.shape[1] == 1:
+                data = data.iloc[:, 0]
+                if data.hasnans:
                     # if hasnans is true then there is definetly a real missing value in there and not just a mask
                     msg = f"{param_name} cannot contain missing values"
                     _log.error(msg)
                     raise ValueError(msg)
                 # can be a non-numpy datatype, but has enough conformance for us to work on it
-                vec = vec.values
+                data = data.values
             else:
                 # can be a non-numpy datatype, but has enough conformance for us to work on it
-                vec = vec.astype(np.object_, copy=False).values
-        elif _scipy_installed and isinstance(vec, sp.sparse.spmatrix):
-            vec = vec.toarray()
-        elif isinstance(vec, list) or isinstance(vec, tuple):
-            vec = np.array(vec, np.object_)
-        elif callable(getattr(vec, '__array__', None)):
-            vec = vec.__array__()
-        elif isinstance(vec, str):
+                data = data.astype(np.object_, copy=False).values
+        elif _scipy_installed and isinstance(data, sp.sparse.spmatrix):
+            data = data.toarray()
+        elif isinstance(data, list) or isinstance(data, tuple):
+            data = np.array(data, np.object_)
+        elif callable(getattr(data, '__array__', None)):
+            data = data.__array__()
+        elif isinstance(data, str):
             # we have just 1 item, so re-pack it and return
             ret = np.empty(1, np.object_)
-            ret.itemset(0, vec)
+            ret.itemset(0, data)
             return ret
         else:
             try:
-                vec = list(vec)
+                data = list(data)
             except TypeError:
                 # we have just 1 item, so re-pack it and return
                 ret = np.empty(1, np.object_)
-                ret.itemset(0, vec)
+                ret.itemset(0, data)
                 return ret
-            vec = np.array(vec, np.object_)
+            data = np.array(data, np.object_)
 
-        vec = _remove_extra_dimensions(vec)
+        data = _remove_extra_dimensions(data)
 
-        if vec.shape[0] == 0:
-            # vec.ndim must be 1
-            return vec
+        if data.shape[0] == 0:
+            # data.ndim must be 1
+            return data
 
-        if vec.dtype.type is not np.object_:
-            if 3 <= vec.ndim:
+        if data.dtype.type is not np.object_:
+            if 3 <= data.ndim:
                 msg = f"{param_name} cannot have 3rd dimension"
                 _log.error(msg)
                 raise TypeError(msg)
-            if issubclass(vec.dtype.type, np.floating) and np.isnan(vec).any():
+            if issubclass(data.dtype.type, np.floating) and np.isnan(data).any():
                 msg = f"{param_name} cannot contain missing values"
                 _log.error(msg)
                 raise ValueError(msg)
-            return vec
+            return data
             
-        if vec.shape[0] != 1:
+        if data.shape[0] != 1:
             break
 
-        vec = vec[0]
+        data = data[0]
 
     n_second_dim = None
 
     # check the interior items
     idx = 0
-    n = len(vec)
+    n = len(data)
     while idx < n:
-        item = vec[idx]
+        item = data[idx]
 
         if isinstance(item, str):
             if n_second_dim is not None and n_second_dim != 1:
@@ -1341,8 +1340,8 @@ def clean_dimensions(vec, param_name):
 
         # TODO: if we checked item for various types like numpy, and those types were not of type np.object_
         # then we could avoid iterating the list contents below, or if the list contained only list
-        # then sometimes we would not have to re-convert vec to a list, which we need to do below incase
-        # item is an iterator and therefore must modify vec[idx] to insert the list we created from the iterator
+        # then sometimes we would not have to re-convert data to a list, which we need to do below incase
+        # item is an iterator and therefore must modify data[idx] to insert the list we created from the iterator
 
         try:
             item = list(item)
@@ -1355,12 +1354,12 @@ def clean_dimensions(vec, param_name):
             idx = idx + 1
             continue
 
-        if vec is not list:
-            vec = list(vec)
+        if data is not list:
+            data = list(data)
 
         n_items = len(item)
         if n_items == 1:
-            vec[idx] = item[0] # keep iterating down into them until they hit a non-1 length
+            data[idx] = item[0] # keep iterating down into them until they hit a non-1 length
             continue
 
         if n_second_dim is not None and n_second_dim != n_items:
@@ -1391,29 +1390,29 @@ def clean_dimensions(vec, param_name):
 
             item[sub_idx] = subitem[0] # keep iterating down into them until they hit a non-1 length
 
-        vec[idx] = item # if it was an iterable or we dug into any of the items, we need to replace it
+        data[idx] = item # if it was an iterable or we dug into any of the items, we need to replace it
         idx = idx + 1
 
     if n_second_dim == 0:
         return np.empty(0, np.object_)
 
-    vec = np.array(vec, np.object_, copy=False) # in case it was converted to list
+    data = np.array(data, np.object_, copy=False) # in case it was converted to list
 
     if _pandas_installed:
         # pandas also has the pd.NA value that indicates missing.  If Pandas is available though
         # we can use it's function that checks for pd.NA, np.nan, and None
-        if pd.isna(vec).any():
+        if pd.isna(data).any():
             msg = f"{param_name} cannot contain missing values"
             _log.error(msg)
             raise ValueError(msg)
     else:
-        # vec != vec is a check for nan that works even with mixed types, since nan != nan
-        if (vec == _none_ndarray).any() or (vec != vec).any():
+        # data != data is a check for nan that works even with mixed types, since nan != nan
+        if (data == _none_ndarray).any() or (data != data).any():
             msg = f"{param_name} cannot contain missing values"
             _log.error(msg)
             raise ValueError(msg)
 
-    return vec
+    return data
 
 def typify_classification(vec):
     # Per scikit-learn, we need to accept y of list or numpy array that contains either strings or integers.
@@ -1781,22 +1780,23 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             Itself.
         """
 
-        X, n_samples = clean_X(X)
-        if n_samples == 0:
-            msg = "X has 0 samples"
-            _log.error(msg)
-            raise ValueError(msg)
+        n_samples = None
+        if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            n_samples = len(y)
 
         if sample_weight is not None:
             sample_weight = clean_dimensions(sample_weight, "sample_weight")
             if sample_weight.ndim != 1:
                 raise ValueError("sample_weight must be 1 dimensional")
-            sample_weight = sample_weight.astype(np.float64, copy=False)
-
-            if n_samples != len(sample_weight):
-                msg = f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
+            if n_samples is not None and n_samples != len(sample_weight):
+                msg = f"y has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
                 _log.error(msg)
                 raise ValueError(msg)
+            n_samples = len(sample_weight)
+            sample_weight = sample_weight.astype(np.float64, copy=False)
 
             min_weight = sample_weight.min() # NaN values are guaranteed to be the min if they exist
             # TODO: for now weights of zero are illegal, but in the future accept them
@@ -1804,6 +1804,24 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 msg = "illegal sample_weight value"
                 _log.error(msg)
                 raise ValueError(msg)
+
+        X, n_samples_X = clean_X(X)
+        if n_samples is not None and n_samples != n_samples_X:
+            if y is not None:
+                msg = f"y has {n_samples} samples and X has {n_samples_X} samples"
+                _log.error(msg)
+                raise ValueError(msg)
+            else:
+                msg = f"sample_weights has {n_samples} samples and X has {n_samples_X} samples"
+                _log.error(msg)
+                raise ValueError(msg)
+        n_samples = n_samples_X
+
+        # TODO: should preprocessors handle 0 samples?
+        if n_samples == 0:
+            msg = "X has 0 samples"
+            _log.error(msg)
+            raise ValueError(msg)
 
         feature_names_in = unify_feature_names(X, self.feature_names, self.feature_types)
         n_features = len(feature_names_in)
@@ -2071,6 +2089,7 @@ def _deduplicate_bins(bins):
 
 def construct_bins(
     X,
+    y,
     sample_weight,
     feature_names_given, 
     feature_types_given, 
@@ -2103,7 +2122,7 @@ def construct_bins(
 
         random_state = increment_seed(random_state)
 
-        preprocessor.fit(X, None, sample_weight)
+        preprocessor.fit(X, y, sample_weight)
         if is_mains:
             is_mains = False
             bins = preprocessor.bins_

@@ -2201,6 +2201,7 @@ def test_bin_native():
 
     feature_names_in, feature_types_in, bins, bin_weights, feature_bounds, histogram_counts, unique_val_counts, zero_val_counts = construct_bins(
         X,
+        y,
         sample_weight,
         feature_names_given, 
         feature_types_given, 

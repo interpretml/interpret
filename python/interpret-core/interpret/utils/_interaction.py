@@ -172,6 +172,7 @@ def measure_interactions(
 
     binning_result = construct_bins(
         X=X,
+        y=y,
         sample_weight=sample_weight,
         feature_names_given=feature_names,
         feature_types_given=feature_types,
