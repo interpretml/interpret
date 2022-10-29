@@ -706,8 +706,11 @@ BoostRet TestApi::Boost(
          cUpdateScores *= cBins;
       }
 
-      double * aUpdateScores = new double[cUpdateScores];
-      memset(aUpdateScores, 0, sizeof(*aUpdateScores) * cUpdateScores);
+      double * aUpdateScores = nullptr;
+      if(0 != cUpdateScores) {
+         aUpdateScores = new double[cUpdateScores];
+         memset(aUpdateScores, 0, sizeof(*aUpdateScores) * cUpdateScores);
+      }
 
       error = SetTermUpdate(
          m_boosterHandle,

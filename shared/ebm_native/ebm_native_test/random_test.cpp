@@ -58,6 +58,93 @@ TEST_CASE("GenerateSeed, 99") {
    CHECK(-1237406560 == seed);
 }
 
+TEST_CASE("SampleWithoutReplacementStratified, 0 samples") {
+   static constexpr size_t cClasses = 2;
+
+   ErrorEbm error;
+
+   error = SampleWithoutReplacementStratified(
+      nullptr,
+      cClasses,
+      0,
+      0,
+      nullptr,
+      nullptr
+   );
+   CHECK(Error_None == error);
+}
+
+TEST_CASE("SampleWithoutReplacementStratified, 0 training samples") {
+   static constexpr size_t cSamples = 2;
+   static constexpr size_t cClasses = 2;
+
+   ErrorEbm error;
+
+   IntEbm targets[cSamples] = { 0 };
+   BagEbm sampleCounts[cSamples];
+
+   error = SampleWithoutReplacementStratified(
+      nullptr,
+      cClasses,
+      0,
+      2,
+      targets,
+      sampleCounts
+   );
+   CHECK(Error_None == error);
+
+   CHECK(BagEbm { -1 } == sampleCounts[0]);
+   CHECK(BagEbm { -1 } == sampleCounts[1]);
+}
+
+TEST_CASE("SampleWithoutReplacementStratified, 0 validation samples") {
+   static constexpr size_t cSamples = 2;
+   static constexpr size_t cClasses = 2;
+
+   ErrorEbm error;
+
+   IntEbm targets[cSamples] = { 1 };
+   BagEbm sampleCounts[cSamples];
+
+   error = SampleWithoutReplacementStratified(
+      nullptr,
+      cClasses,
+      2,
+      0,
+      targets,
+      sampleCounts
+   );
+   CHECK(Error_None == error);
+
+   CHECK(BagEbm { 1 } == sampleCounts[0]);
+   CHECK(BagEbm { 1 } == sampleCounts[1]);
+}
+
+TEST_CASE("SampleWithoutReplacementStratified, monoclassification") {
+   static constexpr size_t cSamples = 2;
+   static constexpr size_t cClasses = 1;
+
+   ErrorEbm error;
+
+   IntEbm targets[cSamples] = { 0 };
+   BagEbm sampleCounts[cSamples];
+
+   error = SampleWithoutReplacementStratified(
+      nullptr,
+      cClasses,
+      1,
+      1,
+      targets,
+      sampleCounts
+   );
+   CHECK(Error_None == error);
+
+   CHECK(BagEbm { -1 } == sampleCounts[0] || BagEbm { 1 } == sampleCounts[0]);
+   CHECK(BagEbm { -1 } == sampleCounts[1] || BagEbm { 1 } == sampleCounts[1]);
+
+   CHECK(BagEbm { 0 } == sampleCounts[0] + sampleCounts[1]);
+}
+
 TEST_CASE("SampleWithoutReplacementStratified, stress test") {
    static constexpr size_t cSamples = 500;
    static constexpr size_t cClasses = 10;

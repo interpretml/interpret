@@ -134,9 +134,9 @@ inline constexpr static bool IsClassification(const ptrdiff_t cClasses) {
 
 inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) {
 #ifdef EXPAND_BINARY_LOGITS
-   return cClasses <= ptrdiff_t { 1 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+   return ptrdiff_t { 1 } < cClasses ? static_cast<size_t>(cClasses) : (ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses ? size_t { 0 } : size_t { 1 });
 #else // EXPAND_BINARY_LOGITS
-   return cClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+   return ptrdiff_t { 2 } < cClasses ? static_cast<size_t>(cClasses) : (ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses ? size_t { 0 } : size_t { 1 });
 #endif // EXPAND_BINARY_LOGITS
 }
 
@@ -346,6 +346,14 @@ public:
 
    inline size_t GetCountTerms() const {
       return m_dimensionCounts.size();
+   }
+
+   inline BoosterHandle GetBoosterHandle() {
+      return m_boosterHandle;
+   }
+
+   inline InteractionHandle GetInteractionHandle() {
+      return m_interactionHandle;
    }
 
    void AddFeatures(const std::vector<FeatureTest> features);

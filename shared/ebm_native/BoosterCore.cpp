@@ -689,32 +689,28 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
    FloatFast * const aMulticlassMidwayTemp,
    FloatFast * const aUpdateScores
 ) {
-   ErrorEbm error = Error_None;
-   if(!GetTrainingSet()->IsGradientsAndHessiansNull()) {
 #ifndef NDEBUG
-      const size_t cScores = GetCountScores(GetCountClasses());
-      // we should be initted to zero
-      for(size_t iScore = 0; iScore < cScores; ++iScore) {
-         EBM_ASSERT(0 == aUpdateScores[iScore]);
-      }
-#endif // NDEBUG
-      double unused;
-      error = ApplyTermUpdateValidation(
-         GetCountClasses(),
-         k_cItemsPerBitPackNone,
-         false,
-         aMulticlassMidwayTemp,
-         aUpdateScores,
-         GetTrainingSet()->GetCountSamples(),
-         nullptr,
-         GetTrainingSet()->GetTargetDataPointer(),
-         nullptr,
-         GetTrainingSet()->GetSampleScores(),
-         GetTrainingSet()->GetGradientsAndHessiansPointer(),
-         &unused
-      );
+   const size_t cScores = GetCountScores(GetCountClasses());
+   // we should be initted to zero
+   for(size_t iScore = 0; iScore < cScores; ++iScore) {
+      EBM_ASSERT(0 == aUpdateScores[iScore]);
    }
-   return error;
+#endif // NDEBUG
+   double unused;
+   return ApplyTermUpdateValidation(
+      GetCountClasses(),
+      k_cItemsPerBitPackNone,
+      false,
+      aMulticlassMidwayTemp,
+      aUpdateScores,
+      GetTrainingSet()->GetCountSamples(),
+      nullptr,
+      GetTrainingSet()->GetTargetDataPointer(),
+      nullptr,
+      GetTrainingSet()->GetSampleScores(),
+      GetTrainingSet()->GetGradientsAndHessiansPointer(),
+      &unused
+   );
 }
 
 } // DEFINED_ZONE_NAME

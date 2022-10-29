@@ -548,6 +548,59 @@ TEST_CASE("one leavesMax, boosting, regression") {
    CHECK_APPROX(termScore, test.GetCurrentTermScore(0, { 1 }, 0));
 }
 
+TEST_CASE("mono-classification") {
+   TestApi test = TestApi(1);
+   test.AddFeatures({ FeatureTest(2) });
+   test.AddTerms({ { 0 } });
+   test.AddTrainingSamples({
+      TestSample({ 0 }, 0),
+      TestSample({ 1 }, 0),
+   });
+   test.AddValidationSamples({ 
+      TestSample({ 1 }, 0), 
+      TestSample({ 0 }, 0),
+   });
+   test.InitializeBoosting();
+
+   ErrorEbm error;
+
+   double avgGain;
+   error = GenerateTermUpdate(
+      nullptr,
+      test.GetBoosterHandle(),
+      0,
+      BoostFlags_Default,
+      k_learningRateDefault,
+      k_minSamplesLeafDefault,
+      &k_leavesMaxDefault[0],
+      &avgGain
+   );
+   CHECK(Error_None == error);
+   CHECK(0 == avgGain);
+
+   IntEbm countSplits = 1; // since we have 2 bins we could have 1 split (except we don't)
+   error = GetTermUpdateSplits(test.GetBoosterHandle(), 0, &countSplits, nullptr);
+   CHECK(Error_None == error);
+   CHECK(0 == countSplits);
+
+   error = GetTermUpdate(test.GetBoosterHandle(), nullptr);
+   CHECK(Error_None == error);
+
+   error = SetTermUpdate(test.GetBoosterHandle(), 0, nullptr);
+   CHECK(Error_None == error);
+
+   double avgValidationMetric;
+   error = ApplyTermUpdate(test.GetBoosterHandle(), &avgValidationMetric);
+   CHECK(Error_None == error);
+   CHECK(0 == avgValidationMetric);
+
+   error = GetBestTermScores(test.GetBoosterHandle(), 0, nullptr);
+   CHECK(Error_None == error);
+
+   error = GetCurrentTermScores(test.GetBoosterHandle(), 0, nullptr);
+   CHECK(Error_None == error);
+}
+
 TEST_CASE("Zero training samples, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });

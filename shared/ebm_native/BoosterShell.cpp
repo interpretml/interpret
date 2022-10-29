@@ -246,13 +246,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
 
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
    if(IsClassification(cClasses)) {
-      error = pBoosterCore->InitializeBoosterGradientsAndHessians(
-         pBoosterShell->GetMulticlassMidwayTemp(),
-         pBoosterShell->GetTermUpdate()->GetTensorScoresPointer() // initialized to zero at this point
-      );
-      if(UNLIKELY(Error_None != error)) {
-         BoosterShell::Free(pBoosterShell);
-         return error;
+      if(!pBoosterCore->GetTrainingSet()->IsGradientsAndHessiansNull()) {
+         error = pBoosterCore->InitializeBoosterGradientsAndHessians(
+            pBoosterShell->GetMulticlassMidwayTemp(),
+            pBoosterShell->GetTermUpdate()->GetTensorScoresPointer() // initialized to zero at this point
+         );
+         if(UNLIKELY(Error_None != error)) {
+            BoosterShell::Free(pBoosterShell);
+            return error;
+         }
       }
    } else {
       if(!pBoosterCore->GetTrainingSet()->IsGradientsAndHessiansNull()) {
