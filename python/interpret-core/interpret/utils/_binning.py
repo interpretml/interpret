@@ -1000,13 +1000,6 @@ def unify_columns(X, requests, feature_names_in, feature_types=None, min_unique_
 
         # TODO: in the future special case this to make single samples faster at predict time
 
-        if X.ndim == 1:
-            X = np.expand_dims(X, axis=0)
-        elif X.ndim != 2:
-            msg = f"X cannot have {X.ndim} dimensions"
-            _log.error(msg)
-            raise ValueError(msg)
-
         n_cols = X.shape[1]
         col_map = None
         if n_cols != len(feature_names_in):
@@ -1120,6 +1113,11 @@ def unify_columns(X, requests, feature_names_in, feature_types=None, min_unique_
             feature_type = None if feature_types is None else feature_types[feature_idx]
             feature_type_in, X_col, categories, bad = _process_scipy_column(X_col, categories, feature_type, min_unique_continuous)
             yield feature_type_in, X_col, categories, bad
+    elif _pandas_installed and isinstance(X, pd.Series):
+        # TODO: handle as a single feature model
+        msg = "X as pandas.Series is unsupported"
+        _log.error(msg)
+        raise ValueError(msg)
     elif isinstance(X, dict):
         for feature_idx, categories in requests:
             X_col = X[feature_names_in[feature_idx]]
@@ -1131,6 +1129,18 @@ def unify_columns(X, requests, feature_names_in, feature_types=None, min_unique_
         _log.error(msg)
         raise ValueError(msg)
 
+def determine_min_cols(feature_names=None, feature_types=None):
+    if feature_types is None:
+        return None if feature_names is None else len(feature_names)
+    else:
+        n_ignored = sum(1 for feature_type in feature_types if feature_type == 'ignore')
+        if feature_names is None or len(feature_names) == len(feature_types) or len(feature_names) == len(feature_types) - n_ignored:
+            return len(feature_types) - n_ignored
+        else:
+            msg = f"feature_names has length {len(feature_names)} which does not match the length of feature_types {len(feature_types)}"
+            _log.error(msg)
+            raise ValueError(msg)
+
 def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
     # called under: fit
 
@@ -1139,10 +1149,13 @@ def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
 
     if isinstance(X, np.ndarray): # this includes ma.masked_array
         X_names = None
-        n_cols = X.shape[0] if X.ndim == 1 else X.shape[1]
+        n_cols = X.shape[1]
     elif _pandas_installed and isinstance(X, pd.DataFrame):
         X_names = list(map(str, X.columns))
         n_cols = len(X_names)
+    elif _pandas_installed and isinstance(X, pd.Series):
+        X_names = None
+        n_cols = 1
     elif _scipy_installed and isinstance(X, sp.sparse.spmatrix):
         X_names = None
         n_cols = X.shape[1]
@@ -1534,38 +1547,100 @@ def clean_init_score(init_score, n_samples, X_unclean):
     init_score = init_score.astype(np.float64, copy=False)
     return init_score
 
-def clean_X(X):
+def reshape_X(X, min_cols, n_samples, sample_source):
+    if X.ndim == 0 or X.shape[0] == 0: # zero dimensional arrays are possible, but really weird
+        return np.empty((0, 0), X.dtype)
+    elif X.ndim != 1:
+        # our caller will not call this function with 2 dimensions
+        # we also accept 1 dimension as below, but do not encourage it
+        msg = f"X must have 2 dimensions, but has {X.ndim}"
+        _log.error(msg)
+        raise ValueError(msg)
+
+    if n_samples is not None:
+        if n_samples == 1:
+            return X.reshape((1, X.shape[0]))
+        elif n_samples == X.shape[0]:
+            return X.reshape((n_samples, 1))
+        else:
+            msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
+            _log.error(msg)
+            raise ValueError(msg)
+    elif min_cols is None or min_cols == 1:
+        return X.reshape((X.shape[0], 1))
+    elif min_cols <= X.shape[0]:
+        return X.reshape((1, X.shape[0]))
+    else:
+        msg = f"X is 1 dimensional"
+        _log.error(msg)
+        raise ValueError(msg)
+
+def clean_X(X, min_cols=None, n_samples=None, sample_source="y"):
     # called under: fit or predict
 
     if isinstance(X, np.ndarray): # this includes ma.masked_array
-        if X.ndim == 0: # zero dimensional arrays are possible, but really weird
-            return np.empty((0, 0), X.dtype), 0
-        return X, 1 if X.ndim == 1 else X.shape[0]
+        if X.ndim != 2:
+            X = reshape_X(X, min_cols, n_samples, sample_source)
+        if n_samples is not None and n_samples != X.shape[0]:
+            msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
+            _log.error(msg)
+            raise ValueError(msg)
+        return X, X.shape[0]
     elif _pandas_installed and isinstance(X, pd.DataFrame):
+        if n_samples is not None and n_samples != X.shape[0]:
+            msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
+            _log.error(msg)
+            raise ValueError(msg)
+        return X, X.shape[0]
+    elif _pandas_installed and isinstance(X, pd.Series):
+        if min_cols is not None and min_cols != 1:
+            msg = "X cannot be a pandas.Series unless there is only 1 feature"
+            _log.error(msg)
+            raise ValueError(msg)
+        if n_samples is not None and n_samples != X.shape[0]:
+            msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
+            _log.error(msg)
+            raise ValueError(msg)
         return X, X.shape[0]
     elif _scipy_installed and isinstance(X, sp.sparse.spmatrix):
+        if n_samples is not None and n_samples != X.shape[0]:
+            msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
+            _log.error(msg)
+            raise ValueError(msg)
         return X, X.shape[0]
     elif isinstance(X, dict):
         for val in X.values():
             if isinstance(val, np.ndarray) and val.ndim == 0:
                 break
             # we don't support iterators for dict, so len should work
+            if n_samples is not None and n_samples != len(val):
+                msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
+                _log.error(msg)
+                raise ValueError(msg)
             return X, len(val)
+        if n_samples is not None and n_samples != 0:
+            msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
+            _log.error(msg)
+            raise ValueError(msg)
         return X, 0
     elif isinstance(X, list) or isinstance(X, tuple):
         is_copied = False
     elif callable(getattr(X, '__array__', None)):
         X = X.__array__()
-        if X.ndim == 0: # zero dimensional arrays are possible, but really weird
-            return np.empty((0, 0), X.dtype), 0
-        return X, 1 if X.ndim == 1 else X.shape[0]
+        if X.ndim != 2:
+            X = reshape_X(X, min_cols, n_samples, sample_source)
+        if n_samples is not None and n_samples != X.shape[0]:
+            msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
+            _log.error(msg)
+            raise ValueError(msg)
+        return X, X.shape[0]
     elif X is None:
         msg = "X cannot be None"
         _log.error(msg)
         raise TypeError(msg)
     elif isinstance(X, str):
         # str objects are iterable, so don't allow them to get to the list() conversion below
-        msg = "X cannot be a single str"
+        msg = "X cannot be a str type"
         _log.error(msg)
         raise TypeError(msg)
     else:
@@ -1659,7 +1734,13 @@ def clean_X(X):
     # leave these as np.object_ for now and we'll try to densify per column where we're more likely to 
     # succeed in densification since columns should generally be a single type
     X = np.array(X, np.object_)
-    return X, 1 if X.ndim == 1 else X.shape[0]
+    if X.ndim != 2:
+        X = reshape_X(X, min_cols, n_samples, sample_source)
+    if n_samples is not None and n_samples != X.shape[0]:
+        msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
+        _log.error(msg)
+        raise ValueError(msg)
+    return X, X.shape[0]
 
 def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bin):
     # called under: fit
@@ -1805,17 +1886,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 _log.error(msg)
                 raise ValueError(msg)
 
-        X, n_samples_X = clean_X(X)
-        if n_samples is not None and n_samples != n_samples_X:
-            if y is not None:
-                msg = f"y has {n_samples} samples and X has {n_samples_X} samples"
-                _log.error(msg)
-                raise ValueError(msg)
-            else:
-                msg = f"sample_weights has {n_samples} samples and X has {n_samples_X} samples"
-                _log.error(msg)
-                raise ValueError(msg)
-        n_samples = n_samples_X
+        min_cols = determine_min_cols(self.feature_names, self.feature_types)
+        X, n_samples = clean_X(X, min_cols, n_samples, "sample_weight" if y is None else "y")
 
         # TODO: should preprocessors handle 0 samples?
         if n_samples == 0:
@@ -2019,7 +2091,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+
+        X, n_samples = clean_X(X, min_cols)
 
         X_binned = np.empty((n_samples, len(self.feature_names_in_)), np.int64, order='F')
 
@@ -2059,7 +2133,15 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             Transformed numpy array.
         """
 
-        X, _ = clean_X(X) # materialize any iterators first
+        n_samples = None
+        if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            n_samples = len(y)
+
+        min_cols = determine_min_cols(self.feature_names, self.feature_types)
+        X, _ = clean_X(X, min_cols, n_samples) # materialize any iterators first
         return self.fit(X, y, sample_weight).transform(X)
 
 def _deduplicate_bins(bins):

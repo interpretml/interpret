@@ -781,7 +781,7 @@ def test_process_column_initial_choose_floats():
 
 def test_unify_columns_numpy1():
     X = np.array([1, 2, 3])
-    X, n_samples = clean_X(X)
+    X, n_samples = clean_X(X, None, 1)
     assert(n_samples == 1)
     feature_names_in = unify_feature_names(X)
     X_cols = list(unify_columns(X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in))
@@ -866,7 +866,7 @@ def test_unify_columns_dict2():
 
 def test_unify_columns_list1():
     X = [1, 2.0, "hi", None]
-    X, n_samples = clean_X(X)
+    X, n_samples = clean_X(X, None, 1)
     assert(n_samples == 1)
     feature_names_in = unify_feature_names(X)
     X_cols = list(unify_columns(X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in))
@@ -907,7 +907,7 @@ def test_unify_columns_list2():
 
 def test_unify_columns_tuple1():
     X = (1, 2.0, "hi", None)
-    X, n_samples = clean_X(X)
+    X, n_samples = clean_X(X, None, 1)
     assert(n_samples == 1)
     feature_names_in = unify_feature_names(X)
     X_cols = list(unify_columns(X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in))
@@ -940,7 +940,7 @@ def test_unify_columns_tuple2():
 
 def test_unify_columns_generator1():
     X = (x for x in [1, 2.0, "hi", None])
-    X, n_samples = clean_X(X)
+    X, n_samples = clean_X(X, None, 1)
     assert(n_samples == 1)
     feature_names_in = unify_feature_names(X)
     X_cols = list(unify_columns(X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in))
@@ -1378,7 +1378,7 @@ def test_unify_columns_pandas_categorical_compressed_categories():
 
 def test_unify_feature_names_numpy1():
     X = np.array([1, 2, 3])
-    X, n_samples = clean_X(X)
+    X, n_samples = clean_X(X, None, 1)
     assert(n_samples == 1)
     feature_names_in = unify_feature_names(X)
     assert(feature_names_in == ["feature_0001", "feature_0002", "feature_0003"])
@@ -1480,7 +1480,7 @@ def test_unify_feature_names_dict2():
 
 def test_unify_feature_names_list1():
     X = [1, 2, 3]
-    X, n_samples = clean_X(X)
+    X, n_samples = clean_X(X, None, 1)
     assert(n_samples == 1)
     feature_names_in = unify_feature_names(X)
     assert(feature_names_in == ["feature_0001", "feature_0002", "feature_0003"])
@@ -1507,7 +1507,7 @@ def test_unify_feature_names_list2():
 
 def test_unify_feature_names_tuple1():
     X = (1, 2, 3)
-    X, n_samples = clean_X(X)
+    X, n_samples = clean_X(X, None, 1)
     assert(n_samples == 1)
     feature_names_in = unify_feature_names(X)
     assert(feature_names_in == ["feature_0001", "feature_0002", "feature_0003"])
@@ -2184,20 +2184,18 @@ def test_bin_native():
     y = np.array(["a", 99, 99, "b"])
     sample_weight = np.array([0.5, 1.1, 0.1, 0.5])
 
-
-    X, n_samples = clean_X(X)
-
     y = clean_dimensions(y, "y")
     assert(y.ndim == 1)
-    y = typify_classification(y)
 
+    y = typify_classification(y)
     classes, y = np.unique(y, return_inverse=True)
     n_classes = len(classes)
 
     sample_weight = clean_dimensions(sample_weight, "sample_weight")
     assert(sample_weight.ndim == 1)
-
     sample_weight = sample_weight.astype(np.float64, copy=False)
+
+    X, n_samples = clean_X(X)
 
     feature_names_in, feature_types_in, bins, bin_weights, feature_bounds, histogram_counts, unique_val_counts, zero_val_counts = construct_bins(
         X,

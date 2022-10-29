@@ -8,7 +8,7 @@ from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
 from .utils import EBMUtils
 from .utils import _process_terms, make_histogram_edges, _order_terms, _remove_unused_higher_bins, _generate_term_names, _generate_term_types
-from ...utils._binning import clean_X, clean_dimensions, typify_classification, construct_bins, bin_native_by_dimension, unify_data2, _deduplicate_bins, normalize_initial_seed
+from ...utils._binning import determine_min_cols, clean_X, clean_dimensions, typify_classification, construct_bins, bin_native_by_dimension, unify_data2, _deduplicate_bins, normalize_initial_seed
 from .bin import ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, eval_terms
 from ...utils._native import Native
 from ...utils import unify_data, autogen_schema, unify_vector
@@ -254,15 +254,11 @@ class EBMModel(BaseEstimator):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
-
-        X, n_samples = clean_X(X)
-        if n_samples == 0:
-            msg = "X has 0 samples"
+            msg = "y must be 1 dimensional"
             _log.error(msg)
             raise ValueError(msg)
-        if n_samples != len(y):
-            msg = f"y has {len(y)} samples and X has {n_samples} samples"
+        if len(y) == 0:
+            msg = "y cannot have 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -284,11 +280,14 @@ class EBMModel(BaseEstimator):
             sample_weight = clean_dimensions(sample_weight, "sample_weight")
             if sample_weight.ndim != 1:
                 raise ValueError("sample_weight must be 1 dimensional")
-            if n_samples != len(sample_weight):
-                msg = f"y has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
+            if len(y) != len(sample_weight):
+                msg = f"y has {len(y)} samples and sample_weight has {len(sample_weight)} samples"
                 _log.error(msg)
                 raise ValueError(msg)
             sample_weight = sample_weight.astype(np.float64, copy=False)
+
+        min_cols = determine_min_cols(self.feature_names, self.feature_types)
+        X, n_samples = clean_X(X, min_cols, len(y))
 
         # Privacy calculations
         is_differential_privacy = is_private(self)
@@ -1046,7 +1045,9 @@ class EBMModel(BaseEstimator):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+
+        X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function(
             X, 
@@ -1307,12 +1308,8 @@ class EBMModel(BaseEstimator):
             else:
                 y = y.astype(np.float64, copy=False)
 
-        X, n_samples_X = clean_X(X)
-        if n_samples is not None and n_samples != n_samples_X:
-            msg = f"y has {n_samples} samples and X has {n_samples_X}"
-            _log.error(msg)
-            raise ValueError(msg)
-        n_samples = n_samples_X
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+        X, n_samples = clean_X(X, min_cols, n_samples)
 
         term_names = self.term_names_
         term_types = _generate_term_types(self.feature_types_in_, self.term_features_)
@@ -1561,7 +1558,9 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+
+        X, n_samples = clean_X(X, min_cols)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -1591,7 +1590,9 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+
+        X, n_samples = clean_X(X, min_cols)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -1629,7 +1630,9 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             + repr(allowed_outputs)
             raise ValueError(msg.format(output))
 
-        X, n_samples = clean_X(X)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+
+        X, n_samples = clean_X(X, min_cols)
 
         scores, explanations = ebm_decision_function_and_explain(
             X, 
@@ -1754,7 +1757,9 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+
+        X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function(
             X, 
@@ -1779,7 +1784,9 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+
+        X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function_and_explain(
             X, 
@@ -1898,7 +1905,9 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+
+        X, n_samples = clean_X(X, min_cols)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -1928,7 +1937,9 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+
+        X, n_samples = clean_X(X, min_cols)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -2054,7 +2065,9 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+
+        X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function(
             X, 

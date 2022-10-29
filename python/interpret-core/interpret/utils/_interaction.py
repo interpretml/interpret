@@ -16,7 +16,7 @@ from itertools import combinations
 from sklearn.utils.multiclass import type_of_target
 from sklearn.base import is_classifier, is_regressor
 
-from ._binning import clean_X, clean_dimensions, typify_classification, clean_init_score, construct_bins, bin_native_by_dimension
+from ._binning import determine_min_cols, clean_X, clean_dimensions, typify_classification, clean_init_score, construct_bins, bin_native_by_dimension
 from ._native import Native, InteractionDetector
 
 def _get_ranked_interactions(
@@ -84,9 +84,13 @@ def measure_interactions(
         
     y = clean_dimensions(y, "y")
     if y.ndim != 1:
-        raise ValueError("y must be 1 dimensional")
+        msg = "y must be 1 dimensional"
+        _log.error(msg)
+        raise ValueError(msg)
     if len(y) == 0:
-        raise ValueError("y cannot have 0 samples")
+        msg = "y cannot have 0 samples"
+        _log.error(msg)
+        raise ValueError(msg)
 
     is_classification = None
     if objective in ['classification']:
@@ -112,12 +116,8 @@ def measure_interactions(
                 raise ValueError("objective is for regresion but the init_score is for a multiclass model")
             is_classification = True
 
-    X, n_samples = clean_X(X)
-    if n_samples != len(y):
-        raise ValueError(f"X has {n_samples} samples and y has {len(y)} samples")
-
     if is_classification is None:
-        # type_of_target does not seem to like no.object_, so convert it to something that works
+        # type_of_target does not seem to like np.object_, so convert it to something that works
         try:
             y_discard = y.astype(dtype=np.float64, copy=False)
         except (TypeError, ValueError):
@@ -138,7 +138,6 @@ def measure_interactions(
                 is_classification = True
         else:
             raise ValueError("unrecognized target type in y")
-
 
     if is_classification:
         y = typify_classification(y)
@@ -166,9 +165,12 @@ def measure_interactions(
         sample_weight = clean_dimensions(sample_weight, "sample_weight")
         if sample_weight.ndim != 1:
             raise ValueError("sample_weight must be 1 dimensional")
-        if n_samples != len(sample_weight):
-            raise ValueError(f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples")
+        if len(y) != len(sample_weight):
+            raise ValueError(f"y has {len(y)} samples and sample_weight has {len(sample_weight)} samples")
         sample_weight = sample_weight.astype(np.float64, copy=False)
+
+    min_cols = determine_min_cols(feature_names, feature_types)
+    X, n_samples = clean_X(X, min_cols, len(y))
 
     binning_result = construct_bins(
         X=X,
