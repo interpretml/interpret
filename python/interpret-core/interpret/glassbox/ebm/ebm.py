@@ -676,7 +676,6 @@ class EBMModel(BaseEstimator):
 
         term_scores, standard_deviations, intercept, bagged_scores = _process_terms(
             n_classes, 
-            n_samples, 
             bagged_scores, 
             bin_weights,
             bag_weights

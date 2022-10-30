@@ -199,7 +199,7 @@ def _create_proportional_tensor(axis_weights):
         tensor.itemset(cell_idx, val)
     return tensor.reshape(shape)
 
-def _process_terms(n_classes, n_samples, bagged_scores, bin_weights, bag_weights):
+def _process_terms(n_classes, bagged_scores, bin_weights, bag_weights):
     term_scores = []
     standard_deviations = []
     new_bagged_scores = []
@@ -249,7 +249,7 @@ def _process_terms(n_classes, n_samples, bagged_scores, bin_weights, bag_weights
                 intercept += score_mean
         else:
             # Postprocess model graphs for multiclass
-            multiclass_postprocess2(n_classes, n_samples, term_scores, intercept, bin_weights)
+            multiclass_postprocess2(n_classes, term_scores, bin_weights, intercept)
 
         for scores, weights in zip(term_scores, bin_weights):
             # set these to zero again since zero-centering them causes the missing/unknown to shift away from zero
@@ -923,7 +923,6 @@ def merge_ebms(models):
 
     ebm.term_scores_, ebm.standard_deviations_, ebm.intercept_, ebm.bagged_scores_ = _process_terms(
         n_classes, 
-        ebm.n_samples_, 
         ebm.bagged_scores_, 
         ebm.bin_weights_,
         ebm.bag_weights_
