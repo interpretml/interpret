@@ -295,7 +295,7 @@ class EBMModel(BaseEstimator):
             validate_eps_delta(self.epsilon, self.delta)
 
             if is_classifier(self):
-                if n_classes > 2:  # pragma: no cover
+                if 2 < n_classes:  # pragma: no cover
                     raise ValueError("multiclass not supported in Differentially private EBMs.")
             else:
                 bounds = None if self.privacy_schema is None else self.privacy_schema.get('target', None)
@@ -441,84 +441,29 @@ class EBMModel(BaseEstimator):
                     bag_weights.append((bag[keep] * sample_weight[keep]).sum())
         bag_weights = np.array(bag_weights, np.float64)
 
-        provider = JobLibProvider(n_jobs=self.n_jobs)
-
-        dataset = bin_native_by_dimension(
-            n_classes, 
-            1,
-            bins,
-            X, 
-            y, 
-            sample_weight, 
-            feature_names_in, 
-            feature_types_in, 
-        )
-
-        parallel_args = []
-        for idx in range(self.outer_bags):
-            parallel_args.append(
-                (
-                    dataset,
-                    bags[idx],
-                    None,
-                    term_features,
-                    inner_bags,
-                    boost_flags,
-                    self.learning_rate,
-                    self.min_samples_leaf,
-                    self.max_leaves,
-                    early_stopping_rounds,
-                    early_stopping_tolerance,
-                    self.max_rounds,
-                    noise_scale,
-                    bin_data_weights,
-                    rngs[idx],
-                    None,
-                )
-            )
-
-        results = provider.parallel(EBMUtils.cyclic_gradient_boost, parallel_args)
-
-        # let python reclaim the dataset memory via reference counting
-        del parallel_args # parallel_args holds references to dataset, so must be deleted
-        del dataset
-
-        breakpoint_iteration = [[]]
-        models = []
-        rngs = []
-        for model, bag_breakpoint_iteration, bagged_rng in results:
-            breakpoint_iteration[-1].append(bag_breakpoint_iteration)
-            models.append(after_boosting(term_features, model, main_bin_weights))
-            rngs.append(bagged_rng) # retrieve our rng state since this was used outside of our process
-
-        if n_classes > 2:
-            if isinstance(interactions, int):
-                if interactions != 0:
-                    warn("Detected multiclass problem. Forcing interactions to 0. Multiclass interactions work except for global visualizations, so the line below setting interactions to zero can be disabled if you know what you are doing.")
-                    interactions = 0
-            elif len(interactions) != 0:
-                raise ValueError("Interactions are not supported for multiclass. Multiclass interactions work except for global visualizations, so this exception can be disabled if you know what you are doing.")
-
-        if isinstance(interactions, int) and 0 < interactions or not isinstance(interactions, int) and 0 < len(interactions):
-            initial_intercept = np.zeros(Native.get_count_scores_c(n_classes), np.float64)
-            scores_bags = []
-            for model in models:
-                # TODO: instead of going back to the original data in X, we 
-                # could use the compressed and already binned data in dataset
-                scores_bags.append(ebm_decision_function(
-                    X, 
-                    n_samples, 
-                    feature_names_in, 
-                    feature_types_in, 
-                    bins, 
-                    initial_intercept, 
-                    model, 
-                    term_features
-                ))
+        if n_classes == 1:
+            breakpoint_iteration = [[]]
+            models = []
+            for idx in range(self.outer_bags):
+                breakpoint_iteration[-1].append(0)
+                tensors = []
+                for bin_levels in bins:
+                    feature_bins = bin_levels[0]
+                    if isinstance(feature_bins, dict):
+                        # categorical feature
+                        n_bins = 2 if len(feature_bins) == 0 else max(feature_bins.values()) + 2
+                    else:
+                        # continuous feature
+                        n_bins = len(feature_bins) + 3
+                    tensor = np.full(n_bins, -np.inf, np.float64)
+                    tensors.append(tensor)
+                models.append(tensors)
+        else:
+            provider = JobLibProvider(n_jobs=self.n_jobs)
 
             dataset = bin_native_by_dimension(
                 n_classes, 
-                2,
+                1,
                 bins,
                 X, 
                 y, 
@@ -526,73 +471,6 @@ class EBMModel(BaseEstimator):
                 feature_names_in, 
                 feature_types_in, 
             )
-            del y # we no longer need this, so allow the garbage collector to reclaim it
-
-            if isinstance(interactions, int):
-                _log.info("Estimating with FAST")
-
-                parallel_args = []
-                for idx in range(self.outer_bags):
-                    # TODO: the combinations below should be selected from the non-excluded features 
-                    parallel_args.append(
-                        (
-                            dataset,
-                            bags[idx],
-                            scores_bags[idx],
-                            combinations(range(n_features_in), 2),
-                            Native.InteractionFlags_Default, 
-                            self.min_samples_leaf,
-                            None,
-                        )
-                    )
-
-                # TODO: for now we're using only 1 job because FAST isn't memory optimized.  After
-                # the native code is done with compression of the data we can go back to using self.n_jobs
-                provider2 = JobLibProvider(n_jobs=1) 
-                bagged_ranked_interaction = provider2.parallel(_get_ranked_interactions, parallel_args)
-
-                # this holds references to dataset, bags, and scores_bags which we want python to reclaim later
-                del parallel_args 
-
-                # Select merged pairs
-                pair_ranks = {}
-                for n, interaction_strengths_and_indices in enumerate(bagged_ranked_interaction):
-                    interaction_indices =  list(map(operator.itemgetter(1), interaction_strengths_and_indices))
-                    for rank, indices in enumerate(interaction_indices):
-                        old_mean = pair_ranks.get(indices, 0)
-                        pair_ranks[indices] = old_mean + ((rank - old_mean) / (n + 1))
-
-                final_ranks = []
-                total_interactions = 0
-                for indices in pair_ranks:
-                    heapq.heappush(final_ranks, (pair_ranks[indices], indices))
-                    total_interactions += 1
-
-                n_interactions = min(interactions, total_interactions)
-                boost_groups = [heapq.heappop(final_ranks)[1] for _ in range(n_interactions)]
-            else:
-                # Check and remove duplicate interaction terms
-                uniquifier = set()
-                boost_groups = []
-                max_dimensions = 0
-
-                for feature_idxs in interactions:
-                    # clean these up since we expose them publically inside self.term_features_ 
-                    feature_idxs = tuple(map(int, feature_idxs))
-
-                    max_dimensions = max(max_dimensions, len(feature_idxs))
-                    sorted_tuple = tuple(sorted(feature_idxs))
-                    if sorted_tuple not in uniquifier:
-                        uniquifier.add(sorted_tuple)
-                        boost_groups.append(feature_idxs)
-
-                # Warn the users that we have made change to the interactions list
-                if len(boost_groups) != len(interactions):
-                    warn("Detected duplicate interaction terms: removing duplicate interaction terms")
-
-                if 2 < max_dimensions:
-                    warn("Interactions with 3 or more terms are not graphed in global explanations. Local explanations are still available and exact.")
-
 
             parallel_args = []
             for idx in range(self.outer_bags):
@@ -600,8 +478,8 @@ class EBMModel(BaseEstimator):
                     (
                         dataset,
                         bags[idx],
-                        scores_bags[idx],
-                        boost_groups,
+                        None,
+                        term_features,
                         inner_bags,
                         boost_flags,
                         self.learning_rate,
@@ -619,18 +497,158 @@ class EBMModel(BaseEstimator):
 
             results = provider.parallel(EBMUtils.cyclic_gradient_boost, parallel_args)
 
-            # allow python to reclaim these big memory items via reference counting
-            del parallel_args # this holds references to dataset, scores_bags, and bags
+            # let python reclaim the dataset memory via reference counting
+            del parallel_args # parallel_args holds references to dataset, so must be deleted
             del dataset
-            del scores_bags
 
-            breakpoint_iteration.append([])
-            for idx in range(self.outer_bags):
-                breakpoint_iteration[-1].append(results[idx][1])
-                models[idx].extend(after_boosting(boost_groups, results[idx][0], main_bin_weights))
-                rngs[idx] = results[idx][2]
+            breakpoint_iteration = [[]]
+            models = []
+            rngs = []
+            for model, bag_breakpoint_iteration, bagged_rng in results:
+                breakpoint_iteration[-1].append(bag_breakpoint_iteration)
+                models.append(after_boosting(term_features, model, main_bin_weights))
+                rngs.append(bagged_rng) # retrieve our rng state since this was used outside of our process
 
-            term_features.extend(boost_groups)
+            if 2 < n_classes:
+                if isinstance(interactions, int):
+                    if interactions != 0:
+                        warn("Detected multiclass problem. Forcing interactions to 0. Multiclass interactions work except for global visualizations, so the line below setting interactions to zero can be disabled if you know what you are doing.")
+                        interactions = 0
+                elif len(interactions) != 0:
+                    raise ValueError("Interactions are not supported for multiclass. Multiclass interactions work except for global visualizations, so this exception can be disabled if you know what you are doing.")
+
+            if isinstance(interactions, int) and 0 < interactions or not isinstance(interactions, int) and 0 < len(interactions):
+                initial_intercept = np.zeros(Native.get_count_scores_c(n_classes), np.float64)
+                scores_bags = []
+                for model in models:
+                    # TODO: instead of going back to the original data in X, we 
+                    # could use the compressed and already binned data in dataset
+                    scores_bags.append(ebm_decision_function(
+                        X, 
+                        n_samples, 
+                        feature_names_in, 
+                        feature_types_in, 
+                        bins, 
+                        initial_intercept, 
+                        model, 
+                        term_features
+                    ))
+
+                dataset = bin_native_by_dimension(
+                    n_classes, 
+                    2,
+                    bins,
+                    X, 
+                    y, 
+                    sample_weight, 
+                    feature_names_in, 
+                    feature_types_in, 
+                )
+                del y # we no longer need this, so allow the garbage collector to reclaim it
+
+                if isinstance(interactions, int):
+                    _log.info("Estimating with FAST")
+
+                    parallel_args = []
+                    for idx in range(self.outer_bags):
+                        # TODO: the combinations below should be selected from the non-excluded features 
+                        parallel_args.append(
+                            (
+                                dataset,
+                                bags[idx],
+                                scores_bags[idx],
+                                combinations(range(n_features_in), 2),
+                                Native.InteractionFlags_Default, 
+                                self.min_samples_leaf,
+                                None,
+                            )
+                        )
+
+                    # TODO: for now we're using only 1 job because FAST isn't memory optimized.  After
+                    # the native code is done with compression of the data we can go back to using self.n_jobs
+                    provider2 = JobLibProvider(n_jobs=1) 
+                    bagged_ranked_interaction = provider2.parallel(_get_ranked_interactions, parallel_args)
+
+                    # this holds references to dataset, bags, and scores_bags which we want python to reclaim later
+                    del parallel_args 
+
+                    # Select merged pairs
+                    pair_ranks = {}
+                    for n, interaction_strengths_and_indices in enumerate(bagged_ranked_interaction):
+                        interaction_indices =  list(map(operator.itemgetter(1), interaction_strengths_and_indices))
+                        for rank, indices in enumerate(interaction_indices):
+                            old_mean = pair_ranks.get(indices, 0)
+                            pair_ranks[indices] = old_mean + ((rank - old_mean) / (n + 1))
+
+                    final_ranks = []
+                    total_interactions = 0
+                    for indices in pair_ranks:
+                        heapq.heappush(final_ranks, (pair_ranks[indices], indices))
+                        total_interactions += 1
+
+                    n_interactions = min(interactions, total_interactions)
+                    boost_groups = [heapq.heappop(final_ranks)[1] for _ in range(n_interactions)]
+                else:
+                    # Check and remove duplicate interaction terms
+                    uniquifier = set()
+                    boost_groups = []
+                    max_dimensions = 0
+
+                    for feature_idxs in interactions:
+                        # clean these up since we expose them publically inside self.term_features_ 
+                        feature_idxs = tuple(map(int, feature_idxs))
+
+                        max_dimensions = max(max_dimensions, len(feature_idxs))
+                        sorted_tuple = tuple(sorted(feature_idxs))
+                        if sorted_tuple not in uniquifier:
+                            uniquifier.add(sorted_tuple)
+                            boost_groups.append(feature_idxs)
+
+                    # Warn the users that we have made change to the interactions list
+                    if len(boost_groups) != len(interactions):
+                        warn("Detected duplicate interaction terms: removing duplicate interaction terms")
+
+                    if 2 < max_dimensions:
+                        warn("Interactions with 3 or more terms are not graphed in global explanations. Local explanations are still available and exact.")
+
+
+                parallel_args = []
+                for idx in range(self.outer_bags):
+                    parallel_args.append(
+                        (
+                            dataset,
+                            bags[idx],
+                            scores_bags[idx],
+                            boost_groups,
+                            inner_bags,
+                            boost_flags,
+                            self.learning_rate,
+                            self.min_samples_leaf,
+                            self.max_leaves,
+                            early_stopping_rounds,
+                            early_stopping_tolerance,
+                            self.max_rounds,
+                            noise_scale,
+                            bin_data_weights,
+                            rngs[idx],
+                            None,
+                        )
+                    )
+
+                results = provider.parallel(EBMUtils.cyclic_gradient_boost, parallel_args)
+
+                # allow python to reclaim these big memory items via reference counting
+                del parallel_args # this holds references to dataset, scores_bags, and bags
+                del dataset
+                del scores_bags
+
+                breakpoint_iteration.append([])
+                for idx in range(self.outer_bags):
+                    breakpoint_iteration[-1].append(results[idx][1])
+                    models[idx].extend(after_boosting(boost_groups, results[idx][0], main_bin_weights))
+                    rngs[idx] = results[idx][2]
+
+                term_features.extend(boost_groups)
 
         breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
 
@@ -724,6 +742,8 @@ class EBMModel(BaseEstimator):
             JSONable object
         """
 
+        check_is_fitted(self, "has_fitted_")
+
         if properties == 'minimal':
             level = 0
         elif properties == 'interpretable':
@@ -743,13 +763,7 @@ class EBMModel(BaseEstimator):
         outputs = []
         output = {}
         if is_classifier(self):
-            if len(self.classes_) <= 2:
-                # include 1 class classification in the binary classification category and use -inf in the intercept
-                output['output_type'] = 'binary'
-            else:
-                # distinquish from binary classification so that we can support 'ordinal' classification someday
-                # https://en.wikipedia.org/wiki/Ordinal_regression
-                output['output_type'] = 'multinomial'
+            output['output_type'] = 'classification'
             output['classes'] = self.classes_.tolist()
             output['link_function'] = 'logit' # logistic is the inverse link function for logit
         else:
@@ -1046,7 +1060,6 @@ class EBMModel(BaseEstimator):
         check_is_fitted(self, "has_fitted_")
 
         min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-
         X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function(
@@ -1352,7 +1365,7 @@ class EBMModel(BaseEstimator):
                     else:
                         data_dicts[row_idx]["values"][term_idx] = ""
 
-            sample_scores = ebm_decision_function(
+            pred = ebm_decision_function(
                 X, 
                 n_samples, 
                 self.feature_names_in_, 
@@ -1364,13 +1377,17 @@ class EBMModel(BaseEstimator):
             )
 
             if is_classifier(self):
-                # Handle binary classification case -- softmax only works with 0s appended
-                if sample_scores.ndim == 1:
-                    sample_scores = np.c_[np.zeros(sample_scores.shape), sample_scores]
+                if len(self.classes_) == 1:
+                    # if there is only one class then all probabilities are 100%
+                    pred = np.full((n_samples, 1), 1, np.float64)
+                else:
+                    if pred.ndim == 1:
+                        # Handle binary classification case -- softmax only works with 0s appended
+                        pred = np.c_[np.zeros(pred.shape), pred]
 
-                sample_scores = softmax(sample_scores)
+                    pred = softmax(pred)
 
-            perf_dicts = gen_perf_dicts(sample_scores, y, is_classifier(self))
+            perf_dicts = gen_perf_dicts(pred, y, is_classifier(self))
             for row_idx in range(n_samples):
                 perf = None if perf_dicts is None else perf_dicts[row_idx]
                 perf_list.append(perf)
@@ -1422,6 +1439,8 @@ class EBMModel(BaseEstimator):
             An array of histogram edges
         """
 
+        check_is_fitted(self, "has_fitted_")
+
         feature_bounds = getattr(self, 'feature_bounds_', None)
         if feature_bounds is not None:
             min_feature_val = feature_bounds[feature_idx, 0]
@@ -1444,13 +1463,18 @@ class EBMModel(BaseEstimator):
             An array term importances with one importance per additive term
         """
 
+        check_is_fitted(self, "has_fitted_")
+
         if importance_type == 'avg_weight':
             importances = np.empty(len(self.term_features_), np.float64)
             for i in range(len(self.term_features_)):
-                mean_abs_score = np.abs(self.term_scores_[i])
-                if is_classifier(self) and 2 < len(self.classes_):
-                    mean_abs_score = np.average(mean_abs_score, axis=-1)
-                mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
+                if is_classifier(self) and len(self.classes_) == 1:
+                    mean_abs_score = 0 # everything is useless if we're predicting 1 class
+                else:
+                    mean_abs_score = np.abs(self.term_scores_[i])
+                    if is_classifier(self) and 2 < len(self.classes_):
+                        mean_abs_score = np.average(mean_abs_score, axis=-1)
+                    mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
                 importances.itemset(i, mean_abs_score)
             return importances
         elif importance_type == 'min_max':
@@ -1559,8 +1583,11 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
 
         min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-
         X, n_samples = clean_X(X, min_cols)
+
+        if len(self.classes_) == 1:
+            # if there is only one class then all probabilities are 100%
+            return np.full((n_samples, 1), 1, np.float64)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -1573,8 +1600,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             self.term_features_
         )
 
-        # Handle binary classification case -- softmax only works with 0s appended
         if log_odds_vector.ndim == 1:
+            # Handle binary classification case -- softmax only works with 0s appended
             log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
 
         return softmax(log_odds_vector)
@@ -1591,7 +1618,6 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
 
         min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-
         X, n_samples = clean_X(X, min_cols)
 
         log_odds_vector = ebm_decision_function(
@@ -1605,8 +1631,9 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             self.term_features_
         )
 
-        # Handle binary classification case -- softmax only works with 0s appended
+        # TODO: for binary classification we could just look for values greater than zero instead of expanding
         if log_odds_vector.ndim == 1:
+            # Handle binary classification case -- softmax only works with 0s appended
             log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
 
         return self.classes_[np.argmax(log_odds_vector, axis=1)]
@@ -1616,7 +1643,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
         Args:
             X: Numpy array for samples.
-            output: Prediction type to output (i.e. one of 'probabilities', 'logits', 'labels')
+            output: Prediction type to output (i.e. one of 'probabilities', 'labels', 'logits')
 
         Returns:
             Predictions and local explanations for each sample.
@@ -1624,14 +1651,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
         check_is_fitted(self, "has_fitted_")
 
-        allowed_outputs = ['probabilities', 'logits', 'labels']
-        if output not in allowed_outputs:
-            msg = "Argument 'output' has invalid value.  Got '{}', expected one of " 
-            + repr(allowed_outputs)
-            raise ValueError(msg.format(output))
-
         min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-
         X, n_samples = clean_X(X, min_cols)
 
         scores, explanations = ebm_decision_function_and_explain(
@@ -1646,15 +1666,24 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         )
 
         if output == 'probabilities':
-            if scores.ndim == 1:
-                scores= np.c_[np.zeros(scores.shape), scores]
-            result = softmax(scores)
+            if len(self.classes_) == 1:
+                # if there is only one class then all probabilities are 100%
+                result = np.full((n_samples, 1), 1, np.float64)
+            else:
+                if scores.ndim == 1:
+                    scores= np.c_[np.zeros(scores.shape), scores]
+                result = softmax(scores)
         elif output == 'labels':
+            # TODO: for binary classification we could just look for values greater than zero instead of expanding
             if scores.ndim == 1:
                 scores = np.c_[np.zeros(scores.shape), scores]
             result = self.classes_[np.argmax(scores, axis=1)]
-        else:
+        elif output == 'logits':
             result = scores
+        else:
+            msg = f"Argument 'output' has invalid value. Got '{output}', expected 'probabilities', 'labels', or 'logits'" 
+            _log.error(msg)
+            raise ValueError(msg)
 
         return result, explanations
 
@@ -1758,7 +1787,6 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
 
         min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-
         X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function(
@@ -1785,7 +1813,6 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
 
         min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-
         X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function_and_explain(
@@ -1906,8 +1933,11 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         check_is_fitted(self, "has_fitted_")
 
         min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-
         X, n_samples = clean_X(X, min_cols)
+
+        if len(self.classes_) == 1:
+            # if there is only one class then all probabilities are 100%
+            return np.full((n_samples, 1), 1, np.float64)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -1920,8 +1950,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             self.term_features_
         )
 
-        # Handle binary classification case -- softmax only works with 0s appended
         if log_odds_vector.ndim == 1:
+            # Handle binary classification case -- softmax only works with 0s appended
             log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
 
         return softmax(log_odds_vector)
@@ -1938,7 +1968,6 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         check_is_fitted(self, "has_fitted_")
 
         min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-
         X, n_samples = clean_X(X, min_cols)
 
         log_odds_vector = ebm_decision_function(
@@ -1952,8 +1981,9 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             self.term_features_
         )
 
-        # Handle binary classification case -- softmax only works with 0s appended
+        # TODO: for binary classification we could just look for values greater than zero instead of expanding
         if log_odds_vector.ndim == 1:
+            # Handle binary classification case -- softmax only works with 0s appended
             log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
 
         return self.classes_[np.argmax(log_odds_vector, axis=1)]

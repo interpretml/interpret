@@ -209,7 +209,8 @@ def _process_terms(n_classes, n_samples, bagged_scores, bin_weights, bag_weights
         tensor_bags = []
         for tensor in score_tensors:
             tensor_copy = tensor.copy()
-            _restore_missing_value_zeros2(tensor_copy, weights)
+            if n_classes != 1:
+                _restore_missing_value_zeros2(tensor_copy, weights)
             tensor_bags.append(tensor_copy)
         score_tensors = np.array(tensor_bags, np.float64) # replace it to get stddev of 0 for weight of 0
         new_bagged_scores.append(score_tensors)
@@ -220,32 +221,43 @@ def _process_terms(n_classes, n_samples, bagged_scores, bin_weights, bag_weights
         if (bag_weights == bag_weights[0]).all():
             # if all the bags have the same total weight we can avoid some numeracy issues
             # by using a non-weighted standard deviation
-            term_scores.append(np.average(score_tensors, axis=0))
-            standard_deviations.append(np.std(score_tensors, axis=0))
+            feature_term_scores = np.average(score_tensors, axis=0)
+            term_scores.append(feature_term_scores)
+            if n_classes == 1:
+                standard_deviations.append(np.zeros(feature_term_scores.shape, dtype=np.float64))
+            else:
+                standard_deviations.append(np.std(score_tensors, axis=0))
         else:
-            term_scores.append(np.average(score_tensors, axis=0, weights=bag_weights))
-            standard_deviations.append(_weighted_std(score_tensors, axis=0, weights=bag_weights))
+            feature_term_scores = np.average(score_tensors, axis=0, weights=bag_weights)
+            term_scores.append(feature_term_scores)
+            if n_classes == 1:
+                standard_deviations.append(np.zeros(feature_term_scores.shape, dtype=np.float64))
+            else:
+                standard_deviations.append(_weighted_std(score_tensors, axis=0, weights=bag_weights))
 
-    intercept = np.zeros(Native.get_count_scores_c(n_classes), np.float64)
-
-    if n_classes <= 2:
-        for scores, weights in zip(term_scores, bin_weights):
-            score_mean = np.average(scores, weights=weights)
-            scores -= score_mean
-
-            # Add mean center adjustment back to intercept
-            intercept += score_mean
+    if n_classes == 1:
+        intercept = np.full(1, -np.inf, np.float64)
     else:
-        # Postprocess model graphs for multiclass
-        multiclass_postprocess2(n_classes, n_samples, term_scores, intercept, bin_weights)
+        intercept = np.zeros(Native.get_count_scores_c(n_classes), np.float64)
 
-    for scores, weights in zip(term_scores, bin_weights):
-        # set these to zero again since zero-centering them causes the missing/unknown to shift away from zero
-        _restore_missing_value_zeros2(scores, weights)
+        if n_classes <= 2:
+            for scores, weights in zip(term_scores, bin_weights):
+                score_mean = np.average(scores, weights=weights)
+                scores -= score_mean
 
-    if n_classes < 0:
-        # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
-        intercept = float(intercept)
+                # Add mean center adjustment back to intercept
+                intercept += score_mean
+        else:
+            # Postprocess model graphs for multiclass
+            multiclass_postprocess2(n_classes, n_samples, term_scores, intercept, bin_weights)
+
+        for scores, weights in zip(term_scores, bin_weights):
+            # set these to zero again since zero-centering them causes the missing/unknown to shift away from zero
+            _restore_missing_value_zeros2(scores, weights)
+
+        if n_classes < 0:
+            # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
+            intercept = float(intercept)
 
     return term_scores, standard_deviations, intercept, new_bagged_scores
 

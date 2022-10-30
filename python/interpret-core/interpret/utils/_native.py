@@ -1136,24 +1136,23 @@ class Booster(AbstractContextManager):
                 dimensions.reverse()
 
                 # Array returned for multiclass is one higher dimension
-                if n_class_scores > 1:
+                if 1 < n_class_scores:
                     dimensions.append(n_class_scores)
 
                 self._term_shapes.append(tuple(dimensions))
 
-        n_scores = n_samples
+        n_bagged_samples = n_samples
         if self.bag is not None:
             if self.bag.shape[0] != n_samples:  # pragma: no cover
                 raise ValueError("bag should be len(n_samples)")
-            n_scores = np.count_nonzero(self.bag)
+            n_bagged_samples = np.count_nonzero(self.bag)
 
         if self.init_scores is not None:
-            if n_class_scores > 1:
-                if self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
-                    raise ValueError(f"init_scores should have {n_class_scores} scores")
-
-            if self.init_scores.shape[0] != n_scores:  # pragma: no cover
+            if self.init_scores.shape[0] != n_bagged_samples:  # pragma: no cover
                 raise ValueError("init_scores should have the same length as the number of non-zero bag entries")
+
+            if n_class_scores != 1 and self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
+                raise ValueError(f"init_scores should have {n_class_scores} scores")
 
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
@@ -1161,7 +1160,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(self.rng, np.ubyte, is_null_allowed=True),
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
-            Native._make_pointer(self.init_scores, np.float64, 2 if n_class_scores > 1 else 1, True),
+            Native._make_pointer(self.init_scores, np.float64, 2 if 1 < n_class_scores else 1, True),
             len(dimension_counts),
             Native._make_pointer(dimension_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
@@ -1510,26 +1509,25 @@ class InteractionDetector(AbstractContextManager):
         class_counts = native.extract_target_classes(self.dataset, n_targets)
         n_class_scores = sum((Native.get_count_scores_c(n_classes) for n_classes in class_counts))
 
-        n_scores = n_samples
+        n_bagged_samples = n_samples
         if self.bag is not None:
             if self.bag.shape[0] != n_samples:  # pragma: no cover
                 raise ValueError("bag should be len(n_samples)")
-            n_scores = np.count_nonzero(self.bag)
+            n_bagged_samples = np.count_nonzero(self.bag)
 
         if self.init_scores is not None:
-            if n_class_scores > 1:
-                if self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
-                    raise ValueError(f"init_scores should have {n_class_scores} scores")
-
-            if self.init_scores.shape[0] != n_scores:  # pragma: no cover
+            if self.init_scores.shape[0] != n_bagged_samples:  # pragma: no cover
                 raise ValueError("init_scores should have the same length as the number of non-zero bag entries")
+
+            if n_class_scores != 1 and self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
+                raise ValueError(f"init_scores should have {n_class_scores} scores")
 
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateInteractionDetector(
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
-            Native._make_pointer(self.init_scores, np.float64, 2 if n_class_scores > 1 else 1, True),
+            Native._make_pointer(self.init_scores, np.float64, 2 if 1 < n_class_scores else 1, True),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(interaction_handle),
         )

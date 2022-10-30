@@ -251,8 +251,45 @@ def test_ebm_synthetic_classification():
 
     valid_ebm(clf)
 
+def test_ebm_synthetic_singleclass_classification():
+    data = synthetic_classification()
+    X = data["full"]["X"]
+    y = np.zeros(X.shape[0], np.bool_)
 
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0)
+    clf.fit(X, y)
 
+    prob_scores = clf.predict_proba(X)
+    assert prob_scores.ndim == 2
+    assert prob_scores.shape[0] == len(y)
+    assert prob_scores.shape[1] == 1
+    assert (prob_scores == 1.0).all()
+
+    predicts = clf.predict(X)
+    assert predicts.ndim == 1
+    assert predicts.shape[0] == len(y)
+    assert (predicts == False).all()
+
+    scores = clf.decision_function(X)
+    assert scores.ndim == 1
+    assert scores.shape[0] == len(y)
+    assert (scores == -np.inf).all()
+
+    prob_scores, explanations = clf.predict_and_contrib(X, output='probabilities')
+    assert prob_scores.ndim == 2
+    assert prob_scores.shape[0] == len(y)
+    assert prob_scores.shape[1] == 1
+    assert (prob_scores == 1.0).all()
+
+    scores, explanations = clf.predict_and_contrib(X, output='logits')
+    assert scores.ndim == 1
+    assert scores.shape[0] == len(y)
+    assert (scores == -np.inf).all()
+
+    predicts, explanations = clf.predict_and_contrib(X, output='labels')
+    assert predicts.ndim == 1
+    assert predicts.shape[0] == len(y)
+    assert (predicts == False).all()
 
 @pytest.mark.visual
 @pytest.mark.slow
