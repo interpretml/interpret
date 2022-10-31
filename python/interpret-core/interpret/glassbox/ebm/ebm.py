@@ -1128,12 +1128,25 @@ class EBMModel(BaseEstimator):
                 feature_bins = self.bins_[feature_index0][0]
                 if isinstance(feature_bins, dict):
                     # categorical
+
+                    # TODO: this will fail if we have multiple categories in a bin
                     bin_labels = list(feature_bins.keys())
-                    if len(bin_labels) != model_graph.shape[0]:
-                        bin_labels.append('DPOther')
+
+                    histogram_counts = getattr(self, 'histogram_counts_', None)
+                    if histogram_counts is not None:
+                        histogram_counts = histogram_counts[feature_index0]
+                        if histogram_counts is not None:
+                            if len(bin_labels) != model_graph.shape[0]:
+                                bin_labels.append('DPOther')
+                                histogram_counts = histogram_counts[1:]
+                            else:
+                                histogram_counts = histogram_counts[1:-1]
+
+                    if histogram_counts is None:
+                        histogram_counts = mod_counts[term_idx]
 
                     names=bin_labels
-                    densities = list(mod_counts[term_idx])
+                    densities = list(histogram_counts)
                 else:
                     # continuous
                     min_feature_val = np.nan
@@ -1147,11 +1160,11 @@ class EBMModel(BaseEstimator):
                     min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_feature_val, max_feature_val)
                     bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
 
-                    histogram_edges = self.histogram_edges(feature_index0)
-                    if histogram_edges is not None:
+                    try:
+                        histogram_edges = self.histogram_edges(feature_index0)
                         names = list(histogram_edges)
                         densities = list(self.histogram_counts_[feature_index0][1:-1])
-                    else:
+                    except ValueError:
                         names = bin_labels
                         densities = list(mod_counts[term_idx])
 
@@ -1441,16 +1454,32 @@ class EBMModel(BaseEstimator):
         check_is_fitted(self, "has_fitted_")
 
         feature_bounds = getattr(self, 'feature_bounds_', None)
-        if feature_bounds is not None:
-            min_feature_val = feature_bounds[feature_idx, 0]
-            max_feature_val = feature_bounds[feature_idx, 1]
-            if not isnan(min_feature_val) and not isnan(max_feature_val):
-                histogram_counts = getattr(self, 'histogram_counts_', None)
-                if histogram_counts is not None:
-                    histogram_bin_counts = histogram_counts[feature_idx]
-                    if histogram_bin_counts is not None:
-                        return make_histogram_edges(min_feature_val, max_feature_val, histogram_bin_counts)
-        return None
+        if feature_bounds is None:
+            msg = "feature_bounds_ not defined"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        min_feature_val = feature_bounds[feature_idx, 0]
+        max_feature_val = feature_bounds[feature_idx, 1]
+
+        if isnan(min_feature_val) or isnan(max_feature_val):
+            msg = "feature_bounds_[feature_idx] has a NaN"
+            _log.error(msg)
+            raise ValueError(msg)
+           
+        histogram_counts = getattr(self, 'histogram_counts_', None)
+        if histogram_counts is None:
+            msg = "histogram_counts_ not defined"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        histogram_bin_counts = histogram_counts[feature_idx]
+        if histogram_bin_counts is None:
+            msg = "histogram_counts_[feature_idx] was None"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        return make_histogram_edges(min_feature_val, max_feature_val, histogram_bin_counts)
 
     def term_importances(self, importance_type='avg_weight'):
         """ Provides the term importances
@@ -1467,12 +1496,15 @@ class EBMModel(BaseEstimator):
         if importance_type == 'avg_weight':
             importances = np.empty(len(self.term_features_), np.float64)
             for i in range(len(self.term_features_)):
-                if is_classifier(self) and len(self.classes_) == 1:
+                if is_classifier(self):
                     mean_abs_score = 0 # everything is useless if we're predicting 1 class
+                    if 1 < len(self.classes_):
+                        mean_abs_score = np.abs(self.term_scores_[i])
+                        if 2 < len(self.classes_):
+                            mean_abs_score = np.average(mean_abs_score, axis=-1)
+                        mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
                 else:
                     mean_abs_score = np.abs(self.term_scores_[i])
-                    if is_classifier(self) and 2 < len(self.classes_):
-                        mean_abs_score = np.average(mean_abs_score, axis=-1)
                     mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
                 importances.itemset(i, mean_abs_score)
             return importances

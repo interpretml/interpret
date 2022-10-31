@@ -2045,6 +2045,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     n_unique_indexes = 0 if len(categories) == 0 else max(categories.values())
                     feature_bin_weights = np.bincount(X_col, weights=sample_weight, minlength=n_unique_indexes + 2)
                     feature_bin_weights = feature_bin_weights.astype(np.float64, copy=False)
+
+                    feature_histogram_counts = np.bincount(X_col, minlength=n_unique_indexes + 2)
+                    feature_histogram_counts = feature_histogram_counts.astype(np.int64, copy=False)
+                    histogram_counts[feature_idx] = feature_histogram_counts
+
                     unique_val_counts.itemset(feature_idx, len(categories))
                     zero_indexes = _none_list * n_unique_indexes
                     for category, idx in categories.items():
