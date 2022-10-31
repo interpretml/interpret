@@ -755,13 +755,6 @@ def merge_ebms(models):
         if all(hasattr(model, 'zero_val_counts_') for model in models):
             ebm.zero_val_counts_ = np.sum([model.zero_val_counts_ for model in models], axis=0)
 
-        if all(hasattr(model, 'bin_counts_') for model in models):
-            # TODO: IF all models have bin counts then we should try and estimate the bin counts for
-            # every term_feature, even though we won't have information on some of them.  At least we know
-            # accurate bin counts.  If we're given a DP model then we shouldn't try and estimate them since
-            # we didn't have it in the original model, so we should just use weights like in DP
-            pass
-
     if is_classifier:
         ebm.classes_ = models[0].classes_.copy()
         if any(not np.array_equal(ebm.classes_, model.classes_) for model in models):  # pragma: no cover

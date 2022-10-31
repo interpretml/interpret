@@ -9,7 +9,7 @@ from ...utils import gen_perf_dicts
 from .utils import EBMUtils
 from .utils import _process_terms, make_histogram_edges, _order_terms, _remove_unused_higher_bins, _generate_term_names, _generate_term_types
 from ...utils._binning import determine_min_cols, clean_X, clean_dimensions, typify_classification, construct_bins, bin_native_by_dimension, unify_data2, _deduplicate_bins, normalize_initial_seed
-from .bin import ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, eval_terms
+from .bin import ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, make_bin_weights, trim_tensor, eval_terms
 from ...utils._native import Native
 from ...utils import unify_data, autogen_schema, unify_vector
 from ...api.base import ExplainerMixin
@@ -664,7 +664,7 @@ class EBMModel(BaseEstimator):
             # for now we only support mains for DP models
             bin_weights = [main_bin_weights[feature_idxs[0]] for feature_idxs in term_features]
         else:
-            bin_counts, bin_weights = get_counts_and_weights(
+            bin_weights = make_bin_weights(
                 X, 
                 n_samples,
                 sample_weight, 
@@ -700,9 +700,6 @@ class EBMModel(BaseEstimator):
             self.unique_val_counts_ = unique_val_counts
             self.zero_val_counts_ = zero_val_counts
 
-            # per-term
-            self.bin_counts_ = bin_counts # use bin_weights_ instead for DP models
-        
         if 0 <= n_classes:
             self.classes_ = classes # required by scikit-learn
             self._class_idx_ = class_idx
@@ -939,7 +936,6 @@ class EBMModel(BaseEstimator):
 
         standard_deviations_all = getattr(self, 'standard_deviations_', None)
         bagged_scores_all = getattr(self, 'bagged_scores_', None)
-        bin_counts_all = getattr(self, 'bin_counts_', None)
 
         terms = []
         for term_idx in range(len(self.term_features_)):
@@ -956,11 +952,6 @@ class EBMModel(BaseEstimator):
                    bagged_scores = bagged_scores_all[term_idx] 
                    if bagged_scores is not None:
                         term['bagged_scores'] = EBMUtils.jsonify_lists(bagged_scores.tolist())
-            if 3 <= level:
-                if bin_counts_all is not None:
-                   bin_counts = bin_counts_all[term_idx] 
-                   if bin_counts is not None:
-                        term['bin_counts'] = bin_counts.tolist()
             if 1 <= level:
                 term['bin_weights'] = EBMUtils.jsonify_lists(self.bin_weights_[term_idx].tolist())
             
@@ -1087,13 +1078,13 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        mod_counts = remove_last2(getattr(self, 'bin_counts_', self.bin_weights_), self.bin_weights_)
+        mod_weights = remove_last2(self.bin_weights_, self.bin_weights_)
         mod_term_scores = remove_last2(self.term_scores_, self.bin_weights_)
         mod_standard_deviations = remove_last2(self.standard_deviations_, self.bin_weights_)
         for term_idx, feature_idxs in enumerate(self.term_features_):
             mod_term_scores[term_idx] = trim_tensor(mod_term_scores[term_idx], trim_low=[True] * len(feature_idxs))
             mod_standard_deviations[term_idx] = trim_tensor(mod_standard_deviations[term_idx], trim_low=[True] * len(feature_idxs))
-            mod_counts[term_idx] = trim_tensor(mod_counts[term_idx], trim_low=[True] * len(feature_idxs))
+            mod_weights[term_idx] = trim_tensor(mod_weights[term_idx], trim_low=[True] * len(feature_idxs))
 
         # Obtain min/max for model scores
         lower_bound = np.inf
@@ -1143,7 +1134,7 @@ class EBMModel(BaseEstimator):
                                 histogram_counts = histogram_counts[1:-1]
 
                     if histogram_counts is None:
-                        histogram_counts = mod_counts[term_idx]
+                        histogram_counts = mod_weights[term_idx]
 
                     names=bin_labels
                     densities = list(histogram_counts)
@@ -1166,7 +1157,7 @@ class EBMModel(BaseEstimator):
                         densities = list(self.histogram_counts_[feature_index0][1:-1])
                     except ValueError:
                         names = bin_labels
-                        densities = list(mod_counts[term_idx])
+                        densities = list(mod_weights[term_idx])
 
                 scores = list(model_graph)
                 upper_bounds = list(model_graph + errors)

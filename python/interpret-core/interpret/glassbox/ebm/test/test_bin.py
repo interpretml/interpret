@@ -5,7 +5,7 @@ import pytest
 import numpy as np
 import math
 
-from ..bin import eval_terms, get_counts_and_weights, ebm_decision_function
+from ..bin import eval_terms, make_bin_weights, ebm_decision_function
 from ....utils._binning import clean_X
 
 def test_eval_terms():
@@ -48,8 +48,7 @@ def test_eval_terms():
 
     X, n_samples = clean_X(X)
 
-    bin_counts, bin_weights = get_counts_and_weights(X, n_samples, None, feature_names_in, feature_types_in, bins, term_features)
-    assert(bin_counts is not None)
+    bin_weights = make_bin_weights(X, n_samples, None, feature_names_in, feature_types_in, bins, term_features)
     assert(bin_weights is not None)
 
     result = list(eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features))

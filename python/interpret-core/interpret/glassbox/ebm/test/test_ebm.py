@@ -781,7 +781,6 @@ def test_json_classification():
     clf.standard_deviations_[0] = np.delete(clf.standard_deviations_[0], 1)
     clf.bagged_scores_[0] = np.array([np.delete(clf.bagged_scores_[0][0], 1), np.delete(clf.bagged_scores_[0][1], 1), np.delete(clf.bagged_scores_[0][2], 1)])
 
-    clf.bin_counts_[0] = np.delete(clf.bin_counts_[0], 1)
     clf.bin_weights_[0] = np.delete(clf.bin_weights_[0], 1)
 
     json_text = clf._to_json(properties='all')

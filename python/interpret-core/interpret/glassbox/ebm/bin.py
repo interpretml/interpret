@@ -169,10 +169,8 @@ def ebm_decision_function_and_explain(
 
     return sample_scores, explanations
 
-def get_counts_and_weights(X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features):
-    bin_counts = _none_list * len(term_features)
+def make_bin_weights(X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features):
     bin_weights = _none_list * len(term_features)
-
     for term_idx, bin_indexes in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
         feature_idxs = term_features[term_idx]
         multiple = 1
@@ -198,22 +196,15 @@ def get_counts_and_weights(X, n_samples, sample_weight, feature_names_in, featur
             multiple *= n_bins
         dimensions = tuple(reversed(dimensions))
 
-        term_bin_counts = np.bincount(flat_indexes, minlength=multiple)
-        term_bin_counts = term_bin_counts.astype(np.int64, copy=False)
-        term_bin_counts = term_bin_counts.reshape(dimensions)
-
-        bin_counts[term_idx] = term_bin_counts
-
         if sample_weight is None:
-            term_bin_weights = term_bin_counts.astype(np.float64)
+            term_bin_weights = np.bincount(flat_indexes, minlength=multiple)
         else:
             term_bin_weights = np.bincount(flat_indexes, weights=sample_weight, minlength=multiple)
-            term_bin_weights = term_bin_weights.astype(np.float64, copy=False)
-            term_bin_weights = term_bin_weights.reshape(dimensions)
-        
+        term_bin_weights = term_bin_weights.astype(np.float64, copy=False)
+        term_bin_weights = term_bin_weights.reshape(dimensions)
         bin_weights[term_idx] = term_bin_weights
 
-    return bin_counts, bin_weights
+    return bin_weights
 
 def append_tensor(tensor, append_low=None, append_high=None):
     if append_low is None:
