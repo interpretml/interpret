@@ -30,7 +30,8 @@ extern void BinSumsInteraction(
    InteractionShell * const pInteractionShell,
    const size_t cRealDimensions,
    const size_t * const aiFeatures,
-   const size_t * const acBins
+   const size_t * const acBins,
+   const size_t * const acItemsPerBitPack
 );
 
 extern void TensorTotalsBuild(
@@ -155,6 +156,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
    size_t aiFeatures[k_cDimensionsMax];
    size_t acBins[k_cDimensionsMax];
+   size_t acItemsPerBitPack[k_cDimensionsMax];
 
    const Feature * const aFeatures = pInteractionCore->GetFeatures();
    const IntEbm countFeatures = static_cast<IntEbm>(pInteractionCore->GetCountFeatures());
@@ -204,6 +206,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       cTensorBins *= cBins;
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins) at runtime
       EBM_ASSERT(0 == cTensorBins || cAuxillaryBinsForBuildFastTotals < cTensorBins);
+
+      // GetFeatureBitPack could be negative, but converting negative to unsigned is legal in C++ and when
+      // GetFeatureBitPack is negative we exit right after the loop, so we don't use the value
+      EBM_ASSERT(1 <= pFeature->GetFeatureBitPack() || size_t { 0 } == cTensorBins);
+      acItemsPerBitPack[iDimension] = static_cast<size_t>(pFeature->GetFeatureBitPack());
 
       ++iDimension;
    } while(cDimensions != iDimension);
@@ -258,7 +265,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    pInteractionShell->SetDebugFastBinsEnd(reinterpret_cast<const unsigned char *>(pDebugFastBinsEnd));
 #endif // NDEBUG
 
-   BinSumsInteraction(pInteractionShell, cDimensions, aiFeatures, acBins);
+   BinSumsInteraction(pInteractionShell, cDimensions, aiFeatures, acBins, acItemsPerBitPack);
 
    static constexpr size_t cAuxillaryBinsForSplitting = 4;
    const size_t cAuxillaryBins = EbmMax(cAuxillaryBinsForBuildFastTotals, cAuxillaryBinsForSplitting);

@@ -101,7 +101,8 @@ public:
       InteractionShell * const pInteractionShell, 
       const size_t cRuntimeRealDimensions,
       const size_t * const aiFeatures,
-      const size_t * const acBins
+      const size_t * const acBins,
+      const size_t * const acItemsPerBitPack
    ) {
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
       static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
@@ -138,6 +139,13 @@ public:
       struct DimensionalData {
          const StorageDataType * pData;
          size_t cBins;
+
+         size_t m_cBitsPerItemMax;
+         size_t m_maskBits;
+         ptrdiff_t m_cShift;
+         ptrdiff_t m_cShiftReset;
+
+         StorageDataType m_iTensorBinCombined;
       };
 
       // this is on the stack and the compiler should be able to optimize these as if they were variables or registers
@@ -148,8 +156,26 @@ public:
 
          const StorageDataType * const pData = pDataSet->GetInputDataPointer(aiFeatures[iDimensionInit]);
 
-         pDimensionalData->pData = pData;
+         pDimensionalData->m_iTensorBinCombined = *pData;
+
+         pDimensionalData->pData = pData + 1;
          pDimensionalData->cBins = acBins[iDimensionInit];
+
+         const size_t cItemsPerBitPack = acItemsPerBitPack[iDimensionInit];
+         EBM_ASSERT(size_t { 1 } <= cItemsPerBitPack);
+         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+
+         const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
+         EBM_ASSERT(1 <= cBitsPerItemMax);
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+         pDimensionalData->m_cBitsPerItemMax = cBitsPerItemMax;
+
+         const size_t maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
+         pDimensionalData->m_maskBits = maskBits;
+
+         pDimensionalData->m_cShift = static_cast<ptrdiff_t>(((cSamples - 1) % cItemsPerBitPack + 1) * cBitsPerItemMax);
+         pDimensionalData->m_cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
+
          ++iDimensionInit;
       } while(cRealDimensions != iDimensionInit);
 
@@ -174,11 +200,25 @@ public:
          do {
             DimensionalData * const pDimensionalData = &aDimensionalData[iDimension];
 
-            const StorageDataType * const pInputData = pDimensionalData->pData;
-            const StorageDataType iBinOriginal = *pInputData;
-            pDimensionalData->pData = pInputData + 1;
-            EBM_ASSERT(!IsConvertError<size_t>(iBinOriginal));
-            const size_t iBin = static_cast<size_t>(iBinOriginal);
+            ptrdiff_t cShift = pDimensionalData->m_cShift;
+            cShift -= pDimensionalData->m_cBitsPerItemMax;
+            StorageDataType iTensorBinCombined = pDimensionalData->m_iTensorBinCombined;
+            if(cShift < ptrdiff_t { 0 }) {
+               if(pGradientsAndHessiansEnd == pGradientAndHessian) {
+                  // TODO: we only need to do this for the first dimension since all dimensions will reach
+                  // this point simultaneously.  But to do this I would need to separate out the first dimension
+                  // so do it after we've locked down everything else about this loop
+                  goto done;
+               }
+               const StorageDataType * const pInputData = pDimensionalData->pData;
+               iTensorBinCombined = *pInputData;
+               pDimensionalData->pData = pInputData + 1;
+               cShift = pDimensionalData->m_cShiftReset;
+               pDimensionalData->m_iTensorBinCombined = iTensorBinCombined;
+            }
+            pDimensionalData->m_cShift = cShift;
+
+            const size_t iBin = static_cast<size_t>(iTensorBinCombined >> cShift) & pDimensionalData->m_maskBits;
 
             const size_t cBins = pDimensionalData->cBins;
             // interactions return interaction score of zero earlier on any useless dimensions
@@ -243,11 +283,9 @@ public:
             pGradientAndHessian += bClassification ? 2 : 1;
             ++iScore;
          } while(cScores != iScore);
-
-         if(pGradientsAndHessiansEnd == pGradientAndHessian) {
-            break;
-         }
       }
+   done:;
+
       EBM_ASSERT(0 < pDataSet->GetWeightTotal());
       EBM_ASSERT(nullptr == pWeight || static_cast<FloatBig>(weightTotalDebug * 0.999) <= pDataSet->GetWeightTotal() && 
          pDataSet->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
@@ -268,7 +306,8 @@ public:
       InteractionShell * const pInteractionShell, 
       const size_t cRealDimensions,
       const size_t * const aiFeatures,
-      const size_t * const acBins
+      const size_t * const acBins,
+      const size_t * const acItemsPerBitPack
    ) {
       static_assert(1 <= cCompilerDimensionsPossible, "can't have less than 1 dimension for interactions");
       static_assert(cCompilerDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
@@ -276,9 +315,9 @@ public:
       EBM_ASSERT(1 <= cRealDimensions);
       EBM_ASSERT(cRealDimensions <= k_cDimensionsMax);
       if(cCompilerDimensionsPossible == cRealDimensions) {
-         BinSumsInteractionInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
+         BinSumsInteractionInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
       } else {
-         BinSumsInteractionDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
+         BinSumsInteractionDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
       }
    }
 };
@@ -293,11 +332,12 @@ public:
       InteractionShell * const pInteractionShell, 
       const size_t cRealDimensions,
       const size_t * const aiFeatures,
-      const size_t * const acBins
+      const size_t * const acBins,
+      const size_t * const acItemsPerBitPack
    ) {
       EBM_ASSERT(1 <= cRealDimensions);
       EBM_ASSERT(cRealDimensions <= k_cDimensionsMax);
-      BinSumsInteractionInternal<cCompilerClasses, k_dynamicDimensions>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
+      BinSumsInteractionInternal<cCompilerClasses, k_dynamicDimensions>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
    }
 };
 
@@ -311,7 +351,8 @@ public:
       InteractionShell * const pInteractionShell, 
       const size_t cRealDimensions,
       const size_t * const aiFeatures,
-      const size_t * const acBins
+      const size_t * const acBins,
+      const size_t * const acItemsPerBitPack
    ) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
@@ -322,9 +363,9 @@ public:
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
       if(cPossibleClasses == cRuntimeClasses) {
-         BinSumsInteractionDimensions<cPossibleClasses, 2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
+         BinSumsInteractionDimensions<cPossibleClasses, 2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
       } else {
-         BinSumsInteractionTarget<cPossibleClasses + 1>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
+         BinSumsInteractionTarget<cPossibleClasses + 1>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
       }
    }
 };
@@ -339,14 +380,15 @@ public:
       InteractionShell * const pInteractionShell, 
       const size_t cRealDimensions,
       const size_t * const aiFeatures,
-      const size_t * const acBins
+      const size_t * const acBins,
+      const size_t * const acItemsPerBitPack
    ) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
       EBM_ASSERT(IsClassification(pInteractionShell->GetInteractionCore()->GetCountClasses()));
       EBM_ASSERT(k_cCompilerClassesMax < pInteractionShell->GetInteractionCore()->GetCountClasses());
 
-      BinSumsInteractionDimensions<k_dynamicClassification, 2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
+      BinSumsInteractionDimensions<k_dynamicClassification, 2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
    }
 };
 
@@ -354,16 +396,17 @@ extern void BinSumsInteraction(
    InteractionShell * const pInteractionShell,
    const size_t cRealDimensions,
    const size_t * const aiFeatures,
-   const size_t * const acBins
+   const size_t * const acBins,
+   const size_t * const acItemsPerBitPack
 ) {
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
    const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
 
    if(IsClassification(cRuntimeClasses)) {
-      BinSumsInteractionTarget<2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
+      BinSumsInteractionTarget<2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
    } else {
       EBM_ASSERT(IsRegression(cRuntimeClasses));
-      BinSumsInteractionDimensions<k_regression, 2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins);
+      BinSumsInteractionDimensions<k_regression, 2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
    }
 }
 

@@ -126,12 +126,26 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             goto free_all;
          }
 
-         if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
-            LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
+         const size_t cBitsRequiredMin = CountBitsRequired(cBins - 1);
+         EBM_ASSERT(1 <= cBitsRequiredMin); // 2 <= cBins otherwise we'd have filtered it out above
+         EBM_ASSERT(cBitsRequiredMin <= CountBitsRequiredPositiveMax<StorageDataType>());
+
+         const size_t cItemsPerBitPack = GetCountItemsBitPacked(cBitsRequiredMin);
+         EBM_ASSERT(1 <= cItemsPerBitPack);
+         EBM_ASSERT(cItemsPerBitPack <= CountBitsRequiredPositiveMax<StorageDataType>());
+
+         const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
+         EBM_ASSERT(1 <= cBitsPerItemMax);
+         EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<StorageDataType>());
+
+         EBM_ASSERT(1 <= cSetSamples);
+         const size_t cDataUnits = (cSetSamples - 1) / cItemsPerBitPack + 1; // this can't overflow or underflow
+
+         if(IsMultiplyError(sizeof(StorageDataType), cDataUnits)) {
+            LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnits)");
             goto free_all;
          }
-
-         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
+         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnits));
          if(nullptr == pInputDataTo) {
             LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData nullptr == pInputDataTo");
             goto free_all;
@@ -141,31 +155,42 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          const BagEbm * pSampleReplication = aBag;
 
          const SharedStorageDataType * pInputDataFrom = static_cast<const SharedStorageDataType *>(aInputDataFrom);
-         const StorageDataType * const pInputDataToEnd = &pInputDataTo[cSetSamples];
+         const StorageDataType * const pInputDataToEnd = &pInputDataTo[cDataUnits];
 
          BagEbm replication = 0;
          StorageDataType inputData;
+
+         ptrdiff_t cShift = (cSetSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
+         const ptrdiff_t cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
          do {
-            if(BagEbm { 0 } == replication) {
-               replication = 1;
-               if(nullptr != pSampleReplication) {
-                  const BagEbm * pSampleReplicationOriginal = pSampleReplication;
-                  do {
-                     replication = *pSampleReplication;
-                     ++pSampleReplication;
-                  } while(replication <= BagEbm { 0 });
-                  const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
-                  pInputDataFrom += cAdvances;
+            StorageDataType bits = 0;
+            do {
+               if(BagEbm { 0 } == replication) {
+                  replication = 1;
+                  if(nullptr != pSampleReplication) {
+                     const BagEbm * pSampleReplicationOriginal = pSampleReplication;
+                     do {
+                        replication = *pSampleReplication;
+                        ++pSampleReplication;
+                     } while(replication <= BagEbm { 0 });
+                     const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
+                     pInputDataFrom += cAdvances;
+                  }
+                  EBM_ASSERT(!IsConvertError<StorageDataType>(*pInputDataFrom)); // this was checked when determining packing
+                  inputData = static_cast<StorageDataType>(*pInputDataFrom);
+                  ++pInputDataFrom;
                }
-               EBM_ASSERT(!IsConvertError<StorageDataType>(*pInputDataFrom)); // this was checked when determining packing
-               inputData = static_cast<StorageDataType>(*pInputDataFrom);
-               ++pInputDataFrom;
-            }
 
-            EBM_ASSERT(1 <= replication);
-            --replication;
+               EBM_ASSERT(1 <= replication);
+               --replication;
 
-            *pInputDataTo = inputData;
+               EBM_ASSERT(0 <= cShift);
+               EBM_ASSERT(static_cast<size_t>(cShift) < CountBitsRequiredPositiveMax<StorageDataType>());
+               bits |= inputData << cShift;
+               cShift -= cBitsPerItemMax;
+            } while(ptrdiff_t { 0 } <= cShift);
+            cShift = cShiftReset;
+            *pInputDataTo = bits;
             ++pInputDataTo;
          } while(pInputDataToEnd != pInputDataTo);
          EBM_ASSERT(0 == replication);

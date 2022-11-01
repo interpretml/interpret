@@ -7,7 +7,10 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
+#include "logging.h" // EBM_ASSERT
 #include "zones.h"
+
+#include "bridge_cpp.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -19,6 +22,7 @@ class Feature final {
    bool m_bMissing;
    bool m_bUnknown;
    bool m_bNominal;
+   ptrdiff_t m_cItemsPerBitPack;
 
 public:
 
@@ -37,6 +41,18 @@ public:
       m_bMissing = bMissing;
       m_bUnknown = bUnknown;
       m_bNominal = bNominal;
+
+      ptrdiff_t cItemsPerBitPack = k_cItemsPerBitPackNone;
+      if(size_t { 1 } < cBins) {
+         const size_t cBitsRequiredMin = CountBitsRequired(cBins - 1);
+         EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
+         cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked(cBitsRequiredMin));
+      }
+      m_cItemsPerBitPack = cItemsPerBitPack;
+   }
+
+   inline ptrdiff_t GetFeatureBitPack() const noexcept {
+      return m_cItemsPerBitPack;
    }
 
    inline size_t GetCountBins() const noexcept {
