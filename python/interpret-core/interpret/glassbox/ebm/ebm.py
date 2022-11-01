@@ -442,6 +442,8 @@ class EBMModel(BaseEstimator):
         bag_weights = np.array(bag_weights, np.float64)
 
         if n_classes == 1:
+            warn("Only 1 class detected for classification. The model will predict 1.0 whenever predict_proba is called.")
+
             breakpoint_iteration = [[]]
             models = []
             for idx in range(self.outer_bags):
@@ -564,10 +566,7 @@ class EBMModel(BaseEstimator):
                             )
                         )
 
-                    # TODO: for now we're using only 1 job because FAST isn't memory optimized.  After
-                    # the native code is done with compression of the data we can go back to using self.n_jobs
-                    provider2 = JobLibProvider(n_jobs=1) 
-                    bagged_ranked_interaction = provider2.parallel(_get_ranked_interactions, parallel_args)
+                    bagged_ranked_interaction = provider.parallel(_get_ranked_interactions, parallel_args)
 
                     # this holds references to dataset, bags, and scores_bags which we want python to reclaim later
                     del parallel_args 
