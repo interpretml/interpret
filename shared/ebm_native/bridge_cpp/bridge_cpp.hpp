@@ -6,6 +6,7 @@
 #define BRIDGE_CPP_HPP
 
 #include "ebm_native.h" // bridge_c.h depends on ebm_native.h and we probably will eventually too
+#include "logging.h"
 #include "bridge_c.h" // StorageDataType
 #include "zones.h"
 
@@ -78,6 +79,10 @@ static constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<Sto
 
 inline constexpr static size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
    return k_cBitsForStorageType / cItemsBitPacked;
+}
+inline static size_t GetCountItemsBitPacked(const size_t cBits) noexcept {
+   EBM_ASSERT(size_t { 1 } <= cBits);
+   return k_cBitsForStorageType / cBits;
 }
 
 static constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin

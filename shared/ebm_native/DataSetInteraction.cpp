@@ -65,6 +65,8 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm ConstructGradientsAndHessians(
    return Error_None;
 }
 
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
@@ -76,12 +78,6 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(1 <= cSetSamples);
    EBM_ASSERT(1 <= cFeatures);
-
-   if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
-      // this is to check the allocation inside the loop below
-      LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
-      return nullptr;
-   }
 
    if(IsMultiplyError(sizeof(StorageDataType *), cFeatures)) {
       LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType *), cFeatures)");
@@ -96,15 +92,6 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    size_t iFeature = 0;
    StorageDataType ** paInputDataTo = aaInputDataTo;
    do {
-      // NOTE: we check this multiplication above just once and not in the loop
-      StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
-      if(nullptr == pInputDataTo) {
-         LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData nullptr == pInputDataTo");
-         goto free_all;
-      }
-      *paInputDataTo = pInputDataTo;
-      ++paInputDataTo;
-
       size_t cBins;
       bool bMissing;
       bool bUnknown;
@@ -127,45 +114,63 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       EBM_ASSERT(!bSparse); // we don't support sparse yet
       EBM_ASSERT(1 <= cBins); // we have samples, and cBins can only be 0 if there are 0 samples
 
-      if(IsConvertError<StorageDataType>(cBins - 1)) {
-         // if we check this here, we can be guaranteed that any inputData will convert to StorageDataType
-         // since the shared datastructure would not allow data items equal or greater than cBins
-         LOG_0(Trace_Error, "ERROR DataSetInteraction::ConstructInputData IsConvertError<StorageDataType>(cBins - 1)");
-         goto free_all;
-      }
-
-      const BagEbm * pSampleReplication = aBag;
-
-      const SharedStorageDataType * pInputDataFrom = static_cast<const SharedStorageDataType *>(aInputDataFrom);
-      const StorageDataType * pInputDataToEnd = &pInputDataTo[cSetSamples];
-      do {
-         BagEbm replication = 1;
-         if(nullptr != pSampleReplication) {
-            const BagEbm * pSampleReplicationOriginal = pSampleReplication;
-            do {
-               replication = *pSampleReplication;
-               ++pSampleReplication;
-            } while(replication <= BagEbm { 0 });
-            const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
-            pInputDataFrom += cAdvances;
+      if(cBins <= size_t { 1 }) {
+         // we don't need any bits to store 1 bin since it's always going to be the only bin available, and also 
+         // we return 0.0 on interactions whenever we find a feature with 1 bin before further processing
+         *paInputDataTo = nullptr;
+      } else {
+         if(IsConvertError<StorageDataType>(cBins - 1)) {
+            // if we check this here, we can be guaranteed that any inputData will convert to StorageDataType
+            // since the shared datastructure would not allow data items equal or greater than cBins
+            LOG_0(Trace_Error, "ERROR DataSetInteraction::ConstructInputData IsConvertError<StorageDataType>(cBins - 1)");
+            goto free_all;
          }
-         EBM_ASSERT(0 < replication);
 
-         const SharedStorageDataType inputData = *pInputDataFrom;
-         ++pInputDataFrom;
+         if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
+            LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
+            goto free_all;
+         }
 
-         EBM_ASSERT(!IsConvertError<size_t>(inputData));
-         const StorageDataType iData = static_cast<StorageDataType>(inputData);
-         EBM_ASSERT(iData < cBins); // enforced by shared data creator
-         EBM_ASSERT(!IsConvertError<StorageDataType>(iData)); // since it is smaller than cBins this is guaranteed
+         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
+         if(nullptr == pInputDataTo) {
+            LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData nullptr == pInputDataTo");
+            goto free_all;
+         }
+         *paInputDataTo = pInputDataTo;
 
+         const BagEbm * pSampleReplication = aBag;
+
+         const SharedStorageDataType * pInputDataFrom = static_cast<const SharedStorageDataType *>(aInputDataFrom);
+         const StorageDataType * const pInputDataToEnd = &pInputDataTo[cSetSamples];
+
+         BagEbm replication = 0;
+         StorageDataType inputData;
          do {
-            *pInputDataTo = iData;
-            ++pInputDataTo;
+            if(BagEbm { 0 } == replication) {
+               replication = 1;
+               if(nullptr != pSampleReplication) {
+                  const BagEbm * pSampleReplicationOriginal = pSampleReplication;
+                  do {
+                     replication = *pSampleReplication;
+                     ++pSampleReplication;
+                  } while(replication <= BagEbm { 0 });
+                  const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
+                  pInputDataFrom += cAdvances;
+               }
+               EBM_ASSERT(!IsConvertError<StorageDataType>(*pInputDataFrom)); // this was checked when determining packing
+               inputData = static_cast<StorageDataType>(*pInputDataFrom);
+               ++pInputDataFrom;
+            }
 
+            EBM_ASSERT(1 <= replication);
             --replication;
-         } while(BagEbm { 0 } != replication);
-      } while(pInputDataToEnd != pInputDataTo);
+
+            *pInputDataTo = inputData;
+            ++pInputDataTo;
+         } while(pInputDataToEnd != pInputDataTo);
+         EBM_ASSERT(0 == replication);
+      }
+      ++paInputDataTo;
       ++iFeature;
    } while(cFeatures != iFeature);
 
@@ -180,6 +185,7 @@ free_all:
    free(aaInputDataTo);
    return nullptr;
 }
+WARNING_POP
 
 void DataSetInteraction::Destruct() {
    LOG_0(Trace_Info, "Entered DataSetInteraction::Destruct");
@@ -191,7 +197,6 @@ void DataSetInteraction::Destruct() {
       StorageDataType ** paInputData = m_aaInputData;
       const StorageDataType * const * const paInputDataEnd = m_aaInputData + m_cFeatures;
       do {
-         EBM_ASSERT(nullptr != *paInputData);
          free(*paInputData);
          ++paInputData;
       } while(paInputDataEnd != paInputData);

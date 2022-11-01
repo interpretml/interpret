@@ -260,7 +260,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          // if we have 1 item, it can't be larger than the number of bits of storage
          EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<StorageDataType>());
 
-         EBM_ASSERT(0 < cSetSamples);
+         EBM_ASSERT(1 <= cSetSamples);
          const size_t cDataUnits = (cSetSamples - 1) / cItemsPerBitPack + 1; // this can't overflow or underflow
 
          if(IsMultiplyError(sizeof(StorageDataType), cDataUnits)) {
@@ -326,10 +326,10 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          EBM_ASSERT(nullptr != aBag || isLoopTraining); // if aBag is nullptr then we have no validation samples
          const BagEbm * pSampleReplication = aBag;
          BagEbm replication = 0;
-         size_t tensorIndex;
+         StorageDataType iTensor;
 
-         ptrdiff_t cShift = (cSetSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
-         const ptrdiff_t cShiftReset = cBitsPerItemMax * (cItemsPerBitPack - 1);
+         ptrdiff_t cShift = static_cast<ptrdiff_t>((cSetSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
+         const ptrdiff_t cShiftReset = static_cast<ptrdiff_t>(cBitsPerItemMax * (cItemsPerBitPack - 1));
 
          do {
             StorageDataType bits = 0;
@@ -356,8 +356,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                         } while(pDimensionInfoInit != pDimensionInfo);
                      }
                   }
-               
-                  tensorIndex = 0;
+
+                  size_t tensorIndex = 0;
                   size_t tensorMultiple = 1;
                   InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
                   do {
@@ -381,6 +381,9 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
                      ++pDimensionInfo;
                   } while(pDimensionInfoInit != pDimensionInfo);
+
+                  EBM_ASSERT(!IsConvertError<StorageDataType>(tensorIndex)); // this was checked when determining packing
+                  iTensor = static_cast<StorageDataType>(tensorIndex);
                }
 
                EBM_ASSERT(0 != replication);
@@ -390,8 +393,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                EBM_ASSERT(0 <= cShift);
                EBM_ASSERT(static_cast<size_t>(cShift) < CountBitsRequiredPositiveMax<StorageDataType>());
                // the tensor index needs to fit in memory, but concivably StorageDataType does not
-               EBM_ASSERT(!IsConvertError<StorageDataType>(tensorIndex)); // this was checked when determining packing
-               bits |= static_cast<StorageDataType>(tensorIndex) << cShift;
+               bits |= iTensor << cShift;
                cShift -= cBitsPerItemMax;
             } while(ptrdiff_t { 0 } <= cShift);
             cShift = cShiftReset;

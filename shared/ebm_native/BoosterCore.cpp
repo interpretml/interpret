@@ -65,11 +65,6 @@ extern ErrorEbm ExtractWeights(
    FloatFast ** ppWeightsOut
 );
 
-INLINE_ALWAYS static size_t GetCountItemsBitPacked(const size_t cBits) {
-   EBM_ASSERT(size_t { 1 } <= cBits);
-   return k_cBitsForStorageType / cBits;
-}
-
 void BoosterCore::DeleteTensors(const size_t cTerms, Tensor ** const apTensors) {
    LOG_0(Trace_Info, "Entered DeleteTensors");
 

@@ -234,7 +234,7 @@ public:
       const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
 
       const size_t cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
-      EBM_ASSERT(0 < cSamples);
+      EBM_ASSERT(1 <= cSamples);
 
       const size_t * pCountOccurrences = pInnerBag->GetCountOccurrences();
       const FloatFast * pWeight = pInnerBag->GetWeights();

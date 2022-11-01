@@ -115,12 +115,16 @@ public:
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
       const size_t cScores = GetCountScores(cClasses);
+
       EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
 
       const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
+      const size_t cSamples = pDataSet->GetCountSamples();
+      EBM_ASSERT(1 <= cSamples);
+
       const FloatFast * pGradientAndHessian = pDataSet->GetGradientsAndHessiansPointer();
-      const FloatFast * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * pDataSet->GetCountSamples();
+      const FloatFast * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
 
       const FloatFast * pWeight = pDataSet->GetWeights();
 
@@ -141,12 +145,15 @@ public:
       size_t iDimensionInit = 0;
       do {
          DimensionalData * const pDimensionalData = &aDimensionalData[iDimensionInit];
-         pDimensionalData->pData = pDataSet->GetInputDataPointer(aiFeatures[iDimensionInit]);
+
+         const StorageDataType * const pData = pDataSet->GetInputDataPointer(aiFeatures[iDimensionInit]);
+
+         pDimensionalData->pData = pData;
          pDimensionalData->cBins = acBins[iDimensionInit];
          ++iDimensionInit;
       } while(cRealDimensions != iDimensionInit);
 
-      for(size_t iSample = 0; pGradientsAndHessiansEnd != pGradientAndHessian; ++iSample) {
+      while(true) {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
          // in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
          // this loop gets about 3 times slower if you use a bad pseudo random number generator like rand(), although it might be better if you inlined rand().
@@ -172,7 +179,7 @@ public:
             pDimensionalData->pData = pInputData + 1;
             EBM_ASSERT(!IsConvertError<size_t>(iBinOriginal));
             const size_t iBin = static_cast<size_t>(iBinOriginal);
-            
+
             const size_t cBins = pDimensionalData->cBins;
             // interactions return interaction score of zero earlier on any useless dimensions
             // we strip dimensions from the tensors with 1 bin, so if 1 bin was accepted here, we'd need to strip
@@ -236,6 +243,10 @@ public:
             pGradientAndHessian += bClassification ? 2 : 1;
             ++iScore;
          } while(cScores != iScore);
+
+         if(pGradientsAndHessiansEnd == pGradientAndHessian) {
+            break;
+         }
       }
       EBM_ASSERT(0 < pDataSet->GetWeightTotal());
       EBM_ASSERT(nullptr == pWeight || static_cast<FloatBig>(weightTotalDebug * 0.999) <= pDataSet->GetWeightTotal() && 
