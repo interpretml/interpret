@@ -262,7 +262,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
 #ifndef NDEBUG
    const auto * const pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
-   pInteractionShell->SetDebugFastBinsEnd(reinterpret_cast<const unsigned char *>(pDebugFastBinsEnd));
+   pInteractionShell->SetDebugFastBinsEnd(pDebugFastBinsEnd);
 #endif // NDEBUG
 
    BinSumsInteraction(pInteractionShell, cDimensions, aiFeatures, acBins, acItemsPerBitPack);

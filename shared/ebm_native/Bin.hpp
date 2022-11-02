@@ -360,8 +360,8 @@ inline static size_t CountBins(
 
 // keep this as a MACRO so that we don't materialize any of the parameters on non-debug builds
 #define ASSERT_BIN_OK(MACRO_cBytesPerBin, MACRO_pBin, MACRO_pBinsEnd) \
-   (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_pBin) + static_cast<size_t>(MACRO_cBytesPerBin) <= \
-      reinterpret_cast<const char *>(MACRO_pBinsEnd)))
+   (EBM_ASSERT(reinterpret_cast<const BinBase *>(reinterpret_cast<const char *>(MACRO_pBin) + \
+      static_cast<size_t>(MACRO_cBytesPerBin)) <= (MACRO_pBinsEnd)))
 
 } // DEFINED_ZONE_NAME
 

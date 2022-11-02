@@ -36,8 +36,6 @@ public:
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
       static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
-      LOG_0(Trace_Verbose, "Entered BinSumsBoostingZeroDimensions");
-
       auto * const pBin = pBoosterShell->GetBoostingFastBinsTemp()->Specialize<FloatFast, bClassification, cCompilerScores>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -129,8 +127,6 @@ public:
       EBM_ASSERT(0 < weightTotalDebug);
       EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pInnerBag->GetWeightTotal() &&
          pInnerBag->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
-
-      LOG_0(Trace_Verbose, "Exited BinSumsBoostingZeroDimensions");
    }
 };
 
@@ -209,8 +205,6 @@ public:
 
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
       static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
-
-      LOG_0(Trace_Verbose, "Entered BinSumsBoostingInternal");
 
       auto * const aBins = pBoosterShell->GetBoostingFastBinsTemp()->Specialize<FloatFast, bClassification, cCompilerScores>();
 
@@ -335,8 +329,6 @@ public:
       EBM_ASSERT(0 < weightTotalDebug);
       EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pInnerBag->GetWeightTotal() &&
          pInnerBag->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
-
-      LOG_0(Trace_Verbose, "Exited BinSumsBoostingInternal");
    }
 };
 

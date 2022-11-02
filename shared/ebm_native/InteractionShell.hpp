@@ -37,7 +37,7 @@ class InteractionShell final {
    int m_cLogExitMessages;
 
 #ifndef NDEBUG
-   const unsigned char * m_pDebugFastBinsEnd;
+   const BinBase * m_pDebugFastBinsEnd;
 #endif // NDEBUG
 
 public:
@@ -114,11 +114,11 @@ public:
    }
 
 #ifndef NDEBUG
-   inline const unsigned char * GetDebugFastBinsEnd() const {
+   inline const BinBase * GetDebugFastBinsEnd() const {
       return m_pDebugFastBinsEnd;
    }
 
-   inline void SetDebugFastBinsEnd(const unsigned char * const pDebugFastBinsEnd) {
+   inline void SetDebugFastBinsEnd(const BinBase * const pDebugFastBinsEnd) {
       m_pDebugFastBinsEnd = pDebugFastBinsEnd;
    }
 #endif // NDEBUG
