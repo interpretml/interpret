@@ -284,11 +284,11 @@ ErrorEbm BoosterCore::Create(
    if(0 != cFeatures) {
       pBoosterCore->m_cFeatures = cFeatures;
 
-      if(IsMultiplyError(sizeof(Feature), cFeatures)) {
+      if(IsMultiplyError(sizeof(FeatureBoosting), cFeatures)) {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(sizeof(Feature), cFeatures)");
          return Error_OutOfMemory;
       }
-      Feature * const aFeatures = static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures));
+      FeatureBoosting * const aFeatures = static_cast<FeatureBoosting *>(malloc(sizeof(FeatureBoosting) * cFeatures));
       if(nullptr == aFeatures) {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == aFeatures");
          return Error_OutOfMemory;
@@ -393,8 +393,8 @@ ErrorEbm BoosterCore::Create(
                return Error_IllegalParamVal;
             }
             size_t cSingleDimensionBins = 0;
-            const Feature ** ppFeature = pTerm->GetFeatures();
-            const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
+            const FeatureBoosting ** ppFeature = pTerm->GetFeatures();
+            const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature[cDimensions];
             do {
                const IntEbm indexFeature = *piTermFeature;
                if(indexFeature < 0) {
@@ -415,7 +415,7 @@ ErrorEbm BoosterCore::Create(
                EBM_ASSERT(1 <= cFeatures); // since our iFeature is valid and index 0 would mean cFeatures == 1
                EBM_ASSERT(nullptr != pBoosterCore->m_aFeatures);
 
-               const Feature * const pInputFeature = &pBoosterCore->m_aFeatures[iFeature];
+               const FeatureBoosting * const pInputFeature = &pBoosterCore->m_aFeatures[iFeature];
                *ppFeature = pInputFeature;
 
                const size_t cBins = pInputFeature->GetCountBins();

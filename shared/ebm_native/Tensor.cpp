@@ -259,8 +259,8 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
    EBM_ASSERT(nullptr != pTerm);
    const size_t cDimensions = pTerm->GetCountDimensions();
    if(size_t { 0 } != cDimensions) {
-      const Feature * const * ppFeature1 = pTerm->GetFeatures();
-      const Feature * const * const ppFeaturesEnd = &ppFeature1[cDimensions];
+      const FeatureBoosting * const * ppFeature1 = pTerm->GetFeatures();
+      const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature1[cDimensions];
       DimensionInfoStackExpand aDimensionInfoStackExpand[k_cDimensionsMax];
       DimensionInfoStackExpand * pDimensionInfoStackFirst = aDimensionInfoStackExpand;
       const DimensionInfo * pDimensionFirst1 = GetDimensions();
@@ -270,7 +270,7 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
 #endif // NDEBUG
       // first, get basic counts of how many splits and scores we'll have in our final result
       do {
-         const Feature * const pFeature = *ppFeature1;
+         const FeatureBoosting * const pFeature = *ppFeature1;
          const size_t cBins = pFeature->GetCountBins();
 
 #ifndef NDEBUG
@@ -393,10 +393,10 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
       EBM_ASSERT(pTensorScoreTop == m_aTensorScores);
       EBM_ASSERT(pTensorScore1 == m_aTensorScores + m_cScores);
 
-      const Feature * const * ppFeature2 = pTerm->GetFeatures();
+      const FeatureBoosting * const * ppFeature2 = pTerm->GetFeatures();
       size_t iDimension = 0;
       do {
-         const Feature * const pFeature = *ppFeature2;
+         const FeatureBoosting * const pFeature = *ppFeature2;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we exited above on tensors with zero bins in any dimension
          const size_t cSplits = cBins - size_t { 1 };

@@ -279,10 +279,10 @@ static ErrorEbm BoostMultiDimensional(
    size_t acBins[k_cDimensionsMax];
    size_t * pcBins = acBins;
 
-   const Feature * const * ppFeature = pTerm->GetFeatures();
-   const Feature * const * const ppFeaturesEnd = &ppFeature[pTerm->GetCountDimensions()];
+   const FeatureBoosting * const * ppFeature = pTerm->GetFeatures();
+   const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature[pTerm->GetCountDimensions()];
    do {
-      const Feature * pFeature = *ppFeature;
+      const FeatureBoosting * pFeature = *ppFeature;
       const size_t cBins = pFeature->GetCountBins();
       EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
       if(size_t { 1 } < cBins) {
@@ -756,11 +756,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       if(0 != cRealDimensions) {
          size_t iDimensionInit = 0;
          const IntEbm * pLeavesMax = leavesMax;
-         const Feature * const * ppFeature = pTerm->GetFeatures();
+         const FeatureBoosting * const * ppFeature = pTerm->GetFeatures();
          EBM_ASSERT(1 <= cDimensions);
-         const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
+         const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature[cDimensions];
          do {
-            const Feature * const pFeature = *ppFeature;
+            const FeatureBoosting * const pFeature = *ppFeature;
             const size_t cBins = pFeature->GetCountBins();
             if(size_t { 1 } < cBins) {
                // if there is only 1 dimension then this is our first time here and lastDimensionLeavesMax must be zero

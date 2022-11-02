@@ -71,8 +71,8 @@ public:
       Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
       const IntEbm * pLeavesMax1 = aLeavesMax;
-      const Feature * const * ppFeature1 = pTerm->GetFeatures();
-      const Feature * const * const ppFeaturesEnd = &ppFeature1[pTerm->GetCountDimensions()];
+      const FeatureBoosting * const * ppFeature1 = pTerm->GetFeatures();
+      const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature1[pTerm->GetCountDimensions()];
       size_t cSlicesTotal = 0;
       size_t cSlicesPlusRandomMax = 0;
       size_t cCollapsedTensorCells = 1;
@@ -95,7 +95,7 @@ public:
             }
          }
 
-         const Feature * const pFeature = *ppFeature1;
+         const FeatureBoosting * const pFeature = *ppFeature1;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          const size_t cSlices = EbmMin(cLeavesMax, cBins);
@@ -172,7 +172,7 @@ public:
 
       const IntEbm * pLeavesMax2 = aLeavesMax;
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
-      const Feature * const * ppFeature2 = pTerm->GetFeatures();
+      const FeatureBoosting * const * ppFeature2 = pTerm->GetFeatures();
       do {
          size_t cTreeSplitsMax;
          if(nullptr == pLeavesMax2) {
@@ -192,7 +192,7 @@ public:
             }
          }
 
-         const Feature * const pFeature = *ppFeature2;
+         const FeatureBoosting * const pFeature = *ppFeature2;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          size_t cPossibleSplitLocations = cBins - size_t { 1 };
@@ -233,7 +233,7 @@ public:
 
       const IntEbm * pLeavesMax3 = aLeavesMax;
       const size_t * pcBytesInSliceEnd;
-      const Feature * const * ppFeature3 = pTerm->GetFeatures();
+      const FeatureBoosting * const * ppFeature3 = pTerm->GetFeatures();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice3 = acItemsInNextSliceOrBytesInCurrentSlice;
       size_t cBytesCollapsedTensor3;
       while(true) {
@@ -258,7 +258,7 @@ public:
          }
 
          // the first dimension is special.  we put byte until next item into it instead of counts remaining
-         const Feature * const pFeature = *ppFeature3;
+         const FeatureBoosting * const pFeature = *ppFeature3;
          ++ppFeature3;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
@@ -323,7 +323,7 @@ public:
             }
          }
 
-         const Feature * const pFeature = *ppFeature3;
+         const FeatureBoosting * const pFeature = *ppFeature3;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          if(size_t { 1 } < cBins) {
@@ -441,11 +441,11 @@ public:
       FloatBig gain = 0;
 
 
-      const Feature * const * ppFeature4 = pTerm->GetFeatures();
+      const FeatureBoosting * const * ppFeature4 = pTerm->GetFeatures();
       size_t iDimensionWrite = ~size_t { 0 }; // this is -1, but without the compiler warning
       size_t cBinsWrite;
       do {
-         const Feature * const pFeature = *ppFeature4;
+         const FeatureBoosting * const pFeature = *ppFeature4;
          cBinsWrite = pFeature->GetCountBins();
          ++iDimensionWrite;
          ++ppFeature4;
@@ -483,7 +483,7 @@ public:
       if(PREDICTABLE(pStateInit != pState)) {
          do {
             do {
-               const Feature * const pFeature = *ppFeature4;
+               const FeatureBoosting * const pFeature = *ppFeature4;
                cBinsWrite = pFeature->GetCountBins();
                ++iDimensionWrite;
                ++ppFeature4;

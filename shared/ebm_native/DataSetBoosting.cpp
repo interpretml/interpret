@@ -252,13 +252,13 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          *paInputDataTo = nullptr; // free will skip over these later
          ++paInputDataTo;
       } else {
-         EBM_ASSERT(1 <= pTerm->GetBitPack());
-         const size_t cItemsPerBitPack = static_cast<size_t>(pTerm->GetBitPack());
+         EBM_ASSERT(1 <= pTerm->GetTermBitPack());
+         const size_t cItemsPerBitPack = static_cast<size_t>(pTerm->GetTermBitPack());
          // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
-         EBM_ASSERT(cItemsPerBitPack <= CountBitsRequiredPositiveMax<StorageDataType>());
+         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
          const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
          // if we have 1 item, it can't be larger than the number of bits of storage
-         EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<StorageDataType>());
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
 
          EBM_ASSERT(1 <= cSetSamples);
          const size_t cDataUnits = (cSetSamples - 1) / cItemsPerBitPack + 1; // this can't overflow or underflow
@@ -277,14 +277,14 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
          const StorageDataType * const pInputDataToEnd = pInputDataTo + cDataUnits;
 
-         const Feature * const * ppFeature = pTerm->GetFeatures();
+         const FeatureBoosting * const * ppFeature = pTerm->GetFeatures();
          EBM_ASSERT(1 <= pTerm->GetCountDimensions());
-         const Feature * const * const ppFeaturesEnd = &ppFeature[pTerm->GetCountDimensions()];
+         const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature[pTerm->GetCountDimensions()];
 
          InputDataPointerAndCountBins dimensionInfo[k_cDimensionsMax];
          InputDataPointerAndCountBins * pDimensionInfoInit = &dimensionInfo[0];
          do {
-            const Feature * const pFeature = *ppFeature;
+            const FeatureBoosting * const pFeature = *ppFeature;
             const size_t cBins = pFeature->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we don't construct datasets on empty training sets
             if(size_t { 1 } < cBins) {
@@ -329,7 +329,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          StorageDataType iTensor;
 
          ptrdiff_t cShift = static_cast<ptrdiff_t>((cSetSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
-         const ptrdiff_t cShiftReset = static_cast<ptrdiff_t>(cBitsPerItemMax * (cItemsPerBitPack - 1));
+         const ptrdiff_t cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
 
          do {
             StorageDataType bits = 0;
@@ -391,7 +391,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                replication -= direction;
 
                EBM_ASSERT(0 <= cShift);
-               EBM_ASSERT(static_cast<size_t>(cShift) < CountBitsRequiredPositiveMax<StorageDataType>());
+               EBM_ASSERT(static_cast<size_t>(cShift) < k_cBitsForStorageType);
                // the tensor index needs to fit in memory, but concivably StorageDataType does not
                bits |= iTensor << cShift;
                cShift -= cBitsPerItemMax;

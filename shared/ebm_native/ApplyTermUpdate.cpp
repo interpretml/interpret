@@ -165,7 +165,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       double unused;
       error = ApplyTermUpdateValidation(
          pBoosterCore->GetCountClasses(),
-         pTerm->GetBitPack(),
+         pTerm->GetTermBitPack(),
          false,
          pBoosterShell->GetMulticlassMidwayTemp(),
          pBoosterShell->GetTermUpdate()->GetTensorScoresPointer(),
@@ -197,7 +197,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
 
       error = ApplyTermUpdateValidation(
          pBoosterCore->GetCountClasses(),
-         pTerm->GetBitPack(),
+         pTerm->GetTermBitPack(),
          true,
          nullptr,
          pBoosterShell->GetTermUpdate()->GetTensorScoresPointer(),

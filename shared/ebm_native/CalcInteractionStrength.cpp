@@ -158,7 +158,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    size_t acBins[k_cDimensionsMax];
    size_t acItemsPerBitPack[k_cDimensionsMax];
 
-   const Feature * const aFeatures = pInteractionCore->GetFeatures();
+   const FeatureInteraction * const aFeatures = pInteractionCore->GetFeatures();
    const IntEbm countFeatures = static_cast<IntEbm>(pInteractionCore->GetCountFeatures());
 
    // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
@@ -178,7 +178,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          return Error_IllegalParamVal;
       }
       const size_t iFeature = static_cast<size_t>(indexFeature);
-      const Feature * const pFeature = &aFeatures[iFeature];
+      const FeatureInteraction * const pFeature = &aFeatures[iFeature];
       aiFeatures[iDimension] = iFeature;
 
       const size_t cBins = pFeature->GetCountBins();

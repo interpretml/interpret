@@ -234,10 +234,10 @@ public:
       size_t iDimension2 = 0;
       size_t cBinsDimension1 = 0;
       size_t cBinsDimension2 = 0;
-      const Feature * const * ppFeature = pTerm->GetFeatures();
-      const Feature * const * const ppFeaturesEnd = &ppFeature[pTerm->GetCountDimensions()];
+      const FeatureBoosting * const * ppFeature = pTerm->GetFeatures();
+      const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature[pTerm->GetCountDimensions()];
       do {
-         const Feature * const pFeature = *ppFeature;
+         const FeatureBoosting * const pFeature = *ppFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          if(size_t { 1 } < cBins) {

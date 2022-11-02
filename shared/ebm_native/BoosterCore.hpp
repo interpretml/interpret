@@ -22,7 +22,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class RandomDeterministic;
-class Feature;
+class FeatureBoosting;
 class Term;
 class InnerBag;
 class Tensor;
@@ -39,7 +39,7 @@ class BoosterCore final {
    ptrdiff_t m_cClasses;
 
    size_t m_cFeatures;
-   Feature * m_aFeatures;
+   FeatureBoosting * m_aFeatures;
 
    size_t m_cTerms;
    Term ** m_apTerms;

@@ -20,7 +20,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-class Feature;
+class FeatureInteraction;
 
 class InteractionCore final {
 
@@ -34,7 +34,7 @@ class InteractionCore final {
    ptrdiff_t m_cClasses;
 
    size_t m_cFeatures;
-   Feature * m_aFeatures;
+   FeatureInteraction * m_aFeatures;
 
    DataSetInteraction m_dataFrame;
 
@@ -74,7 +74,7 @@ public:
       return &m_dataFrame;
    }
 
-   inline const Feature * GetFeatures() const {
+   inline const FeatureInteraction * GetFeatures() const {
       return m_aFeatures;
    }
 

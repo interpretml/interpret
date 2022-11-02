@@ -17,7 +17,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-class Feature;
+class FeatureBoosting;
 
 class Term final {
    ptrdiff_t m_cItemsPerBitPack;
@@ -31,7 +31,7 @@ class Term final {
    int m_cLogExitApplyTermUpdateMessages;
 
    // IMPORTANT: m_apFeature must be in the last position for the struct hack and this must be standard layout
-   const Feature * m_apFeature[k_cDimensionsMax];
+   const FeatureBoosting * m_apFeature[k_cDimensionsMax];
 
 public:
 
@@ -65,7 +65,7 @@ public:
       m_cItemsPerBitPack = cItemsPerBitPack;
    }
 
-   inline ptrdiff_t GetBitPack() const noexcept {
+   inline ptrdiff_t GetTermBitPack() const noexcept {
       // don't check the legal value for m_cItemsPerBitPack here since we call this function from a huge
       // number of templates.  We check this value when SetBitPack is called
       return m_cItemsPerBitPack;
@@ -101,10 +101,10 @@ public:
       m_cAuxillaryBins = cAuxillaryBins;
    }
 
-   inline const Feature * const * GetFeatures() const noexcept {
+   inline const FeatureBoosting * const * GetFeatures() const noexcept {
       return ArrayToPointer(m_apFeature);
    }
-   inline const Feature ** GetFeatures() noexcept {
+   inline const FeatureBoosting ** GetFeatures() noexcept {
       return ArrayToPointer(m_apFeature);
    }
 

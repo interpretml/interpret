@@ -18,6 +18,8 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+class FeatureInteraction;
+
 class DataSetInteraction final {
    FloatFast * m_aGradientsAndHessians;
    StorageDataType * * m_aaInputData;
@@ -52,7 +54,8 @@ public:
       const BagEbm * const aBag,
       const size_t cSetSamples,
       const size_t cWeights,
-      const size_t cFeatures
+      const size_t cFeatures,
+      const FeatureInteraction * const aFeatures
    );
 
    INLINE_ALWAYS const FloatFast * GetWeights() const {

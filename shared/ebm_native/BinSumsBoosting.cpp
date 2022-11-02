@@ -223,7 +223,7 @@ public:
       EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
       const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
 
-      const size_t cItemsPerBitPack = static_cast<size_t>(GET_ITEMS_PER_BIT_PACK(compilerBitPack, pTerm->GetBitPack()));
+      const size_t cItemsPerBitPack = static_cast<size_t>(GET_ITEMS_PER_BIT_PACK(compilerBitPack, pTerm->GetTermBitPack()));
       EBM_ASSERT(size_t { 1 } <= cItemsPerBitPack);
       EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
       const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
@@ -250,7 +250,7 @@ public:
       const FloatFast * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
 
       ptrdiff_t cShift = (cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
-      const ptrdiff_t cShiftReset = cBitsPerItemMax * (cItemsPerBitPack - 1);
+      const ptrdiff_t cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
       do {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
@@ -414,7 +414,7 @@ public:
       EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
       const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
 
-      const ptrdiff_t runtimeBitPack = pTerm->GetBitPack();
+      const ptrdiff_t runtimeBitPack = pTerm->GetTermBitPack();
 
       EBM_ASSERT(ptrdiff_t { 1 } <= runtimeBitPack);
       EBM_ASSERT(runtimeBitPack <= ptrdiff_t { k_cBitsForStorageType });
@@ -450,8 +450,8 @@ public:
       const InnerBag * const pInnerBag
    ) {
       EBM_ASSERT(iTerm < pBoosterShell->GetBoosterCore()->GetCountTerms());
-      EBM_ASSERT(ptrdiff_t { 1 } <= pBoosterShell->GetBoosterCore()->GetTerms()[iTerm]->GetBitPack());
-      EBM_ASSERT(pBoosterShell->GetBoosterCore()->GetTerms()[iTerm]->GetBitPack() <= ptrdiff_t { k_cBitsForStorageType });
+      EBM_ASSERT(ptrdiff_t { 1 } <= pBoosterShell->GetBoosterCore()->GetTerms()[iTerm]->GetTermBitPack());
+      EBM_ASSERT(pBoosterShell->GetBoosterCore()->GetTerms()[iTerm]->GetTermBitPack() <= ptrdiff_t { k_cBitsForStorageType });
       BinSumsBoostingInternal<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
          iTerm,

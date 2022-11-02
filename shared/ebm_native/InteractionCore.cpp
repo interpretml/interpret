@@ -149,12 +149,13 @@ ErrorEbm InteractionCore::Create(
          return Error_OutOfMemory;
       }
 
-      if(IsMultiplyError(sizeof(Feature), cFeatures)) {
+      if(IsMultiplyError(sizeof(FeatureInteraction), cFeatures)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate IsMultiplyError(sizeof(Feature), cFeatures)");
          return Error_OutOfMemory;
       }
       pRet->m_cFeatures = cFeatures;
-      Feature * const aFeatures = static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures));
+      FeatureInteraction * const aFeatures = 
+         static_cast<FeatureInteraction *>(malloc(sizeof(FeatureInteraction) * cFeatures));
       if(nullptr == aFeatures) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate nullptr == aFeatures");
          return Error_OutOfMemory;
@@ -209,7 +210,8 @@ ErrorEbm InteractionCore::Create(
       aBag,
       cTrainingSamples,
       cWeights,
-      cFeatures
+      cFeatures,
+      pRet->m_aFeatures
    );
    if(Error_None != error) {
       LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate m_dataFrame.Initialize");

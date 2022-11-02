@@ -81,7 +81,7 @@ struct ApplyTermUpdateValidationInternal final {
          cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
-         cShiftReset = static_cast<ptrdiff_t>(cBitsPerItemMax * (cItemsPerBitPack - 1));
+         cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
 
          EBM_ASSERT(1 <= cBitsPerItemMax);
          EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSizeT);
@@ -249,7 +249,7 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
          cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
-         cShiftReset = static_cast<ptrdiff_t>(cBitsPerItemMax * (cItemsPerBitPack - 1));
+         cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
 
          EBM_ASSERT(1 <= cBitsPerItemMax);
          EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSizeT);
@@ -381,7 +381,7 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
          cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
-         cShiftReset = static_cast<ptrdiff_t>(cBitsPerItemMax * (cItemsPerBitPack - 1));
+         cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
 
          EBM_ASSERT(1 <= cBitsPerItemMax);
          EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSizeT);
