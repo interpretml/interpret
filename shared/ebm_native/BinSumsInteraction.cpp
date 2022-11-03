@@ -76,6 +76,8 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
    const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, pParams->m_cRuntimeRealDimensions);
    EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
 
+   EBM_ASSERT(1 == cCompilerDimensions || 1 != pParams->m_cRuntimeRealDimensions); // 1 dimension must be templated
+
 #ifndef NDEBUG
    FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
@@ -120,32 +122,41 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
       ++iDimensionInit;
    } while(cRealDimensions != iDimensionInit);
 
+   DimensionalData * const aDimensionalDataShifted = &aDimensionalData[1];
+   const size_t cRealDimensionsMinusOne = cRealDimensions - 1;
+
    while(true) {
       size_t cTensorBytes = cBytesPerBin;
-      unsigned char * pRawBin = reinterpret_cast<unsigned char *>(aBins);
-      size_t iDimension = 0;
-      do {
-         DimensionalData * const pDimensionalData = &aDimensionalData[iDimension];
+      // for SIMD we'll want scatter/gather semantics since each parallel unit must load from a different pointer: 
+      // otherwise we'll need to execute the scatter/gather as separate instructions in a templated loop
+      // I think we can 6 dimensional 32 bin dimensions with that, and if we need more then we can use the 64
+      // bit version that will fetch half of our values and do it twice
+      // https://www.intel.com/content/www/us/en/develop/documentation/cpp-compiler-developer-guide-and-reference/top/compiler-reference/intrinsics/intrinsics-for-avx-512-instructions/intrinsics-for-gather-and-scatter-operations/intrinsics-for-int-gather-and-scatter-ops.html
+      // https://stackoverflow.com/questions/36971722/how-to-do-an-indirect-load-gather-scatter-in-avx-or-sse-instructions
+      //
+      // I think I want _mm512_i32gather_epi32.  I think I can use any 64 or 32 bit pointer as long as the index offsets
+      // are 32-bit.  I cannot use the scale parameter since it is compile time and limited in values, so I would
+      // want my tensors to be co-located into one big chunck of memory and the indexes will all index from the
+      // base pointer!  I should be able to handle even very big tensors.  
 
-         ptrdiff_t cShift = pDimensionalData->m_cShift;
-         cShift -= pDimensionalData->m_cBitsPerItemMax;
-         StorageDataType iTensorBinCombined = pDimensionalData->m_iTensorBinCombined;
-         if(cShift < ptrdiff_t { 0 }) {
-            const StorageDataType * const pInputData = pDimensionalData->m_pData;
+      unsigned char * pRawBin = reinterpret_cast<unsigned char *>(aBins);
+      {
+         DimensionalData * const pDimensionalData = &aDimensionalDataShifted[-1];
+
+         pDimensionalData->m_cShift -= pDimensionalData->m_cBitsPerItemMax;
+         if(pDimensionalData->m_cShift < ptrdiff_t { 0 }) {
             if(pGradientsAndHessiansEnd == pGradientAndHessian) {
-               // TODO: we only need to do this for the first dimension since all dimensions will reach
-               // this point simultaneously.  But to do this I would need to separate out the first dimension
-               // so do it after we've locked down everything else about this loop
+               // we only need to check this for the first dimension since all dimensions will reach
+               // this point simultaneously
                goto done;
             }
-            iTensorBinCombined = *pInputData;
-            pDimensionalData->m_pData = pInputData + 1;
-            cShift = pDimensionalData->m_cShiftReset;
-            pDimensionalData->m_iTensorBinCombined = iTensorBinCombined;
+            pDimensionalData->m_iTensorBinCombined = *pDimensionalData->m_pData;
+            pDimensionalData->m_pData = pDimensionalData->m_pData + 1;
+            pDimensionalData->m_cShift = pDimensionalData->m_cShiftReset;
          }
-         pDimensionalData->m_cShift = cShift;
 
-         const size_t iBin = static_cast<size_t>(iTensorBinCombined >> cShift) & pDimensionalData->m_maskBits;
+         const size_t iBin = static_cast<size_t>(
+            pDimensionalData->m_iTensorBinCombined >> pDimensionalData->m_cShift) & pDimensionalData->m_maskBits;
 
          const size_t cBins = pDimensionalData->m_cBins;
          // earlier we return an interaction strength of 0.0 on any useless dimensions having 1 bin
@@ -154,9 +165,34 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
 
          pRawBin += iBin * cTensorBytes;
          cTensorBytes *= cBins;
-          
-         ++iDimension;
-      } while(cRealDimensions != iDimension);
+      }
+      constexpr bool isNotOneDimensional = 1 != cCompilerDimensions;
+      if(isNotOneDimensional) {
+         size_t iDimension = 0;
+         do {
+            DimensionalData * const pDimensionalData = &aDimensionalDataShifted[iDimension];
+
+            pDimensionalData->m_cShift -= pDimensionalData->m_cBitsPerItemMax;
+            if(pDimensionalData->m_cShift < ptrdiff_t { 0 }) {
+               pDimensionalData->m_iTensorBinCombined = *pDimensionalData->m_pData;
+               pDimensionalData->m_pData = pDimensionalData->m_pData + 1;
+               pDimensionalData->m_cShift = pDimensionalData->m_cShiftReset;
+            }
+
+            const size_t iBin = static_cast<size_t>(
+               pDimensionalData->m_iTensorBinCombined >> pDimensionalData->m_cShift) & pDimensionalData->m_maskBits;
+
+            const size_t cBins = pDimensionalData->m_cBins;
+            // earlier we return an interaction strength of 0.0 on any useless dimensions having 1 bin
+            EBM_ASSERT(size_t { 2 } <= cBins);
+            EBM_ASSERT(iBin < cBins);
+
+            pRawBin += iBin * cTensorBytes;
+            cTensorBytes *= cBins;
+
+            ++iDimension;
+         } while(cRealDimensionsMinusOne != iDimension);
+      }
 
       auto * const pBin = reinterpret_cast<Bin<FloatFast, bClassification, cCompilerScores> *>(pRawBin);
       ASSERT_BIN_OK(cBytesPerBin, pBin, pParams->m_pDebugFastBinsEnd);
@@ -259,7 +295,7 @@ public:
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
       if(cPossibleClasses == cRuntimeClasses) {
-         return BinSumsInteractionDimensions<cPossibleClasses, 2>::Func(pParams);
+         return BinSumsInteractionDimensions<cPossibleClasses, 1>::Func(pParams);
       } else {
          return BinSumsInteractionTarget<cPossibleClasses + 1>::Func(pParams);
       }
@@ -278,7 +314,7 @@ public:
       EBM_ASSERT(IsClassification(pParams->m_cClasses));
       EBM_ASSERT(k_cCompilerClassesMax < pParams->m_cClasses);
 
-      return BinSumsInteractionDimensions<k_dynamicClassification, 2>::Func(pParams);
+      return BinSumsInteractionDimensions<k_dynamicClassification, 1>::Func(pParams);
    }
 };
 
@@ -292,7 +328,7 @@ extern ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pParams) {
       error = BinSumsInteractionTarget<2>::Func(pParams);
    } else {
       EBM_ASSERT(IsRegression(cRuntimeClasses));
-      error = BinSumsInteractionDimensions<k_regression, 2>::Func(pParams);
+      error = BinSumsInteractionDimensions<k_regression, 1>::Func(pParams);
    }
 
    LOG_0(Trace_Verbose, "Exited BinSumsInteraction");
