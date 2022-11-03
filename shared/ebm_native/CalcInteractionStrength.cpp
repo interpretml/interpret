@@ -26,7 +26,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void BinSumsInteraction(BinSumsInteractionBridge * const pBinSumsInteraction);
+extern ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pBinSumsInteraction);
 
 extern void TensorTotalsBuild(
    const ptrdiff_t cClasses,
@@ -85,6 +85,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       minSamplesLeaf,
       static_cast<void *>(avgInteractionStrengthOut)
    );
+
+   ErrorEbm error;
 
    if(LIKELY(nullptr != avgInteractionStrengthOut)) {
       *avgInteractionStrengthOut = k_illegalGainDouble;
@@ -266,7 +268,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
    binSums.m_aFastBins = pInteractionShell->GetInteractionFastBinsTemp();
 
-   BinSumsInteraction(&binSums);
+   error = BinSumsInteraction(&binSums);
+   if(Error_None != error) {
+      return error;
+   }
 
    static constexpr size_t cAuxillaryBinsForSplitting = 4;
    const size_t cAuxillaryBins = EbmMax(cAuxillaryBinsForBuildFastTotals, cAuxillaryBinsForSplitting);
