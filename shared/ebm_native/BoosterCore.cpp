@@ -35,20 +35,7 @@ namespace DEFINED_ZONE_NAME {
 
 class RandomDeterministic;
 
-extern ErrorEbm ApplyTermUpdateValidation(
-   const ptrdiff_t cRuntimeClasses,
-   const ptrdiff_t runtimeBitPack,
-   const bool bCalcMetric,
-   FloatFast * const aMulticlassMidwayTemp,
-   const FloatFast * const aUpdateScores,
-   const size_t cSamples,
-   const StorageDataType * const aInputData,
-   const void * const aTargetData,
-   const FloatFast * const aWeight,
-   FloatFast * const aSampleScore,
-   FloatFast * const aGradientAndHessian,
-   double * const pMetricOut
-);
+extern ErrorEbm ApplyUpdate(ApplyUpdateBridge * const pData);
 
 extern ErrorEbm Unbag(
    const size_t cSamples,
@@ -691,21 +678,20 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
       EBM_ASSERT(0 == aUpdateScores[iScore]);
    }
 #endif // NDEBUG
-   double unused;
-   return ApplyTermUpdateValidation(
-      GetCountClasses(),
-      k_cItemsPerBitPackNone,
-      false,
-      aMulticlassMidwayTemp,
-      aUpdateScores,
-      GetTrainingSet()->GetCountSamples(),
-      nullptr,
-      GetTrainingSet()->GetTargetDataPointer(),
-      nullptr,
-      GetTrainingSet()->GetSampleScores(),
-      GetTrainingSet()->GetGradientsAndHessiansPointer(),
-      &unused
-   );
+
+   ApplyUpdateBridge data;
+   data.m_cClasses = GetCountClasses();
+   data.m_cPack = k_cItemsPerBitPackNone;
+   data.m_bCalcMetric = false;
+   data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
+   data.m_aUpdateTensorScores = aUpdateScores;
+   data.m_cSamples = GetTrainingSet()->GetCountSamples();
+   data.m_aPacked = nullptr;
+   data.m_aTargets = GetTrainingSet()->GetTargetDataPointer();
+   data.m_aWeights = nullptr;
+   data.m_aSampleScores = GetTrainingSet()->GetSampleScores();
+   data.m_aGradientsAndHessians = GetTrainingSet()->GetGradientsAndHessiansPointer();
+   return ApplyUpdate(&data);
 }
 
 } // DEFINED_ZONE_NAME

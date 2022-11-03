@@ -31,20 +31,7 @@ extern ErrorEbm Unbag(
    size_t * const pcValidationSamplesOut
 );
 
-extern ErrorEbm ApplyTermUpdateValidation(
-   const ptrdiff_t cRuntimeClasses,
-   const ptrdiff_t runtimeBitPack,
-   const bool bCalcMetric,
-   FloatFast * const aMulticlassMidwayTemp,
-   const FloatFast * const aUpdateScores,
-   const size_t cSamples,
-   const StorageDataType * const aInputData,
-   const void * const aTargetData,
-   const FloatFast * const aWeight,
-   FloatFast * const aSampleScore,
-   FloatFast * const aGradientAndHessian,
-   double * const pMetricOut
-);
+extern ErrorEbm ApplyUpdate(ApplyUpdateBridge * const pData);
 
 void InteractionCore::Free(InteractionCore * const pInteractionCore) {
    LOG_0(Trace_Info, "Entered InteractionCore::Free");
@@ -368,21 +355,21 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          } while(pTargetToEnd != pTargetTo);
       }
 
-      double unused;
-      const ErrorEbm error = ApplyTermUpdateValidation(
-         cClasses,
-         k_cItemsPerBitPackNone,
-         false,
-         aMulticlassMidwayTemp,
-         aUpdateScores,
-         cSetSamples,
-         nullptr,
-         aTargetsTo,
-         m_dataFrame.GetWeights(),
-         aSampleScoreTo,
-         m_dataFrame.GetGradientsAndHessiansPointer(),
-         &unused
-      );
+      ApplyUpdateBridge data;
+      data.m_cClasses = cClasses;
+      data.m_cPack = k_cItemsPerBitPackNone;
+      data.m_bCalcMetric = false;
+      data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
+      data.m_aUpdateTensorScores = aUpdateScores;
+      data.m_cSamples = cSetSamples;
+      data.m_aPacked = nullptr;
+      data.m_aTargets = aTargetsTo;
+      data.m_aWeights = m_dataFrame.GetWeights();
+      data.m_aSampleScores = aSampleScoreTo;
+      data.m_aGradientsAndHessians = m_dataFrame.GetGradientsAndHessiansPointer();
+      // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
+      // reuse the same code that we use for boosting in order to generate our gradients and hessians
+      const ErrorEbm error = ApplyUpdate(&data);
 
       free(aMulticlassMidwayTemp); // nullptr ok
       free(aUpdateScores);

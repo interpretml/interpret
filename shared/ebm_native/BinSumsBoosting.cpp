@@ -125,8 +125,8 @@ public:
       } while(pGradientAndHessiansEnd != pGradientAndHessian);
       
       EBM_ASSERT(0 < weightTotalDebug);
-      EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pInnerBag->GetWeightTotal() &&
-         pInnerBag->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
+      EBM_ASSERT(weightTotalDebug * FloatFast { 0.999 } <= pInnerBag->GetWeightTotal() &&
+         pInnerBag->GetWeightTotal() <= FloatFast { 1.001 } * weightTotalDebug);
    }
 };
 
@@ -196,9 +196,9 @@ public:
       const InnerBag * const pInnerBag
    ) {
       // TODO: work to do here:
-      //        1) merge this function with BinSumsBoostingZeroDimensions above following the style in ApplyTermUpdateValidation
+      //        1) merge this function with BinSumsBoostingZeroDimensions above following the style in ApplyUpdate
       //        2) finish writing BinSumsInteractionsInternal to handle bit compressed data which should look similar to this function
-      //        3) merge this function into ApplyTermUpdateValidation so that you can optionally avoid creating the per sample gradients and hessians and 
+      //        3) merge this function into ApplyUpdate so that you can optionally avoid creating the per sample gradients and hessians and 
       //           boost on the next feature while simultaneously applying the previous one.  This could allow us to
       //           avoid extra memory accesses and also bury long running computations like random access fetches
       //           and divisions into the CPU pipeline
@@ -327,8 +327,8 @@ public:
       } while(pGradientAndHessiansEnd != pGradientAndHessian);
 
       EBM_ASSERT(0 < weightTotalDebug);
-      EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pInnerBag->GetWeightTotal() &&
-         pInnerBag->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
+      EBM_ASSERT(weightTotalDebug * FloatFast { 0.999 } <= pInnerBag->GetWeightTotal() &&
+         pInnerBag->GetWeightTotal() <= FloatFast { 1.001 } * weightTotalDebug);
    }
 };
 

@@ -25,15 +25,32 @@ typedef size_t StorageDataType;
 typedef UIntEbm ActiveDataType; // TODO: in most places we could use size_t for this and only use the uint64 version where we have cross-platform considerations.
 
 struct ApplyTrainingData {
+   // TODO: remove this and switch to ApplyUpdateBridge
    ptrdiff_t m_cRuntimeScores;
    ptrdiff_t m_cRuntimePack;
    BoolEbm m_bHessianNeeded;
 };
 
 struct ApplyValidationData {
+   // TODO: remove this and switch to ApplyUpdateBridge
    ptrdiff_t m_cRuntimeScores;
    ptrdiff_t m_cRuntimePack;
    BoolEbm m_bHessianNeeded;
+   double m_metricOut;
+};
+
+struct ApplyUpdateBridge {
+   ptrdiff_t m_cClasses;
+   ptrdiff_t m_cPack;
+   bool m_bCalcMetric;
+   FloatFast * m_aMulticlassMidwayTemp;
+   const FloatFast * m_aUpdateTensorScores;
+   size_t m_cSamples;
+   const StorageDataType * m_aPacked;
+   const void * m_aTargets;
+   const FloatFast * m_aWeights;
+   FloatFast * m_aSampleScores;
+   FloatFast * m_aGradientsAndHessians;
    double m_metricOut;
 };
 

@@ -17,28 +17,11 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-struct ApplyValidation {
-   // For now this is localized to this module, but in the future we will switch to the same named class in bridge_c.h
-
-   ptrdiff_t m_cClasses;
-   ptrdiff_t m_cPack;
-   bool m_bCalcMetric;
-   FloatFast * m_aMulticlassMidwayTemp;
-   const FloatFast * m_aUpdateTensorScores;
-   size_t m_cSamples;
-   const StorageDataType * m_aPacked;
-   const void * m_aTargets;
-   const FloatFast * m_aWeights;
-   FloatFast * m_aSampleScores;
-   FloatFast * m_aGradientsAndHessians;
-   double m_metricOut;
-};
-
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
 template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
-struct ApplyTermUpdateValidationInternal final {
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
+struct ApplyUpdateInternal final {
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyUpdateBridge * const pData) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
       constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
@@ -228,8 +211,8 @@ struct ApplyTermUpdateValidationInternal final {
 
 #ifndef EXPAND_BINARY_LOGITS
 template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
-struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess> final {
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
+struct ApplyUpdateInternal<2, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess> final {
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyUpdateBridge * const pData) {
       constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
       constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
@@ -373,8 +356,8 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
 #endif // EXPAND_BINARY_LOGITS
 
 template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
-struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess> final {
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
+struct ApplyUpdateInternal<k_regression, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess> final {
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyUpdateBridge * const pData) {
       static_assert(bKeepGradHess, "for MSE regression we should always keep the gradients");
 
       constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
@@ -488,7 +471,7 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
 
 template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
 struct FinalOptions final {
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyUpdateBridge * const pData) {
       if(pData->m_bCalcMetric) {
          constexpr bool bCalcMetric = true;
          if(nullptr != pData->m_aWeights) {
@@ -496,13 +479,13 @@ struct FinalOptions final {
             // if we are calculating the metric then we are doing validation and we do not need the gradients
             EBM_ASSERT(nullptr == pData->m_aGradientsAndHessians);
             constexpr bool bKeepGradHess = false;
-            return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
          } else {
             constexpr bool bWeight = false;
             // if we are calculating the metric then we are doing validation and we do not need the gradients
             EBM_ASSERT(nullptr == pData->m_aGradientsAndHessians);
             constexpr bool bKeepGradHess = false;
-            return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
          }
       } else {
          constexpr bool bCalcMetric = false;
@@ -510,10 +493,10 @@ struct FinalOptions final {
             constexpr bool bKeepGradHess = true;
             if(nullptr != pData->m_aWeights) {
                constexpr bool bWeight = true;
-               return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+               return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
             } else {
                constexpr bool bWeight = false;
-               return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+               return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
             }
          } else {
             // currently this branch is not taken, but if would be if we wanted to allow in the future
@@ -524,7 +507,7 @@ struct FinalOptions final {
             EBM_ASSERT(nullptr == pData->m_aWeights);
             constexpr bool bWeight = false; // if we are not calculating the metric or updating gradients then we never need the weights
 
-            return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
          }
       }
    }
@@ -532,7 +515,7 @@ struct FinalOptions final {
 
 template<ptrdiff_t compilerBitPack>
 struct FinalOptions<k_regression, compilerBitPack> final {
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyUpdateBridge * const pData) {
       constexpr ptrdiff_t cCompilerClasses = k_regression;
       if(pData->m_bCalcMetric) {
          constexpr bool bCalcMetric = true;
@@ -540,12 +523,12 @@ struct FinalOptions<k_regression, compilerBitPack> final {
             constexpr bool bWeight = true;
             EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
             constexpr bool bKeepGradHess = true;
-            return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
          } else {
             constexpr bool bWeight = false;
             EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
             constexpr bool bKeepGradHess = true;
-            return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
          }
       } else {
          constexpr bool bCalcMetric = false;
@@ -553,13 +536,13 @@ struct FinalOptions<k_regression, compilerBitPack> final {
          constexpr bool bWeight = false; // if we are not calculating the metric then we never need the weights
          EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
          constexpr bool bKeepGradHess = true;
-         return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+         return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
       }
    }
 };
 
 template<ptrdiff_t cCompilerClasses>
-INLINE_RELEASE_TEMPLATED static ErrorEbm BitPack(ApplyValidation * const pData) {
+INLINE_RELEASE_TEMPLATED static ErrorEbm BitPack(ApplyUpdateBridge * const pData) {
    if(k_cItemsPerBitPackNone != pData->m_cPack) {
       return FinalOptions<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(pData);
    } else {
@@ -570,7 +553,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BitPack(ApplyValidation * const pData) 
 
 template<ptrdiff_t cPossibleClasses>
 struct CountClasses final {
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyUpdateBridge * const pData) {
       if(cPossibleClasses == pData->m_cClasses) {
          return BitPack<cPossibleClasses>(pData);
       } else {
@@ -581,67 +564,41 @@ struct CountClasses final {
 
 template<>
 struct CountClasses<k_cCompilerClassesMax + 1> final {
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyValidation * const pData) {
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyUpdateBridge * const pData) {
       return BitPack<k_dynamicClassification>(pData);
    }
 };
 
-extern ErrorEbm ApplyTermUpdateValidation(
-   const ptrdiff_t cRuntimeClasses,
-   const ptrdiff_t runtimeBitPack,
-   const bool bCalcMetric,
-   FloatFast * const aMulticlassMidwayTemp,
-   const FloatFast * const aUpdateScores,
-   const size_t cSamples,
-   const StorageDataType * const aInputData,
-   const void * const aTargetData,
-   const FloatFast * const aWeight,
-   FloatFast * const aSampleScore,
-   FloatFast * const aGradientAndHessian,
-   double * const pMetricOut
-) {
-   LOG_0(Trace_Verbose, "Entered ApplyTermUpdateValidation");
-
-   ApplyValidation data;
-   data.m_cClasses = cRuntimeClasses;
-   data.m_cPack = runtimeBitPack;
-   data.m_bCalcMetric = bCalcMetric;
-   data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
-   data.m_aUpdateTensorScores = aUpdateScores;
-   data.m_cSamples = cSamples;
-   data.m_aPacked = aInputData;
-   data.m_aTargets = aTargetData;
-   data.m_aWeights = aWeight;
-   data.m_aSampleScores = aSampleScore;
-   data.m_aGradientsAndHessians = aGradientAndHessian;
+extern ErrorEbm ApplyUpdate(ApplyUpdateBridge * const pData) {
+   LOG_0(Trace_Verbose, "Entered ApplyUpdate");
 
    ErrorEbm error;
-   if(IsClassification(cRuntimeClasses)) {
-      error = CountClasses<2>::Func(&data);
+   if(IsClassification(pData->m_cClasses)) {
+      error = CountClasses<2>::Func(pData);
    } else {
-      EBM_ASSERT(IsRegression(cRuntimeClasses));
-      error = BitPack<k_regression>(&data);
+      EBM_ASSERT(IsRegression(pData->m_cClasses));
+      error = BitPack<k_regression>(pData);
    }
    if(Error_None != error) {
       return error;
    }
 
-   if(bCalcMetric) {
-      EBM_ASSERT(std::isnan(data.m_metricOut) || -k_epsilonLogLoss <= data.m_metricOut);
-      if(UNLIKELY(/* NaN */ !LIKELY(0.0 <= data.m_metricOut))) {
+   if(pData->m_bCalcMetric) {
+      double metricOut = pData->m_metricOut;
+      EBM_ASSERT(std::isnan(metricOut) || -k_epsilonLogLoss <= metricOut);
+      if(UNLIKELY(/* NaN */ !LIKELY(0.0 <= metricOut))) {
          // this also checks for NaN since NaN < anything is FALSE
 
          // if we've overflowed to a NaN, then conver it to +inf since +inf is our general overflow marker
          // if we've gotten a value that's slightly negative, which can happen for numeracy reasons, clip to zero
 
-         data.m_metricOut = std::isnan(data.m_metricOut) ? std::numeric_limits<double>::infinity() : double { 0 };
+         pData->m_metricOut = std::isnan(metricOut) ? std::numeric_limits<double>::infinity() : double { 0 };
       }
-      EBM_ASSERT(!std::isnan(data.m_metricOut));
-      EBM_ASSERT(0.0 <= data.m_metricOut);
-
-      *pMetricOut = data.m_metricOut;
+      EBM_ASSERT(!std::isnan(pData->m_metricOut));
+      EBM_ASSERT(0.0 <= pData->m_metricOut);
    }
-   LOG_0(Trace_Verbose, "Exited ApplyTermUpdateValidation");
+
+   LOG_0(Trace_Verbose, "Exited ApplyUpdate");
 
    return Error_None;
 }
