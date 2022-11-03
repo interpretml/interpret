@@ -148,6 +148,12 @@ struct ApplyTermUpdateValidationInternal final {
                ++pTargetData;
             }
 
+            FloatFast weight;
+            if(bWeight) {
+               weight = *pWeight;
+               ++pWeight;
+            }
+
             pSampleScore += cScores;
 
             if(bKeepGradHess) {
@@ -163,13 +169,22 @@ struct ApplyTermUpdateValidationInternal final {
                      gradient,
                      hessian
                   );
+                  if(bWeight) {
+                     // This is only used during the initialization of interaction detection. For boosting
+                     // we currently multiply by the weight during bin summation instead since we use the weight
+                     // there to include the inner bagging counts of occurences.
+                     // Whether this multiplication happens or not is controlled by the caller by passing in the
+                     // weight array or not.
+                     gradient *= weight;
+                     hessian *= weight;
+                  }
                   pGradientAndHessian[iScore2 << 1] = gradient;
                   pGradientAndHessian[(iScore2 << 1) + 1] = hessian;
                   ++iScore2;
                } while(cScores != iScore2);
 
-               pGradientAndHessian[targetData << 1] =
-                  EbmStats::MulticlassFixTargetGradient(pGradientAndHessian[targetData << 1]);
+               pGradientAndHessian[targetData << 1] = EbmStats::MulticlassFixTargetGradient(
+                  pGradientAndHessian[targetData << 1], bWeight ? weight : FloatFast { 1 });
 
                pGradientAndHessian += cScores << 1;
             }
@@ -181,9 +196,7 @@ struct ApplyTermUpdateValidationInternal final {
                EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
 
                if(bWeight) {
-                  const FloatFast weight = *pWeight;
                   sampleLogLoss *= weight;
-                  ++pWeight;
                }
                sumLogLoss += sampleLogLoss;
             }
@@ -300,10 +313,26 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
             *pSampleScore = sampleScore;
             ++pSampleScore;
 
+            FloatFast weight;
+            if(bWeight) {
+               weight = *pWeight;
+               ++pWeight;
+            }
+
             if(bKeepGradHess) {
-               const FloatFast gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(sampleScore, targetData);
+               FloatFast gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(sampleScore, targetData);
+               FloatFast hessian = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
+               if(bWeight) {
+                  // This is only used during the initialization of interaction detection. For boosting
+                  // we currently multiply by the weight during bin summation instead since we use the weight
+                  // there to include the inner bagging counts of occurences.
+                  // Whether this multiplication happens or not is controlled by the caller by passing in the
+                  // weight array or not.
+                  gradient *= weight;
+                  hessian *= weight;
+               }
                *pGradientAndHessian = gradient;
-               *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
+               *(pGradientAndHessian + 1) = hessian;
                pGradientAndHessian += 2;
             }
 
@@ -312,9 +341,7 @@ struct ApplyTermUpdateValidationInternal<2, compilerBitPack, bCalcMetric, bWeigh
                EBM_ASSERT(std::isnan(sampleLogLoss) || 0 <= sampleLogLoss);
 
                if(bWeight) {
-                  const FloatFast weight = *pWeight;
                   sampleLogLoss *= weight;
-                  ++pWeight;
                }
                sumLogLoss += sampleLogLoss;
             }
@@ -412,6 +439,12 @@ struct ApplyTermUpdateValidationInternal<k_regression, compilerBitPack, bCalcMet
                updateScore = aUpdateTensorScores[iTensorBin];
             }
 
+            // for MSE regression we cannot put the weight into the gradient like we could with other objectives
+            // for regression or for classification because we only preserve the gradient and to calculate the
+            // square error we need the original gradient and not the weight multiplied gradient... well we could
+            // do it but it would require a division. A better way would be to have two FloatFast arrays: a 
+            // non-weight adjusted one and a weight adjusted one for when inner bags are used
+            // NOTE: For interactions we can and do put the weight into the gradient because we never update it
             const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient) + updateScore;
             *pGradient = gradient;
             ++pGradient;
@@ -473,16 +506,24 @@ struct FinalOptions final {
          }
       } else {
          constexpr bool bCalcMetric = false;
-         EBM_ASSERT(nullptr == pData->m_aWeights);
-         constexpr bool bWeight = false; // if we are not calculating the metric then we never need the weights
          if(nullptr != pData->m_aGradientsAndHessians) {
             constexpr bool bKeepGradHess = true;
-            return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+            if(nullptr != pData->m_aWeights) {
+               constexpr bool bWeight = true;
+               return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+            } else {
+               constexpr bool bWeight = false;
+               return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+            }
          } else {
             // currently this branch is not taken, but if would be if we wanted to allow in the future
             // non-metric calculating validation boosting.  For instance if we wanted to substitute an alternate
             // metric or if for performance reasons we only want to calculate the metric every N rounds of boosting
             constexpr bool bKeepGradHess = false;
+
+            EBM_ASSERT(nullptr == pData->m_aWeights);
+            constexpr bool bWeight = false; // if we are not calculating the metric or updating gradients then we never need the weights
+
             return ApplyTermUpdateValidationInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
          }
       }

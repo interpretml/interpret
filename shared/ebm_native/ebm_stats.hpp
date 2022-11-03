@@ -702,7 +702,7 @@ public:
       FloatFast hessianDebug;
       InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(FloatFast { 1 } / (FloatFast { 1 } + expVal), expVal, gradientDebug, hessianDebug);
       if(1 == target) {
-         gradientDebug = MulticlassFixTargetGradient(gradientDebug);
+         gradientDebug = MulticlassFixTargetGradient(gradientDebug, FloatFast { 1 });
       }
       // the TransformScoreToGradientMulticlass can't be +-infinity per notes in TransformScoreToGradientMulticlass, 
       // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
@@ -800,8 +800,8 @@ public:
       hessianOut = hessian;
    }
 
-   INLINE_ALWAYS static FloatFast MulticlassFixTargetGradient(const FloatFast oldGradient) {
-      return oldGradient - FloatFast { 1 };
+   INLINE_ALWAYS static FloatFast MulticlassFixTargetGradient(const FloatFast oldGradient, const FloatFast weight) {
+      return oldGradient - weight;
    }
 
    INLINE_ALWAYS static FloatFast ComputeSingleSampleLogLossBinaryClassification(

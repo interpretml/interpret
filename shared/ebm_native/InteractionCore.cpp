@@ -378,7 +378,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          cSetSamples,
          nullptr,
          aTargetsTo,
-         nullptr,
+         m_dataFrame.GetWeights(),
          aSampleScoreTo,
          m_dataFrame.GetGradientsAndHessiansPointer(),
          &unused
