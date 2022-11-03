@@ -26,13 +26,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void BinSumsInteraction(
-   InteractionShell * const pInteractionShell,
-   const size_t cRealDimensions,
-   const size_t * const aiFeatures,
-   const size_t * const acBins,
-   const size_t * const acItemsPerBitPack
-);
+extern void BinSumsInteraction(BinSumsInteractionBridge * const pBinSumsInteraction);
 
 extern void TensorTotalsBuild(
    const ptrdiff_t cClasses,
@@ -149,14 +143,33 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    size_t cDimensions = static_cast<size_t>(countDimensions);
 
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
+   const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
+   EBM_ASSERT(nullptr != pDataSet);
+
+   if(size_t { 0 } == pDataSet->GetCountSamples()) {
+      // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
+      LOG_0(Trace_Info, "INFO CalcInteractionStrength zero samples");
+      if(nullptr != avgInteractionStrengthOut) {
+         *avgInteractionStrengthOut = 0.0;
+      }
+      return Error_None;
+   }
+
+   const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
+   EBM_ASSERT(ptrdiff_t { 0 } != cClasses); // cClasses cannot be zero if there is 1 or more samples
+   if(ptrdiff_t { 1 } == cClasses) {
+      LOG_0(Trace_Info, "INFO CalcInteractionStrength target with 1 class perfectly predicts the target");
+      if(nullptr != avgInteractionStrengthOut) {
+         *avgInteractionStrengthOut = 0.0;
+      }
+      return Error_None;
+   }
 
    // TODO : we NEVER use the hessian term (currently) in GradientPair when calculating interaction scores, but we're spending time calculating 
    // it, and it's taking up precious memory.  We should eliminate the hessian term HERE in our datastructures OR we should think whether we can 
    // use the hessian as part of the gain function!!!
 
-   size_t aiFeatures[k_cDimensionsMax];
-   size_t acBins[k_cDimensionsMax];
-   size_t acItemsPerBitPack[k_cDimensionsMax];
+   BinSumsInteractionBridge binSums;
 
    const FeatureInteraction * const aFeatures = pInteractionCore->GetFeatures();
    const IntEbm countFeatures = static_cast<IntEbm>(pInteractionCore->GetCountFeatures());
@@ -178,15 +191,20 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          return Error_IllegalParamVal;
       }
       const size_t iFeature = static_cast<size_t>(indexFeature);
+
       const FeatureInteraction * const pFeature = &aFeatures[iFeature];
-      aiFeatures[iDimension] = iFeature;
 
       const size_t cBins = pFeature->GetCountBins();
       if(UNLIKELY(cBins <= size_t { 1 })) {
-         // stay in the loop to detect errors in the featureIndexes array and check if cTensorBins is 0 at the end
-         cTensorBins = 0;
+         LOG_0(Trace_Info, "INFO CalcInteractionStrength feature group contains a feature with only 1 or 0 bins");
+         if(nullptr != avgInteractionStrengthOut) {
+            *avgInteractionStrengthOut = 0.0;
+         }
+         return Error_None;
       }
-      acBins[iDimension] = cBins;
+      binSums.m_acBins[iDimension] = cBins;
+
+      binSums.m_aaPacked[iDimension] = pDataSet->GetInputDataPointer(iFeature);
 
       // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBinsForBuildFastTotals
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins) at runtime
@@ -209,38 +227,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
       // GetFeatureBitPack could be negative, but converting negative to unsigned is legal in C++ and when
       // GetFeatureBitPack is negative we exit right after the loop, so we don't use the value
-      EBM_ASSERT(1 <= pFeature->GetFeatureBitPack() || size_t { 0 } == cTensorBins);
-      acItemsPerBitPack[iDimension] = static_cast<size_t>(pFeature->GetFeatureBitPack());
+      EBM_ASSERT(1 <= pFeature->GetFeatureBitPack());
+      binSums.m_acItemsPerBitPack[iDimension] = static_cast<size_t>(pFeature->GetFeatureBitPack());
 
       ++iDimension;
    } while(cDimensions != iDimension);
-
-   if(size_t { 0 } == cTensorBins) {
-      LOG_0(Trace_Info, "INFO CalcInteractionStrength feature group contains a feature with only 1 or 0 bins");
-      if(nullptr != avgInteractionStrengthOut) {
-         *avgInteractionStrengthOut = 0.0;
-      }
-      return Error_None;
-   }
-
-   if(size_t { 0 } == pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
-      // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
-      LOG_0(Trace_Info, "INFO CalcInteractionStrength zero samples");
-      if(nullptr != avgInteractionStrengthOut) {
-         *avgInteractionStrengthOut = 0.0;
-      }
-      return Error_None;
-   }
-
-   const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
-   EBM_ASSERT(ptrdiff_t { 0 } != cClasses); // cClasses cannot be zero if there is 1 or more samples
-   if(ptrdiff_t { 1 } == cClasses) {
-      LOG_0(Trace_Info, "INFO CalcInteractionStrength target with 1 class perfectly predicts the target");
-      if(nullptr != avgInteractionStrengthOut) {
-         *avgInteractionStrengthOut = 0.0;
-      }
-      return Error_None;
-   }
 
    const bool bClassification = IsClassification(cClasses);
    const size_t cScores = GetCountScores(cClasses);
@@ -261,11 +252,21 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
 
 #ifndef NDEBUG
-   const auto * const pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
-   pInteractionShell->SetDebugFastBinsEnd(pDebugFastBinsEnd);
+   binSums.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
+   binSums.totalWeightDebug = pDataSet->GetWeightTotal();
 #endif // NDEBUG
 
-   BinSumsInteraction(pInteractionShell, cDimensions, aiFeatures, acBins, acItemsPerBitPack);
+   binSums.m_cRuntimeRealDimensions = cDimensions;
+
+   binSums.m_cClasses = pInteractionCore->GetCountClasses();
+
+   binSums.m_cSamples = pDataSet->GetCountSamples();
+   binSums.m_aGradientsAndHessians = pDataSet->GetGradientsAndHessiansPointer();
+   binSums.m_aWeights = pDataSet->GetWeights();
+
+   binSums.m_aFastBins = pInteractionShell->GetInteractionFastBinsTemp();
+
+   BinSumsInteraction(&binSums);
 
    static constexpr size_t cAuxillaryBinsForSplitting = 4;
    const size_t cAuxillaryBins = EbmMax(cAuxillaryBinsForBuildFastTotals, cAuxillaryBinsForSplitting);
@@ -323,7 +324,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    TensorTotalsBuild(
       cClasses,
       cDimensions,
-      acBins,
+      binSums.m_acBins,
       aAuxiliaryBins,
       aBigBins
 #ifndef NDEBUG
@@ -338,7 +339,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       double bestGain = PartitionTwoDimensionalInteraction(
          pInteractionCore,
          cDimensions,
-         acBins,
+         binSums.m_acBins,
          flags,
          cSamplesLeafMin,
          aAuxiliaryBins,
@@ -350,8 +351,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       );
 
       // if totalWeight < 1 then bestGain could overflow to +inf, so do the division first
-      const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
-      EBM_ASSERT(nullptr != pDataSet);
       const double totalWeight = static_cast<double>(pDataSet->GetWeightTotal());
       EBM_ASSERT(0 < totalWeight); // if all are zeros we assume there are no weights and use the count
       bestGain /= totalWeight;

@@ -30,6 +30,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+typedef double FloatBig;
 
 template<typename TTo, typename TFrom>
 INLINE_ALWAYS static TTo SafeConvertFloat(const TFrom val) {

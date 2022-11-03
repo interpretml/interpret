@@ -55,14 +55,12 @@
     <ClInclude Include="BoosterCore.hpp" />
     <ClInclude Include="Feature.hpp" />
     <ClInclude Include="Term.hpp" />
-    <ClInclude Include="Bin.hpp" />
     <ClInclude Include="BoosterShell.hpp" />
     <ClInclude Include="DataSetInteraction.hpp" />
     <ClInclude Include="DataSetBoosting.hpp" />
     <ClInclude Include="ebm_internal.hpp" />
     <ClInclude Include="ebm_stats.hpp" />
     <ClInclude Include="precompiled_header_cpp.hpp" />
-    <ClInclude Include="GradientPair.hpp" />
     <ClInclude Include="RandomDeterministic.hpp" />
     <ClInclude Include="InnerBag.hpp" />
     <ClInclude Include="Tensor.hpp" />
@@ -94,6 +92,12 @@
     <ClInclude Include="dataset_shared.hpp" />
     <ClInclude Include="GaussianDistribution.hpp" />
     <ClInclude Include="RandomNondeterministic.hpp" />
+    <ClInclude Include="bridge_cpp\Bin.hpp">
+      <Filter>bridge_cpp</Filter>
+    </ClInclude>
+    <ClInclude Include="bridge_cpp\GradientPair.hpp">
+      <Filter>bridge_cpp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />

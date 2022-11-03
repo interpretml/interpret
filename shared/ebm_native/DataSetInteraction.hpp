@@ -13,6 +13,8 @@
 #include "bridge_c.h" // StorageDataType
 #include "zones.h"
 
+#include "ebm_internal.hpp" // FloatBig
+
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined

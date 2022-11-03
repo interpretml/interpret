@@ -11,6 +11,7 @@
 #include "zones.h"
 
 #include "common_cpp.hpp" // CountBitsRequiredPositiveMax
+#include "Bin.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -88,6 +89,26 @@ inline static size_t GetCountItemsBitPacked(const size_t cBits) noexcept {
 static constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin
 // TODO : remove the 2 suffixes from these, and verify these are being used!!  AND at the same time verify that we like the sign of anything that uses these constants size_t vs ptrdiff_t
 static constexpr ptrdiff_t k_cItemsPerBitPackDynamic2 = ptrdiff_t { 0 };
+
+struct BinSumsInteractionBridge {
+   ptrdiff_t m_cClasses;
+
+   size_t m_cSamples;
+   const FloatFast * m_aGradientsAndHessians;
+   const FloatFast * m_aWeights;
+
+   size_t m_cRuntimeRealDimensions;
+   size_t m_acBins[k_cDimensionsMax];
+   size_t m_acItemsPerBitPack[k_cDimensionsMax];
+   const StorageDataType * m_aaPacked[k_cDimensionsMax];
+
+   BinBase * m_aFastBins;
+
+#ifndef NDEBUG
+   const BinBase * m_pDebugFastBinsEnd;
+   FloatFast totalWeightDebug;
+#endif // NDEBUG
+};
 
 } // DEFINED_ZONE_NAME
 

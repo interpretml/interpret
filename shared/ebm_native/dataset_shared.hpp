@@ -8,7 +8,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // UIntEbm
-#include "common_c.h" // FloatFast
+#include "bridge_c.h" // FloatFast
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {

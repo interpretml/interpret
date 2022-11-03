@@ -14,6 +14,7 @@
 #include "common_c.h" // ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
 #include "zones.h"
 
+#include "ebm_internal.hpp" // FloatBig
 #include "DataSetBoosting.hpp"
 
 namespace DEFINED_ZONE_NAME {

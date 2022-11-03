@@ -112,16 +112,6 @@ public:
       // call this if the bins were already allocated and we just need the pointer
       return m_aInteractionBigBins;
    }
-
-#ifndef NDEBUG
-   inline const BinBase * GetDebugFastBinsEnd() const {
-      return m_pDebugFastBinsEnd;
-   }
-
-   inline void SetDebugFastBinsEnd(const BinBase * const pDebugFastBinsEnd) {
-      m_pDebugFastBinsEnd = pDebugFastBinsEnd;
-   }
-#endif // NDEBUG
 };
 static_assert(std::is_standard_layout<InteractionShell>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");

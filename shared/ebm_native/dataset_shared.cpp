@@ -9,6 +9,7 @@
 #include <string.h> // memcpy
 
 #include "logging.h" // EBM_ASSERT
+#include "common_c.h"
 
 #include "common_cpp.hpp" // IsConvertError
 #include "bridge_cpp.hpp" // k_regression

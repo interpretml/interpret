@@ -144,10 +144,6 @@ extern "C" {
 #error compiler not recognized
 #endif // compiler type
 
-// TODO: someday flip FloatFast to float32
-typedef double FloatFast;
-typedef double FloatBig;
-
 INLINE_ALWAYS static void StopClangAnalysis() EBM_NOEXCEPT ANALYZER_NORETURN {
 }
 

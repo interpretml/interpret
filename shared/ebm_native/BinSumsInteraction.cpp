@@ -9,6 +9,8 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
+#include "bridge_cpp.hpp" // BinSumsInteractionBridge
+
 #include "ebm_internal.hpp" // k_cDimensionsMax
 
 #include "DataSetInteraction.hpp" // DataSetInteraction
@@ -55,37 +57,27 @@ public:
    //  - allow the system to process all the data via CPU (which means it can be inside a single dataset) and compare this result to the result
    //    of using the SIMD code pipeline.  Maybe we can simulate all the same access 
 
-   INLINE_RELEASE_UNTEMPLATED static void Func(
-      InteractionShell * const pInteractionShell, 
-      const size_t cRuntimeRealDimensions,
-      const size_t * const aiFeatures,
-      const size_t * const acBins,
-      const size_t * const acItemsPerBitPack
-   ) {
+   INLINE_RELEASE_UNTEMPLATED static void Func(BinSumsInteractionBridge * const pBinSumsInteraction) {
       static constexpr bool bClassification = IsClassification(cCompilerClasses);
       static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
-      auto * const aBins = pInteractionShell->GetInteractionFastBinsTemp()->Specialize<FloatFast, bClassification, cCompilerScores>();
+      auto * const aBins = pBinSumsInteraction->m_aFastBins->Specialize<FloatFast, bClassification, cCompilerScores>();
 
-      InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
-      const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
-
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pBinSumsInteraction->m_cClasses);
       const size_t cScores = GetCountScores(cClasses);
 
       EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
       const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
 
-      const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
-      const size_t cSamples = pDataSet->GetCountSamples();
+      const size_t cSamples = pBinSumsInteraction->m_cSamples;
       EBM_ASSERT(1 <= cSamples);
 
-      const FloatFast * pGradientAndHessian = pDataSet->GetGradientsAndHessiansPointer();
+      const FloatFast * pGradientAndHessian = pBinSumsInteraction->m_aGradientsAndHessians;
       const FloatFast * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
 
-      const FloatFast * pWeight = pDataSet->GetWeights();
+      const FloatFast * pWeight = pBinSumsInteraction->m_aWeights;
 
-      const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
+      const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, pBinSumsInteraction->m_cRuntimeRealDimensions);
       EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
 
 #ifndef NDEBUG
@@ -108,14 +100,11 @@ public:
       do {
          DimensionalData * const pDimensionalData = &aDimensionalData[iDimensionInit];
 
-         const StorageDataType * const pData = pDataSet->GetInputDataPointer(aiFeatures[iDimensionInit]);
-
+         const StorageDataType * const pData = pBinSumsInteraction->m_aaPacked[iDimensionInit];
          pDimensionalData->m_iTensorBinCombined = *pData;
-
          pDimensionalData->m_pData = pData + 1;
-         pDimensionalData->m_cBins = acBins[iDimensionInit];
 
-         const size_t cItemsPerBitPack = acItemsPerBitPack[iDimensionInit];
+         const size_t cItemsPerBitPack = pBinSumsInteraction->m_acItemsPerBitPack[iDimensionInit];
          EBM_ASSERT(size_t { 1 } <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
@@ -124,11 +113,13 @@ public:
          EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
          pDimensionalData->m_cBitsPerItemMax = cBitsPerItemMax;
 
+         pDimensionalData->m_cShift = static_cast<ptrdiff_t>(((cSamples - 1) % cItemsPerBitPack + 1) * cBitsPerItemMax);
+         pDimensionalData->m_cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
+
          const size_t maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
          pDimensionalData->m_maskBits = maskBits;
 
-         pDimensionalData->m_cShift = static_cast<ptrdiff_t>(((cSamples - 1) % cItemsPerBitPack + 1) * cBitsPerItemMax);
-         pDimensionalData->m_cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
+         pDimensionalData->m_cBins = pBinSumsInteraction->m_acBins[iDimensionInit];
 
          ++iDimensionInit;
       } while(cRealDimensions != iDimensionInit);
@@ -172,7 +163,7 @@ public:
          } while(cRealDimensions != iDimension);
 
          auto * const pBin = reinterpret_cast<Bin<FloatFast, bClassification, cCompilerScores> *>(pRawBin);
-         ASSERT_BIN_OK(cBytesPerBin, pBin, pInteractionShell->GetDebugFastBinsEnd());
+         ASSERT_BIN_OK(cBytesPerBin, pBin, pBinSumsInteraction->m_pDebugFastBinsEnd);
 
          pBin->SetCountSamples(pBin->GetCountSamples() + size_t { 1 });
 
@@ -220,11 +211,11 @@ public:
       }
    done:;
 
-      EBM_ASSERT(0 < pDataSet->GetWeightTotal());
-      EBM_ASSERT(nullptr == pWeight || static_cast<FloatBig>(weightTotalDebug * 0.999) <= pDataSet->GetWeightTotal() && 
-         pDataSet->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
+      EBM_ASSERT(0 < pBinSumsInteraction->totalWeightDebug);
+      EBM_ASSERT(nullptr == pWeight || weightTotalDebug * FloatFast { 0.999 } <= pBinSumsInteraction->totalWeightDebug &&
+         pBinSumsInteraction->totalWeightDebug <= FloatFast { 1.001 } * weightTotalDebug);
       EBM_ASSERT(nullptr != pWeight || 
-         static_cast<FloatBig>(cSamples) == pDataSet->GetWeightTotal());
+         static_cast<FloatFast>(cSamples) == pBinSumsInteraction->totalWeightDebug);
    }
 };
 
@@ -234,22 +225,16 @@ public:
 
    BinSumsInteractionDimensions() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static void Func(
-      InteractionShell * const pInteractionShell, 
-      const size_t cRealDimensions,
-      const size_t * const aiFeatures,
-      const size_t * const acBins,
-      const size_t * const acItemsPerBitPack
-   ) {
+   INLINE_RELEASE_UNTEMPLATED static void Func(BinSumsInteractionBridge * const pBinSumsInteraction) {
       static_assert(1 <= cCompilerDimensionsPossible, "can't have less than 1 dimension for interactions");
       static_assert(cCompilerDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
 
-      EBM_ASSERT(1 <= cRealDimensions);
-      EBM_ASSERT(cRealDimensions <= k_cDimensionsMax);
-      if(cCompilerDimensionsPossible == cRealDimensions) {
-         BinSumsInteractionInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
+      EBM_ASSERT(1 <= pBinSumsInteraction->m_cRuntimeRealDimensions);
+      EBM_ASSERT(pBinSumsInteraction->m_cRuntimeRealDimensions <= k_cDimensionsMax);
+      if(cCompilerDimensionsPossible == pBinSumsInteraction->m_cRuntimeRealDimensions) {
+         BinSumsInteractionInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(pBinSumsInteraction);
       } else {
-         BinSumsInteractionDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
+         BinSumsInteractionDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pBinSumsInteraction);
       }
    }
 };
@@ -260,16 +245,10 @@ public:
 
    BinSumsInteractionDimensions() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static void Func(
-      InteractionShell * const pInteractionShell, 
-      const size_t cRealDimensions,
-      const size_t * const aiFeatures,
-      const size_t * const acBins,
-      const size_t * const acItemsPerBitPack
-   ) {
-      EBM_ASSERT(1 <= cRealDimensions);
-      EBM_ASSERT(cRealDimensions <= k_cDimensionsMax);
-      BinSumsInteractionInternal<cCompilerClasses, k_dynamicDimensions>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
+   INLINE_RELEASE_UNTEMPLATED static void Func(BinSumsInteractionBridge * const pBinSumsInteraction) {
+      EBM_ASSERT(1 <= pBinSumsInteraction->m_cRuntimeRealDimensions);
+      EBM_ASSERT(pBinSumsInteraction->m_cRuntimeRealDimensions <= k_cDimensionsMax);
+      BinSumsInteractionInternal<cCompilerClasses, k_dynamicDimensions>::Func(pBinSumsInteraction);
    }
 };
 
@@ -279,25 +258,18 @@ public:
 
    BinSumsInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static void Func(
-      InteractionShell * const pInteractionShell, 
-      const size_t cRealDimensions,
-      const size_t * const aiFeatures,
-      const size_t * const acBins,
-      const size_t * const acItemsPerBitPack
-   ) {
+   INLINE_RELEASE_UNTEMPLATED static void Func(BinSumsInteractionBridge * const pBinSumsInteraction) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
-      InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
-      const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
+      const ptrdiff_t cRuntimeClasses = pBinSumsInteraction->m_cClasses;
       EBM_ASSERT(IsClassification(cRuntimeClasses));
       EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
 
       if(cPossibleClasses == cRuntimeClasses) {
-         BinSumsInteractionDimensions<cPossibleClasses, 2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
+         BinSumsInteractionDimensions<cPossibleClasses, 2>::Func(pBinSumsInteraction);
       } else {
-         BinSumsInteractionTarget<cPossibleClasses + 1>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
+         BinSumsInteractionTarget<cPossibleClasses + 1>::Func(pBinSumsInteraction);
       }
    }
 };
@@ -308,39 +280,25 @@ public:
 
    BinSumsInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static void Func(
-      InteractionShell * const pInteractionShell, 
-      const size_t cRealDimensions,
-      const size_t * const aiFeatures,
-      const size_t * const acBins,
-      const size_t * const acItemsPerBitPack
-   ) {
+   INLINE_RELEASE_UNTEMPLATED static void Func(BinSumsInteractionBridge * const pBinSumsInteraction) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pInteractionShell->GetInteractionCore()->GetCountClasses()));
-      EBM_ASSERT(k_cCompilerClassesMax < pInteractionShell->GetInteractionCore()->GetCountClasses());
+      EBM_ASSERT(IsClassification(pBinSumsInteraction->m_cClasses));
+      EBM_ASSERT(k_cCompilerClassesMax < pBinSumsInteraction->m_cClasses);
 
-      BinSumsInteractionDimensions<k_dynamicClassification, 2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
+      BinSumsInteractionDimensions<k_dynamicClassification, 2>::Func(pBinSumsInteraction);
    }
 };
 
-extern void BinSumsInteraction(
-   InteractionShell * const pInteractionShell,
-   const size_t cRealDimensions,
-   const size_t * const aiFeatures,
-   const size_t * const acBins,
-   const size_t * const acItemsPerBitPack
-) {
+extern void BinSumsInteraction(BinSumsInteractionBridge * const pBinSumsInteraction) {
    LOG_0(Trace_Verbose, "Entered BinSumsInteraction");
 
-   InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
-   const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
-
+   const ptrdiff_t cRuntimeClasses = pBinSumsInteraction->m_cClasses;
    if(IsClassification(cRuntimeClasses)) {
-      BinSumsInteractionTarget<2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
+      BinSumsInteractionTarget<2>::Func(pBinSumsInteraction);
    } else {
       EBM_ASSERT(IsRegression(cRuntimeClasses));
-      BinSumsInteractionDimensions<k_regression, 2>::Func(pInteractionShell, cRealDimensions, aiFeatures, acBins, acItemsPerBitPack);
+      BinSumsInteractionDimensions<k_regression, 2>::Func(pBinSumsInteraction);
    }
 
    LOG_0(Trace_Verbose, "Exited BinSumsInteraction");
