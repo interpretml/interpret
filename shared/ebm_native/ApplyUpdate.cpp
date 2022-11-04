@@ -34,8 +34,6 @@ struct ApplyUpdateInternal final {
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pData->m_cClasses);
       const size_t cScores = GetCountScores(cClasses);
 
-      const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
-
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
 
@@ -56,6 +54,7 @@ struct ApplyUpdateInternal final {
       if(bCompilerZeroDimensional) {
          aBinScores = aUpdateTensorScores;
       } else {
+         const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
          EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
 
          const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
@@ -216,8 +215,6 @@ struct ApplyUpdateInternal<2, compilerBitPack, bCalcMetric, bWeight, bKeepGradHe
       constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
       constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
-      const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
-
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
 
@@ -237,6 +234,7 @@ struct ApplyUpdateInternal<2, compilerBitPack, bCalcMetric, bWeight, bKeepGradHe
       if(bCompilerZeroDimensional) {
          updateScore = aUpdateTensorScores[0];
       } else {
+         const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
          EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
 
          const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
@@ -362,8 +360,6 @@ struct ApplyUpdateInternal<k_regression, compilerBitPack, bCalcMetric, bWeight, 
 
       constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
 
-      const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
-
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
 
@@ -383,6 +379,7 @@ struct ApplyUpdateInternal<k_regression, compilerBitPack, bCalcMetric, bWeight, 
       if(bCompilerZeroDimensional) {
          updateScore = aUpdateTensorScores[0];
       } else {
+         const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pData->m_cPack);
          EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
 
          const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
