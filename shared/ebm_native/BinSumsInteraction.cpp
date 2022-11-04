@@ -227,11 +227,10 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
    }
 done:;
 
-   EBM_ASSERT(0 < pParams->totalWeightDebug);
-   EBM_ASSERT(nullptr == pWeight || weightTotalDebug * FloatFast { 0.999 } <= pParams->totalWeightDebug &&
-      pParams->totalWeightDebug <= FloatFast { 1.001 } * weightTotalDebug);
-   EBM_ASSERT(nullptr != pWeight || 
-      static_cast<FloatFast>(cSamples) == pParams->totalWeightDebug);
+   EBM_ASSERT(0 < pParams->m_totalWeightDebug);
+   EBM_ASSERT(nullptr == pWeight || weightTotalDebug * FloatFast { 0.999 } <= pParams->m_totalWeightDebug &&
+      pParams->m_totalWeightDebug <= FloatFast { 1.001 } * weightTotalDebug);
+   EBM_ASSERT(nullptr != pWeight || static_cast<FloatFast>(cSamples) == pParams->m_totalWeightDebug);
 
    return Error_None;
 }

@@ -29,27 +29,20 @@ public:
 
    BinSumsBoostingInternal() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static void Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm,
-      const InnerBag * const pInnerBag
-   ) {
+   INLINE_RELEASE_UNTEMPLATED static void Func(BinSumsBoostingBridge * const pParams) {
       constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
       constexpr bool bClassification = IsClassification(cCompilerClasses);
       constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
-
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
+      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pParams->m_cClasses);
       const size_t cScores = GetCountScores(cClasses);
 
-      auto * const aBins = pBoosterShell->GetBoostingFastBinsTemp()->Specialize<FloatFast, bClassification, cCompilerScores>();
+      auto * const aBins = pParams->m_aFastBins->Specialize<FloatFast, bClassification, cCompilerScores>();
       EBM_ASSERT(nullptr != aBins);
 
-      const size_t cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
+      const size_t cSamples = pParams->m_cSamples;
       EBM_ASSERT(1 <= cSamples);
-      const FloatFast * pGradientAndHessian = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
+      const FloatFast * pGradientAndHessian = pParams->m_aGradientsAndHessians;
       const FloatFast * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
 
       size_t cBitsPerItemMax;
@@ -64,10 +57,7 @@ public:
       if(bCompilerZeroDimensional) {
          pBin = aBins;
       } else {
-         EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-         const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-
-         const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pTerm->GetTermBitPack());
+         const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pParams->m_cPack);
          EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
 
          const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
@@ -82,14 +72,14 @@ public:
          EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSizeT);
          maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
 
-         pInputData = pBoosterCore->GetTrainingSet()->GetInputDataPointer(iTerm);
+         pInputData = pParams->m_aPacked;
 
          EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
          cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
       }
 
-      const size_t * pCountOccurrences = pInnerBag->GetCountOccurrences();
-      const FloatFast * pWeight = pInnerBag->GetWeights();
+      const size_t * pCountOccurrences = pParams->m_pCountOccurrences;
+      const FloatFast * pWeight = pParams->m_aWeights;
       EBM_ASSERT(nullptr != pWeight); // TODO: make this so that we can have a nullptr for weight!
 #ifndef NDEBUG
       FloatFast weightTotalDebug = 0;
@@ -118,7 +108,7 @@ public:
             if(!bCompilerZeroDimensional) {
                const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined >> cShift) & maskBits;
                pBin = IndexBin(aBins, cBytesPerBin * iTensorBin);
-               ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetDebugFastBinsEnd());
+               ASSERT_BIN_OK(cBytesPerBin, pBin, pParams->m_pDebugFastBinsEnd);
             }
 
             const size_t cOccurences = *pCountOccurrences;
@@ -169,7 +159,7 @@ public:
 
             EBM_ASSERT(
                !bClassification ||
-               ptrdiff_t { 2 } == cRuntimeClasses && !bExpandBinaryLogits ||
+               ptrdiff_t { 2 } == cClasses && !bExpandBinaryLogits ||
                -k_epsilonGradient < gradientTotalDebug && gradientTotalDebug < k_epsilonGradient
             );
 
@@ -191,30 +181,18 @@ public:
       } while(pGradientAndHessiansEnd != pGradientAndHessian);
 
       EBM_ASSERT(0 < weightTotalDebug);
-      EBM_ASSERT(weightTotalDebug * FloatFast { 0.999 } <= pInnerBag->GetWeightTotal() &&
-         pInnerBag->GetWeightTotal() <= FloatFast { 1.001 } * weightTotalDebug);
+      EBM_ASSERT(weightTotalDebug * FloatFast { 0.999 } <= pParams->m_totalWeightDebug &&
+         pParams->m_totalWeightDebug <= FloatFast { 1.001 } * weightTotalDebug);
    }
 };
 
 template<ptrdiff_t cCompilerClasses>
-INLINE_RELEASE_TEMPLATED static void BitPack(
-   BoosterShell * const pBoosterShell,
-   const size_t iTerm,
-   const InnerBag * const pInnerBag
-) {
-   if(BoosterShell::k_illegalTermIndex != iTerm) {
-      BinSumsBoostingInternal<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(
-         pBoosterShell,
-         iTerm,
-         pInnerBag
-      );
+INLINE_RELEASE_TEMPLATED static void BitPack(BinSumsBoostingBridge * const pParams) {
+   if(k_cItemsPerBitPackNone != pParams->m_cPack) {
+      BinSumsBoostingInternal<cCompilerClasses, k_cItemsPerBitPackDynamic>::Func(pParams);
    } else {
       // this needs to be special cased because otherwise we would inject comparisons into the dynamic version
-      BinSumsBoostingInternal<cCompilerClasses, k_cItemsPerBitPackNone>::Func(
-         pBoosterShell,
-         iTerm,
-         pInnerBag
-      );
+      BinSumsBoostingInternal<cCompilerClasses, k_cItemsPerBitPackNone>::Func(pParams);
    }
 }
 
@@ -224,31 +202,17 @@ public:
 
    BinSumsBoostingNormalTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static void Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm,
-      const InnerBag * const pInnerBag
-   ) {
+   INLINE_RELEASE_UNTEMPLATED static void Func(BinSumsBoostingBridge * const pParams) {
       static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
       static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
 
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
-      EBM_ASSERT(IsClassification(cRuntimeClasses));
-      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
+      EBM_ASSERT(IsClassification(pParams->m_cClasses));
+      EBM_ASSERT(pParams->m_cClasses <= k_cCompilerClassesMax);
 
-      if(cPossibleClasses == cRuntimeClasses) {
-         BitPack<cPossibleClasses>(
-            pBoosterShell,
-            iTerm,
-            pInnerBag
-         );
+      if(cPossibleClasses == pParams->m_cClasses) {
+         BitPack<cPossibleClasses>(pParams);
       } else {
-         BinSumsBoostingNormalTarget<cPossibleClasses + 1>::Func(
-            pBoosterShell,
-            iTerm,
-            pInnerBag
-         );
+         BinSumsBoostingNormalTarget<cPossibleClasses + 1>::Func(pParams);
       }
    }
 };
@@ -259,47 +223,24 @@ public:
 
    BinSumsBoostingNormalTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static void Func(
-      BoosterShell * const pBoosterShell,
-      const size_t iTerm,
-      const InnerBag * const pInnerBag
-   ) {
+   INLINE_RELEASE_UNTEMPLATED static void Func(BinSumsBoostingBridge * const pParams) {
       static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
-      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
+      EBM_ASSERT(IsClassification(pParams->m_cClasses));
+      EBM_ASSERT(k_cCompilerClassesMax < pParams->m_cClasses);
 
-      BitPack<k_dynamicClassification>(
-         pBoosterShell,
-         iTerm,
-         pInnerBag
-      );
+      BitPack<k_dynamicClassification>(pParams);
    }
 };
 
-extern void BinSumsBoosting(
-   BoosterShell * const pBoosterShell,
-   const size_t iTerm,
-   const InnerBag * const pInnerBag
-) {
+extern void BinSumsBoosting(BinSumsBoostingBridge * const pParams) {
    LOG_0(Trace_Verbose, "Entered BinSumsBoosting");
 
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
-
-   if(IsClassification(cRuntimeClasses)) {
-      BinSumsBoostingNormalTarget<2>::Func(
-         pBoosterShell,
-         iTerm,
-         pInnerBag
-      );
+   if(IsClassification(pParams->m_cClasses)) {
+      BinSumsBoostingNormalTarget<2>::Func(pParams);
    } else {
-      EBM_ASSERT(IsRegression(cRuntimeClasses));
-      BitPack<k_regression>(
-         pBoosterShell,
-         iTerm,
-         pInnerBag
-      );
+      EBM_ASSERT(IsRegression(pParams->m_cClasses));
+      BitPack<k_regression>(pParams);
    }
 
    LOG_0(Trace_Verbose, "Exited BinSumsBoosting");

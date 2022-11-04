@@ -255,7 +255,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
 #ifndef NDEBUG
    binSums.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
-   binSums.totalWeightDebug = pDataSet->GetWeightTotal();
+   binSums.m_totalWeightDebug = pDataSet->GetWeightTotal();
 #endif // NDEBUG
 
    binSums.m_cRuntimeRealDimensions = cDimensions;

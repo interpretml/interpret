@@ -51,7 +51,6 @@ class BoosterShell final {
    void * m_aSplitPositionsTemp;
 
 #ifndef NDEBUG
-   const BinBase * m_pDebugFastBinsEnd;
    const BinBase * m_pDebugBigBinsEnd;
 #endif // NDEBUG
 
@@ -148,14 +147,6 @@ public:
 
 
 #ifndef NDEBUG
-   INLINE_ALWAYS const BinBase * GetDebugFastBinsEnd() const {
-      return m_pDebugFastBinsEnd;
-   }
-
-   INLINE_ALWAYS void SetDebugFastBinsEnd(const BinBase * const pDebugFastBinsEnd) {
-      m_pDebugFastBinsEnd = pDebugFastBinsEnd;
-   }
-
    INLINE_ALWAYS const BinBase * GetDebugBigBinsEnd() const {
       return m_pDebugBigBinsEnd;
    }

@@ -90,6 +90,24 @@ static constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is
 // TODO : remove the 2 suffixes from these, and verify these are being used!!  AND at the same time verify that we like the sign of anything that uses these constants size_t vs ptrdiff_t
 static constexpr ptrdiff_t k_cItemsPerBitPackDynamic2 = ptrdiff_t { 0 };
 
+struct BinSumsBoostingBridge {
+   ptrdiff_t m_cClasses;
+   ptrdiff_t m_cPack;
+
+   size_t m_cSamples;
+   const FloatFast * m_aGradientsAndHessians;
+   const FloatFast * m_aWeights;
+   const size_t * m_pCountOccurrences;
+   const StorageDataType * m_aPacked;
+
+   BinBase * m_aFastBins;
+
+#ifndef NDEBUG
+   const BinBase * m_pDebugFastBinsEnd;
+   FloatFast m_totalWeightDebug;
+#endif // NDEBUG
+};
+
 struct BinSumsInteractionBridge {
    ptrdiff_t m_cClasses;
 
@@ -106,7 +124,7 @@ struct BinSumsInteractionBridge {
 
 #ifndef NDEBUG
    const BinBase * m_pDebugFastBinsEnd;
-   FloatFast totalWeightDebug;
+   FloatFast m_totalWeightDebug;
 #endif // NDEBUG
 };
 

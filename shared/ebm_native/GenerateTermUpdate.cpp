@@ -32,11 +32,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void BinSumsBoosting(
-   BoosterShell * const pBoosterShell,
-   const size_t iTerm,
-   const InnerBag * const pInnerBag
-);
+extern void BinSumsBoosting(BinSumsBoostingBridge * const pParams);
 
 extern void TensorTotalsBuild(
    const ptrdiff_t cClasses,
@@ -104,11 +100,19 @@ static void BoostZeroDimensional(
 
    pFastBin->ZeroMem(cBytesPerFastBin);
 
+   BinSumsBoostingBridge params;
+   params.m_cClasses = cClasses;
+   params.m_cPack = k_cItemsPerBitPackNone;
+   params.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
+   params.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
+   params.m_aWeights = pInnerBag->GetWeights();
+   params.m_pCountOccurrences = pInnerBag->GetCountOccurrences();
+   params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
 #ifndef NDEBUG
-   pBoosterShell->SetDebugFastBinsEnd(IndexBin(pFastBin, cBytesPerFastBin));
+   params.m_pDebugFastBinsEnd = IndexBin(pFastBin, cBytesPerFastBin);
+   params.m_totalWeightDebug = pInnerBag->GetWeightTotal();
 #endif // NDEBUG
-
-   BinSumsBoosting(pBoosterShell, BoosterShell::k_illegalTermIndex, pInnerBag);
+   BinSumsBoosting(&params);
 
    BinBase * const pBigBin = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != pBigBin);
@@ -209,11 +213,20 @@ static ErrorEbm BoostSingleDimensional(
 
    aFastBins->ZeroMem(cBytesPerFastBin, cBins);
 
+   BinSumsBoostingBridge params;
+   params.m_cClasses = cClasses;
+   params.m_cPack = pBoosterCore->GetTerms()[iTerm]->GetTermBitPack();
+   params.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
+   params.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
+   params.m_aWeights = pInnerBag->GetWeights();
+   params.m_pCountOccurrences = pInnerBag->GetCountOccurrences();
+   params.m_aPacked = pBoosterCore->GetTrainingSet()->GetInputDataPointer(iTerm);
+   params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
 #ifndef NDEBUG
-   pBoosterShell->SetDebugFastBinsEnd(IndexBin(aFastBins, cBytesPerFastBin * cBins));
+   params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cBins);
+   params.m_totalWeightDebug = pInnerBag->GetWeightTotal();
 #endif // NDEBUG
-
-   BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
+   BinSumsBoosting(&params);
 
    BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != aBigBins);
@@ -305,11 +318,20 @@ static ErrorEbm BoostMultiDimensional(
    
    aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
 
+   BinSumsBoostingBridge params;
+   params.m_cClasses = cClasses;
+   params.m_cPack = pBoosterCore->GetTerms()[iTerm]->GetTermBitPack();
+   params.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
+   params.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
+   params.m_aWeights = pInnerBag->GetWeights();
+   params.m_pCountOccurrences = pInnerBag->GetCountOccurrences();
+   params.m_aPacked = pBoosterCore->GetTrainingSet()->GetInputDataPointer(iTerm);
+   params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
 #ifndef NDEBUG
-   pBoosterShell->SetDebugFastBinsEnd(IndexBin(aFastBins, cBytesPerFastBin * cTensorBins));
+   params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
+   params.m_totalWeightDebug = pInnerBag->GetWeightTotal();
 #endif // NDEBUG
-
-   BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
+   BinSumsBoosting(&params);
 
    const size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
 
@@ -544,11 +566,20 @@ static ErrorEbm BoostRandom(
    EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTotalBins));
    aFastBins->ZeroMem(cBytesPerFastBin, cTotalBins);
 
+   BinSumsBoostingBridge params;
+   params.m_cClasses = cClasses;
+   params.m_cPack = pBoosterCore->GetTerms()[iTerm]->GetTermBitPack();
+   params.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
+   params.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
+   params.m_aWeights = pInnerBag->GetWeights();
+   params.m_pCountOccurrences = pInnerBag->GetCountOccurrences();
+   params.m_aPacked = pBoosterCore->GetTrainingSet()->GetInputDataPointer(iTerm);
+   params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
 #ifndef NDEBUG
-   pBoosterShell->SetDebugFastBinsEnd(IndexBin(aFastBins, cBytesPerFastBin * cTotalBins));
+   params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTotalBins);
+   params.m_totalWeightDebug = pInnerBag->GetWeightTotal();
 #endif // NDEBUG
-
-   BinSumsBoosting(pBoosterShell, iTerm, pInnerBag);
+   BinSumsBoosting(&params);
 
    BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != aBigBins);
