@@ -23,7 +23,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
+template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bWeight, bool bReplication>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
    constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
    constexpr bool bClassification = IsClassification(cCompilerClasses);
@@ -73,12 +73,18 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
       cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
    }
 
-   const size_t * pCountOccurrences = pParams->m_pCountOccurrences;
-   const FloatFast * pWeight = pParams->m_aWeights;
-   EBM_ASSERT(nullptr != pWeight); // TODO: make this so that we can have a nullptr for weight!
+   const FloatFast * pWeight;
+   if(bWeight) {
+      pWeight = pParams->m_aWeights;
+   }
 #ifndef NDEBUG
    FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
+
+   const size_t * pCountOccurrences;
+   if(bReplication) {
+      pCountOccurrences = pParams->m_pCountOccurrences;
+   }
 
    do {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
@@ -106,19 +112,27 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
             ASSERT_BIN_OK(cBytesPerBin, pBin, pParams->m_pDebugFastBinsEnd);
          }
 
-         const size_t cOccurences = *pCountOccurrences;
-         const FloatFast weight = *pWeight;
-
+         FloatFast weight;
+         if(bWeight) {
+            weight = *pWeight;
+            pBin->SetWeight(pBin->GetWeight() + weight);
+            ++pWeight;
 #ifndef NDEBUG
-         weightTotalDebug += weight;
+            weightTotalDebug += weight;
 #endif // NDEBUG
+         } else {
+            // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
+            //       such that we can remove that field optionally
+            pBin->SetWeight(pBin->GetWeight() + FloatFast { 1 });
+         }
 
-         ++pCountOccurrences;
-         ++pWeight;
-         pBin->SetCountSamples(pBin->GetCountSamples() + cOccurences);
-         pBin->SetWeight(pBin->GetWeight() + weight);
-
-         auto * const aGradientPair = pBin->GetGradientPairs();
+         if(bReplication) {
+            const size_t cOccurences = *pCountOccurrences;
+            pBin->SetCountSamples(pBin->GetCountSamples() + cOccurences);
+            ++pCountOccurrences;
+         } else {
+            pBin->SetCountSamples(pBin->GetCountSamples() + size_t { 1 });
+         }
 
 #ifndef NDEBUG
 #ifdef EXPAND_BINARY_LOGITS
@@ -129,27 +143,31 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
          FloatFast gradientTotalDebug = 0;
 #endif // NDEBUG
 
+         auto * const aGradientPair = pBin->GetGradientPairs();
          size_t iScore = 0;
          do {
             auto * const pGradientPair = &aGradientPair[iScore];
-            const FloatFast gradient = bClassification ? pGradientAndHessian[iScore << 1] : pGradientAndHessian[iScore];
+            FloatFast gradient = bClassification ? pGradientAndHessian[iScore << 1] : pGradientAndHessian[iScore];
 #ifndef NDEBUG
             gradientTotalDebug += gradient;
 #endif // NDEBUG
-            pGradientPair->m_sumGradients += gradient * weight;
+            if(bWeight) {
+               gradient *= weight;
+            }
+            pGradientPair->m_sumGradients += gradient;
             if(bClassification) {
-               const FloatFast hessian = pGradientAndHessian[(iScore << 1) + 1];
-               pGradientPair->SetHess(pGradientPair->GetHess() + hessian * weight);
+               FloatFast hessian = pGradientAndHessian[(iScore << 1) + 1];
+               if(bWeight) {
+                  hessian *= weight;
+               }
+               pGradientPair->SetHess(pGradientPair->GetHess() + hessian);
             }
             ++iScore;
          } while(cScores != iScore);
          pGradientAndHessian += bClassification ? cScores << 1 : cScores;
 
-         EBM_ASSERT(
-            !bClassification ||
-            ptrdiff_t { 2 } == cClasses && !bExpandBinaryLogits ||
-            -k_epsilonGradient < gradientTotalDebug && gradientTotalDebug < k_epsilonGradient
-         );
+         EBM_ASSERT(!bClassification || ptrdiff_t { 2 } == cClasses && !bExpandBinaryLogits ||
+            -k_epsilonGradient < gradientTotalDebug && gradientTotalDebug < k_epsilonGradient);
 
          if(bCompilerZeroDimensional) {
             if(pGradientAndHessiansEnd == pGradientAndHessian) {
@@ -168,17 +186,31 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
       cShift = cShiftReset;
    } while(pGradientAndHessiansEnd != pGradientAndHessian);
 
-   EBM_ASSERT(0 < weightTotalDebug);
-   EBM_ASSERT(weightTotalDebug * FloatFast { 0.999 } <= pParams->m_totalWeightDebug &&
-      pParams->m_totalWeightDebug <= FloatFast { 1.001 } * weightTotalDebug);
+   EBM_ASSERT(!bWeight || 0 < weightTotalDebug);
+   EBM_ASSERT(!bWeight || (weightTotalDebug * FloatFast { 0.999 } <= pParams->m_totalWeightDebug &&
+      pParams->m_totalWeightDebug <= FloatFast { 1.001 } * weightTotalDebug));
 
    return Error_None;
 }
 
 template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
 INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptions(BinSumsBoostingBridge * const pParams) {
-   // TODO: add templated special cases like no weights in here
-   return BinSumsBoostingInternal<cCompilerClasses, compilerBitPack>(pParams);
+   if(nullptr == pParams->m_aWeights) {
+      constexpr bool bWeight = false;
+      // we use the weights to hold both the weights and the inner bag counts if there are inner bags
+      EBM_ASSERT(nullptr == pParams->m_pCountOccurrences);
+      constexpr bool bReplication = false;
+      return BinSumsBoostingInternal<cCompilerClasses, compilerBitPack, bWeight, bReplication>(pParams);
+   } else {
+      constexpr bool bWeight = true;
+      if(nullptr == pParams->m_pCountOccurrences) {
+         constexpr bool bReplication = false;
+         return BinSumsBoostingInternal<cCompilerClasses, compilerBitPack, bWeight, bReplication>(pParams);
+      } else {
+         constexpr bool bReplication = true;
+         return BinSumsBoostingInternal<cCompilerClasses, compilerBitPack, bWeight, bReplication>(pParams);
+      }
+   }
 }
 
 template<ptrdiff_t cCompilerClasses>

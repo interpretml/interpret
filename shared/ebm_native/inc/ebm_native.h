@@ -351,6 +351,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    void * rng,
    const void * dataSet,
    const BagEbm * bag,
+   // TODO: add a baseScore parameter here so that we can initialize the mains boosting without initScores
    const double * initScores, // only samples with non-zeros in the bag are included
    IntEbm countTerms,
    const IntEbm * dimensionCounts,
@@ -410,6 +411,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
    const BagEbm * bag,
+   // TODO: add a baseScore parameter here for symmetry with CreateBooster
    const double * initScores, // only samples with non-zeros in the bag are included
    const double * experimentalParams,
    InteractionHandle * interactionHandleOut

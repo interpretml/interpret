@@ -145,7 +145,7 @@ InnerBag * InnerBag::GenerateFlatInnerBag(
 ) {
    LOG_0(Trace_Info, "Entered InnerBag::GenerateFlatInnerBag");
 
-   // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
+   EBM_ASSERT(1 <= cSamples); // if there were no samples, we wouldn't be called
 
    InnerBag * const pRet = static_cast<InnerBag *>(malloc(sizeof(InnerBag)));
    if(nullptr == pRet) {
@@ -154,66 +154,33 @@ InnerBag * InnerBag::GenerateFlatInnerBag(
    }
    pRet->InitializeUnfailing();
 
-   EBM_ASSERT(1 <= cSamples); // if there were no samples, we wouldn't be called
+   pRet->m_weightTotal = static_cast<FloatBig>(cSamples);
+   if(nullptr != aWeights) {
+      if(IsMultiplyError(sizeof(FloatFast), cSamples)) {
+         pRet->Free();
+         LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag IsMultiplyError(sizeof(FloatFast), cSamples)");
+         return nullptr;
+      }
+      const size_t cBytesWeightsInternalCapacity = sizeof(FloatFast) * cSamples;
+      FloatFast * const aWeightsInternal = static_cast<FloatFast *>(malloc(cBytesWeightsInternalCapacity));
+      if(nullptr == aWeightsInternal) {
+         pRet->Free();
+         LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag nullptr == aWeightsInternal");
+         return nullptr;
+      }
+      pRet->m_aWeights = aWeightsInternal;
 
-   if(IsMultiplyError(sizeof(size_t), cSamples)) {
-      pRet->Free();
-      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag IsMultiplyError(sizeof(size_t), cSamples)");
-      return nullptr;
-   }
-   size_t * const aCountOccurrences = static_cast<size_t *>(malloc(sizeof(size_t) * cSamples));
-   if(nullptr == aCountOccurrences) {
-      pRet->Free();
-      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag nullptr == aCountOccurrences");
-      return nullptr;
-   }
-   pRet->m_aCountOccurrences = aCountOccurrences;
-
-   if(IsMultiplyError(sizeof(FloatFast), cSamples)) {
-      pRet->Free();
-      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag IsMultiplyError(sizeof(FloatFast), cSamples)");
-      return nullptr;
-   }
-   const size_t cBytesWeightsInternalCapacity = sizeof(FloatFast) * cSamples;
-   FloatFast * const aWeightsInternal = static_cast<FloatFast *>(malloc(cBytesWeightsInternalCapacity));
-   if(nullptr == aWeightsInternal) {
-      pRet->Free();
-      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag nullptr == aWeightsInternal");
-      return nullptr;
-   }
-   pRet->m_aWeights = aWeightsInternal;
-
-   size_t * pCountOccurrences = aCountOccurrences;
-   const size_t * const pCountOccurrencesEnd = &aCountOccurrences[cSamples];
-   FloatBig total;
-   if(nullptr == aWeights) {
-      FloatFast * pWeightsInternal = aWeightsInternal;
-      do {
-         *pWeightsInternal = 1;
-         *pCountOccurrences = 1;
-
-         ++pWeightsInternal;
-         ++pCountOccurrences;
-      } while(pCountOccurrencesEnd != pCountOccurrences);
-      total = static_cast<FloatBig>(cSamples);
-   } else {
+      FloatBig total;
       total = AddPositiveFloatsSafeBig(cSamples, aWeights);
       if(std::isnan(total) || std::isinf(total) || total <= 0) {
          pRet->Free();
          LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag std::isnan(total) || std::isinf(total) || total <= 0");
          return nullptr;
       }
-      memcpy(aWeightsInternal, aWeights, cBytesWeightsInternalCapacity);
-      do {
-         *pCountOccurrences = 1;
-         ++pCountOccurrences;
-      } while(pCountOccurrencesEnd != pCountOccurrences);
-   }
-   // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
-   // to zero though so check it after checking for negative
-   EBM_ASSERT(0 != total);
+      pRet->m_weightTotal = total;
 
-   pRet->m_weightTotal = total;
+      memcpy(aWeightsInternal, aWeights, cBytesWeightsInternalCapacity);
+   }
 
    LOG_0(Trace_Info, "Exited InnerBag::GenerateFlatInnerBag");
    return pRet;
