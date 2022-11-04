@@ -247,73 +247,38 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptions(BinSumsInteractionBridge *
 }
 
 template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensionsPossible>
-class BinSumsInteractionDimensions final {
-public:
-
-   BinSumsInteractionDimensions() = delete; // this is a static class.  Do not construct
-
+struct CountDimensions final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
-      static_assert(1 <= cCompilerDimensionsPossible, "can't have less than 1 dimension for interactions");
-      static_assert(cCompilerDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
-
-      EBM_ASSERT(1 <= pParams->m_cRuntimeRealDimensions);
-      EBM_ASSERT(pParams->m_cRuntimeRealDimensions <= k_cDimensionsMax);
       if(cCompilerDimensionsPossible == pParams->m_cRuntimeRealDimensions) {
          return FinalOptions<cCompilerClasses, cCompilerDimensionsPossible>(pParams);
       } else {
-         return BinSumsInteractionDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pParams);
+         return CountDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pParams);
       }
    }
 };
 
 template<ptrdiff_t cCompilerClasses>
-class BinSumsInteractionDimensions<cCompilerClasses, k_cCompilerOptimizedCountDimensionsMax + 1> final {
-public:
-
-   BinSumsInteractionDimensions() = delete; // this is a static class.  Do not construct
-
+struct CountDimensions<cCompilerClasses, k_cCompilerOptimizedCountDimensionsMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
-      EBM_ASSERT(1 <= pParams->m_cRuntimeRealDimensions);
-      EBM_ASSERT(pParams->m_cRuntimeRealDimensions <= k_cDimensionsMax);
       return FinalOptions<cCompilerClasses, k_dynamicDimensions>(pParams);
    }
 };
 
 template<ptrdiff_t cPossibleClasses>
-class BinSumsInteractionTarget final {
-public:
-
-   BinSumsInteractionTarget() = delete; // this is a static class.  Do not construct
-
+struct CountClasses final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
-      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
-      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
-
-      const ptrdiff_t cRuntimeClasses = pParams->m_cClasses;
-      EBM_ASSERT(IsClassification(cRuntimeClasses));
-      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
-
-      if(cPossibleClasses == cRuntimeClasses) {
-         return BinSumsInteractionDimensions<cPossibleClasses, 1>::Func(pParams);
+      if(cPossibleClasses == pParams->m_cClasses) {
+         return CountDimensions<cPossibleClasses, 1>::Func(pParams);
       } else {
-         return BinSumsInteractionTarget<cPossibleClasses + 1>::Func(pParams);
+         return CountClasses<cPossibleClasses + 1>::Func(pParams);
       }
    }
 };
 
 template<>
-class BinSumsInteractionTarget<k_cCompilerClassesMax + 1> final {
-public:
-
-   BinSumsInteractionTarget() = delete; // this is a static class.  Do not construct
-
+struct CountClasses<k_cCompilerClassesMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
-      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
-
-      EBM_ASSERT(IsClassification(pParams->m_cClasses));
-      EBM_ASSERT(k_cCompilerClassesMax < pParams->m_cClasses);
-
-      return BinSumsInteractionDimensions<k_dynamicClassification, 1>::Func(pParams);
+      return CountDimensions<k_dynamicClassification, 1>::Func(pParams);
    }
 };
 
@@ -322,12 +287,11 @@ extern ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pParams) {
 
    ErrorEbm error;
 
-   const ptrdiff_t cRuntimeClasses = pParams->m_cClasses;
-   if(IsClassification(cRuntimeClasses)) {
-      error = BinSumsInteractionTarget<2>::Func(pParams);
+   if(IsClassification(pParams->m_cClasses)) {
+      error = CountClasses<2>::Func(pParams);
    } else {
-      EBM_ASSERT(IsRegression(cRuntimeClasses));
-      error = BinSumsInteractionDimensions<k_regression, 1>::Func(pParams);
+      EBM_ASSERT(IsRegression(pParams->m_cClasses));
+      error = CountDimensions<k_regression, 1>::Func(pParams);
    }
 
    LOG_0(Trace_Verbose, "Exited BinSumsInteraction");

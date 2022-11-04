@@ -32,7 +32,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void BinSumsBoosting(BinSumsBoostingBridge * const pParams);
+extern ErrorEbm BinSumsBoosting(BinSumsBoostingBridge * const pParams);
 
 extern void TensorTotalsBuild(
    const ptrdiff_t cClasses,
@@ -79,12 +79,14 @@ extern ErrorEbm PartitionRandomBoosting(
    double * const pTotalGain
 );
 
-static void BoostZeroDimensional(
+static ErrorEbm BoostZeroDimensional(
    BoosterShell * const pBoosterShell, 
    const InnerBag * const pInnerBag,
    const BoostFlags flags
 ) {
    LOG_0(Trace_Verbose, "Entered BoostZeroDimensional");
+
+   ErrorEbm error;
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
@@ -112,7 +114,10 @@ static void BoostZeroDimensional(
    params.m_pDebugFastBinsEnd = IndexBin(pFastBin, cBytesPerFastBin);
    params.m_totalWeightDebug = pInnerBag->GetWeightTotal();
 #endif // NDEBUG
-   BinSumsBoosting(&params);
+   error = BinSumsBoosting(&params);
+   if(Error_None != error) {
+      return error;
+   }
 
    BinBase * const pBigBin = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != pBigBin);
@@ -168,6 +173,8 @@ static void BoostZeroDimensional(
    }
 
    LOG_0(Trace_Verbose, "Exited BoostZeroDimensional");
+
+   return Error_None;
 }
 
 static ErrorEbm BoostSingleDimensional(
@@ -226,7 +233,10 @@ static ErrorEbm BoostSingleDimensional(
    params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cBins);
    params.m_totalWeightDebug = pInnerBag->GetWeightTotal();
 #endif // NDEBUG
-   BinSumsBoosting(&params);
+   error = BinSumsBoosting(&params);
+   if(Error_None != error) {
+      return error;
+   }
 
    BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != aBigBins);
@@ -331,7 +341,10 @@ static ErrorEbm BoostMultiDimensional(
    params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
    params.m_totalWeightDebug = pInnerBag->GetWeightTotal();
 #endif // NDEBUG
-   BinSumsBoosting(&params);
+   error = BinSumsBoosting(&params);
+   if(Error_None != error) {
+      return error;
+   }
 
    const size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
 
@@ -579,7 +592,10 @@ static ErrorEbm BoostRandom(
    params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTotalBins);
    params.m_totalWeightDebug = pInnerBag->GetWeightTotal();
 #endif // NDEBUG
-   BinSumsBoosting(&params);
+   error = BinSumsBoosting(&params);
+   if(Error_None != error) {
+      return error;
+   }
 
    BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != aBigBins);
@@ -867,7 +883,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          const InnerBag * const pInnerBag = *ppInnerBag;
          if(UNLIKELY(IntEbm { 0 } == lastDimensionLeavesMax)) {
             LOG_0(Trace_Warning, "WARNING GenerateTermUpdate boosting zero dimensional");
-            BoostZeroDimensional(pBoosterShell, pInnerBag, flags);
+            error = BoostZeroDimensional(pBoosterShell, pInnerBag, flags);
+            if(Error_None != error) {
+               return error;
+            }
          } else {
             double gain;
             if(0 != (BoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {
