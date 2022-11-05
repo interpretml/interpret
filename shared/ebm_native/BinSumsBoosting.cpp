@@ -25,9 +25,9 @@ namespace DEFINED_ZONE_NAME {
 
 template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bWeight, bool bReplication>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
-   constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
-   constexpr bool bClassification = IsClassification(cCompilerClasses);
-   constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
+   static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
+   static constexpr bool bClassification = IsClassification(cCompilerClasses);
+   static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
    const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pParams->m_cClasses);
    const size_t cScores = GetCountScores(cClasses);
@@ -37,27 +37,32 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
 
    const size_t cSamples = pParams->m_cSamples;
    EBM_ASSERT(1 <= cSamples);
-   const FloatFast * pGradientAndHessian = pParams->m_aGradientsAndHessians;
-   const FloatFast * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
 
+   const FloatFast * pGradientAndHessian = pParams->m_aGradientsAndHessians;
+   const FloatFast * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
+
+   size_t cBytesPerBin;
    size_t cBitsPerItemMax;
    ptrdiff_t cShift;
    ptrdiff_t cShiftReset;
    size_t maskBits;
    const StorageDataType * pInputData;
-   size_t cBytesPerBin;
 
    Bin<FloatFast, bClassification, cCompilerScores> * pBin;
 
    if(bCompilerZeroDimensional) {
       pBin = aBins;
    } else {
+      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
+      cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
+
       const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pParams->m_cPack);
       EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
 
       const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
       EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+
       cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
 
       cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
@@ -68,9 +73,11 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
       maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
 
       pInputData = pParams->m_aPacked;
+   }
 
-      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
-      cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
+   const size_t * pCountOccurrences;
+   if(bReplication) {
+      pCountOccurrences = pParams->m_pCountOccurrences;
    }
 
    const FloatFast * pWeight;
@@ -80,11 +87,6 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
 #ifndef NDEBUG
    FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
-
-   const size_t * pCountOccurrences;
-   if(bReplication) {
-      pCountOccurrences = pParams->m_pCountOccurrences;
-   }
 
    do {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
@@ -112,6 +114,14 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
             ASSERT_BIN_OK(cBytesPerBin, pBin, pParams->m_pDebugFastBinsEnd);
          }
 
+         if(bReplication) {
+            const size_t cOccurences = *pCountOccurrences;
+            pBin->SetCountSamples(pBin->GetCountSamples() + cOccurences);
+            ++pCountOccurrences;
+         } else {
+            pBin->SetCountSamples(pBin->GetCountSamples() + size_t { 1 });
+         }
+
          FloatFast weight;
          if(bWeight) {
             weight = *pWeight;
@@ -124,14 +134,6 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
             // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
             //       such that we can remove that field optionally
             pBin->SetWeight(pBin->GetWeight() + FloatFast { 1 });
-         }
-
-         if(bReplication) {
-            const size_t cOccurences = *pCountOccurrences;
-            pBin->SetCountSamples(pBin->GetCountSamples() + cOccurences);
-            ++pCountOccurrences;
-         } else {
-            pBin->SetCountSamples(pBin->GetCountSamples() + size_t { 1 });
          }
 
 #ifndef NDEBUG
@@ -170,7 +172,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
             -k_epsilonGradient < gradientTotalDebug && gradientTotalDebug < k_epsilonGradient);
 
          if(bCompilerZeroDimensional) {
-            if(pGradientAndHessiansEnd == pGradientAndHessian) {
+            if(pGradientsAndHessiansEnd == pGradientAndHessian) {
                break;
             }
          } else {
@@ -184,34 +186,41 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
          break;
       }
       cShift = cShiftReset;
-   } while(pGradientAndHessiansEnd != pGradientAndHessian);
+   } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 
+   EBM_ASSERT(!bWeight || 0 < pParams->m_totalWeightDebug);
    EBM_ASSERT(!bWeight || 0 < weightTotalDebug);
    EBM_ASSERT(!bWeight || (weightTotalDebug * FloatFast { 0.999 } <= pParams->m_totalWeightDebug &&
       pParams->m_totalWeightDebug <= FloatFast { 1.001 } * weightTotalDebug));
+   EBM_ASSERT(bWeight || static_cast<FloatFast>(cSamples) == pParams->m_totalWeightDebug);
 
    return Error_None;
 }
 
+
 template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
 INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptions(BinSumsBoostingBridge * const pParams) {
-   if(nullptr == pParams->m_aWeights) {
-      constexpr bool bWeight = false;
-      // we use the weights to hold both the weights and the inner bag counts if there are inner bags
-      EBM_ASSERT(nullptr == pParams->m_pCountOccurrences);
-      constexpr bool bReplication = false;
-      return BinSumsBoostingInternal<cCompilerClasses, compilerBitPack, bWeight, bReplication>(pParams);
-   } else {
-      constexpr bool bWeight = true;
-      if(nullptr == pParams->m_pCountOccurrences) {
-         constexpr bool bReplication = false;
+   if(nullptr != pParams->m_aWeights) {
+      static constexpr bool bWeight = true;
+
+      if(nullptr != pParams->m_pCountOccurrences) {
+         static constexpr bool bReplication = true;
          return BinSumsBoostingInternal<cCompilerClasses, compilerBitPack, bWeight, bReplication>(pParams);
       } else {
-         constexpr bool bReplication = true;
+         static constexpr bool bReplication = false;
          return BinSumsBoostingInternal<cCompilerClasses, compilerBitPack, bWeight, bReplication>(pParams);
       }
+   } else {
+      static constexpr bool bWeight = false;
+
+      // we use the weights to hold both the weights and the inner bag counts if there are inner bags
+      EBM_ASSERT(nullptr == pParams->m_pCountOccurrences);
+      static constexpr bool bReplication = false;
+
+      return BinSumsBoostingInternal<cCompilerClasses, compilerBitPack, bWeight, bReplication>(pParams);
    }
 }
+
 
 template<ptrdiff_t cCompilerClasses>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BitPack(BinSumsBoostingBridge * const pParams) {
@@ -223,6 +232,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BitPack(BinSumsBoostingBridge * const p
    }
 }
 
+
 template<ptrdiff_t cPossibleClasses>
 struct CountClasses final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsBoostingBridge * const pParams) {
@@ -233,13 +243,13 @@ struct CountClasses final {
       }
    }
 };
-
 template<>
 struct CountClasses<k_cCompilerClassesMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsBoostingBridge * const pParams) {
       return BitPack<k_dynamicClassification>(pParams);
    }
 };
+
 
 extern ErrorEbm BinSumsBoosting(BinSumsBoostingBridge * const pParams) {
    ErrorEbm error;

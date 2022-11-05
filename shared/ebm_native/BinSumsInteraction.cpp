@@ -57,30 +57,17 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
    static constexpr bool bClassification = IsClassification(cCompilerClasses);
    static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
-   auto * const aBins = pParams->m_aFastBins->Specialize<FloatFast, bClassification, cCompilerScores>();
-
    const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pParams->m_cClasses);
    const size_t cScores = GetCountScores(cClasses);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
-   const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
+   auto * const aBins = pParams->m_aFastBins->Specialize<FloatFast, bClassification, cCompilerScores>();
+   EBM_ASSERT(nullptr != aBins);
 
    const size_t cSamples = pParams->m_cSamples;
    EBM_ASSERT(1 <= cSamples);
 
    const FloatFast * pGradientAndHessian = pParams->m_aGradientsAndHessians;
    const FloatFast * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
-
-   const FloatFast * pWeight = bWeight ? pParams->m_aWeights : nullptr;
-
-   const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, pParams->m_cRuntimeRealDimensions);
-   EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
-
-   EBM_ASSERT(1 == cCompilerDimensions || 1 != pParams->m_cRuntimeRealDimensions); // 1 dimension must be templated
-
-#ifndef NDEBUG
-   FloatFast weightTotalDebug = 0;
-#endif // NDEBUG
 
    struct DimensionalData {
       ptrdiff_t m_cShift;
@@ -91,6 +78,11 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
       const StorageDataType * m_pData;
       ptrdiff_t m_cShiftReset;
    };
+
+   const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, pParams->m_cRuntimeRealDimensions);
+   EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
+
+   EBM_ASSERT(1 == cCompilerDimensions || 1 != pParams->m_cRuntimeRealDimensions); // 1 dimension must be templated
 
    // this is on the stack and the compiler should be able to optimize these as if they were variables or registers
    DimensionalData aDimensionalData[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
@@ -103,17 +95,17 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
       pDimensionalData->m_pData = pData + 1;
 
       const size_t cItemsPerBitPack = pParams->m_acItemsPerBitPack[iDimensionInit];
-      EBM_ASSERT(size_t { 1 } <= cItemsPerBitPack);
+      EBM_ASSERT(1 <= cItemsPerBitPack);
       EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
       const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
-      EBM_ASSERT(1 <= cBitsPerItemMax);
-      EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       pDimensionalData->m_cBitsPerItemMax = cBitsPerItemMax;
 
       pDimensionalData->m_cShift = static_cast<ptrdiff_t>(((cSamples - 1) % cItemsPerBitPack + 1) * cBitsPerItemMax);
       pDimensionalData->m_cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
 
+      EBM_ASSERT(1 <= cBitsPerItemMax);
+      EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSizeT);
       const size_t maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
       pDimensionalData->m_maskBits = maskBits;
 
@@ -124,6 +116,17 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
 
    DimensionalData * const aDimensionalDataShifted = &aDimensionalData[1];
    const size_t cRealDimensionsMinusOne = cRealDimensions - 1;
+
+   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
+
+   const FloatFast * pWeight;
+   if(bWeight) {
+      pWeight = pParams->m_aWeights;
+   }
+#ifndef NDEBUG
+   FloatFast weightTotalDebug = 0;
+#endif // NDEBUG
 
    while(true) {
       size_t cTensorBytes = cBytesPerBin;
@@ -166,7 +169,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
          pRawBin += iBin * cTensorBytes;
          cTensorBytes *= cBins;
       }
-      constexpr bool isNotOneDimensional = 1 != cCompilerDimensions;
+      static constexpr bool isNotOneDimensional = 1 != cCompilerDimensions;
       if(isNotOneDimensional) {
          size_t iDimension = 0;
          do {
@@ -199,15 +202,18 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
 
       pBin->SetCountSamples(pBin->GetCountSamples() + size_t { 1 });
 
-      FloatFast weight = 1;
       if(bWeight) {
-         weight = *pWeight;
+         const FloatFast weight = *pWeight;
+         pBin->SetWeight(pBin->GetWeight() + weight);
          ++pWeight;
 #ifndef NDEBUG
          weightTotalDebug += weight;
 #endif // NDEBUG
+      } else {
+         // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
+         //       such that we can remove that field optionally
+         pBin->SetWeight(pBin->GetWeight() + FloatFast { 1 });
       }
-      pBin->SetWeight(pBin->GetWeight() + weight);
 
       auto * const aGradientPair = pBin->GetGradientPairs();
       size_t iScore = 0;
@@ -227,24 +233,27 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
    }
 done:;
 
-   EBM_ASSERT(0 < pParams->m_totalWeightDebug);
-   EBM_ASSERT(nullptr == pWeight || weightTotalDebug * FloatFast { 0.999 } <= pParams->m_totalWeightDebug &&
-      pParams->m_totalWeightDebug <= FloatFast { 1.001 } * weightTotalDebug);
-   EBM_ASSERT(nullptr != pWeight || static_cast<FloatFast>(cSamples) == pParams->m_totalWeightDebug);
+   EBM_ASSERT(!bWeight || 0 < pParams->m_totalWeightDebug);
+   EBM_ASSERT(!bWeight || 0 < weightTotalDebug);
+   EBM_ASSERT(!bWeight || (weightTotalDebug * FloatFast { 0.999 } <= pParams->m_totalWeightDebug &&
+      pParams->m_totalWeightDebug <= FloatFast { 1.001 } * weightTotalDebug));
+   EBM_ASSERT(bWeight || static_cast<FloatFast>(cSamples) == pParams->m_totalWeightDebug);
 
    return Error_None;
 }
 
+
 template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
 INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptions(BinSumsInteractionBridge * const pParams) {
    if(nullptr != pParams->m_aWeights) {
-      constexpr bool bWeight = true;
+      static constexpr bool bWeight = true;
       return BinSumsInteractionInternal<cCompilerClasses, cCompilerDimensions, bWeight>(pParams);
    } else {
-      constexpr bool bWeight = false;
+      static constexpr bool bWeight = false;
       return BinSumsInteractionInternal<cCompilerClasses, cCompilerDimensions, bWeight>(pParams);
    }
 }
+
 
 template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensionsPossible>
 struct CountDimensions final {
@@ -256,13 +265,13 @@ struct CountDimensions final {
       }
    }
 };
-
 template<ptrdiff_t cCompilerClasses>
 struct CountDimensions<cCompilerClasses, k_cCompilerOptimizedCountDimensionsMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
       return FinalOptions<cCompilerClasses, k_dynamicDimensions>(pParams);
    }
 };
+
 
 template<ptrdiff_t cPossibleClasses>
 struct CountClasses final {
@@ -274,13 +283,13 @@ struct CountClasses final {
       }
    }
 };
-
 template<>
 struct CountClasses<k_cCompilerClassesMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
       return CountDimensions<k_dynamicClassification, 1>::Func(pParams);
    }
 };
+
 
 extern ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pParams) {
    LOG_0(Trace_Verbose, "Entered BinSumsInteraction");

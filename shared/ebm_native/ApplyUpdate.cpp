@@ -19,14 +19,14 @@ namespace DEFINED_ZONE_NAME {
 
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
-template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
+template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
 struct ApplyUpdateInternal final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyUpdateBridge * const pData) {
       static_assert(IsClassification(cCompilerClasses), "must be classification");
       static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
-      constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
-      constexpr bool bGetExp = bCalcMetric || bKeepGradHess;
-      constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
+      static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
+      static constexpr bool bGetExp = bCalcMetric || bKeepGradHess;
+      static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
       FloatFast aLocalExpVector[GetCountScores(cCompilerClasses)];
       FloatFast * const aExps = k_dynamicClassification == cCompilerClasses ? pData->m_aMulticlassMidwayTemp : aLocalExpVector;
@@ -39,6 +39,7 @@ struct ApplyUpdateInternal final {
 
       const size_t cSamples = pData->m_cSamples;
       EBM_ASSERT(1 <= cSamples);
+
       FloatFast * pSampleScore = pData->m_aSampleScores;
       const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples * cScores;
 
@@ -60,6 +61,7 @@ struct ApplyUpdateInternal final {
          const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+
          cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
@@ -209,17 +211,18 @@ struct ApplyUpdateInternal final {
 };
 
 #ifndef EXPAND_BINARY_LOGITS
-template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
-struct ApplyUpdateInternal<2, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess> final {
+template<ptrdiff_t compilerBitPack, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+struct ApplyUpdateInternal<2, compilerBitPack, bKeepGradHess, bCalcMetric, bWeight> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyUpdateBridge * const pData) {
-      constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
-      constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
+      static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
+      static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
       EBM_ASSERT(1 <= cSamples);
+
       FloatFast * pSampleScore = pData->m_aSampleScores;
       const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples;
 
@@ -240,6 +243,7 @@ struct ApplyUpdateInternal<2, compilerBitPack, bCalcMetric, bWeight, bKeepGradHe
          const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+
          cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
@@ -353,18 +357,19 @@ struct ApplyUpdateInternal<2, compilerBitPack, bCalcMetric, bWeight, bKeepGradHe
 };
 #endif // EXPAND_BINARY_LOGITS
 
-template<ptrdiff_t compilerBitPack, bool bCalcMetric, bool bWeight, bool bKeepGradHess>
-struct ApplyUpdateInternal<k_regression, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess> final {
+template<ptrdiff_t compilerBitPack, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+struct ApplyUpdateInternal<k_regression, compilerBitPack, bKeepGradHess, bCalcMetric, bWeight> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyUpdateBridge * const pData) {
       static_assert(bKeepGradHess, "for MSE regression we should always keep the gradients");
 
-      constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
+      static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
 
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
       EBM_ASSERT(1 <= cSamples);
+
       FloatFast * pGradient = pData->m_aGradientsAndHessians; // no hessians for regression
       const FloatFast * const pGradientsEnd = pGradient + cSamples;
 
@@ -385,6 +390,7 @@ struct ApplyUpdateInternal<k_regression, compilerBitPack, bCalcMetric, bWeight, 
          const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+
          cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
@@ -469,42 +475,47 @@ struct ApplyUpdateInternal<k_regression, compilerBitPack, bCalcMetric, bWeight, 
 template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
 struct FinalOptions final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyUpdateBridge * const pData) {
-      if(pData->m_bCalcMetric) {
-         constexpr bool bCalcMetric = true;
+      if(nullptr != pData->m_aGradientsAndHessians) {
+         static constexpr bool bKeepGradHess = true;
+
+         // if we are updating the gradients then we are doing training and do not need to calculate the metric
+         EBM_ASSERT(!pData->m_bCalcMetric);
+         static constexpr bool bCalcMetric = false;
+
          if(nullptr != pData->m_aWeights) {
-            constexpr bool bWeight = true;
-            // if we are calculating the metric then we are doing validation and we do not need the gradients
-            EBM_ASSERT(nullptr == pData->m_aGradientsAndHessians);
-            constexpr bool bKeepGradHess = false;
-            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+            static constexpr bool bWeight = true;
+
+            // this branch will only be taking during interaction initialization
+
+            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bKeepGradHess, bCalcMetric, bWeight>::Func(pData);
          } else {
-            constexpr bool bWeight = false;
-            // if we are calculating the metric then we are doing validation and we do not need the gradients
-            EBM_ASSERT(nullptr == pData->m_aGradientsAndHessians);
-            constexpr bool bKeepGradHess = false;
-            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+            static constexpr bool bWeight = false;
+            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bKeepGradHess, bCalcMetric, bWeight>::Func(pData);
          }
       } else {
-         constexpr bool bCalcMetric = false;
-         if(nullptr != pData->m_aGradientsAndHessians) {
-            constexpr bool bKeepGradHess = true;
+         static constexpr bool bKeepGradHess = false;
+
+         if(pData->m_bCalcMetric) {
+            static constexpr bool bCalcMetric = true;
+
             if(nullptr != pData->m_aWeights) {
-               constexpr bool bWeight = true;
-               return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+               static constexpr bool bWeight = true;
+               return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bKeepGradHess, bCalcMetric, bWeight>::Func(pData);
             } else {
-               constexpr bool bWeight = false;
-               return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+               static constexpr bool bWeight = false;
+               return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bKeepGradHess, bCalcMetric, bWeight>::Func(pData);
             }
          } else {
+            static constexpr bool bCalcMetric = false;
+
             // currently this branch is not taken, but if would be if we wanted to allow in the future
-            // non-metric calculating validation boosting.  For instance if we wanted to substitute an alternate
+            // non-metric calculating validation for boosting.  For instance if we wanted to substitute an alternate
             // metric or if for performance reasons we only want to calculate the metric every N rounds of boosting
-            constexpr bool bKeepGradHess = false;
 
             EBM_ASSERT(nullptr == pData->m_aWeights);
-            constexpr bool bWeight = false; // if we are not calculating the metric or updating gradients then we never need the weights
+            static constexpr bool bWeight = false; // if we are not calculating the metric or updating gradients then we never need the weights
 
-            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bKeepGradHess, bCalcMetric, bWeight>::Func(pData);
          }
       }
    }
@@ -513,27 +524,28 @@ struct FinalOptions final {
 template<ptrdiff_t compilerBitPack>
 struct FinalOptions<k_regression, compilerBitPack> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(ApplyUpdateBridge * const pData) {
-      constexpr ptrdiff_t cCompilerClasses = k_regression;
+      static constexpr ptrdiff_t cCompilerClasses = k_regression;
+
+      EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
+      static constexpr bool bKeepGradHess = true;
+
       if(pData->m_bCalcMetric) {
-         constexpr bool bCalcMetric = true;
+         static constexpr bool bCalcMetric = true;
+
          if(nullptr != pData->m_aWeights) {
-            constexpr bool bWeight = true;
-            EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
-            constexpr bool bKeepGradHess = true;
-            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+            static constexpr bool bWeight = true;
+            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bKeepGradHess, bCalcMetric, bWeight>::Func(pData);
          } else {
-            constexpr bool bWeight = false;
-            EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
-            constexpr bool bKeepGradHess = true;
-            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+            static constexpr bool bWeight = false;
+            return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bKeepGradHess, bCalcMetric, bWeight>::Func(pData);
          }
       } else {
-         constexpr bool bCalcMetric = false;
+         static constexpr bool bCalcMetric = false;
+
          EBM_ASSERT(nullptr == pData->m_aWeights);
-         constexpr bool bWeight = false; // if we are not calculating the metric then we never need the weights
-         EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
-         constexpr bool bKeepGradHess = true;
-         return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bCalcMetric, bWeight, bKeepGradHess>::Func(pData);
+         static constexpr bool bWeight = false; // if we are not calculating the metric then we never need the weights
+
+         return ApplyUpdateInternal<cCompilerClasses, compilerBitPack, bKeepGradHess, bCalcMetric, bWeight>::Func(pData);
       }
    }
 };
