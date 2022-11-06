@@ -198,6 +198,11 @@ struct InputDataPointerAndCountBins {
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
+   size_t m_cItemsPerBitPackFrom;
+   size_t m_cBitsPerItemMaxFrom;
+   size_t m_maskBitsFrom;
+   ptrdiff_t m_iShiftFrom;
+
    const SharedStorageDataType * m_pInputData;
    size_t m_cBins;
 };
@@ -212,6 +217,7 @@ WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const unsigned char * const pDataSetShared,
+   const size_t cSharedSamples,
    const BagEbm direction,
    const BagEbm * const aBag,
    const size_t cSetSamples,
@@ -316,6 +322,26 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
                pDimensionInfoInit->m_pInputData = static_cast<const SharedStorageDataType *>(pInputDataFrom);
                pDimensionInfoInit->m_cBins = cBins;
+
+               const size_t cBitsRequiredMin = CountBitsRequired(cBins - 1);
+               EBM_ASSERT(1 <= cBitsRequiredMin);
+               EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType);
+
+               const size_t cItemsPerBitPackFrom = GetCountItemsBitPacked<SharedStorageDataType>(cBitsRequiredMin);
+               EBM_ASSERT(1 <= cItemsPerBitPackFrom);
+               EBM_ASSERT(cItemsPerBitPackFrom <= k_cBitsForSharedStorageType);
+
+               const size_t cBitsPerItemMaxFrom = GetCountBits<SharedStorageDataType>(cItemsPerBitPackFrom);
+               EBM_ASSERT(cBitsPerItemMaxFrom <= k_cBitsForSharedStorageType);
+               EBM_ASSERT(1 <= cBitsPerItemMaxFrom);
+               EBM_ASSERT(cBitsPerItemMaxFrom <= k_cBitsForSizeT);
+               const size_t maskBitsFrom = (~size_t{ 0 }) >> (k_cBitsForSizeT - cBitsPerItemMaxFrom);
+
+               pDimensionInfoInit->m_cItemsPerBitPackFrom = cItemsPerBitPackFrom;
+               pDimensionInfoInit->m_cBitsPerItemMaxFrom = cBitsPerItemMaxFrom;
+               pDimensionInfoInit->m_maskBitsFrom = maskBitsFrom;
+               pDimensionInfoInit->m_iShiftFrom = static_cast<ptrdiff_t>((cSharedSamples - 1) % cItemsPerBitPackFrom);
+
                ++pDimensionInfoInit;
             }
             ++piTermFeatures;
@@ -350,8 +376,14 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                      if(0 != cAdvances) {
                         InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
                         do {
-                           const SharedStorageDataType * pInputData = pDimensionInfo->m_pInputData;
-                           pDimensionInfo->m_pInputData = pInputData + cAdvances;
+                           size_t cCompleteAdvanced = cAdvances / pDimensionInfo->m_cItemsPerBitPackFrom;
+                           pDimensionInfo->m_iShiftFrom -= static_cast<ptrdiff_t>(cAdvances % pDimensionInfo->m_cItemsPerBitPackFrom);
+                           if(pDimensionInfo->m_iShiftFrom < ptrdiff_t { 0 }) {
+                              ++cCompleteAdvanced;
+                              pDimensionInfo->m_iShiftFrom += pDimensionInfo->m_cItemsPerBitPackFrom;
+                           }
+                           pDimensionInfo->m_pInputData += cCompleteAdvanced;
+
                            ++pDimensionInfo;
                         } while(pDimensionInfoInit != pDimensionInfo);
                      }
@@ -361,11 +393,13 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                   size_t tensorMultiple = 1;
                   InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
                   do {
-                     const SharedStorageDataType * pInputData = pDimensionInfo->m_pInputData;
-                     const SharedStorageDataType inputData = *pInputData;
-                     pDimensionInfo->m_pInputData = pInputData + 1;
-                     EBM_ASSERT(!IsConvertError<size_t>(inputData));
-                     const size_t iData = static_cast<size_t>(inputData);
+                     SharedStorageDataType dataFrom = *pDimensionInfo->m_pInputData;
+                     const size_t iData = static_cast<size_t>(dataFrom >> (pDimensionInfo->m_iShiftFrom * pDimensionInfo->m_cBitsPerItemMaxFrom)) & pDimensionInfo->m_maskBitsFrom;
+                     pDimensionInfo->m_iShiftFrom -= 1;
+                     if(pDimensionInfo->m_iShiftFrom < ptrdiff_t { 0 }) {
+                        pDimensionInfo->m_pInputData += 1;
+                        pDimensionInfo->m_iShiftFrom += pDimensionInfo->m_cItemsPerBitPackFrom;
+                     }
 
                      if(pDimensionInfo->m_cBins <= iData) {
                         // TODO: I think this check has been moved to constructing the shared dataset
@@ -425,6 +459,7 @@ ErrorEbm DataSetBoosting::Initialize(
    const bool bAllocateSampleScores,
    const bool bAllocateTargetData,
    const unsigned char * const pDataSetShared,
+   const size_t cSharedSamples,
    const BagEbm direction,
    const BagEbm * const aBag,
    const double * const aInitScores,
@@ -494,6 +529,7 @@ ErrorEbm DataSetBoosting::Initialize(
       if(0 != cTerms) {
          StorageDataType ** const aaInputData = ConstructInputData(
             pDataSetShared,
+            cSharedSamples,
             direction,
             aBag,
             cSetSamples,

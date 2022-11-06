@@ -70,6 +70,7 @@ WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const unsigned char * const pDataSetShared,
+   const size_t cSharedSamples,
    const BagEbm * const aBag,
    const size_t cSetSamples,
    const size_t cFeatures
@@ -133,6 +134,17 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          EBM_ASSERT(cBitsRequiredMin <= k_cBitsForStorageType);
 
 
+         const size_t cItemsPerBitPackFrom = GetCountItemsBitPacked<SharedStorageDataType>(cBitsRequiredMin);
+         EBM_ASSERT(1 <= cItemsPerBitPackFrom);
+         EBM_ASSERT(cItemsPerBitPackFrom <= k_cBitsForSharedStorageType);
+
+         const size_t cBitsPerItemMaxFrom = GetCountBits<SharedStorageDataType>(cItemsPerBitPackFrom);
+         EBM_ASSERT(cBitsPerItemMaxFrom <= k_cBitsForSharedStorageType);
+         EBM_ASSERT(1 <= cBitsPerItemMaxFrom);
+         EBM_ASSERT(cBitsPerItemMaxFrom <= k_cBitsForStorageType);
+         const StorageDataType maskBitsFrom = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMaxFrom);
+
+
          const size_t cItemsPerBitPackTo = GetCountItemsBitPacked<StorageDataType>(cBitsRequiredMin);
          EBM_ASSERT(1 <= cItemsPerBitPackTo);
          EBM_ASSERT(cItemsPerBitPackTo <= k_cBitsForStorageType);
@@ -143,6 +155,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
          EBM_ASSERT(1 <= cSetSamples);
          const size_t cDataUnitsTo = (cSetSamples - 1) / cItemsPerBitPackTo + 1; // this can't overflow or underflow
+
 
          if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
             LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
@@ -163,8 +176,10 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          BagEbm replication = 0;
          StorageDataType inputData;
 
-         ptrdiff_t cShiftTo = (cSetSamples - 1) % cItemsPerBitPackTo * cBitsPerItemMaxTo;
-         const ptrdiff_t cShiftResetTo = (cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo;
+         ptrdiff_t iShiftFrom = static_cast<ptrdiff_t>((cSharedSamples - 1) % cItemsPerBitPackFrom);
+
+         ptrdiff_t cShiftTo = static_cast<ptrdiff_t>((cSetSamples - 1) % cItemsPerBitPackTo * cBitsPerItemMaxTo);
+         const ptrdiff_t cShiftResetTo = static_cast<ptrdiff_t>((cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo);
          do {
             StorageDataType bits = 0;
             do {
@@ -177,11 +192,22 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                         ++pSampleReplication;
                      } while(replication <= BagEbm { 0 });
                      const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
-                     pInputDataFrom += cAdvances;
+
+                     size_t cCompleteAdvanced = cAdvances / cItemsPerBitPackFrom;
+                     iShiftFrom -= static_cast<ptrdiff_t>(cAdvances % cItemsPerBitPackFrom);
+                     if(iShiftFrom < ptrdiff_t { 0 }) {
+                        ++cCompleteAdvanced;
+                        iShiftFrom += cItemsPerBitPackFrom;
+                     }
+                     pInputDataFrom += cCompleteAdvanced;
                   }
-                  EBM_ASSERT(!IsConvertError<StorageDataType>(*pInputDataFrom)); // this was checked when determining packing
-                  inputData = static_cast<StorageDataType>(*pInputDataFrom);
-                  ++pInputDataFrom;
+                  SharedStorageDataType dataFrom = *pInputDataFrom;
+                  inputData = static_cast<StorageDataType>(dataFrom >> (iShiftFrom * cBitsPerItemMaxFrom)) & maskBitsFrom;
+                  --iShiftFrom;
+                  if(iShiftFrom < ptrdiff_t { 0 }) {
+                     ++pInputDataFrom;
+                     iShiftFrom += cItemsPerBitPackFrom;
+                  }
                }
 
                EBM_ASSERT(1 <= replication);
@@ -238,6 +264,7 @@ ErrorEbm DataSetInteraction::Initialize(
    const bool bAllocateGradients,
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
+   const size_t cSharedSamples,
    const BagEbm * const aBag,
    const size_t cSetSamples,
    const size_t cWeights,
@@ -308,6 +335,7 @@ ErrorEbm DataSetInteraction::Initialize(
       if(0 != cFeatures) {
          StorageDataType ** const aaInputData = ConstructInputData(
             pDataSetShared,
+            cSharedSamples,
             aBag,
             cSetSamples,
             cFeatures

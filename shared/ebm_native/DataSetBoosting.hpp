@@ -54,6 +54,7 @@ public:
       const bool bAllocateSampleScores,
       const bool bAllocateTargetData,
       const unsigned char * const pDataSetShared,
+      const size_t cSharedSamples,
       const BagEbm direction,
       const BagEbm * const aBag,
       const double * const aInitScores,

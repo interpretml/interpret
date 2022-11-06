@@ -631,53 +631,81 @@ static IntEbm AppendFeature(
       }
 
       if(size_t { 0 } != cSamples) {
-         if(IsMultiplyError(sizeof(SharedStorageDataType), cSamples)) {
-            LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(SharedStorageDataType), cSamples)");
-            goto return_bad;
-         }
-         const size_t cBytesAllSamples = sizeof(SharedStorageDataType) * cSamples;
+         // if there is only 1 bin we always know what it will be and we do not need to store anything
+         if(SharedStorageDataType { 1 } < cBins) {
+            const size_t cBitsRequiredMin = CountBitsRequired(cBins - SharedStorageDataType { 1 });
+            EBM_ASSERT(1 <= cBitsRequiredMin);
+            EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType);
 
-         if(IsAddError(iByteCur, cBytesAllSamples)) {
-            LOG_0(Trace_Error, "ERROR AppendFeature IsAddError(iByteCur, cBytesAllSamples)");
-            goto return_bad;
-         }
-         const size_t iByteNext = iByteCur + cBytesAllSamples;
+            const size_t cItemsPerBitPack = GetCountItemsBitPacked<SharedStorageDataType>(cBitsRequiredMin);
+            EBM_ASSERT(1 <= cItemsPerBitPack);
+            EBM_ASSERT(cItemsPerBitPack <= k_cBitsForSharedStorageType);
 
-         if(nullptr != pFillMem) {
-            if(cBytesAllocated < iByteNext) {
-               LOG_0(Trace_Error, "ERROR AppendFeature cBytesAllocated < iByteNext");
+            const size_t cBitsPerItemMax = GetCountBits<SharedStorageDataType>(cItemsPerBitPack);
+            EBM_ASSERT(1 <= cBitsPerItemMax);
+            EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSharedStorageType);
+
+            EBM_ASSERT(1 <= cSamples);
+            const size_t cDataUnits = (cSamples - 1) / cItemsPerBitPack + 1; // this can't overflow or underflow
+
+            if(IsMultiplyError(sizeof(SharedStorageDataType), cDataUnits)) {
+               LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(SharedStorageDataType), cDataUnits)");
                goto return_bad;
             }
+            const size_t cBytesAllSamples = sizeof(SharedStorageDataType) * cDataUnits;
 
-            if(IsMultiplyError(sizeof(binIndexes[0]), cSamples)) {
-               LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(binIndexes[0]), cSamples)");
+            if(IsAddError(iByteCur, cBytesAllSamples)) {
+               LOG_0(Trace_Error, "ERROR AppendFeature IsAddError(iByteCur, cBytesAllSamples)");
                goto return_bad;
             }
-            const IntEbm * pBinIndex = binIndexes;
-            const IntEbm * const pBinIndexsEnd = binIndexes + cSamples;
-            SharedStorageDataType * pFillData = reinterpret_cast<SharedStorageDataType *>(pFillMem + iByteCur);
-            do {
-               const IntEbm indexBin = *pBinIndex;
-               if(indexBin < IntEbm { 0 }) {
-                  LOG_0(Trace_Error, "ERROR AppendFeature indexBin can't be negative");
+            const size_t iByteNext = iByteCur + cBytesAllSamples;
+
+            if(nullptr != pFillMem) {
+               if(cBytesAllocated < iByteNext) {
+                  LOG_0(Trace_Error, "ERROR AppendFeature cBytesAllocated < iByteNext");
                   goto return_bad;
                }
-               if(countBins <= indexBin) {
-                  LOG_0(Trace_Error, "ERROR AppendFeature countBins <= indexBin");
+
+               if(IsMultiplyError(sizeof(binIndexes[0]), cSamples)) {
+                  LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(binIndexes[0]), cSamples)");
                   goto return_bad;
                }
-               // since countBins can be converted to these, so now can indexBin
-               EBM_ASSERT(!IsConvertError<SharedStorageDataType>(indexBin));
+               const IntEbm * pBinIndex = binIndexes;
+               const IntEbm * const pBinIndexsEnd = binIndexes + cSamples;
+               SharedStorageDataType * pFillData = reinterpret_cast<SharedStorageDataType *>(pFillMem + iByteCur);
 
-               // TODO: bit compact this
-               *pFillData = static_cast<SharedStorageDataType>(indexBin);
+               ptrdiff_t cShift = (cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
+               const ptrdiff_t cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+               do {
+                  SharedStorageDataType bits = 0;
+                  do {
+                     const IntEbm indexBin = *pBinIndex;
+                     if(indexBin < IntEbm { 0 }) {
+                        LOG_0(Trace_Error, "ERROR AppendFeature indexBin can't be negative");
+                        goto return_bad;
+                     }
+                     if(countBins <= indexBin) {
+                        LOG_0(Trace_Error, "ERROR AppendFeature countBins <= indexBin");
+                        goto return_bad;
+                     }
+                     // since countBins can be converted to these, so now can indexBin
+                     EBM_ASSERT(!IsConvertError<SharedStorageDataType>(indexBin));
 
-               ++pFillData;
-               ++pBinIndex;
-            } while(pBinIndexsEnd != pBinIndex);
-            EBM_ASSERT(reinterpret_cast<unsigned char *>(pFillData) == pFillMem + iByteNext);
+                     EBM_ASSERT(0 <= cShift);
+                     EBM_ASSERT(static_cast<size_t>(cShift) < k_cBitsForSharedStorageType);
+                     bits |= static_cast<SharedStorageDataType>(indexBin) << cShift;
+                     cShift -= cBitsPerItemMax;
+
+                     ++pBinIndex;
+                  } while(ptrdiff_t { 0 } <= cShift);
+                  cShift = cShiftReset;
+                  *pFillData = bits;
+                  ++pFillData;
+               } while(pBinIndexsEnd != pBinIndex);
+               EBM_ASSERT(reinterpret_cast<unsigned char *>(pFillData) == pFillMem + iByteNext);
+            }
+            iByteCur = iByteNext;
          }
-         iByteCur = iByteNext;
       }
 
       if(nullptr != pFillMem) {
@@ -1523,17 +1551,35 @@ extern ErrorEbm GetDataSetSharedHeader(
          }
          iOffsetNext += cTotalNonDefaults;
       } else {
-         if(IsMultiplyError(sizeof(SharedStorageDataType), cSamples)) {
-            LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(sizeof(SharedStorageDataType), cSamples)");
-            return Error_IllegalParamVal;
-         }
-         const size_t cTotalMem = cSamples * sizeof(SharedStorageDataType);
+         // if there is only 1 bin we always know what it will be and we do not need to store anything
+         if(size_t { 0 } != cSamples && SharedStorageDataType { 1 } < countBins) {
+            const size_t cBitsRequiredMin = CountBitsRequired(countBins - SharedStorageDataType { 1 });
+            EBM_ASSERT(1 <= cBitsRequiredMin);
+            EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType);
 
-         if(IsAddError(iOffsetNext, cTotalMem)) {
-            LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cTotalMem)");
-            return Error_IllegalParamVal;
+            const size_t cItemsPerBitPack = GetCountItemsBitPacked<SharedStorageDataType>(cBitsRequiredMin);
+            EBM_ASSERT(1 <= cItemsPerBitPack);
+            EBM_ASSERT(cItemsPerBitPack <= k_cBitsForSharedStorageType);
+
+            const size_t cBitsPerItemMax = GetCountBits<SharedStorageDataType>(cItemsPerBitPack);
+            EBM_ASSERT(1 <= cBitsPerItemMax);
+            EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSharedStorageType);
+
+            EBM_ASSERT(1 <= cSamples);
+            const size_t cDataUnits = (cSamples - 1) / cItemsPerBitPack + 1; // this can't overflow or underflow
+
+            if(IsMultiplyError(sizeof(SharedStorageDataType), cDataUnits)) {
+               LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsMultiplyError(sizeof(SharedStorageDataType), cDataUnits)");
+               return Error_IllegalParamVal;
+            }
+            const size_t cTotalMem = cDataUnits * sizeof(SharedStorageDataType);
+
+            if(IsAddError(iOffsetNext, cTotalMem)) {
+               LOG_0(Trace_Error, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cTotalMem)");
+               return Error_IllegalParamVal;
+            }
+            iOffsetNext += cTotalMem;
          }
-         iOffsetNext += cTotalMem;
       }
       --cFeatures;
    }

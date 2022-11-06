@@ -568,6 +568,7 @@ ErrorEbm BoosterCore::Create(
       ptrdiff_t { 1 } < cClasses, // binary, multiclass
       bClassification,
       pDataSetShared,
+      cSamples,
       BagEbm { 1 },
       aBag,
       aInitScores,
@@ -588,6 +589,7 @@ ErrorEbm BoosterCore::Create(
       ptrdiff_t { 1 } < cClasses, // binary, multiclass
       bClassification,
       pDataSetShared,
+      cSamples,
       BagEbm { -1 },
       aBag,
       aInitScores,
