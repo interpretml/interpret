@@ -62,7 +62,7 @@ struct ApplyUpdateInternal final {
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
-         cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
+         cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
          cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
@@ -244,7 +244,7 @@ struct ApplyUpdateInternal<2, compilerBitPack, bKeepGradHess, bCalcMetric, bWeig
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
-         cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
+         cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
          cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
@@ -391,7 +391,7 @@ struct ApplyUpdateInternal<k_regression, compilerBitPack, bKeepGradHess, bCalcMe
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
-         cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
+         cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
          cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);

@@ -447,7 +447,7 @@ ErrorEbm BoosterCore::Create(
 
                   const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
                   EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
-                  cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked(cBitsRequiredMin));
+                  cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked<StorageDataType>(cBitsRequiredMin));
 
                   if(size_t { 1 } == cRealDimensions) {
                      cSingleDimensionBinsMax = EbmMax(cSingleDimensionBinsMax, cSingleDimensionBins);

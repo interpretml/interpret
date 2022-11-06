@@ -545,10 +545,14 @@ static IntEbm AppendFeature(
    );
 
    {
+      // TODO: move the check that countBins fits into a size_t to the unpacker.  If we fill this shared
+      // dataset on a 32-bit machine then it might be unpackable on a 64 bit machine
       if(IsConvertError<size_t>(countBins) || IsConvertError<SharedStorageDataType>(countBins)) {
          LOG_0(Trace_Error, "ERROR AppendFeature countBins is outside the range of a valid index");
          goto return_bad;
       }
+      const SharedStorageDataType cBins = static_cast<SharedStorageDataType>(countBins);
+
       if(EBM_FALSE != isMissing && EBM_TRUE != isMissing) {
          LOG_0(Trace_Error, "ERROR AppendFeature isMissing is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
@@ -623,7 +627,7 @@ static IntEbm AppendFeature(
             EBM_FALSE != isNominal,
             bSparse
          );
-         pFeatureDataSetShared->m_cBins = static_cast<SharedStorageDataType>(countBins);
+         pFeatureDataSetShared->m_cBins = cBins;
       }
 
       if(size_t { 0 } != cSamples) {
@@ -663,7 +667,6 @@ static IntEbm AppendFeature(
                   goto return_bad;
                }
                // since countBins can be converted to these, so now can indexBin
-               EBM_ASSERT(!IsConvertError<size_t>(indexBin));
                EBM_ASSERT(!IsConvertError<SharedStorageDataType>(indexBin));
 
                // TODO: bit compact this

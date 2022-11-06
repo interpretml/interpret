@@ -72,15 +72,13 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
    const size_t cSetSamples,
-   const size_t cFeatures,
-   const FeatureInteraction * const aFeatures
+   const size_t cFeatures
 ) {
    LOG_0(Trace_Info, "Entered DataSetInteraction::ConstructInputData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(1 <= cSetSamples);
    EBM_ASSERT(1 <= cFeatures);
-   EBM_ASSERT(nullptr != aFeatures);
 
    if(IsMultiplyError(sizeof(StorageDataType *), cFeatures)) {
       LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType *), cFeatures)");
@@ -129,22 +127,28 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             goto free_all;
          }
 
-         const size_t cItemsPerBitPack = aFeatures[iFeature].GetFeatureBitPack();
-         EBM_ASSERT(1 <= cItemsPerBitPack);
-         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+         const size_t cBitsRequiredMin = CountBitsRequired(cBins - 1);
+         EBM_ASSERT(1 <= cBitsRequiredMin);
+         EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType);
+         EBM_ASSERT(cBitsRequiredMin <= k_cBitsForStorageType);
 
-         const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
-         EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+
+         const size_t cItemsPerBitPackTo = GetCountItemsBitPacked<StorageDataType>(cBitsRequiredMin);
+         EBM_ASSERT(1 <= cItemsPerBitPackTo);
+         EBM_ASSERT(cItemsPerBitPackTo <= k_cBitsForStorageType);
+
+         const size_t cBitsPerItemMaxTo = GetCountBits<StorageDataType>(cItemsPerBitPackTo);
+         EBM_ASSERT(1 <= cBitsPerItemMaxTo);
+         EBM_ASSERT(cBitsPerItemMaxTo <= k_cBitsForStorageType);
 
          EBM_ASSERT(1 <= cSetSamples);
-         const size_t cDataUnits = (cSetSamples - 1) / cItemsPerBitPack + 1; // this can't overflow or underflow
+         const size_t cDataUnitsTo = (cSetSamples - 1) / cItemsPerBitPackTo + 1; // this can't overflow or underflow
 
-         if(IsMultiplyError(sizeof(StorageDataType), cDataUnits)) {
-            LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnits)");
+         if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
+            LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
             goto free_all;
          }
-         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnits));
+         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnitsTo));
          if(nullptr == pInputDataTo) {
             LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData nullptr == pInputDataTo");
             goto free_all;
@@ -154,13 +158,13 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          const BagEbm * pSampleReplication = aBag;
 
          const SharedStorageDataType * pInputDataFrom = static_cast<const SharedStorageDataType *>(aInputDataFrom);
-         const StorageDataType * const pInputDataToEnd = &pInputDataTo[cDataUnits];
+         const StorageDataType * const pInputDataToEnd = &pInputDataTo[cDataUnitsTo];
 
          BagEbm replication = 0;
          StorageDataType inputData;
 
-         ptrdiff_t cShift = (cSetSamples - 1) % cItemsPerBitPack * cBitsPerItemMax;
-         const ptrdiff_t cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+         ptrdiff_t cShiftTo = (cSetSamples - 1) % cItemsPerBitPackTo * cBitsPerItemMaxTo;
+         const ptrdiff_t cShiftResetTo = (cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo;
          do {
             StorageDataType bits = 0;
             do {
@@ -183,12 +187,12 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                EBM_ASSERT(1 <= replication);
                --replication;
 
-               EBM_ASSERT(0 <= cShift);
-               EBM_ASSERT(static_cast<size_t>(cShift) < k_cBitsForStorageType);
-               bits |= inputData << cShift;
-               cShift -= cBitsPerItemMax;
-            } while(ptrdiff_t { 0 } <= cShift);
-            cShift = cShiftReset;
+               EBM_ASSERT(0 <= cShiftTo);
+               EBM_ASSERT(static_cast<size_t>(cShiftTo) < k_cBitsForStorageType);
+               bits |= inputData << cShiftTo;
+               cShiftTo -= cBitsPerItemMaxTo;
+            } while(ptrdiff_t { 0 } <= cShiftTo);
+            cShiftTo = cShiftResetTo;
             *pInputDataTo = bits;
             ++pInputDataTo;
          } while(pInputDataToEnd != pInputDataTo);
@@ -237,8 +241,7 @@ ErrorEbm DataSetInteraction::Initialize(
    const BagEbm * const aBag,
    const size_t cSetSamples,
    const size_t cWeights,
-   const size_t cFeatures,
-   const FeatureInteraction * const aFeatures
+   const size_t cFeatures
 ) {
    EBM_ASSERT(nullptr != pDataSetShared);
 
@@ -307,8 +310,7 @@ ErrorEbm DataSetInteraction::Initialize(
             pDataSetShared,
             aBag,
             cSetSamples,
-            cFeatures,
-            aFeatures
+            cFeatures
          );
          if(nullptr == aaInputData) {
             return Error_OutOfMemory;

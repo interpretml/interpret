@@ -253,21 +253,21 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          ++paInputDataTo;
       } else {
          EBM_ASSERT(1 <= pTerm->GetTermBitPack());
-         const size_t cItemsPerBitPack = static_cast<size_t>(pTerm->GetTermBitPack());
+         const size_t cItemsPerBitPackTo = static_cast<size_t>(pTerm->GetTermBitPack());
          // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
-         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
-         const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
+         EBM_ASSERT(cItemsPerBitPackTo <= k_cBitsForStorageType);
+         const size_t cBitsPerItemMaxTo = GetCountBits<StorageDataType>(cItemsPerBitPackTo);
          // if we have 1 item, it can't be larger than the number of bits of storage
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+         EBM_ASSERT(cBitsPerItemMaxTo <= k_cBitsForStorageType);
 
          EBM_ASSERT(1 <= cSetSamples);
-         const size_t cDataUnits = (cSetSamples - 1) / cItemsPerBitPack + 1; // this can't overflow or underflow
+         const size_t cDataUnitsTo = (cSetSamples - 1) / cItemsPerBitPackTo + 1; // this can't overflow or underflow
 
-         if(IsMultiplyError(sizeof(StorageDataType), cDataUnits)) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnits)");
+         if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
             goto free_all;
          }
-         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnits));
+         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnitsTo));
          if(nullptr == pInputDataTo) {
             LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == pInputDataTo");
             goto free_all;
@@ -275,7 +275,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          *paInputDataTo = pInputDataTo;
          ++paInputDataTo;
 
-         const StorageDataType * const pInputDataToEnd = pInputDataTo + cDataUnits;
+         const StorageDataType * const pInputDataToEnd = pInputDataTo + cDataUnitsTo;
 
          const FeatureBoosting * const * ppFeature = pTerm->GetFeatures();
          EBM_ASSERT(1 <= pTerm->GetCountDimensions());
@@ -328,8 +328,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          BagEbm replication = 0;
          StorageDataType iTensor;
 
-         ptrdiff_t cShift = static_cast<ptrdiff_t>((cSetSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
-         const ptrdiff_t cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
+         ptrdiff_t cShiftTo = static_cast<ptrdiff_t>((cSetSamples - 1) % cItemsPerBitPackTo * cBitsPerItemMaxTo);
+         const ptrdiff_t cShiftResetTo = static_cast<ptrdiff_t>((cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo);
 
          do {
             StorageDataType bits = 0;
@@ -390,13 +390,13 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                EBM_ASSERT(0 < replication && 0 < direction || replication < 0 && direction < 0);
                replication -= direction;
 
-               EBM_ASSERT(0 <= cShift);
-               EBM_ASSERT(static_cast<size_t>(cShift) < k_cBitsForStorageType);
+               EBM_ASSERT(0 <= cShiftTo);
+               EBM_ASSERT(static_cast<size_t>(cShiftTo) < k_cBitsForStorageType);
                // the tensor index needs to fit in memory, but concivably StorageDataType does not
-               bits |= iTensor << cShift;
-               cShift -= cBitsPerItemMax;
-            } while(ptrdiff_t { 0 } <= cShift);
-            cShift = cShiftReset;
+               bits |= iTensor << cShiftTo;
+               cShiftTo -= cBitsPerItemMaxTo;
+            } while(ptrdiff_t { 0 } <= cShiftTo);
+            cShiftTo = cShiftResetTo;
             *pInputDataTo = bits;
             ++pInputDataTo;
          } while(pInputDataToEnd != pInputDataTo);

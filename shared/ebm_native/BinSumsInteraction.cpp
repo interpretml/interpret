@@ -98,7 +98,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
       EBM_ASSERT(1 <= cItemsPerBitPack);
       EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
-      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
+      const size_t cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
       pDimensionalData->m_cBitsPerItemMax = cBitsPerItemMax;
 
       pDimensionalData->m_cShift = static_cast<ptrdiff_t>(((cSamples - 1) % cItemsPerBitPack + 1) * cBitsPerItemMax);

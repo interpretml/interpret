@@ -78,12 +78,15 @@ inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) noexcept
 
 static constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 
+template<typename T>
 inline constexpr static size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
-   return k_cBitsForStorageType / cItemsBitPacked;
+   return CountBitsRequiredPositiveMax<T>() / cItemsBitPacked;
 }
+template<typename T>
 inline static size_t GetCountItemsBitPacked(const size_t cBits) noexcept {
    EBM_ASSERT(size_t { 1 } <= cBits);
-   return k_cBitsForStorageType / cBits;
+   EBM_ASSERT(cBits <= CountBitsRequiredPositiveMax<T>());
+   return CountBitsRequiredPositiveMax<T>() / cBits;
 }
 
 static constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin

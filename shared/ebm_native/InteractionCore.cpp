@@ -197,8 +197,7 @@ ErrorEbm InteractionCore::Create(
       aBag,
       cTrainingSamples,
       cWeights,
-      cFeatures,
-      pRet->m_aFeatures
+      cFeatures
    );
    if(Error_None != error) {
       LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate m_dataFrame.Initialize");

@@ -56,8 +56,7 @@ public:
       const BagEbm * const aBag,
       const size_t cSetSamples,
       const size_t cWeights,
-      const size_t cFeatures,
-      const FeatureInteraction * const aFeatures
+      const size_t cFeatures
    );
 
    INLINE_ALWAYS const FloatFast * GetWeights() const {

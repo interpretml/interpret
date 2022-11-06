@@ -17,6 +17,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 typedef UIntEbm SharedStorageDataType;
+static constexpr size_t k_cBitsForSharedStorageType = CountBitsRequiredPositiveMax<SharedStorageDataType>();
 
 struct SparseFeatureDataSetSharedEntry {
    SharedStorageDataType m_iSample;

@@ -94,7 +94,7 @@ public:
       if(size_t { 1 } < cBins) {
          const size_t cBitsRequiredMin = CountBitsRequired(cBins - 1);
          EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
-         cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked(cBitsRequiredMin));
+         cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked<StorageDataType>(cBitsRequiredMin));
       }
       m_cItemsPerBitPack = cItemsPerBitPack;
    }
