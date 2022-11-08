@@ -155,9 +155,9 @@ def gen_local_selector(data_dicts, round=3, is_classification=True):
         records.append(record)
 
     if is_classification:
-        columns = ["Predicted", "PrScore", "Actual", "AcScore", "Resid", "AbsResid"]
+        columns = ["Actual", "Predicted", "PrScore", "AcScore", "Resid", "AbsResid"]
     else:
-        columns = ["Predicted", "Actual", "Resid", "AbsResid"]
+        columns = ["Actual", "Predicted", "Resid", "AbsResid"]
 
     df = pd.DataFrame.from_records(records, columns=columns)
     if round is not None:

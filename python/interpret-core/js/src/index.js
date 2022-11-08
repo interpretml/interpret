@@ -59,6 +59,7 @@ const App = props => {
   );
 
   let renderable = <div className={"iml-empty-space"} />;
+  let help_div = null;
   let name = "";
 
   if (selectedOption !== null) {
@@ -66,14 +67,17 @@ const App = props => {
 
     let figure = null;
     let type = null;
+    let help = null;
     if (selectedOption === -1) {
       const overall = props.explanations.overall;
       figure = overall.figure;
       type = overall.type;
+      help = overall.help;
     } else {
       const specific = props.explanations.specific[selectedOption];
       figure = specific.figure;
       type = specific.type;
+      help = specific.help;
     }
 
     if (type === "none") {
@@ -95,6 +99,20 @@ const App = props => {
           useResizeHandler={true}
         />
       );
+      
+      if (help && Object.keys(help).length > 0) {
+        let help_link = null;
+        let help_text = help.text.trim();
+        if (help.link) {
+          help_text = help_text + ' '
+          help_link = <a href={help.link}>Learn more</a>
+        }
+        help_div = (
+          <div className={"iml-card-help"}>
+            {help_text}{help_link}
+          </div>
+        );
+      }
     } else if (type === "html") {
       renderable = (
         <iframe
@@ -132,6 +150,7 @@ const App = props => {
           <div className="iml-card-title">{name}</div>
         </div>
         <div className="iml-card-body iml-card-renderable">{renderable}</div>
+        {help_div}
       </div>
     </div>
   );

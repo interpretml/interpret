@@ -75,3 +75,9 @@ $frame_width: 100%;
 .iml-card-renderable {
   height: $default_plot_height;
 }
+
+.iml-card-help {
+  padding: 0px 30px 20px 30px;
+  position: relative;
+  top: -20px;
+}
