@@ -100,35 +100,79 @@ class EBMExplanation(FeatureValueExplanation):
         if data_dict is None:
             return None
 
-        # Overall graph
+        # Overall global explanation
         if self.explanation_type == "global" and key is None:
             data_dict = sort_take(
                 data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
             )
+            title = "Global Term/Feature Importances"
+
             figure = plot_horizontal_bar(
                 data_dict,
-                title="Overall Importance:<br>Mean Absolute Score",
+                title=title,
                 start_zero=True,
+                xtitle="Mean Absolute Score (Weighted)"
             )
 
+            figure._interpret_help_text = "The term importances are the mean absolute " \
+                "contribution (score) each term (feature or interaction) makes to predictions " \
+                "averaged across the training dataset. Contributions are weighted by the number " \
+                "of samples in each bin, and by the sample weights (if any). The 15 most " \
+                "important terms are shown."
+            figure._interpret_help_link = \
+                "https://github.com/interpretml/interpret/blob/develop/examples/python/notebooks/EBM%20Feature%20Importances.ipynb"
+
             return figure
 
-        # Continuous feature graph
-        if (
-            self.explanation_type == "global"
-            and self.feature_types[key] == "continuous"
-        ):
-            title = self.feature_names[key]
-            if is_multiclass_global_data_dict(data_dict):
-                figure = plot_continuous_bar(
-                    data_dict, multiclass=True, show_error=False, title=title
-                )
+        # Per term global explanation
+        if (self.explanation_type == "global"):
+            title = "Term: {0} ({1})".format(self.feature_names[key], self.feature_types[key])
+
+            if (self.feature_types[key] == "continuous"):
+                xtitle = self.feature_names[key]
+
+                if is_multiclass_global_data_dict(data_dict):
+                    figure = plot_continuous_bar(
+                        data_dict, multiclass=True, show_error=False, title=title, xtitle=xtitle
+                    )
+                else:
+                    figure = plot_continuous_bar(data_dict, title=title, xtitle=xtitle)
+
+            elif (self.feature_types[key] == "categorical" or self.feature_types[key] == "interaction"):
+                figure = super().visualize(key, title)
+                figure._interpret_help_text = "The contribution (score) of the term {0} to predictions " \
+                    "made by the model.".format(self.feature_names[key])
+
             else:
-                figure = plot_continuous_bar(data_dict, title=title)
+                raise Exception(  # pragma: no cover
+                    "Not supported configuration: {0}, {1}".format(
+                        self.explanation_type, self.feature_types[key]
+                    )
+                )
+
+            figure._interpret_help_text = "The contribution (score) of the term " \
+                "{0} to predictions made by the model. For classification, " \
+                "scores are on a log scale (logits). For regression, scores are on the same " \
+                "scale as the outcome being predicted (e.g., dollars when predicting cost). " \
+                "Each graph is centered vertically such that average prediction on the train " \
+                "set is 0.".format(self.feature_names[key])
 
             return figure
 
-        return super().visualize(key)
+        # Local explanation graph
+        if (self.explanation_type == "local"):
+            figure = super().visualize(key)
+            figure.update_layout(
+                title="Local Explanation (" + figure.layout.title.text +")",
+                xaxis_title="Contribution to Prediction")
+            figure._interpret_help_text = "A local explanation shows the breakdown of how much " \
+                "each term contributed to the prediction for a single sample. The intercept " \
+                "reflects the average case. In regression, the intercept is the average y-value " \
+                "of the train set (e.g., $5.51 if predicting cost). In classification, the " \
+                "intercept is the log of the base rate (e.g., -2.3 if the base rate is 10%). The " \
+                "15 most important terms are shown."
+
+            return figure
 
 
 def is_private(estimator):

@@ -61,7 +61,7 @@ class FeatureValueExplanation(ExplanationMixin):
             return None
         return self._internal_obj["specific"][key]
 
-    def visualize(self, key=None):
+    def visualize(self, key=None, title=None):
         """ Provides interactive visualizations.
 
         Args:
@@ -147,15 +147,16 @@ class FeatureValueExplanation(ExplanationMixin):
 
         # Handle global feature graphs
         feature_type = self.feature_types[key]
-        title = self.feature_names[key]
+        if title is None:
+            title = self.feature_names[key]
         if feature_type == "continuous":
             return plot_line(data_dict, title=title)
         elif feature_type == "categorical":
             return plot_bar(data_dict, title=title)
         elif feature_type == "interaction":
             # TODO: Generalize this out.
-            xtitle = title.split(" & ")[0]
-            ytitle = title.split(" & ")[1]
+            xtitle = self.feature_names[key].split(" & ")[0]
+            ytitle = self.feature_names[key].split(" & ")[1]
             return plot_pairwise_heatmap(
                 data_dict, title=title, xtitle=xtitle, ytitle=ytitle
             )
