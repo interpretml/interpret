@@ -139,9 +139,9 @@ inline constexpr static T EbmAbs(T v) noexcept {
 
 template<typename T>
 inline static bool IsClose(
-   T v1, 
-   T v2, 
-   T threshold = T { 1e-10 }, 
+   T v1,
+   T v2,
+   T threshold = T { 1e-10 },
    T additiveError = T { 1e-15 },
    T multipleError = T { 0.9999 }
 ) noexcept {
@@ -187,13 +187,11 @@ inline static bool IsClose(
 // thing for us to deal with
 
 template<typename TTo, typename TFrom>
-using InternalCheckSSN = typename std::enable_if<
-   std::is_signed<TTo>::value && std::is_signed<TFrom>::value && 
-   std::numeric_limits<TTo>::lowest() <= std::numeric_limits<TFrom>::lowest() && 
+inline constexpr static typename std::enable_if<
+   std::is_signed<TTo>::value && std::is_signed<TFrom>::value &&
+   std::numeric_limits<TTo>::lowest() <= std::numeric_limits<TFrom>::lowest() &&
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()
-, bool>::type;
-template<typename TTo, typename TFrom, InternalCheckSSN<TTo, TFrom> = true>
-inline constexpr static bool IsConvertError(const TFrom number) noexcept {
+   , bool>::type IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be negative");
@@ -218,13 +216,11 @@ static_assert(!IsConvertError<int16_t>(int16_t { 0 }), "automated test with comp
 static_assert(!IsConvertError<int16_t>(int16_t { -32768 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
-using InternalCheckSSY = typename std::enable_if<
-   std::is_signed<TTo>::value && std::is_signed<TFrom>::value && 
-   !(std::numeric_limits<TTo>::lowest() <= std::numeric_limits<TFrom>::lowest() && 
-   std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max())
-, bool>::type;
-template<typename TTo, typename TFrom, InternalCheckSSY<TTo, TFrom> = true>
-inline constexpr static bool IsConvertError(const TFrom number) noexcept {
+inline constexpr static typename std::enable_if<
+   std::is_signed<TTo>::value && std::is_signed<TFrom>::value &&
+   !(std::numeric_limits<TTo>::lowest() <= std::numeric_limits<TFrom>::lowest() &&
+      std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max())
+   , bool>::type IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be negative");
@@ -236,10 +232,10 @@ inline constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom::max must be positive");
 
    static_assert(
-      std::numeric_limits<TFrom>::lowest() <= std::numeric_limits<TTo>::lowest() && 
+      std::numeric_limits<TFrom>::lowest() <= std::numeric_limits<TTo>::lowest() &&
       std::numeric_limits<TTo>::max() <= std::numeric_limits<TFrom>::max(),
       "we have a specialization for when TTo has a larger range, but if TFrom is larger then check that it's larger on both the upper and lower ends"
-   );
+      );
 
    return number < TFrom { std::numeric_limits<TTo>::lowest() } || TFrom { std::numeric_limits<TTo>::max() } < number;
 }
@@ -253,12 +249,10 @@ static_assert(!IsConvertError<int8_t>(int16_t { 127 }), "automated test with com
 static_assert(IsConvertError<int8_t>(int16_t { 128 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
-using InternalCheckUSN = typename std::enable_if<
-   !std::is_signed<TTo>::value && std::is_signed<TFrom>::value && 
+inline constexpr static typename std::enable_if<
+   !std::is_signed<TTo>::value && std::is_signed<TFrom>::value &&
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()
-, bool>::type;
-template<typename TTo, typename TFrom, InternalCheckUSN<TTo, TFrom> = true>
-inline constexpr static bool IsConvertError(const TFrom number) noexcept {
+   , bool>::type IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(0 == std::numeric_limits<TTo>::lowest(), "TTo::lowest must be zero");
@@ -280,12 +274,10 @@ static_assert(!IsConvertError<uint16_t>(int16_t { 0 }), "automated test with com
 static_assert(IsConvertError<uint16_t>(int16_t { -32768 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
-using InternalCheckUSY = typename std::enable_if<
+inline constexpr static typename std::enable_if <
    !std::is_signed<TTo>::value && std::is_signed<TFrom>::value &&
    std::numeric_limits<TTo>::max() < std::numeric_limits<TFrom>::max()
-, bool>::type;
-template<typename TTo, typename TFrom, InternalCheckUSY<TTo, TFrom> = true>
-inline constexpr static bool IsConvertError(const TFrom number) noexcept {
+   , bool>::type IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(0 == std::numeric_limits<TTo>::lowest(), "TTo::lowest must be zero");
@@ -307,12 +299,10 @@ static_assert(IsConvertError<uint8_t>(int16_t { 256 }), "automated test with com
 static_assert(IsConvertError<uint8_t>(int16_t { 32767 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
-using InternalCheckSUN = typename std::enable_if<
-   std::is_signed<TTo>::value && !std::is_signed<TFrom>::value && 
+inline constexpr static typename std::enable_if<
+   std::is_signed<TTo>::value && !std::is_signed<TFrom>::value &&
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()
-, bool>::type;
-template<typename TTo, typename TFrom, InternalCheckSUN<TTo, TFrom> = true>
-inline constexpr static bool IsConvertError(const TFrom number) noexcept {
+   , bool>::type IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be negative");
@@ -334,12 +324,10 @@ static_assert(!IsConvertError<int32_t>(uint16_t { 32767 }), "automated test with
 static_assert(!IsConvertError<int32_t>(uint16_t { 0 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
-using InternalCheckSUY = typename std::enable_if<
-   std::is_signed<TTo>::value && !std::is_signed<TFrom>::value && 
+inline constexpr static typename std::enable_if <
+   std::is_signed<TTo>::value && !std::is_signed<TFrom>::value &&
    std::numeric_limits<TTo>::max() < std::numeric_limits<TFrom>::max()
-   , bool>::type;
-template<typename TTo, typename TFrom, InternalCheckSUY<TTo, TFrom> = true>
-inline constexpr static bool IsConvertError(const TFrom number) noexcept {
+   , bool>::type IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be negative");
@@ -367,12 +355,10 @@ static_assert(!IsConvertError<int8_t>(uint16_t { 127 }), "automated test with co
 static_assert(!IsConvertError<int8_t>(uint16_t { 0 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
-using InternalCheckUUN = typename std::enable_if<
-   !std::is_signed<TTo>::value && !std::is_signed<TFrom>::value && 
+inline constexpr static typename std::enable_if<
+   !std::is_signed<TTo>::value && !std::is_signed<TFrom>::value &&
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()
-, bool>::type;
-template<typename TTo, typename TFrom, InternalCheckUUN<TTo, TFrom> = true>
-inline constexpr static bool IsConvertError(const TFrom number) noexcept {
+   , bool>::type IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(0 == std::numeric_limits<TTo>::lowest(), "TTo::lowest must be zero");
@@ -395,12 +381,10 @@ static_assert(!IsConvertError<uint16_t>(uint16_t { 65535 }), "automated test wit
 static_assert(!IsConvertError<uint16_t>(uint16_t { 0 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
-using InternalCheckUUY = typename std::enable_if<
-   !std::is_signed<TTo>::value && !std::is_signed<TFrom>::value && 
+inline constexpr static typename std::enable_if <
+   !std::is_signed<TTo>::value && !std::is_signed<TFrom>::value &&
    std::numeric_limits<TTo>::max() < std::numeric_limits<TFrom>::max()
-   , bool>::type;
-template<typename TTo, typename TFrom, InternalCheckUUY<TTo, TFrom> = true>
-inline constexpr static bool IsConvertError(const TFrom number) noexcept {
+   , bool>::type IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(0 == std::numeric_limits<TTo>::lowest(), "TTo::lowest must be zero");
@@ -461,15 +445,15 @@ static constexpr size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>()
 // of 1 byte and filled all memory on a 64 bit machine, then we could not have more than 64 dimensions.
 // On a real system, we can't fill all memory, and our interface requires tensors of double, so we  
 // can subtract bits for the # of bytes used in a double and subtract 1 more because we cannot use all memory.
-static constexpr size_t k_cDimensionsMax = 
-   k_cBitsForSizeT - CountBitsRequired(sizeof(double) / sizeof(uint8_t) - 1) - 1;
+static constexpr size_t k_cDimensionsMax =
+k_cBitsForSizeT - CountBitsRequired(sizeof(double) / sizeof(uint8_t) - 1) - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
 template<typename T>
 inline constexpr static bool IsMultiplyError(const T num1PreferredConstexpr, const T num2) noexcept {
    static_assert(std::is_integral<T>::value, "T must be integral");
    static_assert(std::numeric_limits<T>::is_specialized, "T must be specialized");
-   static_assert(!std::is_signed<T>::value, "T must be unsigned in the current implementation");
+   static_assert(std::is_unsigned<T>::value, "T must be unsigned in the current implementation");
 
    // it will never overflow if num1 is zero or 1.  We need to check zero to avoid division by zero
    return T { 0 } != num1PreferredConstexpr && static_cast<T>(std::numeric_limits<T>::max() / num1PreferredConstexpr) < num2;
@@ -517,7 +501,7 @@ template<typename T>
 inline constexpr static bool IsAddError(const T num1PreferredConstexpr, const T num2) noexcept {
    static_assert(std::is_integral<T>::value, "T must be integral");
    static_assert(std::numeric_limits<T>::is_specialized, "T must be specialized");
-   static_assert(!std::is_signed<T>::value, "T must be unsigned in the current implementation");
+   static_assert(std::is_unsigned<T>::value, "T must be unsigned in the current implementation");
 
    // overflow for unsigned values is defined behavior in C++ and it causes a wrap arround
    return static_cast<T>(num1PreferredConstexpr + num2) < num1PreferredConstexpr;
@@ -548,6 +532,163 @@ static_assert(!IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 1 }), "aut
 static_assert(!IsAddError(uint8_t { 127 }, uint8_t { 126 }, uint8_t { 1 }, uint8_t { 1 }), "automated test with compiler");
 static_assert(IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 1 }, uint8_t { 1 }), "automated test with compiler");
 static_assert(IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 2 }, uint8_t { 0 }), "automated test with compiler");
+
+
+template<typename T, typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value, void *>::type = nullptr>
+struct internal_is_twos_complement {
+   // this struct is only defined for negative integral numbers
+
+   // The C standard allows 3 types of signed numbers: "sign and magnitude", "ones’ complement" and "two’s complement"
+   // The pre-C++20 is silent on this but in practice interoperability requires the C standard definition
+   // C++20 only allows two's compliment
+   // https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2218.htm#c-sign
+   // https://stackoverflow.com/questions/12231560/correct-way-to-take-absolute-value-of-int-min
+
+   typedef T ST;
+   typedef typename std::make_unsigned<T>::type UT;
+
+   // the C++ standard says that converting from signed to unsigned is always defined 
+   // behavior and also that the result will be the two's complement, so this is well formed
+   static constexpr bool value = static_cast<UT>(std::numeric_limits<ST>::max()) ==
+      static_cast<UT>(std::numeric_limits<ST>::lowest()) - UT { 1 };
+};
+template<typename T>
+struct is_twos_complement {
+   static constexpr bool value = internal_is_twos_complement<T>::value;
+};
+
+static_assert(is_twos_complement<int8_t>::value, "compiler not twos complement");
+static_assert(is_twos_complement<int16_t>::value, "compiler not twos complement");
+static_assert(is_twos_complement<int32_t>::value, "compiler not twos complement");
+static_assert(is_twos_complement<int64_t>::value, "compiler not twos complement");
+
+template<typename T>
+inline constexpr static typename std::enable_if<std::is_signed<T>::value, typename std::make_unsigned<T>::type>::type TwosComplementConvert(const T val) noexcept {
+   // the C++ standard says that converting from signed to unsigned is always defined behavior and also that the
+   // result will be the two's complement, so we can just static_cast this for our result
+   return static_cast<typename std::make_unsigned<T>::type>(val);
+}
+
+template<typename T>
+inline constexpr static typename std::enable_if<std::is_unsigned<T>::value, typename std::make_signed<T>::type>::type TwosComplementConvert(const T val) noexcept {
+   typedef T UT;
+   typedef std::make_signed<T>::type ST;
+
+   static_assert(is_twos_complement<ST>::value, "we only support twos complement negative numbers");
+
+   constexpr UT twosComplementLowest = static_cast<UT>(std::numeric_limits<ST>::lowest());
+
+   return val < twosComplementLowest ? static_cast<ST>(val) :
+      static_cast<ST>(val + twosComplementLowest) + std::numeric_limits<ST>::lowest();
+}
+
+static_assert(TwosComplementConvert(int8_t { 0 }) == uint8_t { 0 }, "test TwosComplementConvert");
+static_assert(TwosComplementConvert(int8_t { 1 }) == uint8_t { 1 }, "test TwosComplementConvert");
+static_assert(TwosComplementConvert(int8_t { -1 }) == uint8_t { 255 }, "test TwosComplementConvert");
+static_assert(TwosComplementConvert(int8_t { -2 }) == uint8_t { 254 }, "test TwosComplementConvert");
+static_assert(TwosComplementConvert(int8_t { -126 }) == uint8_t { 130 }, "test TwosComplementConvert");
+static_assert(TwosComplementConvert(int8_t { -127 }) == uint8_t { 129 }, "test TwosComplementConvert");
+static_assert(TwosComplementConvert(int8_t { -128 }) == uint8_t { 128 }, "test TwosComplementConvert");
+
+static_assert(TwosComplementConvert(uint8_t { 0 }) == int8_t { 0 }, "test TwosComplementConvert");
+static_assert(TwosComplementConvert(uint8_t { 1 }) == int8_t { 1 }, "test TwosComplementConvert");
+static_assert(TwosComplementConvert(uint8_t { 255 }) == int8_t { -1 }, "test TwosComplementConvert");
+static_assert(TwosComplementConvert(uint8_t { 254 }) == int8_t { -2 }, "test TwosComplementConvert");
+static_assert(TwosComplementConvert(uint8_t { 130 }) == int8_t { -126 }, "test TwosComplementConvert");
+static_assert(TwosComplementConvert(uint8_t { 129 }) == int8_t { -127 }, "test TwosComplementConvert");
+static_assert(TwosComplementConvert(uint8_t { 128 }) == int8_t { -128 }, "test TwosComplementConvert");
+
+template<typename TTo, typename TFrom>
+inline constexpr static bool IsAbsCastError(const TFrom val) noexcept {
+   static_assert(std::is_integral<TTo>::value, "TTo must be integral");
+   static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
+   static_assert(std::is_unsigned<TTo>::value, "TTo must be unsigned");
+
+   static_assert(std::is_integral<TFrom>::value, "TFrom must be integral");
+   static_assert(std::numeric_limits<TFrom>::is_specialized, "TFrom must be specialized");
+   static_assert(std::is_signed<TFrom>::value, "TFrom must be signed");
+   static_assert(is_twos_complement<TFrom>::value, "we only support twos complement negative numbers");
+
+   // we make the comparison in the unsigned domain. The C++ standard guarantees that the smaller range unsigned
+   // number is promoted to the same size as the bigger one
+   return std::numeric_limits<TTo>::max() < (
+      TFrom { 0 } <= val ? static_cast<typename std::make_unsigned<TFrom>::type>(val) :
+      (std::numeric_limits<TFrom>::lowest() != val ? static_cast<typename std::make_unsigned<TFrom>::type>(-val) :
+         static_cast<typename std::make_unsigned<TFrom>::type>(std::numeric_limits<TFrom>::lowest())));
+}
+
+static_assert(!IsAbsCastError<uint8_t>(int8_t { 0 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint8_t>(int8_t { 127 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint8_t>(int8_t { -1 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint8_t>(int8_t { -127 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint8_t>(int8_t { -128 }), "failed IsAbsCastError");
+
+static_assert(!IsAbsCastError<uint16_t>(int8_t { 0 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint16_t>(int8_t { 1 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint16_t>(int8_t { 127 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint16_t>(int8_t { -1 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint16_t>(int8_t { -127 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint16_t>(int8_t { -128 }), "failed IsAbsCastError");
+
+static_assert(!IsAbsCastError<uint8_t>(int16_t { 0 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint8_t>(int16_t { 1 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint8_t>(int16_t { 127 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint8_t>(int16_t { 128 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint8_t>(int16_t { 255 }), "failed IsAbsCastError");
+static_assert(IsAbsCastError<uint8_t>(int16_t { 256 }), "failed IsAbsCastError");
+static_assert(IsAbsCastError<uint8_t>(int16_t { 257 }), "failed IsAbsCastError");
+static_assert(IsAbsCastError<uint8_t>(int16_t { 127 * 3 }), "failed IsAbsCastError");
+static_assert(IsAbsCastError<uint8_t>(int16_t { 32767 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint8_t>(int16_t { -1 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint8_t>(int16_t { -127 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint8_t>(int16_t { -128 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint8_t>(int16_t { -129 }), "failed IsAbsCastError");
+static_assert(!IsAbsCastError<uint8_t>(int16_t { -255 }), "failed IsAbsCastError");
+static_assert(IsAbsCastError<uint8_t>(int16_t { -256 }), "failed IsAbsCastError");
+static_assert(IsAbsCastError<uint8_t>(int16_t { -257 }), "failed IsAbsCastError");
+static_assert(IsAbsCastError<uint8_t>(int16_t { -32767 }), "failed IsAbsCastError");
+static_assert(IsAbsCastError<uint8_t>(int16_t { -32768 }), "failed IsAbsCastError");
+
+template<typename TTo, typename TFrom>
+inline constexpr static TTo AbsCast(const TFrom val) noexcept {
+   static_assert(std::is_integral<TTo>::value, "TTo must be integral");
+   static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
+   static_assert(std::is_unsigned<TTo>::value, "TTo must be unsigned");
+
+   static_assert(std::is_integral<TFrom>::value, "TFrom must be integral");
+   static_assert(std::numeric_limits<TFrom>::is_specialized, "TFrom must be specialized");
+   static_assert(std::is_signed<TFrom>::value, "TFrom must be unsigned");
+   static_assert(is_twos_complement<TFrom>::value, "we only support twos complement negative numbers");
+
+   return TFrom { 0 } <= val ? static_cast<TTo>(val) : (std::numeric_limits<TFrom>::lowest() == val ?
+      static_cast<TTo>(static_cast<typename std::make_unsigned<TFrom>::type>(std::numeric_limits<TFrom>::lowest())) :
+      static_cast<TTo>(-val));
+}
+
+static_assert(AbsCast<uint8_t>(int8_t { 0 }) == uint8_t { 0 }, "failed AbsCast");
+static_assert(AbsCast<uint8_t>(int8_t { 1 }) == uint8_t { 1 }, "failed AbsCast");
+static_assert(AbsCast<uint8_t>(int8_t { 127 }) == uint8_t { 127 }, "failed AbsCast");
+static_assert(AbsCast<uint8_t>(int8_t { -1 }) == uint8_t { 1 }, "failed AbsCast");
+static_assert(AbsCast<uint8_t>(int8_t { -127 }) == uint8_t { 127 }, "failed AbsCast");
+static_assert(AbsCast<uint8_t>(int8_t { -128 }) == uint8_t { 128 }, "failed AbsCast");
+
+static_assert(AbsCast<uint16_t>(int8_t { 0 }) == uint16_t { 0 }, "failed AbsCast");
+static_assert(AbsCast<uint16_t>(int8_t { 1 }) == uint16_t { 1 }, "failed AbsCast");
+static_assert(AbsCast<uint16_t>(int8_t { 127 }) == uint16_t { 127 }, "failed AbsCast");
+static_assert(AbsCast<uint16_t>(int8_t { -1 }) == uint16_t { 1 }, "failed AbsCast");
+static_assert(AbsCast<uint16_t>(int8_t { -127 }) == uint16_t { 127 }, "failed AbsCast");
+static_assert(AbsCast<uint16_t>(int8_t { -128 }) == uint16_t { 128 }, "failed AbsCast");
+
+static_assert(AbsCast<uint8_t>(int16_t { 0 }) == uint8_t { 0 }, "failed AbsCast");
+static_assert(AbsCast<uint8_t>(int16_t { 1 }) == uint8_t { 1 }, "failed AbsCast");
+static_assert(AbsCast<uint8_t>(int16_t { 127 }) == uint8_t { 127 }, "failed AbsCast");
+static_assert(AbsCast<uint8_t>(int16_t { 128 }) == uint8_t { 128 }, "failed AbsCast");
+static_assert(AbsCast<uint8_t>(int16_t { 255 }) == uint8_t { 255 }, "failed AbsCast");
+static_assert(AbsCast<uint8_t>(int16_t { -1 }) == uint8_t { 1 }, "failed AbsCast");
+static_assert(AbsCast<uint8_t>(int16_t { -127 }) == uint8_t { 127 }, "failed AbsCast");
+static_assert(AbsCast<uint8_t>(int16_t { -128 }) == uint8_t { 128 }, "failed AbsCast");
+static_assert(AbsCast<uint8_t>(int16_t { -255 }) == uint8_t { 255 }, "failed AbsCast");
+
 
 /*
 * These are not used currently, but perhaps someday if our trick to use macros to merge compiler and runtime

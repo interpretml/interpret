@@ -113,34 +113,8 @@ public:
       return Next(maxPlusOne - T { 1 });
    }
 
-   INLINE_ALWAYS SeedEbm NextSeed() {
-      // TODO: I could probably generalize this to make any negative number type
-
-      static_assert(std::numeric_limits<SeedEbm>::lowest() < SeedEbm { 0 }, "SeedEbm must be signed");
-      static_assert(std::is_same<USeedEbm, T>::value, "T must be USeedEbm");
-
-      // this is meant to result in a positive value that is of the negation of 
-      // std::numeric_limits<SeedEbm>::lowest(), so -std::numeric_limits<SeedEbm>::lowest().
-      // but the pitfall is that for numbers expressed in twos complement, there is one more
-      // negative number than there are positive numbers, so we subtract one (adding to a negated number), then add 
-      // one to keep the numbers in bounds.  If the compiler is using some non-twos complement
-      // representation, then we'll get a compile error in the static_asserts below or in the initialization
-      // of USeedEbm below
-      static constexpr USeedEbm negativeOfLowest =
-         USeedEbm { -(std::numeric_limits<SeedEbm>::lowest() + SeedEbm { 1 }) } + USeedEbm { 1 };
-
-      static_assert(USeedEbm { std::numeric_limits<SeedEbm>::max() } == negativeOfLowest - USeedEbm { 1 }, 
-         "max must == lowestInUnsigned - 1");
-
-      const USeedEbm randomNumber = Next();
-      // adding negativeOfLowest and then adding lowest are a no-op as far as affecting the value of randomNumber
-      // but since adding randomNumber + negativeOfLowest (two unsigned values) is legal in C++, and since we'll
-      // always end up with a value that can be expressed as an SeedEbm after that addition we don't have
-      // and undefined behavior here.  The compiler should be smart enough to eliminate this operation.
-      const SeedEbm ret = randomNumber < negativeOfLowest ? static_cast<SeedEbm>(randomNumber) :
-         static_cast<SeedEbm>(randomNumber + negativeOfLowest) + std::numeric_limits<SeedEbm>::lowest();
-
-      return ret;
+   INLINE_ALWAYS typename std::make_signed<T>::type NextNegative() {
+      return TwosComplementConvert(Next());
    }
 };
 

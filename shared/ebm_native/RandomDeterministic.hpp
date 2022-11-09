@@ -87,44 +87,8 @@ public:
       m_stateSeedConst = other.m_stateSeedConst;
    }
 
-   INLINE_ALWAYS SeedEbm NextSeed() {
-      // TODO: I could probably generalize this to make any negative number type
-
-      static_assert(std::numeric_limits<SeedEbm>::lowest() < SeedEbm { 0 }, "SeedEbm must be signed");
-
-      // this is meant to result in a positive value that is of the negation of 
-      // std::numeric_limits<SeedEbm>::lowest(), so -std::numeric_limits<SeedEbm>::lowest().
-      // but the pitfall is that for numbers expressed in twos complement, there is one more
-      // negative number than there are positive numbers, so we subtract one (adding to a negated number), then add 
-      // one to keep the numbers in bounds.  If the compiler is using some non-twos complement
-      // representation, then we'll get a compile error in the static_asserts below or in the initialization
-      // of USeedEbm below
-      static constexpr USeedEbm negativeOfLowest =
-         USeedEbm { -(std::numeric_limits<SeedEbm>::lowest() + SeedEbm { 1 }) } + USeedEbm { 1 };
-
-      static_assert(USeedEbm { std::numeric_limits<SeedEbm>::max() } == negativeOfLowest - USeedEbm { 1 }, 
-         "max must == lowestInUnsigned - 1");
-
-      const USeedEbm randomNumber = Next(std::numeric_limits<USeedEbm>::max());
-      // adding negativeOfLowest and then adding lowest are a no-op as far as affecting the value of randomNumber
-      // but since adding randomNumber + negativeOfLowest (two unsigned values) is legal in C++, and since we'll
-      // always end up with a value that can be expressed as an SeedEbm after that addition we don't have
-      // and undefined behavior here.  The compiler should be smart enough to eliminate this operation.
-      const SeedEbm ret = randomNumber < negativeOfLowest ? static_cast<SeedEbm>(randomNumber) :
-         static_cast<SeedEbm>(randomNumber + negativeOfLowest) + std::numeric_limits<SeedEbm>::lowest();
-
-      return ret;
-   }
-
-   INLINE_ALWAYS bool NextBool() {
-      return uint_fast32_t { 0 } != (uint_fast32_t { 1 } & Rand32());
-   }
-
    template<typename T>
-   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<uint32_t>::max() < std::numeric_limits<T>::max(), T>::type NextFast(const T maxPlusOne) {
-      static_assert(!std::is_signed<T>::value, "T must be an unsigned type");
-      static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
-
+   INLINE_ALWAYS typename std::enable_if<std::is_unsigned<T>::value && std::numeric_limits<uint32_t>::max() < std::numeric_limits<T>::max(), T>::type NextFast(const T maxPlusOne) {
       EBM_ASSERT(T { 1 } <= maxPlusOne);
 
       // let's say that we are given maxPlusOneConverted == 7.  In that case we take our 32 bit
@@ -171,10 +135,7 @@ public:
    }
 
    template<typename T>
-   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<T>::max() <= std::numeric_limits<uint32_t>::max(), T>::type NextFast(const T maxPlusOne) {
-      static_assert(!std::is_signed<T>::value, "T must be an unsigned type");
-      static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
-
+   INLINE_ALWAYS typename std::enable_if<std::is_unsigned<T>::value && std::numeric_limits<T>::max() <= std::numeric_limits<uint32_t>::max(), T>::type NextFast(const T maxPlusOne) {
       EBM_ASSERT(T { 1 } <= maxPlusOne);
 
       // let's say that we are given maxPlusOneConverted == 7.  In that case we take our 32 bit
@@ -203,10 +164,7 @@ public:
    }
 
    template<typename T>
-   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<uint32_t>::max() < std::numeric_limits<T>::max(), T>::type Next(const T max) {
-      static_assert(!std::is_signed<T>::value, "T must be an unsigned type");
-      static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
-
+   INLINE_ALWAYS typename std::enable_if<std::is_unsigned<T>::value && std::numeric_limits<uint32_t>::max() < std::numeric_limits<T>::max(), T>::type Next(const T max) {
       if(std::numeric_limits<T>::max() == max) {
          static constexpr size_t k_bitsT = CountBitsRequiredPositiveMax<T>();
          static_assert(MaxFromCountBits<T>(k_bitsT) == std::numeric_limits<T>::max(), "T max must be all 1s");
@@ -223,14 +181,28 @@ public:
    }
 
    template<typename T>
-   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<T>::max() <= std::numeric_limits<uint32_t>::max(), T>::type Next(const T max) {
-      static_assert(!std::is_signed<T>::value, "T must be an unsigned type");
-      static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
-
+   INLINE_ALWAYS typename std::enable_if<std::is_unsigned<T>::value && std::numeric_limits<T>::max() <= std::numeric_limits<uint32_t>::max(), T>::type Next(const T max) {
       if(std::numeric_limits<T>::max() == max) {
          return static_cast<T>(Rand32());
       }
       return NextFast(max + T { 1 });
+   }
+
+   template<typename T>
+   INLINE_ALWAYS typename std::enable_if<std::is_unsigned<T>::value && !std::is_same<T, bool>::value, T>::type Next() {
+      return Next(std::numeric_limits<T>::max()); // inlining will pick the best direct branch and eliminate the rest
+   }
+
+   template<typename T>
+   INLINE_ALWAYS typename std::enable_if<std::is_signed<T>::value, T>::type Next() {
+      static_assert(is_twos_complement<T>::value, "we only support twos complement negative numbers");
+
+      return TwosComplementConvert(Next<typename std::make_unsigned<T>::type>());
+   }
+
+   template<typename T>
+   INLINE_ALWAYS typename std::enable_if<std::is_same<T, bool>::value, T>::type Next() {
+      return uint_fast32_t { 0 } != (uint_fast32_t { 1 } & Rand32());
    }
 };
 static_assert(std::is_standard_layout<RandomDeterministic>::value,

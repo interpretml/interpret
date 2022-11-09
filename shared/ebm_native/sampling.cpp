@@ -478,19 +478,11 @@ extern ErrorEbm Unbag(
          do {
             const BagEbm replication = *pSampleReplication;
             if(replication < BagEbm { 0 }) {
-               if(IsConvertError<ptrdiff_t>(replication)) {
-                  LOG_0(Trace_Error, "ERROR Unbag IsConvertError<ptrdiff_t>(replication)");
+               if(IsAbsCastError<size_t>(replication)) {
+                  LOG_0(Trace_Error, "ERROR Unbag IsAbsCastError<size_t>(replication)");
                   return Error_IllegalParamVal;
                }
-               ptrdiff_t replicationSigned = static_cast<ptrdiff_t>(replication);
-               // by creating a ptrdiff_t with "ptrdiff_t { ... }" the compiler is suposed to give us an 
-               // error if for some reason the negation of the max fails
-               if(replicationSigned < ptrdiff_t { -std::numeric_limits<ptrdiff_t>::max() }) {
-                  LOG_0(Trace_Error, "ERROR Unbag replicationSigned < ptrdiff_t { -std::numeric_limits<ptrdiff_t>::max() }");
-                  return Error_IllegalParamVal;
-               }
-               replicationSigned = -replicationSigned;
-               const size_t replicationUnsigned = static_cast<size_t>(replicationSigned);
+               const size_t replicationUnsigned = AbsCast<size_t>(replication);
                if(IsAddError(cValidationSamples, replicationUnsigned)) {
                   LOG_0(Trace_Error, "ERROR Unbag IsAddError(cValidationSamples, replicationUnsigned)");
                   return Error_IllegalParamVal;

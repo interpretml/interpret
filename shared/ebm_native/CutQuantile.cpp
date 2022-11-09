@@ -2097,7 +2097,7 @@ static void FillTiebreakers(
       // bSymmetryReversal helps us ensure symmetry because we pick true or false based on a fingerprint of the original 
       // values so if the values are flipped in a transform, then we'll flip bSymmetryReversal and get the same 
       // cuts mirror on the opposite sides from the ends
-      const bool bRandom = pRng->NextBool() != bSymmetryReversal; // this is an XOR for bools
+      const bool bRandom = pRng->Next<bool>() != bSymmetryReversal; // this is an XOR for bools
 
       const ptrdiff_t tiebreakerMinusOne = tiebreaker - ptrdiff_t { 1 };
       const ptrdiff_t tiebreaker1 = UNPREDICTABLE(bRandom) ? tiebreaker : tiebreakerMinusOne;
@@ -2997,7 +2997,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutQuantile(
                               // uncuttable ranges, AND the center of the cutable ranges.  Our final fallback
                               // is to resort to our symmetric determination (PLUS randomness)
 
-                              bool bLocalSymmetryReversal = rng.NextBool() != bSymmetryReversal;
+                              bool bLocalSymmetryReversal = rng.Next<bool>() != bSymmetryReversal;
                               iResult = UNPREDICTABLE(bLocalSymmetryReversal) ? iStartCur : iStartNext;
                            }
                         }
