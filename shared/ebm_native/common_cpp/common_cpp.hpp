@@ -445,8 +445,8 @@ static constexpr size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>()
 // of 1 byte and filled all memory on a 64 bit machine, then we could not have more than 64 dimensions.
 // On a real system, we can't fill all memory, and our interface requires tensors of double, so we  
 // can subtract bits for the # of bytes used in a double and subtract 1 more because we cannot use all memory.
-static constexpr size_t k_cDimensionsMax =
-k_cBitsForSizeT - CountBitsRequired(sizeof(double) / sizeof(uint8_t) - 1) - 1;
+static constexpr size_t k_cDimensionsMax = k_cBitsForSizeT -
+   CountBitsRequired(sizeof(double) / sizeof(uint8_t) - 1) - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
 template<typename T>

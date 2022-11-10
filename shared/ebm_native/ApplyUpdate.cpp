@@ -63,13 +63,13 @@ struct ApplyUpdateInternal final {
          EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
          cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
+         EBM_ASSERT(1 <= cBitsPerItemMax);
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
          cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
 
-         EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSizeT);
-         maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
+         maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
 
          pInputData = pData->m_aPacked;
       }
@@ -245,13 +245,13 @@ struct ApplyUpdateInternal<2, compilerBitPack, bKeepGradHess, bCalcMetric, bWeig
          EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
          cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
+         EBM_ASSERT(1 <= cBitsPerItemMax);
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
          cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
 
-         EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSizeT);
-         maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
+         maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
 
          pInputData = pData->m_aPacked;
       }
@@ -392,13 +392,13 @@ struct ApplyUpdateInternal<k_regression, compilerBitPack, bKeepGradHess, bCalcMe
          EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
          cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
+         EBM_ASSERT(1 <= cBitsPerItemMax);
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
          cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
 
-         EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSizeT);
-         maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
+         maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
 
          pInputData = pData->m_aPacked;
       }

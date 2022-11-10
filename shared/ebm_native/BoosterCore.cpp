@@ -238,15 +238,22 @@ ErrorEbm BoosterCore::Create(
    // give ownership of our object back to the caller, even if there is a failure
    *ppBoosterCoreOut = pBoosterCore;
 
-   size_t cSamples = 0;
-   size_t cFeatures = 0;
-   size_t cWeights = 0;
-   size_t cTargets = 0;
-   error = GetDataSetSharedHeader(pDataSetShared, &cSamples, &cFeatures, &cWeights, &cTargets);
+   SharedStorageDataType countSamples;
+   size_t cFeatures;
+   size_t cWeights;
+   size_t cTargets;
+   error = GetDataSetSharedHeader(pDataSetShared, &countSamples, &cFeatures, &cWeights, &cTargets);
    if(Error_None != error) {
       // already logged
       return error;
    }
+
+   if(IsConvertError<size_t>(countSamples)) {
+      LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<size_t>(countSamples)");
+      return Error_IllegalParamVal;
+   }
+   size_t cSamples = static_cast<size_t>(countSamples);
+
    if(size_t { 1 } < cWeights) {
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create size_t { 1 } < cWeights");
       return Error_IllegalParamVal;
@@ -257,7 +264,10 @@ ErrorEbm BoosterCore::Create(
    }
 
    ptrdiff_t cClasses;
-   GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
+   if(nullptr == GetDataSetSharedTarget(pDataSetShared, 0, &cClasses)) {
+      LOG_0(Trace_Warning, "WARNING BoosterCore::Create cClasses cannot fit into ptrdiff_t");
+      return Error_IllegalParamVal;
+   }
 
    size_t cTrainingSamples;
    size_t cValidationSamples;
@@ -284,24 +294,30 @@ ErrorEbm BoosterCore::Create(
 
       size_t iFeatureInitialize = size_t { 0 };
       do {
-         size_t cBins;
          bool bMissing;
          bool bUnknown;
          bool bNominal;
          bool bSparse;
+         SharedStorageDataType countBins;
          SharedStorageDataType defaultValSparse;
          size_t cNonDefaultsSparse;
          GetDataSetSharedFeature(
             pDataSetShared,
             iFeatureInitialize,
-            &cBins,
             &bMissing,
             &bUnknown,
             &bNominal,
             &bSparse,
+            &countBins,
             &defaultValSparse,
             &cNonDefaultsSparse
          );
+         EBM_ASSERT(!bSparse); // we do not handle yet
+         if(IsConvertError<size_t>(countBins)) {
+            LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<size_t>(countBins)");
+            return Error_IllegalParamVal;
+         }
+         const size_t cBins = static_cast<size_t>(countBins);
          if(0 == cBins) {
             if(0 != cSamples) {
                LOG_0(Trace_Error, "ERROR BoosterCore::Create countBins cannot be zero if either 0 < cTrainingSamples OR 0 < cValidationSamples");
@@ -445,9 +461,21 @@ ErrorEbm BoosterCore::Create(
                if(LIKELY(size_t { 1 } != cTensorBins)) {
                   EBM_ASSERT(1 <= cRealDimensions);
 
-                  const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
+                  const size_t iTensorBinMax = cTensorBins - size_t { 1 };
+
+                  if(IsConvertError<StorageDataType>(iTensorBinMax)) {
+                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsConvertError<StorageDataType>(iTensorBinMax)");
+                     return Error_OutOfMemory;
+                  }
+
+                  const size_t cBitsRequiredMin = CountBitsRequired(iTensorBinMax);
                   EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
+                  EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT);
+                  EBM_ASSERT(cBitsRequiredMin <= k_cBitsForStorageType);
+
                   cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked<StorageDataType>(cBitsRequiredMin));
+                  EBM_ASSERT(ptrdiff_t { 1 } <= cItemsPerBitPack);
+                  EBM_ASSERT(cItemsPerBitPack <= ptrdiff_t { k_cBitsForStorageType });
 
                   if(size_t { 1 } == cRealDimensions) {
                      cSingleDimensionBinsMax = EbmMax(cSingleDimensionBinsMax, cSingleDimensionBins);

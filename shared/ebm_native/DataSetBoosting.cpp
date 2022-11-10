@@ -129,7 +129,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
    ptrdiff_t cClasses;
    const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
    EBM_ASSERT(1 <= cClasses); // this should be classification, and 0 < cSetSamples
-   EBM_ASSERT(nullptr != aTargets);
+   EBM_ASSERT(nullptr != aTargets); // we previously called GetDataSetSharedTarget and got back non-null result
 
    const size_t countClasses = static_cast<size_t>(cClasses);
 
@@ -260,10 +260,11 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       } else {
          EBM_ASSERT(1 <= pTerm->GetTermBitPack());
          const size_t cItemsPerBitPackTo = static_cast<size_t>(pTerm->GetTermBitPack());
-         // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
+         EBM_ASSERT(1 <= cItemsPerBitPackTo);
          EBM_ASSERT(cItemsPerBitPackTo <= k_cBitsForStorageType);
+
          const size_t cBitsPerItemMaxTo = GetCountBits<StorageDataType>(cItemsPerBitPackTo);
-         // if we have 1 item, it can't be larger than the number of bits of storage
+         EBM_ASSERT(1 <= cBitsPerItemMaxTo);
          EBM_ASSERT(cBitsPerItemMaxTo <= k_cBitsForStorageType);
 
          EBM_ASSERT(1 <= cSetSamples);
@@ -298,44 +299,56 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                EBM_ASSERT(!IsConvertError<size_t>(indexFeature)); // we converted it previously
                const size_t iFeature = static_cast<size_t>(indexFeature);
 
-               size_t cBinsUnused;
                bool bMissing;
                bool bUnknown;
                bool bNominal;
                bool bSparse;
+               SharedStorageDataType cBinsUnused;
                SharedStorageDataType defaultValSparse;
                size_t cNonDefaultsSparse;
                const void * pInputDataFrom = GetDataSetSharedFeature(
                   pDataSetShared,
                   iFeature,
-                  &cBinsUnused,
                   &bMissing,
                   &bUnknown,
                   &bNominal,
                   &bSparse,
+                  &cBinsUnused,
                   &defaultValSparse,
                   &cNonDefaultsSparse
                );
                EBM_ASSERT(nullptr != pInputDataFrom);
-               EBM_ASSERT(cBinsUnused == cBins);
+               EBM_ASSERT(!IsConvertError<size_t>(cBinsUnused)); // since we previously extracted cBins and checked
+               EBM_ASSERT(static_cast<size_t>(cBinsUnused) == cBins);
                EBM_ASSERT(!bSparse); // we don't support sparse yet
 
                pDimensionInfoInit->m_pInputData = static_cast<const SharedStorageDataType *>(pInputDataFrom);
                pDimensionInfoInit->m_cBins = cBins;
 
-               const size_t cBitsRequiredMin = CountBitsRequired(cBins - 1);
+               const size_t cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
                EBM_ASSERT(1 <= cBitsRequiredMin);
-               EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType);
+               EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType); // comes from shared data set
+               EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT); // since cBins fits into size_t (previous call to GetDataSetSharedFeature)
+               // we previously calculated the tensor bin count, and with that determined that the total number of
+               // bins minus one (the maximum tensor index) would fit into a StorageDataType. Since any particular
+               // dimensional index must be less than the multiple of all of them, we know that the number of bits
+               // will fit into a StorageDataType
+               EBM_ASSERT(cBitsRequiredMin <= k_cBitsForStorageType);
 
                const size_t cItemsPerBitPackFrom = GetCountItemsBitPacked<SharedStorageDataType>(cBitsRequiredMin);
                EBM_ASSERT(1 <= cItemsPerBitPackFrom);
                EBM_ASSERT(cItemsPerBitPackFrom <= k_cBitsForSharedStorageType);
 
                const size_t cBitsPerItemMaxFrom = GetCountBits<SharedStorageDataType>(cItemsPerBitPackFrom);
-               EBM_ASSERT(cBitsPerItemMaxFrom <= k_cBitsForSharedStorageType);
                EBM_ASSERT(1 <= cBitsPerItemMaxFrom);
-               EBM_ASSERT(cBitsPerItemMaxFrom <= k_cBitsForSizeT);
-               const size_t maskBitsFrom = (~size_t{ 0 }) >> (k_cBitsForSizeT - cBitsPerItemMaxFrom);
+               EBM_ASSERT(cBitsPerItemMaxFrom <= k_cBitsForSharedStorageType);
+
+               // we can only guarantee that cBitsPerItemMaxFrom is less than or equal to k_cBitsForSharedStorageType
+               // so we need to construct our mask in that type, but afterwards we can convert it to a 
+               // StorageDataType since we know the ultimate answer must fit into that. If in theory 
+               // SharedStorageDataType were allowed to be a billion bits, then the mask could be 65 bits while the end
+               // result would be forced to be 64 bits or less since we use the maximum number of bits per item possible
+               const size_t maskBitsFrom = static_cast<size_t>(MakeLowMask<SharedStorageDataType>(cBitsPerItemMaxFrom));
 
                pDimensionInfoInit->m_cItemsPerBitPackFrom = cItemsPerBitPackFrom;
                pDimensionInfoInit->m_cBitsPerItemMaxFrom = cBitsPerItemMaxFrom;
@@ -393,19 +406,21 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                   size_t tensorMultiple = 1;
                   InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
                   do {
-                     SharedStorageDataType dataFrom = *pDimensionInfo->m_pInputData;
-                     const size_t iData = static_cast<size_t>(dataFrom >> (pDimensionInfo->m_iShiftFrom * pDimensionInfo->m_cBitsPerItemMaxFrom)) & pDimensionInfo->m_maskBitsFrom;
+                     const SharedStorageDataType indexDataCombined = *pDimensionInfo->m_pInputData;
+                     EBM_ASSERT(pDimensionInfo->m_iShiftFrom * pDimensionInfo->m_cBitsPerItemMaxFrom < k_cBitsForSharedStorageType);
+                     const size_t iData = static_cast<size_t>(indexDataCombined >> 
+                        (pDimensionInfo->m_iShiftFrom * pDimensionInfo->m_cBitsPerItemMaxFrom)) & 
+                        pDimensionInfo->m_maskBitsFrom;
+
+                     // we check our dataSet when we get the header, and cBins has been checked to fit into size_t
+                     EBM_ASSERT(iData < pDimensionInfoInit->m_cBins);
+
                      pDimensionInfo->m_iShiftFrom -= 1;
                      if(pDimensionInfo->m_iShiftFrom < ptrdiff_t { 0 }) {
                         pDimensionInfo->m_pInputData += 1;
                         pDimensionInfo->m_iShiftFrom += pDimensionInfo->m_cItemsPerBitPackFrom;
                      }
 
-                     if(pDimensionInfo->m_cBins <= iData) {
-                        // TODO: I think this check has been moved to constructing the shared dataset
-                        LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructInputData iData value must be less than the number of bins");
-                        goto free_all;
-                     }
                      // we check for overflows during Term construction, but let's check here again
                      EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
 
@@ -416,7 +431,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                      ++pDimensionInfo;
                   } while(pDimensionInfoInit != pDimensionInfo);
 
-                  EBM_ASSERT(!IsConvertError<StorageDataType>(tensorIndex)); // this was checked when determining packing
+                  // during term construction we check that the maximum tensor index fits into StorageDataType
+                  EBM_ASSERT(!IsConvertError<StorageDataType>(tensorIndex));
                   iTensor = static_cast<StorageDataType>(tensorIndex);
                }
 

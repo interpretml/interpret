@@ -64,13 +64,13 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
       EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
       cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
+      EBM_ASSERT(1 <= cBitsPerItemMax);
+      EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
 
       cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
       cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
 
-      EBM_ASSERT(1 <= cBitsPerItemMax);
-      EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSizeT);
-      maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
+      maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
 
       pInputData = pParams->m_aPacked;
    }

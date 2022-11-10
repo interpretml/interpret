@@ -99,14 +99,14 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
       EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
       const size_t cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
+      EBM_ASSERT(1 <= cBitsPerItemMax);
+      EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       pDimensionalData->m_cBitsPerItemMax = cBitsPerItemMax;
 
       pDimensionalData->m_cShift = static_cast<ptrdiff_t>(((cSamples - 1) % cItemsPerBitPack + 1) * cBitsPerItemMax);
       pDimensionalData->m_cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
 
-      EBM_ASSERT(1 <= cBitsPerItemMax);
-      EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSizeT);
-      const size_t maskBits = (~size_t { 0 }) >> (k_cBitsForSizeT - cBitsPerItemMax);
+      const size_t maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
       pDimensionalData->m_maskBits = maskBits;
 
       pDimensionalData->m_cBins = pParams->m_acBins[iDimensionInit];

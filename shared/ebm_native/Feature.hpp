@@ -92,9 +92,15 @@ public:
 
       ptrdiff_t cItemsPerBitPack = k_cItemsPerBitPackNone;
       if(size_t { 1 } < cBins) {
-         const size_t cBitsRequiredMin = CountBitsRequired(cBins - 1);
-         EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
+         const size_t cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
+         EBM_ASSERT(1 <= cBitsRequiredMin);
+         EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT);
+         // we checked before calling Initialize that cBins - 1 could fit into StorageDataType
+         EBM_ASSERT(cBitsRequiredMin <= k_cBitsForStorageType);
+
          cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked<StorageDataType>(cBitsRequiredMin));
+         EBM_ASSERT(ptrdiff_t { 1 } <= cItemsPerBitPack);
+         EBM_ASSERT(cItemsPerBitPack <= ptrdiff_t { k_cBitsForStorageType });
       }
       m_cItemsPerBitPack = cItemsPerBitPack;
    }

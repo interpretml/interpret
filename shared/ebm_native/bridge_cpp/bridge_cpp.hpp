@@ -79,14 +79,21 @@ inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) noexcept
 static constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 
 template<typename T>
-inline constexpr static size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
-   return CountBitsRequiredPositiveMax<T>() / cItemsBitPacked;
-}
-template<typename T>
 inline static size_t GetCountItemsBitPacked(const size_t cBits) noexcept {
+   static_assert(std::is_unsigned<T>::value, "T must be unsigned");
    EBM_ASSERT(size_t { 1 } <= cBits);
    EBM_ASSERT(cBits <= CountBitsRequiredPositiveMax<T>());
    return CountBitsRequiredPositiveMax<T>() / cBits;
+}
+template<typename T>
+inline constexpr static size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
+   static_assert(std::is_unsigned<T>::value, "T must be unsigned");
+   return CountBitsRequiredPositiveMax<T>() / cItemsBitPacked;
+}
+template<typename T>
+inline constexpr static T MakeLowMask(const size_t cBits) noexcept {
+   static_assert(std::is_unsigned<T>::value, "T must be unsigned");
+   return (~T { 0 }) >> (CountBitsRequiredPositiveMax<T>() - cBits);
 }
 
 static constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin

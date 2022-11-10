@@ -30,7 +30,7 @@ static_assert(std::is_trivial<SparseFeatureDataSetSharedEntry>::value,
 
 extern ErrorEbm GetDataSetSharedHeader(
    const unsigned char * const pDataSetShared,
-   size_t * const pcSamplesOut,
+   SharedStorageDataType * const pcSamplesOut,
    size_t * const pcFeaturesOut,
    size_t * const pcWeightsOut,
    size_t * const pcTargetsOut
@@ -40,11 +40,11 @@ extern ErrorEbm GetDataSetSharedHeader(
 extern const void * GetDataSetSharedFeature(
    const unsigned char * const pDataSetShared,
    const size_t iFeature,
-   size_t * const pcBinsOut,
    bool * const pbMissingOut,
    bool * const pbUnknownOut,
    bool * const pbNominalOut,
    bool * const pbSparseOut,
+   SharedStorageDataType * const pcBinsOut,
    SharedStorageDataType * const pDefaultValSparseOut,
    size_t * const pcNonDefaultsSparseOut
 );

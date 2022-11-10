@@ -319,11 +319,11 @@ TEST_CASE("SampleWithoutReplacement, stress test") {
          size_t cValidationSamplesVerified = 0;
          for(size_t i = 0; i < cRandomSamples; ++i) {
             const BagEbm val = samples[i];
-            CHECK(-1 == val || 1 == val);
-            if(0 < val) {
+            CHECK(BagEbm { -1 } == val || BagEbm { 1 } == val);
+            if(BagEbm { 0 } < val) {
                ++cTrainingSamplesVerified;
             }
-            if(val < 0) {
+            if(val < BagEbm { 0 }) {
                ++cValidationSamplesVerified;
             }
          }

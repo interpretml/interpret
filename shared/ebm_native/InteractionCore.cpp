@@ -95,15 +95,22 @@ ErrorEbm InteractionCore::Create(
    // give ownership of our object back to the caller, even if there is a failure
    *ppInteractionCoreOut = pRet;
 
-   size_t cSamples = 0;
-   size_t cFeatures = 0;
-   size_t cWeights = 0;
-   size_t cTargets = 0;
-   error = GetDataSetSharedHeader(pDataSetShared, &cSamples, &cFeatures, &cWeights, &cTargets);
+   SharedStorageDataType countSamples;
+   size_t cFeatures;
+   size_t cWeights;
+   size_t cTargets;
+   error = GetDataSetSharedHeader(pDataSetShared, &countSamples, &cFeatures, &cWeights, &cTargets);
    if(Error_None != error) {
       // already logged
       return error;
    }
+
+   if(IsConvertError<size_t>(countSamples)) {
+      LOG_0(Trace_Error, "ERROR InteractionCore::Create IsConvertError<size_t>(countSamples)");
+      return Error_IllegalParamVal;
+   }
+   size_t cSamples = static_cast<size_t>(countSamples);
+
    if(size_t { 1 } < cWeights) {
       LOG_0(Trace_Warning, "WARNING InteractionCore::Create size_t { 1 } < cWeights");
       return Error_IllegalParamVal;
@@ -114,7 +121,10 @@ ErrorEbm InteractionCore::Create(
    }
 
    ptrdiff_t cClasses;
-   GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
+   if(nullptr == GetDataSetSharedTarget(pDataSetShared, 0, &cClasses)) {
+      LOG_0(Trace_Warning, "WARNING InteractionCore::Create cClasses cannot fit into ptrdiff_t");
+      return Error_IllegalParamVal;
+   }
 
    pRet->m_cClasses = cClasses;
 
@@ -151,24 +161,31 @@ ErrorEbm InteractionCore::Create(
 
       size_t iFeatureInitialize = 0;
       do {
-         size_t cBins;
          bool bMissing;
          bool bUnknown;
          bool bNominal;
          bool bSparse;
+         SharedStorageDataType countBins;
          SharedStorageDataType defaultValSparse;
          size_t cNonDefaultsSparse;
          GetDataSetSharedFeature(
             pDataSetShared,
             iFeatureInitialize,
-            &cBins,
             &bMissing,
             &bUnknown,
             &bNominal,
             &bSparse,
+            &countBins,
             &defaultValSparse,
             &cNonDefaultsSparse
          );
+         EBM_ASSERT(!bSparse); // not handled yet
+
+         if(IsConvertError<size_t>(countBins)) {
+            LOG_0(Trace_Error, "ERROR InteractionCore::Allocate IsConvertError<size_t>(countBins)");
+            return Error_IllegalParamVal;
+         }
+         const size_t cBins = static_cast<size_t>(countBins);
          if(0 == cBins) {
             if(0 != cSamples) {
                LOG_0(Trace_Error, "ERROR InteractionCore::Allocate countBins cannot be zero if 0 < cSamples");
@@ -182,6 +199,12 @@ ErrorEbm InteractionCore::Create(
             // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on. 
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
             LOG_0(Trace_Info, "INFO InteractionCore::Allocate feature with 1 value");
+         } else {
+            // can we fit iBin into a StorageDataType. We need to check this prior to calling Initialize
+            if(IsConvertError<StorageDataType>(cBins - size_t { 1 })) {
+               LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate IsConvertError<StorageDataType>(cBins - size_t { 1 })");
+               return Error_OutOfMemory;
+            }
          }
          aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnknown, bNominal);
 
@@ -220,7 +243,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
 
       ptrdiff_t cClasses;
       const void * const aTargetsFrom = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
-      EBM_ASSERT(nullptr != aTargetsFrom);
+      EBM_ASSERT(nullptr != aTargetsFrom); // we previously called GetDataSetSharedTarget and got back a non-null result
       EBM_ASSERT(0 != cClasses); // no gradients if 0 == cClasses
       EBM_ASSERT(1 != cClasses); // no gradients if 1 == cClasses
       EBM_ASSERT(IsClassification(cClasses));

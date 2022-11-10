@@ -289,7 +289,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
    binOut.Zero(cScores, aGradientPairsOut);
 
    // for every dimension that we're processing, set the dimension bit flag to 1 to start
-   ptrdiff_t dimensionFlags = static_cast<ptrdiff_t>((~size_t { 0 }) >> (k_cBitsForSizeT - cProcessingDimensions));
+   ptrdiff_t dimensionFlags = static_cast<ptrdiff_t>(MakeLowMask<size_t>(cProcessingDimensions));
    do {
       const unsigned char * pRawBin = pStartingBin;
       size_t evenOdd = 0;
@@ -307,6 +307,8 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
 
       const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bClassification, cCompilerScores> *>(pRawBin);
 
+      // TODO: for pairs and tripples and anything else that we want to make special case code for we can
+      // avoid this unpredictable branch, which would be very helpful
       if(UNPREDICTABLE(0 != (1 & evenOdd))) {
          ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
          binOut.Subtract(cScores, *pBin, pBin->GetGradientPairs(), aGradientPairsOut);

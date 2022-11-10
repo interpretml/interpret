@@ -33,7 +33,7 @@ extern void InitializeMSEGradientsAndHessians(
 
    ptrdiff_t cRuntimeClasses;
    const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses);
-   EBM_ASSERT(nullptr != aTargets);
+   EBM_ASSERT(nullptr != aTargets); // we previously called GetDataSetSharedTarget and got back non-null result
    EBM_ASSERT(IsRegression(cRuntimeClasses));
 
    LOG_0(Trace_Info, "Entered InitializeMSEGradientsAndHessians");

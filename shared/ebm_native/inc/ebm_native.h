@@ -314,6 +314,8 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillRegressionTarget(
    void * fillMem
 );
 
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAllocated, const void * dataSet);
+
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ExtractDataSetHeader(
    const void * dataSet,
    IntEbm * countSamplesOut,

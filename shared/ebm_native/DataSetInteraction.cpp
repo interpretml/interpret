@@ -94,27 +94,29 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    size_t iFeature = 0;
    StorageDataType ** paInputDataTo = aaInputDataTo;
    do {
-      size_t cBins;
       bool bMissing;
       bool bUnknown;
       bool bNominal;
       bool bSparse;
+      SharedStorageDataType countBins;
       SharedStorageDataType defaultValSparse;
       size_t cNonDefaultsSparse;
       const void * aInputDataFrom = GetDataSetSharedFeature(
          pDataSetShared,
          iFeature,
-         &cBins,
          &bMissing,
          &bUnknown,
          &bNominal,
          &bSparse,
+         &countBins,
          &defaultValSparse,
          &cNonDefaultsSparse
       );
       EBM_ASSERT(nullptr != aInputDataFrom);
       EBM_ASSERT(!bSparse); // we don't support sparse yet
-      EBM_ASSERT(1 <= cBins); // we have samples, and cBins can only be 0 if there are 0 samples
+
+      EBM_ASSERT(!IsConvertError<size_t>(countBins)); // checked in a previous call to GetDataSetSharedFeature
+      const size_t cBins = static_cast<size_t>(countBins);
 
       if(cBins <= size_t { 1 }) {
          // we don't need any bits to store 1 bin since it's always going to be the only bin available, and also 
@@ -128,22 +130,26 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             goto free_all;
          }
 
-         const size_t cBitsRequiredMin = CountBitsRequired(cBins - 1);
+         const size_t cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
          EBM_ASSERT(1 <= cBitsRequiredMin);
-         EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType);
-         EBM_ASSERT(cBitsRequiredMin <= k_cBitsForStorageType);
-
+         EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType); // comes from shared data set
+         EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT); // since cBins fits into size_t (previous call to GetDataSetSharedFeature)
+         EBM_ASSERT(cBitsRequiredMin <= k_cBitsForStorageType); // since cBins - 1 (above) fits into StorageDataType
 
          const size_t cItemsPerBitPackFrom = GetCountItemsBitPacked<SharedStorageDataType>(cBitsRequiredMin);
          EBM_ASSERT(1 <= cItemsPerBitPackFrom);
          EBM_ASSERT(cItemsPerBitPackFrom <= k_cBitsForSharedStorageType);
 
          const size_t cBitsPerItemMaxFrom = GetCountBits<SharedStorageDataType>(cItemsPerBitPackFrom);
-         EBM_ASSERT(cBitsPerItemMaxFrom <= k_cBitsForSharedStorageType);
          EBM_ASSERT(1 <= cBitsPerItemMaxFrom);
-         EBM_ASSERT(cBitsPerItemMaxFrom <= k_cBitsForStorageType);
-         const StorageDataType maskBitsFrom = (~StorageDataType { 0 }) >> (k_cBitsForStorageType - cBitsPerItemMaxFrom);
+         EBM_ASSERT(cBitsPerItemMaxFrom <= k_cBitsForSharedStorageType);
 
+         // we can only guarantee that cBitsPerItemMaxFrom is less than or equal to k_cBitsForSharedStorageType
+         // so we need to construct our mask in that type, but afterwards we can convert it to a 
+         // StorageDataType since we know the ultimate answer must fit into that. If in theory 
+         // SharedStorageDataType were allowed to be a billion, then the mask could be 65 bits while the end
+         // result would be forced to be 64 bits or less since we use the maximum number of bits per item possible
+         const StorageDataType maskBitsFrom = static_cast<StorageDataType>(MakeLowMask<SharedStorageDataType>(cBitsPerItemMaxFrom));
 
          const size_t cItemsPerBitPackTo = GetCountItemsBitPacked<StorageDataType>(cBitsRequiredMin);
          EBM_ASSERT(1 <= cItemsPerBitPackTo);
@@ -201,8 +207,12 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                      }
                      pInputDataFrom += cCompleteAdvanced;
                   }
+                  EBM_ASSERT(0 <= iShiftFrom);
+                  EBM_ASSERT(static_cast<size_t>(iShiftFrom * cBitsPerItemMaxFrom) < k_cBitsForSharedStorageType);
+
                   SharedStorageDataType dataFrom = *pInputDataFrom;
                   inputData = static_cast<StorageDataType>(dataFrom >> (iShiftFrom * cBitsPerItemMaxFrom)) & maskBitsFrom;
+                  EBM_ASSERT(static_cast<size_t>(inputData) < cBins);
                   --iShiftFrom;
                   if(iShiftFrom < ptrdiff_t { 0 }) {
                      ++pInputDataFrom;
@@ -312,6 +322,7 @@ ErrorEbm DataSetInteraction::Initialize(
 
       if(bAllocateGradients) {
          ptrdiff_t cClasses;
+         // we previously called GetDataSetSharedTarget and got back non-null result, so it should do that again
          GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
 
          // if there are 0 or 1 classes, then with reduction there should be zero scores and the caller should disable
