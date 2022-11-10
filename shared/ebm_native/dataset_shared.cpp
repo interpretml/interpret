@@ -1564,7 +1564,7 @@ extern ErrorEbm GetDataSetSharedHeader(
             const size_t cBitsPerItemMax = GetCountBits<SharedStorageDataType>(cItemsPerBitPack);
             EBM_ASSERT(1 <= cBitsPerItemMax);
             EBM_ASSERT(cBitsPerItemMax <= k_cBitsForSharedStorageType);
-
+            UNUSED(cBitsPerItemMax);
             EBM_ASSERT(1 <= cSamples);
             const size_t cDataUnits = (cSamples - 1) / cItemsPerBitPack + 1; // this can't overflow or underflow
 

@@ -572,14 +572,12 @@ inline constexpr static typename std::enable_if<std::is_signed<T>::value, typena
 template<typename T>
 inline constexpr static typename std::enable_if<std::is_unsigned<T>::value, typename std::make_signed<T>::type>::type TwosComplementConvert(const T val) noexcept {
    typedef T UT;
-   typedef std::make_signed<T>::type ST;
+   typedef typename std::make_signed<T>::type ST;
 
    static_assert(is_twos_complement<ST>::value, "we only support twos complement negative numbers");
 
-   constexpr UT twosComplementLowest = static_cast<UT>(std::numeric_limits<ST>::lowest());
-
-   return val < twosComplementLowest ? static_cast<ST>(val) :
-      static_cast<ST>(val + twosComplementLowest) + std::numeric_limits<ST>::lowest();
+   return val < static_cast<UT>(std::numeric_limits<ST>::lowest()) ? static_cast<ST>(val) :
+      static_cast<ST>(val + static_cast<UT>(std::numeric_limits<ST>::lowest())) + std::numeric_limits<ST>::lowest();
 }
 
 static_assert(TwosComplementConvert(int8_t { 0 }) == uint8_t { 0 }, "test TwosComplementConvert");
