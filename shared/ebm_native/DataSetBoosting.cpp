@@ -413,7 +413,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                         pDimensionInfo->m_maskBitsFrom;
 
                      // we check our dataSet when we get the header, and cBins has been checked to fit into size_t
-                     EBM_ASSERT(iData < pDimensionInfoInit->m_cBins);
+                     EBM_ASSERT(iData < pDimensionInfo->m_cBins);
 
                      pDimensionInfo->m_iShiftFrom -= 1;
                      if(pDimensionInfo->m_iShiftFrom < ptrdiff_t { 0 }) {
