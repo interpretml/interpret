@@ -1923,8 +1923,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         bin_weights = _none_list * n_features
         feature_bounds = np.full((n_features, 2), np.nan, dtype=np.float64)
         histogram_counts = _none_list * n_features
-        unique_val_counts = np.full(n_features, 0, dtype=np.int64)
-        zero_val_counts = np.full(n_features, 0, dtype=np.int64)
+        missing_val_counts = np.zeros(n_features, dtype=np.int64)
+        unique_val_counts = np.zeros(n_features, dtype=np.int64)
+        zero_val_counts = np.zeros(n_features, dtype=np.int64)
 
         native = Native.get_native_singleton()
         rng = native.create_rng(normalize_initial_seed(self.random_state))
@@ -1942,13 +1943,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             if not X_col.flags.c_contiguous:
                 # X_col could be a slice that has a stride.  We need contiguous for caling into C
                 X_col = X_col.copy()
-
-
-
-            if categories is None and np.isnan(X_col).any() or categories is not None and np.count_nonzero(X_col) != len(X_col):
-                raise ValueError("Missing values are currently disabled because our graphs do not show them yet, but if you want to enable them anyways, you can remove this check and they will work everywhere else.")
-
-
 
             feature_types_in[feature_idx] = feature_type_in
             if categories is None:
@@ -1992,7 +1986,10 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
                     histogram_counts[feature_idx] = feature_histogram_counts
 
+                    n_missing = len(X_col)
                     X_col = X_col[~np.isnan(X_col)]
+                    n_missing = n_missing - len(X_col)
+                    missing_val_counts.itemset(feature_idx, n_missing)
                     unique_val_counts.itemset(feature_idx, len(np.unique(X_col)))
                     zero_val_counts.itemset(feature_idx, len(X_col) - np.count_nonzero(X_col))
 
@@ -2050,6 +2047,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     feature_histogram_counts = feature_histogram_counts.astype(np.int64, copy=False)
                     histogram_counts[feature_idx] = feature_histogram_counts
 
+                    missing_val_counts.itemset(feature_idx, len(X_col) - np.count_nonzero(X_col))
                     unique_val_counts.itemset(feature_idx, len(categories))
                     zero_indexes = _none_list * n_unique_indexes
                     for category, idx in categories.items():
@@ -2080,6 +2078,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.noise_scale_ = noise_scale
         self.feature_bounds_ = feature_bounds
         self.histogram_counts_ = histogram_counts
+        self.missing_val_counts_ = missing_val_counts
         self.unique_val_counts_ = unique_val_counts
         self.zero_val_counts_ = zero_val_counts
         self.has_fitted_ = True
@@ -2221,6 +2220,7 @@ def construct_bins(
             bin_weights = preprocessor.bin_weights_
             feature_bounds = preprocessor.feature_bounds_
             histogram_counts = preprocessor.histogram_counts_
+            missing_val_counts = preprocessor.missing_val_counts_
             unique_val_counts = preprocessor.unique_val_counts_
             zero_val_counts = preprocessor.zero_val_counts_
         else:
@@ -2235,7 +2235,7 @@ def construct_bins(
                 bin_levels.append(feature_bins)
 
     _deduplicate_bins(bins)
-    return feature_names_in, feature_types_in, bins, bin_weights, feature_bounds, histogram_counts, unique_val_counts, zero_val_counts
+    return feature_names_in, feature_types_in, bins, bin_weights, feature_bounds, histogram_counts, missing_val_counts, unique_val_counts, zero_val_counts
 
 
 def bin_native(

@@ -397,8 +397,15 @@ class EBMModel(BaseEstimator):
         main_bin_weights = binning_result[3]
         feature_bounds = binning_result[4]
         histogram_counts = binning_result[5]
-        unique_val_counts = binning_result[6]
-        zero_val_counts = binning_result[7]
+        missing_val_counts = binning_result[6]
+        unique_val_counts = binning_result[7]
+        zero_val_counts = binning_result[8]
+
+        if np.count_nonzero(missing_val_counts):
+            warn("Missing values detected. Our visualizations do not currently display missing values. "
+                 "To retain the glassbox nature of the model you need to either set the missing values "
+                 "to an extreme value like -1000 that will be visible on the graphs, or manually "
+                 "examine the missing value score in ebm.term_scores_[term_index][0]")
 
         n_features_in = len(bins)
 

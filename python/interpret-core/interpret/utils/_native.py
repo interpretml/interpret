@@ -436,6 +436,14 @@ class Native:
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillRegressionTarget")
 
+    def check_dataset(self, dataset):
+        return_code = self._unsafe.CheckDataSet(
+            dataset.nbytes, 
+            Native._make_pointer(dataset, np.ubyte),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "CheckDataSet")
+
     def extract_dataset_header(self, dataset):
         n_samples = ct.c_int64(-1)
         n_features = ct.c_int64(-1)
@@ -853,6 +861,14 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.FillRegressionTarget.restype = ct.c_int32
+
+        self._unsafe.CheckDataSet.argtypes = [
+            # int64_t countBytesAllocated
+            ct.c_int64,
+            # void * dataSet
+            ct.c_void_p,
+        ]
+        self._unsafe.CheckDataSet.restype = ct.c_int32
 
         self._unsafe.ExtractDataSetHeader.argtypes = [
             # void * dataSet

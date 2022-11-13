@@ -2197,7 +2197,7 @@ def test_bin_native():
 
     X, n_samples = clean_X(X)
 
-    feature_names_in, feature_types_in, bins, bin_weights, feature_bounds, histogram_counts, unique_val_counts, zero_val_counts = construct_bins(
+    feature_names_in, feature_types_in, bins, bin_weights, feature_bounds, histogram_counts, missing_val_counts, unique_val_counts, zero_val_counts = construct_bins(
         X,
         y,
         sample_weight,
@@ -2211,6 +2211,7 @@ def test_bin_native():
     assert(bin_weights is not None)
     assert(feature_bounds is not None)
     assert(histogram_counts is not None)
+    assert(missing_val_counts is not None)
     assert(unique_val_counts is not None)
     assert(zero_val_counts is not None)
     

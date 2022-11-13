@@ -251,6 +251,19 @@ def test_ebm_synthetic_classification():
 
     valid_ebm(clf)
 
+def test_ebm_missing():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    X[0, 0] = np.nan
+
+    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
+    clf.fit(X, y)
+    clf.predict(X)
+
+    valid_ebm(clf)
+
 def test_ebm_synthetic_singleclass_classification():
     data = synthetic_classification()
     X = data["full"]["X"]

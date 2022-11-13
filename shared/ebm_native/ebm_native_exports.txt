@@ -26,6 +26,7 @@
       FillWeight;
       FillClassificationTarget;
       FillRegressionTarget;
+      CheckDataSet;
       ExtractDataSetHeader;
       ExtractBinCounts;
       ExtractTargetClasses;
