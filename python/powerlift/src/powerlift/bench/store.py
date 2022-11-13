@@ -17,7 +17,7 @@ Near future support:
 import pytz
 import base64
 from dataclasses import dataclass
-from typing import Any, Dict, Generator, Iterable, List, Optional, Type
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Type
 import random
 import random
 from powerlift.db.actions import delete_db, create_db
@@ -371,7 +371,7 @@ class Store:
             return None
         return self.from_db_trial(trial_orm)
 
-    def get_or_create_experiment(self, name: str, description: str) -> int:
+    def get_or_create_experiment(self, name: str, description: str) -> Tuple[int, bool]:
         """Get or create experiment keyed by name."""
         created = False
         exp_orm = self._session.query(db.Experiment).filter_by(name=name).one_or_none()
