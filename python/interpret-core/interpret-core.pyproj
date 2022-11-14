@@ -27,6 +27,7 @@
     <Content Include="interpret\visual\assets\favicon.ico" />
     <Content Include="interpret\visual\assets\udash.css" />
     <Content Include="interpret\visual\assets\udash.js" />
+    <Content Include="js\package.json" />
     <Content Include="js\src\index.js" />
     <Content Include="js\webpack.config.js" />
     <Content Include="requirements.txt" />
