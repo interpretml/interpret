@@ -56,7 +56,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
     col_bin_edges_ -> bins_
     col_mapping_ -> bins_
     hist_counts_ -> histogram_counts_
-    hist_edges_ -> histogram_edges()
+    hist_edges_ -> histogram_edges_
     col_bin_counts_ -> bin_weights_ (and is now a per-term tensor)
     ```
 

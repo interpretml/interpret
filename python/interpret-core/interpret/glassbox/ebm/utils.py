@@ -303,6 +303,37 @@ def make_histogram_edges(min_feature_val, max_feature_val, histogram_counts):
 
     return np.concatenate(([min_feature_val], cuts, [max_feature_val]))
 
+def make_all_histogram_edges(feature_bounds, histogram_counts):
+    if feature_bounds is None:
+        msg = "feature_bounds is None"
+        _log.error(msg)
+        raise ValueError(msg)
+
+    if histogram_counts is None:
+        msg = "histogram_counts is None"
+        _log.error(msg)
+        raise ValueError(msg)
+
+    if len(feature_bounds) != len(histogram_counts):
+        msg = "feature_bounds and histogram_counts have different lengths"
+        _log.error(msg)
+        raise ValueError(msg)
+
+    ret = [None] * len(histogram_counts)
+    for idx in range(len(ret)):
+        min_feature_val = feature_bounds[idx, 0]
+        max_feature_val = feature_bounds[idx, 1]
+
+        if not isnan(min_feature_val) and not isnan(max_feature_val):
+            histogram_bin_counts = histogram_counts[idx]
+            if histogram_bin_counts is None:
+                msg = "histogram_counts[idx] is None"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            ret[idx] = make_histogram_edges(min_feature_val, max_feature_val, histogram_bin_counts)
+    return ret
+
 def _harmonize_tensor(
     new_feature_idxs, 
     new_bounds, 

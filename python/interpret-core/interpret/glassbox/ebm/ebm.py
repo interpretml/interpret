@@ -7,7 +7,7 @@ from typing import DefaultDict
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
 from .utils import EBMUtils
-from .utils import _process_terms, make_histogram_edges, _order_terms, _remove_unused_higher_bins, _generate_term_names, _generate_term_types
+from .utils import _process_terms, make_all_histogram_edges, _order_terms, _remove_unused_higher_bins, _generate_term_names, _generate_term_types
 from ...utils._binning import determine_min_cols, clean_X, clean_dimensions, typify_classification, construct_bins, bin_native_by_dimension, unify_data2, _deduplicate_bins, normalize_initial_seed
 from .bin import ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, make_bin_weights, trim_tensor, eval_terms
 from ...utils._native import Native
@@ -714,6 +714,7 @@ class EBMModel(BaseEstimator):
             # for now we only support mains for DP models
             bin_weights = [main_bin_weights[feature_idxs[0]] for feature_idxs in term_features]
         else:
+            histogram_edges = make_all_histogram_edges(feature_bounds, histogram_counts)
             bin_weights = make_bin_weights(
                 X, 
                 n_samples,
@@ -742,6 +743,9 @@ class EBMModel(BaseEstimator):
         else:
             # differentially private models would need to pay additional privacy budget to make
             # these public, but they are non-essential so we don't disclose them in the DP setting
+
+            # dependent attributes (can be re-derrived after serialization)
+            self.histogram_edges_ = histogram_edges
 
             self.n_samples_ = n_samples
 
@@ -1201,11 +1205,13 @@ class EBMModel(BaseEstimator):
                     min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_feature_val, max_feature_val)
                     bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
 
-                    try:
-                        histogram_edges = self.histogram_edges(feature_index0)
+                    histogram_edges = getattr(self, 'histogram_edges_', None)
+                    if histogram_edges is not None:
+                        histogram_edges = histogram_edges[feature_index0]
+                    if histogram_edges is not None:
                         names = list(histogram_edges)
                         densities = list(self.histogram_counts_[feature_index0][1:-1])
-                    except ValueError:
+                    else:
                         names = bin_labels
                         densities = list(mod_weights[term_idx])
 
@@ -1481,46 +1487,6 @@ class EBMModel(BaseEstimator):
             name=gen_name_from_class(self) if name is None else name,
             selector=selector,
         )
-
-    def histogram_edges(self, feature_idx):
-        """ Provides the histogram edges used in the model
-
-        Args:
-            feature_idx: index of the feature to generate the histogram edges for
-
-        Returns:
-            An array of histogram edges
-        """
-
-        check_is_fitted(self, "has_fitted_")
-
-        feature_bounds = getattr(self, 'feature_bounds_', None)
-        if feature_bounds is None:
-            msg = "feature_bounds_ not defined"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        min_feature_val = feature_bounds[feature_idx, 0]
-        max_feature_val = feature_bounds[feature_idx, 1]
-
-        if isnan(min_feature_val) or isnan(max_feature_val):
-            msg = "feature_bounds_[feature_idx] has a NaN"
-            _log.error(msg)
-            raise ValueError(msg)
-           
-        histogram_counts = getattr(self, 'histogram_counts_', None)
-        if histogram_counts is None:
-            msg = "histogram_counts_ not defined"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        histogram_bin_counts = histogram_counts[feature_idx]
-        if histogram_bin_counts is None:
-            msg = "histogram_counts_[feature_idx] was None"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        return make_histogram_edges(min_feature_val, max_feature_val, histogram_bin_counts)
 
     def term_importances(self, importance_type='avg_weight'):
         """ Provides the term importances
