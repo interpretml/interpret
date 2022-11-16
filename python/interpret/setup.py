@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 name = "interpret"
 # NOTE: Version is replaced by a regex script.
-version = "0.2.8"
+version = "0.3.0"
 long_description = """
 In the beginning machines learned in darkness, and data scientists struggled in the void to explain them.
 
