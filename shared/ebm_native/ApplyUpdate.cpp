@@ -29,7 +29,16 @@ struct ApplyUpdateInternal final {
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
       FloatFast aLocalExpVector[GetCountScores(cCompilerClasses)];
-      FloatFast * const aExps = k_dynamicClassification == cCompilerClasses ? pData->m_aMulticlassMidwayTemp : aLocalExpVector;
+      FloatFast * aExps;
+      if(bGetExp) {
+         static constexpr bool bDynamicClasses = k_dynamicClassification == cCompilerClasses;
+         if(bDynamicClasses) {
+            EBM_ASSERT(nullptr != pData->m_aMulticlassMidwayTemp);
+            aExps = pData->m_aMulticlassMidwayTemp;
+         } else {
+            aExps = aLocalExpVector;
+         }
+      }
 
       const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pData->m_cClasses);
       const size_t cScores = GetCountScores(cClasses);
@@ -580,6 +589,8 @@ struct CountClasses<k_cCompilerClassesMax + 1> final {
 
 extern ErrorEbm ApplyUpdate(ApplyUpdateBridge * const pData) {
    LOG_0(Trace_Verbose, "Entered ApplyUpdate");
+
+   EBM_ASSERT(nullptr != pData);
 
    ErrorEbm error;
    if(IsClassification(pData->m_cClasses)) {

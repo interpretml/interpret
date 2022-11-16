@@ -55,6 +55,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
 
    EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
+   EBM_ASSERT(nullptr != aBag || BagEbm { 1 } == direction);  // if aBag is nullptr then we have no validation samples
    EBM_ASSERT(1 <= cSetSamples);
 
    if(IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)) {
@@ -70,8 +71,6 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
    }
 
    if(nullptr == aInitScores) {
-      EBM_ASSERT(BagEbm { 0 } < direction); // if aBag is nullptr then we have no validation samples
-
       static_assert(std::numeric_limits<FloatFast>::is_iec559, "IEEE 754 guarantees zeros means a zero float");
       memset(aSampleScores, 0, sizeof(FloatFast) * cElements);
    } else {

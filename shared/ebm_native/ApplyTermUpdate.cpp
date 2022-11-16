@@ -184,7 +184,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       data.m_cClasses = pBoosterCore->GetCountClasses();
       data.m_cPack = pTerm->GetTermBitPack();
       data.m_bCalcMetric = true;
-      data.m_aMulticlassMidwayTemp = nullptr;
+      data.m_aMulticlassMidwayTemp = pBoosterShell->GetMulticlassMidwayTemp();
       data.m_aUpdateTensorScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
       data.m_cSamples = pBoosterCore->GetValidationSet()->GetCountSamples();
       data.m_aPacked = pBoosterCore->GetValidationSet()->GetInputDataPointer(iTerm);
