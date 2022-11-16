@@ -264,6 +264,18 @@ def test_ebm_missing():
 
     valid_ebm(clf)
 
+def test_ebm_only_missing():
+    X = np.full((10,10), np.nan)
+    y = np.full(10, 0)
+    y[0] = 1
+
+    clf = ExplainableBoostingClassifier(n_jobs=1)
+    clf.fit(X, y)
+    clf.predict(X)
+    global_exp = clf.explain_global()
+    local_exp = clf.explain_local(X, y)
+
+
 def test_ebm_synthetic_singleclass_classification():
     data = synthetic_classification()
     X = data["full"]["X"]

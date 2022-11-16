@@ -1132,6 +1132,15 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
+        # Obtain min/max for model scores
+        lower_bound = np.inf
+        upper_bound = -np.inf
+        for scores, errors in zip(self.term_scores_, self.standard_deviations_):
+            lower_bound = min(lower_bound, np.min(scores - errors))
+            upper_bound = max(upper_bound, np.max(scores + errors))
+
+        bounds = (lower_bound, upper_bound)
+
         mod_weights = remove_last2(self.bin_weights_, self.bin_weights_)
         mod_term_scores = remove_last2(self.term_scores_, self.bin_weights_)
         mod_standard_deviations = remove_last2(self.standard_deviations_, self.bin_weights_)
@@ -1139,15 +1148,6 @@ class EBMModel(BaseEstimator):
             mod_term_scores[term_idx] = trim_tensor(mod_term_scores[term_idx], trim_low=[True] * len(feature_idxs))
             mod_standard_deviations[term_idx] = trim_tensor(mod_standard_deviations[term_idx], trim_low=[True] * len(feature_idxs))
             mod_weights[term_idx] = trim_tensor(mod_weights[term_idx], trim_low=[True] * len(feature_idxs))
-
-        # Obtain min/max for model scores
-        lower_bound = np.inf
-        upper_bound = -np.inf
-        for errors, scores in zip(mod_standard_deviations, mod_term_scores):
-            lower_bound = min(lower_bound, np.min(scores - errors))
-            upper_bound = max(upper_bound, np.max(scores + errors))
-
-        bounds = (lower_bound, upper_bound)
 
         term_names = self.term_names_
         term_types = _generate_term_types(self.feature_types_in_, self.term_features_)
