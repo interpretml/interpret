@@ -1180,15 +1180,15 @@ class EBMModel(BaseEstimator):
                     histogram_counts = getattr(self, 'histogram_counts_', None)
                     if histogram_counts is not None:
                         histogram_counts = histogram_counts[feature_index0]
-                        if histogram_counts is not None:
-                            if len(bin_labels) != model_graph.shape[0]:
-                                bin_labels.append('DPOther')
-                                histogram_counts = histogram_counts[1:]
-                            else:
-                                histogram_counts = histogram_counts[1:-1]
 
                     if histogram_counts is None:
-                        histogram_counts = mod_weights[term_idx]
+                        histogram_counts = self.bin_weights_[term_idx]
+
+                    if len(bin_labels) != model_graph.shape[0]:
+                        bin_labels.append('DPOther')
+                        histogram_counts = histogram_counts[1:]
+                    else:
+                        histogram_counts = histogram_counts[1:-1]
 
                     names=bin_labels
                     densities = list(histogram_counts)
