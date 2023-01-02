@@ -1,10 +1,11 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-from ..linear import LogisticRegression, LinearRegression
+from interpret.glassbox.linear import LogisticRegression, LinearRegression
 from sklearn.datasets import load_breast_cancer, load_boston
 from sklearn.linear_model import LogisticRegression as SKLogistic
 from sklearn.linear_model import Lasso as SKLinear
+from sklearn.model_selection import RandomizedSearchCV
 import numpy as np
 
 
@@ -36,6 +37,35 @@ def test_linear_regression():
     global_expl = our_lr.explain_global()
     global_viz = global_expl.visualize()
     assert global_viz is not None
+
+
+def test_linear_regression_sklearn_compatibility():
+    boston = load_boston()
+    X, y = boston.data, boston.target
+
+    distributions = {
+        'max_iter': [250, 500],
+        'alpha': [0.1 , 0.25, 0.5, 1]
+    }
+
+    sk_lr = SKLinear()
+    our_lr = LinearRegression()
+
+    search_sk =  RandomizedSearchCV(estimator = sk_lr,
+                                    param_distributions = distributions,
+                                    random_state = 2022)
+
+    search_our = RandomizedSearchCV(estimator = our_lr,
+                                    param_distributions = distributions,
+                                    random_state = 2022)
+
+    search_sk.fit(X, y)
+    search_our.fit(X, y)
+
+    sk_pred = search_sk.predict(X)
+    our_pred = search_our.predict(X)
+
+    assert np.allclose(sk_pred, our_pred)
 
 
 def test_logistic_regression():
@@ -70,6 +100,36 @@ def test_logistic_regression():
     global_expl = our_lr.explain_global()
     global_viz = global_expl.visualize()
     assert global_viz is not None
+
+
+def test_logistic_regression_sklearn_compatibility():
+    cancer = load_breast_cancer()
+    X, y = cancer.data, cancer.target
+
+    distributions = {
+        'penalty': ['l1', 'l2'],
+        'C': [1 , 0.5, 0.1, 0.05, 0.01]
+    }
+
+    sk_lr = SKLogistic()
+    our_lr = LogisticRegression()
+
+    search_sk =  RandomizedSearchCV(estimator = sk_lr,
+                                    param_distributions = distributions,
+                                    random_state = 2022)
+
+    search_our = RandomizedSearchCV(estimator = our_lr,
+                                    param_distributions = distributions,
+                                    random_state = 2022)
+
+    search_sk.fit(X, y)
+    search_our.fit(X, y)
+
+    sk_pred = search_sk.predict_proba(X)
+    our_pred = search_our.predict_proba(X)
+
+    assert np.allclose(sk_pred, our_pred, rtol=1e-03, atol=1e-06)
+
 
 
 def test_sorting():
