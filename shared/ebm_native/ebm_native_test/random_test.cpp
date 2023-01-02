@@ -169,9 +169,9 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
       size_t cRandomSamples = randomStream.Next(cSamples + 1);
       size_t cClassSize = randomStream.Next(cClasses) + 1;
       size_t cTrainingSamples = randomStream.Next(cRandomSamples + size_t { 1 });
-      EBM_ASSERT(0 <= cTrainingSamples && cTrainingSamples <= cSamples);
+      EBM_ASSERT(cTrainingSamples <= cSamples);
       size_t cValidationSamples = cRandomSamples - cTrainingSamples;
-      EBM_ASSERT(0 <= cValidationSamples && cValidationSamples <= cSamples);
+      EBM_ASSERT(cValidationSamples <= cSamples);
 
       ++seed;
 
