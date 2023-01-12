@@ -95,11 +95,6 @@ def _synthetic(mode="regression"):
 
     return dataset
 
-
-def boston_regression():
-    return None
-
-
 def iris_classification():
     from sklearn.datasets import load_iris
 

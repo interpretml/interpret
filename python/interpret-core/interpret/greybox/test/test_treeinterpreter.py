@@ -3,7 +3,7 @@
 
 
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.datasets import load_boston
+from sklearn.datasets import load_diabetes
 from ..treeinterpreter import TreeInterpreter
 
 import pytest
@@ -17,13 +17,13 @@ def test_that_tree_works():
     # http://blog.datadive.net/random-forest-interpretation-with-scikit-learn/
 
     # Fit tree
-    boston = load_boston()
+    dataset = load_diabetes()
     rf = RandomForestRegressor()
-    X, y = boston.data[:300], boston.target[:300]
-    feature_names = boston.feature_names
+    X, y = dataset.data[:300], dataset.target[:300]
+    feature_names = dataset.feature_names
 
-    X_new = boston.data[[300, 309]]
-    y_new = boston.target[[300, 309]]
+    X_new = dataset.data[[300, 309]]
+    y_new = dataset.target[[300, 309]]
     rf.fit(X, y)
 
     # Build expected local explanation
