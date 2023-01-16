@@ -56,5 +56,5 @@ def SPOT_GreedySubsetSelection(C, targetMarginal, m):
     #end = time.time()
     #print("S : ", S)
     #print("Time : ", end - start)
-    print(S[0].shape, currOptw[0].shape)
+    #print(S[0].shape, currOptw[0].shape)
     return S[0], currOptw[0]
