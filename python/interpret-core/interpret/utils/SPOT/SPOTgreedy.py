@@ -1,6 +1,13 @@
 # Copyright (c) 2023 Microsoft Corporation
 # Distributed under the MIT software license
 
+""" SPOT: A framework for selection of prototypes using optimal transport
+
+This file implements the SPOTgreedy algorithm from [1].
+
+[1] https://link.springer.com/chapter/10.1007/978-3-030-86514-6_33
+"""
+
 import numpy as cp
 from scipy.sparse import csr_matrix
 #import time
