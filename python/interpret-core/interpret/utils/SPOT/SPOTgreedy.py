@@ -1,3 +1,6 @@
+# Copyright (c) 2023 Microsoft Corporation
+# Distributed under the MIT software license
+
 import numpy as cp
 from scipy.sparse import csr_matrix
 #import time
