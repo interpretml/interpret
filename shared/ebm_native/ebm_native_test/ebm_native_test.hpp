@@ -5,6 +5,15 @@
 #ifndef EBM_NATIVE_TEST_HPP
 #define EBM_NATIVE_TEST_HPP
 
+#include <stddef.h> // ptrdiff, size_t
+#include <limits> // std::numeric_limits
+#include <cmath> // std::nextafter
+#include <string> // std::string
+#include <vector> // std::vector
+#include <assert.h> // assert
+
+#include "ebm_native.h" // IntEbm
+
 #define UNUSED(x) (void)(x)
 #define EBM_ASSERT(x) assert(x)
 
