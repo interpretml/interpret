@@ -26,7 +26,7 @@ convert_terms_to_c <- function(terms) {
 }
 
 create_booster <- function(
-   random_state,
+   rng,
    dataset_handle,
    bag,
    init_scores,
@@ -34,9 +34,7 @@ create_booster <- function(
    feature_indexes,
    count_inner_bags
 ) {
-   if(!is.null(random_state)) {
-      random_state <- as.integer(random_state)
-   }
+   stopifnot(is.null(rng) || class(rng) == "externalptr")
    stopifnot(class(dataset_handle) == "externalptr")
    if(!is.null(bag)) {
       bag <- as.integer(bag)
@@ -50,7 +48,7 @@ create_booster <- function(
 
    booster_handle <- .Call(
       CreateBooster_R, 
-      random_state,
+      rng,
       dataset_handle,
       bag,
       init_scores,
@@ -67,12 +65,14 @@ free_booster <- function(booster_handle) {
 }
 
 generate_term_update <- function(
+   rng,
    booster_handle, 
    index_term, 
    learning_rate, 
    count_samples_required_for_child_split_min, 
    max_leaves
 ) {
+   stopifnot(is.null(rng) || class(rng) == "externalptr")
    stopifnot(class(booster_handle) == "externalptr")
    index_term <- as.double(index_term)
    learning_rate <- as.double(learning_rate)
@@ -81,6 +81,7 @@ generate_term_update <- function(
 
    avg_gain <- .Call(
       GenerateTermUpdate_R, 
+      rng,
       booster_handle, 
       index_term, 
       learning_rate, 
@@ -139,12 +140,12 @@ booster <- function(
    init_scores,
    terms,
    inner_bags,
-   random_state
+   rng
 ) {
    c_structs <- convert_terms_to_c(terms)
 
    booster_handle <- create_booster(
-      random_state,
+      rng,
       dataset_handle,
       bag,
       init_scores,
@@ -177,7 +178,7 @@ cyclic_gradient_boost <- function(
    early_stopping_rounds, 
    early_stopping_tolerance,
    max_rounds, 
-   random_state
+   rng
 ) {
    min_metric <- Inf
    episode_index <- 0
@@ -192,7 +193,7 @@ cyclic_gradient_boost <- function(
       init_scores,
       terms,
       inner_bags,
-      random_state
+      rng
    )
    result_list <- tryCatch({
       no_change_run_length <- 0
@@ -201,6 +202,7 @@ cyclic_gradient_boost <- function(
       for(episode_index in 1:max_rounds) {
          for(term_index in seq_along(terms)) {
             avg_gain <- generate_term_update(
+               rng,
                ebm_booster$booster_handle, 
                term_index - 1, 
                learning_rate, 

@@ -29,13 +29,14 @@ normalize_initial_seed <- function(seed) {
    return(seed)
 }
 
-generate_seed <- function(random_state, random_mix) {
+create_rng <- function(random_state) {
    if(is.null(random_state)) {
       return(NULL)
    }
    random_state <- as.integer(random_state)
-   random_mix <- as.integer(random_mix)
 
-   ret <- .Call(GenerateSeed_R, random_state, random_mix)
+   stopifnot(-2147483648 <= random_state && random_state <= 2147483647)
+
+   ret <- .Call(CreateRNG_R, random_state)
    return(ret)
 }

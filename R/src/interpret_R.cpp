@@ -14,6 +14,8 @@
 #include "common_cpp.hpp"
 
 #include "ebm_internal.hpp"
+#include "Feature.hpp"
+#include "Term.hpp"
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"
 #include "InteractionCore.hpp"
@@ -196,6 +198,17 @@ static IntEbm CountTotalDimensions(const size_t cTerms, const IntEbm * const acT
    return static_cast<IntEbm>(cTotalDimensions);
 }
 
+static void RngFinalizer(SEXP rngHandleWrapped) {
+   EBM_ASSERT(nullptr != rngHandleWrapped); // shouldn't be possible
+   if(EXTPTRSXP == TYPEOF(rngHandleWrapped)) {
+      void * const rngHandle = R_ExternalPtrAddr(rngHandleWrapped);
+      if(nullptr != rngHandle) {
+         R_ClearExternalPtr(rngHandleWrapped);
+         free(rngHandle);
+      }
+   }
+}
+
 static void DataSetFinalizer(SEXP dataSetHandleWrapped) {
    EBM_ASSERT(nullptr != dataSetHandleWrapped); // shouldn't be possible
    if(EXTPTRSXP == TYPEOF(dataSetHandleWrapped)) {
@@ -229,19 +242,22 @@ static void InteractionFinalizer(SEXP interactionHandleWrapped) {
    }
 }
 
-SEXP GenerateSeed_R(SEXP seed, SEXP randomMix) {
+SEXP CreateRNG_R(SEXP seed) {
    EBM_ASSERT(nullptr != seed);
-   EBM_ASSERT(nullptr != randomMix);
 
    const SeedEbm seedLocal = ConvertInt(seed);
-   const SeedEbm randomMixLocal = ConvertInt(randomMix);
 
-   const SeedEbm retSeed = GenerateSeed(seedLocal, randomMixLocal);
+   void * const rngHandle = malloc(static_cast<size_t>(MeasureRNG()));
 
-   SEXP ret = PROTECT(allocVector(INTSXP, R_xlen_t { 1 }));
-   INTEGER(ret)[0] = retSeed;
+   InitRNG(seedLocal, rngHandle);
+
+   SEXP rngHandleWrapped = R_MakeExternalPtr(rngHandle, R_NilValue, R_NilValue); // makes an EXTPTRSXP
+   PROTECT(rngHandleWrapped);
+   
+   R_RegisterCFinalizerEx(rngHandleWrapped, &RngFinalizer, Rboolean::TRUE);
+   
    UNPROTECT(1);
-   return ret;
+   return rngHandleWrapped;
 }
 
 SEXP CutQuantile_R(SEXP featureVals, SEXP minSamplesBin, SEXP isRounded, SEXP countCuts) {
@@ -568,20 +584,18 @@ SEXP FillClassificationTarget_R(SEXP countClasses, SEXP targets, SEXP countBytes
    return R_NilValue;
 }
 
-SEXP SampleWithoutReplacement_R(SEXP seed, SEXP countTrainingSamples, SEXP countValidationSamples, SEXP bagOut) {
-   EBM_ASSERT(nullptr != seed);
+SEXP SampleWithoutReplacement_R(SEXP rng, SEXP countTrainingSamples, SEXP countValidationSamples, SEXP bagOut) {
+   EBM_ASSERT(nullptr != rng);
    EBM_ASSERT(nullptr != countTrainingSamples);
    EBM_ASSERT(nullptr != countValidationSamples);
    EBM_ASSERT(nullptr != bagOut);
 
-   BoolEbm bDeterministic;
-   SeedEbm seedLocal;
-   if(NILSXP == TYPEOF(seed)) {
-      seedLocal = 0;
-      bDeterministic = EBM_FALSE;
-   } else {
-      seedLocal = ConvertInt(seed);
-      bDeterministic = EBM_TRUE;
+   void * pRng = nullptr;
+   if(NILSXP != TYPEOF(rng)) {
+      if(EXTPTRSXP != TYPEOF(rng)) {
+         error("SampleWithoutReplacement_R EXTPTRSXP != TYPEOF(rng)");
+      }
+      pRng = R_ExternalPtrAddr(rng);
    }
 
    const IntEbm cTrainingSamples = ConvertIndex(countTrainingSamples);
@@ -602,8 +616,7 @@ SEXP SampleWithoutReplacement_R(SEXP seed, SEXP countTrainingSamples, SEXP count
       EBM_ASSERT(nullptr != aBag); // this can't be nullptr since R_alloc uses R error handling
 
       const ErrorEbm err = SampleWithoutReplacement(
-         bDeterministic,
-         seedLocal,
+         pRng,
          cTrainingSamples,
          cValidationSamples,
          aBag
@@ -629,7 +642,7 @@ SEXP SampleWithoutReplacement_R(SEXP seed, SEXP countTrainingSamples, SEXP count
 }
 
 SEXP CreateBooster_R(
-   SEXP seed,
+   SEXP rng,
    SEXP dataSetWrapped,
    SEXP bag,
    SEXP initScores,
@@ -637,7 +650,7 @@ SEXP CreateBooster_R(
    SEXP featureIndexes,
    SEXP countInnerBags
 ) {
-   EBM_ASSERT(nullptr != seed);
+   EBM_ASSERT(nullptr != rng);
    EBM_ASSERT(nullptr != dataSetWrapped);
    EBM_ASSERT(nullptr != bag);
    EBM_ASSERT(nullptr != initScores);
@@ -647,14 +660,12 @@ SEXP CreateBooster_R(
 
    ErrorEbm err;
 
-   BoolEbm bDeterministic;
-   SeedEbm seedLocal;
-   if(NILSXP == TYPEOF(seed)) {
-      seedLocal = 0;
-      bDeterministic = EBM_FALSE;
-   } else {
-      seedLocal = ConvertInt(seed);
-      bDeterministic = EBM_TRUE;
+   void * pRng = nullptr;
+   if(NILSXP != TYPEOF(rng)) {
+      if(EXTPTRSXP != TYPEOF(rng)) {
+         error("CreateBooster_R EXTPTRSXP != TYPEOF(rng)");
+      }
+      pRng = R_ExternalPtrAddr(rng);
    }
 
    if(EXTPTRSXP != TYPEOF(dataSetWrapped)) {
@@ -727,8 +738,7 @@ SEXP CreateBooster_R(
 
    BoosterHandle boosterHandle;
    err = CreateBooster(
-      bDeterministic,
-      seedLocal,
+      pRng,
       pDataSet,
       aBag,
       aInitScores,
@@ -758,17 +768,27 @@ SEXP FreeBooster_R(SEXP boosterHandleWrapped) {
 }
 
 SEXP GenerateTermUpdate_R(
+   SEXP rng,
    SEXP boosterHandleWrapped,
    SEXP indexTerm,
    SEXP learningRate,
    SEXP minSamplesLeaf,
    SEXP leavesMax
 ) {
+   EBM_ASSERT(nullptr != rng);
    EBM_ASSERT(nullptr != boosterHandleWrapped);
    EBM_ASSERT(nullptr != indexTerm);
    EBM_ASSERT(nullptr != learningRate);
    EBM_ASSERT(nullptr != minSamplesLeaf);
    EBM_ASSERT(nullptr != leavesMax);
+
+   void * pRng = nullptr;
+   if(NILSXP != TYPEOF(rng)) {
+      if(EXTPTRSXP != TYPEOF(rng)) {
+         error("GenerateTermUpdate_R EXTPTRSXP != TYPEOF(rng)");
+      }
+      pRng = R_ExternalPtrAddr(rng);
+   }
 
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
       error("GenerateTermUpdate_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
@@ -797,6 +817,7 @@ SEXP GenerateTermUpdate_R(
    double avgGain;
 
    const ErrorEbm err = GenerateTermUpdate(
+      pRng,
       boosterHandle,
       iTerm,
       BoostFlags_Default,
@@ -860,10 +881,10 @@ SEXP GetBestTermScores_R(SEXP boosterHandleWrapped, SEXP indexTerm) {
    const Term * const pTerm = pBoosterCore->GetTerms()[static_cast<size_t>(iTerm)];
    const size_t cDimensions = pTerm->GetCountDimensions();
    if(0 != cDimensions) {
-      const Feature * const * ppFeature = pTerm->GetFeatures();
-      const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
+      const FeatureBoosting * const * ppFeature = pTerm->GetFeatures();
+      const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature[cDimensions];
       do {
-         const Feature * const pFeature = *ppFeature;
+         const FeatureBoosting * const pFeature = *ppFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          cTensorScores *= cBins;
@@ -910,10 +931,10 @@ SEXP GetCurrentTermScores_R(SEXP boosterHandleWrapped, SEXP indexTerm) {
    const Term * const pTerm = pBoosterCore->GetTerms()[static_cast<size_t>(iTerm)];
    const size_t cDimensions = pTerm->GetCountDimensions();
    if(0 != cDimensions) {
-      const Feature * const * ppFeature = pTerm->GetFeatures();
-      const Feature * const * const ppFeaturesEnd = &ppFeature[cDimensions];
+      const FeatureBoosting * const * ppFeature = pTerm->GetFeatures();
+      const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature[cDimensions];
       do {
-         const Feature * const pFeature = *ppFeature;
+         const FeatureBoosting * const pFeature = *ppFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          cTensorScores *= cBins;
@@ -1063,7 +1084,7 @@ SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexe
 }
 
 static const R_CallMethodDef g_exposedFunctions[] = {
-   { "GenerateSeed_R", (DL_FUNC)&GenerateSeed_R, 2 },
+   { "CreateRNG_R", (DL_FUNC)&CreateRNG_R, 1 },
    { "CutQuantile_R", (DL_FUNC)&CutQuantile_R, 4 },
    { "Discretize_R", (DL_FUNC)&Discretize_R, 3 },
    { "MeasureDataSetHeader_R", (DL_FUNC)&MeasureDataSetHeader_R, 3 },
@@ -1077,7 +1098,7 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "SampleWithoutReplacement_R", (DL_FUNC)&SampleWithoutReplacement_R, 4 },
    { "CreateBooster_R", (DL_FUNC)&CreateBooster_R, 7 },
    { "FreeBooster_R", (DL_FUNC)&FreeBooster_R, 1 },
-   { "GenerateTermUpdate_R", (DL_FUNC)&GenerateTermUpdate_R, 5 },
+   { "GenerateTermUpdate_R", (DL_FUNC)&GenerateTermUpdate_R, 6 },
    { "ApplyTermUpdate_R", (DL_FUNC)&ApplyTermUpdate_R, 1 },
    { "GetBestTermScores_R", (DL_FUNC)&GetBestTermScores_R, 2 },
    { "GetCurrentTermScores_R", (DL_FUNC)&GetCurrentTermScores_R, 2 },

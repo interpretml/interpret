@@ -2,8 +2,8 @@
 # Licensed under the MIT license.
 # Author: Paul Koch <code@koch.ninja>
 
-sample_without_replacement <- function(random_state, count_training_samples, count_validation_samples, bag_out) {
-   random_state <- as.integer(random_state)
+sample_without_replacement <- function(rng, count_training_samples, count_validation_samples, bag_out) {
+   stopifnot(is.null(rng) || class(rng) == "externalptr")
    count_training_samples <- as.double(count_training_samples)
    count_validation_samples <- as.double(count_validation_samples)
    stopifnot(is.integer(bag_out))
@@ -13,6 +13,6 @@ sample_without_replacement <- function(random_state, count_training_samples, cou
    # 5.9.10 Named objects and copying [https://cran.r-project.org/doc/manuals/R-exts.html#Named-objects-and-copying]
    # we modify bag_out to avoid extra allocations in the future where we might repeatedly reuse that
    # memory to fill in new samples.  This function is not meant to be used outside of this package
-   result <- .Call(SampleWithoutReplacement_R, random_state, count_training_samples, count_validation_samples, bag_out)
+   result <- .Call(SampleWithoutReplacement_R, rng, count_training_samples, count_validation_samples, bag_out)
    return(NULL)
 }

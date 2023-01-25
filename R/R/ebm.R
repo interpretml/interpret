@@ -66,6 +66,7 @@ ebm_classify <- function(
    stopifnot(!any(is.na(X)))
 
    random_state <- normalize_initial_seed(random_state)
+   rng <- create_rng(random_state)
    
    col_names <- colnames(X)
    if(is.null(col_names)) {
@@ -89,9 +90,8 @@ ebm_classify <- function(
    train_size <- n_samples - validation_size
 
    for(i_outer_bag in 1:outer_bags) {
-      random_state <- generate_seed(random_state, 1416147523)
       # WARNING: bag is modified in-place
-      sample_without_replacement(random_state, train_size, validation_size, bag)
+      sample_without_replacement(rng, train_size, validation_size, bag)
 
       result_list <- cyclic_gradient_boost(
          "classification",
@@ -107,7 +107,7 @@ ebm_classify <- function(
          early_stopping_rounds, 
          early_stopping_tolerance,
          max_rounds, 
-         random_state
+         rng
       )
       for(i_feature in 1:n_features) {
          term_scores[[col_names[i_feature]]] <- result_list$model_update[[i_feature]]
