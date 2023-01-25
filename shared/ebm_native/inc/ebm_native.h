@@ -193,7 +193,7 @@ EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm
 
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION CleanFloats(IntEbm count, double * valsInOut);
 
-EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureRNG();
+EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureRNG(void);
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION InitRNG(SeedEbm seed, void * rngOut);
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION CopyRNG(void * rng, void * rngOut);
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION BranchRNG(void * rng, void * rngOut);

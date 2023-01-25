@@ -307,7 +307,7 @@ if [ $is_extra_debugging -ne 0 ]; then
 fi
 
 
-c_args="-std=c99"
+c_args="-std=c99 -Wstrict-prototypes"
 
 cpp_args="-std=c++11"
 cpp_args="$cpp_args -Wold-style-cast"

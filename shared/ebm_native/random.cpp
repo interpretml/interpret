@@ -18,7 +18,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 
-EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureRNG() {
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureRNG(void) {
    return sizeof(RandomDeterministic);
 }
 

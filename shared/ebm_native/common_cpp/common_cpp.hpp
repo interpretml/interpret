@@ -538,7 +538,7 @@ template<typename T, typename std::enable_if<std::is_integral<T>::value && std::
 struct internal_is_twos_complement {
    // this struct is only defined for negative integral numbers
 
-   // The C standard allows 3 types of signed numbers: "sign and magnitude", "ones’ complement" and "two’s complement"
+   // The C standard allows 3 types of signed numbers: "sign and magnitude", "ones complement" and "twos complement"
    // The pre-C++20 is silent on this but in practice interoperability requires the C standard definition
    // C++20 only allows two's compliment
    // https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2218.htm#c-sign
