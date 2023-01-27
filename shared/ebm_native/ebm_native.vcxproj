@@ -318,6 +318,7 @@ EXIT /B 0
     <ClInclude Include="InnerBag.hpp" />
     <ClInclude Include="Tensor.hpp" />
     <ClInclude Include="TensorTotalsSum.hpp" />
+    <ClInclude Include="Transpose.hpp" />
     <ClInclude Include="TreeNode.hpp" />
     <ClInclude Include="SplitPosition.hpp" />
   </ItemGroup>

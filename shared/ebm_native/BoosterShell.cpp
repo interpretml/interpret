@@ -10,6 +10,8 @@
 
 #include "RandomDeterministic.hpp" // RandomDeterministic
 
+#include "Transpose.hpp"
+
 #include "Feature.hpp" // Feature
 #include "Term.hpp" // Term
 #include "Tensor.hpp" // Tensor

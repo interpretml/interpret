@@ -98,6 +98,7 @@
     <ClInclude Include="bridge_cpp\GradientPair.hpp">
       <Filter>bridge_cpp</Filter>
     </ClInclude>
+    <ClInclude Include="Transpose.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />

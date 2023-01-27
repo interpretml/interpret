@@ -33,6 +33,7 @@
 #include "RandomDeterministic.hpp"
 #include "RandomNondeterministic.hpp"
 #include "GaussianDistribution.hpp" // implicitly depends on RandomDeterministic.hpp and RandomNondeterministic.hpp but the dependency is templated away
+#include "Transpose.hpp"
 #include "approximate_math.hpp"
 #include "ebm_stats.hpp" // depends on approximate_math.hpp
 #include "Feature.hpp" // ONLY zones.h

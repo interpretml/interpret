@@ -11,6 +11,8 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
+#include "Transpose.hpp"
+
 #include "Feature.hpp"
 #include "Term.hpp"
 #include "Tensor.hpp"
