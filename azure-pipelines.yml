@@ -222,8 +222,11 @@ jobs:
       versionSpec: '3.7'
       architecture: 'x64'
   - script: | 
-      sudo apt install --yes texlive-latex-base texlive-latex-recommended texlive-fonts-recommended texlive-latex-extra
+      sudo apt install --yes texlive-latex-base texlive-fonts-extra
       Rscript build.R
+      if [ $? -ne 0 ]; then
+        exit 1
+      fi
     workingDirectory: 'R'
     displayName: 'R CMD build'
   - script: cat tmp/R/interpret.Rcheck/00install.out
