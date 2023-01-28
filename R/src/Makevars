@@ -4,14 +4,13 @@
 
 NATIVEDIR=../../shared/ebm_native
 
-CXX_STD = CXX11
+CXX_STD = CXX17
 PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -I$(NATIVEDIR)/common_c -I$(NATIVEDIR)/common_cpp -I$(NATIVEDIR)/bridge_c -I$(NATIVEDIR)/bridge_cpp -I$(NATIVEDIR)/compute -I$(NATIVEDIR)/compute/loss_functions -I$(NATIVEDIR)/compute/metrics -I$(NATIVEDIR)/compute/cpu_ebm -DEBM_NATIVE_R -DZONE_R
 # TODO test adding the g++/clang flags to PKG_CXXFLAGS.  I think -g0 and -O3 won't work though since the R compile flags already include -g and -O2:
 PKG_CXXFLAGS=$(CXX_VISIBILITY) 
 
 OBJECTS = \
    $(NATIVEDIR)/ApplyTermUpdate.o \
-   $(NATIVEDIR)/ApplyTermUpdateTraining.o \
    $(NATIVEDIR)/ApplyUpdate.o \
    $(NATIVEDIR)/BinSumsBoosting.o \
    $(NATIVEDIR)/BinSumsInteraction.o \
