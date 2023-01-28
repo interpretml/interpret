@@ -211,6 +211,38 @@ jobs:
       artifactName: interpret-inline-bundle
     displayName: 'Publish interpret-inline.js library'
 
+- job: 'Build_R_Package'
+  pool:
+    vmImage: '${{ variables.ubuntu_image }}'
+  variables:
+    runCodesignValidationInjection: false
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.7'
+      architecture: 'x64'
+  - script: | 
+      sudo apt install --yes texlive-latex-base texlive-latex-recommended texlive-fonts-recommended texlive-latex-extra
+      Rscript build.R
+    workingDirectory: 'R'
+    displayName: 'R CMD build'
+  - script: cat tmp/R/interpret.Rcheck/00install.out
+    condition: failed()
+    displayName: 'output errors'
+  - task: CopyFiles@2
+    condition: succeeded()
+    inputs:
+      sourceFolder: staging
+      contents: 'interpret_*.tar.gz'
+      targetFolder: '$(Build.ArtifactStagingDirectory)/R'
+    displayName: 'Move R package for R Artifact'
+  - task: PublishBuildArtifacts@1
+    condition: succeeded()
+    inputs:
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)/R'
+      artifactName: 'R'
+    displayName: 'Publish R package'
+
 - job: 'Build_Package'
   dependsOn: ['Build_ebm_native', 'Build_JS_Inline']
   pool:
