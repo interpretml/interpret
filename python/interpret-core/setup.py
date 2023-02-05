@@ -143,9 +143,10 @@ class BuildCommand(build):
 
         if os.name == 'nt':
             build_script = os.path.join(sym_path, "build.bat")
+            subprocess.check_call([build_script], cwd=sym_path)
         else:
             build_script = os.path.join(sym_path, "build.sh")
-        subprocess.check_call([build_script], cwd=sym_path, shell=True)
+            subprocess.check_call(['sh', build_script], cwd=sym_path)
 
         source_dir = os.path.join(sym_path, 'python', 'interpret-core', 'interpret', 'lib')
         target_dir = os.path.join(script_path, 'interpret', 'lib')
