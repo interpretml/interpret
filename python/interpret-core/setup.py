@@ -140,13 +140,12 @@ class BuildCommand(build):
         sym_path = os.path.join(script_path, 'symbolic')
 
         # Native compile
-
         if os.name == 'nt':
             build_script = os.path.join(sym_path, "build.bat")
             subprocess.check_call([build_script], cwd=sym_path)
         else:
             build_script = os.path.join(sym_path, "build.sh")
-            subprocess.check_call(['sh', build_script], cwd=sym_path)
+            subprocess.check_call(['/bin/sh', build_script], cwd=sym_path)
 
         source_dir = os.path.join(sym_path, 'python', 'interpret-core', 'interpret', 'lib')
         target_dir = os.path.join(script_path, 'interpret', 'lib')
@@ -160,8 +159,8 @@ class BuildCommand(build):
 
         # JavaScript compile
         js_path = os.path.join(script_path, 'js')
-        subprocess.run(["npm", "install"], cwd=js_path, shell=True)
-        subprocess.run(["npm", "run", "build-prod"], cwd=js_path, shell=True)
+        subprocess.run("npm install && npm run build-prod", cwd=js_path, shell=True)
+
         js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
         js_bundle_dest = os.path.join(
             "interpret", "lib", "interpret-inline.js"
