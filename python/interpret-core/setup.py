@@ -140,12 +140,12 @@ class BuildCommand(build):
         sym_path = os.path.join(script_path, 'symbolic')
 
         # Native compile
+
         if os.name == 'nt':
             build_script = os.path.join(sym_path, "build.bat")
-            subprocess.check_call([build_script], cwd=sym_path)
         else:
             build_script = os.path.join(sym_path, "build.sh")
-            subprocess.check_call(['sh', build_script], cwd=sym_path)
+        subprocess.check_call([build_script], cwd=sym_path, shell=True)
 
         source_dir = os.path.join(sym_path, 'python', 'interpret-core', 'interpret', 'lib')
         target_dir = os.path.join(script_path, 'interpret', 'lib')
@@ -157,18 +157,10 @@ class BuildCommand(build):
                 os.path.join(target_dir, file_name)
             )
 
-        # TODO: I think the npm calls below fail on linux/mac but in sdist we include the js already 
-        #       and for conda-forge we build it in the script beforehand. Fix this here but allow it
-        #       to not execute in an sdist is npm is not installed since js is cross platform already
-
         # JavaScript compile
         js_path = os.path.join(script_path, 'js')
-        if os.getenv('AGENT_NAME') or os.name != 'nt':  # In DevOps / Linux
-            subprocess.run(["npm install"], cwd=js_path, shell=True)
-            subprocess.run(["npm run build-prod"], cwd=js_path, shell=True)
-        else:
-            subprocess.run(["npm", "install"], cwd=js_path, shell=True)
-            subprocess.run(["npm", "run", "build-prod"], cwd=js_path, shell=True)
+        subprocess.run(["npm", "install"], cwd=js_path, shell=True)
+        subprocess.run(["npm", "run", "build-prod"], cwd=js_path, shell=True)
         js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
         js_bundle_dest = os.path.join(
             "interpret", "lib", "interpret-inline.js"
