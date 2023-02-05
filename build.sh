@@ -231,6 +231,127 @@ copy_asm_files() {
    fi
 }
 
+if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
+   code_path="./shared/ebm_native"
+   tmp_path="./tmp/mk"
+
+   os_type=`uname`
+   # TODO: change this to accept lib_ebm_native_local.so or lib_ebm_native_local.dylib to allow for weird architectures build using sdists
+   if [ "$os_type" = "Linux" ]; then
+      final_binary="./python/interpret-core/interpret/lib/lib_ebm_native_linux_x64.so"
+   elif [ "$os_type" = "Darwin" ]; then
+      final_binary="./python/interpret-core/interpret/lib/lib_ebm_native_mac_x64.dylib"
+   else
+      printf "%s\n" "OS $os_type not recognized.  We support clang/clang++ on macOS and gcc/g++ on Linux"
+      exit 1
+   fi
+
+   mkdir ./python
+   mkdir ./python/interpret-core
+   mkdir ./python/interpret-core/interpret
+   mkdir ./python/interpret-core/interpret/lib
+
+   extras="-DEBM_NATIVE_EXPORTS -DNDEBUG -I$code_path/inc -I$code_path/common_c -I$code_path/common_cpp -I$code_path/bridge_c -I$code_path/bridge_cpp -I$code_path -I$code_path/compute -I$code_path/compute/loss_functions -I$code_path/compute/metrics"
+
+   mkdir ./tmp
+   mkdir ./tmp/mk
+   mkdir ./staging
+
+   printf "Building from environment specified compiler\n"
+   printf "%s\n" "CC=${CC}"
+   printf "%s\n" "CXX=${CXX}"
+   printf "%s\n" "CPPFLAGS=${CPPFLAGS}"
+   printf "%s\n" "CFLAGS=${CFLAGS}"
+   printf "%s\n" "CXXFLAGS=${CXXFLAGS}"
+
+   printf "%s\n" "LDFLAGS=${LDFLAGS}"
+   printf "%s\n" "LOADLIBES=${LOADLIBES}"
+   printf "%s\n" "LDLIBS=${LDLIBS}"
+
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/ApplyTermUpdate.cpp" -o "$tmp_path/ApplyTermUpdate.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/ApplyUpdate.cpp" -o "$tmp_path/ApplyUpdate.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/BinSumsBoosting.cpp" -o "$tmp_path/BinSumsBoosting.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/BinSumsInteraction.cpp" -o "$tmp_path/BinSumsInteraction.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/BoosterCore.cpp" -o "$tmp_path/BoosterCore.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/BoosterShell.cpp" -o "$tmp_path/BoosterShell.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/CalcInteractionStrength.cpp" -o "$tmp_path/CalcInteractionStrength.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/CutQuantile.cpp" -o "$tmp_path/CutQuantile.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/CutUniform.cpp" -o "$tmp_path/CutUniform.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/CutWinsorized.cpp" -o "$tmp_path/CutWinsorized.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/dataset_shared.cpp" -o "$tmp_path/dataset_shared.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/DataSetBoosting.cpp" -o "$tmp_path/DataSetBoosting.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/DataSetInteraction.cpp" -o "$tmp_path/DataSetInteraction.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/debug_ebm.cpp" -o "$tmp_path/debug_ebm.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/Discretize.cpp" -o "$tmp_path/Discretize.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/Term.cpp" -o "$tmp_path/Term.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/GenerateTermUpdate.cpp" -o "$tmp_path/GenerateTermUpdate.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/InitializeGradientsAndHessians.cpp" -o "$tmp_path/InitializeGradientsAndHessians.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/InteractionCore.cpp" -o "$tmp_path/InteractionCore.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/InteractionShell.cpp" -o "$tmp_path/InteractionShell.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/interpretable_numerics.cpp" -o "$tmp_path/interpretable_numerics.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/PartitionOneDimensionalBoosting.cpp" -o "$tmp_path/PartitionOneDimensionalBoosting.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/PartitionRandomBoosting.cpp" -o "$tmp_path/PartitionRandomBoosting.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/PartitionTwoDimensionalBoosting.cpp" -o "$tmp_path/PartitionTwoDimensionalBoosting.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/PartitionTwoDimensionalInteraction.cpp" -o "$tmp_path/PartitionTwoDimensionalInteraction.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/RandomDeterministic.cpp" -o "$tmp_path/RandomDeterministic.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/random.cpp" -o "$tmp_path/random.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/sampling.cpp" -o "$tmp_path/sampling.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/InnerBag.cpp" -o "$tmp_path/InnerBag.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/Tensor.cpp" -o "$tmp_path/Tensor.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/TensorTotalsBuild.cpp" -o "$tmp_path/TensorTotalsBuild.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/compute/Loss.cpp" -o "$tmp_path/Loss.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/compute/Registration.cpp" -o "$tmp_path/Registration.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/compute/zoned_bridge_c_functions.cpp" -o "$tmp_path/zoned_bridge_c_functions.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/compute/cpu_ebm/cpu_32.cpp" -o "$tmp_path/cpu_32.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/compute/cpu_ebm/cpu_64.cpp" -o "$tmp_path/cpu_64.o"
+
+   ${CC} -c ${CPPFLAGS} ${CFLAGS} ${extras} -DZONE_main "$code_path/common_c/common_c.c" -o "$tmp_path/common_c.o"
+   ${CC} -c ${CPPFLAGS} ${CFLAGS} ${extras} -DZONE_main "$code_path/common_c/logging.c" -o "$tmp_path/logging.o"
+
+   ${CXX} ${LDFLAGS} -shared \
+   "$tmp_path/ApplyTermUpdate.o" \
+   "$tmp_path/ApplyUpdate.o" \
+   "$tmp_path/BinSumsBoosting.o" \
+   "$tmp_path/BinSumsInteraction.o" \
+   "$tmp_path/BoosterCore.o" \
+   "$tmp_path/BoosterShell.o" \
+   "$tmp_path/CalcInteractionStrength.o" \
+   "$tmp_path/CutQuantile.o" \
+   "$tmp_path/CutUniform.o" \
+   "$tmp_path/CutWinsorized.o" \
+   "$tmp_path/dataset_shared.o" \
+   "$tmp_path/DataSetBoosting.o" \
+   "$tmp_path/DataSetInteraction.o" \
+   "$tmp_path/debug_ebm.o" \
+   "$tmp_path/Discretize.o" \
+   "$tmp_path/Term.o" \
+   "$tmp_path/GenerateTermUpdate.o" \
+   "$tmp_path/InitializeGradientsAndHessians.o" \
+   "$tmp_path/InteractionCore.o" \
+   "$tmp_path/InteractionShell.o" \
+   "$tmp_path/interpretable_numerics.o" \
+   "$tmp_path/PartitionOneDimensionalBoosting.o" \
+   "$tmp_path/PartitionRandomBoosting.o" \
+   "$tmp_path/PartitionTwoDimensionalBoosting.o" \
+   "$tmp_path/PartitionTwoDimensionalInteraction.o" \
+   "$tmp_path/RandomDeterministic.o" \
+   "$tmp_path/random.o" \
+   "$tmp_path/sampling.o" \
+   "$tmp_path/InnerBag.o" \
+   "$tmp_path/Tensor.o" \
+   "$tmp_path/TensorTotalsBuild.o" \
+   "$tmp_path/Loss.o" \
+   "$tmp_path/Registration.o" \
+   "$tmp_path/zoned_bridge_c_functions.o" \
+   "$tmp_path/cpu_32.o" \
+   "$tmp_path/cpu_64.o" \
+   "$tmp_path/common_c.o" \
+   "$tmp_path/logging.o" \
+   ${LOADLIBES} ${LDLIBS} -o "$final_binary"
+
+   exit 0
+fi
+
 
 release_64=1
 debug_64=1
@@ -299,6 +420,7 @@ both_args="$both_args -Wformat=2"
 both_args="$both_args -fvisibility=hidden"
 both_args="$both_args -fno-math-errno -fno-trapping-math"
 # TODO: once we have highly efficient tightly looped code, try no -fpic and see if that makes better code.  The compiler can save a register in this case. See https://akkadia.org/drepper/dsohowto.pdf
+# TODO: check no-plt compiler option
 both_args="$both_args -fpic"
 both_args="$both_args -pthread"
 both_args="$both_args -DEBM_NATIVE_EXPORTS"
@@ -348,6 +470,8 @@ if [ "$os_type" = "Linux" ]; then
    link_args="$link_args -Wl,--version-script=$src_path_sanitized/ebm_native_exports.txt"
    link_args="$link_args -Wl,--exclude-libs,ALL"
    link_args="$link_args -Wl,-z,relro,-z,now"
+   link_args="$link_args -Wl,-O2"
+   link_args="$link_args -Wl,--sort-common"
    link_args="$link_args -static-libgcc"
    link_args="$link_args -static-libstdc++"
    link_args="$link_args -shared"

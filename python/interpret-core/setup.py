@@ -142,20 +142,24 @@ class BuildCommand(build):
         # Native compile
         if os.name == 'nt':
             build_script = os.path.join(sym_path, "build.bat")
-            subprocess.check_call([build_script], cwd=script_path)
+            subprocess.check_call([build_script], cwd=sym_path)
         else:
             build_script = os.path.join(sym_path, "build.sh")
-            subprocess.check_call(['bash', build_script], cwd=script_path)
+            subprocess.check_call(['sh', build_script], cwd=sym_path)
 
         source_dir = os.path.join(sym_path, 'python', 'interpret-core', 'interpret', 'lib')
         target_dir = os.path.join(script_path, 'interpret', 'lib')
-        os.makedirs(target_dir, exist_ok=True )
+        os.makedirs(target_dir, exist_ok=True)
         file_names = os.listdir(source_dir)
         for file_name in file_names:
             shutil.move(
                 os.path.join(source_dir, file_name),
                 os.path.join(target_dir, file_name)
             )
+
+        # TODO: I think the npm calls below fail on linux/mac but in sdist we include the js already 
+        #       and for conda-forge we build it in the script beforehand. Fix this here but allow it
+        #       to not execute in an sdist is npm is not installed since js is cross platform already
 
         # JavaScript compile
         js_path = os.path.join(script_path, 'js')
