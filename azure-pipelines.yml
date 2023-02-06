@@ -211,6 +211,33 @@ jobs:
       artifactName: interpret-inline-bundle
     displayName: 'Publish interpret-inline.js library'
 
+- job: 'build_npm_package'
+  pool:
+    vmImage: '${{ variables.ubuntu_image }}'
+  variables:
+    runCodesignValidationInjection: false
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.8'
+      architecture: 'x64'
+  - script: npm install && npm run build-prod && npm pack
+    workingDirectory: 'python/interpret-core/js'
+    displayName: 'build_npm_package'
+  - task: CopyFiles@2
+    condition: succeeded()
+    inputs:
+      sourceFolder: 'python/interpret-core/js'
+      contents: '*.tgz'
+      targetFolder: '$(Build.ArtifactStagingDirectory)/npm'
+    displayName: 'Move npm package for Build Artifact'
+  - task: PublishBuildArtifacts@1
+    condition: succeeded()
+    inputs:
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)/npm'
+      artifactName: 'npm'
+    displayName: 'Publish npm package as Build Artifact'
+
 - job: 'Build_R_Package'
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
