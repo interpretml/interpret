@@ -294,6 +294,7 @@ jobs:
     condition: succeeded()
     workingDirectory: 'python/interpret-core'
     displayName: 'Build wheel (interpret-core)'
+    # TODO: python setup.py bdist_wheel -d ../../staging is rebuilding the native code and the javascript, which is slowing the build
   - script: python setup.py bdist_wheel -d ../../staging
     condition: succeeded()
     workingDirectory: 'python/interpret'
@@ -311,6 +312,42 @@ jobs:
       pathtoPublish: '$(Build.ArtifactStagingDirectory)/wheel'
       artifactName: 'wheel'
     displayName: 'Publish wheel as Build Artifact'
+
+- job: 'build_sdist'
+  pool:
+    vmImage: '${{ variables.ubuntu_image }}'
+  variables:
+    runCodesignValidationInjection: false
+  steps:
+  - task: UsePythonVersion@0
+    condition: succeeded()
+    inputs:
+      versionSpec: '3.8'
+      architecture: 'x64'
+  - script: python -m pip install --upgrade pip setuptools wheel
+    condition: succeeded()
+    displayName: 'install tools'
+  - script: python setup.py sdist -d ../../staging
+    condition: succeeded()
+    workingDirectory: 'python/interpret-core'
+    displayName: 'build sdist (interpret-core)'
+  - script: python setup.py sdist -d ../../staging
+    condition: succeeded()
+    workingDirectory: 'python/interpret'
+    displayName: 'build sdist (interpret)'
+  - task: CopyFiles@2
+    condition: succeeded()
+    inputs:
+      sourceFolder: staging
+      contents: '*.tar.gz'
+      targetFolder: '$(Build.ArtifactStagingDirectory)/sdist'
+    displayName: 'Move sdist for Build Artifact'
+  - task: PublishBuildArtifacts@1
+    condition: succeeded()
+    inputs:
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)/sdist'
+      artifactName: 'sdist'
+    displayName: 'Publish sdist as Build Artifact'
 
 - job: 'Test'
   dependsOn: 'Build_Package'
