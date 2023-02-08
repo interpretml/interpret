@@ -28,6 +28,8 @@ Interpretability is essential for:
 Python 3.7+ | Linux, Mac, Windows
 ```sh
 pip install interpret
+# OR
+conda install -c conda-forge interpret
 ```
 
 # Introducing the Explainable Boosting Machine (EBM)
