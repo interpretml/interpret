@@ -1,0 +1,6 @@
+dist/
+*egg-info/
+__pycache__/
+build/
+.ipynb_checkpoints/
+.coverage*

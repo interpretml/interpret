@@ -39,34 +39,22 @@ class AutoVisualizeProvider(VisualizeProvider):
         # NOTE: This is tested manually per release. Ignoring for coverage.
         if self.in_cloud_env == ENV_DETECTED.CLOUD:  # pragma: no cover
             log.info("Detected cloud environment.")
-            warn(
-                "Cloud environment detected are ({}): viz integration is still experimental.".format(
-                    detected_envs
-                )
-            )
             self.provider = InlineProvider(detected_envs=detected_envs, js_url=JS_URL)
         elif "docker-dev-mode" in detected_envs:
             log.info("Operating in docker development mode.")
             self.provider = InlineProvider(detected_envs=detected_envs)
-
         elif self.in_cloud_env == ENV_DETECTED.BOTH_CLOUD_AND_NON_CLOUD:
             log.info("Detected both cloud and non cloud environment.")
-            val = input("Type 'C' if you want to choose Cloud environment or 'NC' for Non Cloud Environment :")
+            # val = input("Type 'C' if you want to choose Cloud environment or 'NC' for Non Cloud Environment :")
+            val = 'C'
             if val == 'C':
-                warn(
-                "Cloud environment detected are ({}): viz integration is still experimental.".format(
-                    detected_envs
-                )
-            )
                 self.provider = InlineProvider(detected_envs=detected_envs, js_url=JS_URL)
             else:
                 if self.app_runner:
                     self.provider = DashProvider(self.app_runner)
                 else:
                     self.provider = DashProvider.from_address()
-
-        # ENV_DETECTED.NON_CLOUD
-        else:
+        else: # ENV_DETECTED.NON_CLOUD
             log.info("Detected non-cloud environment.")
             if self.app_runner:
                 self.provider = DashProvider(self.app_runner)
@@ -165,13 +153,29 @@ class PreserveProvider(VisualizeProvider):
 
 
 class DashProvider(VisualizeProvider):
+    """ Provides rendering via Plotly's Dash.
+
+    This works in the event of an environment that can expose HTTP(s) ports.
+    """
     def __init__(self, app_runner):
+        """ Initializes class.
+
+        This requires an instantiated `AppRunner`, call `.from_address` instead
+        to initialize both.
+
+        Args:
+            app_runner: An AppRunner instance.
+        """
         self.app_runner = app_runner
 
     @classmethod
     def from_address(cls, addr=None, base_url=None, use_relative_links=False):
-        """
-        Initialize a new AppRunner
+        """ Initialize a new `AppRunner` along with the provider.
+
+        Args:
+            addr: A tuple that is (ip_addr, port).
+            base_url: Base URL, this useful when behind a proxy.
+            use_relative_links: Relative links for rendered pages instead of full URI.
         """
         from ..visual.dashboard import AppRunner
 
@@ -208,7 +212,15 @@ class DashProvider(VisualizeProvider):
 
 
 class InlineProvider(VisualizeProvider):
+    """ Provides rendering via JavaScript that are invoked within Jupyter cells."""
+
     def __init__(self, detected_envs=None, js_url=None):
+        """ Initializes class.
+
+        Args:
+            detected_envs: Environments targetted as defined in `interpret.utils.environment`.
+            js_url: If defined, will load the JavaScript bundle for interpret-inline from the given URL.
+        """
         self.detected_envs = [] if detected_envs is None else detected_envs
         self.js_url = js_url
 

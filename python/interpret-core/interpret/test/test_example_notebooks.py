@@ -31,7 +31,7 @@ def run_notebook(notebook_path):
     # Set n_jobs to None where appropriate
     for cell in nb.cells:
         cell["source"] = re.sub(
-        "n_jobs=-1", "n_jobs=None", nb.cells[1]["source"]
+        "n_jobs=-1", "n_jobs=None", cell["source"]
     )
     proc.preprocess(nb, {"metadata": {"path": package_path}})
 

@@ -4,6 +4,97 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.0] - 2022-11-16
+### Added
+- Full Complexity EBMs with higher order interactions supported: GA3M, GA4M, GA5M, etc... 
+  3-way and higher-level interactions lose exact global interpretability, but retain exact local explanations
+  Higher level interactions need to be explicitly specified. No automatic FAST detection yet
+- Mac m1 support
+- support for ordinals
+- merge_ebms now supports merging models with interactions, including higher-level interactions
+- added classic composition option during Differentially Private binning
+- support for different kinds of feature importances (avg_weight, min_max)
+- exposed interaction detection API (FAST algorithm)
+- API to calculate and show the importances of groups of features and terms.
+### Changed
+- memory efficiency: About 20x less memory is required during fitting
+- predict time speed improvements. About 50x faster for Pandas CategoricalDType, 
+  and varying levels of improvements for other data types
+- handling of the differential privacy DPOther bin, and non-DP unknowns has been unified by having a universal unknown bin
+- bin weights have been changed from per-feature to per-term and are now multi-dimensional
+- improved scikit-learn compliance: We now conform to the scikit-learn 1.0 feature names API by using 
+  self.feature_names_in_ for the X column names and self.n_features_in_. 
+  We use the matching self.feature_types_in_ for feature types, and self.term_names_ for the additive term names.
+### Fixed
+- merge_ebms now distributes bin weights proportionally according to volume when splitting bins
+- DP-EBMs now use sample weights instead of bin counts, which preserves privacy budget
+- improved scikit-learn compliance: The following __init__ attributes are no longer overwritten 
+  during calls to fit: self.interactions, self.feature_names, self.feature_types
+- better handling of floating point overflows when calculating gain and validation metrics
+### Breaking Changes
+- EBMUtils.merge_models function has been renamed to merge_ebms
+- renamed binning type 'quantile_humanized' to 'rounded_quantile'
+- feature type 'categorical' has been specialized into separate 'nominal' and 'ordinal' types
+- EBM models have changed public attributes:
+  - ```
+    feature_groups_ -> term_features_
+    global_selector -> n_samples_, unique_val_counts_, and zero_val_counts_
+    domain_size_ -> min_target_, max_target_
+    additive_terms_ -> term_scores_
+    bagged_models_ -> BaseCoreEBM has been depricated and the only useful attribute has been moved 
+                      into the main EBM class (bagged_models_.model_ -> bagged_scores_)
+    feature_importances_ -> has been changed into the function term_importances(), which can now also 
+                            generate different types of importances
+    preprocessor_ & pair_preprocessor_ -> attributes have been moved into the main EBM model class (details below)
+    ```
+- EBMPreprocessor attributes have been moved to the main EBM model class
+  - ```
+    col_names_ -> feature_names_in_
+    col_types_ -> feature_types_in_
+    col_min_ -> feature_bounds_
+    col_max_ -> feature_bounds_
+    col_bin_edges_ -> bins_
+    col_mapping_ -> bins_
+    hist_counts_ -> histogram_counts_
+    hist_edges_ -> histogram_edges_
+    col_bin_counts_ -> bin_weights_ (and is now a per-term tensor)
+    ```
+
+## [v0.2.7] - 2021-09-23
+### Added
+- Synapse cloud support for visualizations.
+### Fixed
+- All category names in bar charts now visible for inline rendering (used in cloud environments).
+- Joblib preference was previously being overriden. This has been reverted to honor the user's preference.
+- Bug in categorical binning for differentially privatized EBMs has been fixed.
+
+## [v0.2.6] - 2021-07-20
+### Added
+- Differential-privacy augmented EBMs now available as `interpret.privacy.{DPExplainableBoostingClassifier,DPExplainableBoostingRegressor}`.
+- Packages `interpret` and `interpret-core` now distributed via docker.
+### Changed
+- Sampling code including stratification within EBM now performed in native code.
+### Fixed
+- Computer provider with `joblib` can now support multiple engines with serialization support.
+- Labels are now all shown for inline rendering of horizontal bar charts.
+- JS dependencies updated.
+
+## [v0.2.5] - 2021-06-21
+### Added
+- Sample weight support added for EBM.
+- Joint `predict_and_contrib` added to EBM where both predictions and feature contributions are generated in one call.
+- EBM predictions now substantially faster with categorical featured predictions.
+- Preliminary documentation for all of `interpret` now public at https://interpret.ml/docs.
+- Decision trees now work in cloud environments (InlineRenderer support).
+- Packages `interpret` and `interpret-core` now distributed via sdist.
+### Fixed
+- EBM uniform binning bug fixed where empty bins can raise exceptions.
+- Users can no longer include duplicate interaction terms for EBM.
+- CSS adjusted for inline rendering such that it does not interfere with its hosting environment.
+- JS dependencies updated.
+### Experimental
+- Ability to merge multiple EBM models into one. Found in `interpret.glassbox.ebm.utils`.
+
 ## [v0.2.4] - 2021-01-19
 ### Fixed
 - Bug fix on global EBM plots.
@@ -380,6 +471,9 @@ Expect similar or slightly slower training times due to interactions.
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.2.7]: https://github.com/microsoft/interpret/releases/tag/v0.2.7
+[v0.2.6]: https://github.com/microsoft/interpret/releases/tag/v0.2.6
+[v0.2.5]: https://github.com/microsoft/interpret/releases/tag/v0.2.5
 [v0.2.4]: https://github.com/microsoft/interpret/releases/tag/v0.2.4
 [v0.2.3]: https://github.com/microsoft/interpret/releases/tag/v0.2.3
 [v0.2.2]: https://github.com/microsoft/interpret/releases/tag/v0.2.2

@@ -143,7 +143,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             X, y, self.feature_names, self.feature_types
         )
         self.feature_index_ = [
-            "feature_" + str(i) for i, v in enumerate(self.feature_names)
+            f"feature_{i:04}" for i, v in enumerate(self.feature_names)
         ]
         self.feature_map_ = {
             v: self.feature_names[i] for i, v in enumerate(self.feature_index_)

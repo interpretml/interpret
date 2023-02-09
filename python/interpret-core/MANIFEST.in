@@ -1,0 +1,10 @@
+graft symbolic
+graft js
+prune symbolic/python
+prune symbolic/staging
+prune symbolic/tmp
+prune js/node_modules
+
+prune interpret/lib
+
+global-exclude *.py[cod] __pycache__/* *.so *.dylib node_modules

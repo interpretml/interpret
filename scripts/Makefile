@@ -66,6 +66,10 @@ install: build
 	-$(PIP) uninstall -y interpret-core
 	cd $(ROOTDIR)/python/interpret-core && $(PIP) install -e .
 	cd $(ROOTDIR)/python/interpret && $(PIP) install -e .
+install-core: build
+	-$(PIP) uninstall -y interpret
+	-$(PIP) uninstall -y interpret-core
+	cd $(ROOTDIR)/python/interpret-core && $(PIP) install -e .
 
 
 build: build-wheel

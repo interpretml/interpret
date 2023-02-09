@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\special\precompiled_header_cpp.cpp">
+      <Filter>special</Filter>
+    </ClCompile>
+    <ClCompile Include="avx512_32.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="special">
+      <UniqueIdentifier>{a20782ca-fd75-4628-83f3-b19084a0dc87}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

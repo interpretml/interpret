@@ -18,8 +18,11 @@ TestResults/
 *.egg-info/
 *.ipynb_checkpoints/
 venv/
+env/
 .pytest_cache/
+__pycache__
 
 # General
 *.bak
 *.tmp
+dist/

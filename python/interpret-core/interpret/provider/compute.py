@@ -2,7 +2,6 @@
 # Distributed under the MIT software license
 
 from joblib import Parallel, delayed
-import gc
 from abc import ABC, abstractmethod
 
 
@@ -20,10 +19,7 @@ class JobLibProvider(ComputeProvider):
         results = Parallel(n_jobs=self.n_jobs)(
             delayed(compute_fn)(*args) for args in compute_args_iter
         )
-        # NOTE: Force gc, as Python does not free native memory easy.
-        gc.collect()
         return results
-
 
 # NOTE: Not implemented yet
 class AzureMLProvider(ComputeProvider):

@@ -95,11 +95,6 @@ def _synthetic(mode="regression"):
 
     return dataset
 
-
-def boston_regression():
-    return None
-
-
 def iris_classification():
     from sklearn.datasets import load_iris
 
@@ -121,11 +116,11 @@ def iris_classification():
     return dataset
 
 
-def adult_classification():
+def adult_classification(sample=0.01):
     df = pd.read_csv(
         "https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data",
         header=None,
-    ).sample(frac=0.01, random_state=42)
+    ).sample(frac=sample, random_state=42)
     df.columns = [
         "Age",
         "WorkClass",

@@ -4,6 +4,7 @@
 # NOTE: This module is highly experimental. Expect changes every version.
 
 import os
+import time
 import uuid
 
 from plotly.io import to_json
@@ -15,6 +16,8 @@ import base64
 import logging
 
 log = logging.getLogger(__name__)
+interpret_help_link = "https://interpret.ml/docs/ebm.html"
+synapse_help_link = "https://aka.ms/synapse-ebm"
 
 this = sys.modules[__name__]
 this.jupyter_initialized = False
@@ -50,8 +53,10 @@ def _build_cytoscape_json(cytoscape):
     }
     return json.dumps(json_di)
 
-def _build_viz_figure(visualization):
+def _build_viz_figure(visualization, detected_envs=None):
     import dash_cytoscape as cyto
+
+    help = {}
 
     if visualization is None:
         _type = "none"
@@ -59,6 +64,14 @@ def _build_viz_figure(visualization):
     elif isinstance(visualization, go.Figure):
         _type = "plotly"
         figure = json.loads(to_json(visualization))
+        if (hasattr(visualization, "_interpret_help_text")):
+            if ("azuresynapse" in detected_envs):
+                link = synapse_help_link 
+            elif (hasattr(visualization, "_interpret_help_link")):
+                link = visualization._interpret_help_link
+            else:
+                link = interpret_help_link
+            help = {"text": visualization._interpret_help_text, "link": link}
     elif isinstance(visualization, str):
         _type = "html"
         figure = _build_base64_frame_src(visualization)
@@ -73,7 +86,7 @@ def _build_viz_figure(visualization):
         log.debug("Visualization type cannot render: {}".format(type(visualization)))
         figure = _build_error_frame(msg)
 
-    return {"type": _type, "figure": figure}
+    return {"type": _type, "figure": figure, "help": help}
 
 
 def _build_viz_err_obj(err_msg):
@@ -90,15 +103,15 @@ def _build_viz_err_obj(err_msg):
     return viz_obj
 
 
-def _build_viz_obj(explanation):
-    overall = _build_viz_figure(explanation.visualize())
+def _build_viz_obj(explanation, detected_envs):
+    overall = _build_viz_figure(explanation.visualize(), detected_envs)
     if explanation.selector is None:
         # NOTE: Unsure if this should be a list or None in the long term.
         specific = []
         selector_obj = {"columns": [], "data": []}
     else:
         specific = [
-            _build_viz_figure(explanation.visualize(i))
+            _build_viz_figure(explanation.visualize(i), detected_envs)
             for i in range(len(explanation.selector))
         ]
         selector_obj = {
@@ -119,16 +132,17 @@ def _build_javascript(viz_obj, id_str=None, default_key=-1, js_url=None):
     if js_url is None:
         script_path = os.path.dirname(os.path.abspath(__file__))
         js_path = os.path.join(script_path, "..", "lib", "interpret-inline.js")
+        js_last_modified = time.ctime(os.path.getmtime(js_path))
 
         with open(js_path, "r", encoding="utf-8") as f:
             show_js = f.read()
         init_js = """
         <script type="text/javascript">
-        console.log("Initializing interpret-inline");
+        console.log("Initializing interpret-inline (last modified: {1})");
         {0}
         </script>
         """.format(
-            show_js
+            show_js, js_last_modified
         )
     else:
         init_js = """
@@ -213,7 +227,7 @@ def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=
         msg = "Dashboard not yet supported in cloud environments."
         viz_obj = _build_viz_err_obj(msg)
     else:
-        viz_obj = _build_viz_obj(explanation)
+        viz_obj = _build_viz_obj(explanation, detected_envs)
 
     init_js, body_js = _build_javascript(
         viz_obj, id_str, default_key=default_key, js_url=js_url
@@ -221,7 +235,7 @@ def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=
 
     if "databricks" in detected_envs:
         _render_databricks(init_js + body_js)
-    elif "colab" in detected_envs or "azureml" in detected_envs:
+    elif "colab" in detected_envs or "azureml" in detected_envs or "azuresynapse" in detected_envs:
         display(HTML(init_js + body_js))
     else:  # Fallthrough assumes we are in an IPython environment at a minimum.
         if not this.jupyter_initialized:

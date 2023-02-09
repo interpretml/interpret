@@ -190,7 +190,7 @@ def plot_continuous_bar(
     # Add density
     if data_dict.get("density", None) is not None:
         figure = _plot_with_density(
-            data_dict["density"], main_fig, title=title, yrange=yrange, showlegend=show_legend
+            data_dict["density"], main_fig, title=title, xtitle=xtitle, yrange=yrange, showlegend=show_legend
         )
     else:
         figure = main_fig
@@ -230,8 +230,6 @@ def _pretty_number(x):
 #     )
 #     figure = _two_plot(main_fig, secondary_fig, title=title, share_xaxis=share_xaxis)
 #     return figure
-
-
 def plot_density(
     data_dict,
     title="",
@@ -243,26 +241,29 @@ def plot_density(
 ):
     counts = data_dict["scores"]
     edges = data_dict["names"]
-
+    data = []
     if not is_categorical:
-        new_x = []
+        x_text = []
         for indx in range(len(edges) - 1):
             new_val = "{0} - {1}".format(
                 _pretty_number(edges[indx]), _pretty_number(edges[indx + 1])
             )
-            new_x.append(new_val)
+            x_text.append(new_val)
+        x_vals = [np.mean([i, j]) for i, j in zip(edges, edges[1:])]
     else:
-        new_x = edges
+        x_vals = edges
+        x_text = edges
 
-    data = [
+    data.append(
         go.Bar(
-            x=new_x,
+            x=x_vals,
             y=counts,
-            width=None if is_categorical else 1,
+            hovertemplate='(%{hovertext}): %{y}',
+            hovertext=x_text,
             name=name,
             marker=dict(color=color),
         )
-    ]
+    )
     layout = go.Layout(
         title=title,
         showlegend=False,
@@ -270,9 +271,15 @@ def plot_density(
         yaxis=dict(title=ytitle),
         hovermode="closest",
     )
+    if not is_categorical:
+        layout['xaxis']=dict(
+            title=xtitle,
+            tickmode = 'array',
+            tickvals = x_vals,
+            ticktext = x_text,
+        )
     bar_fig = go.Figure(data, layout)
     return bar_fig
-
 
 def _plot_with_density(
     data_dict,
@@ -285,21 +292,23 @@ def _plot_with_density(
     density_name="Distribution",
     showlegend=False,
 ):
-
     bar_fig = plot_density(
-        data_dict, name=density_name, is_categorical=is_categorical, color=COLORS[1]
+        data_dict, xtitle=xtitle, name=density_name, is_categorical=is_categorical, color=COLORS[1]
     )
-    figure = _two_plot(main_fig, bar_fig, title=title, share_xaxis=is_categorical, showlegend=showlegend)
+    figure = _two_plot(main_fig, bar_fig, title=title, xtitle=xtitle, share_xaxis=is_categorical, showlegend=showlegend)
     figure["layout"]["yaxis1"].update(title="Score")
     figure["layout"]["yaxis2"].update(title="Density")
-
+    if not is_categorical:
+        figure["layout"]["bargap"] = 0
+        figure["layout"]["xaxis2"].update(bar_fig.layout.xaxis)
+        figure.update_xaxes(matches='x')
     if yrange is not None:
         figure["layout"]["yaxis1"].update(range=yrange)
 
     return figure
 
 
-def _two_plot(main_fig, secondary_fig, title="", share_xaxis=True, showlegend=False):
+def _two_plot(main_fig, secondary_fig, title="", xtitle="", share_xaxis=True, showlegend=False):
     figure = subplots.make_subplots(
         print_grid=False, shared_xaxes=share_xaxis, rows=2, cols=1
     )
@@ -309,6 +318,9 @@ def _two_plot(main_fig, secondary_fig, title="", share_xaxis=True, showlegend=Fa
     figure["layout"]["yaxis1"].update(domain=[0.40, 1.0])
     figure["layout"]["yaxis2"].update(domain=[0.0, 0.15])
 
+    if xtitle:
+        figure.update_xaxes(title_text=xtitle, row=1, col=1, title_standoff = 0)
+        figure.update_xaxes(title_text=xtitle, row=2, col=1, title_standoff = 0)
     return figure
 
 
@@ -490,23 +502,29 @@ def plot_horizontal_bar(
 
         if (
             "meta" in data_dict and "label_names" in data_dict["meta"]
-        ):  # Upgraded classification
+        ):  # Classification titles   
             label_names = data_dict["meta"]["label_names"]
             predicted = label_names[predicted]
-            title_items.append(
-                "Predicted ({}): {:.3f}".format(predicted, predicted_score)
-            )
+
+            title_str = ""
 
             if not np.isnan(actual):
-                actual = label_names[actual]
-                title_items.append("Actual ({}): {:.3f}".format(actual, actual_score))
-        else:  # Regression or old form of classification
-            predicted_score = _pretty_number(predicted_score)
-            title_items.append("Predicted ({})".format(predicted_score))
+                actual_class = label_names[actual]
+                title_str += f"Actual Class: {actual_class} | "
 
+            title_str += f"Predicted Class: {predicted}"
+            title_str += f"<br />Pr(y = {predicted}): {predicted_score:.3f}"
+
+            if not np.isnan(actual) and len(set([predicted, actual])) == 2:
+                title_str += f" | Pr(y = {actual}): {actual_score:.3f}"
+            title_items.append(title_str)
+        else:  # Regression titles
             if not np.isnan(actual):
                 actual_score = _pretty_number(actual_score)
-                title_items.append("Actual ({})".format(actual_score))
+                title_items.append("Actual: {}".format(actual_score))
+
+            predicted_score = _pretty_number(predicted_score)
+            title_items.append("Predicted: {}".format(predicted_score))
 
         title = " | ".join(title_items)
     if not multiclass:
@@ -545,7 +563,7 @@ def plot_horizontal_bar(
         x_range = [-max_abs_x, max_abs_x]
     layout = dict(
         title=title,
-        yaxis=dict(automargin=True, title=ytitle),
+        yaxis=dict(automargin=True, title=ytitle, dtick=1),
         xaxis=dict(range=x_range, title=xtitle),
     )
     if multiclass:
@@ -796,7 +814,7 @@ def plot_ebm_multiple_booleans(feat_names, ebm_global, mpl_style=False, figname=
             else:
                 print("Feature: {} is not observed as a Boolean variable.".format(feat_name))
     if mpl_style:
-        fig = plt.figure(figsize=(12, 12))
+        _ = plt.figure(figsize=(12, 12))
         sorted_i = np.argsort(impacts)
         for counter, i in enumerate(sorted_i):
             plt.bar(counter, impacts[i], width=0.5, color='blue', edgecolor='black',
@@ -824,4 +842,4 @@ def plot_ebm_multiple_booleans(feat_names, ebm_global, mpl_style=False, figname=
             'lower_bounds': lower_bounds,
             'density': densities_dict,
             }
-        plot_bar(data_dict)
+        return plot_bar(data_dict)

@@ -58,7 +58,8 @@ const App = props => {
     />
   );
 
-  let renderable = <div className={"empty-space"} />;
+  let renderable = <div className={"iml-empty-space"} />;
+  let help_div = null;
   let name = "";
 
   if (selectedOption !== null) {
@@ -66,19 +67,22 @@ const App = props => {
 
     let figure = null;
     let type = null;
+    let help = null;
     if (selectedOption === -1) {
       const overall = props.explanations.overall;
       figure = overall.figure;
       type = overall.type;
+      help = overall.help;
     } else {
       const specific = props.explanations.specific[selectedOption];
       figure = specific.figure;
       type = specific.type;
+      help = specific.help;
     }
 
     if (type === "none") {
       renderable = (
-        <div className="center-no-graph">
+        <div className="iml-center-no-graph">
           <h1>No Overall Graph</h1>
         </div>
       );
@@ -95,13 +99,27 @@ const App = props => {
           useResizeHandler={true}
         />
       );
+      
+      if (help && Object.keys(help).length > 0) {
+        let help_link = null;
+        let help_text = help.text.trim();
+        if (help.link) {
+          help_text = help_text + ' '
+          help_link = <a href={help.link}>Learn more</a>
+        }
+        help_div = (
+          <div className={"iml-card-help"}>
+            {help_text}{help_link}
+          </div>
+        );
+      }
     } else if (type === "html") {
       renderable = (
         <iframe
           src={figure}
           referrerPolicy="no-referrer"
           sandbox="allow-same-origin allow-scripts"
-          className="renderable-frame"
+          className="iml-renderable-frame"
         />
       );
     } else if (type === "cytoscape") {
@@ -120,18 +138,19 @@ const App = props => {
   }
 
   return (
-    <div className="root">
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">Select Component to Graph</div>
+    <div className="iml-root">
+      <div className="iml-card">
+        <div className="iml-card-header">
+          <div className="iml-card-title">Select Component to Graph</div>
         </div>
-        <div className="card-body">{select}</div>
+        <div className="iml-card-body">{select}</div>
       </div>
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">{name}</div>
+      <div className="iml-card">
+        <div className="iml-card-header">
+          <div className="iml-card-title">{name}</div>
         </div>
-        <div className="card-body card-renderable">{renderable}</div>
+        <div className="iml-card-body iml-card-renderable">{renderable}</div>
+        {help_div}
       </div>
     </div>
   );

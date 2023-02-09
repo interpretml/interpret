@@ -2,9 +2,9 @@
 # Distributed under the MIT software license
 
 import dash
-import dash_html_components as html
-import dash_core_components as dcc
-import dash_table as dt
+from dash import html
+from dash import dcc
+from dash import dash_table as dt
 
 # NOTE: Even though this isn't used here, it has to be imported to work.
 import dash_cytoscape as cyto  # noqa: F401

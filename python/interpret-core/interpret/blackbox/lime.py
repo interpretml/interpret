@@ -7,7 +7,6 @@ from ..api.templates import FeatureValueExplanation
 from ..utils import gen_name_from_class, gen_local_selector
 from ..utils import gen_perf_dicts
 from ..utils import unify_data, unify_predict_fn
-import numpy as np
 import warnings
 
 

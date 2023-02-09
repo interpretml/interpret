@@ -98,6 +98,8 @@ def _detect_databricks():
 def _is_docker_development_mode():
     return os.environ.get("INTERPRET_DOCKER_MODE", None) == "dev"
 
+def _detect_azure_synapse():
+    return os.environ.get("AZURE_SERVICE", None) == "Microsoft.ProjectArcadia"
 
 def enum(**enums):
     return type('Enum', (), enums)
@@ -119,6 +121,7 @@ def is_cloud_env(detected):
         "sagemaker",
         "binder",
         "colab",
+        "azuresynapse"
     ]
     if len(set(cloud_env).intersection(detected)) != 0 and len(set(non_cloud_env).intersection(detected))==0:
         return ENV_DETECTED.CLOUD
@@ -143,6 +146,7 @@ class EnvironmentDetector:
             "colab": _detect_colab,
             "ipython-zmq": _detect_ipython_zmq,
             "ipython": _detect_ipython,
+            "azuresynapse": _detect_azure_synapse,
         }
 
     def detect(self):

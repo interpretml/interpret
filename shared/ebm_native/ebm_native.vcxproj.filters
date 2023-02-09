@@ -1,128 +1,130 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="ApplyModelUpdate.cpp" />
-    <ClCompile Include="ApplyModelUpdateTraining.cpp" />
-    <ClCompile Include="ApplyModelUpdateValidation.cpp" />
-    <ClCompile Include="BinBoosting.cpp" />
-    <ClCompile Include="BinInteraction.cpp" />
-    <ClCompile Include="DataFrameShared.cpp" />
-    <ClCompile Include="GenerateQuantileCuts.cpp" />
-    <ClCompile Include="GenerateUniformCuts.cpp" />
-    <ClCompile Include="GenerateWinsorizedCuts.cpp" />
-    <ClCompile Include="Loss.cpp" />
-    <ClCompile Include="Registration.cpp" />
-    <ClCompile Include="ThreadStateBoosting.cpp" />
-    <ClCompile Include="ThreadStateInteraction.cpp" />
-    <ClCompile Include="CalculateInteractionScore.cpp" />
-    <ClCompile Include="CutRandom.cpp" />
-    <ClCompile Include="DebugEbm.cpp" />
-    <ClCompile Include="FeatureGroup.cpp" />
-    <ClCompile Include="FindBestBoostingSplitsPairs.cpp" />
-    <ClCompile Include="FindBestInteractionScorePairs.cpp" />
-    <ClCompile Include="GenerateModelUpdate.cpp" />
-    <ClCompile Include="GrowDecisionTree.cpp" />
-    <ClCompile Include="InitializeResiduals.cpp" />
-    <ClCompile Include="InterpretableNumerics.cpp" />
-    <ClCompile Include="RandomExternal.cpp" />
-    <ClCompile Include="SegmentedTensor.cpp" />
-    <ClCompile Include="SumHistogramBuckets.cpp" />
+    <ClCompile Include="ApplyTermUpdate.cpp" />
+    <ClCompile Include="BinSumsBoosting.cpp" />
+    <ClCompile Include="BinSumsInteraction.cpp" />
+    <ClCompile Include="dataset_shared.cpp" />
+    <ClCompile Include="CutQuantile.cpp" />
+    <ClCompile Include="CutUniform.cpp" />
+    <ClCompile Include="CutWinsorized.cpp" />
+    <ClCompile Include="BoosterShell.cpp" />
+    <ClCompile Include="InteractionShell.cpp" />
+    <ClCompile Include="CalcInteractionStrength.cpp" />
+    <ClCompile Include="PartitionRandomBoosting.cpp" />
+    <ClCompile Include="debug_ebm.cpp" />
+    <ClCompile Include="Term.cpp" />
+    <ClCompile Include="PartitionTwoDimensionalBoosting.cpp" />
+    <ClCompile Include="PartitionTwoDimensionalInteraction.cpp" />
+    <ClCompile Include="GenerateTermUpdate.cpp" />
+    <ClCompile Include="PartitionOneDimensionalBoosting.cpp" />
+    <ClCompile Include="InitializeGradientsAndHessians.cpp" />
+    <ClCompile Include="interpretable_numerics.cpp" />
+    <ClCompile Include="sampling.cpp" />
+    <ClCompile Include="Tensor.cpp" />
     <ClCompile Include="TensorTotalsBuild.cpp" />
-    <ClCompile Include="DataFrameInteraction.cpp" />
-    <ClCompile Include="DataFrameBoosting.cpp" />
+    <ClCompile Include="DataSetInteraction.cpp" />
+    <ClCompile Include="DataSetBoosting.cpp" />
     <ClCompile Include="Discretize.cpp" />
-    <ClCompile Include="DllMainEbmNative.cpp" />
-    <ClCompile Include="InteractionDetector.cpp" />
-    <ClCompile Include="Logging.cpp" />
-    <ClCompile Include="PrecompiledHeader.cpp" />
-    <ClCompile Include="RandomStream.cpp" />
-    <ClCompile Include="SamplingSet.cpp" />
-    <ClCompile Include="Booster.cpp" />
-    <ClCompile Include="wrap_func.cpp" />
-    <ClCompile Include="Zone32Sse2.cpp" />
-    <ClCompile Include="Zone64None.cpp" />
+    <ClCompile Include="InteractionCore.cpp" />
+    <ClCompile Include="RandomDeterministic.cpp" />
+    <ClCompile Include="InnerBag.cpp" />
+    <ClCompile Include="BoosterCore.cpp" />
+    <ClCompile Include="special\linux_wrap_functions.cpp">
+      <Filter>special</Filter>
+    </ClCompile>
+    <ClCompile Include="special\windows_DllMain.cpp">
+      <Filter>special</Filter>
+    </ClCompile>
+    <ClCompile Include="special\precompiled_header_cpp.cpp">
+      <Filter>special</Filter>
+    </ClCompile>
+    <ClCompile Include="common_c\common_c.c">
+      <Filter>common_c</Filter>
+    </ClCompile>
+    <ClCompile Include="common_c\logging.c">
+      <Filter>common_c</Filter>
+    </ClCompile>
+    <ClCompile Include="random.cpp" />
+    <ClCompile Include="ApplyUpdate.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ApproximateMath.h" />
-    <ClInclude Include="Config.h" />
-    <ClInclude Include="Loss.h" />
-    <ClInclude Include="Registration.h" />
-    <ClInclude Include="Registrable.h" />
-    <ClInclude Include="ThreadStateInteraction.h" />
-    <ClInclude Include="InteractionDetector.h" />
-    <ClInclude Include="Booster.h" />
-    <ClInclude Include="FeatureAtomic.h" />
-    <ClInclude Include="FeatureGroup.h" />
-    <ClInclude Include="HistogramBucket.h" />
-    <ClInclude Include="ThreadStateBoosting.h" />
-    <ClInclude Include="DataFrameInteraction.h" />
-    <ClInclude Include="DataFrameBoosting.h" />
-    <ClInclude Include="EbmInternal.h" />
-    <ClInclude Include="EbmStats.h" />
-    <ClInclude Include="Logging.h" />
-    <ClInclude Include="PrecompiledHeader.h" />
-    <ClInclude Include="HistogramTargetEntry.h" />
-    <ClInclude Include="RandomStream.h" />
-    <ClInclude Include="SamplingSet.h" />
-    <ClInclude Include="SegmentedTensor.h" />
-    <ClInclude Include="TensorTotalsSum.h" />
-    <ClInclude Include="TreeNode.h" />
-    <ClInclude Include="TreeSweep.h" />
-    <ClInclude Include="zone_separate\loss_functions\LossBinaryCrossEntropy.h">
-      <Filter>zone_separate\loss_functions</Filter>
-    </ClInclude>
-    <ClInclude Include="zone_separate\loss_functions\LossBinaryLogLoss.h">
-      <Filter>zone_separate\loss_functions</Filter>
-    </ClInclude>
-    <ClInclude Include="zone_separate\loss_functions\LossMulticlassCrossEntropy.h">
-      <Filter>zone_separate\loss_functions</Filter>
-    </ClInclude>
-    <ClInclude Include="zone_separate\loss_functions\LossMulticlassLogLoss.h">
-      <Filter>zone_separate\loss_functions</Filter>
-    </ClInclude>
-    <ClInclude Include="zone_separate\loss_functions\LossMultitaskBinaryLogLoss.h">
-      <Filter>zone_separate\loss_functions</Filter>
-    </ClInclude>
-    <ClInclude Include="zone_separate\loss_functions\LossMultitaskMulticlassCrossEntropy.h">
-      <Filter>zone_separate\loss_functions</Filter>
-    </ClInclude>
-    <ClInclude Include="zone_separate\loss_functions\LossMultitaskRegressionMse.h">
-      <Filter>zone_separate\loss_functions</Filter>
-    </ClInclude>
-    <ClInclude Include="zone_separate\loss_functions\LossRegressionMse.h">
-      <Filter>zone_separate\loss_functions</Filter>
-    </ClInclude>
-    <ClInclude Include="zone_separate\loss_functions\LossRegressionPseudoHuber.h">
-      <Filter>zone_separate\loss_functions</Filter>
-    </ClInclude>
-    <ClInclude Include="zone_separate\metrics\MetricAuc.h">
-      <Filter>zone_separate\metrics</Filter>
-    </ClInclude>
+    <ClInclude Include="approximate_math.hpp" />
+    <ClInclude Include="InteractionShell.hpp" />
+    <ClInclude Include="InteractionCore.hpp" />
+    <ClInclude Include="BoosterCore.hpp" />
+    <ClInclude Include="Feature.hpp" />
+    <ClInclude Include="Term.hpp" />
+    <ClInclude Include="BoosterShell.hpp" />
+    <ClInclude Include="DataSetInteraction.hpp" />
+    <ClInclude Include="DataSetBoosting.hpp" />
+    <ClInclude Include="ebm_internal.hpp" />
+    <ClInclude Include="ebm_stats.hpp" />
+    <ClInclude Include="precompiled_header_cpp.hpp" />
+    <ClInclude Include="RandomDeterministic.hpp" />
+    <ClInclude Include="InnerBag.hpp" />
+    <ClInclude Include="Tensor.hpp" />
+    <ClInclude Include="TensorTotalsSum.hpp" />
+    <ClInclude Include="TreeNode.hpp" />
+    <ClInclude Include="SplitPosition.hpp" />
     <ClInclude Include="inc\ebm_native.h">
       <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="LossRegistrations.h" />
-    <ClInclude Include="EbmException.h" />
+    <ClInclude Include="bridge_c\bridge_c.h">
+      <Filter>bridge_c</Filter>
+    </ClInclude>
+    <ClInclude Include="bridge_c\zones.h">
+      <Filter>bridge_c</Filter>
+    </ClInclude>
+    <ClInclude Include="common_c\common_c.h">
+      <Filter>common_c</Filter>
+    </ClInclude>
+    <ClInclude Include="bridge_cpp\bridge_cpp.hpp">
+      <Filter>bridge_cpp</Filter>
+    </ClInclude>
+    <ClInclude Include="common_cpp\common_cpp.hpp">
+      <Filter>common_cpp</Filter>
+    </ClInclude>
+    <ClInclude Include="common_c\logging.h">
+      <Filter>common_c</Filter>
+    </ClInclude>
+    <ClInclude Include="compute_accessors.hpp" />
+    <ClInclude Include="dataset_shared.hpp" />
+    <ClInclude Include="GaussianDistribution.hpp" />
+    <ClInclude Include="RandomNondeterministic.hpp" />
+    <ClInclude Include="bridge_cpp\Bin.hpp">
+      <Filter>bridge_cpp</Filter>
+    </ClInclude>
+    <ClInclude Include="bridge_cpp\GradientPair.hpp">
+      <Filter>bridge_cpp</Filter>
+    </ClInclude>
+    <ClInclude Include="Transpose.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />
-    <None Include="style.md" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="ebm_native_exports.txt" />
+    <None Include="CODING_STYLE.md" />
+    <None Include="IMPORTANT.md" />
+    <None Include="include_ordering.txt" />
+    <None Include="ebm_native_exports.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="inc">
       <UniqueIdentifier>{5cd9d4c4-93e3-4127-8d1e-496270df544a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="zone_separate">
-      <UniqueIdentifier>{8829f362-ad1e-420a-962c-4f1afc881991}</UniqueIdentifier>
+    <Filter Include="special">
+      <UniqueIdentifier>{3c75c63a-6df6-4cd6-91e2-ee80ef96f468}</UniqueIdentifier>
     </Filter>
-    <Filter Include="zone_separate\loss_functions">
-      <UniqueIdentifier>{cf25a42a-d924-459d-bd60-ddb0d13481d7}</UniqueIdentifier>
+    <Filter Include="bridge_c">
+      <UniqueIdentifier>{32bfc9ca-2159-409b-89d1-af8034257dd1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="zone_separate\metrics">
-      <UniqueIdentifier>{ac4e0b40-5223-4e83-b545-07d30d2a02d0}</UniqueIdentifier>
+    <Filter Include="common_c">
+      <UniqueIdentifier>{1daae48a-6372-46a2-a0e9-dda3519eb4b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="bridge_cpp">
+      <UniqueIdentifier>{00aba3da-146d-462c-8f27-c3675127ae35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="common_cpp">
+      <UniqueIdentifier>{48382ee5-df51-4d4d-92ce-dbd4c773ed4e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

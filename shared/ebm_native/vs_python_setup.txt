@@ -1,0 +1,9 @@
+- Under the "interpret-core" project, under "Python Environments", right click and select "Add environment"
+- Use the defaults for the environment, especially the environment name of "env".  
+- Wait until the requirements.txt are fully installed
+- right click "env" under the project "Python Environments", select "Open command prompt here..."
+- run "cd .."
+- run "pip install -r dev-requirements.txt"
+- there will be a failure to generate the wheel, but that's ok
+
+- MORE INFO: https://github.com/MicrosoftDocs/visualstudio-docs/issues/644#issuecomment-370613022

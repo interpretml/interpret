@@ -141,7 +141,7 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
     """
     import json
     import logging
-    from .glassbox.ebm.internal import Native
+    from .utils._native import Native
 
     # Exit fast on second call.
     if this.is_debug_mode:
