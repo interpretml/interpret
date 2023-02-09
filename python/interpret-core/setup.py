@@ -68,7 +68,7 @@ extras = {
         joblib_dep,
     ],
     "debug": ["psutil>=5.6.2"],
-    "notebook": ["ipykernel>=5.1.0", "ipython>=7.4.0"],
+    "notebook": ["ipykernel>=4.10.0", "ipython>=5.5.0"],
     # Plotly (required if .visualize is ever called)
     "plotly": ["plotly>=3.8.1"],
     # Explainers
