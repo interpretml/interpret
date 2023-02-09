@@ -35,7 +35,7 @@ struct Cuda_32_Operators final {
    // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__SINGLE.html#group__CUDA__MATH__SINGLE
    // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__DOUBLE.html#group__CUDA__MATH__DOUBLE
 
-   constexpr static size_t countPackedItems = 1; // the number of Unpacked items in a Packed structure
+   static constexpr size_t countPackedItems = 1; // the number of Unpacked items in a Packed structure
    typedef float Unpacked;
    typedef float Packed;
 
@@ -98,8 +98,8 @@ public:
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) noexcept {
-      constexpr size_t k_cItems = 5;
+   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) noexcept {
+      static constexpr size_t k_cItems = 5;
 
       bool bExitError = true;
 
@@ -225,7 +225,7 @@ public:
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) noexcept {
+   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) noexcept {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
 
       // TODO: use something other than <<<1, 1>>>
@@ -245,14 +245,14 @@ static_assert(std::is_standard_layout<Cuda_32_Operators>::value &&
 // FIRST, define the RegisterLoss function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions
 template<template <typename> class TRegistrable, typename... Args>
-static INLINE_ALWAYS std::shared_ptr<const Registration> RegisterLoss(const char * const sRegistrationName, const Args...args) {
+INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterLoss(const char * const sRegistrationName, const Args...args) {
    return Register<TRegistrable, Cuda_32_Operators>(sRegistrationName, args...);
 }
 
 // now include all our special loss registrations which will use the RegisterLoss function we defined above!
 #include "loss_registrations.hpp"
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateLoss_Cuda_32(
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateLoss_Cuda_32(
    const Config * const pConfig,
    const char * const sLoss,
    const char * const sLossEnd,

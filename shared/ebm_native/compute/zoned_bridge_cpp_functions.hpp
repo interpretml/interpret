@@ -5,9 +5,11 @@
 #ifndef ZONED_BRIDGE_CPP_FUNCTIONS_HPP
 #define ZONED_BRIDGE_CPP_FUNCTIONS_HPP
 
-#include "ebm_native.h"
-#include "bridge_c.h"
+#include "ebm_native.h" // ErrorEbm
 #include "zones.h"
+
+struct ApplyTrainingData;
+struct ApplyValidationData;
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -18,8 +20,8 @@ struct Loss;
 
 // these are going to be extern "C++", which we require to call our static member functions per:
 // https://www.drdobbs.com/c-theory-and-practice/184403437
-typedef ErrorEbmType (* APPLY_TRAINING_CPP)(const Loss * const pLoss, ApplyTrainingData * const pData);
-typedef ErrorEbmType (* APPLY_VALIDATION_CPP)(const Loss * const pLoss, ApplyValidationData * const pData);
+typedef ErrorEbm (* APPLY_TRAINING_CPP)(const Loss * const pLoss, ApplyTrainingData * const pData);
+typedef ErrorEbm (* APPLY_VALIDATION_CPP)(const Loss * const pLoss, ApplyValidationData * const pData);
 
 struct FunctionPointersCpp {
    // unfortunately, function pointers are not interchangable with data pointers since in some architectures

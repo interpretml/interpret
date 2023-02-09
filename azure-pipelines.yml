@@ -33,10 +33,10 @@ jobs:
       scriptSource: 'inline'
       script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
   - script: |
-      # CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
-      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      set CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
-      # the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
+      REM CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
+      SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
+      SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
+      REM the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
       cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
       .\build.bat
     condition: startsWith(variables['image.name'], 'windows')
@@ -62,8 +62,15 @@ jobs:
     continueOnError: true
     inputs:
       pathtoPublish: tmp/staging_asm_release_64
-      artifactName: asm-$(image.name)
-    displayName: 'Publish assembly'
+      artifactName: asm-x64-$(image.name)
+    displayName: 'Publish assembly x64'
+  - task: PublishBuildArtifacts@1
+    condition: startsWith(variables['image.name'], 'macOS')
+    continueOnError: true
+    inputs:
+      pathtoPublish: tmp/staging_asm_release_arm
+      artifactName: asm-arm-$(image.name)
+    displayName: 'Publish assembly arm'
 
 - job: 'Test_ebm_native'
   dependsOn: 'Build_ebm_native'
@@ -112,19 +119,19 @@ jobs:
     condition: and(startsWith(variables['image.name'], 'ubuntu'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: 'Testing ebm_native code (Linux) Schedule'
   - script: |
-      # CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
-      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      set CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
-      # the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
+      REM CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
+      SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
+      SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
+      REM the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
       cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
       .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline
     condition: and(startsWith(variables['image.name'], 'windows'), ne(variables['Build.Reason'], 'Schedule'))
     displayName: 'Testing ebm_native code (Windows) CI'
   - script: |
-      # CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
-      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      set CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
-      # the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
+      REM CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
+      SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
+      SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
+      REM the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
       cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
       .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline -analysis
     condition: and(startsWith(variables['image.name'], 'windows'), eq(variables['Build.Reason'], 'Schedule'))
@@ -204,6 +211,68 @@ jobs:
       artifactName: interpret-inline-bundle
     displayName: 'Publish interpret-inline.js library'
 
+- job: 'build_npm_package'
+  pool:
+    vmImage: '${{ variables.ubuntu_image }}'
+  variables:
+    runCodesignValidationInjection: false
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.8'
+      architecture: 'x64'
+  - script: npm install && npm run build-prod && npm pack
+    workingDirectory: 'python/interpret-core/js'
+    displayName: 'build_npm_package'
+  - task: CopyFiles@2
+    condition: succeeded()
+    inputs:
+      sourceFolder: 'python/interpret-core/js'
+      contents: '*.tgz'
+      targetFolder: '$(Build.ArtifactStagingDirectory)/npm'
+    displayName: 'Move npm package for Build Artifact'
+  - task: PublishBuildArtifacts@1
+    condition: succeeded()
+    inputs:
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)/npm'
+      artifactName: 'npm'
+    displayName: 'Publish npm package as Build Artifact'
+
+- job: 'Build_R_Package'
+  pool:
+    vmImage: '${{ variables.ubuntu_image }}'
+  variables:
+    runCodesignValidationInjection: false
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.7'
+      architecture: 'x64'
+  - script: | 
+      sudo apt install --yes texlive-latex-base texlive-fonts-extra
+      Rscript build.R
+      if [ $? -ne 0 ]; then
+        exit 1
+      fi
+    workingDirectory: 'R'
+    displayName: 'R CMD build'
+  - script: cat tmp/R/interpret.Rcheck/00install.out
+    condition: failed()
+    displayName: 'output errors'
+  - task: CopyFiles@2
+    condition: succeeded()
+    inputs:
+      sourceFolder: staging
+      contents: 'interpret_*.tar.gz'
+      targetFolder: '$(Build.ArtifactStagingDirectory)/R'
+    displayName: 'Move R package for R Artifact'
+  - task: PublishBuildArtifacts@1
+    condition: succeeded()
+    inputs:
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)/R'
+      artifactName: 'R'
+    displayName: 'Publish R package'
+
 - job: 'Build_Package'
   dependsOn: ['Build_ebm_native', 'Build_JS_Inline']
   pool:
@@ -236,6 +305,14 @@ jobs:
     condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
+      contents: '**/lib_ebm_native_*_arm*'
+      targetFolder: 'python/interpret-core/interpret/lib'
+      flattenFolders: true
+    displayName: 'Move binary to Python layer'
+  - task: CopyFiles@2
+    condition: succeeded()
+    inputs:
+      sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/interpret-inline.js'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
@@ -244,6 +321,7 @@ jobs:
     condition: succeeded()
     workingDirectory: 'python/interpret-core'
     displayName: 'Build wheel (interpret-core)'
+    # TODO: python setup.py bdist_wheel -d ../../staging is rebuilding the native code and the javascript, which is slowing the build
   - script: python setup.py bdist_wheel -d ../../staging
     condition: succeeded()
     workingDirectory: 'python/interpret'
@@ -261,6 +339,42 @@ jobs:
       pathtoPublish: '$(Build.ArtifactStagingDirectory)/wheel'
       artifactName: 'wheel'
     displayName: 'Publish wheel as Build Artifact'
+
+- job: 'build_sdist'
+  pool:
+    vmImage: '${{ variables.ubuntu_image }}'
+  variables:
+    runCodesignValidationInjection: false
+  steps:
+  - task: UsePythonVersion@0
+    condition: succeeded()
+    inputs:
+      versionSpec: '3.8'
+      architecture: 'x64'
+  - script: python -m pip install --upgrade pip setuptools wheel
+    condition: succeeded()
+    displayName: 'install tools'
+  - script: python setup.py sdist -d ../../staging
+    condition: succeeded()
+    workingDirectory: 'python/interpret-core'
+    displayName: 'build sdist (interpret-core)'
+  - script: python setup.py sdist -d ../../staging
+    condition: succeeded()
+    workingDirectory: 'python/interpret'
+    displayName: 'build sdist (interpret)'
+  - task: CopyFiles@2
+    condition: succeeded()
+    inputs:
+      sourceFolder: staging
+      contents: '*.tar.gz'
+      targetFolder: '$(Build.ArtifactStagingDirectory)/sdist'
+    displayName: 'Move sdist for Build Artifact'
+  - task: PublishBuildArtifacts@1
+    condition: succeeded()
+    inputs:
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)/sdist'
+      artifactName: 'sdist'
+    displayName: 'Publish sdist as Build Artifact'
 
 - job: 'Test'
   dependsOn: 'Build_Package'

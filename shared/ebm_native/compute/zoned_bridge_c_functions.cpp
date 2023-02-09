@@ -8,16 +8,12 @@
 #include <vector>
 #include <algorithm>
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "common_c.h"
-#include "bridge_c.h"
+#include "ebm_native.h" // ErrorEbm
+#include "bridge_c.h" // INTERNAL_IMPORT_EXPORT_BODY
 #include "zones.h"
 
 #include "zoned_bridge_c_functions.h"
 #include "zoned_bridge_cpp_functions.hpp"
-
-#include "Loss.hpp"
 
 // the static member functions in our classes are extern "CPP" functions, so we need to bridge our extern "C"
 // functions (which are the only thing we can can safely bridge over different compilation flags) to extern "CPP"
@@ -27,7 +23,9 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining) (
+struct Loss;
+
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining) (
    const LossWrapper * const pLossWrapper,
    ApplyTrainingData * const pData
 ) {
@@ -37,7 +35,7 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType MAKE_ZONED_C_FUNCTION_NAME(ApplyTrainin
    return (*pApplyTrainingCpp)(pLoss, pData);
 }
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType MAKE_ZONED_C_FUNCTION_NAME(ApplyValidation) (
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyValidation) (
    const LossWrapper * const pLossWrapper,
    ApplyValidationData * const pData
 ) {

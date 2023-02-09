@@ -109,7 +109,7 @@ def gen_global_selector(X, feature_names, feature_types, importance_scores, roun
     else:  # pragma: no cover
         return df
 
-def gen_global_selector2(n_samples, n_features, term_names, term_types, unique_counts, zero_counts, round=3):
+def gen_global_selector2(n_samples, n_features, term_names, term_types, unique_val_counts, zero_val_counts, round=3):
     records = []
     for term_idx in range(len(term_names)):
         record = {}
@@ -117,9 +117,12 @@ def gen_global_selector2(n_samples, n_features, term_names, term_types, unique_c
         feature_type = term_types[term_idx]
         record["Type"] = 'categorical' if feature_type == 'nominal' or feature_type == 'ordinal' else feature_type
 
-        if term_idx < n_features and n_samples is not None:
-            record["# Unique"] = unique_counts[term_idx]
-            record["% Non-zero"] = (n_samples - zero_counts[term_idx]) / n_samples
+        if term_idx < n_features:
+            record["# Unique"] = np.nan if unique_val_counts is None else unique_val_counts[term_idx]
+            if n_samples is None or zero_val_counts is None:
+                record["% Non-zero"] = np.nan
+            else:
+                record["% Non-zero"] = (n_samples - zero_val_counts[term_idx]) / n_samples
         else:
             record["# Unique"] = np.nan
             record["% Non-zero"] = np.nan
@@ -152,9 +155,9 @@ def gen_local_selector(data_dicts, round=3, is_classification=True):
         records.append(record)
 
     if is_classification:
-        columns = ["Predicted", "PrScore", "Actual", "AcScore", "Resid", "AbsResid"]
+        columns = ["Actual", "Predicted", "PrScore", "AcScore", "Resid", "AbsResid"]
     else:
-        columns = ["Predicted", "Actual", "Resid", "AbsResid"]
+        columns = ["Actual", "Predicted", "Resid", "AbsResid"]
 
     df = pd.DataFrame.from_records(records, columns=columns)
     if round is not None:
@@ -273,9 +276,9 @@ def _get_new_feature_names(data, feature_names):
 
 def _get_new_feature_types(data, feature_types, new_feature_names):
     if feature_types is None:
-        unique_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0, arr=data)
+        unique_val_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0, arr=data)
         return [
-            _assign_feature_type(feature_type, unique_counts[index])
+            _assign_feature_type(feature_type, unique_val_counts[index])
             for index, feature_type in enumerate([data.dtype] * len(new_feature_names))
         ]
     else:
@@ -311,7 +314,7 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None, missin
             new_feature_names = feature_names
 
         if feature_types is None:
-            # unique_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0, arr=data)
+            # unique_val_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0, arr=data)
             bool_indicator = [data[col].isin([np.nan, 0, 1]).all() for col in data.columns]
             new_feature_types = [
                 _assign_feature_type(feature_type, bool_indicator[index])

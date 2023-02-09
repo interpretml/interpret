@@ -4,6 +4,8 @@
 
 #include "precompiled_header_cpp.hpp"
 
+#if (defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)) && defined(__x86_64__) || defined(_MSC_VER)
+
 #include <cmath>
 #include <immintrin.h> // SIMD.  Do not include in precompiled_header_cpp.hpp!
 
@@ -25,7 +27,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 struct Sse_32_Operators final {
-   constexpr static size_t countPackedItems = 4; // the number of Unpacked items in a Packed structure
+   static constexpr size_t countPackedItems = 4; // the number of Unpacked items in a Packed structure
    typedef float Unpacked;
    typedef __m128 Packed;
 
@@ -88,7 +90,7 @@ public:
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
+   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
       ExecuteApplyTraining<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>(
          pLoss,
@@ -99,7 +101,7 @@ public:
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
+   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
       ExecuteApplyValidation<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>(
          pLoss,
@@ -120,14 +122,14 @@ static_assert(std::is_trivially_copyable<Sse_32_Operators>::value,
 // FIRST, define the RegisterLoss function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions
 template<template <typename> class TRegistrable, typename... Args>
-static INLINE_ALWAYS std::shared_ptr<const Registration> RegisterLoss(const char * const sRegistrationName, const Args...args) {
+INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterLoss(const char * const sRegistrationName, const Args...args) {
    return Register<TRegistrable, Sse_32_Operators>(sRegistrationName, args...);
 }
 
 // now include all our special loss registrations which will use the RegisterLoss function we defined above!
 #include "loss_registrations.hpp"
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateLoss_Sse_32(
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateLoss_Sse_32(
    const Config * const pConfig,
    const char * const sLoss,
    const char * const sLossEnd,
@@ -136,7 +138,7 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateLoss_Sse_32(
    return Loss::CreateLoss(&RegisterLosses, pConfig, sLoss, sLossEnd, pLossWrapperOut);
 }
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateMetric_Sse_32(
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateMetric_Sse_32(
    const Config * const pConfig,
    const char * const sMetric,
    const char * const sMetricEnd
@@ -150,3 +152,5 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateMetric_Sse_32(
 }
 
 } // DEFINED_ZONE_NAME
+
+#endif // architecture SSE2

@@ -34,6 +34,31 @@ def warn(*args, **kwargs):
 
 warnings.warn = warn
 
+def valid_ebm(ebm):
+    assert ebm.term_features_[0] == (0,)
+
+    for term_scores in ebm.term_scores_:
+        all_finite = np.isfinite(term_scores).all()
+        assert all_finite
+
+def _smoke_test_explanations(global_exp, local_exp, port):
+    from .... import preserve, show, shutdown_show_server, set_show_addr
+
+    set_show_addr(("127.0.0.1", port))
+
+    # Smoke test: should run without crashing.
+    preserve(global_exp)
+    preserve(local_exp)
+    show(global_exp)
+    show(local_exp)
+
+    # Check all features for global (including interactions).
+    for selector_key in global_exp.selector[global_exp.selector.columns[0]]:
+        preserve(global_exp, selector_key)
+
+    shutdown_show_server()
+
+
 @pytest.mark.slow
 def test_unknown_multiclass_category():
     data = iris_classification()
@@ -65,7 +90,7 @@ def test_unknown_binary_category():
     X_te = data["test"]["X"]
     y_te = data["test"]["y"]
 
-    ebm = ExplainableBoostingClassifier(n_jobs=2, outer_bags=2, interactions=[[0, 13], [13, 3], [1, 2]])
+    ebm = ExplainableBoostingClassifier(n_jobs=2, outer_bags=2, interactions=[[0, 13], [1, 2], [13, 3]])
     ebm.fit(X_tr, y_tr)
 
     test_point = X_te[[0]].copy()
@@ -87,8 +112,8 @@ def test_unknown_binary_category():
     assert perturbed_inter_contrib == 0
 
     # Perturbed interaction contribution (dim 2)
-    country_inter_contrib_2 = ebm.explain_local(test_point).data(0)['scores'][-2]
-    perturbed_inter_contrib_2 = ebm.explain_local(perturbed_point).data(0)['scores'][-2]
+    country_inter_contrib_2 = ebm.explain_local(test_point).data(0)['scores'][-1]
+    perturbed_inter_contrib_2 = ebm.explain_local(perturbed_point).data(0)['scores'][-1]
 
     assert country_inter_contrib_2 != 0
     assert perturbed_inter_contrib_2 == 0
@@ -158,9 +183,9 @@ def test_ebm_synthetic_pairwise():
     X = df[["a", "b"]]
     y = df["y"]
 
-    seed = 1
+    random_state = 1
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.20, random_state=seed
+        X, y, test_size=0.20, random_state=random_state
     )
 
     clf = ExplainableBoostingClassifier(n_jobs=1, outer_bags=1, interactions=1)
@@ -173,6 +198,20 @@ def test_ebm_synthetic_pairwise():
     assert clf_global.data(2)["scores"][1][1] > 5
 
 
+def test_ebm_tripple():
+    data = iris_classification()
+    X_train = data["train"]["X"]
+    y_train = data["train"]["y"]
+
+    X_test = data["test"]["X"]
+    y_test = data["test"]["y"]
+
+    # iris is multiclass, but for now pretend this is a regression problem
+    clf = ExplainableBoostingRegressor(interactions=[(0,1,2), (0,1,3), (1,2,3), (0, 1)])
+    clf.fit(X_train, y_train)
+    scores = clf.predict(X_test)
+    valid_ebm(clf)
+
 @pytest.mark.slow
 def test_prefit_ebm():
     data = synthetic_classification()
@@ -182,8 +221,8 @@ def test_prefit_ebm():
     clf = ExplainableBoostingClassifier(n_jobs=1, interactions=0, max_rounds=0)
     clf.fit(X, y)
 
-    for _, model_feature_group in enumerate(clf.additive_terms_):
-        has_non_zero = np.any(model_feature_group)
+    for term_scores in clf.term_scores_:
+        has_non_zero = np.any(term_scores)
         assert not has_non_zero
 
 
@@ -197,15 +236,6 @@ def test_ebm_synthetic_regression():
     clf.predict(X)
 
     valid_ebm(clf)
-
-
-def valid_ebm(ebm):
-    assert ebm.feature_groups_[0] == [0]
-
-    for _, model_feature_group in enumerate(ebm.additive_terms_):
-        all_finite = np.isfinite(model_feature_group).all()
-        assert all_finite
-
 
 def test_ebm_synthetic_classification():
     data = synthetic_classification()
@@ -221,25 +251,70 @@ def test_ebm_synthetic_classification():
 
     valid_ebm(clf)
 
+def test_ebm_missing():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
 
-def _smoke_test_explanations(global_exp, local_exp, port):
-    from .... import preserve, show, shutdown_show_server, set_show_addr
+    X[0, 0] = np.nan
 
-    set_show_addr(("127.0.0.1", port))
+    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
+    clf.fit(X, y)
+    clf.predict(X)
 
-    # Smoke test: should run without crashing.
-    preserve(global_exp)
-    preserve(local_exp)
-    show(global_exp)
-    show(local_exp)
+    valid_ebm(clf)
 
-    # Check all features for global (including interactions).
-    for selector_key in global_exp.selector[global_exp.selector.columns[0]]:
-        preserve(global_exp, selector_key)
+def test_ebm_only_missing():
+    X = np.full((10,10), np.nan)
+    y = np.full(10, 0)
+    y[0] = 1
 
-    shutdown_show_server()
+    clf = ExplainableBoostingClassifier(n_jobs=1)
+    clf.fit(X, y)
+    clf.predict(X)
+    global_exp = clf.explain_global()
+    local_exp = clf.explain_local(X, y)
 
 
+def test_ebm_synthetic_singleclass_classification():
+    data = synthetic_classification()
+    X = data["full"]["X"]
+    y = np.zeros(X.shape[0], np.bool_)
+
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0)
+    clf.fit(X, y)
+
+    prob_scores = clf.predict_proba(X)
+    assert prob_scores.ndim == 2
+    assert prob_scores.shape[0] == len(y)
+    assert prob_scores.shape[1] == 1
+    assert (prob_scores == 1.0).all()
+
+    predicts = clf.predict(X)
+    assert predicts.ndim == 1
+    assert predicts.shape[0] == len(y)
+    assert (predicts == False).all()
+
+    scores = clf.decision_function(X)
+    assert scores.ndim == 1
+    assert scores.shape[0] == len(y)
+    assert (scores == -np.inf).all()
+
+    prob_scores, explanations = clf.predict_and_contrib(X, output='probabilities')
+    assert prob_scores.ndim == 2
+    assert prob_scores.shape[0] == len(y)
+    assert prob_scores.shape[1] == 1
+    assert (prob_scores == 1.0).all()
+
+    scores, explanations = clf.predict_and_contrib(X, output='logits')
+    assert scores.ndim == 1
+    assert scores.shape[0] == len(y)
+    assert (scores == -np.inf).all()
+
+    predicts, explanations = clf.predict_and_contrib(X, output='labels')
+    assert predicts.ndim == 1
+    assert predicts.shape[0] == len(y)
+    assert (predicts == False).all()
 
 @pytest.mark.visual
 @pytest.mark.slow
@@ -521,14 +596,14 @@ def test_dp_ebm_adult():
     w_tr = np.ones_like(y_tr)
     w_tr[-1] = 2
 
-    clf = DPExplainableBoostingClassifier(binning='private-quantile', epsilon=1)
+    clf = DPExplainableBoostingClassifier(epsilon=1)
     n_splits = 3
     ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
     res = cross_validate(
         clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
     )
 
-    clf = DPExplainableBoostingClassifier(binning='private', epsilon=1)
+    clf = DPExplainableBoostingClassifier(epsilon=1)
     clf.fit(X_tr, y_tr, w_tr)
 
     prob_scores = clf.predict_proba(X_te)
@@ -711,14 +786,29 @@ def test_json_classification():
     data = synthetic_classification()
     X = data["full"]["X"]
     y = data["full"]["y"]
-    feature_types = ['continuous'] * X.shape[1]
-    feature_types[0] = 'nominal'
-    clf = ExplainableBoostingClassifier(max_bins=10, max_interaction_bins=4, feature_types=feature_types, interactions=[(1,2), (2,3)])
+
+    X["A"] = pd.cut(X["A"], [-np.inf, -1, -0.5, 0.5, 1, np.inf], labels=["apples", "oranges", "0", "almonds", "peanuts"], ordered=False)
+    X["B"] = pd.cut(X["B"], [-np.inf, -0.5, 0.5, np.inf], labels=["low", "medium", "high"], ordered=True)
+    X["C"] = X["C"].mask(X['C'] < 0, 0)
+
+    clf = ExplainableBoostingClassifier(outer_bags=3, max_bins=10, max_interaction_bins=4, interactions=[(1,2), (2, 0)])
     clf.fit(X, y)
-    clf.additive_terms_[0][0] = np.nan
-    clf.additive_terms_[0][1] = np.inf
-    clf.additive_terms_[0][2] = -np.inf
-    json_text = clf._to_json()
+
+    # combine the last two bins into one bin
+    max_val = max(clf.bins_[0][0].values())
+    clf.bins_[0][0] = { key: value if value != max_val else max_val - 1 for key, value in clf.bins_[0][0].items() }
+
+    clf.term_scores_[0] = np.delete(clf.term_scores_[0], 1)
+    clf.term_scores_[0][1] = -np.inf
+    clf.term_scores_[0][2] = np.inf
+    clf.term_scores_[0][3] = np.nan
+
+    clf.standard_deviations_[0] = np.delete(clf.standard_deviations_[0], 1)
+    clf.bagged_scores_[0] = np.array([np.delete(clf.bagged_scores_[0][0], 1), np.delete(clf.bagged_scores_[0][1], 1), np.delete(clf.bagged_scores_[0][2], 1)])
+
+    clf.bin_weights_[0] = np.delete(clf.bin_weights_[0], 1)
+
+    json_text = clf._to_json(properties='all')
 
 def test_json_multiclass():
     data = synthetic_multiclass()
@@ -726,9 +816,9 @@ def test_json_multiclass():
     y = data["full"]["y"]
     feature_types = ['continuous'] * X.shape[1]
     feature_types[0] = 'nominal'
-    clf = ExplainableBoostingClassifier(max_bins=10, max_interaction_bins=4, feature_types=feature_types, interactions=[(1,2), (2,3)])
+    clf = ExplainableBoostingClassifier(max_bins=10, feature_types=feature_types, interactions=0)
     clf.fit(X, y)
-    json_text = clf._to_json()
+    json_text = clf._to_json(properties='all')
 
 def test_json_regression():
     data = synthetic_regression()
@@ -738,7 +828,7 @@ def test_json_regression():
     feature_types[0] = 'nominal'
     clf = ExplainableBoostingRegressor(max_bins=5, max_interaction_bins=4, feature_types=feature_types, interactions=[(1,2), (2,3)])
     clf.fit(X, y)
-    json_text = clf._to_json()
+    json_text = clf._to_json(properties='all')
 
 def test_json_dp_classification():
     data = synthetic_classification()
@@ -748,20 +838,10 @@ def test_json_dp_classification():
     feature_types[0] = 'nominal'
     clf = DPExplainableBoostingClassifier(max_bins=10, feature_types=feature_types)
     clf.fit(X, y)
-    clf.additive_terms_[0][0] = np.nan
-    clf.additive_terms_[0][1] = np.inf
-    clf.additive_terms_[0][2] = -np.inf
-    json_text = clf._to_json()
-
-def test_json_dp_multiclass():
-    data = synthetic_multiclass()
-    X = data["full"]["X"]
-    y = data["full"]["y"]
-    feature_types = ['continuous'] * X.shape[1]
-    feature_types[0] = 'nominal'
-    clf = DPExplainableBoostingClassifier(max_bins=10, feature_types=feature_types)
-    clf.fit(X, y)
-    json_text = clf._to_json()
+    clf.term_scores_[0][0] = np.nan
+    clf.term_scores_[0][1] = np.inf
+    clf.term_scores_[0][2] = -np.inf
+    json_text = clf._to_json(properties='all')
 
 def test_json_dp_regression():
     data = synthetic_regression()
@@ -771,4 +851,4 @@ def test_json_dp_regression():
     feature_types[0] = 'nominal'
     clf = DPExplainableBoostingRegressor(max_bins=5, feature_types=feature_types)
     clf.fit(X, y)
-    json_text = clf._to_json()
+    json_text = clf._to_json(properties='all')

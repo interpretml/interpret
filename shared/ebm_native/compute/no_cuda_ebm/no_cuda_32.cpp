@@ -10,7 +10,7 @@
 #include "bridge_c.h"
 #include "zones.h"
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateLoss_Cuda_32(
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateLoss_Cuda_32(
    const Config * const pConfig,
    const char * const sLoss,
    const char * const sLossEnd,

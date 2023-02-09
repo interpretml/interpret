@@ -6,20 +6,21 @@ from typing import DefaultDict
 
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
-from .utils import DPUtils, EBMUtils
-from .bin import clean_X, clean_vector, construct_bins, bin_python, ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, restore_missing_value_zeros2, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, unify_data2, eval_terms
-from .internal import Native
-from .postprocessing import multiclass_postprocess2
+from .utils import EBMUtils
+from .utils import _process_terms, make_all_histogram_edges, _order_terms, _remove_unused_higher_bins, _generate_term_names, _generate_term_types
+from ...utils._binning import determine_min_cols, clean_X, clean_dimensions, typify_classification, construct_bins, bin_native_by_dimension, unify_data2, _deduplicate_bins, normalize_initial_seed
+from .bin import ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, make_bin_weights, trim_tensor, eval_terms
+from ...utils._native import Native
 from ...utils import unify_data, autogen_schema, unify_vector
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_global_selector2, gen_local_selector
-import ctypes as ct
-from multiprocessing.sharedctypes import RawArray
+from ...utils._interaction import _get_ranked_interactions
+from ...utils._privacy import validate_eps_delta, calc_classic_noise_multi, calc_gdp_noise_multi
 
 import json
-import math
+from math import isnan
 
 import numpy as np
 from warnings import warn
@@ -28,6 +29,7 @@ from sklearn.base import is_classifier
 from sklearn.utils.validation import check_is_fitted
 from sklearn.metrics import log_loss, mean_squared_error
 import heapq
+import operator
 
 from sklearn.base import (
     BaseEstimator,
@@ -98,147 +100,80 @@ class EBMExplanation(FeatureValueExplanation):
         if data_dict is None:
             return None
 
-        # Overall graph
+        # Overall global explanation
         if self.explanation_type == "global" and key is None:
             data_dict = sort_take(
                 data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
             )
+            title = "Global Term/Feature Importances"
+
             figure = plot_horizontal_bar(
                 data_dict,
-                title="Overall Importance:<br>Mean Absolute Score",
+                title=title,
                 start_zero=True,
+                xtitle="Mean Absolute Score (Weighted)"
             )
 
+            figure._interpret_help_text = "The term importances are the mean absolute " \
+                "contribution (score) each term (feature or interaction) makes to predictions " \
+                "averaged across the training dataset. Contributions are weighted by the number " \
+                "of samples in each bin, and by the sample weights (if any). The 15 most " \
+                "important terms are shown."
+            figure._interpret_help_link = \
+                "https://github.com/interpretml/interpret/blob/develop/examples/python/notebooks/EBM%20Feature%20Importances.ipynb"
+
             return figure
 
-        # Continuous feature graph
-        if (
-            self.explanation_type == "global"
-            and self.feature_types[key] == "continuous"
-        ):
-            title = self.feature_names[key]
-            if is_multiclass_global_data_dict(data_dict):
-                figure = plot_continuous_bar(
-                    data_dict, multiclass=True, show_error=False, title=title
-                )
+        # Per term global explanation
+        if (self.explanation_type == "global"):
+            title = "Term: {0} ({1})".format(self.feature_names[key], self.feature_types[key])
+
+            if (self.feature_types[key] == "continuous"):
+                xtitle = self.feature_names[key]
+
+                if is_multiclass_global_data_dict(data_dict):
+                    figure = plot_continuous_bar(
+                        data_dict, multiclass=True, show_error=False, title=title, xtitle=xtitle
+                    )
+                else:
+                    figure = plot_continuous_bar(data_dict, title=title, xtitle=xtitle)
+
+            elif (self.feature_types[key] == "categorical" or self.feature_types[key] == "interaction"):
+                figure = super().visualize(key, title)
+                figure._interpret_help_text = "The contribution (score) of the term {0} to predictions " \
+                    "made by the model.".format(self.feature_names[key])
+
             else:
-                figure = plot_continuous_bar(data_dict, title=title)
+                raise Exception(  # pragma: no cover
+                    "Not supported configuration: {0}, {1}".format(
+                        self.explanation_type, self.feature_types[key]
+                    )
+                )
+
+            figure._interpret_help_text = "The contribution (score) of the term " \
+                "{0} to predictions made by the model. For classification, " \
+                "scores are on a log scale (logits). For regression, scores are on the same " \
+                "scale as the outcome being predicted (e.g., dollars when predicting cost). " \
+                "Each graph is centered vertically such that average prediction on the train " \
+                "set is 0.".format(self.feature_names[key])
 
             return figure
 
-        return super().visualize(key)
+        # Local explanation graph
+        if (self.explanation_type == "local"):
+            figure = super().visualize(key)
+            figure.update_layout(
+                title="Local Explanation (" + figure.layout.title.text +")",
+                xaxis_title="Contribution to Prediction")
+            figure._interpret_help_text = "A local explanation shows the breakdown of how much " \
+                "each term contributed to the prediction for a single sample. The intercept " \
+                "reflects the average case. In regression, the intercept is the average y-value " \
+                "of the train set (e.g., $5.51 if predicting cost). In classification, the " \
+                "intercept is the log of the base rate (e.g., -2.3 if the base rate is 10%). The " \
+                "15 most important terms are shown."
 
-def _parallel_cyclic_gradient_boost(
-    scores_train,
-    scores_val,
-    X, 
-    y, 
-    w, 
-    feature_indices,
-    n_classes,
-    validation_size,
-    model_type,
-    update,
-    features_categorical,
-    features_bin_count,
-    inner_bags,
-    learning_rate,
-    min_samples_leaf,
-    max_leaves,
-    early_stopping_rounds,
-    early_stopping_tolerance,
-    max_rounds,
-    random_state,
-    noise_scale,
-    bin_weights,
-):
-    _log.info("Splitting train/test")
+            return figure
 
-    X_train, X_val, y_train, y_val, w_train, w_val, _, _ = EBMUtils.ebm_train_test_split(
-        X,
-        y,
-        w,
-        test_size=validation_size,
-        random_state=random_state,
-        is_classification=model_type == "classification",
-    )
-
-    _log.info("Cyclic boost")
-
-    (
-        model_update,
-        current_metric,
-        episode_idx,
-    ) = EBMUtils.cyclic_gradient_boost(
-        model_type=model_type,
-        n_classes=n_classes,
-        features_categorical = features_categorical, 
-        features_bin_count = features_bin_count, 
-        feature_groups=feature_indices,
-        X_train=X_train,
-        y_train=y_train,
-        w_train=w_train,
-        scores_train=scores_train,
-        X_val=X_val,
-        y_val=y_val,
-        w_val=w_val,
-        scores_val=scores_val,
-        n_inner_bags=inner_bags,
-        generate_update_options=update,
-        learning_rate=learning_rate,
-        min_samples_leaf=min_samples_leaf,
-        max_leaves=max_leaves,
-        early_stopping_rounds=early_stopping_rounds,
-        early_stopping_tolerance=early_stopping_tolerance,
-        max_rounds=max_rounds,
-        random_state=random_state,
-        name="Boost",
-        noise_scale=noise_scale,
-        bin_weights=bin_weights,
-    )
-    return model_update, episode_idx
-
-def _parallel_get_interactions(
-    scores_train,
-    X, 
-    y, 
-    w, 
-    n_classes,
-    validation_size,
-    random_state,
-    model_type,
-    features_categorical, 
-    features_bin_count, 
-    min_samples_leaf,
-):
-    _log.info("Splitting train/test")
-
-    X_train, _, y_train, _, w_train, _, _, _ = EBMUtils.ebm_train_test_split(
-        X,
-        y,
-        w,
-        test_size=validation_size,
-        random_state=random_state,
-        is_classification=model_type == "classification",
-    )
-        
-    _log.info("Estimating with FAST")
-
-    iter_feature_groups = combinations(range(X.shape[1]), 2)
-
-    final_indices, final_scores = EBMUtils.get_interactions(
-        iter_feature_groups=iter_feature_groups,
-        model_type=model_type,
-        n_classes=n_classes,
-        features_categorical = features_categorical, 
-        features_bin_count = features_bin_count, 
-        X=X_train,
-        y=y_train,
-        w=w_train,
-        scores=scores_train,
-        min_samples_leaf=min_samples_leaf,
-    )
-    return final_indices
 
 def is_private(estimator):
     """Return True if the given estimator is a differentially private EBM estimator
@@ -254,8 +189,8 @@ def is_private(estimator):
 
     return isinstance(estimator, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor))
 
-class BaseEBM(BaseEstimator):
-    """Client facing SK EBM."""
+class EBMModel(BaseEstimator):
+    """Base class for all EBMs"""
 
     # Interface modeled after:
     # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingClassifier.html
@@ -270,35 +205,13 @@ class BaseEBM(BaseEstimator):
     def __init__(
         self,
         # Explainer
-        #
-        # feature_names in scikit-learn convention should probably be passed in via the fit function.  Also,
-        #   we can get feature_names via pandas dataframes, and those would only be known at fit time, so
-        #   we need a version of feature_names_out_ with the underscore to indicate items set at fit time.
-        #   Despite this, we need to recieve a list of feature_names here to be compatible with blackbox explainations
-        #   where we still need to have feature_names, but we do not have a fit function since we explain existing
-        #   models without fitting them ourselves.  To conform to a common explaination API we get the feature_names
-        #   here.
         feature_names,
-        # other packages LightGBM, CatBoost, Scikit-Learn (future) are using categorical specific ways to indicate
-        #   feature_types.  The benefit to them is that they can accept multiple ways of specifying categoricals like:
-        #   categorical = [true, false, true, true] OR categorical = [1, 4, 8] OR categorical = 'all'/'auto'/'none'
-        #   We're choosing a different route because for visualization we want to be able to express multiple
-        #   different types of data.  For example, if the user has data with strings of "low", "medium", "high"
-        #   We want to keep both the ordinal nature of this feature and we wish to preserve the text for visualization
-        #   scikit-learn callers can pre-convert these things to [0, 1, 2] in the correct order because they don't
-        #   need to worry about visualizing the data afterwards, but for us we  need a way to specify the strings
-        #   back anyways.  So we need some way to express both the categorical nature of features and the order
-        #   mapping.  We can do this and more complicated conversions via:
-        #   feature_types = ["categorical", ["low", "medium", "high"], "continuous", "time", "bool"]
         feature_types,
-        # Data
-        #
         # Ensemble
         outer_bags,
         inner_bags,
         # Core
-        # TODO PK v.3 replace "mains" with a more flexible "exclude" parameter
-        mains,
+        mains, # TODO PK v.3 replace "mains" with a more flexible "exclude" parameter
         interactions,
         validation_size,
         max_rounds,
@@ -325,10 +238,6 @@ class BaseEBM(BaseEstimator):
         bin_budget_frac=None,
         privacy_schema=None,
     ):
-        # NOTE: Per scikit-learn convention, we shouldn't attempt to sanity check these inputs here.  We just
-        #       Store these values for future use.  Validate inputs in the fit or other functions.  More details in:
-        #       https://scikit-learn.org/stable/developers/develop.html
-
         # Arguments for explainer
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -371,6 +280,10 @@ class BaseEBM(BaseEstimator):
             self.bin_budget_frac = bin_budget_frac
             self.privacy_schema = privacy_schema
 
+            if random_state is not None:
+                warn(f"Privacy violation: using a fixed random_state of {random_state} will cause deterministic noise additions."
+                        "This capability is only for debugging/testing. Set random_state to None to remove this warning.")
+
     def fit(self, X, y, sample_weight=None):  # noqa: C901
         """ Fits model to provided samples.
 
@@ -383,60 +296,52 @@ class BaseEBM(BaseEstimator):
             Itself.
         """
 
-        X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples to train on"
+        y = clean_dimensions(y, "y")
+        if y.ndim != 1:
+            msg = "y must be 1 dimensional"
+            _log.error(msg)
+            raise ValueError(msg)
+        if len(y) == 0:
+            msg = "y cannot have 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
         if is_classifier(self):
-            y = clean_vector(y, True, "y")
+            y = typify_classification(y)
             # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
             # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
             # in two separate runs, which would flip the ordering of the classes within our score tensors.
             classes, y = np.unique(y, return_inverse=True)
-
             n_classes = len(classes)
-            if n_classes > 2:  # pragma: no cover
-                warn("Multiclass is still experimental. Subject to change per release.")
-
-            model_type = "classification"
             class_idx = {x: index for index, x in enumerate(classes)}
-            intercept = np.zeros(
-                Native.get_count_scores_c(n_classes), dtype=np.float64, order="C",
-            )
         else:
-            y = clean_vector(y, False, "y")
+            y = y.astype(np.float64, copy=False)
             min_target = y.min()
             max_target = y.max()
-            model_type = "regression"
             n_classes = -1
-            intercept = 0.0
-
-        if n_samples != len(y):
-            msg = f"X has {n_samples} samples and y has {len(y)} samples"
-            _log.error(msg)
-            raise ValueError(msg)
 
         if sample_weight is not None:
-            sample_weight = clean_vector(sample_weight, False, "sample_weight")
-            if n_samples != len(sample_weight):
-                msg = f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
+            sample_weight = clean_dimensions(sample_weight, "sample_weight")
+            if sample_weight.ndim != 1:
+                raise ValueError("sample_weight must be 1 dimensional")
+            if len(y) != len(sample_weight):
+                msg = f"y has {len(y)} samples and sample_weight has {len(sample_weight)} samples"
                 _log.error(msg)
                 raise ValueError(msg)
-        else:
-            # TODO: eliminate this eventually
-            sample_weight = np.ones_like(y, dtype=np.float64)
+            sample_weight = sample_weight.astype(np.float64, copy=False)
+
+        min_cols = determine_min_cols(self.feature_names, self.feature_types)
+        X, n_samples = clean_X(X, min_cols, len(y))
 
         # Privacy calculations
-        noise_scale = None
-        bin_eps_ = None
-        bin_delta_ = None
-        composition=None
-        if is_private(self):
-            DPUtils.validate_eps_delta(self.epsilon, self.delta)
+        is_differential_privacy = is_private(self)
+        if is_differential_privacy:
+            validate_eps_delta(self.epsilon, self.delta)
 
-            if not is_classifier(self):
+            if is_classifier(self):
+                if 2 < n_classes:  # pragma: no cover
+                    raise ValueError("multiclass not supported in Differentially private EBMs.")
+            else:
                 bounds = None if self.privacy_schema is None else self.privacy_schema.get('target', None)
                 if bounds is None:
                     warn("Possible privacy violation: assuming min/max values for target are public info."
@@ -450,20 +355,29 @@ class BaseEBM(BaseEstimator):
                     y = np.clip(y, min_target, max_target)
 
             # Split epsilon, delta budget for binning and learning
-            bin_eps_ = self.epsilon * self.bin_budget_frac
-            training_eps_ = self.epsilon - bin_eps_
-            bin_delta_ = self.delta / 2
-            training_delta_ = self.delta / 2
-            composition=self.composition
+            bin_eps = self.epsilon * self.bin_budget_frac
+            bin_delta = self.delta / 2
+            composition = self.composition
+            privacy_schema = self.privacy_schema
 
-            # TODO: remove the + 1 for max_bins and max_interaction_bins.  It's just here to compare to the previous results!
-            bin_levels = [self.max_bins + 1]
+            bin_levels = [self.max_bins]
         else:
-            # TODO: remove the + 1 for max_bins and max_interaction_bins.  It's just here to compare to the previous results!
-            bin_levels = [self.max_bins + 1, self.max_interaction_bins + 1]
+            bin_eps = None
+            bin_delta = None
+            composition = None
+            privacy_schema = None
 
+            bin_levels = [self.max_bins, self.max_interaction_bins]
+
+        init_random_state = normalize_initial_seed(self.random_state)
+
+        # after normalizing to a 32-bit signed integer, we pass the random_state into the EBMPreprocessor
+        # exactly as passed to us. This means that we should get the same preprocessed data for the mains
+        # if we create an EBMPreprocessor with the same seed.  For interactions, we increment by one
+        # so it can be replicated without creating an EBM
         binning_result = construct_bins(
             X=X,
+            y=y,
             sample_weight=sample_weight,
             feature_names_given=self.feature_names, 
             feature_types_given=self.feature_types, 
@@ -471,314 +385,375 @@ class BaseEBM(BaseEstimator):
             binning=self.binning, 
             min_samples_bin=1, 
             min_unique_continuous=3, 
-            epsilon=bin_eps_, 
-            delta=bin_delta_, 
+            epsilon=bin_eps, 
+            delta=bin_delta, 
             composition=composition,
-            privacy_schema=getattr(self, 'privacy_schema', None)
+            privacy_schema=privacy_schema,
+            random_state=init_random_state,
         )
         feature_names_in = binning_result[0]
         feature_types_in = binning_result[1]
         bins = binning_result[2]
-        term_bin_weights = binning_result[3]
-        min_vals = binning_result[4]
-        max_vals = binning_result[5]
-        histogram_cuts = binning_result[6]
-        histogram_counts = binning_result[7]
-        unique_counts = binning_result[8]
-        zero_counts = binning_result[9]
+        main_bin_weights = binning_result[3]
+        feature_bounds = binning_result[4]
+        histogram_counts = binning_result[5]
+        missing_val_counts = binning_result[6]
+        unique_val_counts = binning_result[7]
+        zero_val_counts = binning_result[8]
 
-        n_features_in = len(feature_names_in)
+        if np.count_nonzero(missing_val_counts):
+            warn("Missing values detected. Our visualizations do not currently display missing values. "
+                 "To retain the glassbox nature of the model you need to either set the missing values "
+                 "to an extreme value like -1000 that will be visible on the graphs, or manually "
+                 "examine the missing value score in ebm.term_scores_[term_index][0]")
 
-        if is_private(self):
-             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
+        n_features_in = len(bins)
+
+        if isinstance(self.mains, str) and self.mains == "all":
+            term_features = [(x,) for x in range(n_features_in)]
+        else:
+            term_features = [(int(x),) for x in self.mains]
+
+        if is_differential_privacy:
+            # [DP] Calculate how much noise will be applied to each iteration of the algorithm
             domain_size = 1 if is_classifier(self) else max_target - min_target
+            max_weight = 1 if sample_weight is None else np.max(sample_weight)
+            training_eps = self.epsilon - bin_eps
+            training_delta = self.delta / 2
             if self.composition == 'classic':
-                noise_scale = DPUtils.calc_classic_noise_multi(
-                    total_queries = self.max_rounds * n_features_in * self.outer_bags, 
-                    target_epsilon = training_eps_, 
-                    delta = training_delta_, 
-                    sensitivity = domain_size * self.learning_rate * np.max(sample_weight)
+                noise_scale = calc_classic_noise_multi(
+                    total_queries = self.max_rounds * len(term_features) * self.outer_bags, 
+                    target_epsilon = training_eps, 
+                    delta = training_delta, 
+                    sensitivity = domain_size * self.learning_rate * max_weight
                 )
             elif self.composition == 'gdp':
-                noise_scale = DPUtils.calc_gdp_noise_multi(
-                    total_queries = self.max_rounds * n_features_in * self.outer_bags, 
-                    target_epsilon = training_eps_, 
-                    delta = training_delta_
+                noise_scale = calc_gdp_noise_multi(
+                    total_queries = self.max_rounds * len(term_features) * self.outer_bags, 
+                    target_epsilon = training_eps, 
+                    delta = training_delta
                 )
-                noise_scale = noise_scale * domain_size * self.learning_rate * np.max(sample_weight) # Alg Line 17
+                noise_scale *= domain_size * self.learning_rate * max_weight # Alg Line 17
             else:
                 raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
 
-        nominal_features = np.fromiter((x == 'nominal' for x in feature_types_in), dtype=ct.c_int64, count=len(feature_types_in))
-
-        X_main, main_bin_counts = bin_python(X, 1, bins, feature_names_in,  feature_types_in)
-
-        bin_data_weights = make_boosting_weights(term_bin_weights)
+            bin_data_weights = make_boosting_weights(main_bin_weights)
+            boost_flags = Native.BoostFlags_GradientSums | Native.BoostFlags_RandomSplits
+            inner_bags = 0
+            early_stopping_rounds = -1
+            early_stopping_tolerance = -1
+            interactions = 0
+        else:
+            noise_scale = None
+            bin_data_weights = None
+            boost_flags = Native.BoostFlags_Default
+            inner_bags = self.inner_bags
+            early_stopping_rounds = self.early_stopping_rounds
+            early_stopping_tolerance = self.early_stopping_tolerance
+            interactions = self.interactions
 
         native = Native.get_native_singleton()
+        rng = native.create_rng(init_random_state)
+        rng = native.branch_rng(rng) # branch it so we have no correlation to the binning rng that uses the same seed
 
+        used_seeds = set()
+        rngs = []
+        bag_weights = []
+        bags = []
+        for _ in range(self.outer_bags):
+            while True:
+                bagged_rng = native.branch_rng(rng)
+                seed = native.generate_seed(bagged_rng)
+                # we really really do not want identical bags. branch_rng is pretty good but it can lead to 
+                # collisions, so check with a 32-bit seed if we possibly have a collision and regenerate if so
+                if seed not in used_seeds:
+                    break
+            # we do not need used_seeds if the rng is None, but it does not hurt anything
+            used_seeds.add(seed)
 
-        provider = JobLibProvider(n_jobs=self.n_jobs)
-
-        if isinstance(self.mains, str) and self.mains == "all":
-            feature_groups = [[x] for x in range(n_features_in)]
-        elif isinstance(self.mains, list) and all(
-            isinstance(x, int) for x in self.mains
-        ):
-            feature_groups = [[x] for x in self.mains]
-        else:  # pragma: no cover
-            raise RuntimeError("Argument 'mains' has invalid value")
-              
-        # Train main effects
-        if is_private(self):
-            update = Native.GenerateUpdateOptions_GradientSums | Native.GenerateUpdateOptions_RandomSplits
-        else:
-            update = Native.GenerateUpdateOptions_Default
-
-        init_seed = EBMUtils.normalize_initial_random_seed(self.random_state)
-
-        inner_bags = 0 if is_private(self) else self.inner_bags
-        early_stopping_rounds = -1 if is_private(self) else self.early_stopping_rounds
-        early_stopping_tolerance = -1 if is_private(self) else self.early_stopping_tolerance
-
-        train_model_args_iter = []
-        bagged_seed = init_seed
-        for idx in range(self.outer_bags):
-            bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
-            parallel_params = (
-                None,
-                None,
-                X_main,
+            bag = EBMUtils.make_bag(
                 y,
-                sample_weight,
-                feature_groups,
-                n_classes,
                 self.validation_size,
-                model_type,
-                update,
-                nominal_features,
-                main_bin_counts,
-                inner_bags,
-                self.learning_rate,
-                self.min_samples_leaf,
-                self.max_leaves,
-                early_stopping_rounds,
-                early_stopping_tolerance,
-                self.max_rounds,
-                bagged_seed,
-                noise_scale,
-                bin_data_weights,
+                bagged_rng,
+                is_classifier(self) and not is_differential_privacy
             )
-            train_model_args_iter.append(parallel_params)
+            rngs.append(bagged_rng) # we bag within the same proces, so bagged_rng will progress inside make_bag
+            bags.append(bag)
+            if bag is None:
+                if sample_weight is None:
+                    bag_weights.append(n_samples)
+                else:
+                    bag_weights.append(sample_weight.sum())
+            else:
+                keep = 0 < bag
+                if sample_weight is None:
+                    bag_weights.append(bag[keep].sum())
+                else:
+                    bag_weights.append((bag[keep] * sample_weight[keep]).sum())
+        bag_weights = np.array(bag_weights, np.float64)
 
-        results = provider.parallel(_parallel_cyclic_gradient_boost, train_model_args_iter)
+        if n_classes == 1:
+            warn("Only 1 class detected for classification. The model will predict 1.0 whenever predict_proba is called.")
 
-        breakpoint_iteration = []
-        only_models = []
-        for model, bag_breakpoint_iteration in results:
-            only_models.append(after_boosting(feature_groups, model, term_bin_weights))
-            breakpoint_iteration.append(bag_breakpoint_iteration)
-
-        bagged_additive_terms = []
-        for term_idx in range(len(feature_groups)):
-            bags = []
-            bagged_additive_terms.append(bags)
-            for model in only_models:
-                bags.append(model[term_idx])
-
-
-        interactions = 0 if is_private(self) else self.interactions
-        if n_classes > 2 or isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0:
-            del X_main # allow the garbage collector to dispose of X_main
-            if not (isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0):
-                warn("Detected multiclass problem: forcing interactions to 0")
+            breakpoint_iteration = [[]]
+            models = []
+            for idx in range(self.outer_bags):
+                breakpoint_iteration[-1].append(0)
+                tensors = []
+                for bin_levels in bins:
+                    feature_bins = bin_levels[0]
+                    if isinstance(feature_bins, dict):
+                        # categorical feature
+                        n_bins = 2 if len(feature_bins) == 0 else max(feature_bins.values()) + 2
+                    else:
+                        # continuous feature
+                        n_bins = len(feature_bins) + 3
+                    tensor = np.full(n_bins, -np.inf, np.float64)
+                    tensors.append(tensor)
+                models.append(tensors)
         else:
-            bagged_seed = init_seed
-            scores_train_bags = []
-            scores_val_bags = []
-            for model in only_models:
-                bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+            provider = JobLibProvider(n_jobs=self.n_jobs)
 
-                scores_local = ebm_decision_function(X, n_samples, feature_names_in, feature_types_in, bins, intercept, model, feature_groups)
+            dataset = bin_native_by_dimension(
+                n_classes, 
+                1,
+                bins,
+                X, 
+                y, 
+                sample_weight, 
+                feature_names_in, 
+                feature_types_in, 
+            )
 
-                _, _, _, _, _, _, scores_train_local, scores_val_local = EBMUtils.ebm_train_test_split(
-                    X_main,
-                    y,
-                    sample_weight, # TODO: allow sample_weight to be None
-                    test_size=self.validation_size,
-                    random_state=bagged_seed,
-                    is_classification=model_type == "classification",
-                    scores=scores_local
-                )
-                scores_train_bags.append(scores_train_local)
-                scores_val_bags.append(scores_val_local)
-                scores_local = None # allow the garbage collector to reclaim this
-
-            del X_main # allow the garbage collector to dispose of X_main
-
-            X_pair, pair_bin_counts = bin_python(X, 2, bins, feature_names_in,  feature_types_in)
-
-            if isinstance(interactions, int) and interactions > 0:
-                _log.info("Estimating with FAST")
-
-                train_model_args_iter2 = []
-                bagged_seed = init_seed
-                for i in range(self.outer_bags):
-                    bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
-                    parallel_params = (
-                        scores_train_bags[i],
-                        X_pair, 
-                        y, 
-                        sample_weight, 
-                        n_classes,
-                        self.validation_size, 
-                        bagged_seed, 
-                        model_type, 
-                        nominal_features, 
-                        pair_bin_counts, 
-                        self.min_samples_leaf, 
+            parallel_args = []
+            for idx in range(self.outer_bags):
+                parallel_args.append(
+                    (
+                        dataset,
+                        bags[idx],
+                        None,
+                        term_features,
+                        inner_bags,
+                        boost_flags,
+                        self.learning_rate,
+                        self.min_samples_leaf,
+                        self.max_leaves,
+                        early_stopping_rounds,
+                        early_stopping_tolerance,
+                        self.max_rounds,
+                        noise_scale,
+                        bin_data_weights,
+                        rngs[idx],
+                        None,
                     )
-                    train_model_args_iter2.append(parallel_params)
+                )
 
-                bagged_interaction_indices = provider.parallel(_parallel_get_interactions, train_model_args_iter2)
+            results = provider.parallel(EBMUtils.cyclic_gradient_boost, parallel_args)
 
-                # Select merged pairs
-                pair_ranks = {}
-                for n, interaction_indices in enumerate(bagged_interaction_indices):
-                    for rank, indices in enumerate(interaction_indices):
-                        old_mean = pair_ranks.get(indices, 0)
-                        pair_ranks[indices] = old_mean + ((rank - old_mean) / (n + 1))
+            # let python reclaim the dataset memory via reference counting
+            del parallel_args # parallel_args holds references to dataset, so must be deleted
+            del dataset
 
-                final_ranks = []
-                total_interactions = 0
-                for indices in pair_ranks:
-                    heapq.heappush(final_ranks, (pair_ranks[indices], indices))
-                    total_interactions += 1
+            breakpoint_iteration = [[]]
+            models = []
+            rngs = []
+            for model, bag_breakpoint_iteration, bagged_rng in results:
+                breakpoint_iteration[-1].append(bag_breakpoint_iteration)
+                models.append(after_boosting(term_features, model, main_bin_weights))
+                rngs.append(bagged_rng) # retrieve our rng state since this was used outside of our process
 
-                n_interactions = min(interactions, total_interactions)
-                pair_indices = [heapq.heappop(final_ranks)[1] for _ in range(n_interactions)]
+            if 2 < n_classes:
+                if isinstance(interactions, int):
+                    if interactions != 0:
+                        warn("Detected multiclass problem. Forcing interactions to 0. Multiclass interactions work except for global visualizations, so the line below setting interactions to zero can be disabled if you know what you are doing.")
+                        interactions = 0
+                elif len(interactions) != 0:
+                    raise ValueError("Interactions are not supported for multiclass. Multiclass interactions work except for global visualizations, so this exception can be disabled if you know what you are doing.")
 
-            elif isinstance(interactions, list):
-                pair_indices = interactions
-                # Check and remove duplicate interaction terms
-                existing_terms = set()
-                unique_terms = []
+            if isinstance(interactions, int) and 0 < interactions or not isinstance(interactions, int) and 0 < len(interactions):
+                initial_intercept = np.zeros(Native.get_count_scores_c(n_classes), np.float64)
+                scores_bags = []
+                for model in models:
+                    # TODO: instead of going back to the original data in X, we 
+                    # could use the compressed and already binned data in dataset
+                    scores_bags.append(ebm_decision_function(
+                        X, 
+                        n_samples, 
+                        feature_names_in, 
+                        feature_types_in, 
+                        bins, 
+                        initial_intercept, 
+                        model, 
+                        term_features
+                    ))
 
-                for i, term in enumerate(pair_indices):
-                    sorted_tuple = tuple(sorted(term))
-                    if sorted_tuple not in existing_terms:
-                        existing_terms.add(sorted_tuple)
-                        unique_terms.append(term)
-
-                # Warn the users that we have made change to the interactions list
-                if len(unique_terms) != len(pair_indices):
-                    warn("Detected duplicate interaction terms: removing duplicate interaction terms")
-                    pair_indices = unique_terms
-
-            else:  # pragma: no cover
-                raise RuntimeError("Argument 'interaction' has invalid value")
-
-            feature_groups.extend(pair_indices)
-
-            staged_fit_args_iter = []
-            bagged_seed = init_seed
-            for i in range(self.outer_bags):
-                bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
-                parallel_params = (
-                    scores_train_bags[i],
-                    scores_val_bags[i],
-                    X_pair, 
+                dataset = bin_native_by_dimension(
+                    n_classes, 
+                    2,
+                    bins,
+                    X, 
                     y, 
                     sample_weight, 
-                    pair_indices, 
-                    n_classes, 
-                    self.validation_size, 
-                    model_type, 
-                    update,
-                    nominal_features, 
-                    pair_bin_counts, 
-                    inner_bags, 
-                    self.learning_rate, 
-                    self.min_samples_leaf, 
-                    self.max_leaves, 
-                    early_stopping_rounds, 
-                    early_stopping_tolerance, 
-                    self.max_rounds, 
-                    bagged_seed, 
-                    noise_scale, 
-                    bin_data_weights, 
+                    feature_names_in, 
+                    feature_types_in, 
                 )
-                staged_fit_args_iter.append(parallel_params)
+                del y # we no longer need this, so allow the garbage collector to reclaim it
 
-            del X_pair # allow the garbage collector to dispose of X_pair
+                if isinstance(interactions, int):
+                    _log.info("Estimating with FAST")
 
-            results = provider.parallel(_parallel_cyclic_gradient_boost, staged_fit_args_iter)
+                    parallel_args = []
+                    for idx in range(self.outer_bags):
+                        # TODO: the combinations below should be selected from the non-excluded features 
+                        parallel_args.append(
+                            (
+                                dataset,
+                                bags[idx],
+                                scores_bags[idx],
+                                combinations(range(n_features_in), 2),
+                                Native.InteractionFlags_Default, 
+                                self.min_samples_leaf,
+                                None,
+                            )
+                        )
 
-            only_models = []
-            for model, bag_breakpoint_iteration in results:
-                breakpoint_iteration.append(bag_breakpoint_iteration)
-                only_models.append(after_boosting(pair_indices, model, term_bin_weights))
+                    bagged_ranked_interaction = provider.parallel(_get_ranked_interactions, parallel_args)
 
-            for term_idx in range(len(pair_indices)):
-                bags = []
-                bagged_additive_terms.append(bags)
-                for model in only_models:
-                    bags.append(model[term_idx])
+                    # this holds references to dataset, bags, and scores_bags which we want python to reclaim later
+                    del parallel_args 
 
-        if is_private(self):
-            bin_weights = [None] * len(feature_groups)
-            for feature_group_idx, feature_group in enumerate(feature_groups):
-                feature_idx = feature_group[0] # for now we only support mains for DP models
-                bin_weights[feature_group_idx] = term_bin_weights[feature_idx]
+                    # Select merged pairs
+                    pair_ranks = {}
+                    for n, interaction_strengths_and_indices in enumerate(bagged_ranked_interaction):
+                        interaction_indices =  list(map(operator.itemgetter(1), interaction_strengths_and_indices))
+                        for rank, indices in enumerate(interaction_indices):
+                            old_mean = pair_ranks.get(indices, 0)
+                            pair_ranks[indices] = old_mean + ((rank - old_mean) / (n + 1))
+
+                    final_ranks = []
+                    total_interactions = 0
+                    for indices in pair_ranks:
+                        heapq.heappush(final_ranks, (pair_ranks[indices], indices))
+                        total_interactions += 1
+
+                    n_interactions = min(interactions, total_interactions)
+                    boost_groups = [heapq.heappop(final_ranks)[1] for _ in range(n_interactions)]
+                else:
+                    # Check and remove duplicate interaction terms
+                    uniquifier = set()
+                    boost_groups = []
+                    max_dimensions = 0
+
+                    for feature_idxs in interactions:
+                        # clean these up since we expose them publically inside self.term_features_ 
+                        feature_idxs = tuple(map(int, feature_idxs))
+
+                        max_dimensions = max(max_dimensions, len(feature_idxs))
+                        sorted_tuple = tuple(sorted(feature_idxs))
+                        if sorted_tuple not in uniquifier:
+                            uniquifier.add(sorted_tuple)
+                            boost_groups.append(feature_idxs)
+
+                    # Warn the users that we have made change to the interactions list
+                    if len(boost_groups) != len(interactions):
+                        warn("Detected duplicate interaction terms: removing duplicate interaction terms")
+
+                    if 2 < max_dimensions:
+                        warn("Interactions with 3 or more terms are not graphed in global explanations. Local explanations are still available and exact.")
+
+
+                parallel_args = []
+                for idx in range(self.outer_bags):
+                    parallel_args.append(
+                        (
+                            dataset,
+                            bags[idx],
+                            scores_bags[idx],
+                            boost_groups,
+                            inner_bags,
+                            boost_flags,
+                            self.learning_rate,
+                            self.min_samples_leaf,
+                            self.max_leaves,
+                            early_stopping_rounds,
+                            early_stopping_tolerance,
+                            self.max_rounds,
+                            noise_scale,
+                            bin_data_weights,
+                            rngs[idx],
+                            None,
+                        )
+                    )
+
+                results = provider.parallel(EBMUtils.cyclic_gradient_boost, parallel_args)
+
+                # allow python to reclaim these big memory items via reference counting
+                del parallel_args # this holds references to dataset, scores_bags, and bags
+                del dataset
+                del scores_bags
+
+                breakpoint_iteration.append([])
+                for idx in range(self.outer_bags):
+                    breakpoint_iteration[-1].append(results[idx][1])
+                    models[idx].extend(after_boosting(boost_groups, results[idx][0], main_bin_weights))
+                    rngs[idx] = results[idx][2]
+
+                term_features.extend(boost_groups)
+
+        breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
+
+        _remove_unused_higher_bins(term_features, bins)
+        # removing the higher order terms might allow us to eliminate some extra bins now that couldn't before
+        _deduplicate_bins(bins)
+
+        bagged_scores = (np.array([model[idx] for model in models], np.float64) for idx in range(len(term_features)))
+
+        term_features, bagged_scores = _order_terms(term_features, bagged_scores)
+
+        if is_differential_privacy:
+            # for now we only support mains for DP models
+            bin_weights = [main_bin_weights[feature_idxs[0]] for feature_idxs in term_features]
         else:
-            bin_counts, bin_weights = get_counts_and_weights(X, sample_weight, feature_names_in, feature_types_in, bins, feature_groups)
+            histogram_edges = make_all_histogram_edges(feature_bounds, histogram_counts)
+            bin_weights = make_bin_weights(
+                X, 
+                n_samples,
+                sample_weight, 
+                feature_names_in, 
+                feature_types_in, 
+                bins, 
+                term_features
+            )
 
-        additive_terms = []
-        term_standard_deviations = []
-        for score_tensors in bagged_additive_terms:
-            # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation
-            # It's possible to shift scores arbitary to the intercept, so we should be able to get any desired stddev
+        term_scores, standard_deviations, intercept, bagged_scores = _process_terms(
+            n_classes, 
+            bagged_scores, 
+            bin_weights,
+            bag_weights
+        )
 
-            all_score_tensors = np.array(score_tensors)
-            averaged_model = np.average(all_score_tensors, axis=0)
-            model_errors = np.std(all_score_tensors, axis=0)
-            additive_terms.append(averaged_model)
-            term_standard_deviations.append(model_errors)
+        term_names = _generate_term_names(feature_names_in, term_features)
 
-        if n_classes <= 2:
-            for set_idx in range(len(feature_groups)):
-                score_mean = np.average(additive_terms[set_idx], weights=bin_weights[set_idx])
-                additive_terms[set_idx] = (additive_terms[set_idx] - score_mean)
+        # dependent attributes (can be re-derrived after serialization)
+        self.n_features_in_ = n_features_in # scikit-learn specified name
+        self.term_names_ = term_names
 
-                # Add mean center adjustment back to intercept
-                intercept += score_mean
-        else:
-            # Postprocess model graphs for multiclass
-            multiclass_postprocess2(n_classes, n_samples, additive_terms, intercept, bin_weights)
-
-        restore_missing_value_zeros2(additive_terms, bin_weights)
-        restore_missing_value_zeros2(term_standard_deviations, bin_weights)
-
-        # using numpy operations can change this to np.float64, but scikit-learn uses a float for regression
-        if not is_classifier(self):
-            intercept = float(intercept)
-
-        if is_private(self):
+        if is_differential_privacy:
             self.noise_scale_ = noise_scale
         else:
             # differentially private models would need to pay additional privacy budget to make
             # these public, but they are non-essential so we don't disclose them in the DP setting
 
+            # dependent attributes (can be re-derrived after serialization)
+            self.histogram_edges_ = histogram_edges
+
             self.n_samples_ = n_samples
 
             # per-feature
-            self.histogram_cuts_ = histogram_cuts
             self.histogram_counts_ = histogram_counts
-            self.unique_counts_ = unique_counts
-            self.zero_counts_ = zero_counts
+            self.unique_val_counts_ = unique_val_counts
+            self.zero_val_counts_ = zero_val_counts
 
-            # per-feature group
-            self.bin_counts_ = bin_counts # use bin_weights_ instead for DP models
         if 0 <= n_classes:
             self.classes_ = classes # required by scikit-learn
             self._class_idx_ = class_idx
@@ -787,60 +762,214 @@ class BaseEBM(BaseEstimator):
             self.max_target_ = max_target
 
         # per-feature
-        self.n_features_in_ = n_features_in # required by scikit-learn
+        self.bins_ = bins
         self.feature_names_in_ = feature_names_in # scikit-learn specified name
         self.feature_types_in_ = feature_types_in
-        self.bins_ = bins
-        self.min_vals_ = min_vals
-        self.max_vals_ = max_vals
+        self.feature_bounds_ = feature_bounds
 
-        # per-feature group
-        self.feature_groups_ = feature_groups
+        # per-term
+        self.term_features_ = term_features
         self.bin_weights_ = bin_weights
-        self.bagged_additive_terms_ = bagged_additive_terms
-        self.additive_terms_ = additive_terms
-        self.term_standard_deviations_ = term_standard_deviations
+        self.bagged_scores_ = bagged_scores
+        self.term_scores_ = term_scores
+        self.standard_deviations_ = standard_deviations
 
         # general
         self.intercept_ = intercept
+        self.bag_weights_ = bag_weights
         self.breakpoint_iteration_ = breakpoint_iteration
         self.has_fitted_ = True
+
         return self
 
-    def _to_json(self):
+    def _to_inner_jsonable(self, properties='interpretable'):
+        """ Converts the inner model to a JSONable representation.
+
+        Args:
+            properties: 'minimal', 'interpretable', 'mergeable', 'all'
+
+        Returns:
+            JSONable object
+        """
+
+        check_is_fitted(self, "has_fitted_")
+
+        if properties == 'minimal':
+            level = 0
+        elif properties == 'interpretable':
+            level = 1
+        elif properties == 'mergeable':
+            level = 2
+        elif properties == 'all':
+            level = 3
+        else:
+            msg = f"Unrecognized export properties: {properties}"
+            _log.error(msg)
+            raise ValueError(msg)
+
         j = {}
 
+        # future-proof support for multi-output models
+        outputs = []
+        output = {}
         if is_classifier(self):
-            j['model_type'] = "classification"
-            j['classes'] = self.classes_.tolist()
+            output['output_type'] = 'classification'
+            output['classes'] = self.classes_.tolist()
+            output['link_function'] = 'logit' # logistic is the inverse link function for logit
         else:
-            j['model_type'] = "regression"
-            if hasattr(self, 'min_target_') and not math.isnan(self.min_target_):
-                j['min_target'] = EBMUtils.jsonify_item(self.min_target_)
-            if hasattr(self, 'max_target_') and not math.isnan(self.max_target_):
-                j['max_target'] = EBMUtils.jsonify_item(self.max_target_)
+            output['output_type'] = 'regression'
+            if 3 <= level:
+                min_target = getattr(self, 'min_target_', None)
+                if min_target is not None and not isnan(min_target):
+                    output['min_target'] = EBMUtils.jsonify_item(min_target)
+                max_target = getattr(self, 'max_target_', None)
+                if max_target is not None and not isnan(max_target):
+                    output['max_target'] = EBMUtils.jsonify_item(max_target)
+            output['link_function'] = 'identity'
+        outputs.append(output)
+        j['outputs'] = outputs
+
+        if type(self.intercept_) is float:
+            # scikit-learn requires that we have a single float value as our intercept for compatibility with 
+            # RegressorMixin, but in other scenarios where we want to support things like mulit-output it would be 
+            # easier if the regression intercept were handled identically to classification, so put it in an array
+            # for our JSON format to harmonize the cross-language representation
+            j['intercept'] = [EBMUtils.jsonify_item(self.intercept_)]
+        else:
+            j['intercept'] = EBMUtils.jsonify_lists(self.intercept_.tolist())
+
+        if 3 <= level:
+            noise_scale = getattr(self, 'noise_scale_', None)
+            if noise_scale is not None:
+                j['noise_scale'] = EBMUtils.jsonify_item(noise_scale)
+        if 1 <= level:
+            n_samples = getattr(self, 'n_samples_', None)
+            if n_samples is not None:
+                j['num_samples'] = n_samples
+        if 2 <= level:
+            bag_weights = getattr(self, 'bag_weights_', None)
+            if bag_weights is not None:
+                j['bag_weights'] = EBMUtils.jsonify_lists(bag_weights.tolist())
+        if 3 <= level:
+            breakpoint_iteration = getattr(self, 'breakpoint_iteration_', None)
+            if breakpoint_iteration is not None:
+                j['breakpoint_iteration'] = breakpoint_iteration.tolist()
+
+        if 3 <= level:
+            j['implementation'] = 'python'
+            params = {}
+
+            # TODO: we need to clean up and validate our input parameters before putting them into JSON
+            # if we were pass a numpy array instead of a list or a numpy type these would fail
+            # for now we can just require that anything numpy as input is illegal
+
+            if hasattr(self, 'feature_names'):
+                params['feature_names'] = self.feature_names
+
+            if hasattr(self, 'feature_types'):
+                params['feature_types'] = self.feature_types
+
+            if hasattr(self, 'outer_bags'):
+                params['outer_bags'] = self.outer_bags
+
+            if hasattr(self, 'inner_bags'):
+                params['inner_bags'] = self.inner_bags
+
+            if hasattr(self, 'mains'):
+                params['mains'] = self.mains
+
+            if hasattr(self, 'interactions'):
+                params['interactions'] = self.interactions
+
+            if hasattr(self, 'validation_size'):
+                params['validation_size'] = self.validation_size
+
+            if hasattr(self, 'max_rounds'):
+                params['max_rounds'] = self.max_rounds
+
+            if hasattr(self, 'early_stopping_tolerance'):
+                params['early_stopping_tolerance'] = self.early_stopping_tolerance
+
+            if hasattr(self, 'early_stopping_rounds'):
+                params['early_stopping_rounds'] = self.early_stopping_rounds
+
+            if hasattr(self, 'learning_rate'):
+                params['learning_rate'] = self.learning_rate
+
+            if hasattr(self, 'min_samples_leaf'):
+                params['min_samples_leaf'] = self.min_samples_leaf
+
+            if hasattr(self, 'max_leaves'):
+                params['max_leaves'] = self.max_leaves
+
+            if hasattr(self, 'n_jobs'):
+                params['n_jobs'] = self.n_jobs
+
+            if hasattr(self, 'random_state'):
+                params['random_state'] = self.random_state
+
+            if hasattr(self, 'binning'):
+                params['binning'] = self.binning
+
+            if hasattr(self, 'max_bins'):
+                params['max_bins'] = self.max_bins
+
+            if hasattr(self, 'max_interaction_bins'):
+                params['max_interaction_bins'] = self.max_interaction_bins
+
+            if hasattr(self, 'epsilon'):
+                params['epsilon'] = self.epsilon
+
+            if hasattr(self, 'delta'):
+                params['delta'] = self.delta
+
+            if hasattr(self, 'composition'):
+                params['composition'] = self.composition
+
+            if hasattr(self, 'bin_budget_frac'):
+                params['bin_budget_frac'] = self.bin_budget_frac
+
+            if hasattr(self, 'privacy_schema'):
+                params['privacy_schema'] = self.privacy_schema
+
+            j['implementation_params'] = params
+
+        unique_val_counts = getattr(self, 'unique_val_counts_', None)
+        zero_val_counts = getattr(self, 'zero_val_counts_', None)
+        feature_bounds = getattr(self, 'feature_bounds_', None)
+        histogram_counts = getattr(self, 'histogram_counts_', None)
 
         features = []
-        for i in range(self.n_features_in_):
+        for i in range(len(self.bins_)):
             feature = {}
 
             feature['name'] = self.feature_names_in_[i]
             feature_type = self.feature_types_in_[i]
             feature['type'] = feature_type
 
+            if 1 <= level:
+                if unique_val_counts is not None:
+                    feature['num_unique_vals'] = int(unique_val_counts[i])
+                if zero_val_counts is not None:
+                    feature['num_zero_vals'] = int(zero_val_counts[i])
+
             if feature_type == 'continuous':
                 cuts = []
                 for bins in self.bins_[i]:
                     cuts.append(bins.tolist())
                 feature['cuts'] = cuts
-                if hasattr(self, 'min_vals_') and not math.isnan(self.min_vals_[i]):
-                    feature['min'] = EBMUtils.jsonify_item(self.min_vals_[i])
-                if hasattr(self, 'max_vals_') and not math.isnan(self.max_vals_[i]):
-                    feature['max'] = EBMUtils.jsonify_item(self.max_vals_[i])
-                if hasattr(self, 'histogram_cuts_') and self.histogram_cuts_[i] is not None:
-                    feature['histogram_cuts'] = self.histogram_cuts_[i].tolist()
-                if hasattr(self, 'histogram_counts_') and self.histogram_counts_[i] is not None:
-                    feature['histogram_counts'] = self.histogram_counts_[i].tolist()
+                if 1 <= level:
+                    if feature_bounds is not None:
+                        feature_min = feature_bounds[i, 0]
+                        if not isnan(feature_min):
+                            feature['min'] = EBMUtils.jsonify_item(feature_min)
+                        feature_max = feature_bounds[i, 1]
+                        if not isnan(feature_max):
+                            feature['max'] = EBMUtils.jsonify_item(feature_max)
+                    if histogram_counts is not None:
+                        feature_histogram_counts = histogram_counts[i]
+                        if feature_histogram_counts is not None:
+                            feature['histogram_counts'] = feature_histogram_counts.tolist()
             else:
                 categories = []
                 for bins in self.bins_[i]:
@@ -859,21 +988,109 @@ class BaseEBM(BaseEstimator):
             features.append(feature)
         j['features'] = features
 
-        j['intercept'] = EBMUtils.jsonify_item(self.intercept_) if type(self.intercept_) is float else EBMUtils.jsonify_lists(self.intercept_.tolist())
+        standard_deviations_all = getattr(self, 'standard_deviations_', None)
+        bagged_scores_all = getattr(self, 'bagged_scores_', None)
 
         terms = []
-        for i in range(len(self.feature_groups_)):
+        for term_idx in range(len(self.term_features_)):
             term = {}
-            term['features'] = [self.feature_names_in_[feature_idx] for feature_idx in self.feature_groups_[i]]
-            term['scores'] = EBMUtils.jsonify_lists(self.additive_terms_[i].tolist())
-            if hasattr(self, 'bin_counts_') and self.bin_counts_[i] is not None:
-                term['bin_counts'] = self.bin_counts_[i].tolist()
-            term['bin_weights'] = EBMUtils.jsonify_lists(self.bin_weights_[i].tolist())
+            term['term_features'] = [self.feature_names_in_[feature_idx] for feature_idx in self.term_features_[term_idx]]
+            term['scores'] = EBMUtils.jsonify_lists(self.term_scores_[term_idx].tolist())
+            if 1 <= level:
+                if standard_deviations_all is not None:
+                   standard_deviations = standard_deviations_all[term_idx] 
+                   if standard_deviations is not None:
+                        term['standard_deviations'] = EBMUtils.jsonify_lists(standard_deviations.tolist())
+            if 2 <= level:
+                if bagged_scores_all is not None:
+                   bagged_scores = bagged_scores_all[term_idx] 
+                   if bagged_scores is not None:
+                        term['bagged_scores'] = EBMUtils.jsonify_lists(bagged_scores.tolist())
+            if 1 <= level:
+                term['bin_weights'] = EBMUtils.jsonify_lists(self.bin_weights_[term_idx].tolist())
             
             terms.append(term)
         j['terms'] = terms
 
-        return json.dumps(j, allow_nan=False, indent=2)
+        return j
+
+    def _to_outer_jsonable(self, properties='interpretable'):
+        """ Converts the outer model to a JSONable representation.
+
+        Args:
+            properties: 'minimal', 'interpretable', 'mergeable', 'all'
+
+        Returns:
+            JSONable object
+        """
+
+        # NOTES: When recording edits to the EBM within a single file, we should:
+        #        1) Have the final EBM section first.  This allows people to diff two models and the diffs for 
+        #           the current model (the most important information) will be at the top. If people are comparing a 
+        #           non-edited model to an edited model then they will be comparing the non-edited model to the 
+        #           current model, which is what we want. When people open the file they'll see the current model, 
+        #           which will confuse people less.
+        #        2) Have the initial model LAST.  This will help separate the final and inital model spacially.
+        #           Someone examining the models won't accidentlly stray as easily from the current model into the 
+        #           initial model while examining them. This also helps prevent the diffing tool from getting
+        #           confused and diffing parts of the final model with parts of the initial model if there are
+        #           substantial changes. Two final models that have the same initial model should then have a large
+        #           unmodified section at the bottom, which the diffing tool should easily identify and keep
+        #           together as one block since diffing tools look for longest unmodified sections of text
+        #        3) The edits in the MIDDLE, starting from the LAST edit to the FIRST edit chronologically.
+        #           If two models are derrived from the same initial model, then they will share a common initial
+        #           block of text at the bottom of the file. If the two models share a few edits, then the shared edits
+        #           will be at the bottom and will therefore form a larger block of unmodified text along with the
+        #           initial model.  Since diff tools look for longest unmodified blocks, this will gobble up the initial 
+        #           model and the initial edits together first, and thus leave the final models for comparison with
+        #           eachother. All edits should have a bi-directional nature so someone could start
+        #           from the final model and work backwards to the initial model, or vice versa. The overall file
+        #           can then be viewed as a reverse chronological ordering from the final model back to its
+        #           original/initial model.
+        # - A non-edited EBM file should be saved with just the single JSON for the model and not an initial and 
+        #   final model.  The only section should be marked with the tag "ebm" so that tools that read in EBMs
+        #   Are compatible with both editied and non-edited files.  The tools will always look for the "ebm"
+        #   section, which will be in both non-edited EBMs and edited EBMs at the top.
+        # - The file would look like this for an edited EBMs:
+        #   {
+        #     "version": "1.0"
+        #     "ebm": { FINAL_EBM_JSON }
+        #     "edits": [
+        #       { NEWEST_EDIT_JSON },
+        #       { MID_EDITs_JSON },
+        #       { OLDEST_EDIT_JSON }
+        #     ]
+        #     "initial_ebm": { INITIAL_EBM_JSON }
+        #   }
+        # - The file would look like this for an unedited EBMs:
+        #   {
+        #     "version": "1.0"
+        #     "ebm": { EBM_JSON }
+        #   }
+        # - In python, we could contain these in attributes called "initial_ebm" which would contain a fully formed ebm
+        #   and "edits", which would contain a list of the edits.  These fields wouldn't be present in a scikit-learn
+        #   generated EBM, but would appear if the user edited the EBM, or if they loaded one that had edits.
+
+        inner = self._to_inner_jsonable(properties)
+
+        outer = {}
+        outer['version'] = '1.0'
+        outer['ebm'] = inner
+
+        return outer
+
+    def _to_json(self, properties='interpretable'):
+        """ Converts the model to a JSON representation.
+
+        Args:
+            properties: 'minimal', 'interpretable', 'mergeable', 'all'
+
+        Returns:
+            JSON string
+        """
+
+        outer = self._to_outer_jsonable(properties)
+        return json.dumps(outer, allow_nan=False, indent=2)
 
     def decision_function(self, X):
         """ Predict scores from model before calling the link function.
@@ -886,11 +1103,8 @@ class BaseEBM(BaseEstimator):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples to train on"
-            _log.error(msg)
-            raise ValueError(msg)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+        X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function(
             X, 
@@ -899,8 +1113,8 @@ class BaseEBM(BaseEstimator):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
-            self.feature_groups_
+            self.term_scores_, 
+            self.term_features_
         )
 
     def explain_global(self, name=None):
@@ -918,25 +1132,25 @@ class BaseEBM(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        mod_counts = remove_last2(getattr(self, 'bin_counts_', self.bin_weights_), self.bin_weights_)
-        mod_additive_terms = remove_last2(self.additive_terms_, self.bin_weights_)
-        mod_term_standard_deviations = remove_last2(self.term_standard_deviations_, self.bin_weights_)
-        for feature_group_idx, feature_group in enumerate(self.feature_groups_):
-            mod_additive_terms[feature_group_idx] = trim_tensor(mod_additive_terms[feature_group_idx], trim_low=[True] * len(feature_group))
-            mod_term_standard_deviations[feature_group_idx] = trim_tensor(mod_term_standard_deviations[feature_group_idx], trim_low=[True] * len(feature_group))
-            mod_counts[feature_group_idx] = trim_tensor(mod_counts[feature_group_idx], trim_low=[True] * len(feature_group))
-
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
-        for feature_group_index, _ in enumerate(self.feature_groups_):
-            errors = mod_term_standard_deviations[feature_group_index]
-            scores = mod_additive_terms[feature_group_index]
-
+        for scores, errors in zip(self.term_scores_, self.standard_deviations_):
             lower_bound = min(lower_bound, np.min(scores - errors))
             upper_bound = max(upper_bound, np.max(scores + errors))
 
         bounds = (lower_bound, upper_bound)
+
+        mod_weights = remove_last2(self.bin_weights_, self.bin_weights_)
+        mod_term_scores = remove_last2(self.term_scores_, self.bin_weights_)
+        mod_standard_deviations = remove_last2(self.standard_deviations_, self.bin_weights_)
+        for term_idx, feature_idxs in enumerate(self.term_features_):
+            mod_term_scores[term_idx] = trim_tensor(mod_term_scores[term_idx], trim_low=[True] * len(feature_idxs))
+            mod_standard_deviations[term_idx] = trim_tensor(mod_standard_deviations[term_idx], trim_low=[True] * len(feature_idxs))
+            mod_weights[term_idx] = trim_tensor(mod_weights[term_idx], trim_low=[True] * len(feature_idxs))
+
+        term_names = self.term_names_
+        term_types = _generate_term_types(self.feature_types_in_, self.term_features_)
 
         native = Native.get_native_singleton()
 
@@ -944,43 +1158,62 @@ class BaseEBM(BaseEstimator):
         data_dicts = []
         feature_list = []
         density_list = []
-        for feature_group_index, feature_indexes in enumerate(
-            self.feature_groups_
-        ):
-            model_graph = mod_additive_terms[feature_group_index]
+        keep_idxs = []
+        for term_idx, feature_idxs in enumerate(self.term_features_):
+            model_graph = mod_term_scores[term_idx]
 
             # NOTE: This uses stddev. for bounds, consider issue warnings.
-            errors = mod_term_standard_deviations[feature_group_index]
+            errors = mod_standard_deviations[term_idx]
 
-            if len(feature_indexes) == 1:
-                feature_index0 = feature_indexes[0]
+            if len(feature_idxs) == 1:
+                keep_idxs.append(term_idx)
+
+                feature_index0 = feature_idxs[0]
 
                 feature_bins = self.bins_[feature_index0][0]
                 if isinstance(feature_bins, dict):
                     # categorical
+
+                    # TODO: this will fail if we have multiple categories in a bin
                     bin_labels = list(feature_bins.keys())
+
+                    histogram_counts = getattr(self, 'histogram_counts_', None)
+                    if histogram_counts is not None:
+                        histogram_counts = histogram_counts[feature_index0]
+
+                    if histogram_counts is None:
+                        histogram_counts = self.bin_weights_[term_idx]
+
                     if len(bin_labels) != model_graph.shape[0]:
                         bin_labels.append('DPOther')
+                        histogram_counts = histogram_counts[1:]
+                    else:
+                        histogram_counts = histogram_counts[1:-1]
 
                     names=bin_labels
-                    densities = list(mod_counts[feature_group_index])
+                    densities = list(histogram_counts)
                 else:
                     # continuous
-                    min_val = self.min_vals_[feature_index0]
-                    max_val = self.max_vals_[feature_index0]
+                    min_feature_val = np.nan
+                    max_feature_val = np.nan
+                    feature_bounds = getattr(self, 'feature_bounds_', None)
+                    if feature_bounds is not None:
+                        min_feature_val = feature_bounds[feature_index0, 0]
+                        max_feature_val = feature_bounds[feature_index0, 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
+                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_feature_val, max_feature_val)
+                    bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
 
-                    bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
-
-                    if is_private(self):
-                        names = feature_bins
-                        densities = list(mod_counts[feature_group_index])
-                    else:
-                        names = self.histogram_cuts_[feature_index0]
+                    histogram_edges = getattr(self, 'histogram_edges_', None)
+                    if histogram_edges is not None:
+                        histogram_edges = histogram_edges[feature_index0]
+                    if histogram_edges is not None:
+                        names = list(histogram_edges)
                         densities = list(self.histogram_counts_[feature_index0][1:-1])
-                    names = list(np.concatenate(([min_val], names, [max_val])))
+                    else:
+                        names = bin_labels
+                        densities = list(mod_weights[term_idx])
 
                 scores = list(model_graph)
                 upper_bounds = list(model_graph + errors)
@@ -1019,9 +1252,11 @@ class BaseEBM(BaseEstimator):
                     }
 
                 data_dicts.append(data_dict)
-            elif len(feature_indexes) == 2:
-                bin_levels = self.bins_[feature_indexes[0]]
-                feature_bins = bin_levels[1] if 1 < len(bin_levels) else bin_levels[0]
+            elif len(feature_idxs) == 2:
+                keep_idxs.append(term_idx)
+
+                bin_levels = self.bins_[feature_idxs[0]]
+                feature_bins = bin_levels[min(len(feature_idxs), len(bin_levels)) - 1]
                 if isinstance(feature_bins, dict):
                     # categorical
                     bin_labels = list(feature_bins.keys())
@@ -1029,18 +1264,21 @@ class BaseEBM(BaseEstimator):
                         bin_labels.append('DPOther')
                 else:
                     # continuous
-                    min_val = self.min_vals_[feature_indexes[0]]
-                    max_val = self.max_vals_[feature_indexes[0]]
+                    min_feature_val = np.nan
+                    max_feature_val = np.nan
+                    feature_bounds = getattr(self, 'feature_bounds_', None)
+                    if feature_bounds is not None:
+                        min_feature_val = feature_bounds[feature_idxs[0], 0]
+                        max_feature_val = feature_bounds[feature_idxs[0], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
+                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_feature_val, max_feature_val)
+                    bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
 
-                    bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
                 bin_labels_left = bin_labels
 
-
-                bin_levels = self.bins_[feature_indexes[1]]
-                feature_bins = bin_levels[1] if 1 < len(bin_levels) else bin_levels[0]
+                bin_levels = self.bins_[feature_idxs[1]]
+                feature_bins = bin_levels[min(len(feature_idxs), len(bin_levels)) - 1]
                 if isinstance(feature_bins, dict):
                     # categorical
                     bin_labels = list(feature_bins.keys())
@@ -1048,13 +1286,17 @@ class BaseEBM(BaseEstimator):
                         bin_labels.append('DPOther')
                 else:
                     # continuous
-                    min_val = self.min_vals_[feature_indexes[1]]
-                    max_val = self.max_vals_[feature_indexes[1]]
+                    min_feature_val = np.nan
+                    max_feature_val = np.nan
+                    feature_bounds = getattr(self, 'feature_bounds_', None)
+                    if feature_bounds is not None:
+                        min_feature_val = feature_bounds[feature_idxs[1], 0]
+                        max_feature_val = feature_bounds[feature_idxs[1], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
+                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_feature_val, max_feature_val)
+                    bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
 
-                    bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
                 bin_labels_right = bin_labels
 
 
@@ -1077,12 +1319,14 @@ class BaseEBM(BaseEstimator):
                 }
                 data_dicts.append(data_dict)
             else:  # pragma: no cover
-                raise Exception("Interactions greater than 2 not supported.")
+                warn(f"Dropping feature {term_names[term_idx]} from explanation since we can't graph more than 2 dimensions.")
+
+        importances = self.term_importances()
 
         overall_dict = {
             "type": "univariate",
-            "names": self.term_names_,
-            "scores": self.feature_importances_,
+            "names": [term_names[i] for i in keep_idxs],
+            "scores": [importances[i] for i in keep_idxs],
         }
         internal_obj = {
             "overall": overall_dict,
@@ -1099,10 +1343,10 @@ class BaseEBM(BaseEstimator):
         return EBMExplanation(
             "global",
             internal_obj,
-            feature_names=self.term_names_,
-            feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in self.term_types_],
+            feature_names=[term_names[i] for i in keep_idxs],
+            feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in [term_types[i] for i in keep_idxs]],
             name=name,
-            selector=gen_global_selector2(getattr(self, 'n_samples_', None), self.n_features_in_, self.term_names_, ['categorical' if x == 'nominal' or x == 'ordinal' else x for x in self.term_types_], getattr(self, 'unique_counts_', None), getattr(self, 'zero_counts_', None)),
+            selector=gen_global_selector2(getattr(self, 'n_samples_', None), self.n_features_in_, [term_names[i] for i in keep_idxs], ['categorical' if x == 'nominal' or x == 'ordinal' else x for x in [term_types[i] for i in keep_idxs]], getattr(self, 'unique_val_counts_', None), getattr(self, 'zero_val_counts_', None)),
         )
 
     def explain_local(self, X, y=None, name=None):
@@ -1119,97 +1363,100 @@ class BaseEBM(BaseEstimator):
         """
 
         # Produce feature value pairs for each sample.
-        # Values are the model graph score per respective feature group.
-        if name is None:
-            name = gen_name_from_class(self)
+        # Values are the model graph score per respective term.
 
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples to train on"
-            _log.error(msg)
-            raise ValueError(msg)
+        n_samples = None
+        if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            n_samples = len(y)
 
-        X_unified, y, _, classes_temp, _, _ = unify_data2(
-            is_classifier(self), 
-            X, 
-            y, 
-            None, 
-            feature_names=self.feature_names_in_, 
-            feature_types=self.feature_types_in_
-        )
-
-        if is_classifier(self) and y is not None:
-            y = np.array([self._class_idx_[el] for el in classes_temp[y]], dtype=np.int64)
-
-        data_dicts = []
-        intercept = self.intercept_
-        if not is_classifier(self) or len(self.classes_) <= 2:
-            if isinstance(self.intercept_, np.ndarray) or isinstance(
-                self.intercept_, list
-            ):
-                intercept = intercept[0]
-
-        for _ in range(n_samples):
-            data_dict = {
-                "type": "univariate",
-                "names": [None] * len(self.feature_groups_),
-                "scores": [None] * len(self.feature_groups_),
-                "values": [None] * len(self.feature_groups_),
-                "extra": {"names": ["Intercept"], "scores": [intercept], "values": [1]},
-            }
             if is_classifier(self):
-                data_dict["meta"] = {
-                    "label_names": self.classes_.tolist()  # Classes should be numpy array, convert to list.
-                }
-            data_dicts.append(data_dict)
+                y = typify_classification(y)
+                y = np.array([self._class_idx_[el] for el in y], dtype=np.int64)
+            else:
+                y = y.astype(np.float64, copy=False)
+
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+        X, n_samples = clean_X(X, min_cols, n_samples)
 
         term_names = self.term_names_
-        for set_idx, binned_data in eval_terms(X, self.feature_names_in_, self.feature_types_in_, self.bins_, self.feature_groups_):
-            scores = self.additive_terms_[set_idx][tuple(binned_data)]
-            feature_group = self.feature_groups_[set_idx]
-            for row_idx in range(n_samples):
-                feature_name = term_names[set_idx]
-                data_dicts[row_idx]["names"][set_idx] = feature_name
-                data_dicts[row_idx]["scores"][set_idx] = scores[row_idx]
-                if len(feature_group) == 1:
-                    data_dicts[row_idx]["values"][set_idx] = X_unified[row_idx, feature_group[0]]
-                else:
-                    data_dicts[row_idx]["values"][set_idx] = ""
+        term_types = _generate_term_types(self.feature_types_in_, self.term_features_)
 
-        is_classification = is_classifier(self)
-
-        scores = ebm_decision_function(
-            X, 
-            n_samples, 
-            self.feature_names_in_, 
-            self.feature_types_in_, 
-            self.bins_, 
-            self.intercept_, 
-            self.additive_terms_, 
-            self.feature_groups_
-        )
-
-        if is_classification:
-            # Handle binary classification case -- softmax only works with 0s appended
-            if scores.ndim == 1:
-                scores = np.c_[np.zeros(scores.shape), scores]
-
-            scores = softmax(scores)
-
+        data_dicts = []
         perf_list = []
-        perf_dicts = gen_perf_dicts(scores, y, is_classification)
-        for row_idx in range(n_samples):
-            perf = None if perf_dicts is None else perf_dicts[row_idx]
-            perf_list.append(perf)
-            data_dicts[row_idx]["perf"] = perf
+        if n_samples == 0:
+            X_unified = np.empty((0, len(self.feature_names_in_)), dtype=np.object_)
+        else:
+            X_unified, _, _ = unify_data2(X, n_samples, self.feature_names_in_, self.feature_types_in_, True)
 
-        selector = gen_local_selector(data_dicts, is_classification=is_classification)
+            intercept = self.intercept_
+            if not is_classifier(self) or len(self.classes_) <= 2:
+                if isinstance(intercept, np.ndarray) or isinstance(intercept, list):
+                    intercept = intercept[0]
 
-        additive_terms = remove_last2(self.additive_terms_, self.bin_weights_)
-        for feature_group_idx, feature_group in enumerate(self.feature_groups_):
-            additive_terms[feature_group_idx] = trim_tensor(additive_terms[feature_group_idx], trim_low=[True] * len(feature_group))
+            for _ in range(n_samples):
+                data_dict = {
+                    "type": "univariate",
+                    "names": [None] * len(self.term_features_),
+                    "scores": [None] * len(self.term_features_),
+                    "values": [None] * len(self.term_features_),
+                    "extra": {"names": ["Intercept"], "scores": [intercept], "values": [1]},
+                }
+                if is_classifier(self):
+                    data_dict["meta"] = {
+                        "label_names": self.classes_.tolist()  # Classes should be numpy array, convert to list.
+                    }
+                data_dicts.append(data_dict)
+
+            for term_idx, bin_indexes in eval_terms(X, n_samples, self.feature_names_in_, self.feature_types_in_, self.bins_, self.term_features_):
+                scores = self.term_scores_[term_idx][tuple(bin_indexes)]
+                feature_idxs = self.term_features_[term_idx]
+                for row_idx in range(n_samples):
+                    term_name = term_names[term_idx]
+                    data_dicts[row_idx]["names"][term_idx] = term_name
+                    data_dicts[row_idx]["scores"][term_idx] = scores[row_idx]
+                    if len(feature_idxs) == 1:
+                        data_dicts[row_idx]["values"][term_idx] = X_unified[row_idx, feature_idxs[0]]
+                    else:
+                        data_dicts[row_idx]["values"][term_idx] = ""
+
+            pred = ebm_decision_function(
+                X, 
+                n_samples, 
+                self.feature_names_in_, 
+                self.feature_types_in_, 
+                self.bins_, 
+                self.intercept_, 
+                self.term_scores_, 
+                self.term_features_
+            )
+
+            if is_classifier(self):
+                if len(self.classes_) == 1:
+                    # if there is only one class then all probabilities are 100%
+                    pred = np.full((n_samples, 1), 1, np.float64)
+                else:
+                    if pred.ndim == 1:
+                        # Handle binary classification case -- softmax only works with 0s appended
+                        pred = np.c_[np.zeros(pred.shape), pred]
+
+                    pred = softmax(pred)
+
+            perf_dicts = gen_perf_dicts(pred, y, is_classifier(self))
+            for row_idx in range(n_samples):
+                perf = None if perf_dicts is None else perf_dicts[row_idx]
+                perf_list.append(perf)
+                data_dicts[row_idx]["perf"] = perf
+
+        selector = gen_local_selector(data_dicts, is_classification=is_classifier(self))
+
+        term_scores = remove_last2(self.term_scores_, self.bin_weights_)
+        for term_idx, feature_idxs in enumerate(self.term_features_):
+            term_scores[term_idx] = trim_tensor(term_scores[term_idx], trim_low=[True] * len(feature_idxs))
 
         internal_obj = {
             "overall": None,
@@ -1218,7 +1465,7 @@ class BaseEBM(BaseEstimator):
                 {
                     "explanation_type": "ebm_local",
                     "value": {
-                        "scores": additive_terms,
+                        "scores": term_scores,
                         "intercept": self.intercept_,
                         "perf": perf_list,
                     },
@@ -1235,33 +1482,45 @@ class BaseEBM(BaseEstimator):
         return EBMExplanation(
             "local",
             internal_obj,
-            feature_names=self.term_names_,
-            feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in self.term_types_],
-            name=name,
+            feature_names=term_names,
+            feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in term_types],
+            name=gen_name_from_class(self) if name is None else name,
             selector=selector,
         )
 
-    @property
-    def feature_importances_(self):
-        feature_importances = []
-        for i in range(len(self.feature_groups_)):
-            mean_abs_score = np.abs(self.additive_terms_[i])
-            if is_classifier(self) and 2 < len(self.classes_):
-                mean_abs_score = np.average(mean_abs_score, axis=mean_abs_score.ndim - 1)
-            mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
-            feature_importances.append(mean_abs_score)
-        return feature_importances
+    def term_importances(self, importance_type='avg_weight'):
+        """ Provides the term importances
 
-    @property
-    def term_names_(self):
-        return [EBMUtils.gen_feature_group_name(feature_idxs, self.feature_names_in_) for feature_idxs in self.feature_groups_]
+        Args:
+            importance_type: the type of term importance requested ('avg_weight', 'min_max')
 
-    @property
-    def term_types_(self):
-        return [EBMUtils.gen_feature_group_type(feature_idxs, self.feature_types_in_) for feature_idxs in self.feature_groups_]
+        Returns:
+            An array term importances with one importance per additive term
+        """
 
+        check_is_fitted(self, "has_fitted_")
 
-class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
+        if importance_type == 'avg_weight':
+            importances = np.empty(len(self.term_features_), np.float64)
+            for i in range(len(self.term_features_)):
+                if is_classifier(self):
+                    mean_abs_score = 0 # everything is useless if we're predicting 1 class
+                    if 1 < len(self.classes_):
+                        mean_abs_score = np.abs(self.term_scores_[i])
+                        if 2 < len(self.classes_):
+                            mean_abs_score = np.average(mean_abs_score, axis=-1)
+                        mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
+                else:
+                    mean_abs_score = np.abs(self.term_scores_[i])
+                    mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
+                importances.itemset(i, mean_abs_score)
+            return importances
+        elif importance_type == 'min_max':
+            return np.array([np.max(tensor) - np.min(tensor) for tensor in self.term_scores_], np.float64)
+        else:
+            raise ValueError(f"Unrecognized importance_type: {importance_type}")
+
+class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog. """
 
     # TODO PK v.3 use underscores here like ClassifierMixin._estimator_type?
@@ -1305,7 +1564,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
             max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
-            binning: Method to bin values for pre-processing. Choose "uniform", "quantile" or "quantile_humanized".
+            binning: Method to bin values for pre-processing. Choose "uniform", "quantile", or "rounded_quantile". 'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
@@ -1361,11 +1620,12 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples to train on"
-            _log.error(msg)
-            raise ValueError(msg)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+        X, n_samples = clean_X(X, min_cols)
+
+        if len(self.classes_) == 1:
+            # if there is only one class then all probabilities are 100%
+            return np.full((n_samples, 1), 1, np.float64)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -1374,12 +1634,12 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
-            self.feature_groups_
+            self.term_scores_, 
+            self.term_features_
         )
 
-        # Handle binary classification case -- softmax only works with 0s appended
         if log_odds_vector.ndim == 1:
+            # Handle binary classification case -- softmax only works with 0s appended
             log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
 
         return softmax(log_odds_vector)
@@ -1395,11 +1655,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples to train on"
-            _log.error(msg)
-            raise ValueError(msg)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+        X, n_samples = clean_X(X, min_cols)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -1408,12 +1665,13 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
-            self.feature_groups_
+            self.term_scores_, 
+            self.term_features_
         )
 
-        # Handle binary classification case -- softmax only works with 0s appended
+        # TODO: for binary classification we could just look for values greater than zero instead of expanding
         if log_odds_vector.ndim == 1:
+            # Handle binary classification case -- softmax only works with 0s appended
             log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
 
         return self.classes_[np.argmax(log_odds_vector, axis=1)]
@@ -1423,25 +1681,16 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
         Args:
             X: Numpy array for samples.
-            output: Prediction type to output (i.e. one of 'probabilities', 'logits', 'labels')
+            output: Prediction type to output (i.e. one of 'probabilities', 'labels', 'logits')
 
         Returns:
             Predictions and local explanations for each sample.
         """
 
-        allowed_outputs = ['probabilities', 'logits', 'labels']
-        if output not in allowed_outputs:
-            msg = "Argument 'output' has invalid value.  Got '{}', expected one of " 
-            + repr(allowed_outputs)
-            raise ValueError(msg.format(output))
-
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples to train on"
-            _log.error(msg)
-            raise ValueError(msg)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+        X, n_samples = clean_X(X, min_cols)
 
         scores, explanations = ebm_decision_function_and_explain(
             X, 
@@ -1450,24 +1699,33 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
-            self.feature_groups_
+            self.term_scores_, 
+            self.term_features_
         )
 
         if output == 'probabilities':
-            if scores.ndim == 1:
-                scores= np.c_[np.zeros(scores.shape), scores]
-            result = softmax(scores)
+            if len(self.classes_) == 1:
+                # if there is only one class then all probabilities are 100%
+                result = np.full((n_samples, 1), 1, np.float64)
+            else:
+                if scores.ndim == 1:
+                    scores= np.c_[np.zeros(scores.shape), scores]
+                result = softmax(scores)
         elif output == 'labels':
+            # TODO: for binary classification we could just look for values greater than zero instead of expanding
             if scores.ndim == 1:
                 scores = np.c_[np.zeros(scores.shape), scores]
             result = self.classes_[np.argmax(scores, axis=1)]
-        else:
+        elif output == 'logits':
             result = scores
+        else:
+            msg = f"Argument 'output' has invalid value. Got '{output}', expected 'probabilities', 'labels', or 'logits'" 
+            _log.error(msg)
+            raise ValueError(msg)
 
         return result, explanations
 
-class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
+class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     """ Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog. """
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
@@ -1511,7 +1769,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage on main effects.
             max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
-            binning: Method to bin values for pre-processing. Choose "uniform", "quantile", or "quantile_humanized".
+            binning: Method to bin values for pre-processing. Choose "uniform", "quantile", or "rounded_quantile". 'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
@@ -1566,11 +1824,8 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples to train on"
-            _log.error(msg)
-            raise ValueError(msg)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+        X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function(
             X, 
@@ -1579,8 +1834,8 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
-            self.feature_groups_
+            self.term_scores_, 
+            self.term_features_
         )
 
     def predict_and_contrib(self, X):
@@ -1595,11 +1850,8 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
 
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples to train on"
-            _log.error(msg)
-            raise ValueError(msg)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+        X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function_and_explain(
             X, 
@@ -1608,12 +1860,12 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
-            self.feature_groups_
+            self.term_scores_, 
+            self.term_features_
         )
 
 
-class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
+class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     """ Differentially Private Explainable Boosting Classifier."""
 
     available_explanations = ["global", "local"]
@@ -1642,7 +1894,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         max_leaves=3,
         # Overall
         n_jobs=-2,
-        random_state=42,
+        random_state=None,
         # Differential Privacy
         epsilon=1,
         delta=1e-5,
@@ -1656,7 +1908,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
-            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
+            binning: Method to bin values for pre-processing. 'private' is the only legal option currently for DP.
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             outer_bags: Number of outer bags.
             learning_rate: Learning rate for boosting.
@@ -1718,11 +1970,12 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples to train on"
-            _log.error(msg)
-            raise ValueError(msg)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+        X, n_samples = clean_X(X, min_cols)
+
+        if len(self.classes_) == 1:
+            # if there is only one class then all probabilities are 100%
+            return np.full((n_samples, 1), 1, np.float64)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -1731,12 +1984,12 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
-            self.feature_groups_
+            self.term_scores_, 
+            self.term_features_
         )
 
-        # Handle binary classification case -- softmax only works with 0s appended
         if log_odds_vector.ndim == 1:
+            # Handle binary classification case -- softmax only works with 0s appended
             log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
 
         return softmax(log_odds_vector)
@@ -1752,11 +2005,8 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples to train on"
-            _log.error(msg)
-            raise ValueError(msg)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+        X, n_samples = clean_X(X, min_cols)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -1765,18 +2015,19 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
-            self.feature_groups_
+            self.term_scores_, 
+            self.term_features_
         )
 
-        # Handle binary classification case -- softmax only works with 0s appended
+        # TODO: for binary classification we could just look for values greater than zero instead of expanding
         if log_odds_vector.ndim == 1:
+            # Handle binary classification case -- softmax only works with 0s appended
             log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
 
         return self.classes_[np.argmax(log_odds_vector, axis=1)]
 
 
-class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
+class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     """ Differentially Private Explainable Boosting Regressor."""
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
@@ -1806,7 +2057,7 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         max_leaves=3,
         # Overall
         n_jobs=-2,
-        random_state=42,
+        random_state=None,
         # Differential Privacy
         epsilon=1,
         delta=1e-5,
@@ -1820,7 +2071,7 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
-            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
+            binning: Method to bin values for pre-processing. 'private' is the only legal option currently for DP.
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             outer_bags: Number of outer bags.
             learning_rate: Learning rate for boosting.
@@ -1882,11 +2133,9 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples to train on"
-            _log.error(msg)
-            raise ValueError(msg)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+
+        X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function(
             X, 
@@ -1895,7 +2144,7 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
-            self.feature_groups_
+            self.term_scores_, 
+            self.term_features_
         )
 

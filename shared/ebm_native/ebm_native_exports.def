@@ -1,41 +1,48 @@
 LIBRARY
 
 EXPORTS
-  SetLogMessageFunction
+  SetLogCallback
   SetTraceLevel
   GetTraceLevelString
-  SizeDataSetHeader
-  FillDataSetHeader
-  SizeFeature
-  FillFeature
-  SizeWeight
-  FillWeight
-  SizeClassificationTarget
-  FillClassificationTarget
-  SizeRegressionTarget
-  FillRegressionTarget
-  CreateClassificationBooster
-  CreateRegressionBooster
-  CreateBoosterView
-  GenerateModelUpdate
-  GetModelUpdateSplits
-  GetModelUpdateExpanded
-  SetModelUpdateExpanded
-  ApplyModelUpdate
-  GetBestModelFeatureGroup
-  GetCurrentModelFeatureGroup
-  FreeBooster
-  CreateClassificationInteractionDetector
-  CreateRegressionInteractionDetector
-  CalculateInteractionScore
-  FreeInteractionDetector
+  CleanFloats
+  MeasureRNG
+  InitRNG
+  CopyRNG
+  BranchRNG
+  GenerateSeed
+  GenerateGaussianRandom
   GetHistogramCutCount
+  CutUniform
   CutQuantile
   CutWinsorized
-  CutUniform
-  Discretize
-  Softmax
   SuggestGraphBounds
-  GenerateRandomNumber
+  Discretize
+  MeasureDataSetHeader
+  MeasureFeature
+  MeasureWeight
+  MeasureClassificationTarget
+  MeasureRegressionTarget
+  FillDataSetHeader
+  FillFeature
+  FillWeight
+  FillClassificationTarget
+  FillRegressionTarget
+  CheckDataSet
+  ExtractDataSetHeader
+  ExtractBinCounts
+  ExtractTargetClasses
   SampleWithoutReplacement
-  StratifiedSamplingWithoutReplacement
+  SampleWithoutReplacementStratified
+  CreateBooster
+  CreateBoosterView
+  FreeBooster
+  GenerateTermUpdate
+  GetTermUpdateSplits
+  GetTermUpdate
+  SetTermUpdate
+  ApplyTermUpdate
+  GetBestTermScores
+  GetCurrentTermScores
+  CreateInteractionDetector
+  FreeInteractionDetector
+  CalcInteractionStrength

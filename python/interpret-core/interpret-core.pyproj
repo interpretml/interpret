@@ -11,7 +11,7 @@
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <InterpreterId>CondaEnv|CondaEnv|testenv</InterpreterId>
+    <InterpreterId>MSBuild|env|$(MSBuildProjectFullPath)</InterpreterId>
     <TestFramework>Pytest</TestFramework>
     <IsWindowsApplication>False</IsWindowsApplication>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
@@ -27,6 +27,7 @@
     <Content Include="interpret\visual\assets\favicon.ico" />
     <Content Include="interpret\visual\assets\udash.css" />
     <Content Include="interpret\visual\assets\udash.js" />
+    <Content Include="js\package.json" />
     <Content Include="js\src\index.js" />
     <Content Include="js\webpack.config.js" />
     <Content Include="requirements.txt" />
@@ -63,11 +64,16 @@
     <Compile Include="interpret\glassbox\decisiontree.py" />
     <Compile Include="interpret\glassbox\ebm\bin.py" />
     <Compile Include="interpret\glassbox\ebm\ebm.py" />
-    <Compile Include="interpret\glassbox\ebm\internal.py" />
     <Compile Include="interpret\glassbox\ebm\postprocessing.py" />
+    <Compile Include="interpret\glassbox\ebm\research\composite_importance.py" />
+    <Compile Include="interpret\glassbox\ebm\research\purify.py" />
+    <Compile Include="interpret\glassbox\ebm\research\test\test_composite_importance.py" />
+    <Compile Include="interpret\glassbox\ebm\research\test\test_purify.py" />
+    <Compile Include="interpret\glassbox\ebm\research\test\__init__.py" />
+    <Compile Include="interpret\glassbox\ebm\research\__init__.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_bin.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_ebm.py" />
-    <Compile Include="interpret\glassbox\ebm\test\test_internal.py" />
+    <Compile Include="interpret\glassbox\ebm\test\test_ebm_utils.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_postprocessing.py" />
     <Compile Include="interpret\glassbox\ebm\test\__init__.py" />
     <Compile Include="interpret\glassbox\ebm\utils.py" />
@@ -103,10 +109,17 @@
     <Compile Include="interpret\test\__init__.py" />
     <Compile Include="interpret\utils\all.py" />
     <Compile Include="interpret\utils\environment.py" />
+    <Compile Include="interpret\utils\_interaction.py" />
     <Compile Include="interpret\utils\shap.py" />
+    <Compile Include="interpret\utils\test\test_binning.py" />
     <Compile Include="interpret\utils\test\test_environment.py" />
+    <Compile Include="interpret\utils\test\test_interaction.py" />
+    <Compile Include="interpret\utils\test\test_native.py" />
     <Compile Include="interpret\utils\test\test_utils.py" />
     <Compile Include="interpret\utils\test\__init__.py" />
+    <Compile Include="interpret\utils\_binning.py" />
+    <Compile Include="interpret\utils\_native.py" />
+    <Compile Include="interpret\utils\_privacy.py" />
     <Compile Include="interpret\utils\__init__.py" />
     <Compile Include="interpret\version.py" />
     <Compile Include="interpret\visual\dashboard.py" />
@@ -139,6 +152,8 @@
     <Folder Include="interpret\ext\test" />
     <Folder Include="interpret\glassbox" />
     <Folder Include="interpret\glassbox\ebm" />
+    <Folder Include="interpret\glassbox\ebm\research\" />
+    <Folder Include="interpret\glassbox\ebm\research\test\" />
     <Folder Include="interpret\glassbox\ebm\test" />
     <Folder Include="interpret\glassbox\test" />
     <Folder Include="interpret\greybox" />
@@ -156,9 +171,15 @@
     <Folder Include="js\src" />
   </ItemGroup>
   <ItemGroup>
-    <InterpreterReference Include="CondaEnv|CondaEnv|testenv" />
-    <InterpreterReference Include="Global|ContinuumAnalytics|Anaconda37-64" />
-    <InterpreterReference Include="Global|PythonCore|3.7" />
+    <Interpreter Include="env\">
+      <Id>env</Id>
+      <Version>3.9</Version>
+      <Description>env (Python 3.9 (64-bit))</Description>
+      <InterpreterPath>Scripts\python.exe</InterpreterPath>
+      <WindowsInterpreterPath>Scripts\pythonw.exe</WindowsInterpreterPath>
+      <PathEnvironmentVariable>PYTHONPATH</PathEnvironmentVariable>
+      <Architecture>X64</Architecture>
+    </Interpreter>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
 </Project>

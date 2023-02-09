@@ -24,11 +24,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "root", "root", "{F5894036-A
 		..\..\CHANGELOG.md = ..\..\CHANGELOG.md
 		..\..\CONTRIBUTING.md = ..\..\CONTRIBUTING.md
 		..\..\README.md = ..\..\README.md
+		vs_python_setup.txt = vs_python_setup.txt
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "R", "R", "{3939C139-57E9-4CFD-AE75-710460EF590D}"
 	ProjectSection(SolutionItems) = preProject
-		..\..\R\build_R.bat = ..\..\R\build_R.bat
+		..\..\R\build.R = ..\..\R\build.R
 		..\..\R\cran_formatted_licence.txt = ..\..\R\cran_formatted_licence.txt
 		..\..\R\DESCRIPTION = ..\..\R\DESCRIPTION
 		..\..\R\NAMESPACE = ..\..\R\NAMESPACE
@@ -45,6 +46,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "R", "R", "{71DB2E08-9023-4A
 	ProjectSection(SolutionItems) = preProject
 		..\..\R\R\binning.R = ..\..\R\R\binning.R
 		..\..\R\R\booster.R = ..\..\R\R\booster.R
+		..\..\R\R\dataset.R = ..\..\R\R\dataset.R
 		..\..\R\R\ebm.R = ..\..\R\R\ebm.R
 		..\..\R\R\interaction_detector.R = ..\..\R\R\interaction_detector.R
 		..\..\R\R\random_numbers.R = ..\..\R\R\random_numbers.R

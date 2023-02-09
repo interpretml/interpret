@@ -7,13 +7,13 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <vector>
-#include <functional>
+#include <functional> // std::function
 #include <memory>
 
 #include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
 #include "common_c.h" // INLINE_ALWAYS
-#include "bridge_c.h"
+#include "bridge_c.h" // Config
 #include "zones.h"
 
 #include "registration_exceptions.hpp"
@@ -25,6 +25,9 @@ namespace DEFINED_ZONE_NAME {
 
 class ParamBase {
    const char * const m_sParamName;
+
+   void * operator new(std::size_t) = delete; // no virtual destructor so disallow pointer delete
+   void operator delete (void *) = delete; // no virtual destructor so disallow pointer delete
 
 protected:
 
@@ -38,36 +41,42 @@ public:
 };
 
 class FloatParam final : public ParamBase {
-   const double m_defaultValue;
+   const double m_defaultVal;
+
+   void * operator new(std::size_t) = delete; // no virtual destructor so disallow pointer delete
+   void operator delete (void *) = delete; // no virtual destructor so disallow pointer delete
 
 public:
 
    typedef double ParamType;
 
-   INLINE_ALWAYS double GetDefaultValue() const noexcept {
-      return m_defaultValue;
+   INLINE_ALWAYS double GetDefaultVal() const noexcept {
+      return m_defaultVal;
    }
 
-   INLINE_ALWAYS FloatParam(const char * const sParamName, const double defaultValue) :
+   INLINE_ALWAYS FloatParam(const char * const sParamName, const double defaultVal) :
       ParamBase(sParamName),
-      m_defaultValue(defaultValue) {
+      m_defaultVal(defaultVal) {
    }
 };
 
 class BoolParam final : public ParamBase {
-   const bool m_defaultValue;
+   const bool m_defaultVal;
+
+   void * operator new(std::size_t) = delete; // no virtual destructor so disallow pointer delete
+   void operator delete (void *) = delete; // no virtual destructor so disallow pointer delete
 
 public:
 
    typedef bool ParamType;
 
-   INLINE_ALWAYS bool GetDefaultValue() const noexcept {
-      return m_defaultValue;
+   INLINE_ALWAYS bool GetDefaultVal() const noexcept {
+      return m_defaultVal;
    }
 
-   INLINE_ALWAYS BoolParam(const char * const sParamName, const bool defaultValue) :
+   INLINE_ALWAYS BoolParam(const char * const sParamName, const bool defaultVal) :
       ParamBase(sParamName),
-      m_defaultValue(defaultValue) {
+      m_defaultVal(defaultVal) {
    }
 };
 
@@ -76,14 +85,14 @@ class Registration {
 
    // these ConvertStringToRegistrationType functions are here to de-template the various Param types
 
-   static INLINE_ALWAYS const char * ConvertStringToRegistrationType(
+   INLINE_ALWAYS static const char * ConvertStringToRegistrationType(
       const char * const s, 
       double * const pResultOut
    ) noexcept {
       return ConvertStringToFloat(s, pResultOut);
    }
 
-   static INLINE_ALWAYS const char * ConvertStringToRegistrationType(
+   INLINE_ALWAYS static const char * ConvertStringToRegistrationType(
       const char * const s, 
       bool * const pResultOut
    ) noexcept {
@@ -113,7 +122,7 @@ protected:
       EBM_ASSERT(!(0x20 == *(sRegistrationEnd - 1) || (0x9 <= *(sRegistrationEnd - 1) && *(sRegistrationEnd - 1) <= 0xd)));
       EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd || 0x20 == *sRegistrationEnd || (0x9 <= *sRegistrationEnd && *sRegistrationEnd <= 0xd));
 
-      typename TParam::ParamType paramValue = param.GetDefaultValue();
+      typename TParam::ParamType paramVal = param.GetDefaultVal();
       while(true) {
          // check and handle a possible parameter
          const char * sNext = IsStringEqualsCaseInsensitive(sRegistration, param.GetParamName());
@@ -124,16 +133,16 @@ protected:
                // before this point we could have been seeing a longer version of our proposed tag
                // eg: the given tag was "something_else=" but our tag was "something="
                sRegistration = sNext + 1;
-               sRegistration = ConvertStringToRegistrationType(sRegistration, &paramValue);
+               sRegistration = ConvertStringToRegistrationType(sRegistration, &paramVal);
                if(nullptr == sRegistration) {
-                  throw ParamValueMalformedException();
+                  throw ParamValMalformedException();
                }
                if(sRegistrationEnd <= sRegistration) {
                   // if there are trailing spaces we can blow past the sRegistrationEnd which has spaces removed
                   break;
                }
                if(k_paramSeparator != *sRegistration) {
-                  throw ParamValueMalformedException();
+                  throw ParamValMalformedException();
                }
                ++sRegistration;
                continue;
@@ -145,10 +154,10 @@ protected:
          }
          ++sRegistration;
       }
-      return paramValue;
+      return paramVal;
    }
 
-   static void FinalCheckParameters(
+   static void FinalCheckParams(
       const char * sRegistration, 
       const char * const sRegistrationEnd,
       const size_t cUsedParams
@@ -166,9 +175,9 @@ protected:
 
 public:
 
-   constexpr static const char k_paramSeparator = ';';
-   constexpr static char k_valueSeparator = '=';
-   constexpr static char k_typeTerminator = ':';
+   static constexpr const char k_paramSeparator = ';';
+   static constexpr char k_valueSeparator = '=';
+   static constexpr char k_typeTerminator = ':';
 
    static bool CreateRegistrable(
       const Config * const pConfig,
@@ -215,10 +224,13 @@ class RegistrationPack final : public Registration {
    ) {
       // The registration string has been processed so we now have either the default param values or we have the parameter
       // values specified in the registration string.  Now we need to verify that there weren't any unused parameters,
-      // which would have been an error.  FinalCheckParameters does this and throws an exception if it finds any errors
-      FinalCheckParameters(sRegistration, sRegistrationEnd, cUsedParams);
+      // which would have been an error.  FinalCheckParams does this and throws an exception if it finds any errors
+      FinalCheckParams(sRegistration, sRegistrationEnd, cUsedParams);
 
       // use malloc so that we can use the C free function on the main zone side.
+      // it is legal for the destructor to not be called on a placement new object when the destructor is trivial
+      // or the caller does not rely on any side effects of the destructor
+      // https://stackoverflow.com/questions/41385355/is-it-ok-not-to-call-the-destructor-on-placement-new-allocated-objects
       void * const pRegistrableMemory = malloc(sizeof(TRegistrable<TFloat>));
       if(nullptr != pRegistrableMemory) {
          try {
@@ -238,22 +250,22 @@ class RegistrationPack final : public Registration {
             pRegistrable->FillWrapper(pWrapperOut);
             return false;
          } catch(const SkipRegistrationException &) {
-            free(const_cast<void *>(pRegistrableMemory));
+            free(pRegistrableMemory);
             return true;
-         } catch(const ParamValueOutOfRangeException &) {
-            free(const_cast<void *>(pRegistrableMemory));
+         } catch(const ParamValOutOfRangeException &) {
+            free(pRegistrableMemory);
             throw;
          } catch(const ParamMismatchWithConfigException &) {
-            free(const_cast<void *>(pRegistrableMemory));
+            free(pRegistrableMemory);
             throw;
          } catch(const std::bad_alloc &) {
             // it's possible in theory that the constructor allocates some temporary memory, so pass this through
-            free(const_cast<void *>(pRegistrableMemory));
+            free(pRegistrableMemory);
             throw;
          } catch(...) {
             // our client Registration functions should only ever throw a limited range of exceptions listed above, 
             // but check anyways
-            free(const_cast<void *>(pRegistrableMemory));
+            free(pRegistrableMemory);
             throw RegistrationConstructorException();
          }
       }

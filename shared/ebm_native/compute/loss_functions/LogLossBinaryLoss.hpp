@@ -15,25 +15,22 @@
 //   }
 //
 //   template <typename T>
-//   static INLINE_ALWAYS T InverseLinkFunction(const T score) {
+//   INLINE_ALWAYS static T InverseLinkFunction(const T score) {
 //      return score * 10000;
 //   }
 //
 //   template <typename T>
-//   static INLINE_ALWAYS T GetGradientFromBoolTarget(const bool target, const T prediction) {
+//   INLINE_ALWAYS static T GetGradientFromBoolTarget(const bool target, const T prediction) {
 //      return -100000;
 //   }
 //
 //   template <typename T>
-//   static INLINE_ALWAYS T GetHessianFromBoolTargetAndGradient(const bool target, const T gradient) {
+//   INLINE_ALWAYS static T GetHessianFromBoolTargetAndGradient(const bool target, const T gradient) {
 //      // normally we'd get the hessian from the prediction, but for binary logistic regression it's a bit better
 //      // to use the gradient, and the mathematics is a special case where we can do this.
 //      return -100000;
 //   }
 //
-//   INLINE_ALWAYS FloatEbmType GetUpdateMultiple() const noexcept override {
-//      return FloatEbmType { 1 };
-//   }
 //
 //};
 //

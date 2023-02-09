@@ -290,41 +290,43 @@ EXIT /B 0
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="approximate_math.hpp" />
+    <ClInclude Include="bridge_cpp\Bin.hpp" />
     <ClInclude Include="bridge_cpp\bridge_cpp.hpp" />
+    <ClInclude Include="bridge_cpp\GradientPair.hpp" />
     <ClInclude Include="bridge_c\bridge_c.h" />
     <ClInclude Include="common_c\logging.h" />
     <ClInclude Include="bridge_c\zones.h" />
     <ClInclude Include="common_cpp\common_cpp.hpp" />
     <ClInclude Include="common_c\common_c.h" />
     <ClInclude Include="compute_accessors.hpp" />
-    <ClInclude Include="data_set_shared.hpp" />
+    <ClInclude Include="dataset_shared.hpp" />
+    <ClInclude Include="GaussianDistribution.hpp" />
     <ClInclude Include="InteractionShell.hpp" />
     <ClInclude Include="InteractionCore.hpp" />
     <ClInclude Include="BoosterCore.hpp" />
     <ClInclude Include="inc\ebm_native.h" />
     <ClInclude Include="Feature.hpp" />
-    <ClInclude Include="FeatureGroup.hpp" />
-    <ClInclude Include="HistogramBucket.hpp" />
+    <ClInclude Include="Term.hpp" />
     <ClInclude Include="BoosterShell.hpp" />
     <ClInclude Include="DataSetInteraction.hpp" />
     <ClInclude Include="DataSetBoosting.hpp" />
     <ClInclude Include="ebm_internal.hpp" />
     <ClInclude Include="ebm_stats.hpp" />
     <ClInclude Include="precompiled_header_cpp.hpp" />
-    <ClInclude Include="HistogramTargetEntry.hpp" />
-    <ClInclude Include="RandomStream.hpp" />
-    <ClInclude Include="SamplingSet.hpp" />
-    <ClInclude Include="CompressibleTensor.hpp" />
+    <ClInclude Include="RandomNondeterministic.hpp" />
+    <ClInclude Include="RandomDeterministic.hpp" />
+    <ClInclude Include="InnerBag.hpp" />
+    <ClInclude Include="Tensor.hpp" />
     <ClInclude Include="TensorTotalsSum.hpp" />
+    <ClInclude Include="Transpose.hpp" />
     <ClInclude Include="TreeNode.hpp" />
-    <ClInclude Include="TreeSweep.hpp" />
+    <ClInclude Include="SplitPosition.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ApplyModelUpdate.cpp" />
-    <ClCompile Include="ApplyModelUpdateTraining.cpp" />
-    <ClCompile Include="ApplyModelUpdateValidation.cpp" />
-    <ClCompile Include="BinBoosting.cpp" />
-    <ClCompile Include="BinInteraction.cpp" />
+    <ClCompile Include="ApplyTermUpdate.cpp" />
+    <ClCompile Include="ApplyUpdate.cpp" />
+    <ClCompile Include="BinSumsBoosting.cpp" />
+    <ClCompile Include="BinSumsInteraction.cpp" />
     <ClCompile Include="common_c\logging.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -337,25 +339,25 @@ EXIT /B 0
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="data_set_shared.cpp" />
+    <ClCompile Include="dataset_shared.cpp" />
     <ClCompile Include="CutQuantile.cpp" />
     <ClCompile Include="CutUniform.cpp" />
     <ClCompile Include="CutWinsorized.cpp" />
     <ClCompile Include="BoosterShell.cpp" />
+    <ClCompile Include="random.cpp" />
     <ClCompile Include="InteractionShell.cpp" />
-    <ClCompile Include="CalculateInteractionScore.cpp" />
+    <ClCompile Include="CalcInteractionStrength.cpp" />
     <ClCompile Include="PartitionRandomBoosting.cpp" />
     <ClCompile Include="debug_ebm.cpp" />
-    <ClCompile Include="FeatureGroup.cpp" />
+    <ClCompile Include="Term.cpp" />
     <ClCompile Include="PartitionTwoDimensionalBoosting.cpp" />
     <ClCompile Include="PartitionTwoDimensionalInteraction.cpp" />
-    <ClCompile Include="GenerateModelUpdate.cpp" />
+    <ClCompile Include="GenerateTermUpdate.cpp" />
     <ClCompile Include="PartitionOneDimensionalBoosting.cpp" />
     <ClCompile Include="InitializeGradientsAndHessians.cpp" />
     <ClCompile Include="interpretable_numerics.cpp" />
     <ClCompile Include="sampling.cpp" />
-    <ClCompile Include="CompressibleTensor.cpp" />
-    <ClCompile Include="SumHistogramBuckets.cpp" />
+    <ClCompile Include="Tensor.cpp" />
     <ClCompile Include="TensorTotalsBuild.cpp" />
     <ClCompile Include="DataSetInteraction.cpp" />
     <ClCompile Include="DataSetBoosting.cpp" />
@@ -368,8 +370,8 @@ EXIT /B 0
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="RandomStream.cpp" />
-    <ClCompile Include="SamplingSet.cpp" />
+    <ClCompile Include="RandomDeterministic.cpp" />
+    <ClCompile Include="InnerBag.cpp" />
     <ClCompile Include="BoosterCore.cpp" />
     <ClCompile Include="special\linux_wrap_functions.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -380,11 +382,32 @@ EXIT /B 0
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />
-    <None Include="CODING_STYLE.md" />
-    <None Include="IMPORTANT.md" />
+    <None Include="CODING_STYLE.md">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
+    <None Include="IMPORTANT.md">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="ebm_native_exports.txt" />
+    <None Include="ebm_native_exports.txt">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
+    <None Include="include_ordering.txt">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="compute\avx512_ebm\avx512_ebm.vcxproj">

@@ -7,137 +7,149 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // std::numeric_limits
 #include <algorithm> // std::sort
+#include <string.h> // memcpy
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // EBM_API_BODY
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // LIKELY
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "common_cpp.hpp" // IsConvertError
+
+#include "ebm_internal.hpp" // FloatTickIncrement
+
+// TODO: check this file for how we handle subnormal numbers.  NEVER RETURN SUBNORMALS!
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, FloatEbmType * const aValues) noexcept;
+extern size_t RemoveMissingValsAndReplaceInfinities(const size_t cSamples, double * const aVals) noexcept;
 
-extern FloatEbmType ArithmeticMean(
-   const FloatEbmType low,
-   const FloatEbmType high
+extern double ArithmeticMean(
+   const double low,
+   const double high
 ) noexcept;
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterCutWinsorizedParametersMessages = 25;
-static int g_cLogExitCutWinsorizedParametersMessages = 25;
+static int g_cLogEnterCutWinsorized = 25;
+static int g_cLogExitCutWinsorized = 25;
 
 // TODO: add this as a python/R option "winsorized"
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsorized(
-   IntEbmType countSamples,
-   const FloatEbmType * featureValues,
-   IntEbmType * countCutsInOut,
-   FloatEbmType * cutsLowerBoundInclusiveOut
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutWinsorized(
+   IntEbm countSamples,
+   const double * featureVals,
+   IntEbm * countCutsInOut,
+   double * cutsLowerBoundInclusiveOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogEnterCutWinsorizedParametersMessages,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      &g_cLogEnterCutWinsorized,
+      Trace_Info,
+      Trace_Verbose,
       "Entered CutWinsorized: "
-      "countSamples=%" IntEbmTypePrintf ", "
-      "featureValues=%p, "
+      "countSamples=%" IntEbmPrintf ", "
+      "featureVals=%p, "
       "countCutsInOut=%p, "
       "cutsLowerBoundInclusiveOut=%p"
       ,
       countSamples,
-      static_cast<const void *>(featureValues),
+      static_cast<const void *>(featureVals),
       static_cast<void *>(countCutsInOut),
       static_cast<void *>(cutsLowerBoundInclusiveOut)
    );
 
-   IntEbmType countCutsRet = IntEbmType { 0 };
-   ErrorEbmType ret;
+   ErrorEbm error;
+
+   IntEbm countCutsRet = IntEbm { 0 };
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
-      LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == countCutsInOut");
-      ret = Error_IllegalParamValue;
+      LOG_0(Trace_Error, "ERROR CutWinsorized nullptr == countCutsInOut");
+      error = Error_IllegalParamVal;
    } else {
-      if(UNLIKELY(countSamples <= IntEbmType { 1 })) {
+      if(UNLIKELY(countSamples <= IntEbm { 1 })) {
          // can't cut 1 sample
-         ret = Error_None;
-         if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-            LOG_0(TraceLevelError, "ERROR CutWinsorized countSamples < IntEbmType { 0 }");
-            ret = Error_IllegalParamValue;
+         error = Error_None;
+         if(UNLIKELY(countSamples < IntEbm { 0 })) {
+            LOG_0(Trace_Error, "ERROR CutWinsorized countSamples < IntEbm { 0 }");
+            error = Error_IllegalParamVal;
          }
       } else {
          if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
-            LOG_0(TraceLevelWarning, "WARNING CutWinsorized IsConvertError<size_t>(countSamples)");
+            LOG_0(Trace_Warning, "WARNING CutWinsorized IsConvertError<size_t>(countSamples)");
 
-            ret = Error_IllegalParamValue;
+            error = Error_IllegalParamVal;
             goto exit_with_log;
          }
 
-         if(UNLIKELY(nullptr == featureValues)) {
-            LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == featureValues");
+         if(UNLIKELY(nullptr == featureVals)) {
+            LOG_0(Trace_Error, "ERROR CutWinsorized nullptr == featureVals");
 
-            ret = Error_IllegalParamValue;
+            error = Error_IllegalParamVal;
             goto exit_with_log;
          }
 
-         const size_t cSamplesIncludingMissingValues = static_cast<size_t>(countSamples);
+         const size_t cSamplesIncludingMissingVals = static_cast<size_t>(countSamples);
 
-         FloatEbmType * const aFeatureValues = EbmMalloc<FloatEbmType>(cSamplesIncludingMissingValues);
-         if(UNLIKELY(nullptr == aFeatureValues)) {
-            LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == aFeatureValues");
-
-            ret = Error_OutOfMemory;
+         if(IsMultiplyError(sizeof(double), cSamplesIncludingMissingVals)) {
+            LOG_0(Trace_Warning, "WARNING CutWinsorized IsMultiplyError(sizeof(double), cSamplesIncludingMissingVals)");
+            error = Error_OutOfMemory;
             goto exit_with_log;
          }
-         const size_t cBytesFeatureValues = sizeof(*featureValues) * cSamplesIncludingMissingValues;
-         memcpy(aFeatureValues, featureValues, cBytesFeatureValues);
+         const size_t cBytesFeatureVals = sizeof(double) * cSamplesIncludingMissingVals;
+         double * const aFeatureVals = static_cast<double *>(malloc(cBytesFeatureVals));
+         if(UNLIKELY(nullptr == aFeatureVals)) {
+            LOG_0(Trace_Error, "ERROR CutWinsorized nullptr == aFeatureVals");
+
+            error = Error_OutOfMemory;
+            goto exit_with_log;
+         }
+         memcpy(aFeatureVals, featureVals, cBytesFeatureVals);
 
          // if there are +infinity values in the data we won't be able to separate them
          // from max_float values without having a cut at infinity since we use lower bound inclusivity
          // so we disallow +infinity values by turning them into max_float.  For symmetry we do the same on
          // the -infinity side turning those into lowest_float.  
-         const size_t cSamples = RemoveMissingValuesAndReplaceInfinities(cSamplesIncludingMissingValues, aFeatureValues);
+         const size_t cSamples = RemoveMissingValsAndReplaceInfinities(cSamplesIncludingMissingVals, aFeatureVals);
 
-         EBM_ASSERT(cSamples <= cSamplesIncludingMissingValues);
+         EBM_ASSERT(cSamples <= cSamplesIncludingMissingVals);
 
          // we can't really cut 0 or 1 samples.  Now that we know our min, max, etc values, we can exit
          // or if there was only 1 non-missing value
          if(LIKELY(size_t { 1 } < cSamples)) {
             EBM_ASSERT(nullptr != countCutsInOut);
-            const IntEbmType countCuts = *countCutsInOut;
+            const IntEbm countCuts = *countCutsInOut;
 
-            if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
-               free(aFeatureValues);
-               ret = Error_None;
-               if(UNLIKELY(countCuts < IntEbmType { 0 })) {
-                  LOG_0(TraceLevelError, "ERROR CutWinsorized countCuts can't be negative.");
-                  ret = Error_IllegalParamValue;
+            if(UNLIKELY(countCuts <= IntEbm { 0 })) {
+               free(aFeatureVals);
+               error = Error_None;
+               if(UNLIKELY(countCuts < IntEbm { 0 })) {
+                  LOG_0(Trace_Error, "ERROR CutWinsorized countCuts can't be negative.");
+                  error = Error_IllegalParamVal;
                }
                goto exit_with_log;
             }
 
             if(UNLIKELY(IsConvertError<size_t>(countCuts))) {
-               LOG_0(TraceLevelWarning, "WARNING CutWinsorized IsConvertError<size_t>(countCuts)");
-               free(aFeatureValues);
-               ret = Error_IllegalParamValue;
+               LOG_0(Trace_Warning, "WARNING CutWinsorized IsConvertError<size_t>(countCuts)");
+               free(aFeatureVals);
+               error = Error_IllegalParamVal;
                goto exit_with_log;
             }
             const size_t cCuts = static_cast<size_t>(countCuts);
 
             if(UNLIKELY(IsMultiplyError(sizeof(*cutsLowerBoundInclusiveOut), cCuts))) {
-               LOG_0(TraceLevelError, "ERROR CutWinsorized countCuts was too large to fit into cutsLowerBoundInclusiveOut");
-               free(aFeatureValues);
-               ret = Error_IllegalParamValue;
+               LOG_0(Trace_Error, "ERROR CutWinsorized countCuts was too large to fit into cutsLowerBoundInclusiveOut");
+               free(aFeatureVals);
+               error = Error_IllegalParamVal;
                goto exit_with_log;
             }
 
             if(UNLIKELY(nullptr == cutsLowerBoundInclusiveOut)) {
                // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
-               LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == cutsLowerBoundInclusiveOut");
-               free(aFeatureValues);
-               ret = Error_IllegalParamValue;
+               LOG_0(Trace_Error, "ERROR CutWinsorized nullptr == cutsLowerBoundInclusiveOut");
+               free(aFeatureVals);
+               error = Error_IllegalParamVal;
                goto exit_with_log;
             }
 
@@ -147,43 +159,43 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
             // uniform we just need to find a single cut between values and we can divide the space up between
             // uniform bins between those values.
 
-            std::sort(aFeatureValues, aFeatureValues + cSamples);
+            std::sort(aFeatureVals, aFeatureVals + cSamples);
 
             if(UNLIKELY(size_t { 1 } == cCuts)) {
                // if we're only given 1 cut, then we need do so something special since we can't have an upper and
                // lower cut from which to range between.  We want to find the best central cut and use that
 
-               const FloatEbmType minValue = aFeatureValues[0];
-               const FloatEbmType maxValue = aFeatureValues[cSamples - size_t { 1 }];
+               const double valMin = aFeatureVals[0];
+               const double valMax = aFeatureVals[cSamples - size_t { 1 }];
 
                // if this fails there are no transitions at all, so we can't have a cut
-               if(LIKELY(minValue != maxValue)) {
+               if(LIKELY(valMin != valMax)) {
                   const size_t iCenterHigh = cSamples >> 1;
                   // put the low on the high side so that in our first loop we decrement it to it's actual position
-                  const FloatEbmType * pLow = &aFeatureValues[iCenterHigh];
-                  const FloatEbmType * pHigh = pLow - (size_t { 1 } & (cSamples - size_t { 1 }));
+                  const double * pLow = &aFeatureVals[iCenterHigh];
+                  const double * pHigh = pLow - (size_t { 1 } & (cSamples - size_t { 1 }));
 
-                  FloatEbmType lowCur;
-                  FloatEbmType highCur;
+                  double lowCur;
+                  double highCur;
                   do {
                      --pLow;
                      ++pHigh;
 
-                     EBM_ASSERT(aFeatureValues <= pLow && pLow < aFeatureValues + cSamples);
+                     EBM_ASSERT(aFeatureVals <= pLow && pLow < aFeatureVals + cSamples);
                      lowCur = *pLow;
-                     EBM_ASSERT(aFeatureValues <= pHigh && pHigh < aFeatureValues + cSamples);
+                     EBM_ASSERT(aFeatureVals <= pHigh && pHigh < aFeatureVals + cSamples);
                      highCur = *pHigh;
-                     // since minValue != maxValue per above, we know there is a transition SOMEWHERE, which will exit us
+                     // since valMin != valMax per above, we know there is a transition SOMEWHERE, which will exit us
                   } while(LIKELY(lowCur == highCur));
                   EBM_ASSERT(lowCur < highCur);
 
                   // if both lowCur and highCur have changed, we'll get the average value between them, but that'll
-                  // put the centerVal either on the low or high bin dependent on the values.  Unlike quantile binning, 
+                  // put the valCenter either on the low or high bin dependent on the values.  Unlike quantile binning, 
                   // winsorized binning is senitive to the values and not invariant to operations, so this is fine
 
-                  const FloatEbmType avg = ArithmeticMean(lowCur, highCur);
+                  const double avg = ArithmeticMean(lowCur, highCur);
                   *cutsLowerBoundInclusiveOut = avg;
-                  countCutsRet = IntEbmType { 1 };
+                  countCutsRet = IntEbm { 1 };
                }
             } else {
                // we check that cCuts can be multiplied with sizeof(*cutsLowerBoundInclusiveOut), and since
@@ -196,15 +208,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
                EBM_ASSERT(iOuterBound < cSamples);
 
                // position ourselves at low-high and move inwards
-               const FloatEbmType * pLow = &aFeatureValues[iOuterBound];
+               const double * pLow = &aFeatureVals[iOuterBound];
                // position ourselves at high-low and move inwards
-               const FloatEbmType * pHigh = &aFeatureValues[cSamples - iOuterBound - size_t { 1 }];
+               const double * pHigh = &aFeatureVals[cSamples - iOuterBound - size_t { 1 }];
 
-               EBM_ASSERT(aFeatureValues <= pLow && pLow < aFeatureValues + cSamples);
-               EBM_ASSERT(aFeatureValues <= pHigh && pHigh < aFeatureValues + cSamples);
+               EBM_ASSERT(aFeatureVals <= pLow && pLow < aFeatureVals + cSamples);
+               EBM_ASSERT(aFeatureVals <= pHigh && pHigh < aFeatureVals + cSamples);
 
-               const FloatEbmType lowOuterVal = *pLow;
-               const FloatEbmType highOuterVal = *pHigh;
+               const double lowOuterVal = *pLow;
+               const double highOuterVal = *pHigh;
                EBM_ASSERT(lowOuterVal <= highOuterVal);
 
                if(UNLIKELY(lowOuterVal == highOuterVal)) {
@@ -213,57 +225,57 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
                   // and epsilon higher on the high side, but that's rather tight and makes the graph look too
                   // tight.  We instead put the two cuts between the outer values and the next transition outwards
 
-                  const FloatEbmType centerVal = lowOuterVal;
+                  const double valCenter = lowOuterVal;
 
-                  const FloatEbmType minValue = aFeatureValues[0];
-                  const FloatEbmType maxValue = aFeatureValues[cSamples - size_t { 1 }];
+                  const double valMin = aFeatureVals[0];
+                  const double valMax = aFeatureVals[cSamples - size_t { 1 }];
 
-                  FloatEbmType * pCutsLowerBoundInclusive = cutsLowerBoundInclusiveOut;
-                  if(PREDICTABLE(minValue != centerVal)) {
+                  double * pCutsLowerBoundInclusive = cutsLowerBoundInclusiveOut;
+                  if(PREDICTABLE(valMin != valCenter)) {
                      // there's a transition somewhere on the low side
-                     EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < centerVal);
-                     EBM_ASSERT(minValue < centerVal);
+                     EBM_ASSERT(std::numeric_limits<double>::lowest() < valCenter);
+                     EBM_ASSERT(valMin < valCenter);
 
-                     FloatEbmType valCur;
+                     double valCur;
                      do {
                         --pLow;
-                        EBM_ASSERT(aFeatureValues <= pLow && pLow < aFeatureValues + cSamples);
+                        EBM_ASSERT(aFeatureVals <= pLow && pLow < aFeatureVals + cSamples);
                         valCur = *pLow;
-                     } while(centerVal == valCur);
-                     EBM_ASSERT(valCur < centerVal);
+                     } while(valCenter == valCur);
+                     EBM_ASSERT(valCur < valCenter);
 
-                     const FloatEbmType avg = ArithmeticMean(valCur, centerVal);
+                     const double avg = ArithmeticMean(valCur, valCenter);
                      *pCutsLowerBoundInclusive = avg;
                      ++pCutsLowerBoundInclusive;
                      ++countCutsRet;
                   }
-                  if(PREDICTABLE(maxValue != centerVal)) {
+                  if(PREDICTABLE(valMax != valCenter)) {
                      // there's a transition somewhere on the high side
-                     EBM_ASSERT(centerVal < std::numeric_limits<FloatEbmType>::max());
-                     EBM_ASSERT(centerVal < maxValue);
+                     EBM_ASSERT(valCenter < std::numeric_limits<double>::max());
+                     EBM_ASSERT(valCenter < valMax);
 
-                     FloatEbmType valCur;
+                     double valCur;
                      do {
                         ++pHigh;
-                        EBM_ASSERT(aFeatureValues <= pHigh && pHigh < aFeatureValues + cSamples);
+                        EBM_ASSERT(aFeatureVals <= pHigh && pHigh < aFeatureVals + cSamples);
                         valCur = *pHigh;
-                     } while(centerVal == valCur);
-                     EBM_ASSERT(centerVal < valCur);
+                     } while(valCenter == valCur);
+                     EBM_ASSERT(valCenter < valCur);
 
-                     const FloatEbmType avg = ArithmeticMean(centerVal, valCur);
+                     const double avg = ArithmeticMean(valCenter, valCur);
                      *pCutsLowerBoundInclusive = avg;
                      ++countCutsRet;
                   }
                } else {
                   // because lowVal != highVal, we know there's a transition that'll exit our loops somewhere in between
 
-                  FloatEbmType lowInnerVal;
+                  double lowInnerVal;
                   do {
                      ++pLow;
-                     EBM_ASSERT(aFeatureValues <= pLow && pLow < aFeatureValues + cSamples);
+                     EBM_ASSERT(aFeatureVals <= pLow && pLow < aFeatureVals + cSamples);
                      lowInnerVal = *pLow;
                   } while(lowOuterVal == lowInnerVal);
-                  EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < lowInnerVal);
+                  EBM_ASSERT(std::numeric_limits<double>::lowest() < lowInnerVal);
                   EBM_ASSERT(lowOuterVal < lowInnerVal);
                   EBM_ASSERT(lowInnerVal <= highOuterVal);
 
@@ -273,17 +285,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
                      // space
 
                      EBM_ASSERT(lowOuterVal < highOuterVal);
-                     const FloatEbmType avg = ArithmeticMean(lowOuterVal, highOuterVal);
+                     const double avg = ArithmeticMean(lowOuterVal, highOuterVal);
                      *cutsLowerBoundInclusiveOut = avg;
-                     countCutsRet = IntEbmType { 1 };
+                     countCutsRet = IntEbm { 1 };
                   } else {
-                     FloatEbmType highInnerVal;
+                     double highInnerVal;
                      do {
                         --pHigh;
-                        EBM_ASSERT(aFeatureValues <= pHigh && pHigh < aFeatureValues + cSamples);
+                        EBM_ASSERT(aFeatureVals <= pHigh && pHigh < aFeatureVals + cSamples);
                         highInnerVal = *pHigh;
                      } while(highOuterVal == highInnerVal);
-                     EBM_ASSERT(highInnerVal < std::numeric_limits<FloatEbmType>::max());
+                     EBM_ASSERT(highInnerVal < std::numeric_limits<double>::max());
                      EBM_ASSERT(highInnerVal < highOuterVal);
                      EBM_ASSERT(lowInnerVal <= highInnerVal);
                      EBM_ASSERT(lowOuterVal < highInnerVal);
@@ -292,51 +304,51 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
                         // there's just one long run of values in the center.  We don't really want to wrap any
                         // number this tightly, so let's put down two cut points in the spaces on either side
 
-                        const FloatEbmType centerVal = lowInnerVal;
+                        const double valCenter = lowInnerVal;
 
-                        EBM_ASSERT(lowOuterVal < centerVal);
-                        const FloatEbmType avg1 = ArithmeticMean(lowOuterVal, centerVal);
+                        EBM_ASSERT(lowOuterVal < valCenter);
+                        const double avg1 = ArithmeticMean(lowOuterVal, valCenter);
                         cutsLowerBoundInclusiveOut[0] = avg1;
 
-                        EBM_ASSERT(centerVal < highOuterVal);
-                        const FloatEbmType avg2 = ArithmeticMean(centerVal, highOuterVal);
+                        EBM_ASSERT(valCenter < highOuterVal);
+                        const double avg2 = ArithmeticMean(valCenter, highOuterVal);
                         cutsLowerBoundInclusiveOut[1] = avg2;
 
-                        countCutsRet = IntEbmType { 2 };
+                        countCutsRet = IntEbm { 2 };
                      } else {
                         // move one up from the highVal since if we put a cut exactly there the high-low value will
                         // be included in the highest bin, and we don't want that
-                        // winsorized binning doesn't have the ability to create humanized cut numbers, so going one tick up
+                        // winsorized binning doesn't have the ability to create rounded cut numbers, so going one tick up
                         // isn't a big deal here, and even if the high value is an integer like 5, one up from that will
                         // basically round to 5 in the UI but we'll get a number here that's just slighly higher
 
-                        EBM_ASSERT(highInnerVal < std::numeric_limits<FloatEbmType>::max());
-                        highInnerVal = std::nextafter(highInnerVal, std::numeric_limits<FloatEbmType>::max());
+                        EBM_ASSERT(highInnerVal < std::numeric_limits<double>::max());
+                        highInnerVal = FloatTickIncrement(highInnerVal);
 
                         EBM_ASSERT(lowInnerVal < highInnerVal);
                         EBM_ASSERT(size_t { 2 } <= cCuts); // we can put down the low and high ones at least
 
-                        FloatEbmType * pCutsLowerBoundInclusive = cutsLowerBoundInclusiveOut;
+                        double * pCutsLowerBoundInclusive = cutsLowerBoundInclusiveOut;
                         *pCutsLowerBoundInclusive = lowInnerVal;
                         ++pCutsLowerBoundInclusive;
 
                         if(size_t { 2 } < cCuts) {
                            while(true) {
                               const size_t cInternalRanges = cCuts - size_t { 1 };
-                              const FloatEbmType cInternalRangesFloat = static_cast<FloatEbmType>(cInternalRanges);
-                              FloatEbmType stepValue = (highInnerVal - lowInnerVal) / cInternalRangesFloat;
-                              if(std::isinf(stepValue)) {
+                              const double cInternalRangesFloat = static_cast<double>(cInternalRanges);
+                              double stepVal = (highInnerVal - lowInnerVal) / cInternalRangesFloat;
+                              if(std::isinf(stepVal)) {
                                  // cInternalRangesFloat should be 3 or higher, which should be enough to avoid any numeracy issues
                                  // that might cause us to overflow again
-                                 stepValue = highInnerVal / cInternalRangesFloat - lowInnerVal / cInternalRangesFloat;
-                                 if(std::isinf(stepValue)) {
+                                 stepVal = highInnerVal / cInternalRangesFloat - lowInnerVal / cInternalRangesFloat;
+                                 if(std::isinf(stepVal)) {
                                     // this is probably impossible if correct rounding is guarnateed, but floats have bad guarantees
 
                                     // if you have 2 internal bins it would be close to an overflow on the subtraction 
                                     // of the divided values.  With 3 bins it isn't obvious to me how you'd get an
                                     // overflow after dividing it up in to separate segments.  So, let's assume
                                     // that 2 == cBins, so we can just take the average and report one cut
-                                    const FloatEbmType cut = ArithmeticMean(lowInnerVal, highInnerVal);
+                                    const double cut = ArithmeticMean(lowInnerVal, highInnerVal);
                                     // we always write out a cut at highInnerVal below, and we wouldn't want to do that
                                     // twice if we got back highInnerVal here, but we can only get here with huge
                                     // separations, so it shouldn't be possible to get something even close to 
@@ -347,10 +359,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
                                     break;
                                  }
                               }
-                              FloatEbmType cutPrev = lowInnerVal;
+                              double cutPrev = lowInnerVal;
                               size_t iCut = size_t { 1 };
                               do {
-                                 const FloatEbmType cut = lowInnerVal + stepValue * static_cast<FloatEbmType>(iCut);
+                                 const double cut = lowInnerVal + stepVal * static_cast<double>(iCut);
                                  // just in case we have floating point inexactness that puts us above the 
                                  // highValue we need to stop
                                  if(UNLIKELY(highInnerVal <= cut)) {
@@ -382,16 +394,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
                            pCutsLowerBoundInclusive - cutsLowerBoundInclusiveOut + size_t { 1 };
 
                         // this conversion is guaranteed to work since the number of cut points can't exceed the number our user
-                        // specified, and that value came to us as an IntEbmType
-                        countCutsRet = static_cast<IntEbmType>(cCutsRet);
+                        // specified, and that value came to us as an IntEbm
+                        countCutsRet = static_cast<IntEbm>(cCutsRet);
                         EBM_ASSERT(countCutsRet <= countCuts);
                      }
                   }
                }
             }
          }
-         free(aFeatureValues);
-         ret = Error_None;
+         free(aFeatureVals);
+         error = Error_None;
       }
 
    exit_with_log:;
@@ -401,18 +413,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
    }
 
    LOG_COUNTED_N(
-      &g_cLogExitCutWinsorizedParametersMessages,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      &g_cLogExitCutWinsorized,
+      Trace_Info,
+      Trace_Verbose,
       "Exited CutWinsorized: "
-      "countCuts=%" IntEbmTypePrintf ", "
-      "return=%" ErrorEbmTypePrintf
+      "countCuts=%" IntEbmPrintf ", "
+      "return=%" ErrorEbmPrintf
       ,
       countCutsRet,
-      ret
+      error
    );
 
-   return ret;
+   return error;
 }
 
 } // DEFINED_ZONE_NAME

@@ -1,5 +1,5 @@
-{% set name = "interpret" %}
-{% set version = "0.2.6" %}
+{% set name = "interpret-core" %}
+{% set version = "0.3.0" %}
 
 package:
   name: "{{ name }}"
@@ -8,21 +8,23 @@ package:
 source:
   git_url: https://github.com/interpretml/interpret.git
   git_rev: "v{{ version }}"
+  git_depth: 1
 
 build:
-  noarch: generic
+  skip: true  # [py>=39 or py2k or py<37]
+  skip: true  # [win or osx]
   number: 0
-  # script: cd python/interpret && {{ PYTHON }} setup.py build && {{ PYTHON }} setup.py install
-  script: cd python/interpret && {{ PYTHON }} -m pip install . -vv
+  script: cd python/interpret && python setup.py install --single-version-externally-managed --record=record.txt
+#  script: cd python/interpret && {{ PYTHON }} -m pip install . -vv
 
 requirements:
   host:
-    - pip
-    - python
+    - python >3.7,<3.10
+    - pip    
   run:
-    - python
+    - python >3.7,<3.10
     - interpret-core >={{ version }}
-    # Equiv. to required.
+# Equiv. to required.
     - scikit-learn >=0.18.1
     - numpy >=1.11.1
     - scipy >=0.18.1
@@ -32,12 +34,16 @@ requirements:
     - ipython >=5.5.0
     - ipykernel >=4.10.0
     - plotly >=3.8.1
+    - psutil >=5.6.2
     - lime >=0.1.1.33
     - SALib >=1.3.3
-    - shap >=0.25.5
+    - shap >=0.28.5
+    - skope-rules >=1.0.1
+    - treeinterpreter >=0.2.2
     - dill >=0.2.5
+    # Equiv. to Dash.
     - dash >=1.0.0
-    - dash_cytoscape >=0.1.1
+    - dash-cytoscape >=0.1.1
     - gevent >=1.3.6
     - requests >=2.19.0
 
@@ -47,8 +53,8 @@ about:
   license_family: MIT
   license_file:  LICENSE
   summary: "Fit interpretable models. Explain blackbox machine learning."
-  doc_url: 
-  dev_url: 
+  doc_url: https://interpret.ml/docs/getting-started
+  dev_url: https://interpret.ml/docs/installation-guide.html
 
 extra:
   recipe-maintainers:

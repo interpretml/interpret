@@ -4,7 +4,7 @@
 from abc import ABC, abstractmethod
 import logging
 
-from ..utils.environment import EnvironmentDetector, is_cloud_env
+from ..utils.environment import EnvironmentDetector, is_cloud_env, ENV_DETECTED
 from warnings import warn
 
 from ..version import __version__
@@ -26,7 +26,7 @@ class AutoVisualizeProvider(VisualizeProvider):
     def __init__(self, app_runner=None, **kwargs):
         self.has_initialized = False
         self.environment_detector = None
-        self.in_cloud_env = False
+        self.in_cloud_env = ENV_DETECTED
         self.provider = None
         self.app_runner = app_runner
         self.kwargs = kwargs
@@ -37,18 +37,24 @@ class AutoVisualizeProvider(VisualizeProvider):
         self.in_cloud_env = is_cloud_env(detected_envs)
 
         # NOTE: This is tested manually per release. Ignoring for coverage.
-        if self.in_cloud_env:  # pragma: no cover
+        if self.in_cloud_env == ENV_DETECTED.CLOUD:  # pragma: no cover
             log.info("Detected cloud environment.")
-            warn(
-                "Cloud environment detected ({}): viz integration is still experimental.".format(
-                    detected_envs
-                )
-            )
             self.provider = InlineProvider(detected_envs=detected_envs, js_url=JS_URL)
         elif "docker-dev-mode" in detected_envs:
             log.info("Operating in docker development mode.")
             self.provider = InlineProvider(detected_envs=detected_envs)
-        else:
+        elif self.in_cloud_env == ENV_DETECTED.BOTH_CLOUD_AND_NON_CLOUD:
+            log.info("Detected both cloud and non cloud environment.")
+            # val = input("Type 'C' if you want to choose Cloud environment or 'NC' for Non Cloud Environment :")
+            val = 'C'
+            if val == 'C':
+                self.provider = InlineProvider(detected_envs=detected_envs, js_url=JS_URL)
+            else:
+                if self.app_runner:
+                    self.provider = DashProvider(self.app_runner)
+                else:
+                    self.provider = DashProvider.from_address()
+        else: # ENV_DETECTED.NON_CLOUD
             log.info("Detected non-cloud environment.")
             if self.app_runner:
                 self.provider = DashProvider(self.app_runner)

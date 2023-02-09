@@ -8,29 +8,37 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // InteractionHandle
+#include "logging.h" // LOG_0
 #include "zones.h"
-
-#include "ebm_internal.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-struct HistogramBucketBase;
+struct BinBase;
 class InteractionCore;
 
 class InteractionShell final {
-   static constexpr size_t k_handleVerificationOk = 27917; // random 15 bit number
+   static constexpr size_t k_handleVerificationOk = 21773; // random 15 bit number
    static constexpr size_t k_handleVerificationFreed = 27913; // random 15 bit number
    size_t m_handleVerification; // this needs to be at the top and make it pointer sized to keep best alignment
 
    InteractionCore * m_pInteractionCore;
 
-   HistogramBucketBase * m_aThreadByteBuffer1;
-   size_t m_cThreadByteBufferCapacity1;
+   BinBase * m_aInteractionFastBinsTemp;
+   size_t m_cAllocatedFastBins;
+
+   BinBase * m_aInteractionBigBins;
+   size_t m_cAllocatedBigBins;
+
+   int m_cLogEnterMessages;
+   int m_cLogExitMessages;
+
+#ifndef NDEBUG
+   const BinBase * m_pDebugFastBinsEnd;
+#endif // NDEBUG
 
 public:
 
@@ -39,22 +47,28 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS void InitializeZero() {
+   inline void InitializeUnfailing(InteractionCore * const pInteractionCore) {
       m_handleVerification = k_handleVerificationOk;
-      m_pInteractionCore = nullptr;
+      m_pInteractionCore = pInteractionCore;
 
-      m_aThreadByteBuffer1 = nullptr;
-      m_cThreadByteBufferCapacity1 = 0;
+      m_aInteractionFastBinsTemp = nullptr;
+      m_cAllocatedFastBins = 0;
+
+      m_aInteractionBigBins = nullptr;
+      m_cAllocatedBigBins = 0;
+
+      m_cLogEnterMessages = 1000;
+      m_cLogExitMessages = 1000;
    }
 
    static void Free(InteractionShell * const pInteractionShell);
-   static InteractionShell * Create();
+   static InteractionShell * Create(InteractionCore * const pInteractionCore);
 
-   static INLINE_ALWAYS InteractionShell * GetInteractionShellFromInteractionHandle(
+   inline static InteractionShell * GetInteractionShellFromHandle(
       const InteractionHandle interactionHandle
    ) {
       if(nullptr == interactionHandle) {
-         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromInteractionHandle null interactionHandle");
+         LOG_0(Trace_Error, "ERROR GetInteractionShellFromHandle null interactionHandle");
          return nullptr;
       }
       InteractionShell * const pInteractionShell = reinterpret_cast<InteractionShell *>(interactionHandle);
@@ -62,29 +76,42 @@ public:
          return pInteractionShell;
       }
       if(k_handleVerificationFreed == pInteractionShell->m_handleVerification) {
-         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromInteractionHandle attempt to use freed InteractionHandle");
+         LOG_0(Trace_Error, "ERROR GetInteractionShellFromHandle attempt to use freed InteractionHandle");
       } else {
-         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromInteractionHandle attempt to use invalid InteractionHandle");
+         LOG_0(Trace_Error, "ERROR GetInteractionShellFromHandle attempt to use invalid InteractionHandle");
       }
       return nullptr;
    }
-   INLINE_ALWAYS InteractionHandle GetHandle() {
+   inline InteractionHandle GetHandle() {
       return reinterpret_cast<InteractionHandle>(this);
    }
 
-   INLINE_ALWAYS InteractionCore * GetInteractionCore() {
+   inline InteractionCore * GetInteractionCore() {
       EBM_ASSERT(nullptr != m_pInteractionCore);
       return m_pInteractionCore;
    }
 
-   INLINE_ALWAYS void SetInteractionCore(InteractionCore * const pInteractionCore) {
-      EBM_ASSERT(nullptr != pInteractionCore);
-      EBM_ASSERT(nullptr == m_pInteractionCore); // only set it once
-      m_pInteractionCore = pInteractionCore;
+   inline int * GetPointerCountLogEnterMessages() {
+      return &m_cLogEnterMessages;
    }
 
-   HistogramBucketBase * GetHistogramBucketBase(size_t cBytesRequired);
+   inline int * GetPointerCountLogExitMessages() {
+      return &m_cLogExitMessages;
+   }
 
+   BinBase * GetInteractionFastBinsTemp(const size_t cBytesPerFastBin, const size_t cFastBins);
+
+   inline BinBase * GetInteractionFastBinsTemp() {
+      // call this if the bins were already allocated and we just need the pointer
+      return m_aInteractionFastBinsTemp;
+   }
+
+   BinBase * GetInteractionBigBins(const size_t cBytesPerBigBin, const size_t cBigBins);
+
+   inline BinBase * GetInteractionBigBins() {
+      // call this if the bins were already allocated and we just need the pointer
+      return m_aInteractionBigBins;
+   }
 };
 static_assert(std::is_standard_layout<InteractionShell>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");

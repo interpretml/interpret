@@ -6,42 +6,33 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // std::numeric_limits
-#include <string.h> // strchr, memmove
+#include <string.h> // strchr, memmove, memcpy
 
 #include "ebm_native.h"
-#include "logging.h"
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // LIKELY
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "common_cpp.hpp" // IsConvertError
+
+#include "ebm_internal.hpp" // FloatTickIncrement
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-constexpr FloatEbmType k_percentageDeviationFromEndpointForInterpretableNumbers = FloatEbmType { 0.25 };
-
-static_assert(FLOAT_EBM_MAX == std::numeric_limits<FloatEbmType>::max(), "FLOAT_EBM_MAX mismatch");
-static_assert(FLOAT_EBM_LOWEST == std::numeric_limits<FloatEbmType>::lowest(), "FLOAT_EBM_LOWEST mismatch");
-static_assert(FLOAT_EBM_MIN == std::numeric_limits<FloatEbmType>::min(), "FLOAT_EBM_MIN mismatch");
-// FLOAT_EBM_DENORM_MIN isn't included in g++'s float.h, even though it's a C11 construct
-//static_assert(FLOAT_EBM_DENORM_MIN == std::numeric_limits<FloatEbmType>::denorm_min(), "FLOAT_EBM_DENORM_MIN mismatch");
-static_assert(FLOAT_EBM_POSITIVE_INF == std::numeric_limits<FloatEbmType>::infinity(), "FLOAT_EBM_POSITIVE_INF mismatch");
-static_assert(FLOAT_EBM_NEGATIVE_INF == -std::numeric_limits<FloatEbmType>::infinity(), "FLOAT_EBM_NEGATIVE_INF mismatch");
-#ifndef __clang__ // compiler type (clang++)
-// clang's static checker seems to dislike this comparison and says it's not an integral comparison, but it is!
-static_assert(FLOAT_EBM_NAN != FLOAT_EBM_NAN, "FLOAT_EBM_NAN mismatch"); // a != a is only true for NaN
-#endif
+static constexpr double k_percentageDeviationFromEndpointForInterpretableNumbers = double { 0.25 };
 
 INLINE_ALWAYS constexpr static size_t CountBase10CharactersAbs(int n) noexcept {
    // this works for negative numbers too
    return int { 0 } == n / int { 10 } ? size_t { 1 } : size_t { 1 } + CountBase10CharactersAbs(n / int { 10 });
 }
 
-// According to the C++ documentation, std::numeric_limits<FloatEbmType>::max_digits10 - 1 digits 
+// According to the C++ documentation, std::numeric_limits<double>::max_digits10 - 1 digits 
 // are required after the period in +9.1234567890123456e-301 notation, so for a double, the values would be 
-// 17 == std::numeric_limits<FloatEbmType>::max_digits10, and printf format specifier "%.16e"
-constexpr size_t k_cDigitsAfterPeriod = size_t { std::numeric_limits<FloatEbmType>::max_digits10 } - size_t { 1 };
+// 17 == std::numeric_limits<double>::max_digits10, and printf format specifier "%.16e"
+static constexpr size_t k_cDigitsAfterPeriod = size_t { std::numeric_limits<double>::max_digits10 } - size_t { 1 };
 
 // Unfortunately, min_exponent10 doesn't seem to include subnormal numbers, so although it's the true
 // minimum exponent in terms of the floating point exponential representation, it isn't the true minimum exponent 
@@ -51,10 +42,10 @@ constexpr size_t k_cDigitsAfterPeriod = size_t { std::numeric_limits<FloatEbmTyp
 // it's really unlikely to go from N to N+2, since in the simplest case that would be a factor of 10 in the 
 // exponential term (if the low number was almost N and the high number was just a bit above N+2), and 
 // subnormal numbers shouldn't increase the exponent by that much ever.
-constexpr size_t k_cExponentMaxTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::max_exponent10);
-constexpr size_t k_cExponentMinTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::min_exponent10) + size_t { 1 };
-constexpr size_t k_cExponentTextDigits =
-k_cExponentMaxTextDigits < k_cExponentMinTextDigits ? k_cExponentMinTextDigits : k_cExponentMaxTextDigits;
+static constexpr size_t k_cExponentMaxTextDigits = CountBase10CharactersAbs(std::numeric_limits<double>::max_exponent10);
+static constexpr size_t k_cExponentMinTextDigits = CountBase10CharactersAbs(std::numeric_limits<double>::min_exponent10) + size_t { 1 };
+static constexpr size_t k_cExponentTextDigits =
+   k_cExponentMaxTextDigits < k_cExponentMinTextDigits ? k_cExponentMinTextDigits : k_cExponentMaxTextDigits;
 
 // we have a function that ensures our output is exactly in the format that we require.  That format is:
 // "+9.1234567890123456e-301" (this is when 16 == cDigitsAfterPeriod, the value for doubles)
@@ -65,22 +56,22 @@ k_cExponentMaxTextDigits < k_cExponentMinTextDigits ? k_cExponentMinTextDigits :
 // 2 characters for "e-"
 // cExponentTextDigits characters for the exponent text
 // 1 character for null terminator
-constexpr size_t k_iExp = size_t { 3 } + k_cDigitsAfterPeriod;
-constexpr size_t k_cCharsFloatPrint = k_iExp + size_t { 2 } + k_cExponentTextDigits + size_t { 1 };
+static constexpr size_t k_iExp = size_t { 3 } + k_cDigitsAfterPeriod;
+static constexpr size_t k_cCharsFloatPrint = k_iExp + size_t { 2 } + k_cExponentTextDigits + size_t { 1 };
 
-extern FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType high) noexcept {
+extern double ArithmeticMean(const double low, const double high) noexcept {
    // nan values represent missing, and are filtered out from our data prior to discretization
    EBM_ASSERT(!std::isnan(low));
    EBM_ASSERT(!std::isnan(high));
 
-   // -infinity is converted to std::numeric_limits<FloatEbmType>::lowest() and 
-   // +infinity is converted to std::numeric_limits<FloatEbmType>::max() in our data prior to discretization
+   // -infinity is converted to std::numeric_limits<double>::lowest() and 
+   // +infinity is converted to std::numeric_limits<double>::max() in our data prior to discretization
    EBM_ASSERT(!std::isinf(low));
    EBM_ASSERT(!std::isinf(high));
 
    EBM_ASSERT(low < high); // if two numbers were equal, we wouldn't put a cut point between them
 
-   static_assert(std::numeric_limits<FloatEbmType>::is_iec559,
+   static_assert(std::numeric_limits<double>::is_iec559,
       "IEEE 754 gives us certain guarantees for floating point results that we use below");
 
    // this multiplication before addition format avoid overflows/underflows at the cost of a little more work.
@@ -93,7 +84,7 @@ extern FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType hi
    // If low is the smallest number and high is one tick above that, low will go to zero on the division, but 
    // high will become the smallest number since it uses powers of two, so the avg is again the 
    // low value in this case.
-   FloatEbmType avg = low * FloatEbmType { 0.5 } + high * FloatEbmType { 0.5 };
+   double avg = low * double { 0.5 } + high * double { 0.5 };
 
    EBM_ASSERT(!std::isnan(avg)); // in no reasonable implementation should this result in NaN
 
@@ -134,9 +125,9 @@ extern FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType hi
    return avg;
 }
 
-INLINE_RELEASE_UNTEMPLATED static FloatEbmType GeometricMeanPositives(
-   const FloatEbmType low, 
-   const FloatEbmType high
+INLINE_RELEASE_UNTEMPLATED static double GeometricMeanPositives(
+   const double low, 
+   const double high
 ) noexcept {
    // nan values represent missing, and are filtered out from our data prior to discretization
    EBM_ASSERT(!std::isnan(low));
@@ -147,8 +138,8 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GeometricMeanPositives(
    EBM_ASSERT(!std::isinf(high));
 
    // we handle zeros outside of this function
-   EBM_ASSERT(FloatEbmType { 0 } < low);
-   EBM_ASSERT(FloatEbmType { 0 } < high);
+   EBM_ASSERT(double { 0 } < low);
+   EBM_ASSERT(double { 0 } < high);
 
    EBM_ASSERT(low < high);
 
@@ -160,7 +151,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GeometricMeanPositives(
    // point jitter, we might get any of these scenarios.  This is a real corner case that we can presume
    // is very very very rare.
 
-   FloatEbmType result = std::exp((std::log(low) + std::log(high)) * FloatEbmType { 0.5 });
+   double result = std::exp((std::log(low) + std::log(high)) * double { 0.5 });
 
    // IEEE 754 doesn't give us a lot of guarantees about log and exp.  They don't have have "correct rounding"
    // guarantees, unlike basic operators, so we could obtain results outside of our bounds, or perhaps
@@ -184,10 +175,10 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GeometricMeanPositives(
    return result;
 }
 
-static bool FloatToFullString(const FloatEbmType val, char * const str) noexcept {
+static bool FloatToFullString(const double val, char * const str) noexcept {
    EBM_ASSERT(!std::isnan(val));
    EBM_ASSERT(!std::isinf(val));
-   EBM_ASSERT(FloatEbmType { 0 } <= val);
+   EBM_ASSERT(double { 0 } <= val);
    EBM_ASSERT(nullptr != str);
 
    // NOTE: str must be a buffer with k_cCharsFloatPrint characters available 
@@ -204,7 +195,7 @@ static bool FloatToFullString(const FloatEbmType val, char * const str) noexcept
    // the buffer.  According to the docs, snprintf returns the number of characters that would have been written MINUS 
    // the null terminator.
 
-   constexpr static char g_pPrintfForRoundTrip[] = "%+.*" FloatEbmTypePrintf;
+   static constexpr char g_pPrintfForRoundTrip[] = "%+.*le";
 
    const int cCharsWithoutNullTerminator = snprintf(
       str,
@@ -309,26 +300,26 @@ static bool FloatToFullString(const FloatEbmType val, char * const str) noexcept
 // float64 values, so we need to output that.  We should get 100% reproducibility by turning float32 scores
 // into float64, then text, then back to float64, then back to float32, so this is fine.  The only thing
 // we loose is a bit of simplicity since our JSON scores will have more digits, but we don't have the equivalent
-// of humanized cuts anyways, so the scores will have as many decimals as we get via boosting anywyas
+// of rounded cuts anyways, so the scores will have as many decimals as we get via boosting anywyas
 
 // lastly, since there are no integers in JSON (everything is a double), we should eliminate the difference
 // between float64 and integers when numbers can be represented as unique integers.  WE should convert the float
-// 4.0 therefore to "4" for any number that meets the criteria: "floor(x) == x && abs(x) <= SAFE_FLOAT64_AS_INT_MAX"
+// 4.0 therefore to "4" for any number that meets the criteria: "floor(x) == x && abs(x) <= SAFE_FLOAT64_AS_INT64_MAX"
 
-extern IntEbmType GetCountCharactersPerFloat() {
+extern IntEbm GetCountCharactersPerFloat() {
    // for calling FloatsToStrings the caller needs to allocate this many bytes per float in the string buffer
    // after every float is either a space separator or a null-terminator
    return k_cCharsFloatPrint;
 }
 
-extern ErrorEbmType FloatsToString(IntEbmType count, const double * values, char * str) {
+extern ErrorEbm FloatsToString(IntEbm count, const double * vals, char * str) {
    // TODO: implement this:
    // 
    // This code takes an array of floats and converts them to a single string separated by spaces and a null-terminator
    // at the end
 }
 
-extern ErrorEbmType StringToFloats(const char * str, double * values) {
+extern ErrorEbm StringToFloats(const char * str, double * vals) {
    // TODO: implement this:
    //
    // This code takes a single string with the floats separated by spaces and a null-terminator at the end
@@ -344,7 +335,7 @@ INLINE_RELEASE_UNTEMPLATED static long GetExponent(const char * const str) noexc
    return strtol(&str[k_iExp + size_t { 1 }], nullptr, int { 10 });
 }
 
-static FloatEbmType StringToFloatWithFixup(
+static double StringToFloatWithFixup(
    const char * const str,
    const size_t iIdenticalCharsRequired
 ) noexcept {
@@ -362,24 +353,21 @@ static FloatEbmType StringToFloatWithFixup(
    // overflow (possible when we increment from the lower chopped value), then strtod gives 
    // us enough information to convert these
 
-   static_assert(std::is_same<FloatEbmType, double>::value,
-      "FloatEbmType must be double, otherwise use something other than strtod");
-
    // the documentation says that if we have an underflow or overflow, strtod returns us +-HUGE_VAL, which is
    // +-infinity for at least some implementations.  We can't really take a ratio from those numbers, so convert
    // this to the lowest and max values
 
    // TODO: switch over to using our better ConvertStringToFloat function now!
-   FloatEbmType ret = strtod(str, nullptr);
+   double ret = strtod(str, nullptr);
 
    // this is a check for -infinity/-HUGE_VAL, without the -infinity value since some compilers make that illegal
    // even so far as to make isinf always FALSE with some compiler flags
    // include the equals case so that the compiler is less likely to optimize that out
-   ret = ret <= std::numeric_limits<FloatEbmType>::lowest() ? std::numeric_limits<FloatEbmType>::lowest() : ret;
+   ret = ret <= std::numeric_limits<double>::lowest() ? std::numeric_limits<double>::lowest() : ret;
    // this is a check for +infinity/HUGE_VAL, without the +infinity value since some compilers make that illegal
    // even so far as to make isinf always FALSE with some compiler flags
    // include the equals case so that the compiler is less likely to optimize that out
-   ret = std::numeric_limits<FloatEbmType>::max() <= ret ? std::numeric_limits<FloatEbmType>::max() : ret;
+   ret = std::numeric_limits<double>::max() <= ret ? std::numeric_limits<double>::max() : ret;
 
    if(FloatToFullString(ret, strRehydrate)) {
       return ret;
@@ -391,9 +379,9 @@ static FloatEbmType StringToFloatWithFixup(
 
    EBM_ASSERT('+' == str[0]);
 
-   // according to the C++ docs, nextafter won't exceed the to parameter, so we don't have to worry about this
-   // generating infinities
-   ret = std::nextafter(ret, std::numeric_limits<FloatEbmType>::max());
+   if(std::numeric_limits<double>::max() != ret) {
+      ret = FloatTickIncrement(ret);
+   }
 
    return ret;
 }
@@ -401,8 +389,8 @@ static FloatEbmType StringToFloatWithFixup(
 static bool StringToFloatChopped(
    const char * const pStr,
    size_t iTruncateMantissaTextDigitsAfterFirstDigit,
-   FloatEbmType * const pLowChopOut,
-   FloatEbmType * const pHighChopOut
+   double * const pLowChopOut,
+   double * const pHighChopOut
 ) noexcept {
    // the lowChopOut returned can be equal to highChopOut if pStr is an overflow
 
@@ -446,7 +434,7 @@ static bool StringToFloatChopped(
                *pDigit = '1';
                *(pDigit + size_t { 1 }) = 'e';
 
-               constexpr static char g_pPrintfLongInt[] = "%+d";
+               static constexpr char g_pPrintfLongInt[] = "%+d";
                // for the size -> one for the '+' or '-' sign, k_cExponentTextDigits for the digits, 1 for null terminator
                int cCharsWithoutNullTerminator = snprintf(
                   pDigit + size_t { 2 },
@@ -479,9 +467,9 @@ static bool StringToFloatChopped(
    return false;
 }
 
-extern FloatEbmType GetInterpretableCutPointFloat(
-   FloatEbmType low,
-   FloatEbmType high
+extern double GetInterpretableCutPointFloat(
+   double low,
+   double high
 ) noexcept {
    // TODO : add logs or asserts here when we find a condition we didn't think was possible, but that occurs
 
@@ -489,61 +477,61 @@ extern FloatEbmType GetInterpretableCutPointFloat(
    EBM_ASSERT(!std::isnan(low));
    EBM_ASSERT(!std::isnan(high));
 
-   // -infinity is converted to std::numeric_limits<FloatEbmType>::lowest() and 
-   // +infinity is converted to std::numeric_limits<FloatEbmType>::max() in our data prior to discretization
+   // -infinity is converted to std::numeric_limits<double>::lowest() and 
+   // +infinity is converted to std::numeric_limits<double>::max() in our data prior to discretization
    EBM_ASSERT(!std::isinf(low));
    EBM_ASSERT(!std::isinf(high));
 
    EBM_ASSERT(low < high); // if two numbers were equal, we wouldn't put a cut point between them
-   EBM_ASSERT(low < std::numeric_limits<FloatEbmType>::max());
-   EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < high);
+   EBM_ASSERT(low < std::numeric_limits<double>::max());
+   EBM_ASSERT(std::numeric_limits<double>::lowest() < high);
 
    // if our numbers pass the asserts above, all combinations of low and high values can get a legal cut point, 
    // since we can always return the high value given that our binning is lower bound inclusive
 
-   FloatEbmType lowChop;
-   FloatEbmType highChop;
+   double lowChop;
+   double highChop;
    char strAvg[k_cCharsFloatPrint];
-   FloatEbmType ret;
+   double ret;
 
    bool bNegative = false;
-   if(UNLIKELY(low <= FloatEbmType { 0 })) {
-      if(UNLIKELY(FloatEbmType { 0 } == low)) {
-         EBM_ASSERT(FloatEbmType { 0 } < high);
+   if(UNLIKELY(low <= double { 0 })) {
+      if(UNLIKELY(double { 0 } == low)) {
+         EBM_ASSERT(double { 0 } < high);
          // half of any number should give us something with sufficient distance.  For instance probably the worse
          // number would be something like 1.999999999999*10^1 where the division by two might round up to
          // 1.000000000000*10^1.  In that case though, we'll find that 1*10^1 is closest to the average, and we'll
          // choose that instead of the much farther away 2.000*10^1
 
-         const FloatEbmType avg = high * FloatEbmType { 0.5 };
+         const double avg = high * double { 0.5 };
          EBM_ASSERT(!std::isnan(avg));
          EBM_ASSERT(!std::isinf(avg));
-         EBM_ASSERT(FloatEbmType { 0 } <= avg);
+         EBM_ASSERT(double { 0 } <= avg);
          ret = high;
          // check for underflow
-         if(LIKELY(FloatEbmType { 0 } != avg)) {
+         if(LIKELY(double { 0 } != avg)) {
             ret = avg;
             if(LIKELY(!FloatToFullString(ret, strAvg)) && LIKELY(!StringToFloatChopped(strAvg, 0, &lowChop, &highChop))) {
                EBM_ASSERT(!std::isnan(lowChop));
                EBM_ASSERT(!std::isinf(lowChop));
                // it's possible we could have chopped off digits such that we round down to zero
-               EBM_ASSERT(FloatEbmType { 0 } <= lowChop);
+               EBM_ASSERT(double { 0 } <= lowChop);
                EBM_ASSERT(lowChop <= ret);
                // check for underflow from digit chopping.  If this happens avg/high must be pretty close to zero
-               if(LIKELY(FloatEbmType { 0 } != lowChop)) {
+               if(LIKELY(double { 0 } != lowChop)) {
                   EBM_ASSERT(!std::isnan(highChop));
                   EBM_ASSERT(!std::isinf(highChop));
-                  EBM_ASSERT(FloatEbmType { 0 } < highChop);
+                  EBM_ASSERT(double { 0 } < highChop);
                   EBM_ASSERT(ret <= highChop);
 
-                  const FloatEbmType highDistance = highChop - ret;
+                  const double highDistance = highChop - ret;
                   EBM_ASSERT(!std::isnan(highDistance));
                   EBM_ASSERT(!std::isinf(highDistance));
-                  EBM_ASSERT(FloatEbmType { 0 } <= highDistance);
-                  const FloatEbmType lowDistance = ret - lowChop;
+                  EBM_ASSERT(double { 0 } <= highDistance);
+                  const double lowDistance = ret - lowChop;
                   EBM_ASSERT(!std::isnan(lowDistance));
                   EBM_ASSERT(!std::isinf(lowDistance));
-                  EBM_ASSERT(FloatEbmType { 0 } <= lowDistance);
+                  EBM_ASSERT(double { 0 } <= lowDistance);
 
                   ret = UNPREDICTABLE(highDistance <= lowDistance) ? highChop : lowChop;
                }
@@ -558,43 +546,43 @@ extern FloatEbmType GetInterpretableCutPointFloat(
          return ret;
       }
 
-      if(UNLIKELY(FloatEbmType { 0 } <= high)) {
+      if(UNLIKELY(double { 0 } <= high)) {
          // if low is negative and high is zero or positive, a natural cut point is zero.  Also, this solves the issue
          // that we can't take the geometric mean of mixed positive/negative numbers.  This works since we use 
          // lower bound inclusivity, so a cut point of 0 will include the number 0 in the upper bin.  Normally we try 
          // to avoid putting a cut directly on one of the numbers, but in the case of zero it seems appropriate.
-         ret = FloatEbmType { 0 };
-         if(UNLIKELY(FloatEbmType { 0 } == high)) {
+         ret = double { 0 };
+         if(UNLIKELY(double { 0 } == high)) {
             // half of any number should give us something with sufficient distance.  For instance probably the worse
             // number would be something like 1.999999999999*10^1 where the division by two might round up to
             // 1.000000000000*10^1.  In that case though, we'll find that 1*10^1 is closest to the average, and we'll
             // choose that instead of the much farther away 2.000*10^1
 
-            ret = low * FloatEbmType { -0.5 };
+            ret = low * double { -0.5 };
             EBM_ASSERT(!std::isnan(ret));
             EBM_ASSERT(!std::isinf(ret));
-            EBM_ASSERT(FloatEbmType { 0 } <= ret);
+            EBM_ASSERT(double { 0 } <= ret);
 
             if(LIKELY(!FloatToFullString(ret, strAvg)) && LIKELY(!StringToFloatChopped(strAvg, 0, &lowChop, &highChop))) {
                EBM_ASSERT(!std::isnan(lowChop));
                EBM_ASSERT(!std::isinf(lowChop));
                // it's possible we could have chopped off digits such that we round down to zero
-               EBM_ASSERT(FloatEbmType { 0 } <= lowChop);
+               EBM_ASSERT(double { 0 } <= lowChop);
                EBM_ASSERT(lowChop <= ret);
 
                EBM_ASSERT(!std::isnan(highChop));
                EBM_ASSERT(!std::isinf(highChop));
-               EBM_ASSERT(FloatEbmType { 0 } < highChop);
+               EBM_ASSERT(double { 0 } < highChop);
                EBM_ASSERT(ret <= highChop);
 
-               const FloatEbmType highDistance = highChop - ret;
+               const double highDistance = highChop - ret;
                EBM_ASSERT(!std::isnan(highDistance));
                EBM_ASSERT(!std::isinf(highDistance));
-               EBM_ASSERT(FloatEbmType { 0 } <= highDistance);
-               const FloatEbmType lowDistance = ret - lowChop;
+               EBM_ASSERT(double { 0 } <= highDistance);
+               const double lowDistance = ret - lowChop;
                EBM_ASSERT(!std::isnan(lowDistance));
                EBM_ASSERT(!std::isinf(lowDistance));
-               EBM_ASSERT(FloatEbmType { 0 } <= lowDistance);
+               EBM_ASSERT(double { 0 } <= lowDistance);
 
                ret = UNPREDICTABLE(highDistance <= lowDistance) ? highChop : lowChop;
             }
@@ -609,31 +597,31 @@ extern FloatEbmType GetInterpretableCutPointFloat(
          return ret;
       }
 
-      const FloatEbmType tmpLow = low;
+      const double tmpLow = low;
       low = -high;
       high = -tmpLow;
       bNegative = true;
    } else {
-      EBM_ASSERT(FloatEbmType { 0 } < high);
+      EBM_ASSERT(double { 0 } < high);
    }
 
-   EBM_ASSERT(FloatEbmType { 0 } < low);
-   EBM_ASSERT(FloatEbmType { 0 } < high);
+   EBM_ASSERT(double { 0 } < low);
+   EBM_ASSERT(double { 0 } < high);
    EBM_ASSERT(low < high);
-   EBM_ASSERT(low < std::numeric_limits<FloatEbmType>::max());
-   EBM_ASSERT(high <= std::numeric_limits<FloatEbmType>::max());
+   EBM_ASSERT(low < std::numeric_limits<double>::max());
+   EBM_ASSERT(high <= std::numeric_limits<double>::max());
 
    // divide by high since it's guaranteed to be bigger than low, so we can't blow up to infinity
-   const FloatEbmType ratio = low / high;
+   const double ratio = low / high;
    EBM_ASSERT(!std::isnan(ratio));
    EBM_ASSERT(!std::isinf(ratio));
-   EBM_ASSERT(ratio <= FloatEbmType { 1 });
-   EBM_ASSERT(FloatEbmType { 0 } <= ratio);
+   EBM_ASSERT(ratio <= double { 1 });
+   EBM_ASSERT(double { 0 } <= ratio);
 
    // don't transition on a perfect 1000 ratio from arithmetic to geometric mean since many of our numbers
    // are probably going to be whole numbers and we don't want floating point inexactness to dictate the
    // transition, so choose a number just slightly lower than 1000, in this case 996.18959224497322090157279627358
-   if(ratio < FloatEbmType { 0.001003824982498 }) {
+   if(ratio < double { 0.001003824982498 }) {
       ret = GeometricMeanPositives(low, high);
       EBM_ASSERT(!std::isnan(ret));
       EBM_ASSERT(!std::isinf(ret));
@@ -650,18 +638,18 @@ extern FloatEbmType GetInterpretableCutPointFloat(
          // to the average
 
          EBM_ASSERT(low < lowChop);
-         const FloatEbmType lowRatio = low / lowChop;
+         const double lowRatio = low / lowChop;
          EBM_ASSERT(!std::isnan(lowRatio));
          EBM_ASSERT(!std::isinf(lowRatio));
-         EBM_ASSERT(lowRatio <= FloatEbmType { 1 });
-         EBM_ASSERT(FloatEbmType { 0 } <= lowRatio);
+         EBM_ASSERT(lowRatio <= double { 1 });
+         EBM_ASSERT(double { 0 } <= lowRatio);
 
          EBM_ASSERT(highChop < high);
-         const FloatEbmType highRatio = highChop / high;
+         const double highRatio = highChop / high;
          EBM_ASSERT(!std::isnan(highRatio));
          EBM_ASSERT(!std::isinf(highRatio));
-         EBM_ASSERT(highRatio <= FloatEbmType { 1 });
-         EBM_ASSERT(FloatEbmType { 0 } <= highRatio);
+         EBM_ASSERT(highRatio <= double { 1 });
+         EBM_ASSERT(double { 0 } <= highRatio);
 
          ret = UNPREDICTABLE(lowRatio <= highRatio) ? lowChop : highChop;
       }
@@ -678,10 +666,10 @@ extern FloatEbmType GetInterpretableCutPointFloat(
          LIKELY(!FloatToFullString(high, strHigh)) && LIKELY(!FloatToFullString(ret, strAvg)))) {
          size_t iTruncateMantissa = size_t { 0 };
          do {
-            FloatEbmType lowHigh;
-            FloatEbmType avgLow;
-            FloatEbmType avgHigh;
-            FloatEbmType highLow;
+            double lowHigh;
+            double avgLow;
+            double avgHigh;
+            double highLow;
 
             if(UNLIKELY(StringToFloatChopped(strLow, iTruncateMantissa, nullptr, &lowHigh))) {
                break;
@@ -697,8 +685,8 @@ extern FloatEbmType GetInterpretableCutPointFloat(
                // avgLow is a possibility
                if(lowHigh < avgHigh && avgHigh < highLow && low < avgHigh && avgHigh <= high) {
                   // avgHigh is a possibility
-                  const FloatEbmType lowDistanceToAverage = ret - avgLow;
-                  const FloatEbmType highDistanceToAverage = avgHigh - ret;
+                  const double lowDistanceToAverage = ret - avgLow;
+                  const double highDistanceToAverage = avgHigh - ret;
                   EBM_ASSERT(-0.000001 < lowDistanceToAverage);
                   EBM_ASSERT(-0.000001 < highDistanceToAverage);
                   if(UNPREDICTABLE(highDistanceToAverage < lowDistanceToAverage)) {
@@ -726,9 +714,9 @@ extern FloatEbmType GetInterpretableCutPointFloat(
    return ret;
 }
 
-extern FloatEbmType GetInterpretableEndpoint(
-   const FloatEbmType center,
-   const FloatEbmType movementFromEnds
+extern double GetInterpretableEndpoint(
+   const double center,
+   const double movementFromEnds
 ) noexcept {
    // TODO : add logs or asserts here when we find a condition we didn't think was possible, but that occurs
 
@@ -737,9 +725,9 @@ extern FloatEbmType GetInterpretableEndpoint(
 
    EBM_ASSERT(!std::isnan(center));
    EBM_ASSERT(!std::isnan(movementFromEnds));
-   EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
+   EBM_ASSERT(double { 0 } <= movementFromEnds);
 
-   FloatEbmType ret = center;
+   double ret = center;
    // if the center is +-infinity then we'll always be farter away than the end cut points which can't be +-infinity
    // so return +-infinity so that our alternative cut point is rejected
    if(LIKELY(!std::isinf(ret))) {
@@ -748,34 +736,34 @@ extern FloatEbmType GetInterpretableEndpoint(
       // infinity here, even though the 
       EBM_ASSERT(!std::isinf(movementFromEnds));
 
-      const FloatEbmType distance = k_percentageDeviationFromEndpointForInterpretableNumbers * movementFromEnds;
+      const double distance = k_percentageDeviationFromEndpointForInterpretableNumbers * movementFromEnds;
       EBM_ASSERT(!std::isnan(distance));
       EBM_ASSERT(!std::isinf(distance));
-      EBM_ASSERT(FloatEbmType { 0 } <= distance);
+      EBM_ASSERT(double { 0 } <= distance);
 
       bool bNegative = false;
-      if(PREDICTABLE(ret < FloatEbmType { 0 })) {
+      if(PREDICTABLE(ret < double { 0 })) {
          ret = -ret;
          bNegative = true;
       }
 
-      const FloatEbmType lowBound = ret - distance;
+      const double lowBound = ret - distance;
       EBM_ASSERT(!std::isnan(lowBound));
       // lowBound can be a negative number, but can't be +-infinity because we subtract from a positive number
       // and we use IEEE 754
       EBM_ASSERT(!std::isinf(lowBound));
 
-      const FloatEbmType highBound = ret + distance;
+      const double highBound = ret + distance;
       // highBound can be +infinity, but can't be negative
       EBM_ASSERT(!std::isnan(highBound));
-      EBM_ASSERT(FloatEbmType { 0 } <= highBound);
+      EBM_ASSERT(double { 0 } <= highBound);
 
       char str[k_cCharsFloatPrint];
       if(LIKELY(!FloatToFullString(ret, str))) {
          size_t iTruncateMantissa = size_t { 0 };
          do {
-            FloatEbmType lowChop;
-            FloatEbmType highChop;
+            double lowChop;
+            double highChop;
 
             if(UNLIKELY(StringToFloatChopped(str, iTruncateMantissa, &lowChop, &highChop))) {
                break;
@@ -788,8 +776,8 @@ extern FloatEbmType GetInterpretableEndpoint(
                // lowChop is a possibility
                if(lowBound <= highChop && highChop <= highBound) {
                   // highChop is a possibility
-                  const FloatEbmType lowDistanceToAverage = ret - lowChop;
-                  const FloatEbmType highDistanceToAverage = highChop - ret;
+                  const double lowDistanceToAverage = ret - lowChop;
+                  const double highDistanceToAverage = highChop - ret;
                   EBM_ASSERT(-0.000001 < lowDistanceToAverage);
                   EBM_ASSERT(-0.000001 < highDistanceToAverage);
                   if(UNPREDICTABLE(highDistanceToAverage < lowDistanceToAverage)) {
@@ -817,9 +805,9 @@ extern FloatEbmType GetInterpretableEndpoint(
    return ret;
 }
 
-extern size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, FloatEbmType * const aValues) noexcept {
+extern size_t RemoveMissingValsAndReplaceInfinities(const size_t cSamples, double * const aVals) noexcept {
    EBM_ASSERT(size_t { 1 } <= cSamples);
-   EBM_ASSERT(nullptr != aValues);
+   EBM_ASSERT(nullptr != aVals);
 
    // In most cases we believe that for graphing the caller should only need the bin cuts that we'll eventually
    // return, and they'll want to position the graph to include the first and last cuts, and have a little bit of 
@@ -857,35 +845,41 @@ extern size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, Flo
    // +-infinity values in either the cut points, or the min/max values, which is good since serialization of
    // +-infinity isn't very standardized accross languages.  It's a problem in JSON especially.
 
-   FloatEbmType * pCopyFrom = aValues;
-   FloatEbmType * pCopyTo = aValues;
-   const FloatEbmType * const pValuesEnd = aValues + cSamples;
+   double * pCopyFrom = aVals;
+   double * pCopyTo = aVals;
+   const double * const pValsEnd = aVals + cSamples;
    do {
-      FloatEbmType val = *pCopyFrom;
+      double val = *pCopyFrom;
       if(PREDICTABLE(!std::isnan(val))) {
-         val = UNPREDICTABLE(std::numeric_limits<FloatEbmType>::infinity() == val) ? 
-            std::numeric_limits<FloatEbmType>::max() : val;
-         val = UNPREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == val) ? 
-            std::numeric_limits<FloatEbmType>::lowest() : val;
+         val = UNPREDICTABLE(std::numeric_limits<double>::infinity() == val) ? 
+            std::numeric_limits<double>::max() : val;
+         val = UNPREDICTABLE(-std::numeric_limits<double>::infinity() == val) ? 
+            std::numeric_limits<double>::lowest() : val;
          *pCopyTo = val;
          ++pCopyTo;
       }
       ++pCopyFrom;
-   } while(LIKELY(pValuesEnd != pCopyFrom));
-   const size_t cSamplesWithoutMissing = pCopyTo - aValues;
+   } while(LIKELY(pValsEnd != pCopyFrom));
+   const size_t cSamplesWithoutMissing = pCopyTo - aVals;
    EBM_ASSERT(cSamplesWithoutMissing <= cSamples);
    return cSamplesWithoutMissing;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
-   IntEbmType countCuts,
-   FloatEbmType lowestCut,
-   FloatEbmType highestCut,
-   FloatEbmType minValue,
-   FloatEbmType maxValue,
-   FloatEbmType * lowGraphBoundOut,
-   FloatEbmType * highGraphBoundOut
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SuggestGraphBounds(
+   IntEbm countCuts,
+   double lowestCut,
+   double highestCut,
+   double minFeatureVal,
+   double maxFeatureVal,
+   double * lowGraphBoundOut,
+   double * highGraphBoundOut
 ) {
+   // lowGraphBoundOut and highGraphBoundOut will never legally return NaN
+   // lowGraphBoundOut can be -inf if minFeatureVal was -inf, or if our bounds get pushed into -inf
+   // lowGraphBoundOut can be +inf if there are no cuts, and both minFeatureVal and maxFeatureVal are +inf (if all data is +inf)
+   // highGraphBoundOut can also be any of these values
+
+   // TODO: review these comments below now that things have changed:
    // There are a lot of complexities in choosing the graphing bounds.  Let's start from the beginning:
    // - cuts occur on floating point values.  We need to make a choice whether features that are the exact value 
    //   of the cut point go into the upper or lower bounds
@@ -1043,7 +1037,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Suggest
    //     - probably using 10 is the right max here.. what else makes sense?
    //   - you have values between -5 and +10 and 1/100 of the data is +inf
    //     - if we set the max to +inf then we can't really make a graph and we can't write to JSON
-   //     - if we set the maxValue to max_float then people won't really undrestand why the graph goes unitl 
+   //     - if we set the maxFeatureVal to max_float then people won't really undrestand why the graph goes unitl 
    //       3.402823466e+38
    //     - if we set the upper cut below 10, then we get to keep it less than the max, but then +10 will be bunched
    //       with +inf and that seems like a bad clusting
@@ -1076,265 +1070,203 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Suggest
 
 
    if(nullptr == lowGraphBoundOut) {
-      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds nullptr == lowGraphBoundOut");
-      return Error_IllegalParamValue;
+      LOG_0(Trace_Error, "ERROR SuggestGraphBounds nullptr == lowGraphBoundOut");
+      return Error_IllegalParamVal;
    }
    if(nullptr == highGraphBoundOut) {
-      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds nullptr == highGraphBoundOut");
-      return Error_IllegalParamValue;
+      LOG_0(Trace_Error, "ERROR SuggestGraphBounds nullptr == highGraphBoundOut");
+      return Error_IllegalParamVal;
    }
-   if(maxValue < minValue) {
+   if(maxFeatureVal < minFeatureVal) {
       // silly caller, these should be reversed.  If either or both are NaN this won't execute, which is good
-      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds maxValue < minValue");
-      *lowGraphBoundOut = 0;
-      *highGraphBoundOut = 0;
-      return Error_IllegalParamValue;
+      LOG_0(Trace_Error, "ERROR SuggestGraphBounds maxFeatureVal < minFeatureVal");
+      *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
+      *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
+      return Error_IllegalParamVal;
    }
 
-   if(countCuts <= IntEbmType { 0 }) {
-      if(countCuts < IntEbmType { 0 }) {
-         LOG_0(TraceLevelError, "ERROR SuggestGraphBounds countCuts < IntEbmType { 0 }");
-         *lowGraphBoundOut = 0;
-         *highGraphBoundOut = 0;
-         return Error_IllegalParamValue;
-      }
-      // countCuts was zero, so the only information we have to go on are the minValue and maxValue..
-      if(std::isnan(minValue)) {
-         if(std::isnan(maxValue)) {
-            // no cuts and min and max are both unknown, let's return 0 -> 0 since 
-            // going from lowest_float -> max_float leads to overflows when you subtract and makes graphing hard
-            // and most people don't know what lowest_float and max_float are anyways, and the range also changes
-            // depending on if you're using floats or doubles
-
-            *lowGraphBoundOut = 0;
-            *highGraphBoundOut = 0;
-            return Error_None;
-         } 
-
-         // no min value, but we do have a max value?? Ok, well, since we only have one value let's return that
-         if(std::isinf(maxValue)) {
-            // you can't graph +inf, so return 0 -> 0
-            *lowGraphBoundOut = 0;
-            *highGraphBoundOut = 0;
-            return Error_None;
-         }
-
-         *lowGraphBoundOut = maxValue;
-         *highGraphBoundOut = maxValue;
-         return Error_None;
-      } else if(std::isnan(maxValue)) {
-         // no max value, but we do have a min value?? Ok, well, since we only have one value let's return that
-         if(std::isinf(minValue)) {
-            // you can't graph -inf, so return 0 -> 0
-            *lowGraphBoundOut = 0;
-            *highGraphBoundOut = 0;
-            return Error_None;
-         }
-
-         *lowGraphBoundOut = minValue;
-         *highGraphBoundOut = minValue;
-         return Error_None;
+   if(countCuts <= IntEbm { 0 }) {
+      if(countCuts < IntEbm { 0 }) {
+         LOG_0(Trace_Error, "ERROR SuggestGraphBounds countCuts < IntEbm { 0 }");
+         *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
+         *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
+         return Error_IllegalParamVal;
       }
 
-      // great, both the min and max are known.  We still don't want to use +-inf values if they are present
-      // for the graph bounds.  Normally we woudn't return +-inf, but this is a field which the user might
-      // modify, so let's handle +inf or -inf values
+      // countCuts was zero, so the only information we have to go on are the minFeatureVal and maxFeatureVal..
+      if(std::isnan(minFeatureVal)) {
+         if(std::isnan(maxFeatureVal)) {
+            // we can't avoid the scenario where min = float.lowest() and max = float.max.  In that case
+            // the range of max - min would overflow to +inf, so the graphing code needs to handle this.
+            // So, we might as well allow +inf and -inf as legal min/max returns.  If we have no
+            // information at all, we might as well return those to cover the entire range
+            // and force the caller to handle these weird conditions.  The alternative is to return NaNs
+            // but that has it's own issues, and returning +-inf at least removes the requirement to handle
+            // NaN returns
 
-      if(std::isinf(minValue)) {
-         if(std::isinf(maxValue)) {
-            // both are inf values.  You can't graph +-inf, so return 0 -> 0
-            *lowGraphBoundOut = 0;
-            *highGraphBoundOut = 0;
+            *lowGraphBoundOut = -std::numeric_limits<double>::infinity();
+            *highGraphBoundOut = +std::numeric_limits<double>::infinity();
+            return Error_None;
+         } else {
+            // no min, but we do have a max?!  Ok..
+            *lowGraphBoundOut = maxFeatureVal;
+            *highGraphBoundOut = maxFeatureVal;
             return Error_None;
          }
-         // minValue is an infinity but maxValue isn't, so let's return that
-         *lowGraphBoundOut = maxValue;
-         *highGraphBoundOut = maxValue;
-         return Error_None;
-      } else if(std::isinf(maxValue)) {
-         // maxValue is an infinity but minValue isn't, so let's return that
-         *lowGraphBoundOut = minValue;
-         *highGraphBoundOut = minValue;
-         return Error_None;
+      } else {
+         if(std::isnan(maxFeatureVal)) {
+            // no max, but we do have a min?!  Ok..
+            *lowGraphBoundOut = minFeatureVal;
+            *highGraphBoundOut = minFeatureVal;
+            return Error_None;
+         } else {
+            // the danger here is that this allows both low & high to be either +-infinity, which makes sense
+            // if all the data is +inf or -inf, but then when we go to subtract it to get a range you'd get NaN
+            *lowGraphBoundOut = minFeatureVal;
+            *highGraphBoundOut = maxFeatureVal;
+            return Error_None;
+         }
       }
-
-      *lowGraphBoundOut = minValue;
-      *highGraphBoundOut = maxValue;
-      return Error_None;
    }
 
    if(std::isnan(lowestCut) || std::isinf(lowestCut) || std::isnan(highestCut) || std::isinf(highestCut)) {
-      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds std::isnan(lowestCut) || std::isinf(lowestCut) || std::isnan(highestCut) || std::isinf(highestCut)");
-      *lowGraphBoundOut = 0;
-      *highGraphBoundOut = 0;
-      return Error_IllegalParamValue;
+      LOG_0(Trace_Error, "ERROR SuggestGraphBounds std::isnan(lowestCut) || std::isinf(lowestCut) || std::isnan(highestCut) || std::isinf(highestCut)");
+      *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
+      *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
+      return Error_IllegalParamVal;
    }
 
    // we're going to be checking lowestCut and highestCut, so we should check that they have valid values
-   if(IntEbmType { 1 } == countCuts) {
+   if(IntEbm { 1 } == countCuts) {
       if(lowestCut != highestCut) {
-         LOG_0(TraceLevelError,
+         LOG_0(Trace_Error,
             "ERROR SuggestGraphBounds when 1 == countCuts, then lowestCut and highestCut should be identical");
-         *lowGraphBoundOut = 0;
-         *highGraphBoundOut = 0;
-         return Error_IllegalParamValue;
+         *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
+         *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
+         return Error_IllegalParamVal;
       }
    } else {
       if(highestCut <= lowestCut) {
-         LOG_0(TraceLevelError,
+         LOG_0(Trace_Error,
             "ERROR SuggestGraphBounds highestCut <= lowestCut");
-         *lowGraphBoundOut = 0;
-         *highGraphBoundOut = 0;
-         return Error_IllegalParamValue;
+         *lowGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
+         *highGraphBoundOut = std::numeric_limits<double>::quiet_NaN();
+         return Error_IllegalParamVal;
       }
    }
 
-   bool bExpandLower;
-   FloatEbmType lowGraphBound;
-   if(std::isnan(minValue)) {
+   bool bExpandLower = false;
+   if(std::isnan(minFeatureVal)) {
       // the user removed the min value from the model so we need to use the available info, which is the lowestCut
-      lowGraphBound = lowestCut;
+      minFeatureVal = lowestCut;
       bExpandLower = true;
-   } else if(-std::numeric_limits<FloatEbmType>::infinity() == minValue) {
-      // we can't graph -inf, and don't use lowest since that can lead to graph issues too
-      lowGraphBound = lowestCut;
+   } else if(lowestCut < minFeatureVal) {
+      // the model has been edited or supplied with non-data derived cut points OR lowestCut == minFeatureVal which is legal
+      // our automatic binning code will never put a cut on the exact min value even if the two lowest cuts
+      // are separated by a floating point epsilon, but we'll accept it here since then we're symetric
+      // with the upper bound handling which can have a max on the highest cut
+      minFeatureVal = lowestCut;
       bExpandLower = true;
-   } else {
-      if(lowestCut <= minValue) {
-         // the model has been edited or supplied with non-data derived cut points
-         // our automatic binning code should disallow cuts on the exact min value
-         // if equal and we don't expand lower, then there won't be any place on the graph to see the lowest bin score
-         lowGraphBound = lowestCut;
-         bExpandLower = true;
-      } else {
-         lowGraphBound = minValue;
-         bExpandLower = false;
-      }
    }
-   EBM_ASSERT(!std::isnan(lowGraphBound));
-   EBM_ASSERT(!std::isinf(lowGraphBound));
 
-   bool bExpandHigher;
-   FloatEbmType highGraphBound;
-   if(std::isnan(maxValue)) {
+   bool bExpandHigher = false;
+   if(std::isnan(maxFeatureVal)) {
       // the user removed the max value from the model so we need to use the available info, which is the highestCut
-      highGraphBound = highestCut;
+      maxFeatureVal = highestCut;
       bExpandHigher = true;
-   } else if(std::numeric_limits<FloatEbmType>::infinity() == maxValue) {
-      highGraphBound = highestCut;
+   } else if(maxFeatureVal < highestCut) {
+      // the model has been edited or supplied with non-data derived cut points
+      maxFeatureVal = highestCut;
       bExpandHigher = true;
-   } else {
-      if(maxValue <= highestCut) {
-         // the model has been edited or supplied with non-data derived cut points
-         // our automatic binning code should disallow cuts on the exact max value
-         // if equal and we don't expand higher, then there won't be any place on the graph to see the highest bin score
-         highGraphBound = highestCut;
-         bExpandHigher = true;
-      } else {
-         highGraphBound = maxValue;
-         bExpandHigher = false;
-      }
    }
-   EBM_ASSERT(!std::isnan(highGraphBound));
-   EBM_ASSERT(!std::isinf(highGraphBound));
 
-   if(lowGraphBound == highGraphBound) {
+   if(minFeatureVal == maxFeatureVal) {
       // we handled zero cuts above, and if there were two cuts they'd have to have unique increasing values
       // so the only way we can have the low and high graph bounds the same is if we have one cut and both the
-      // minValue and maxValue are the same as that cut (otherwise we'd create some space), or they are missing (NaN)
-      EBM_ASSERT(IntEbmType { 1 } == countCuts);
-      EBM_ASSERT(std::isnan(minValue) || minValue == highGraphBound);
-      EBM_ASSERT(std::isnan(maxValue) || maxValue == lowGraphBound);
+      // minFeatureVal and maxFeatureVal are the same as that cut, or they are illegal, or they are missing (NaN)
+      EBM_ASSERT(IntEbm { 1 } == countCuts);
 
       // if the regular binning code was kept and the min/max value wasn't removed from the model, then we should
-      // not be able to get here, since minValue == maxValue can only happen if there is only one value, and if there
+      // not be able to get here, since minFeatureVal == maxFeatureVal can only happen if there is only one value, and if there
       // is only one value we would never create cut points, so the cut points or min/max have been user edited
-      // we can therefore put our bounds outside of the original min/max values.  We'll create a visible bin on the
-      // lower side and higher side
 
-      // it's possible that this creates zero sized regions for Slicer if lowGraphBound/highGraphBound was lowest_float
-      // or max_float, but as we've covered above, zero width regions should be legal for user defined binning
-      *lowGraphBoundOut = std::nextafter(lowGraphBound, std::numeric_limits<FloatEbmType>::lowest());
-      *highGraphBoundOut = std::nextafter(highGraphBound, std::numeric_limits<FloatEbmType>::max());
+      *lowGraphBoundOut = minFeatureVal;
+      *highGraphBoundOut = maxFeatureVal;
       return Error_None;
    }
-
-   EBM_ASSERT(lowGraphBound < highGraphBound);
-
-   const FloatEbmType scaleMin = highGraphBound - lowGraphBound;
-   // scaleMin can be +infinity if highestCut is max and lowestCut is lowest.  We can handle it.
-   EBM_ASSERT(!std::isnan(scaleMin));
-   // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
-   EBM_ASSERT(FloatEbmType { 0 } < scaleMin);
 
    // limit the amount of dillution allowed for the tails by capping the relevant cCutPointRet value
    // to 1/32, which means we leave about 3% of the visible area to tail bounds (1.5% on the left and
    // 1.5% on the right)
-
-   const size_t cCutsLimited = static_cast<size_t>(IntEbmType { 32 } < countCuts ? IntEbmType { 32 } : countCuts);
-
+   const size_t cCutsLimited = static_cast<size_t>(EbmMin(IntEbm { 32 }, countCuts));
    EBM_ASSERT(size_t { 1 } <= cCutsLimited);
    const size_t denominator = cCutsLimited << 1;
    EBM_ASSERT(size_t { 2 } <= denominator);
-   const FloatEbmType movementFromEnds = scaleMin / static_cast<FloatEbmType>(denominator);
-   // movementFromEnds can be +infinity if scaleMin is infinity. We can handle it.  It could also underflow to zero
+   const double denominatorFloat = static_cast<double>(denominator);
+
+   EBM_ASSERT(minFeatureVal < maxFeatureVal);
+   double movementFromEnds = maxFeatureVal - minFeatureVal;
+   EBM_ASSERT(!std::isnan(movementFromEnds)); // since maxFeatureVal != minFeatureVal, they can't be both be +inf or both be -inf
+   // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
+   EBM_ASSERT(double { 0 } < movementFromEnds);
+   if(std::isinf(movementFromEnds)) {
+      // movementFromEnds can be +infinity if highestCut is max and lowestCut is lowest or either is +-inf.  Try again
+      // but divide first since we might find that we're in the legal range by dividing first
+      movementFromEnds = maxFeatureVal / denominatorFloat - minFeatureVal / denominatorFloat;
+   } else { 
+      movementFromEnds /= denominatorFloat;
+   }
+
+   // movementFromEnds can be +infinity.  It could also underflow to zero
    EBM_ASSERT(!std::isnan(movementFromEnds));
-   EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
+   EBM_ASSERT(double { 0 } <= movementFromEnds);
 
    if(bExpandLower) {
-      lowGraphBound = lowGraphBound - movementFromEnds;
-      // lowGraphBound can be -infinity if movementFromEnds is +infinity.  We can handle it.
-      EBM_ASSERT(!std::isnan(lowGraphBound));
-      EBM_ASSERT(lowGraphBound <= std::numeric_limits<FloatEbmType>::max());
-      // GetInterpretableEndpoint can accept -infinity, but it'll return -infinity in that case
-      lowGraphBound = GetInterpretableEndpoint(lowGraphBound, movementFromEnds);
-      // lowGraphBound can legally be -infinity and we handle this scenario below
-      if(-std::numeric_limits<FloatEbmType>::infinity() == lowGraphBound) {
-         // in this case the real data has huge magnitudes, so returning lowest is the best solution
-         lowGraphBound = std::numeric_limits<FloatEbmType>::lowest();
-      }
+      // minFeatureVal must be lower than maxFeatureVal so it can't be +inf
+      EBM_ASSERT(minFeatureVal <= std::numeric_limits<double>::max());
+
+      minFeatureVal -= movementFromEnds;
+      EBM_ASSERT(!std::isnan(minFeatureVal));
+      EBM_ASSERT(minFeatureVal <= std::numeric_limits<double>::max());
+      // minFeatureVal can be -inf
    }
 
    if(bExpandHigher) {
-      highGraphBound = highGraphBound + movementFromEnds;
-      // highGraphBound can be +infinity if movementFromEnds is +infinity.  We can handle it.
-      EBM_ASSERT(!std::isnan(highGraphBound));
-      EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() <= highGraphBound);
-      // GetInterpretableEndpoint can accept infinity, but it'll return infinity in that case
-      highGraphBound = GetInterpretableEndpoint(highGraphBound, movementFromEnds);
-      // highGraphBound can legally be +infinity and we handle this scenario below
-      if(std::numeric_limits<FloatEbmType>::infinity() == highGraphBound) {
-         // in this case the real data has huge magnitudes, so returning max_float is the best solution
-         highGraphBound = std::numeric_limits<FloatEbmType>::max();
-      }
+      // maxFeatureVal must be higher than minFeatureVal so it can't be -inf
+      EBM_ASSERT(std::numeric_limits<double>::lowest() <= maxFeatureVal);
+
+      maxFeatureVal += movementFromEnds;
+      EBM_ASSERT(!std::isnan(maxFeatureVal));
+      EBM_ASSERT(std::numeric_limits<double>::lowest() <= maxFeatureVal);
+      // maxFeatureVal can be +inf
    }
 
-   *lowGraphBoundOut = lowGraphBound;
-   *highGraphBoundOut = highGraphBound;
+   *lowGraphBoundOut = minFeatureVal;
+   *highGraphBoundOut = maxFeatureVal;
    return Error_None;
 }
 
-static size_t CountNormal(const size_t cSamples, const double * const aFeatureValues) {
+static size_t CountNormal(const size_t cSamples, const double * const aFeatureVals) {
    EBM_ASSERT(1 <= cSamples);
-   EBM_ASSERT(nullptr != aFeatureValues);
+   EBM_ASSERT(nullptr != aFeatureVals);
 
    size_t cNormal = 0;
-   const double * pFeatureValue = aFeatureValues;
-   const double * const featureValuesEnd = aFeatureValues + cSamples;
+   const double * pFeatureVal = aFeatureVals;
+   const double * const pFeatureValsEnd = aFeatureVals + cSamples;
    do {
-      const double val = *pFeatureValue;
+      const double val = *pFeatureVal;
       if(!std::isnan(val) && !std::isinf(val)) {
          ++cNormal;
       }
-      ++pFeatureValue;
-   } while(featureValuesEnd != pFeatureValue);
+      ++pFeatureVal;
+   } while(pFeatureValsEnd != pFeatureVal);
    return cNormal;
 }
 
-static double Stddev(const size_t cSamples, const double * const aFeatureValues, const size_t cNormal) {
+static double Stddev(const size_t cSamples, const double * const aFeatureVals, const size_t cNormal) {
    EBM_ASSERT(2 <= cSamples);
    EBM_ASSERT(2 <= cNormal);
-   EBM_ASSERT(nullptr != aFeatureValues);
+   EBM_ASSERT(nullptr != aFeatureVals);
 
    // use Welford's method to calculate stddev
    // https://stackoverflow.com/questions/895929/how-do-i-determine-the-standard-deviation-stddev-of-a-set-of-values
@@ -1344,38 +1276,38 @@ static double Stddev(const size_t cSamples, const double * const aFeatureValues,
    double s = 0;
    size_t k = 0;
    const double multFactor = double { 1 } / static_cast<double>(cNormal);
-   const double * pFeatureValue = aFeatureValues;
-   const double * const featureValuesEnd = aFeatureValues + cSamples;
+   const double * pFeatureVal = aFeatureVals;
+   const double * const pFeatureValsEnd = aFeatureVals + cSamples;
    do {
-      const double val = *pFeatureValue;
+      const double val = *pFeatureVal;
       if(!std::isnan(val) && !std::isinf(val)) {
          ++k;
          const double numerator = val - m;
          m += numerator / static_cast<double>(k);
          s += multFactor * numerator * (val - m);
       }
-      ++pFeatureValue;
-   } while(featureValuesEnd != pFeatureValue);
+      ++pFeatureVal;
+   } while(pFeatureValsEnd != pFeatureVal);
    EBM_ASSERT(k == cNormal);
    s = std::sqrt(s);
    return s;
 }
 
-static double Mean(const size_t cSamples, const double * const aFeatureValues, const size_t cNormal) {
+static double Mean(const size_t cSamples, const double * const aFeatureVals, const size_t cNormal) {
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(1 <= cNormal);
-   EBM_ASSERT(nullptr != aFeatureValues);
+   EBM_ASSERT(nullptr != aFeatureVals);
 
    double sum = 0;
-   const double * pFeatureValue = aFeatureValues;
-   const double * const featureValuesEnd = aFeatureValues + cSamples;
+   const double * pFeatureVal = aFeatureVals;
+   const double * const pFeatureValsEnd = aFeatureVals + cSamples;
    do {
-      const double val = *pFeatureValue;
+      const double val = *pFeatureVal;
       if(!std::isnan(val) && !std::isinf(val)) {
          sum += val;
       }
-      ++pFeatureValue;
-   } while(featureValuesEnd != pFeatureValue);
+      ++pFeatureVal;
+   } while(pFeatureValsEnd != pFeatureVal);
 
    EBM_ASSERT(!std::isnan(sum));
 
@@ -1387,75 +1319,70 @@ static double Mean(const size_t cSamples, const double * const aFeatureValues, c
    // ok, maybe we overflowed. Try again but this time divide as we go. This is less accurate and slower, but whatever
    const double cNormalDoubleInv = double { 1 } / cNormalDouble;
    double mean = 0;
-   pFeatureValue = aFeatureValues;
+   pFeatureVal = aFeatureVals;
    do {
-      const double val = *pFeatureValue;
+      const double val = *pFeatureVal;
       if(!std::isnan(val) && !std::isinf(val)) {
          mean += val * cNormalDoubleInv;
       }
-      ++pFeatureValue;
-   } while(featureValuesEnd != pFeatureValue);
+      ++pFeatureVal;
+   } while(pFeatureValsEnd != pFeatureVal);
    return mean;
 }
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterGetHistogramCutCountParametersMessages = 25;
-static int g_cLogExitGetHistogramCutCountParametersMessages = 25;
+static int g_cLogEnterGetHistogramCutCount = 25;
+static int g_cLogExitGetHistogramCutCount = 25;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHistogramCutCount(
-   IntEbmType countSamples,
-   const double * featureValues,
-   IntEbmType strategy
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION GetHistogramCutCount(
+   IntEbm countSamples,
+   const double * featureVals
 ) {
-   UNUSED(strategy);
-
    LOG_COUNTED_N(
-      &g_cLogEnterGetHistogramCutCountParametersMessages,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      &g_cLogEnterGetHistogramCutCount,
+      Trace_Info,
+      Trace_Verbose,
       "Entered GetHistogramCutCount: "
-      "countSamples=%" IntEbmTypePrintf ", "
-      "featureValues=%p, "
-      "strategy=%" IntEbmTypePrintf
+      "countSamples=%" IntEbmPrintf ", "
+      "featureVals=%p"
       ,
       countSamples,
-      static_cast<const void *>(featureValues),
-      strategy
+      static_cast<const void *>(featureVals)
    );
 
    if(UNLIKELY(countSamples <= 0)) {
       if(UNLIKELY(countSamples < 0)) {
-         LOG_0(TraceLevelWarning, "WARNING GetHistogramCutCount countSamples < 0");
+         LOG_0(Trace_Warning, "WARNING GetHistogramCutCount countSamples < 0");
       }
       return 0;
    }
    if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
-      LOG_0(TraceLevelWarning, "WARNING GetHistogramCutCount IsConvertError<size_t>(countSamples)");
+      LOG_0(Trace_Warning, "WARNING GetHistogramCutCount IsConvertError<size_t>(countSamples)");
       return 0;
    }
    const size_t cSamples = static_cast<size_t>(countSamples);
-   const size_t cNormal = CountNormal(cSamples, featureValues);
+   const size_t cNormal = CountNormal(cSamples, featureVals);
 
-   IntEbmType ret = 0;
+   IntEbm ret = 0;
    if(size_t { 3 } <= cNormal) {
-      const double stddev = Stddev(cSamples, featureValues, cNormal);
+      const double stddev = Stddev(cSamples, featureVals, cNormal);
       if(double { 0 } < stddev) {
-         const double mean = Mean(cSamples, featureValues, cNormal);
+         const double mean = Mean(cSamples, featureVals, cNormal);
          const double cNormalDouble = static_cast<double>(cNormal);
          const double cNormalCubicRootDouble = std::cbrt(cNormalDouble);
          const double multFactor = double { 1 } / cNormalCubicRootDouble / stddev;
 
          double g1 = 0;
-         const double * pFeatureValue = featureValues;
-         const double * const featureValuesEnd = featureValues + cSamples;
+         const double * pFeatureVal = featureVals;
+         const double * const pFeatureValsEnd = featureVals + cSamples;
          do {
-            const double val = *pFeatureValue;
+            const double val = *pFeatureVal;
             if(!std::isnan(val) && !std::isinf(val)) {
                const double interior = (val - mean) * multFactor;
                g1 += interior * interior * interior;
             }
-            ++pFeatureValue;
-         } while(featureValuesEnd != pFeatureValue);
+            ++pFeatureVal;
+         } while(pFeatureValsEnd != pFeatureVal);
          g1 = std::abs(g1);
 
          const double denom = std::sqrt(double { 6 } * (cNormalDouble - double { 2 }) / ((cNormalDouble + double { 1 }) * (cNormalDouble + double { 3 })));
@@ -1466,18 +1393,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHistog
             // use Sturges' formula if we have a numeracy issue with our data. countSturgesBins pretty much can't fail
             countBins = std::ceil(countSturgesBins);
          }
-         ret = double { FLOAT64_TO_INT_MAX } < countBins ? IntEbmType { FLOAT64_TO_INT_MAX } : static_cast<IntEbmType>(countBins);
+         ret = double { FLOAT64_TO_INT64_MAX } < countBins ? IntEbm { FLOAT64_TO_INT64_MAX } : static_cast<IntEbm>(countBins);
          EBM_ASSERT(1 <= ret); // since our formula started from 1 and added
          --ret; // # of cuts is one less than the number of bins
       }
    }
 
    LOG_COUNTED_N(
-      &g_cLogExitGetHistogramCutCountParametersMessages,
-      TraceLevelInfo,
-      TraceLevelVerbose,
+      &g_cLogExitGetHistogramCutCount,
+      Trace_Info,
+      Trace_Verbose,
       "Exited GetHistogramCutCount: "
-      "ret=%" IntEbmTypePrintf
+      "return=%" IntEbmPrintf
       ,
       ret
    );

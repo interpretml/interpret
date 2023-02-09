@@ -19,8 +19,6 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "ebm_internal.hpp"
-
 #include "approximate_math.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -70,17 +68,17 @@ static double TestLogSumErrors() {
    // [ln(2), 2 * ln(2)) OR [-ln(2), 0) OR [-ln(2)/2, +ln(2)/2) 
    // BUT, this needs to be evenly distributed, so we can't use nextafter. We need to increment with a constant.
    // boosting will push our exp values to between 1 and 1 + a small number less than e
-   constexpr double k_testLowerInclusiveBound = 1; // this is true lower bound
-   constexpr double k_testUpperExclusiveBound = static_cast<double>(1.0f + 1000 * std::numeric_limits<float>::epsilon()); // 2 would be random guessing. we should optimize for the final rounds.  1.5 gives a log loss about 0.4 which is on the high side of log loss
-   constexpr uint64_t k_cTests = 123513;
-   constexpr bool k_bIsRandom = false;
-   constexpr bool k_bIsRandomFinalFill = true; // if true we choose a random value to randomly fill the space between ticks
-   constexpr float termMid = k_logTermLowerBoundInputCloseToOne;
-   constexpr uint32_t termStepsFromMid = 5;
-   constexpr uint32_t termStepDistance = 1;
+   static constexpr double k_testLowerInclusiveBound = 1; // this is true lower bound
+   static constexpr double k_testUpperExclusiveBound = static_cast<double>(1.0f + 1000 * std::numeric_limits<float>::epsilon()); // 2 would be random guessing. we should optimize for the final rounds.  1.5 gives a log loss about 0.4 which is on the high side of log loss
+   static constexpr uint64_t k_cTests = 123513;
+   static constexpr bool k_bIsRandom = false;
+   static constexpr bool k_bIsRandomFinalFill = true; // if true we choose a random value to randomly fill the space between ticks
+   static constexpr float termMid = k_logTermLowerBoundInputCloseToOne;
+   static constexpr uint32_t termStepsFromMid = 5;
+   static constexpr uint32_t termStepDistance = 1;
 
-   constexpr ptrdiff_t k_cStats = termStepsFromMid * 2 + 1;
-   constexpr double k_movementTick = (k_testUpperExclusiveBound - k_testLowerInclusiveBound) / k_cTests;
+   static constexpr ptrdiff_t k_cStats = termStepsFromMid * 2 + 1;
+   static constexpr double k_movementTick = (k_testUpperExclusiveBound - k_testLowerInclusiveBound) / k_cTests;
 
    // uniform_real_distribution includes the lower bound, but not the upper bound, which is good because
    // our window is balanced by not including both ends
@@ -112,9 +110,9 @@ static double TestLogSumErrors() {
                }
             }
 
-            double exactValue = std::log(val);
-            double approxValue = LogApproxSchraudolph(val, addTerm);
-            double error = approxValue - exactValue;
+            double exactVal = std::log(val);
+            double approxVal = LogApproxSchraudolph(val, addTerm);
+            double error = approxVal - exactVal;
             avgError += error;
             avgAbsError += std::abs(error);
             avgSquareError += error * error;
@@ -186,18 +184,18 @@ static double TestExpSumErrors() {
    // our exp error has a periodicity of ln(2), so [0, ln(2)) should have the same relative error as 
    // [ln(2), 2 * ln(2)) OR [-ln(2), 0) OR [-ln(2)/2, +ln(2)/2) 
    // BUT, this needs to be evenly distributed, so we can't use nextafter. We need to increment with a constant.
-   constexpr double k_testLowerInclusiveBound = -k_expErrorPeriodicity / 2;
-   constexpr double k_testUpperExclusiveBound = k_expErrorPeriodicity / 2;
-   constexpr uint64_t k_cTests = 10000;
-   constexpr bool k_bIsRandom = false;
-   constexpr bool k_bIsRandomFinalFill = true; // if true we choose a random value to randomly fill the space between ticks
-   constexpr uint32_t termMid = k_expTermZeroMeanRelativeError;
-   constexpr uint32_t termStepsFromMid = 20;
-   constexpr uint32_t termStepDistance = 10;
+   static constexpr double k_testLowerInclusiveBound = -k_expErrorPeriodicity / 2;
+   static constexpr double k_testUpperExclusiveBound = k_expErrorPeriodicity / 2;
+   static constexpr uint64_t k_cTests = 10000;
+   static constexpr bool k_bIsRandom = false;
+   static constexpr bool k_bIsRandomFinalFill = true; // if true we choose a random value to randomly fill the space between ticks
+   static constexpr uint32_t termMid = k_expTermZeroMeanRelativeError;
+   static constexpr uint32_t termStepsFromMid = 20;
+   static constexpr uint32_t termStepDistance = 10;
 
 
-   constexpr ptrdiff_t k_cStats = termStepsFromMid * 2 + 1;
-   constexpr double k_movementTick = (k_testUpperExclusiveBound - k_testLowerInclusiveBound) / k_cTests;
+   static constexpr ptrdiff_t k_cStats = termStepsFromMid * 2 + 1;
+   static constexpr double k_movementTick = (k_testUpperExclusiveBound - k_testLowerInclusiveBound) / k_cTests;
 
    // uniform_real_distribution includes the lower bound, but not the upper bound, which is good because
    // our window is balanced by not including both ends
@@ -224,10 +222,10 @@ static double TestExpSumErrors() {
                }
             }
 
-            double exactValue = std::exp(val);
-            double approxValue = ExpApproxSchraudolph<false, false, false, false>(val, addTerm);
-            double error = approxValue - exactValue;
-            double relativeError = error / exactValue;
+            double exactVal = std::exp(val);
+            double approxVal = ExpApproxSchraudolph<false, false, false, false>(val, addTerm);
+            double error = approxVal - exactVal;
+            double relativeError = error / exactVal;
             avgRelativeError += relativeError;
             avgAbsRelativeError += std::abs(relativeError);
             avgSquareRelativeError += relativeError * relativeError;
@@ -275,24 +273,24 @@ extern double g_TestExpSumErrors = TestExpSumErrors();
 static double TestSoftmaxSumErrors() {
    double debugRet = 0; // this just prevents the optimizer from eliminating this code
 
-   constexpr unsigned int seed = 572422;
+   static constexpr unsigned int seed = 572422;
 
-   constexpr double k_expWindowSkew = 0;
-   constexpr int expWindowMultiple = 10;
+   static constexpr double k_expWindowSkew = 0;
+   static constexpr int expWindowMultiple = 10;
    static_assert(1 <= expWindowMultiple, "window must have a positive non-zero size");
 
-   constexpr bool k_bIsRandom = true;
-   constexpr bool k_bIsRandomFinalFill = true; // if true we choose a random value to randomly fill the space between ticks
-   constexpr uint64_t k_cTests = uint64_t { 10000000 }; // std::numeric_limits<uint64_t>::max()
-   constexpr uint64_t k_outputPeriodicity = uint64_t { 100000000 };
-   constexpr uint64_t k_cDivisions = 1609; // ideally choose a prime number
-   constexpr ptrdiff_t k_cSoftmaxTerms = 3;
+   static constexpr bool k_bIsRandom = true;
+   static constexpr bool k_bIsRandomFinalFill = true; // if true we choose a random value to randomly fill the space between ticks
+   static constexpr uint64_t k_cTests = uint64_t { 10000000 }; // std::numeric_limits<uint64_t>::max()
+   static constexpr uint64_t k_outputPeriodicity = uint64_t { 100000000 };
+   static constexpr uint64_t k_cDivisions = 1609; // ideally choose a prime number
+   static constexpr ptrdiff_t k_cSoftmaxTerms = 3;
    static_assert(2 <= k_cSoftmaxTerms, "can't have just 1 since that's always 100% chance");
-   constexpr ptrdiff_t iEliminateOneTerm = 0;
+   static constexpr ptrdiff_t iEliminateOneTerm = 0;
    static_assert(iEliminateOneTerm < k_cSoftmaxTerms, "can't eliminate a term above our existing terms");
-   constexpr uint32_t termMid = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit;
-   constexpr uint32_t termStepsFromMid = 0;
-   constexpr uint32_t termStepDistance = 1;
+   static constexpr uint32_t termMid = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit;
+   static constexpr uint32_t termStepsFromMid = 0;
+   static constexpr uint32_t termStepDistance = 1;
 
 
    // below here are calculated values dependent on the above settings
@@ -300,12 +298,12 @@ static double TestSoftmaxSumErrors() {
    // our exp error has a periodicity of ln(2), so [0, ln(2)) should have the same relative error as 
    // [ln(2), 2 * ln(2)) OR [-ln(2), 0) OR [-ln(2)/2, +ln(2)/2) 
    // BUT, this needs to be evenly distributed, so we can't use nextafter. We need to increment with a constant.
-   constexpr double k_testLowerInclusiveBound = 
+   static constexpr double k_testLowerInclusiveBound = 
       k_expWindowSkew - static_cast<double>(expWindowMultiple) * k_expErrorPeriodicity / 2;
-   constexpr double k_testUpperExclusiveBound = 
+   static constexpr double k_testUpperExclusiveBound = 
       k_expWindowSkew + static_cast<double>(expWindowMultiple) * k_expErrorPeriodicity / 2;
-   constexpr ptrdiff_t k_cStats = termStepsFromMid * 2 + 1;
-   constexpr double k_movementTick = (k_testUpperExclusiveBound - k_testLowerInclusiveBound) / k_cDivisions;
+   static constexpr ptrdiff_t k_cStats = termStepsFromMid * 2 + 1;
+   static constexpr double k_movementTick = (k_testUpperExclusiveBound - k_testLowerInclusiveBound) / k_cDivisions;
 
    static_assert(k_testLowerInclusiveBound < k_testUpperExclusiveBound, "low must be lower than high");
 
@@ -366,7 +364,7 @@ static double TestSoftmaxSumErrors() {
                const double oneTermAdd = iTerm == iEliminateOneTerm ? double { 1 } : std::exp(softmaxTerms[iTerm]);
                exactDenominator += oneTermAdd;
             }
-            const double exactValue = exactNumerator / exactDenominator;
+            const double exactVal = exactNumerator / exactDenominator;
 
 
             const double approxNumerator = 0 == iEliminateOneTerm ? double { 1 } : ExpApproxBest<false, false, false, false>(softmaxTerms[0]);
@@ -375,10 +373,10 @@ static double TestSoftmaxSumErrors() {
                const double oneTermAdd = iTerm == iEliminateOneTerm ? double { 1 } : ExpApproxBest<false, false, false, false>(softmaxTerms[iTerm]);
                approxDenominator += oneTermAdd;
             }
-            const double approxValue = approxNumerator / approxDenominator;
+            const double approxVal = approxNumerator / approxDenominator;
 
-            const double error = approxValue - exactValue;
-            const double relativeError = error / exactValue;
+            const double error = approxVal - exactVal;
+            const double relativeError = error / exactVal;
             avgRelativeError[iStat] += relativeError;
             avgAbsRelativeError[iStat] += std::abs(relativeError);
             avgSquareRelativeError[iStat] += relativeError * relativeError;

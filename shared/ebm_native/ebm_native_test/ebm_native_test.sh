@@ -269,11 +269,15 @@ debug_64=1
 release_64=1
 debug_32=0
 release_32=0
+release_arm=0
+debug_arm=0
 
 existing_debug_64=0
 existing_release_64=0
 existing_debug_32=0
 existing_release_32=0
+existing_debug_arm=0
+existing_release_arm=0
 
 use_valgrind=1
 use_asan=1
@@ -291,6 +295,12 @@ for arg in "$@"; do
    if [ "$arg" = "-release_32" ]; then
       release_32=1
    fi
+   if [ "$arg" = "-debug_arm" ]; then
+      debug_arm=1
+   fi
+   if [ "$arg" = "-release_arm" ]; then
+      release_arm=1
+   fi
 
    if [ "$arg" = "-existing_debug_64" ]; then
       existing_debug_64=1
@@ -303,6 +313,12 @@ for arg in "$@"; do
    fi
    if [ "$arg" = "-existing_release_32" ]; then
       existing_release_32=1
+   fi
+   if [ "$arg" = "-existing_debug_arm" ]; then
+      existing_debug_arm=1
+   fi
+   if [ "$arg" = "-existing_release_arm" ]; then
+      existing_release_arm=1
    fi
 
    if [ "$arg" = "-no_valgrind" ]; then
@@ -352,7 +368,6 @@ both_args="$both_args -Wshadow"
 both_args="$both_args -Wformat=2"
 both_args="$both_args -fvisibility=hidden"
 both_args="$both_args -fno-math-errno -fno-trapping-math"
-both_args="$both_args -march=core2"
 both_args="$both_args -I$src_path_sanitized/../inc"
 both_args="$both_args -I$src_path_sanitized"
 
@@ -375,6 +390,7 @@ if [ "$os_type" = "Linux" ]; then
 
    # try moving some of these g++ specific warnings into both_args if clang eventually supports them
    both_args="$both_args -Wlogical-op"
+   both_args="$both_args -march=core2"
 
    # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
    link_args="$link_args -L$staging_path_sanitized"
@@ -604,6 +620,7 @@ elif [ "$os_type" = "Darwin" ]; then
       ########################## macOS debug|x64
 
       if [ $existing_debug_64 -eq 0 ]; then 
+         # TODO: add options to build.sh to only build debug x64 (not arm!)
          /bin/sh "$root_path_unsanitized/build.sh" -no_release_64 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
@@ -617,7 +634,7 @@ elif [ "$os_type" = "Darwin" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/x64/ebm_native_test"
       lib_file_body="_ebm_native_mac_x64_debug"
       g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_test_debug_mac_x64_build_log.txt"
-      both_args_extra="-m64 -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
+      both_args_extra="-march=core2 -target x86_64-apple-macos10.12 -m64 -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
@@ -649,6 +666,7 @@ elif [ "$os_type" = "Darwin" ]; then
       ########################## macOS release|x64
 
       if [ $existing_release_64 -eq 0 ]; then 
+         # TODO: add options to build.sh to only build release x64 (not arm!)
          /bin/sh "$root_path_unsanitized/build.sh" -no_debug_64 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
@@ -662,7 +680,99 @@ elif [ "$os_type" = "Darwin" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/x64/ebm_native_test"
       lib_file_body="_ebm_native_mac_x64"
       g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_test_release_mac_x64_build_log.txt"
-      both_args_extra="-m64 -DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
+      both_args_extra="-march=core2 -target x86_64-apple-macos10.12 -m64 -DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
+      c_args_specific="$c_args $both_args $both_args_extra"
+      cpp_args_specific="$cpp_args $both_args $both_args_extra"
+      # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
+      link_args_specific="-l$lib_file_body $link_args $cpp_args_specific"
+   
+      g_all_object_files_sanitized=""
+      g_compile_out_full=""
+
+      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+
+      cp "$staging_path_unsanitized/lib$lib_file_body.dylib" "$bin_path_unsanitized/"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      "$bin_path_unsanitized/$bin_file"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+   fi
+
+   if [ $debug_arm -eq 1 ]; then
+      ########################## macOS debug|arm
+
+      if [ $existing_debug_arm -eq 0 ]; then 
+         # TODO: add options to build.sh to only build release arm
+         /bin/sh "$root_path_unsanitized/build.sh" -analysis
+         ret_code=$?
+         if [ $ret_code -ne 0 ]; then 
+            # build.sh should write out any messages
+            exit $ret_code
+         fi
+      fi
+
+      printf "%s\n" "Compiling ebm_native_test with $c_compiler/$cpp_compiler for macOS debug|arm"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/debug/mac/arm/ebm_native_test"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/arm/ebm_native_test"
+      lib_file_body="_ebm_native_mac_arm_debug"
+      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_test_debug_mac_arm_build_log.txt"
+      both_args_extra="-target arm64-apple-macos11 -m64 -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
+      c_args_specific="$c_args $both_args $both_args_extra"
+      cpp_args_specific="$cpp_args $both_args $both_args_extra"
+      # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
+      link_args_specific="-l$lib_file_body $link_args $cpp_args_specific"
+   
+      g_all_object_files_sanitized=""
+      g_compile_out_full=""
+
+      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+
+      cp "$staging_path_unsanitized/lib$lib_file_body.dylib" "$bin_path_unsanitized/"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      "$bin_path_unsanitized/$bin_file"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+   fi
+
+   if [ $release_arm -eq 1 ]; then
+      ########################## macOS release|arm
+
+      if [ $existing_release_arm -eq 0 ]; then 
+         # TODO: add options to build.sh to only build release arm
+         /bin/sh "$root_path_unsanitized/build.sh" -analysis
+         ret_code=$?
+         if [ $ret_code -ne 0 ]; then 
+            # build.sh should write out any messages
+            exit $ret_code
+         fi
+      fi
+
+      printf "%s\n" "Compiling ebm_native_test with $c_compiler/$cpp_compiler for macOS release|arm"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/arm/ebm_native_test"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/arm/ebm_native_test"
+      lib_file_body="_ebm_native_mac_arm"
+      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_test_release_mac_arm_build_log.txt"
+      both_args_extra="-target arm64-apple-macos11 -m64 -DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST

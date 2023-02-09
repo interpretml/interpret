@@ -28,7 +28,7 @@ struct MseRegressionLoss : public RegressionLoss {
 //   // make a prediction, so we don't need InverseLinkFunction(...)
 //
 //   template <typename T>
-//   static INLINE_ALWAYS T GetGradientFromGradientPrev(const T target, const T gradientPrev) {
+//   INLINE_ALWAYS static T GetGradientFromGradientPrev(const T target, const T gradientPrev) {
 //      // for MSE regression, we get target - score at initialization and only store the gradients, so we
 //      // never need the targets.  We just work from the previous gradients.
 //

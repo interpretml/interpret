@@ -5,7 +5,7 @@
 #define _CRT_SECURE_NO_DEPRECATE
 
 #include <stddef.h> // size_t, ptrdiff_t
-#include <inttypes.h> // any of the fixed size types like int64_t
+#include <inttypes.h> // fixed sized integer types and printf strings.  Includes stdint.h
 #include <limits> // numeric_limits
 #include <type_traits> // std::is_standard_layout, std::is_integral
 #include <stdlib.h> // malloc, free

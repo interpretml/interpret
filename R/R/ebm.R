@@ -22,9 +22,9 @@
 
 # S3 data structures
 
-ebm_feature_group <- function(feature_indexes) {
+ebm_term <- function(feature_indexes) {
    feature_indexes <- as.double(feature_indexes)
-   ret <- structure(list(feature_indexes = feature_indexes), class = "ebm_feature_group")
+   ret <- structure(list(feature_indexes = feature_indexes), class = "ebm_term")
    return(ret)
 }
 
@@ -54,118 +54,79 @@ ebm_classify <- function(
    random_state = 42
 ) {
    min_samples_bin <- 5
-   humanized <- FALSE # TODO this should be it's own binning type 'quantile_humanized' eventually
+   is_rounded <- FALSE # TODO this should be it's own binning type 'rounded_quantile' eventually
+   n_classes <- 2 # only binary classification for now
 
-   stopifnot(nrow(X) == length(y))
-   stopifnot(!any(is.na(X)))
-   stopifnot(!any(is.na(y)))
-   y <- as.logical(y) # for now we just support binary classification
-
-   random_state <- normalize_initial_random_seed(random_state)
-   
    n_features <- ncol(X)
+   n_samples <- nrow(X)
+
+   stopifnot(n_samples == length(y))
+   stopifnot(!any(is.na(y)))
+   # TODO: add missing value support for X
+   stopifnot(!any(is.na(X)))
+
+   random_state <- normalize_initial_seed(random_state)
+   rng <- create_rng(random_state)
+   
    col_names <- colnames(X)
    if(is.null(col_names)) {
+      # TODO: should we accept feature names from our caller, and what if those do not match the colum names of X?
       col_names <- 1:n_features
    }
 
-   cuts <- vector("list")
+   data = make_dataset(n_classes, X, y, max_bins, col_names)
+   dataset = data$dataset
+   cuts = data$cuts
 
-   features_categorical <- vector("logical", n_features)
-   features_bin_count <- vector("numeric", n_features)
+   # create the terms for the mains
+   terms <- lapply(1:n_features, function(i) { ebm_term(i) })
 
-   # byrow = FALSE to ensure this matrix is column-major (FORTRAN ordered), which is the fastest memory ordering for us
-   X_binned <- matrix(nrow = nrow(X), ncol = ncol(X), byrow = FALSE)
-   discretized <- vector("numeric", length(y))
-   for(i_feature in 1:n_features) {
-      X_feature <- X[, i_feature] # if our originator X matrix is byrow, pay the transpose cost once
-      feature_cuts <- cut_quantile(
-         X_feature, 
-         min_samples_bin, 
-         humanized, 
-         max_bins
-      )
-      col_name <- col_names[i_feature]
-      cuts[[col_name]] <- feature_cuts
+   term_scores <- vector("list")
+   bag <- vector("integer", n_samples)
 
-      features_categorical[[i_feature]] <- FALSE
-      # one more bin than cuts plus one more for the missing value
-      features_bin_count[[i_feature]] <- length(feature_cuts) + 2
-
-      # WARNING: discretized is modified in-place
-      discretize(X_feature, feature_cuts, discretized)
-      X_binned[, i_feature] <- discretized
-   }
-
-   # create the feature_groups for the mains
-   feature_groups <- lapply(1:n_features, function(i) { ebm_feature_group(i) })
-
-   additive_terms <- vector("list")
-   for(col_name in col_names) {
-      additive_terms[[col_name]] <- vector("numeric", length(cuts[[col_name]]) + 1)
-   }
-
-   sample_counts <- vector("numeric", length(y))
-
-   n_classes <- 2 # only binary classification for now
    num_scores <- get_count_scores_c(n_classes)
 
-   validation_size <- ceiling(length(y) * validation_size)
-   train_size <- length(y) - validation_size
-
-   scores_train <- vector("numeric", num_scores * train_size)
-   scores_val <- vector("numeric", num_scores * validation_size)
+   validation_size <- ceiling(n_samples * validation_size)
+   train_size <- n_samples - validation_size
 
    for(i_outer_bag in 1:outer_bags) {
-      random_state <- generate_random_number(random_state, 1416147523)
-      # WARNING: sample_counts is modified in-place
-      sample_without_replacement(random_state, train_size, validation_size, sample_counts)
-
-      X_train <- X_binned[0 < sample_counts, ]
-      y_train <- y[0 < sample_counts]
-      X_val <- X_binned[sample_counts < 0, ]
-      y_val <- y[sample_counts < 0] 
+      # WARNING: bag is modified in-place
+      sample_without_replacement(rng, train_size, validation_size, bag)
 
       result_list <- cyclic_gradient_boost(
          "classification",
          n_classes,
-         features_categorical,
-         features_bin_count,
-         feature_groups,
-         X_train,
-         y_train,
+         dataset,
+         bag,
          NULL,
-         scores_train,
-         X_val,
-         y_val,
-         NULL,
-         scores_val,
+         terms,
          inner_bags,
          learning_rate,
          min_samples_leaf, 
          max_leaves, 
-         early_stopping_rounds,
+         early_stopping_rounds, 
          early_stopping_tolerance,
-         max_rounds,
-         random_state
+         max_rounds, 
+         rng
       )
       for(i_feature in 1:n_features) {
-         additive_terms[[col_names[i_feature]]] <- 
-            additive_terms[[col_names[i_feature]]] + result_list$model_update[[i_feature]]
+         term_scores[[col_names[i_feature]]] <- result_list$model_update[[i_feature]]
       }
    }
    for(col_name in col_names) {
-      additive_terms[[col_name]] <- additive_terms[[col_name]] / outer_bags
+      term_scores[[col_name]] <- term_scores[[col_name]] / outer_bags
       # for now, zero all missing values
-      additive_terms[[col_name]][0] = 0
+      term_scores[[col_name]][1] <- 0
+      # for now, zero all unknown values
+      term_scores[[col_name]][length(term_scores[[col_name]])] <- 0
    }
 
    # TODO PK : we're going to need to modify this structure in the future to handle interaction terms by making
-   #           the additivie_terms by feature_group index instead of by feature name.  And also change the
-   #           cuts to be per-feature_group as well to support stage fitting in the future
+   #           the additivie_terms by term index instead of by feature name.  And also change the
+   #           cuts to be per-term as well to support stage fitting in the future
    #           For now though, this is just a simple and nice way to present it since we just support mains
 
-   model <- structure(list(cuts = cuts, additive_terms = additive_terms), class = "ebm_model")
+   model <- structure(list(cuts = cuts, term_scores = term_scores), class = "ebm_model")
    return(model)
 }
 
@@ -183,17 +144,17 @@ ebm_predict_proba <- function (model, X) {
       col_names <- 1:n_features
    }
 
-   discretized <- vector("numeric", nrow(X))
+   bin_indexes <- vector("numeric", nrow(X))
    scores <- vector("numeric", nrow(X))
    for(i_feature in 1:n_features) {
       col_name <- col_names[[i_feature]]
-      X_feature <- X[, i_feature]
+      X_col <- X[, i_feature]
 
-      # WARNING: discretized is modified in-place
-      discretize(X_feature, model$cuts[[col_name]], discretized)
+      # WARNING: bin_indexes is modified in-place
+      discretize(X_col, model$cuts[[col_name]], bin_indexes)
 
-      additive_terms <- model$additive_terms[[col_name]]
-      update_scores <- additive_terms[discretized + 1]
+      term_scores <- model$term_scores[[col_name]]
+      update_scores <- term_scores[bin_indexes + 1]
       scores <- scores + update_scores
    }
 
@@ -203,7 +164,7 @@ ebm_predict_proba <- function (model, X) {
 
 ebm_show <- function (model, name) {
    cuts <- model$cuts[[name]]
-   additive_terms <- model$additive_terms[[name]]
+   term_scores <- model$term_scores[[name]]
 
    if(0 == length(cuts)) {
       # plot seems to overflow if the values are higher
@@ -213,6 +174,9 @@ ebm_show <- function (model, name) {
       if(0 == cuts[1]) {
          low_val <- -1
          high_val <- 1
+      } else if(cuts[1] < 0) {
+         low_val <- cuts[1] * 1.1
+         high_val <- cuts[1] * 0.9
       } else {
          low_val <- cuts[1] * 0.9
          high_val <- cuts[1] * 1.1
@@ -224,8 +188,8 @@ ebm_show <- function (model, name) {
    }
 
    x <- append(append(low_val, rep(cuts, each = 2)), high_val)
-   # remove the missing bin at the start
-   y <- rep(additive_terms[2:length(additive_terms)], each = 2)
+   # remove the missing bin at the start and remove the unknown bin at the end
+   y <- rep(term_scores[2:(length(term_scores) - 1)], each = 2)
 
    graphics::plot(x, y, type = "l", lty = 1, main = name, xlab="", ylab="score")
 }

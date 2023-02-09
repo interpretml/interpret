@@ -8,26 +8,26 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
+#include "ebm_native.h" // ErrorEbm
+#include "logging.h" // EBM_ASSERT
+#include "common_c.h" // FloatFast
+#include "bridge_c.h" // StorageDataType
 #include "zones.h"
-
-#include "ebm_internal.hpp"
-
-#include "FeatureGroup.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+class Term;
+
 class DataSetBoosting final {
-   FloatEbmType * m_aGradientsAndHessians;
-   FloatEbmType * m_aPredictorScores;
+   FloatFast * m_aGradientsAndHessians;
+   FloatFast * m_aSampleScores;
    StorageDataType * m_aTargetData;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
-   size_t m_cFeatureGroups;
+   size_t m_cTerms;
 
 public:
 
@@ -36,59 +36,58 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS void InitializeZero() {
+   inline void InitializeUnfailing() {
       m_aGradientsAndHessians = nullptr;
-      m_aPredictorScores = nullptr;
+      m_aSampleScores = nullptr;
       m_aTargetData = nullptr;
       m_aaInputData = nullptr;
       m_cSamples = 0;
-      m_cFeatureGroups = 0;
+      m_cTerms = 0;
    }
 
    void Destruct();
 
-   ErrorEbmType Initialize(
-      const bool bAllocateGradients, 
+   ErrorEbm Initialize(
+      const ptrdiff_t cClasses,
+      const bool bAllocateGradients,
       const bool bAllocateHessians,
-      const bool bAllocatePredictorScores,
-      const bool bAllocateTargetData, 
-      const size_t cFeatureGroups, 
-      const FeatureGroup * const * const apFeatureGroup, 
-      const size_t cSamples, 
-      const IntEbmType * const aInputDataFrom, 
-      const void * const aTargets, 
-      const FloatEbmType * const aPredictorScoresFrom, 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+      const bool bAllocateSampleScores,
+      const bool bAllocateTargetData,
+      const unsigned char * const pDataSetShared,
+      const size_t cSharedSamples,
+      const BagEbm direction,
+      const BagEbm * const aBag,
+      const double * const aInitScores,
+      const size_t cSetSamples,
+      const IntEbm * const aiTermFeatures,
+      const size_t cTerms,
+      const Term * const * const apTerms
    );
 
-   INLINE_ALWAYS FloatEbmType * GetGradientsAndHessiansPointer() {
-      EBM_ASSERT(nullptr != m_aGradientsAndHessians);
+   inline bool IsGradientsAndHessiansNull() {
+      // TODO: remove this and just use GetGradientsAndHessiansPointer
+      return nullptr == m_aGradientsAndHessians;
+   }
+
+   inline FloatFast * GetGradientsAndHessiansPointer() {
       return m_aGradientsAndHessians;
    }
-   INLINE_ALWAYS const FloatEbmType * GetGradientsAndHessiansPointer() const {
-      EBM_ASSERT(nullptr != m_aGradientsAndHessians);
+   inline const FloatFast * GetGradientsAndHessiansPointer() const {
       return m_aGradientsAndHessians;
    }
-   INLINE_ALWAYS FloatEbmType * GetPredictorScores() {
-      EBM_ASSERT(nullptr != m_aPredictorScores);
-      return m_aPredictorScores;
+   inline FloatFast * GetSampleScores() {
+      return m_aSampleScores;
    }
-   INLINE_ALWAYS const StorageDataType * GetTargetDataPointer() const {
-      EBM_ASSERT(nullptr != m_aTargetData);
+   inline const StorageDataType * GetTargetDataPointer() const {
       return m_aTargetData;
    }
-   // TODO: we can change this to take the GetIndexInputData() value directly, which we get from a loop index
-   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const FeatureGroup * const pFeatureGroup) const {
-      EBM_ASSERT(nullptr != pFeatureGroup);
-      EBM_ASSERT(pFeatureGroup->GetIndexInputData() < m_cFeatureGroups);
+   inline const StorageDataType * GetInputDataPointer(const size_t iTerm) const {
+      EBM_ASSERT(iTerm < m_cTerms);
       EBM_ASSERT(nullptr != m_aaInputData);
-      return m_aaInputData[pFeatureGroup->GetIndexInputData()];
+      return m_aaInputData[iTerm];
    }
-   INLINE_ALWAYS size_t GetCountSamples() const {
+   inline size_t GetCountSamples() const {
       return m_cSamples;
-   }
-   INLINE_ALWAYS size_t GetCountFeatureGroups() const {
-      return m_cFeatureGroups;
    }
 };
 static_assert(std::is_standard_layout<DataSetBoosting>::value,

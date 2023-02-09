@@ -4,30 +4,29 @@
 
 NATIVEDIR=../../shared/ebm_native
 
-CXX_STD = CXX11
+CXX_STD = CXX17
 PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -I$(NATIVEDIR)/common_c -I$(NATIVEDIR)/common_cpp -I$(NATIVEDIR)/bridge_c -I$(NATIVEDIR)/bridge_cpp -I$(NATIVEDIR)/compute -I$(NATIVEDIR)/compute/loss_functions -I$(NATIVEDIR)/compute/metrics -I$(NATIVEDIR)/compute/cpu_ebm -DEBM_NATIVE_R -DZONE_R
 # TODO test adding the g++/clang flags to PKG_CXXFLAGS.  I think -g0 and -O3 won't work though since the R compile flags already include -g and -O2:
 PKG_CXXFLAGS=$(CXX_VISIBILITY) 
 
 OBJECTS = \
-   $(NATIVEDIR)/ApplyModelUpdate.o \
-   $(NATIVEDIR)/ApplyModelUpdateTraining.o \
-   $(NATIVEDIR)/ApplyModelUpdateValidation.o \
-   $(NATIVEDIR)/BinBoosting.o \
-   $(NATIVEDIR)/BinInteraction.o \
+   $(NATIVEDIR)/ApplyTermUpdate.o \
+   $(NATIVEDIR)/ApplyUpdate.o \
+   $(NATIVEDIR)/BinSumsBoosting.o \
+   $(NATIVEDIR)/BinSumsInteraction.o \
    $(NATIVEDIR)/BoosterCore.o \
    $(NATIVEDIR)/BoosterShell.o \
-   $(NATIVEDIR)/CalculateInteractionScore.o \
+   $(NATIVEDIR)/CalcInteractionStrength.o \
    $(NATIVEDIR)/CutQuantile.o \
    $(NATIVEDIR)/CutUniform.o \
    $(NATIVEDIR)/CutWinsorized.o \
-   $(NATIVEDIR)/data_set_shared.o \
+   $(NATIVEDIR)/dataset_shared.o \
    $(NATIVEDIR)/DataSetBoosting.o \
    $(NATIVEDIR)/DataSetInteraction.o \
    $(NATIVEDIR)/debug_ebm.o \
    $(NATIVEDIR)/Discretize.o \
-   $(NATIVEDIR)/FeatureGroup.o \
-   $(NATIVEDIR)/GenerateModelUpdate.o \
+   $(NATIVEDIR)/Term.o \
+   $(NATIVEDIR)/GenerateTermUpdate.o \
    $(NATIVEDIR)/InitializeGradientsAndHessians.o \
    $(NATIVEDIR)/InteractionCore.o \
    $(NATIVEDIR)/InteractionShell.o \
@@ -36,11 +35,11 @@ OBJECTS = \
    $(NATIVEDIR)/PartitionRandomBoosting.o \
    $(NATIVEDIR)/PartitionTwoDimensionalBoosting.o \
    $(NATIVEDIR)/PartitionTwoDimensionalInteraction.o \
-   $(NATIVEDIR)/RandomStream.o \
+   $(NATIVEDIR)/RandomDeterministic.o \
+   $(NATIVEDIR)/random.o \
    $(NATIVEDIR)/sampling.o \
-   $(NATIVEDIR)/SamplingSet.o \
-   $(NATIVEDIR)/CompressibleTensor.o \
-   $(NATIVEDIR)/SumHistogramBuckets.o \
+   $(NATIVEDIR)/InnerBag.o \
+   $(NATIVEDIR)/Tensor.o \
    $(NATIVEDIR)/TensorTotalsBuild.o \
    $(NATIVEDIR)/common_c/common_c.o \
    $(NATIVEDIR)/common_c/logging.o \

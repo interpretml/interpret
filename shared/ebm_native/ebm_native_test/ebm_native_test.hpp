@@ -5,10 +5,19 @@
 #ifndef EBM_NATIVE_TEST_HPP
 #define EBM_NATIVE_TEST_HPP
 
+#include <stddef.h> // ptrdiff, size_t
+#include <limits> // std::numeric_limits
+#include <cmath> // std::nextafter
+#include <string> // std::string
+#include <vector> // std::vector
+#include <assert.h> // assert
+
+#include "ebm_native.h" // IntEbm
+
 #define UNUSED(x) (void)(x)
+#define EBM_ASSERT(x) assert(x)
 
 enum class TestPriority {
-   Discretize,
    DataSetShared,
    BoostingUnusualInputs,
    InteractionUnusualInputs,
@@ -18,8 +27,47 @@ enum class TestPriority {
    SuggestGraphBounds,
    CutUniform,
    CutWinsorized,
-   CutQuantile
+   CutQuantile,
+   Discretize
 };
+
+
+inline static double FloatTickIncrementTest(const double v) noexcept {
+   // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
+
+   assert(!std::isnan(v));
+   assert(!std::isinf(v));
+   assert(std::numeric_limits<double>::max() != v);
+
+   if(std::numeric_limits<double>::min() <= v || v < -std::numeric_limits<double>::min()) {
+      // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
+      return std::nextafter(v, std::numeric_limits<double>::max());
+   } else if(-std::numeric_limits<double>::min() == v) {
+      return double { 0 };
+   } else {
+      return std::numeric_limits<double>::min();
+   }
+}
+inline static double FloatTickDecrementTest(const double v) noexcept {
+   // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
+
+   assert(!std::isnan(v));
+   assert(!std::isinf(v));
+   assert(std::numeric_limits<double>::lowest() != v);
+
+   if(v <= -std::numeric_limits<double>::min() || std::numeric_limits<double>::min() < v) {
+      // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
+      return std::nextafter(v, std::numeric_limits<double>::lowest());
+   } else if(std::numeric_limits<double>::min() == v) {
+      return double { 0 };
+   } else {
+      return -std::numeric_limits<double>::min();
+   }
+}
+inline static double DenormalizeTest(const double v) noexcept {
+   return v <= -std::numeric_limits<double>::min() ||
+      std::numeric_limits<double>::min() <= v ? v : double { 0 };
+}
 
 class TestCaseHidden;
 typedef void (*TestFunctionHidden)(TestCaseHidden & testCaseHidden);
@@ -52,7 +100,7 @@ int RegisterTestHidden(const TestCaseHidden & testCaseHidden);
 
 void FAILED(const double val, TestCaseHidden * const pTestCaseHidden, const std::string message);
 
-bool IsApproxEqual(const double value, const double expected, const double percentage);
+bool IsApproxEqual(const double val, const double expected, const double percentage);
 
 // this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the 
 // function where CHECK(expression) is called
@@ -66,80 +114,54 @@ bool IsApproxEqual(const double value, const double expected, const double perce
 
 // this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the 
 // function where CHECK_APPROX(expression) is called
-#define CHECK_APPROX(value, expected) \
+#define CHECK_APPROX(val, expected) \
    do { \
-      const double valueHidden = (value); \
-      const bool bApproxEqualHidden = IsApproxEqual(valueHidden, static_cast<double>(expected), double { 1e-6 }); \
+      const double valHidden = (val); \
+      const bool bApproxEqualHidden = IsApproxEqual(valHidden, static_cast<double>(expected), double { 1e-6 }); \
       if(!bApproxEqualHidden) { \
-         FAILED(valueHidden, &testCaseHidden, std::string(" FAILED on \"" #value "(") + std::to_string(valueHidden) + ") approx " #expected "\""); \
+         FAILED(valHidden, &testCaseHidden, std::string(" FAILED on \"" #val "(") + std::to_string(valHidden) + ") approx " #expected "\""); \
       } \
    } while( (void)0, 0)
 
 // this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the 
 // function where CHECK_APPROX(expression) is called
-#define CHECK_APPROX_TOLERANCE(value, expected, tolerance) \
+#define CHECK_APPROX_TOLERANCE(val, expected, tolerance) \
    do { \
-      const double valueHidden = static_cast<double>(value); \
-      const bool bApproxEqualHidden = IsApproxEqual(valueHidden, static_cast<double>(expected), static_cast<double>(tolerance)); \
+      const double valHidden = static_cast<double>(val); \
+      const bool bApproxEqualHidden = IsApproxEqual(valHidden, static_cast<double>(expected), static_cast<double>(tolerance)); \
       if(!bApproxEqualHidden) { \
-         FAILED(valueHidden, &testCaseHidden, std::string(" FAILED on \"" #value "(") + std::to_string(valueHidden) + ") approx " #expected "\""); \
+         FAILED(valHidden, &testCaseHidden, std::string(" FAILED on \"" #val "(") + std::to_string(valHidden) + ") approx " #expected "\""); \
       } \
    } while( (void)0, 0)
 
 // EBM/interpret specific stuff below here!!
 
-constexpr ptrdiff_t k_learningTypeRegression = ptrdiff_t { -1 };
-constexpr bool IsClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
-   return 0 <= learningTypeOrCountTargetClasses;
+static constexpr ptrdiff_t k_learningTypeRegression = ptrdiff_t { -1 };
+inline constexpr static bool IsClassification(const ptrdiff_t cClasses) {
+   return 0 <= cClasses;
 }
 
-constexpr size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasses) {
+inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) {
 #ifdef EXPAND_BINARY_LOGITS
-#ifdef REDUCE_MULTICLASS_LOGITS
-
-   // EXPAND_BINARY_LOGITS && REDUCE_MULTICLASS_LOGITS
-#error we should not be expanding binary logits while reducing multiclass logits
-
-#else // REDUCE_MULTICLASS_LOGITS
-
-   // EXPAND_BINARY_LOGITS && !REDUCE_MULTICLASS_LOGITS
-   return learningTypeOrCountTargetClasses <= ptrdiff_t { 1 } ? 
-      size_t { 1 } : 
-      static_cast<size_t>(learningTypeOrCountTargetClasses);
-
-#endif // REDUCE_MULTICLASS_LOGITS
+   return ptrdiff_t { 1 } < cClasses ? static_cast<size_t>(cClasses) : (ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses ? size_t { 0 } : size_t { 1 });
 #else // EXPAND_BINARY_LOGITS
-#ifdef REDUCE_MULTICLASS_LOGITS
-
-   // !EXPAND_BINARY_LOGITS && REDUCE_MULTICLASS_LOGITS
-   return learningTypeOrCountTargetClasses <= ptrdiff_t { 2 } ? 
-      size_t { 1 } : 
-      static_cast<size_t>(learningTypeOrCountTargetClasses) - size_t { 1 };
-
-#else // REDUCE_MULTICLASS_LOGITS
-
-   // !EXPAND_BINARY_LOGITS && !REDUCE_MULTICLASS_LOGITS
-   return learningTypeOrCountTargetClasses <= ptrdiff_t { 2 } ? 
-      size_t { 1 } : 
-      static_cast<size_t>(learningTypeOrCountTargetClasses);
-
-#endif // REDUCE_MULTICLASS_LOGITS
+   return ptrdiff_t { 2 } < cClasses ? static_cast<size_t>(cClasses) : (ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses ? size_t { 0 } : size_t { 1 });
 #endif // EXPAND_BINARY_LOGITS
 }
 
-constexpr SeedEbmType k_randomSeed = SeedEbmType { -42 };
+static constexpr SeedEbm k_seed = SeedEbm { -42 };
 
 class FeatureTest final {
 public:
 
-   const bool m_bCategorical;
-   const IntEbmType m_countBins;
+   const bool m_bNominal;
+   const IntEbm m_countBins;
 
    inline FeatureTest(
-      const IntEbmType countBins, 
-      const bool bCategorical = false
+      const IntEbm countBins, 
+      const bool bNominal = false
    ) :
-      m_bCategorical(bCategorical),
+      m_bNominal(bNominal),
       m_countBins(countBins) {
       if(countBins < 0) {
          exit(1);
@@ -149,112 +171,117 @@ public:
 
 class TestSample final {
 public:
-   const std::vector<IntEbmType> m_binnedDataPerFeatureArray;
-   const FloatEbmType m_target;
+   const std::vector<IntEbm> m_sampleBinIndexes;
+   const double m_target;
    const bool m_bNullWeight;
-   const FloatEbmType m_weight;
-   const std::vector<FloatEbmType> m_priorScore;
+   const double m_weight;
+   const std::vector<double> m_initScores;
 
-   inline TestSample(const std::vector<IntEbmType> binnedDataPerFeatureArray, const FloatEbmType target) :
-      m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
+   inline TestSample(const std::vector<IntEbm> sampleBinIndexes, const double target) :
+      m_sampleBinIndexes(sampleBinIndexes),
       m_target(target),
       m_bNullWeight(true),
-      m_weight(1) {
+      m_weight(1.0) {
    }
 
    inline TestSample(
-      const std::vector<IntEbmType> binnedDataPerFeatureArray, 
-      const FloatEbmType target,
-      const FloatEbmType weight,
-      const std::vector<FloatEbmType> priorScore = {}
+      const std::vector<IntEbm> sampleBinIndexes, 
+      const double target,
+      const double weight,
+      const std::vector<double> initScores = {}
    ) :
-      m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
+      m_sampleBinIndexes(sampleBinIndexes),
       m_target(target),
       m_bNullWeight(false),
       m_weight(weight),
-      m_priorScore(priorScore) {
+      m_initScores(initScores) {
    }
 };
 
 static constexpr ptrdiff_t k_iZeroClassificationLogitDefault = ptrdiff_t { -1 };
-static constexpr IntEbmType k_countInnerBagsDefault = IntEbmType { 0 };
-static constexpr FloatEbmType k_learningRateDefault = FloatEbmType { 0.01 };
-static constexpr IntEbmType k_countSamplesRequiredForChildSplitMinDefault = IntEbmType { 1 };
+static constexpr IntEbm k_countInnerBagsDefault = IntEbm { 0 };
+static constexpr double k_learningRateDefault = double { 0.01 };
+static constexpr IntEbm k_minSamplesLeafDefault = IntEbm { 1 };
 
-static constexpr IntEbmType k_leavesMaxFillDefault = 5;
-// 64 dimensions is the most we can express with a 64 bit IntEbmType
-static const std::vector<IntEbmType> k_leavesMaxDefault = { 
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault },
-   IntEbmType { k_leavesMaxFillDefault }
+static constexpr IntEbm k_leavesMaxFillDefault = 5;
+// 64 dimensions is the most we can express with a 64 bit IntEbm
+static const std::vector<IntEbm> k_leavesMaxDefault = { 
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault },
+   IntEbm { k_leavesMaxFillDefault }
+};
+
+struct BoostRet {
+   double gainAvg;
+   double validationMetric;
 };
 
 class TestApi {
    enum class Stage {
       Beginning, 
       FeaturesAdded, 
-      FeatureGroupsAdded, 
+      TermsAdded, 
       TrainingAdded, 
       ValidationAdded, 
       InitializedBoosting, 
@@ -262,120 +289,133 @@ class TestApi {
       InitializedInteraction
    };
 
+   std::vector<unsigned char> m_rng;
+
    Stage m_stage;
-   const ptrdiff_t m_learningTypeOrCountTargetClasses;
+   const ptrdiff_t m_cClasses;
    const ptrdiff_t m_iZeroClassificationLogit;
 
-   std::vector<BoolEbmType> m_featuresCategorical;
-   std::vector<IntEbmType> m_featuresBinCount;
-   std::vector<IntEbmType> m_featureGroupsDimensionCount;
-   std::vector<IntEbmType> m_featureGroupsFeatureIndexes;
+   std::vector<BoolEbm> m_featureNominals;
+   std::vector<IntEbm> m_featureBinCounts;
+   std::vector<IntEbm> m_dimensionCounts;
+   std::vector<IntEbm> m_featureIndexes;
 
-   std::vector<std::vector<size_t>> m_countBinsByFeatureGroup;
+   std::vector<std::vector<size_t>> m_termBinCounts;
 
-   std::vector<FloatEbmType> m_trainingRegressionTargets;
-   std::vector<IntEbmType> m_trainingClassificationTargets;
-   std::vector<IntEbmType> m_trainingBinnedData;
-   std::vector<FloatEbmType> m_trainingWeights;
-   std::vector<FloatEbmType> m_trainingPredictionScores;
+   std::vector<double> m_trainingRegressionTargets;
+   std::vector<IntEbm> m_trainingClassificationTargets;
+   // TODO: make this a vector of vectors.  The first vector being indexed by iFeature
+   std::vector<IntEbm> m_trainingBinIndexes;
+   std::vector<double> m_trainingWeights;
+   std::vector<double> m_trainingInitScores;
    bool m_bNullTrainingWeights;
-   bool m_bNullTrainingPredictionScores;
+   bool m_bNullTrainingInitScores;
 
-   std::vector<FloatEbmType> m_validationRegressionTargets;
-   std::vector<IntEbmType> m_validationClassificationTargets;
-   std::vector<IntEbmType> m_validationBinnedData;
-   std::vector<FloatEbmType> m_validationWeights;
-   std::vector<FloatEbmType> m_validationPredictionScores;
+   std::vector<double> m_validationRegressionTargets;
+   std::vector<IntEbm> m_validationClassificationTargets;
+   // TODO: make this a vector of vectors.  The first vector being indexed by iFeature
+   std::vector<IntEbm> m_validationBinIndexes;
+   std::vector<double> m_validationWeights;
+   std::vector<double> m_validationInitScores;
    bool m_bNullValidationWeights;
-   bool m_bNullValidationPredictionScores;
+   bool m_bNullValidationInitScores;
 
    BoosterHandle m_boosterHandle;
 
-   std::vector<FloatEbmType> m_interactionRegressionTargets;
-   std::vector<IntEbmType> m_interactionClassificationTargets;
-   std::vector<IntEbmType> m_interactionBinnedData;
-   std::vector<FloatEbmType> m_interactionWeights;
-   std::vector<FloatEbmType> m_interactionPredictionScores;
+   std::vector<double> m_interactionRegressionTargets;
+   std::vector<IntEbm> m_interactionClassificationTargets;
+   std::vector<IntEbm> m_interactionBinIndexes;
+   std::vector<double> m_interactionWeights;
+   std::vector<double> m_interactionInitScores;
    bool m_bNullInteractionWeights;
-   bool m_bNullInteractionPredictionScores;
+   bool m_bNullInteractionInitScores;
 
    InteractionHandle m_interactionHandle;
 
-   const FloatEbmType * GetPredictorScores(
-      const size_t iFeatureGroup,
-      const FloatEbmType * const pModelFeatureGroup,
+   const double * GetTermScores(
+      const size_t iTerm,
+      const double * const aTermScores,
       const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures)
       const;
 
-   FloatEbmType GetPredictorScore(
-      const size_t iFeatureGroup,
-      const FloatEbmType * const pModelFeatureGroup,
+   double GetTermScore(
+      const size_t iTerm,
+      const double * const aTermScores,
       const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures,
-      const size_t iTargetClassOrZero)
+      const size_t iClassOrZero)
       const;
 
 public:
 
    TestApi(
-      const ptrdiff_t learningTypeOrCountTargetClasses, 
+      const ptrdiff_t cClasses, 
       const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault
    );
    ~TestApi();
 
-   inline size_t GetFeatureGroupsCount() const {
-      return m_featureGroupsDimensionCount.size();
+   inline size_t GetCountTerms() const {
+      return m_dimensionCounts.size();
+   }
+
+   inline BoosterHandle GetBoosterHandle() {
+      return m_boosterHandle;
+   }
+
+   inline InteractionHandle GetInteractionHandle() {
+      return m_interactionHandle;
    }
 
    void AddFeatures(const std::vector<FeatureTest> features);
-   void AddFeatureGroups(const std::vector<std::vector<size_t>> featureGroups);
+   void AddTerms(const std::vector<std::vector<size_t>> termFeatures);
    void AddTrainingSamples(const std::vector<TestSample> samples);
    void AddValidationSamples(const std::vector<TestSample> samples);
-   void InitializeBoosting(const IntEbmType countInnerBags = k_countInnerBagsDefault);
+   void InitializeBoosting(const IntEbm countInnerBags = k_countInnerBagsDefault);
    
-   FloatEbmType Boost(
-      const IntEbmType indexFeatureGroup,
-      const GenerateUpdateOptionsType options = GenerateUpdateOptions_Default,
-      const FloatEbmType learningRate = k_learningRateDefault,
-      const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault,
-      const std::vector<IntEbmType> leavesMax = k_leavesMaxDefault
+   BoostRet Boost(
+      const IntEbm indexTerm,
+      const BoostFlags flags = BoostFlags_Default,
+      const double learningRate = k_learningRateDefault,
+      const IntEbm minSamplesLeaf = k_minSamplesLeafDefault,
+      const std::vector<IntEbm> leavesMax = k_leavesMaxDefault
    );
 
-   FloatEbmType GetBestModelPredictorScore(
-      const size_t iFeatureGroup, 
+   double GetBestTermScore(
+      const size_t iTerm, 
       const std::vector<size_t> indexes, 
       const size_t iScore
    ) const;
    
-   void GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const;
+   void GetBestTermScoresRaw(const size_t iTerm, double * const aTermScores) const;
 
-   FloatEbmType GetCurrentModelPredictorScore(
-      const size_t iFeatureGroup,
+   double GetCurrentTermScore(
+      const size_t iTerm,
       const std::vector<size_t> indexes,
       const size_t iScore
    ) const;
 
-   void GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const;
+   void GetCurrentTermScoresRaw(const size_t iTerm, double * const aTermScores) const;
 
    void AddInteractionSamples(const std::vector<TestSample> samples);
 
    void InitializeInteraction();
 
-   FloatEbmType InteractionScore(
-      const std::vector<IntEbmType> featuresInGroup, 
-      const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault
+   double TestCalcInteractionStrength(
+      const std::vector<IntEbm> features, 
+      const InteractionFlags flags = InteractionFlags_Default,
+      const IntEbm minSamplesLeaf = k_minSamplesLeafDefault
    ) const;
 };
 
 void DisplayCuts(
-   IntEbmType countSamples,
-   FloatEbmType * featureValues,
-   IntEbmType countBinsMax,
-   IntEbmType countSamplesPerBinMin,
-   IntEbmType countCuts,
-   FloatEbmType * cutsLowerBoundInclusive,
-   IntEbmType isMissingPresent,
-   FloatEbmType minValue,
-   FloatEbmType maxValue
+   IntEbm countSamples,
+   double * featureVals,
+   IntEbm countBinsMax,
+   IntEbm minSamplesBin,
+   IntEbm countCuts,
+   double * cutsLowerBoundInclusive,
+   IntEbm isMissingPresent,
+   double minFeatureVal,
+   double maxFeatureVal
 );
 
 #endif // EBM_NATIVE_TEST_HPP

@@ -8,10 +8,6 @@
 #include <vector>
 #include <algorithm>
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "zones.h"
-
 #include "Registration.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -95,7 +91,7 @@ bool Registration::CreateRegistrable(
    EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd || 0x20 == *sRegistrationEnd || (0x9 <= *sRegistrationEnd && *sRegistrationEnd <= 0xd));
    EBM_ASSERT(nullptr != pWrapperOut);
 
-   LOG_0(TraceLevelInfo, "Entered Registrable::CreateRegistrable");
+   LOG_0(Trace_Info, "Entered Registrable::CreateRegistrable");
 
    bool bNoMatch = true;
    for(const std::shared_ptr<const Registration> & registration : registrations) {
@@ -109,11 +105,11 @@ bool Registration::CreateRegistrable(
       }
    }
 
-   LOG_0(TraceLevelInfo, "Exited Registrable::CreateRegistrable");
+   LOG_0(Trace_Info, "Exited Registrable::CreateRegistrable");
    return bNoMatch;
 }
 
-void Registration::FinalCheckParameters(
+void Registration::FinalCheckParams(
    const char * sRegistration,
    const char * const sRegistrationEnd,
    const size_t cUsedParams

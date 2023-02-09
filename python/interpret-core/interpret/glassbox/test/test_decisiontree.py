@@ -2,16 +2,16 @@
 # Distributed under the MIT software license
 
 from ..decisiontree import ClassificationTree, RegressionTree
-from sklearn.datasets import load_breast_cancer, load_boston
+from sklearn.datasets import load_breast_cancer, load_diabetes
 from sklearn.tree import DecisionTreeClassifier as SKDT
 from sklearn.tree import DecisionTreeRegressor as SKRT
 import numpy as np
 
 
 def test_rt():
-    boston = load_boston()
-    X, y = boston.data, boston.target
-    feature_names = boston.feature_names
+    dataset = load_diabetes()
+    X, y = dataset.data, dataset.target
+    feature_names = dataset.feature_names
 
     sk_dt = SKRT(random_state=1, max_depth=3)
     our_dt = RegressionTree(feature_names=feature_names, random_state=1)

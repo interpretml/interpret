@@ -10,7 +10,7 @@ from wheel.bdist_wheel import bdist_wheel
 
 name = "interpret-core"
 # NOTE: Version is replaced by a regex script.
-version = "0.2.7"
+version = "0.3.0"
 long_description = """
 Core system for **the** interpret package.
 
@@ -42,9 +42,11 @@ package_data = {
         "lib/lib_ebm_native_win_x64.dll",
         "lib/lib_ebm_native_linux_x64.so",
         "lib/lib_ebm_native_mac_x64.dylib",
+        "lib/lib_ebm_native_mac_arm.dylib",
         "lib/lib_ebm_native_win_x64_debug.dll",
         "lib/lib_ebm_native_linux_x64_debug.so",
         "lib/lib_ebm_native_mac_x64_debug.dylib",
+        "lib/lib_ebm_native_mac_arm_debug.dylib",
         "lib/lib_ebm_native_win_x64.pdb",
         "lib/lib_ebm_native_win_x64_debug.pdb",
         "lib/interpret-inline.js",
@@ -82,7 +84,6 @@ extras = {
     "dash": [
         "dash>=1.0.0",
         "dash-cytoscape>=0.1.1",
-        "dash-table>=4.1.0",
         "gevent>=1.3.6",
         "requests>=2.19.0",
     ],
@@ -140,14 +141,14 @@ class BuildCommand(build):
         # Native compile
         if os.name == 'nt':
             build_script = os.path.join(sym_path, "build.bat")
-            subprocess.check_call([build_script], cwd=script_path)
+            subprocess.check_call([build_script], cwd=sym_path)
         else:
             build_script = os.path.join(sym_path, "build.sh")
-            subprocess.check_call(['bash', build_script], cwd=script_path)
+            subprocess.check_call(['/bin/sh', build_script], cwd=sym_path)
 
         source_dir = os.path.join(sym_path, 'python', 'interpret-core', 'interpret', 'lib')
         target_dir = os.path.join(script_path, 'interpret', 'lib')
-        os.makedirs(target_dir, exist_ok=True )
+        os.makedirs(target_dir, exist_ok=True)
         file_names = os.listdir(source_dir)
         for file_name in file_names:
             shutil.move(
@@ -157,12 +158,8 @@ class BuildCommand(build):
 
         # JavaScript compile
         js_path = os.path.join(script_path, 'js')
-        if os.getenv('AGENT_NAME') or os.name != 'nt':  # In DevOps / Linux
-            subprocess.run(["npm install"], cwd=js_path, shell=True)
-            subprocess.run(["npm run build-prod"], cwd=js_path, shell=True)
-        else:
-            subprocess.run(["npm", "install"], cwd=js_path, shell=True)
-            subprocess.run(["npm", "run", "build-prod"], cwd=js_path, shell=True)
+        subprocess.run("npm install && npm run build-prod", cwd=js_path, shell=True)
+
         js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
         js_bundle_dest = os.path.join(
             "interpret", "lib", "interpret-inline.js"

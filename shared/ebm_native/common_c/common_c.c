@@ -6,7 +6,6 @@
 
 #include <stdlib.h>
 
-#include "ebm_native.h"
 #include "logging.h"
 #include "common_c.h"
 

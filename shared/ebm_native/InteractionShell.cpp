@@ -7,11 +7,8 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h"
-#include "logging.h"
-#include "zones.h"
-
-#include "ebm_internal.hpp"
+#include "common_cpp.hpp"
+#include "bridge_cpp.hpp"
 
 #include "InteractionCore.hpp"
 #include "InteractionShell.hpp"
@@ -21,11 +18,22 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+extern void InitializeMSEGradientsAndHessians(
+   const unsigned char * const pDataSetShared,
+   const BagEbm direction,
+   const BagEbm * const aBag,
+   const double * const aInitScores,
+   const size_t cSetSamples,
+   FloatFast * const aGradientAndHessian,
+   const FloatFast * const aWeight
+);
+
 void InteractionShell::Free(InteractionShell * const pInteractionShell) {
-   LOG_0(TraceLevelInfo, "Entered InteractionShell::Free");
+   LOG_0(Trace_Info, "Entered InteractionShell::Free");
 
    if(nullptr != pInteractionShell) {
-      free(pInteractionShell->m_aThreadByteBuffer1);
+      free(pInteractionShell->m_aInteractionFastBinsTemp);
+      free(pInteractionShell->m_aInteractionBigBins);
       InteractionCore::Free(pInteractionShell->m_pInteractionCore);
       
       // before we free our memory, indicate it was freed so if our higher level language attempts to use it we have
@@ -34,296 +42,190 @@ void InteractionShell::Free(InteractionShell * const pInteractionShell) {
       free(pInteractionShell);
    }
 
-   LOG_0(TraceLevelInfo, "Exited InteractionShell::Free");
+   LOG_0(Trace_Info, "Exited InteractionShell::Free");
 }
 
-InteractionShell * InteractionShell::Create() {
-   LOG_0(TraceLevelInfo, "Entered InteractionShell::Create");
+InteractionShell * InteractionShell::Create(InteractionCore * const pInteractionCore) {
+   LOG_0(Trace_Info, "Entered InteractionShell::Create");
 
-   InteractionShell * const pNew = EbmMalloc<InteractionShell>();
-   if(nullptr != pNew) {
-      pNew->InitializeZero();
+   InteractionShell * const pNew = static_cast<InteractionShell *>(malloc(sizeof(InteractionShell)));
+   if(UNLIKELY(nullptr == pNew)) {
+      LOG_0(Trace_Error, "ERROR InteractionShell::Create nullptr == pNew");
+      return nullptr;
    }
 
-   LOG_0(TraceLevelInfo, "Exited InteractionShell::Create");
+   pNew->InitializeUnfailing(pInteractionCore);
+
+   LOG_0(Trace_Info, "Exited InteractionShell::Create");
 
    return pNew;
 }
 
-HistogramBucketBase * InteractionShell::GetHistogramBucketBase(size_t cBytesRequired) {
-   HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
-   if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
-      cBytesRequired <<= 1;
-      m_cThreadByteBufferCapacity1 = cBytesRequired;
-      LOG_N(TraceLevelInfo, "Growing InteractionShell::ThreadByteBuffer1 to %zu", cBytesRequired);
+BinBase * InteractionShell::GetInteractionFastBinsTemp(const size_t cBytesPerFastBin, const size_t cFastBins) {
+   ANALYSIS_ASSERT(0 != cBytesPerFastBin);
 
+   BinBase * aBuffer = m_aInteractionFastBinsTemp;
+   if(UNLIKELY(m_cAllocatedFastBins < cFastBins)) {
       free(aBuffer);
-      aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(cBytesRequired));
-      m_aThreadByteBuffer1 = aBuffer; // store it before checking it incase it's null so that we don't free old memory
-      if(nullptr == aBuffer) {
-         LOG_0(TraceLevelWarning, "WARNING InteractionShell::GetHistogramBucketBase OutOfMemory");
+      m_aInteractionFastBinsTemp = nullptr;
+
+      const size_t cItemsGrowth = (cFastBins >> 2) + 16; // cannot overflow
+      if(IsAddError(cItemsGrowth, cFastBins)) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp IsAddError(cItemsGrowth, cFastBins)");
+         return nullptr;
       }
+      const size_t cNewAllocatedFastBins = cFastBins + cItemsGrowth;
+
+      m_cAllocatedFastBins = cNewAllocatedFastBins;
+      LOG_N(Trace_Info, "Growing Interaction fast bins to %zu", cNewAllocatedFastBins);
+
+      if(IsMultiplyError(cBytesPerFastBin, cNewAllocatedFastBins)) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp IsMultiplyError(cBytesPerFastBin, cNewAllocatedFastBins)");
+         return nullptr;
+      }
+      aBuffer = static_cast<BinBase *>(malloc(cBytesPerFastBin * cNewAllocatedFastBins));
+      if(nullptr == aBuffer) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp OutOfMemory");
+         return nullptr;
+      }
+      m_aInteractionFastBinsTemp = aBuffer;
    }
    return aBuffer;
 }
 
-// a*PredictorScores = logOdds for binary classification
-// a*PredictorScores = logWeights for multiclass classification
-// a*PredictorScores = predictedValue for regression
-static ErrorEbmType CreateInteractionDetector(
-   const IntEbmType countFeatures,
-   const BoolEbmType * const aFeaturesCategorical,
-   const IntEbmType * const aFeaturesBinCount,
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const IntEbmType countSamples,
-   const void * const targets,
-   const IntEbmType * const binnedData,
-   const FloatEbmType * const aWeights,
-   const FloatEbmType * const predictorScores,
-   const FloatEbmType * const optionalTempParams,
+BinBase * InteractionShell::GetInteractionBigBins(const size_t cBytesPerBigBin, const size_t cBigBins) {
+   ANALYSIS_ASSERT(0 != cBytesPerBigBin);
+
+   BinBase * aBuffer = m_aInteractionBigBins;
+   if(UNLIKELY(m_cAllocatedBigBins < cBigBins)) {
+      free(aBuffer);
+      m_aInteractionBigBins = nullptr;
+
+      const size_t cItemsGrowth = (cBigBins >> 2) + 16; // cannot overflow
+      if(IsAddError(cItemsGrowth, cBigBins)) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionBigBins IsAddError(cItemsGrowth, cBigBins)");
+         return nullptr;
+      }
+      const size_t cNewAllocatedBigBins = cBigBins + cItemsGrowth;
+
+      m_cAllocatedBigBins = cNewAllocatedBigBins;
+      LOG_N(Trace_Info, "Growing Interaction big bins to %zu", cNewAllocatedBigBins);
+
+      if(IsMultiplyError(cBytesPerBigBin, cNewAllocatedBigBins)) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionBigBins IsMultiplyError(cBytesPerBigBin, cNewAllocatedBigBins)");
+         return nullptr;
+      }
+      aBuffer = static_cast<BinBase *>(malloc(cBytesPerBigBin * cNewAllocatedBigBins));
+      if(nullptr == aBuffer) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionBigBins OutOfMemory");
+         return nullptr;
+      }
+      m_aInteractionBigBins = aBuffer;
+   }
+   return aBuffer;
+}
+
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
+   const void * dataSet,
+   const BagEbm * bag,
+   const double * initScores, // only samples with non-zeros in the bag are included
+   const double * experimentalParams,
    InteractionHandle * interactionHandleOut
 ) {
-   // TODO : give CreateInteractionDetector the same calling parameter order as CreateClassificationInteractionDetector
+   LOG_N(Trace_Info, "Entered CreateInteractionDetector: "
+      "dataSet=%p, "
+      "bag=%p, "
+      "initScores=%p, "
+      "experimentalParams=%p, "
+      "interactionHandleOut=%p"
+      ,
+      static_cast<const void *>(dataSet),
+      static_cast<const void *>(bag),
+      static_cast<const void *>(initScores),
+      static_cast<const void *>(experimentalParams),
+      static_cast<const void *>(interactionHandleOut)
+   );
 
-   EBM_ASSERT(nullptr != interactionHandleOut);
-   EBM_ASSERT(nullptr == *interactionHandleOut);
+   ErrorEbm error;
 
-   if(countFeatures < 0) {
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector countFeatures must be positive");
-      return Error_IllegalParamValue;
+   if(nullptr == interactionHandleOut) {
+      LOG_0(Trace_Error, "ERROR CreateInteractionDetector nullptr == interactionHandleOut");
+      return Error_IllegalParamVal;
    }
-   if(0 != countFeatures && nullptr == aFeaturesCategorical) {
-      // TODO: in the future maybe accept null aFeaturesCategorical and assume there are no missing values
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector aFeaturesCategorical cannot be nullptr if 0 < countFeatures");
-      return Error_IllegalParamValue;
-   }
-   if(0 != countFeatures && nullptr == aFeaturesBinCount) {
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector aFeaturesBinCount cannot be nullptr if 0 < countFeatures");
-      return Error_IllegalParamValue;
-   }
-   if(countSamples < 0) {
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector countSamples must be positive");
-      return Error_IllegalParamValue;
-   }
-   if(0 != countSamples && nullptr == targets) {
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector targets cannot be nullptr if 0 < countSamples");
-      return Error_IllegalParamValue;
-   }
-   if(0 != countSamples && 0 != countFeatures && nullptr == binnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector binnedData cannot be nullptr if 0 < countSamples AND 0 < countFeatures");
-      return Error_IllegalParamValue;
-   }
-   if(0 != countSamples && nullptr == predictorScores) {
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector predictorScores cannot be nullptr if 0 < countSamples");
-      return Error_IllegalParamValue;
-   }
-   if(IsConvertError<size_t>(countFeatures)) {
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector IsConvertError<size_t>(countFeatures)");
-      return Error_IllegalParamValue;
-   }
-   if(IsConvertError<size_t>(countSamples)) {
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector IsConvertError<size_t>(countSamples)");
-      return Error_IllegalParamValue;
+   *interactionHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
+
+   if(nullptr == dataSet) {
+      LOG_0(Trace_Error, "ERROR CreateInteractionDetector nullptr == dataSet");
+      return Error_IllegalParamVal;
    }
 
-   size_t cFeatures = static_cast<size_t>(countFeatures);
-   size_t cSamples = static_cast<size_t>(countSamples);
-
-   InteractionShell * const pInteractionShell = InteractionShell::Create();
-   if(UNLIKELY(nullptr == pInteractionShell)) {
-      LOG_0(TraceLevelWarning, "WARNING CreateInteractionDetector nullptr == pInteractionShell");
-      return Error_OutOfMemory;
-   }
-
-   const ErrorEbmType error = InteractionCore::Create(
-      pInteractionShell,
-      runtimeLearningTypeOrCountTargetClasses,
-      cFeatures,
-      optionalTempParams,
-      aFeaturesCategorical,
-      aFeaturesBinCount,
-      cSamples,
-      targets,
-      binnedData,
-      aWeights,
-      predictorScores
+   InteractionCore * pInteractionCore = nullptr;
+   error = InteractionCore::Create(
+      static_cast<const unsigned char *>(dataSet),
+      bag,
+      experimentalParams,
+      &pInteractionCore
    );
    if(Error_None != error) {
-      InteractionShell::Free(pInteractionShell);
-      LOG_0(TraceLevelWarning, "WARNING CreateInteractionDetector nullptr == pInteractionCore");
+      // legal to call if nullptr. On error we can get back a legal pInteractionCore to delete
+      InteractionCore::Free(pInteractionCore);
+      return error;
+   }
+
+   InteractionShell * const pInteractionShell = InteractionShell::Create(pInteractionCore);
+   if(UNLIKELY(nullptr == pInteractionShell)) {
+      // if the memory allocation for pInteractionShell failed then 
+      // there was no place to put the pInteractionCore, so free it
+      InteractionCore::Free(pInteractionCore);
       return Error_OutOfMemory;
    }
 
-   *interactionHandleOut = pInteractionShell->GetHandle();
+   const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
+   if(IsClassification(cClasses)) {
+      error = pInteractionCore->InitializeInteractionGradientsAndHessians(
+         static_cast<const unsigned char *>(dataSet),
+         bag,
+         initScores
+      );
+      if(Error_None != error) {
+         InteractionCore::Free(pInteractionCore);
+         return error;
+      }
+   } else {
+      if(!pInteractionCore->GetDataSetInteraction()->IsGradientsAndHessiansNull()) {
+         InitializeMSEGradientsAndHessians(
+            static_cast<const unsigned char *>(dataSet),
+            BagEbm { 1 },
+            bag,
+            initScores,
+            pInteractionCore->GetDataSetInteraction()->GetCountSamples(),
+            pInteractionCore->GetDataSetInteraction()->GetGradientsAndHessiansPointer(),
+            pInteractionCore->GetDataSetInteraction()->GetWeights()
+         );
+      }
+   }
+
+   const InteractionHandle handle = pInteractionShell->GetHandle();
+
+   LOG_N(Trace_Info, "Exited CreateInteractionDetector: *interactionHandleOut=%p", static_cast<void *>(handle));
+
+   *interactionHandleOut = handle;
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
-   IntEbmType countTargetClasses,
-   IntEbmType countFeatures,
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
-   IntEbmType countSamples,
-   const IntEbmType * binnedData,
-   const IntEbmType * targets,
-   const FloatEbmType * weights,
-   const FloatEbmType * predictorScores,
-   const FloatEbmType * optionalTempParams,
-   InteractionHandle * interactionHandleOut
-) {
-   LOG_N(
-      TraceLevelInfo,
-      "Entered CreateClassificationInteractionDetector: "
-      "countTargetClasses=%" IntEbmTypePrintf ", "
-      "countFeatures=%" IntEbmTypePrintf ", "
-      "featuresCategorical=%p, "
-      "featuresBinCount=%p, "
-      "countSamples=%" IntEbmTypePrintf ", "
-      "binnedData=%p, "
-      "targets=%p, "
-      "weights=%p, "
-      "predictorScores=%p, "
-      "optionalTempParams=%p, "
-      "interactionHandleOut=%p"
-      ,
-      countTargetClasses,
-      countFeatures,
-      static_cast<const void *>(featuresCategorical),
-      static_cast<const void *>(featuresBinCount),
-      countSamples,
-      static_cast<const void *>(binnedData),
-      static_cast<const void *>(targets),
-      static_cast<const void *>(weights),
-      static_cast<const void *>(predictorScores),
-      static_cast<const void *>(optionalTempParams),
-      static_cast<const void *>(interactionHandleOut)
-   );
-
-   if(nullptr == interactionHandleOut) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector nullptr == interactionHandleOut");
-      return Error_IllegalParamValue;
-   }
-   *interactionHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
-
-   if(countTargetClasses < 0) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector countTargetClasses can't be negative");
-      return Error_IllegalParamValue;
-   }
-   if(0 == countTargetClasses && 0 != countSamples) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector countTargetClasses can't be zero unless there are no samples");
-      return Error_IllegalParamValue;
-   }
-   if(IsConvertError<ptrdiff_t>(countTargetClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING CreateClassificationInteractionDetector IsConvertError<ptrdiff_t>(countTargetClasses)");
-      // we didn't run out of memory, but we will if we accept this and it's not worth making a new error code
-      return Error_OutOfMemory;
-   }
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
-   const ErrorEbmType error = CreateInteractionDetector(
-      countFeatures,
-      featuresCategorical,
-      featuresBinCount,
-      runtimeLearningTypeOrCountTargetClasses,
-      countSamples,
-      targets,
-      binnedData,
-      weights,
-      predictorScores,
-      optionalTempParams,
-      interactionHandleOut
-   );
-
-   LOG_N(TraceLevelInfo, "Exited CreateClassificationInteractionDetector: "
-      "*interactionHandleOut=%p, "
-      "return=%" ErrorEbmTypePrintf
-      ,
-      static_cast<void *>(*interactionHandleOut),
-      error
-   );
-
-   return error;
-}
-
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
-   IntEbmType countFeatures,
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
-   IntEbmType countSamples,
-   const IntEbmType * binnedData,
-   const FloatEbmType * targets,
-   const FloatEbmType * weights,
-   const FloatEbmType * predictorScores,
-   const FloatEbmType * optionalTempParams,
-   InteractionHandle * interactionHandleOut
-) {
-   LOG_N(TraceLevelInfo, "Entered CreateRegressionInteractionDetector: "
-      "countFeatures=%" IntEbmTypePrintf ", "
-      "featuresCategorical=%p, "
-      "featuresBinCount=%p, "
-      "countSamples=%" IntEbmTypePrintf ", "
-      "binnedData=%p, "
-      "targets=%p, "
-      "weights=%p, "
-      "predictorScores=%p, "
-      "optionalTempParams=%p, "
-      "interactionHandleOut=%p"
-      ,
-      countFeatures,
-      static_cast<const void *>(featuresCategorical),
-      static_cast<const void *>(featuresBinCount),
-      countSamples,
-      static_cast<const void *>(binnedData),
-      static_cast<const void *>(targets),
-      static_cast<const void *>(weights),
-      static_cast<const void *>(predictorScores),
-      static_cast<const void *>(optionalTempParams),
-      static_cast<const void *>(interactionHandleOut)
-   );
-
-   if(nullptr == interactionHandleOut) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector nullptr == interactionHandleOut");
-      return Error_IllegalParamValue;
-   }
-   *interactionHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
-
-   const ErrorEbmType error = CreateInteractionDetector(
-      countFeatures,
-      featuresCategorical,
-      featuresBinCount,
-      k_regression,
-      countSamples,
-      targets,
-      binnedData,
-      weights,
-      predictorScores,
-      optionalTempParams,
-      interactionHandleOut
-   );
-
-   LOG_N(TraceLevelInfo, "Exited CreateRegressionInteractionDetector: "
-      "*interactionHandleOut=%p, "
-      "return=%" ErrorEbmTypePrintf
-      ,
-      static_cast<void *>(*interactionHandleOut),
-      error
-   );
-
-   return error;
-}
-
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeInteractionDetector(
+EBM_API_BODY void EBM_CALLING_CONVENTION FreeInteractionDetector(
    InteractionHandle interactionHandle
 ) {
-   LOG_N(TraceLevelInfo, "Entered FreeInteractionDetector: interactionHandle=%p", static_cast<void *>(interactionHandle));
+   LOG_N(Trace_Info, "Entered FreeInteractionDetector: interactionHandle=%p", static_cast<void *>(interactionHandle));
 
-   InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromInteractionHandle(interactionHandle);
+   InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromHandle(interactionHandle);
    // if the conversion above doesn't work, it'll return null, and our free will not in fact free any memory,
    // but it will not crash. We'll leak memory, but at least we'll log that.
 
    // it's legal to call free on nullptr, just like for free().  This is checked inside InteractionCore::Free()
    InteractionShell::Free(pInteractionShell);
 
-   LOG_0(TraceLevelInfo, "Exited FreeInteractionDetector");
+   LOG_0(Trace_Info, "Exited FreeInteractionDetector");
 }
 
 } // DEFINED_ZONE_NAME

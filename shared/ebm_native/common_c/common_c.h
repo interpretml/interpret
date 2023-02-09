@@ -7,8 +7,6 @@
 
 #include <string.h>
 
-#include "ebm_native.h"
-
 #ifdef __cplusplus
 extern "C" {
 #define EBM_NOEXCEPT noexcept
@@ -29,8 +27,11 @@ extern "C" {
 #define WARNING_PUSH _Pragma("clang diagnostic push")
 #define WARNING_POP _Pragma("clang diagnostic pop")
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
+#define WARNING_DISABLE_UNINITIALIZED_LOCAL_POINTER
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
+#define WARNING_BUFFER_OVERRUN
+#define WARNING_REDUNDANT_CODE
 #define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
 
 #if __has_feature(attribute_analyzer_noreturn)
@@ -44,8 +45,11 @@ extern "C" {
 #define WARNING_PUSH _Pragma("GCC diagnostic push")
 #define WARNING_POP _Pragma("GCC diagnostic pop")
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE _Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
+#define WARNING_DISABLE_UNINITIALIZED_LOCAL_POINTER
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
+#define WARNING_BUFFER_OVERRUN
+#define WARNING_REDUNDANT_CODE
 #define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
 
 #define ANALYZER_NORETURN
@@ -61,8 +65,11 @@ extern "C" {
 #define WARNING_PUSH
 #define WARNING_POP
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
+#define WARNING_DISABLE_UNINITIALIZED_LOCAL_POINTER
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
+#define WARNING_BUFFER_OVERRUN
+#define WARNING_REDUNDANT_CODE
 #define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
 
 #define ANALYZER_NORETURN
@@ -72,13 +79,16 @@ extern "C" {
 #define WARNING_PUSH __pragma(warning(push))
 #define WARNING_POP __pragma(warning(pop))
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE __pragma(warning(disable: 4701))
+#define WARNING_DISABLE_UNINITIALIZED_LOCAL_POINTER __pragma(warning(disable: 4703))
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO __pragma(warning(disable: 4723))
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY __pragma(warning(disable: 6001))
+#define WARNING_BUFFER_OVERRUN __pragma(warning(disable: 6386))
+#define WARNING_REDUNDANT_CODE __pragma(warning(disable: 6287))
 #define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER [[gsl::suppress(type.6)]]
 
 #define ANALYZER_NORETURN
 
-// disable constexpr warning, since GetVectorLength is meant to be ambiguous and it's used everywhere
+// disable constexpr warning, since GetCountScores is meant to be ambiguous and it's used everywhere
 #pragma warning(disable : 26498)
 // disable dereferencing NULL pointer, since the static analysis seems to think any access of a pointer is 
 // dereferencing a NULL pointer potentially.
@@ -99,12 +109,12 @@ extern "C" {
 #define __has_builtin(x) 0 // __has_builtin is supported in newer compilers.  On older compilers diable anything we would check with it
 #endif // __has_builtin
 
-#define LIKELY(b) __builtin_expect((b), 1)
-#define UNLIKELY(b) __builtin_expect((b), 0)
+#define LIKELY(b) __builtin_expect(!!(b), 1)
+#define UNLIKELY(b) __builtin_expect(!!(b), 0)
 #define PREDICTABLE(b) (b)
 
 #if __has_builtin(__builtin_unpredictable)
-#define UNPREDICTABLE(b) __builtin_unpredictable(b)
+#define UNPREDICTABLE(b) __builtin_unpredictable(!!(b))
 #else // __has_builtin(__builtin_unpredictable)
 #define UNPREDICTABLE(b) (b)
 #endif // __has_builtin(__builtin_unpredictable)
@@ -134,32 +144,20 @@ extern "C" {
 #error compiler not recognized
 #endif // compiler type
 
-// using inlining makes it much harder to debug inline functions (stepping and breakpoints don't work).  
-// In debug builds we don't care as much about speed, but we do care about debugability, so we generally 
-// want to turn off inlining in debug mode.  BUT, when I make everything non-inlined some trivial wrapper
-// functions cause a big slowdown, so we'd rather have two classes of inlining.  The INLINE_ALWAYS
-// version that inlines in debug mode, and the INLINE_RELEASE version that only inlines for release builds.  
-// BUT, unfortunately, inline functions need to be in headers generally, but if you remove the inline, 
-// then you get name collisions on the functions.  Using static is one possible solution, but it can create 
-// duplicate copies of the function inside each module that the header is inlucded within if the linker 
-// isn't smart.  Another option is to use a dummy template, which forces the compiler to allow 
-// definition in a header but combines them afterwards. Lastly, using the non-forced inline works in most 
-// cases since the compiler will not inline complicated functions by default.
-#ifdef NDEBUG
-#define INLINE_RELEASE_UNTEMPLATED INLINE_ALWAYS
-#define INLINE_RELEASE_TEMPLATED INLINE_ALWAYS
-#else //NDEBUG
-#define INLINE_RELEASE_UNTEMPLATED template<bool bUnusedInline = false>
-#define INLINE_RELEASE_TEMPLATED
-#endif //NDEBUG
-
-INLINE_ALWAYS static void StopClangAnalysis() EBM_NOEXCEPT ANALYZER_NORETURN {
+INLINE_ALWAYS static void StopClangAnalysis(void) EBM_NOEXCEPT ANALYZER_NORETURN {
 }
 
-INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * dest, const char * src) EBM_NOEXCEPT {
+INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * const dest, const char * const src) EBM_NOEXCEPT {
    StopClangAnalysis();
    return strcpy(dest, src);
 }
+
+#define ANALYSIS_ASSERT(b) \
+   do { \
+      if(!(b)) \
+         StopClangAnalysis(); \
+   } while( (void)0, 0)
+
 
 #define FAST_EXP
 #define FAST_LOG

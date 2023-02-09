@@ -8,10 +8,10 @@
 // include this AFTER ebm_native.h to test that ebm_native.h can stand alone
 #include <stdio.h>
 
-static void EBM_NATIVE_CALLING_CONVENTION LogMessage(TraceEbmType traceLevel, const char * message) {
+static void EBM_CALLING_CONVENTION LogCallback(TraceEbm traceLevel, const char * message) {
    char buffer[1000];
    const size_t cBytesBuffer = sizeof(buffer) / sizeof(buffer[0]);
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf ".%s\n", traceLevel, message);
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf ".%s\n", traceLevel, message);
 }
 
 extern void TestCHeaderConstructs() {
@@ -24,41 +24,38 @@ extern void TestCHeaderConstructs() {
    InteractionHandle interactionHandle = NULL;
    snprintf(buffer, cBytesBuffer, "%p\n", interactionHandle);
 
-   FloatEbmType testFloat = -123.456;
-   snprintf(buffer, cBytesBuffer, "%" FloatEbmTypePrintf "\n", testFloat);
+   IntEbm testInt = -123;
+   snprintf(buffer, cBytesBuffer, "%" IntEbmPrintf "\n", testInt);
 
-   IntEbmType testInt = -123;
-   snprintf(buffer, cBytesBuffer, "%" IntEbmTypePrintf "\n", testInt);
+   UIntEbm testUInt = 123;
+   snprintf(buffer, cBytesBuffer, "%" UIntEbmPrintf "\n", testUInt);
 
-   UIntEbmType testUInt = 123;
-   snprintf(buffer, cBytesBuffer, "%" UIntEbmTypePrintf "\n", testUInt);
+   SeedEbm testSeed = -123;
+   snprintf(buffer, cBytesBuffer, "%" SeedEbmPrintf "\n", testSeed);
 
-   SeedEbmType testSeed = -123;
-   snprintf(buffer, cBytesBuffer, "%" SeedEbmTypePrintf "\n", testSeed);
+   BoolEbm testBoolTrue = EBM_TRUE;
+   snprintf(buffer, cBytesBuffer, "%" BoolEbmPrintf "\n", testBoolTrue);
 
-   BoolEbmType testBoolTrue = EBM_TRUE;
-   snprintf(buffer, cBytesBuffer, "%" BoolEbmTypePrintf "\n", testBoolTrue);
+   BoolEbm testBoolFalse = EBM_FALSE;
+   snprintf(buffer, cBytesBuffer, "%" BoolEbmPrintf "\n", testBoolFalse);
 
-   BoolEbmType testBoolFalse = EBM_FALSE;
-   snprintf(buffer, cBytesBuffer, "%" BoolEbmTypePrintf "\n", testBoolFalse);
+   TraceEbm testTraceOff = Trace_Off;
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf "\n", testTraceOff);
 
-   TraceEbmType testTraceOff = TraceLevelOff;
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceOff);
+   TraceEbm testTraceError = Trace_Error;
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf "\n", testTraceError);
 
-   TraceEbmType testTraceError = TraceLevelError;
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceError);
+   TraceEbm testTraceWarning = Trace_Warning;
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf "\n", testTraceWarning);
 
-   TraceEbmType testTraceWarning = TraceLevelWarning;
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceWarning);
+   TraceEbm testTraceInfo = Trace_Info;
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf "\n", testTraceInfo);
 
-   TraceEbmType testTraceInfo = TraceLevelInfo;
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceInfo);
+   TraceEbm testTraceVerbose = Trace_Verbose;
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf "\n", testTraceVerbose);
 
-   TraceEbmType testTraceVerbose = TraceLevelVerbose;
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceVerbose);
-
-   TraceEbmType testTraceIllegal = 9999;
-   snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceIllegal);
+   TraceEbm testTraceIllegal = 9999;
+   snprintf(buffer, cBytesBuffer, "%" TraceEbmPrintf "\n", testTraceIllegal);
 
    snprintf(buffer, cBytesBuffer, "%s\n", GetTraceLevelString(testTraceOff));
    snprintf(buffer, cBytesBuffer, "%s\n", GetTraceLevelString(testTraceError));
@@ -67,6 +64,6 @@ extern void TestCHeaderConstructs() {
    snprintf(buffer, cBytesBuffer, "%s\n", GetTraceLevelString(testTraceVerbose));
    snprintf(buffer, cBytesBuffer, "%s\n", GetTraceLevelString(testTraceIllegal));
 
-   LOG_MESSAGE_FUNCTION logMessageFunction = &LogMessage;
-   (*logMessageFunction)(TraceLevelVerbose, "I am a test.  What are you?");
+   LogCallbackFunction logCallbackFunction = &LogCallback;
+   (*logCallbackFunction)(Trace_Verbose, "I am a test.  What are you?");
 }
