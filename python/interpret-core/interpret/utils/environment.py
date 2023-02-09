@@ -101,7 +101,18 @@ def _is_docker_development_mode():
 def _detect_azure_synapse():
     return os.environ.get("AZURE_SERVICE", None) == "Microsoft.ProjectArcadia"
 
+def enum(**enums):
+    return type('Enum', (), enums)
+
+
+ENV_DETECTED = enum(CLOUD="CLOUD", NON_CLOUD="NON_CLOUD", BOTH_CLOUD_AND_NON_CLOUD='BOTH_CLOUD_AND_NON_CLOUD') 
+
 def is_cloud_env(detected):
+    non_cloud_env = [
+        "ipython-zmq",
+        "ipython",
+        "vscode",
+    ]
     cloud_env = [
         "databricks",
         "azure",
@@ -112,10 +123,13 @@ def is_cloud_env(detected):
         "colab",
         "azuresynapse"
     ]
-    if len(set(cloud_env).intersection(detected)) != 0:
-        return True
-    else:
-        return False
+    if len(set(cloud_env).intersection(detected)) != 0 and len(set(non_cloud_env).intersection(detected))==0:
+        return ENV_DETECTED.CLOUD
+   
+    elif len(set(cloud_env).intersection(detected)) != 0 and len(set(non_cloud_env).intersection(detected)) !=0:
+        return ENV_DETECTED.BOTH_CLOUD_AND_NON_CLOUD
+    else: 
+        return ENV_DETECTED.NON_CLOUD
 
 
 class EnvironmentDetector:
