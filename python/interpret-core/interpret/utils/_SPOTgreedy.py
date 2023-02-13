@@ -29,7 +29,7 @@ def SPOT_GreedySubsetSelection(C, targetMarginal, m):
     S = cp.zeros((1, m), dtype=int)
     setValues = cp.zeros((1, m), dtype=int)
     sizeS = 0
-    currMinCostValues = cp.ones((1, numX), dtype=int) * 1000000
+    currMinCostValues = cp.ones((1, numX)) * 1000000
     currMinSourceIndex = cp.zeros((1, numX), dtype=int)
     remainingElements = allY
     chosenElements = []
