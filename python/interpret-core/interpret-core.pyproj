@@ -22,7 +22,6 @@
     <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="dev-requirements.txt" />
     <Content Include="interpret\pytest.ini" />
     <Content Include="interpret\visual\assets\favicon.ico" />
     <Content Include="interpret\visual\assets\udash.css" />
@@ -30,7 +29,6 @@
     <Content Include="js\package.json" />
     <Content Include="js\src\index.js" />
     <Content Include="js\webpack.config.js" />
-    <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="conftest.py" />
