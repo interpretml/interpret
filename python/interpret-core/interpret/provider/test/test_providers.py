@@ -21,7 +21,7 @@ def task_fn(x, y):
 task_args_iter = [[1, 1], [2, 2], [3, 3]]
 
 
-@pytest.fixture("module")
+@pytest.fixture(scope="module")
 def example_explanation():
     data = synthetic_classification()
     explainer = LogisticRegression()
