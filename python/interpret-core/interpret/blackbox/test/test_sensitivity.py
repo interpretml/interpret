@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..sensitivity import soft_min_max
+from interpret.blackbox.sensitivity import soft_min_max
 
 
 def test_soft_min_max():

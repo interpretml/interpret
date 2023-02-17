@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..linear import LogisticRegression, LinearRegression
+from interpret.glassbox import LogisticRegression, LinearRegression
 from sklearn.datasets import load_breast_cancer, load_diabetes
 from sklearn.linear_model import LogisticRegression as SKLogistic
 from sklearn.linear_model import Lasso as SKLinear
@@ -105,7 +105,7 @@ def test_sorting():
     global_viz = global_expl.visualize()
     assert global_viz is not None
 
-    from ...visual.plot import sort_take, mli_sort_take, get_sort_indexes
+    from interpret.visual.plot import sort_take, mli_sort_take, get_sort_indexes
 
     data_dict = sort_take(
         global_expl.data(), sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True

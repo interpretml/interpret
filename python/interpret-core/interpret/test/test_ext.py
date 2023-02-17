@@ -6,7 +6,7 @@ from six import raise_from
 from .utils import assert_valid_explanation
 from .utils import synthetic_classification
 
-from ..glassbox import LogisticRegression
+from interpret.glassbox import LogisticRegression
 
 
 def test_import_demo_extension_classes():

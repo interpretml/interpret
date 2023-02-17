@@ -1,8 +1,8 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..develop import print_debug_info, debug_info
-from ..develop import register_log, debug_mode
+from interpret.develop import print_debug_info, debug_info
+from interpret.develop import register_log, debug_mode
 
 
 def test_debug_mode():

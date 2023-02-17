@@ -3,12 +3,12 @@
 
 from sklearn.ensemble import RandomForestClassifier
 
-from .utils import synthetic_classification, get_all_explainers
-from .utils import assert_valid_explanation, assert_valid_model_explainer
+from interpret.test.utils import synthetic_classification, get_all_explainers
+from interpret.test.utils import assert_valid_explanation, assert_valid_model_explainer
 
-# from ..blackbox import PermutationImportance
+# from interpret.blackbox import PermutationImportance
 
-from ..glassbox import LogisticRegression
+from interpret.glassbox import LogisticRegression
 
 import pytest
 

@@ -5,14 +5,15 @@
 # TODO PK add a test with a real regression dataset
 # TODO PK add a test with more than 1 multiclass interaction
 
-from ....test.utils import (
+from interpret.test.utils import (
     synthetic_multiclass,
     synthetic_classification,
     adult_classification,
     iris_classification,
 )
-from ....test.utils import synthetic_regression
-from ..ebm import ExplainableBoostingRegressor, ExplainableBoostingClassifier, DPExplainableBoostingClassifier, DPExplainableBoostingRegressor
+from interpret.test.utils import synthetic_regression
+from interpret.glassbox import ExplainableBoostingRegressor, ExplainableBoostingClassifier
+from interpret.privacy import DPExplainableBoostingClassifier, DPExplainableBoostingRegressor
 
 import numpy as np
 import pandas as pd
@@ -42,7 +43,7 @@ def valid_ebm(ebm):
         assert all_finite
 
 def _smoke_test_explanations(global_exp, local_exp, port):
-    from .... import preserve, show, shutdown_show_server, set_show_addr
+    from interpret import preserve, show, shutdown_show_server, set_show_addr
 
     set_show_addr(("127.0.0.1", port))
 
@@ -584,7 +585,7 @@ def test_zero_validation():
 @pytest.mark.slow
 def test_dp_ebm_adult():
     from sklearn.metrics import roc_auc_score
-    from ..ebm import DPExplainableBoostingClassifier
+    from interpret.privacy import DPExplainableBoostingClassifier
 
     data = adult_classification(sample=1)
     X = data["full"]["X"]
@@ -623,7 +624,7 @@ def test_dp_ebm_adult():
     _smoke_test_explanations(global_exp, local_exp, 6000)
 
 def test_dp_ebm_synthetic_regression():
-    from ..ebm import DPExplainableBoostingRegressor
+    from interpret.privacy import DPExplainableBoostingRegressor
 
     data = synthetic_regression()
     X = data["full"]["X"]
@@ -638,7 +639,7 @@ def test_dp_ebm_synthetic_regression():
     valid_ebm(clf)
 
 def test_dp_ebm_external_privacy_schema():
-    from ..ebm import DPExplainableBoostingRegressor
+    from interpret.privacy import DPExplainableBoostingRegressor
 
     data = synthetic_regression()
     X = data["full"]["X"]

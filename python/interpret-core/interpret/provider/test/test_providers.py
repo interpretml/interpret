@@ -1,8 +1,8 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..compute import JobLibProvider, AzureMLProvider
-from ..visualize import (
+from interpret.provider import JobLibProvider
+from interpret.provider import (
     AutoVisualizeProvider,
     DashProvider,
     PreserveProvider,
@@ -10,8 +10,8 @@ from ..visualize import (
 )
 import pytest
 
-from ...test.utils import synthetic_classification
-from ...glassbox import LogisticRegression
+from interpret.test.utils import synthetic_classification
+from interpret.glassbox import LogisticRegression
 
 
 def task_fn(x, y):
@@ -38,16 +38,11 @@ def test_joblib_provider():
     assert results == [2, 4, 6]
 
 
-def test_azureml_provider():
-    with pytest.raises(NotImplementedError):
-        provider = AzureMLProvider()
-        provider.parallel(task_fn, task_args_iter)
-
 
 @pytest.mark.slow
 def test_auto_visualize_provider(example_explanation):
     # NOTE: We know this environment is going to use Dash.
-    from ...visual.dashboard import AppRunner
+    from interpret.visual.dashboard import AppRunner
 
     ip = "127.0.0.1"
     port = "7200"

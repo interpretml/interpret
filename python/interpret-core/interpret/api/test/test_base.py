@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 import pytest
-from ..base import ExplainerMixin, ExplanationMixin
+from interpret.api.base import ExplainerMixin, ExplanationMixin
 
 
 def test_that_explainer_throws_exceptions_for_incomplete():

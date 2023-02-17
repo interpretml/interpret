@@ -4,7 +4,7 @@
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.datasets import load_diabetes
-from ..treeinterpreter import TreeInterpreter
+from interpret.greybox import TreeInterpreter
 
 import pytest
 

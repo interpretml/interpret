@@ -3,9 +3,9 @@ import numpy as np
 import pytest
 from sklearn.exceptions import NotFittedError
 
-from ...ebm import ExplainableBoostingRegressor, ExplainableBoostingClassifier
-from .....test.utils import synthetic_multiclass, synthetic_classification, synthetic_regression
-from ..group_importance import (
+from interpret.glassbox import ExplainableBoostingRegressor, ExplainableBoostingClassifier
+from interpret.test.utils import synthetic_multiclass, synthetic_classification, synthetic_regression
+from interpret.glassbox.ebm.research.group_importance import (
     compute_group_importance,
     _get_group_name,
     append_group_importance,

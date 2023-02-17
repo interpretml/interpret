@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 import numpy as np
-from .. import purify_row, purify_col, purify_once, purify
+from interpret.glassbox.ebm.research.purify import purify_row, purify_col, purify_once, purify
 
 n_rows = 10
 n_cols = 15

@@ -4,7 +4,7 @@
 # NOTE: Render call is tested with other providers elsewhere.
 
 import plotly.graph_objects as go
-from ..inline import _build_viz_figure
+from interpret.visual.inline import _build_viz_figure
 import pytest
 
 

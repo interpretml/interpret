@@ -9,8 +9,8 @@ import scipy as sp
 
 from itertools import repeat, chain
 
-from .._binning import *
-from .._binning import _process_column_initial, _encode_categorical_existing, _process_continuous, _deduplicate_bins
+from interpret.utils._binning import *
+from interpret.utils._binning import _process_column_initial, _encode_categorical_existing, _process_continuous, _deduplicate_bins
 
 def test_clean_dimensions_2d():
     init_score = [[[[((x,) for x in [1, 2])]]], [3, 4], (np.array([5, 6]),), np.array([[[(7,), (8,)]]])]

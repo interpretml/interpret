@@ -1,17 +1,17 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..visual.interactive import (
+from interpret.visual.interactive import (
     set_show_addr,
     get_show_addr,
     shutdown_show_server,
     status_show_server,
 )
-from ..visual.interactive import show, init_show_server, preserve
-from ..visual import interactive
-from .utils import synthetic_classification
-from ..glassbox import LogisticRegression, DecisionListClassifier
-from .. import show_link
+from interpret.visual.interactive import show, init_show_server, preserve
+from interpret.visual import interactive
+from interpret.test.utils import synthetic_classification
+from interpret.glassbox import LogisticRegression, DecisionListClassifier
+from interpret import show_link
 
 import requests
 import os

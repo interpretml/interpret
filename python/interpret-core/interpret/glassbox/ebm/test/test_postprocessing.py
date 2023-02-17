@@ -3,9 +3,9 @@
 
 import pytest
 
-from ..postprocessing import multiclass_postprocess
+from interpret.glassbox.ebm.postprocessing import multiclass_postprocess
 
-from ....test.utils import (
+from interpret.test.utils import (
     synthetic_multiclass,
     synthetic_classification,
     adult_classification,
@@ -17,8 +17,8 @@ from sklearn.model_selection import (
     StratifiedShuffleSplit,
     train_test_split,
 )
-from ..ebm import ExplainableBoostingRegressor, ExplainableBoostingClassifier
-from ..utils import EBMUtils, merge_ebms
+from interpret.glassbox import ExplainableBoostingRegressor, ExplainableBoostingClassifier
+from interpret.glassbox.ebm.utils import EBMUtils, merge_ebms
 
 import numpy as np
 
@@ -54,7 +54,7 @@ def valid_ebm(ebm):
         assert all_finite
 
 def _smoke_test_explanations(global_exp, local_exp, port):
-    from .... import preserve, show, shutdown_show_server, set_show_addr
+    from interpret import preserve, show, shutdown_show_server, set_show_addr
 
     set_show_addr(("127.0.0.1", port))
 

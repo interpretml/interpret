@@ -1,11 +1,11 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..utils.shap import shap_explain_local
+from interpret.utils.shap import shap_explain_local
 from sklearn.base import is_classifier
 
-from ..api.base import ExplainerMixin
-from ..utils import unify_predict_fn, unify_data
+from interpret.api.base import ExplainerMixin
+from interpret.utils import unify_predict_fn, unify_data
 
 
 class ShapTree(ExplainerMixin):

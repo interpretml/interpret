@@ -1,6 +1,6 @@
 import numpy as np;
 from numpy import random;
-from ...utils import SPOT_GreedySubsetSelection;
+from interpret.utils import SPOT_GreedySubsetSelection;
 
 
 n = 1000; # source samples

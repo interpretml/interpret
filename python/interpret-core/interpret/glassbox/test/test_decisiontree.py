@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..decisiontree import ClassificationTree, RegressionTree
+from interpret.glassbox import ClassificationTree, RegressionTree
 from sklearn.datasets import load_breast_cancer, load_diabetes
 from sklearn.tree import DecisionTreeClassifier as SKDT
 from sklearn.tree import DecisionTreeRegressor as SKRT

@@ -5,8 +5,8 @@ import pytest
 import numpy as np
 import math
 
-from ..bin import eval_terms, make_bin_weights, ebm_decision_function
-from ....utils._binning import clean_X
+from interpret.glassbox.ebm.bin import eval_terms, make_bin_weights, ebm_decision_function
+from interpret.utils._binning import clean_X
 
 def test_eval_terms():
     X = np.array([["a", 1, np.nan], ["b", 2, 8], ["a", 2, 9], [None, 3, "BAD_CONTINUOUS"]], dtype=np.object_)

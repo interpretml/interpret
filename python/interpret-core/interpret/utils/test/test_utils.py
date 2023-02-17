@@ -4,8 +4,8 @@
 import pytest
 import numpy as np
 import pandas as pd
-from .. import gen_feat_val_list, gen_name_from_class
-from .. import reverse_map, unify_data, unify_vector
+from interpret.utils import gen_feat_val_list, gen_name_from_class
+from interpret.utils import reverse_map, unify_data, unify_vector
 
 
 @pytest.fixture

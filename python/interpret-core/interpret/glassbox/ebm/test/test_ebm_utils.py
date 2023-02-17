@@ -1,7 +1,7 @@
 from math import ceil, floor
-from ..utils import EBMUtils, _convert_categorical_to_continuous, _create_proportional_tensor
-from ....utils import unify_data, unify_vector
-from ....test.utils import (
+from interpret.glassbox.ebm.utils import EBMUtils, _convert_categorical_to_continuous, _create_proportional_tensor
+from interpret.utils import unify_data, unify_vector
+from interpret.test.utils import (
     synthetic_regression,
     adult_classification
 )
