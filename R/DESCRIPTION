@@ -11,7 +11,7 @@ Authors@R: c(
    person("Harsha", "Nori", role = c("aut")),
    person("Paul", "Koch", role = c("aut")),
    person("Rich", "Caruana", role = c("aut", "cre"), email = "interpretml@outlook.com"),
-   person("Microsoft Corporation", role="cph")
+   person("The InterpretML Contributors", role="cph")
    )
 Depends: R (>= 3.0.0)
 NeedsCompilation: yes

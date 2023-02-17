@@ -1,2 +1,2 @@
 YEAR: 2019
-COPYRIGHT HOLDER: Microsoft Corporation
+COPYRIGHT HOLDER: The InterpretML Contributors

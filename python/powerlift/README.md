@@ -1,6 +1,6 @@
 # Powerlift
 
-![License](https://img.shields.io/github/license/microsoft/interpret.svg?style=flat-square)
+![License](https://img.shields.io/github/license/interpretml/interpret.svg?style=flat-square)
 <br/>
 > ### Advancing the state of machine learning?
 > ### With 5-10 datasets? Wake me up when I'm dead.
