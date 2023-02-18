@@ -452,6 +452,15 @@ jobs:
   variables:
     runCodesignValidationInjection: false
   steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.8'
+      architecture: 'x64'
+  - script: |
+      python -m pip install --upgrade black
+      black --check .
+    workingDirectory: 'python/interpret-core'
+    displayName: 'black formatting check'
   - task: PublishPipelineArtifact@0
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
