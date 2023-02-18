@@ -218,13 +218,30 @@ def _process_terms(n_classes, bagged_scores, bin_weights, bag_weights):
         # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation
         # It's possible to shift scores arbitary to the intercept, so we should be able to get any desired stddev
 
+        # TODO PK: Generally if a bin for missing/unknown has zero weight then it means that the score should be
+        # ignored since its value was set by boosting to be something useless based on adjacent bins. The normal
+        # way we deal with this is to set a missing/unknown bin that has zero weight to zero AFTER centering.
+        # This works well during fit, but there is an issue later if someone merges two models
+        # where one model had no missing/unknown data but the other model being merged did. Since we only use and 
+        # keep a combined bin_weights field that contains the average of all bagged models, we no longer know that the
+        # scores in some of the original bagged models should have been ignored/zeroed. When a model with no 
+        # missing/unknown data during fitting encounters missing/unknown data during prediction we chose a neutral
+        # answer by returning a value (zero) that is the average accross the training data for a centered graph.
+        # We wish to maintain that, but we do not want to have a separate attribute for the intercept of each
+        # bagged model. We can handle this by using the following procedure:
+        #   1) Center the models within each bag and generate a separate intercept for each bag
+        #   2) Zero the missing/unknown bins if the weights are zero
+        #   3) re-distribute the intercept back into the bagged models equitably. The missing/unknown bins 
+        #      will now be non-zero, but if during merging we loose the information that they should have been
+        #      zeroed our missing/unknown bins will already be set to the value that will yield a neutral response
+
         if (bag_weights == bag_weights[0]).all():
             # if all the bags have the same total weight we can avoid some numeracy issues
             # by using a non-weighted standard deviation
             feature_term_scores = np.average(score_tensors, axis=0)
             term_scores.append(feature_term_scores)
             if n_classes == 1:
-                standard_deviations.append(np.zeros(feature_term_scores.shape, dtype=np.float64))
+                standard_deviations.append(np.zeros(feature_term_scores.shape, np.float64))
             else:
                 standard_deviations.append(np.std(score_tensors, axis=0))
         else:
@@ -1161,8 +1178,8 @@ class EBMUtils:
 
                             # Native code will be returning sums of residuals in slices, not averages.
                             # Compute noisy average by dividing noisy sum by noisy bin weights
-                            instance_weight = np.sum(bin_weights[term_idx][f:s])
-                            noisy_update_tensor[f:s] = noisy_update_tensor[f:s] / instance_weight
+                            region_weight = np.sum(bin_weights[term_idx][f:s])
+                            noisy_update_tensor[f:s] = noisy_update_tensor[f:s] / region_weight
 
                         noisy_update_tensor = noisy_update_tensor * -1 # Invert gradients before updates
                         booster.set_term_update(term_idx, noisy_update_tensor)
