@@ -12,7 +12,7 @@ variables:
   value: windows-latest
 
 jobs:
-- job: 'Build_ebm_native'
+- job: 'bld_native'
   strategy:
     matrix:
       Linux:
@@ -32,31 +32,38 @@ jobs:
     inputs:
       scriptSource: 'inline'
       script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
+    displayName: 'CUDA download installer'
   - script: |
       REM CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
       SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
       SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
       REM the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
       cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
+      IF ERRORLEVEL 1 (
+        ECHO cuda_11.2.2_win10_network.exe FAILED
+        EXIT /B 201
+      )
       .\build.bat
     condition: startsWith(variables['image.name'], 'windows')
-    displayName: 'Building ebm_native code (Windows)'
+    displayName: 'win bld_native'
   - script: |
       sudo apt -y install nvidia-cuda-toolkit
+      if [ $? -ne 0 ]; then 
+         exit 201
+      fi
       nvcc --version
       /bin/sh ./build.sh -asm
     condition: startsWith(variables['image.name'], 'ubuntu')
-    displayName: 'Building ebm_native code (Linux)'
+    displayName: 'linux bld_native'
   - script: |
       /bin/sh ./build.sh -asm
     condition: startsWith(variables['image.name'], 'macOS')
-    displayName: 'Building ebm_native code (Mac)'
+    displayName: 'mac bld_native'
   - task: PublishBuildArtifacts@1
-    condition: succeeded()
     inputs:
       pathtoPublish: staging
       artifactName: ebm_native-$(image.name)
-    displayName: 'Publish ebm_native library'
+    displayName: 'Publish native shared library'
   - task: PublishBuildArtifacts@1
     condition: or(startsWith(variables['image.name'], 'ubuntu'), startsWith(variables['image.name'], 'macOS'))
     continueOnError: true
@@ -72,133 +79,109 @@ jobs:
       artifactName: asm-arm-$(image.name)
     displayName: 'Publish assembly arm'
 
-- job: 'Build_JS_Inline'
+- job: 'bld_javascript_inline'
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
   variables:
     runCodesignValidationInjection: false
   steps:
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '3.7'
-      architecture: 'x64'
-  - script: python build-js-bundles.py devops
-    workingDirectory: 'python/scripts'
-    displayName: 'Build JS bundle'
+  - script: npm install && npm run build-prod
+    workingDirectory: 'python/interpret-core/js'
+    displayName: 'bld_javascript_inline'
   - task: CopyFiles@2
-    condition: succeeded()
     inputs:
-      sourceFolder: 'python/interpret-core/interpret/lib'
+      sourceFolder: 'python/interpret-core/js/dist'
       contents: 'interpret-inline.js'
       targetFolder: '$(Build.ArtifactStagingDirectory)'
-    displayName: 'Move assets to staging'
+    displayName: 'Copy interpret-inline.js library'
   - task: PublishBuildArtifacts@1
-    condition: succeeded()
     inputs:
       pathtoPublish: $(Build.ArtifactStagingDirectory)
       artifactName: interpret-inline-bundle
     displayName: 'Publish interpret-inline.js library'
 
-- job: 'build_npm_package'
+- job: 'bld_npm_package'
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
   variables:
     runCodesignValidationInjection: false
   steps:
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '3.8'
-      architecture: 'x64'
   - script: npm install && npm run build-prod && npm pack
     workingDirectory: 'python/interpret-core/js'
-    displayName: 'build_npm_package'
+    displayName: 'bld_npm_package'
   - task: CopyFiles@2
-    condition: succeeded()
     inputs:
       sourceFolder: 'python/interpret-core/js'
       contents: '*.tgz'
-      targetFolder: '$(Build.ArtifactStagingDirectory)/npm'
-    displayName: 'Move npm package for Build Artifact'
+      targetFolder: '$(Build.ArtifactStagingDirectory)'
+    displayName: 'Copy npm package'
   - task: PublishBuildArtifacts@1
-    condition: succeeded()
     inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)/npm'
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)'
       artifactName: 'npm'
-    displayName: 'Publish npm package as Build Artifact'
+    displayName: 'Publish npm package'
 
-- job: 'Build_R_Package'
+- job: 'bld_R_package'
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
   variables:
     runCodesignValidationInjection: false
   steps:
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '3.7'
-      architecture: 'x64'
   - script: | 
       sudo apt install --yes texlive-latex-base texlive-fonts-extra
-      Rscript build.R
       if [ $? -ne 0 ]; then
-        exit 1
+        exit 201
       fi
+      Rscript build.R
     workingDirectory: 'R'
-    displayName: 'R CMD build'
+    displayName: 'Rscript build.R'
   - script: cat tmp/R/interpret.Rcheck/00install.out
     condition: failed()
-    displayName: 'output errors'
+    displayName: 'Display errors'
   - task: CopyFiles@2
-    condition: succeeded()
     inputs:
       sourceFolder: staging
       contents: 'interpret_*.tar.gz'
-      targetFolder: '$(Build.ArtifactStagingDirectory)/R'
-    displayName: 'Move R package for R Artifact'
+      targetFolder: '$(Build.ArtifactStagingDirectory)'
+    displayName: 'Copy R package'
   - task: PublishBuildArtifacts@1
-    condition: succeeded()
     inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)/R'
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)'
       artifactName: 'R'
     displayName: 'Publish R package'
 
-- job: 'build_sdist'
+- job: 'bld_sdist_package'
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
   variables:
     runCodesignValidationInjection: false
   steps:
   - task: UsePythonVersion@0
-    condition: succeeded()
     inputs:
       versionSpec: '3.8'
       architecture: 'x64'
   - script: python -m pip install --upgrade pip setuptools wheel
-    condition: succeeded()
-    displayName: 'install tools'
+    displayName: 'Install tools'
   - script: python setup.py sdist -d ../../staging
-    condition: succeeded()
     workingDirectory: 'python/interpret-core'
-    displayName: 'build sdist (interpret-core)'
+    displayName: 'interpret-core bld_sdist_package'
   - script: python setup.py sdist -d ../../staging
-    condition: succeeded()
     workingDirectory: 'python/interpret'
-    displayName: 'build sdist (interpret)'
+    displayName: 'interpret bld_sdist_package'
   - task: CopyFiles@2
-    condition: succeeded()
     inputs:
       sourceFolder: staging
       contents: '*.tar.gz'
-      targetFolder: '$(Build.ArtifactStagingDirectory)/sdist'
-    displayName: 'Move sdist for Build Artifact'
+      targetFolder: '$(Build.ArtifactStagingDirectory)'
+    displayName: 'Copy sdist python package'
   - task: PublishBuildArtifacts@1
-    condition: succeeded()
     inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)/sdist'
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)'
       artifactName: 'sdist'
-    displayName: 'Publish sdist as Build Artifact'
+    displayName: 'Publish sdist python package'
 
-- job: 'Build_Package'
-  dependsOn: ['Build_ebm_native', 'Build_JS_Inline']
+- job: 'bld_bdist_package'
+  dependsOn: ['bld_native', 'bld_javascript_inline']
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
   variables:
@@ -208,64 +191,54 @@ jobs:
     inputs:
       buildType: 'current'
       downloadType: 'specific'
-    displayName: 'Download build artifacts'
   - task: UsePythonVersion@0
-    condition: succeeded()
     inputs:
-      versionSpec: '3.7'
+      versionSpec: '3.8'
       architecture: 'x64'
   - script: python -m pip install --upgrade pip setuptools wheel
-    condition: succeeded()
     displayName: 'Install tools'
   - task: CopyFiles@2
-    condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/lib_ebm_native_*_x64*'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
-    displayName: 'Move binary to Python layer'
+    displayName: 'Copy x64 native library to python lib directory'
   - task: CopyFiles@2
-    condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/lib_ebm_native_*_arm*'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
-    displayName: 'Move binary to Python layer'
+    displayName: 'Copy arm native library to python lib directory'
   - task: CopyFiles@2
-    condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/interpret-inline.js'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
-    displayName: 'Move interpret-inline.js to Python layer'
+    displayName: 'Copy interpret-inline.js to python lib directory'
   - script: python setup.py bdist_wheel -d ../../staging
-    condition: succeeded()
     workingDirectory: 'python/interpret-core'
-    displayName: 'Build wheel (interpret-core)'
+    displayName: 'interpret-core bld_bdist_package'
     # TODO: python setup.py bdist_wheel -d ../../staging is rebuilding the native code and the javascript, which is slowing the build
   - script: python setup.py bdist_wheel -d ../../staging
-    condition: succeeded()
     workingDirectory: 'python/interpret'
-    displayName: 'Build wheel (interpret)'
+    displayName: 'interpret bld_bdist_package'
   - task: CopyFiles@2
-    condition: succeeded()
     inputs:
       sourceFolder: staging
       contents: '*.whl'
-      targetFolder: '$(Build.ArtifactStagingDirectory)/wheel'
-    displayName: 'Move wheel for Build Artifact'
+      targetFolder: '$(Build.ArtifactStagingDirectory)'
+    displayName: 'Copy bdist python package'
   - task: PublishBuildArtifacts@1
-    condition: succeeded()
     inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)/wheel'
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)'
       artifactName: 'wheel'
-    displayName: 'Publish wheel as Build Artifact'
+    displayName: 'Publish bdist python package'
 
-- job: 'Test_ebm_native'
-  dependsOn: 'Build_ebm_native'
+- job: 'test_native'
+  dependsOn: 'bld_native'
   strategy:
     matrix:
       Linux:
@@ -284,50 +257,57 @@ jobs:
     inputs:
       buildType: 'current'
       downloadType: 'specific'
-    displayName: 'Download build artifacts'
   - task: CopyFiles@2
-    condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/lib_ebm_native_*'
       targetFolder: 'staging'
       flattenFolders: true
-    displayName: 'Move binary to staging directory'
+    displayName: 'Copy native library to staging directory'
   - task: PythonScript@0
     condition: startsWith(variables['image.name'], 'windows')
     inputs:
       scriptSource: 'inline'
       script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
+    displayName: 'Download CUDA installer'
   - script: |
       /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -existing_debug_64 -existing_release_64
     condition: startsWith(variables['image.name'], 'macOS')
-    displayName: 'Testing ebm_native code (Mac)'
+    displayName: 'mac test_native'
   - script: |
       /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -debug_32 -release_32 -existing_debug_64 -existing_release_64 -no_valgrind
     condition: and(startsWith(variables['image.name'], 'ubuntu'), ne(variables['Build.Reason'], 'Schedule'))
-    displayName: 'Testing ebm_native code (Linux) CI'
+    displayName: 'linux test_native (CI)'
   - script: |
       /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -debug_32 -release_32 -existing_debug_64 -existing_release_64
     condition: and(startsWith(variables['image.name'], 'ubuntu'), eq(variables['Build.Reason'], 'Schedule'))
-    displayName: 'Testing ebm_native code (Linux) Schedule'
+    displayName: 'linux test_native (Schedule)'
   - script: |
       REM CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
       SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
       SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
       REM the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
       cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
+      IF ERRORLEVEL 1 (
+        ECHO cuda_11.2.2_win10_network.exe FAILED
+        EXIT /B 201
+      )
       .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline
     condition: and(startsWith(variables['image.name'], 'windows'), ne(variables['Build.Reason'], 'Schedule'))
-    displayName: 'Testing ebm_native code (Windows) CI'
+    displayName: 'win test_native (CI)'
   - script: |
       REM CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
       SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
       SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
       REM the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
       cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
+      IF ERRORLEVEL 1 (
+        ECHO cuda_11.2.2_win10_network.exe FAILED
+        EXIT /B 201
+      )
       .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline -analysis
     condition: and(startsWith(variables['image.name'], 'windows'), eq(variables['Build.Reason'], 'Schedule'))
-    displayName: 'Testing ebm_native code (Windows) Schedule'
+    displayName: 'win test_native (Schedule)'
   - task: ComponentGovernanceComponentDetection@0
     displayName: 'Scan dependencies for incompatible licenses and security issues'
   - task: CredScan@2
@@ -346,7 +326,6 @@ jobs:
 #  - task: AntiMalware@3
 #    displayName: 'AntiMalware scan'
   - task: SdtReport@1
-    displayName: 'Generate security report'
     condition: startsWith(variables['image.name'], 'windows')
     inputs:
       TsvFile: false
@@ -357,16 +336,16 @@ jobs:
       RoslynAnalyzers: false
       TSLint: false
       ToolLogsNotFoundAction: 'Standard'
+    displayName: 'Generate security report'
   - task: PublishSecurityAnalysisLogs@2
-    displayName: 'Publish security report'
     condition: startsWith(variables['image.name'], 'windows')
     inputs:
       ArtifactName: 'CodeAnalysisLogs'
       ArtifactType: 'Container'
       AllTools: true
       ToolLogsNotFoundAction: 'Standard'
+    displayName: 'Publish security report'
   - task: PostAnalysis@1
-    displayName: 'Stop on security errors'
     condition: startsWith(variables['image.name'], 'windows')
     inputs:
       AllTools: false
@@ -375,36 +354,37 @@ jobs:
       RoslynAnalyzers: false
       TSLint: false
       ToolLogsNotFoundAction: 'Standard'
+    displayName: 'Stop on security errors'
 
-- job: 'Test'
-  dependsOn: 'Build_Package'
+- job: 'test' # just call this test since we have limited room in the UI to show the OS and python version
+  dependsOn: 'bld_bdist_package'
   strategy:
     matrix:
-      LinuxPython38:
+      Linux38Python:
         python.version: '3.8'
         image.name: '${{ variables.ubuntu_image }}'
-      LinuxPython39:
+      Linux39Python:
         python.version: '3.9'
         image.name: '${{ variables.ubuntu_image }}'
-      LinuxPython310:
+      Linux310Python:
         python.version: '3.10'
         image.name: '${{ variables.ubuntu_image }}'
-      WindowsPython38:
+      Win38Python:
         python.version: '3.8'
         image.name: '${{ variables.windows_image }}'
-      WindowsPython39:
+      Win39Python:
         python.version: '3.9'
         image.name: '${{ variables.windows_image }}'
-      WindowsPython310:
+      Win310Python:
         python.version: '3.10'
         image.name: '${{ variables.windows_image }}'
-      MacPython38:
+      Mac38Python:
         python.version: '3.8'
         image.name: '${{ variables.mac_image }}'
-      MacPython39:
+      Mac39Python:
         python.version: '3.9'
         image.name: '${{ variables.mac_image }}'
-      MacPython310:
+      Mac310Python:
         python.version: '3.10'
         image.name: '${{ variables.mac_image }}'
     maxParallel: 9
@@ -417,33 +397,27 @@ jobs:
     inputs:
       buildType: 'current'
       downloadType: 'specific'
-    displayName: 'Download build artifacts'
   - task: CopyFiles@2
-    condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/lib_ebm_native_*'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
-    displayName: 'Move binary to Python layer'
+    displayName: 'Copy native library to python lib directory'
   - task: CopyFiles@2
-    condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/interpret-inline.js'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
-    displayName: 'Move Interpret inline to Python layer'
+    displayName: 'Copy interpret-inline.js to python lib directory'
   - task: UsePythonVersion@0
-    condition: succeeded()
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
   - script: python -m pip install --upgrade pip setuptools wheel
-    condition: succeeded()
     displayName: 'Install tools'
   - script: python -m pip install numpy scipy
-    condition: succeeded()
     workingDirectory: python/interpret-core
     displayName: 'Install numpy/scipy first for mis-specified pip packages.'
   - script: |
@@ -451,22 +425,20 @@ jobs:
       echo "backend: TkAgg" >> ~/.matplotlib/matplotlibrc
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Matplotlib patch for mac.'
-  # - script: python -m pip install -r dev-requirements.txt
   - script: python -m pip install -e .[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
-    condition: succeeded()
     workingDirectory: python/interpret-core
-    displayName: 'Install requirements (Linux/Mac/Windows)'
+    displayName: 'Install interpret-core package with requirements'
   - script: |
       set PATH=%PATH%;%GeckoWebDriver%
       python -m pytest -vv -n auto --runslow --runselenium --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: python/interpret-core
     condition: and(startsWith(variables['image.name'], 'windows'), or(eq(variables['Build.Reason'], 'Schedule'), in(variables['Build.SourceBranch'], 'refs/heads/master')))
-    displayName: 'Run pytest (Windows scheduled / master)'
+    displayName: 'pytest (win AND (scheduled OR master))'
   - script: |
       python -m pytest -vv -n auto --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: python/interpret-core
     condition: not(and(startsWith(variables['image.name'], 'windows'), or(eq(variables['Build.Reason'], 'Schedule'), in(variables['Build.SourceBranch'], 'refs/heads/master'))))
-    displayName: 'Run pytest (Rest)'
+    displayName: 'pytest (rest)'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
@@ -482,7 +454,7 @@ jobs:
     displayName: 'Publish test coverage results'
 
 - job: 'publish_source_code'
-  dependsOn: ['Test_ebm_native', 'Test']
+  dependsOn: ['test_native', 'test']
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
   variables:
