@@ -9,7 +9,7 @@ from interpret.utils import unify_predict_fn, unify_data
 
 
 class ShapTree(ExplainerMixin):
-    """ Exposes tree specific SHAP approximation, in interpret API form.
+    """Exposes tree specific SHAP approximation, in interpret API form.
     If using this please cite the original authors as can be found here: https://github.com/slundberg/shap
     """
 
@@ -26,7 +26,7 @@ class ShapTree(ExplainerMixin):
         n_jobs=1,
         **kwargs
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             model: A tree object that works with Tree SHAP.
@@ -60,7 +60,7 @@ class ShapTree(ExplainerMixin):
         self.shap = shap.TreeExplainer(model, data, **self.kwargs)
 
     def explain_local(self, X, y=None, name=None):
-        """ Provides local explanations for provided instances.
+        """Provides local explanations for provided instances.
 
         Args:
             X: Numpy array for X to explain.
@@ -75,5 +75,10 @@ class ShapTree(ExplainerMixin):
         # doesn't always reach the specified precision.
         check_additivity = self.kwargs.get("check_additivity", False)
         return shap_explain_local(
-            self, X, y=y, name=name, is_classification=self.is_classifier, check_additivity=check_additivity
+            self,
+            X,
+            y=y,
+            name=name,
+            is_classification=self.is_classifier,
+            check_additivity=check_additivity,
         )

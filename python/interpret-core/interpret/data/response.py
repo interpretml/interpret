@@ -9,7 +9,7 @@ from scipy.stats import pearsonr
 
 
 class Marginal(ExplainerMixin):
-    """ Provides a marginal plot for provided data. """
+    """Provides a marginal plot for provided data."""
 
     available_explanations = ["data"]
     explainer_type = "data"
@@ -22,7 +22,7 @@ class Marginal(ExplainerMixin):
         random_state=1,
         **kwargs
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             feature_names: List of feature names.
@@ -38,7 +38,7 @@ class Marginal(ExplainerMixin):
         self.feature_types = feature_types
 
     def explain_data(self, X, y, name=None):
-        """ Explains data as visualizations.
+        """Explains data as visualizations.
 
         Args:
             X: Numpy array for X to explain.
@@ -112,7 +112,7 @@ class Marginal(ExplainerMixin):
 
 
 class MarginalExplanation(ExplanationMixin):
-    """ Explanation object specific to marginal explainer."""
+    """Explanation object specific to marginal explainer."""
 
     explanation_type = None
 
@@ -125,7 +125,7 @@ class MarginalExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             explanation_type:  Type of explanation.
@@ -143,7 +143,7 @@ class MarginalExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
-        """ Provides specific explanation data.
+        """Provides specific explanation data.
 
         Args:
             key: A number/string that references a specific data item.
@@ -159,7 +159,7 @@ class MarginalExplanation(ExplanationMixin):
         return specific_dict
 
     def visualize(self, key=None):
-        """ Provides interactive visualizations.
+        """Provides interactive visualizations.
 
         Args:
             key: Either a scalar or list
@@ -262,13 +262,13 @@ class MarginalExplanation(ExplanationMixin):
 
 
 class ClassHistogram(ExplainerMixin):
-    """ Provides histogram visualizations for classification problems."""
+    """Provides histogram visualizations for classification problems."""
 
     available_explanations = ["data"]
     explainer_type = "data"
 
     def __init__(self, feature_names=None, feature_types=None, **kwargs):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             feature_names: List of feature names.
@@ -280,7 +280,7 @@ class ClassHistogram(ExplainerMixin):
         self.feature_types = feature_types
 
     def explain_data(self, X, y, name=None):
-        """ Generates data explanations (exploratory data analysis)
+        """Generates data explanations (exploratory data analysis)
 
         Args:
             X: Numpy array for X to explain.
@@ -318,7 +318,7 @@ class ClassHistogram(ExplainerMixin):
 
 
 class ClassHistogramExplanation(ExplanationMixin):
-    """ Explanation object specific to class histogram explainer."""
+    """Explanation object specific to class histogram explainer."""
 
     explanation_type = None
 
@@ -331,7 +331,7 @@ class ClassHistogramExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             explanation_type:  Type of explanation.
@@ -349,7 +349,7 @@ class ClassHistogramExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
-        """ Provides specific explanation data.
+        """Provides specific explanation data.
 
         Args:
             key: A number/string that references a specific data item.
@@ -366,7 +366,7 @@ class ClassHistogramExplanation(ExplanationMixin):
         return specific_dict
 
     def visualize(self, key=None):
-        """ Provides interactive visualizations.
+        """Provides interactive visualizations.
 
         Args:
             key: Either a scalar or list

@@ -101,17 +101,20 @@ extras = {
     ],
 }
 
+
 def _copy_native_code_to_setup():
     import os
     import shutil
 
     script_path = os.path.dirname(os.path.abspath(__file__))
-    root_path = os.path.join(script_path, '..', '..')
-    sym_path = os.path.join(script_path, 'symbolic')
-    source_shared_path = os.path.join(root_path, 'shared')
-    target_shared_path = os.path.join(sym_path, 'shared')
+    root_path = os.path.join(script_path, "..", "..")
+    sym_path = os.path.join(script_path, "symbolic")
+    source_shared_path = os.path.join(root_path, "shared")
+    target_shared_path = os.path.join(sym_path, "shared")
 
-    if os.path.exists(source_shared_path):  # If native code exists two directories up, update setup.py's copy.
+    if os.path.exists(
+        source_shared_path
+    ):  # If native code exists two directories up, update setup.py's copy.
         if os.path.exists(target_shared_path):
             shutil.rmtree(target_shared_path)
         shutil.copytree(source_shared_path, target_shared_path)
@@ -119,12 +122,14 @@ def _copy_native_code_to_setup():
         file_names = ["build.bat", "build.sh", "LICENSE", "README.md"]
         for file_name in file_names:
             shutil.copy(
-                os.path.join(root_path, file_name),
-                os.path.join(sym_path, file_name)
+                os.path.join(root_path, file_name), os.path.join(sym_path, file_name)
             )
     else:  # Otherwise, ensure that native code exists for setup.py.
         if not os.path.exists(target_shared_path):
-            raise Exception("Shared directory in symbolic not found. This should be configured either by setup.py or alternative build processes.")
+            raise Exception(
+                "Shared directory in symbolic not found. This should be configured either by setup.py or alternative build processes."
+            )
+
 
 class BuildCommand(build):
     def run(self):
@@ -136,52 +141,55 @@ class BuildCommand(build):
         import shutil
 
         script_path = os.path.dirname(os.path.abspath(__file__))
-        sym_path = os.path.join(script_path, 'symbolic')
+        sym_path = os.path.join(script_path, "symbolic")
 
         # Native compile
-        if os.name == 'nt':
+        if os.name == "nt":
             build_script = os.path.join(sym_path, "build.bat")
             subprocess.check_call([build_script], cwd=sym_path)
         else:
             build_script = os.path.join(sym_path, "build.sh")
-            subprocess.check_call(['/bin/sh', build_script], cwd=sym_path)
+            subprocess.check_call(["/bin/sh", build_script], cwd=sym_path)
 
-        source_dir = os.path.join(sym_path, 'python', 'interpret-core', 'interpret', 'lib')
-        target_dir = os.path.join(script_path, 'interpret', 'lib')
+        source_dir = os.path.join(
+            sym_path, "python", "interpret-core", "interpret", "lib"
+        )
+        target_dir = os.path.join(script_path, "interpret", "lib")
         os.makedirs(target_dir, exist_ok=True)
         file_names = os.listdir(source_dir)
         for file_name in file_names:
             shutil.move(
-                os.path.join(source_dir, file_name),
-                os.path.join(target_dir, file_name)
+                os.path.join(source_dir, file_name), os.path.join(target_dir, file_name)
             )
 
         # JavaScript compile
-        js_path = os.path.join(script_path, 'js')
+        js_path = os.path.join(script_path, "js")
         subprocess.run("npm install && npm run build-prod", cwd=js_path, shell=True)
 
         js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
-        js_bundle_dest = os.path.join(
-            "interpret", "lib", "interpret-inline.js"
-        )
+        js_bundle_dest = os.path.join("interpret", "lib", "interpret-inline.js")
         os.makedirs(os.path.dirname(js_bundle_dest), exist_ok=True)
         shutil.copyfile(js_bundle_src, js_bundle_dest)
 
         build.run(self)
 
+
 class InstallCommand(install):
-   def run(self):
-       _copy_native_code_to_setup()  # This needs to run pre-build to store native code in the sdist.
-       install.run(self)
+    def run(self):
+        _copy_native_code_to_setup()  # This needs to run pre-build to store native code in the sdist.
+        install.run(self)
+
 
 class SDistCommand(sdist):
-   def run(self):
-       _copy_native_code_to_setup()  # This needs to run pre-build to store native code in the sdist.
-       sdist.run(self)
+    def run(self):
+        _copy_native_code_to_setup()  # This needs to run pre-build to store native code in the sdist.
+        sdist.run(self)
+
 
 class BDistWheelCommand(bdist_wheel):
-   def run(self):
-       bdist_wheel.run(self)
+    def run(self):
+        bdist_wheel.run(self)
+
 
 setup(
     name=name,
@@ -193,10 +201,10 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/interpretml/interpret",
     cmdclass={
-        'install': InstallCommand,
-        'sdist': SDistCommand,
-        'build': BuildCommand,
-        'bdist_wheel': BDistWheelCommand,
+        "install": InstallCommand,
+        "sdist": SDistCommand,
+        "build": BuildCommand,
+        "bdist_wheel": BDistWheelCommand,
     },
     packages=find_packages(),
     package_data=package_data,

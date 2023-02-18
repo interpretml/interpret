@@ -7,17 +7,52 @@ from typing import DefaultDict
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
 from .utils import EBMUtils
-from .utils import _process_terms, make_all_histogram_edges, _order_terms, _remove_unused_higher_bins, _generate_term_names, _generate_term_types
-from ...utils._binning import determine_min_cols, clean_X, clean_dimensions, typify_classification, construct_bins, bin_native_by_dimension, unify_data2, _deduplicate_bins, normalize_initial_seed
-from .bin import ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, make_bin_weights, trim_tensor, eval_terms
+from .utils import (
+    _process_terms,
+    make_all_histogram_edges,
+    _order_terms,
+    _remove_unused_higher_bins,
+    _generate_term_names,
+    _generate_term_types,
+)
+from ...utils._binning import (
+    determine_min_cols,
+    clean_X,
+    clean_dimensions,
+    typify_classification,
+    construct_bins,
+    bin_native_by_dimension,
+    unify_data2,
+    _deduplicate_bins,
+    normalize_initial_seed,
+)
+from .bin import (
+    ebm_decision_function,
+    ebm_decision_function_and_explain,
+    make_boosting_weights,
+    after_boosting,
+    remove_last2,
+    make_bin_weights,
+    trim_tensor,
+    eval_terms,
+)
 from ...utils._native import Native
 from ...utils import unify_data, autogen_schema, unify_vector
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
-from ...utils import gen_name_from_class, gen_global_selector, gen_global_selector2, gen_local_selector
+from ...utils import (
+    gen_name_from_class,
+    gen_global_selector,
+    gen_global_selector2,
+    gen_local_selector,
+)
 from ...utils._interaction import _get_ranked_interactions
-from ...utils._privacy import validate_eps_delta, calc_classic_noise_multi, calc_gdp_noise_multi
+from ...utils._privacy import (
+    validate_eps_delta,
+    calc_classic_noise_multi,
+    calc_gdp_noise_multi,
+)
 
 import json
 from math import isnan
@@ -46,7 +81,7 @@ _log = logging.getLogger(__name__)
 
 
 class EBMExplanation(FeatureValueExplanation):
-    """ Visualizes specifically for EBM. """
+    """Visualizes specifically for EBM."""
 
     explanation_type = None
 
@@ -59,7 +94,7 @@ class EBMExplanation(FeatureValueExplanation):
         name=None,
         selector=None,
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             explanation_type:  Type of explanation.
@@ -79,7 +114,7 @@ class EBMExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
-        """ Provides interactive visualizations.
+        """Provides interactive visualizations.
 
         Args:
             key: Either a scalar or list
@@ -111,37 +146,49 @@ class EBMExplanation(FeatureValueExplanation):
                 data_dict,
                 title=title,
                 start_zero=True,
-                xtitle="Mean Absolute Score (Weighted)"
+                xtitle="Mean Absolute Score (Weighted)",
             )
 
-            figure._interpret_help_text = "The term importances are the mean absolute " \
-                "contribution (score) each term (feature or interaction) makes to predictions " \
-                "averaged across the training dataset. Contributions are weighted by the number " \
-                "of samples in each bin, and by the sample weights (if any). The 15 most " \
+            figure._interpret_help_text = (
+                "The term importances are the mean absolute "
+                "contribution (score) each term (feature or interaction) makes to predictions "
+                "averaged across the training dataset. Contributions are weighted by the number "
+                "of samples in each bin, and by the sample weights (if any). The 15 most "
                 "important terms are shown."
-            figure._interpret_help_link = \
-                "https://github.com/interpretml/interpret/blob/develop/examples/python/notebooks/EBM%20Feature%20Importances.ipynb"
+            )
+            figure._interpret_help_link = "https://github.com/interpretml/interpret/blob/develop/examples/python/notebooks/EBM%20Feature%20Importances.ipynb"
 
             return figure
 
         # Per term global explanation
-        if (self.explanation_type == "global"):
-            title = "Term: {0} ({1})".format(self.feature_names[key], self.feature_types[key])
+        if self.explanation_type == "global":
+            title = "Term: {0} ({1})".format(
+                self.feature_names[key], self.feature_types[key]
+            )
 
-            if (self.feature_types[key] == "continuous"):
+            if self.feature_types[key] == "continuous":
                 xtitle = self.feature_names[key]
 
                 if is_multiclass_global_data_dict(data_dict):
                     figure = plot_continuous_bar(
-                        data_dict, multiclass=True, show_error=False, title=title, xtitle=xtitle
+                        data_dict,
+                        multiclass=True,
+                        show_error=False,
+                        title=title,
+                        xtitle=xtitle,
                     )
                 else:
                     figure = plot_continuous_bar(data_dict, title=title, xtitle=xtitle)
 
-            elif (self.feature_types[key] == "categorical" or self.feature_types[key] == "interaction"):
+            elif (
+                self.feature_types[key] == "categorical"
+                or self.feature_types[key] == "interaction"
+            ):
                 figure = super().visualize(key, title)
-                figure._interpret_help_text = "The contribution (score) of the term {0} to predictions " \
+                figure._interpret_help_text = (
+                    "The contribution (score) of the term {0} to predictions "
                     "made by the model.".format(self.feature_names[key])
+                )
 
             else:
                 raise Exception(  # pragma: no cover
@@ -150,27 +197,32 @@ class EBMExplanation(FeatureValueExplanation):
                     )
                 )
 
-            figure._interpret_help_text = "The contribution (score) of the term " \
-                "{0} to predictions made by the model. For classification, " \
-                "scores are on a log scale (logits). For regression, scores are on the same " \
-                "scale as the outcome being predicted (e.g., dollars when predicting cost). " \
-                "Each graph is centered vertically such that average prediction on the train " \
+            figure._interpret_help_text = (
+                "The contribution (score) of the term "
+                "{0} to predictions made by the model. For classification, "
+                "scores are on a log scale (logits). For regression, scores are on the same "
+                "scale as the outcome being predicted (e.g., dollars when predicting cost). "
+                "Each graph is centered vertically such that average prediction on the train "
                 "set is 0.".format(self.feature_names[key])
+            )
 
             return figure
 
         # Local explanation graph
-        if (self.explanation_type == "local"):
+        if self.explanation_type == "local":
             figure = super().visualize(key)
             figure.update_layout(
-                title="Local Explanation (" + figure.layout.title.text +")",
-                xaxis_title="Contribution to Prediction")
-            figure._interpret_help_text = "A local explanation shows the breakdown of how much " \
-                "each term contributed to the prediction for a single sample. The intercept " \
-                "reflects the average case. In regression, the intercept is the average y-value " \
-                "of the train set (e.g., $5.51 if predicting cost). In classification, the " \
-                "intercept is the log of the base rate (e.g., -2.3 if the base rate is 10%). The " \
+                title="Local Explanation (" + figure.layout.title.text + ")",
+                xaxis_title="Contribution to Prediction",
+            )
+            figure._interpret_help_text = (
+                "A local explanation shows the breakdown of how much "
+                "each term contributed to the prediction for a single sample. The intercept "
+                "reflects the average case. In regression, the intercept is the average y-value "
+                "of the train set (e.g., $5.51 if predicting cost). In classification, the "
+                "intercept is the log of the base rate (e.g., -2.3 if the base rate is 10%). The "
                 "15 most important terms are shown."
+            )
 
             return figure
 
@@ -187,7 +239,10 @@ def is_private(estimator):
         True if estimator is a differentially private EBM estimator and False otherwise.
     """
 
-    return isinstance(estimator, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor))
+    return isinstance(
+        estimator, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor)
+    )
+
 
 class EBMModel(BaseEstimator):
     """Base class for all EBMs"""
@@ -211,7 +266,7 @@ class EBMModel(BaseEstimator):
         outer_bags,
         inner_bags,
         # Core
-        mains, # TODO PK v.3 replace "mains" with a more flexible "exclude" parameter
+        mains,  # TODO PK v.3 replace "mains" with a more flexible "exclude" parameter
         interactions,
         validation_size,
         max_rounds,
@@ -281,11 +336,13 @@ class EBMModel(BaseEstimator):
             self.privacy_schema = privacy_schema
 
             if random_state is not None:
-                warn(f"Privacy violation: using a fixed random_state of {random_state} will cause deterministic noise additions."
-                        "This capability is only for debugging/testing. Set random_state to None to remove this warning.")
+                warn(
+                    f"Privacy violation: using a fixed random_state of {random_state} will cause deterministic noise additions."
+                    "This capability is only for debugging/testing. Set random_state to None to remove this warning."
+                )
 
     def fit(self, X, y, sample_weight=None):  # noqa: C901
-        """ Fits model to provided samples.
+        """Fits model to provided samples.
 
         Args:
             X: Numpy array for training samples.
@@ -340,17 +397,27 @@ class EBMModel(BaseEstimator):
 
             if is_classifier(self):
                 if 2 < n_classes:  # pragma: no cover
-                    raise ValueError("multiclass not supported in Differentially private EBMs.")
+                    raise ValueError(
+                        "multiclass not supported in Differentially private EBMs."
+                    )
             else:
-                bounds = None if self.privacy_schema is None else self.privacy_schema.get('target', None)
+                bounds = (
+                    None
+                    if self.privacy_schema is None
+                    else self.privacy_schema.get("target", None)
+                )
                 if bounds is None:
-                    warn("Possible privacy violation: assuming min/max values for target are public info."
-                            "Pass a privacy schema with known public target ranges to avoid this warning.")
+                    warn(
+                        "Possible privacy violation: assuming min/max values for target are public info."
+                        "Pass a privacy schema with known public target ranges to avoid this warning."
+                    )
                 else:
                     min_target = bounds[0]
                     max_target = bounds[1]
                     if max_target < min_target:
-                        raise ValueError(f"target minimum {min_target} must be smaller than maximum {max_target}")
+                        raise ValueError(
+                            f"target minimum {min_target} must be smaller than maximum {max_target}"
+                        )
 
                     y = np.clip(y, min_target, max_target)
 
@@ -379,14 +446,14 @@ class EBMModel(BaseEstimator):
             X=X,
             y=y,
             sample_weight=sample_weight,
-            feature_names_given=self.feature_names, 
-            feature_types_given=self.feature_types, 
-            max_bins_leveled=bin_levels, 
-            binning=self.binning, 
-            min_samples_bin=1, 
-            min_unique_continuous=3, 
-            epsilon=bin_eps, 
-            delta=bin_delta, 
+            feature_names_given=self.feature_names,
+            feature_types_given=self.feature_types,
+            max_bins_leveled=bin_levels,
+            binning=self.binning,
+            min_samples_bin=1,
+            min_unique_continuous=3,
+            epsilon=bin_eps,
+            delta=bin_delta,
             composition=composition,
             privacy_schema=privacy_schema,
             random_state=init_random_state,
@@ -402,10 +469,12 @@ class EBMModel(BaseEstimator):
         zero_val_counts = binning_result[8]
 
         if np.count_nonzero(missing_val_counts):
-            warn("Missing values detected. Our visualizations do not currently display missing values. "
-                 "To retain the glassbox nature of the model you need to either set the missing values "
-                 "to an extreme value like -1000 that will be visible on the graphs, or manually "
-                 "examine the missing value score in ebm.term_scores_[term_index][0]")
+            warn(
+                "Missing values detected. Our visualizations do not currently display missing values. "
+                "To retain the glassbox nature of the model you need to either set the missing values "
+                "to an extreme value like -1000 that will be visible on the graphs, or manually "
+                "examine the missing value score in ebm.term_scores_[term_index][0]"
+            )
 
         n_features_in = len(bins)
 
@@ -420,25 +489,35 @@ class EBMModel(BaseEstimator):
             max_weight = 1 if sample_weight is None else np.max(sample_weight)
             training_eps = self.epsilon - bin_eps
             training_delta = self.delta / 2
-            if self.composition == 'classic':
+            if self.composition == "classic":
                 noise_scale = calc_classic_noise_multi(
-                    total_queries = self.max_rounds * len(term_features) * self.outer_bags, 
-                    target_epsilon = training_eps, 
-                    delta = training_delta, 
-                    sensitivity = domain_size * self.learning_rate * max_weight
+                    total_queries=self.max_rounds
+                    * len(term_features)
+                    * self.outer_bags,
+                    target_epsilon=training_eps,
+                    delta=training_delta,
+                    sensitivity=domain_size * self.learning_rate * max_weight,
                 )
-            elif self.composition == 'gdp':
+            elif self.composition == "gdp":
                 noise_scale = calc_gdp_noise_multi(
-                    total_queries = self.max_rounds * len(term_features) * self.outer_bags, 
-                    target_epsilon = training_eps, 
-                    delta = training_delta
+                    total_queries=self.max_rounds
+                    * len(term_features)
+                    * self.outer_bags,
+                    target_epsilon=training_eps,
+                    delta=training_delta,
                 )
-                noise_scale *= domain_size * self.learning_rate * max_weight # Alg Line 17
+                noise_scale *= (
+                    domain_size * self.learning_rate * max_weight
+                )  # Alg Line 17
             else:
-                raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
+                raise NotImplementedError(
+                    f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
+                )
 
             bin_data_weights = make_boosting_weights(main_bin_weights)
-            boost_flags = Native.BoostFlags_GradientSums | Native.BoostFlags_RandomSplits
+            boost_flags = (
+                Native.BoostFlags_GradientSums | Native.BoostFlags_RandomSplits
+            )
             inner_bags = 0
             early_stopping_rounds = -1
             early_stopping_tolerance = -1
@@ -454,7 +533,9 @@ class EBMModel(BaseEstimator):
 
         native = Native.get_native_singleton()
         rng = native.create_rng(init_random_state)
-        rng = native.branch_rng(rng) # branch it so we have no correlation to the binning rng that uses the same seed
+        rng = native.branch_rng(
+            rng
+        )  # branch it so we have no correlation to the binning rng that uses the same seed
 
         used_seeds = set()
         rngs = []
@@ -464,7 +545,7 @@ class EBMModel(BaseEstimator):
             while True:
                 bagged_rng = native.branch_rng(rng)
                 seed = native.generate_seed(bagged_rng)
-                # we really really do not want identical bags. branch_rng is pretty good but it can lead to 
+                # we really really do not want identical bags. branch_rng is pretty good but it can lead to
                 # collisions, so check with a 32-bit seed if we possibly have a collision and regenerate if so
                 if seed not in used_seeds:
                     break
@@ -475,9 +556,11 @@ class EBMModel(BaseEstimator):
                 y,
                 self.validation_size,
                 bagged_rng,
-                is_classifier(self) and not is_differential_privacy
+                is_classifier(self) and not is_differential_privacy,
             )
-            rngs.append(bagged_rng) # we bag within the same proces, so bagged_rng will progress inside make_bag
+            rngs.append(
+                bagged_rng
+            )  # we bag within the same proces, so bagged_rng will progress inside make_bag
             bags.append(bag)
             if bag is None:
                 if sample_weight is None:
@@ -493,7 +576,9 @@ class EBMModel(BaseEstimator):
         bag_weights = np.array(bag_weights, np.float64)
 
         if n_classes == 1:
-            warn("Only 1 class detected for classification. The model will predict 1.0 whenever predict_proba is called.")
+            warn(
+                "Only 1 class detected for classification. The model will predict 1.0 whenever predict_proba is called."
+            )
 
             breakpoint_iteration = [[]]
             models = []
@@ -504,7 +589,11 @@ class EBMModel(BaseEstimator):
                     feature_bins = bin_levels[0]
                     if isinstance(feature_bins, dict):
                         # categorical feature
-                        n_bins = 2 if len(feature_bins) == 0 else max(feature_bins.values()) + 2
+                        n_bins = (
+                            2
+                            if len(feature_bins) == 0
+                            else max(feature_bins.values()) + 2
+                        )
                     else:
                         # continuous feature
                         n_bins = len(feature_bins) + 3
@@ -515,14 +604,14 @@ class EBMModel(BaseEstimator):
             provider = JobLibProvider(n_jobs=self.n_jobs)
 
             dataset = bin_native_by_dimension(
-                n_classes, 
+                n_classes,
                 1,
                 bins,
-                X, 
-                y, 
-                sample_weight, 
-                feature_names_in, 
-                feature_types_in, 
+                X,
+                y,
+                sample_weight,
+                feature_names_in,
+                feature_types_in,
             )
 
             parallel_args = []
@@ -551,7 +640,7 @@ class EBMModel(BaseEstimator):
             results = provider.parallel(EBMUtils.cyclic_gradient_boost, parallel_args)
 
             # let python reclaim the dataset memory via reference counting
-            del parallel_args # parallel_args holds references to dataset, so must be deleted
+            del parallel_args  # parallel_args holds references to dataset, so must be deleted
             del dataset
 
             breakpoint_iteration = [[]]
@@ -560,75 +649,101 @@ class EBMModel(BaseEstimator):
             for model, bag_breakpoint_iteration, bagged_rng in results:
                 breakpoint_iteration[-1].append(bag_breakpoint_iteration)
                 models.append(after_boosting(term_features, model, main_bin_weights))
-                rngs.append(bagged_rng) # retrieve our rng state since this was used outside of our process
+                rngs.append(
+                    bagged_rng
+                )  # retrieve our rng state since this was used outside of our process
 
             if 2 < n_classes:
                 if isinstance(interactions, int):
                     if interactions != 0:
-                        warn("Detected multiclass problem. Forcing interactions to 0. Multiclass interactions work except for global visualizations, so the line below setting interactions to zero can be disabled if you know what you are doing.")
+                        warn(
+                            "Detected multiclass problem. Forcing interactions to 0. Multiclass interactions work except for global visualizations, so the line below setting interactions to zero can be disabled if you know what you are doing."
+                        )
                         interactions = 0
                 elif len(interactions) != 0:
-                    raise ValueError("Interactions are not supported for multiclass. Multiclass interactions work except for global visualizations, so this exception can be disabled if you know what you are doing.")
+                    raise ValueError(
+                        "Interactions are not supported for multiclass. Multiclass interactions work except for global visualizations, so this exception can be disabled if you know what you are doing."
+                    )
 
-            if isinstance(interactions, int) and 0 < interactions or not isinstance(interactions, int) and 0 < len(interactions):
-                initial_intercept = np.zeros(Native.get_count_scores_c(n_classes), np.float64)
+            if (
+                isinstance(interactions, int)
+                and 0 < interactions
+                or not isinstance(interactions, int)
+                and 0 < len(interactions)
+            ):
+                initial_intercept = np.zeros(
+                    Native.get_count_scores_c(n_classes), np.float64
+                )
                 scores_bags = []
                 for model in models:
-                    # TODO: instead of going back to the original data in X, we 
+                    # TODO: instead of going back to the original data in X, we
                     # could use the compressed and already binned data in dataset
-                    scores_bags.append(ebm_decision_function(
-                        X, 
-                        n_samples, 
-                        feature_names_in, 
-                        feature_types_in, 
-                        bins, 
-                        initial_intercept, 
-                        model, 
-                        term_features
-                    ))
+                    scores_bags.append(
+                        ebm_decision_function(
+                            X,
+                            n_samples,
+                            feature_names_in,
+                            feature_types_in,
+                            bins,
+                            initial_intercept,
+                            model,
+                            term_features,
+                        )
+                    )
 
                 dataset = bin_native_by_dimension(
-                    n_classes, 
+                    n_classes,
                     2,
                     bins,
-                    X, 
-                    y, 
-                    sample_weight, 
-                    feature_names_in, 
-                    feature_types_in, 
+                    X,
+                    y,
+                    sample_weight,
+                    feature_names_in,
+                    feature_types_in,
                 )
-                del y # we no longer need this, so allow the garbage collector to reclaim it
+                del y  # we no longer need this, so allow the garbage collector to reclaim it
 
                 if isinstance(interactions, int):
                     _log.info("Estimating with FAST")
 
                     parallel_args = []
                     for idx in range(self.outer_bags):
-                        # TODO: the combinations below should be selected from the non-excluded features 
+                        # TODO: the combinations below should be selected from the non-excluded features
                         parallel_args.append(
                             (
                                 dataset,
                                 bags[idx],
                                 scores_bags[idx],
                                 combinations(range(n_features_in), 2),
-                                Native.InteractionFlags_Default, 
+                                Native.InteractionFlags_Default,
                                 self.min_samples_leaf,
                                 None,
                             )
                         )
 
-                    bagged_ranked_interaction = provider.parallel(_get_ranked_interactions, parallel_args)
+                    bagged_ranked_interaction = provider.parallel(
+                        _get_ranked_interactions, parallel_args
+                    )
 
                     # this holds references to dataset, bags, and scores_bags which we want python to reclaim later
-                    del parallel_args 
+                    del parallel_args
 
                     # Select merged pairs
                     pair_ranks = {}
-                    for n, interaction_strengths_and_indices in enumerate(bagged_ranked_interaction):
-                        interaction_indices =  list(map(operator.itemgetter(1), interaction_strengths_and_indices))
+                    for n, interaction_strengths_and_indices in enumerate(
+                        bagged_ranked_interaction
+                    ):
+                        interaction_indices = list(
+                            map(
+                                operator.itemgetter(1),
+                                interaction_strengths_and_indices,
+                            )
+                        )
                         for rank, indices in enumerate(interaction_indices):
                             old_mean = pair_ranks.get(indices, 0)
-                            pair_ranks[indices] = old_mean + ((rank - old_mean) / (n + 1))
+                            pair_ranks[indices] = old_mean + (
+                                (rank - old_mean) / (n + 1)
+                            )
 
                     final_ranks = []
                     total_interactions = 0
@@ -637,7 +752,9 @@ class EBMModel(BaseEstimator):
                         total_interactions += 1
 
                     n_interactions = min(interactions, total_interactions)
-                    boost_groups = [heapq.heappop(final_ranks)[1] for _ in range(n_interactions)]
+                    boost_groups = [
+                        heapq.heappop(final_ranks)[1] for _ in range(n_interactions)
+                    ]
                 else:
                     # Check and remove duplicate interaction terms
                     uniquifier = set()
@@ -645,7 +762,7 @@ class EBMModel(BaseEstimator):
                     max_dimensions = 0
 
                     for feature_idxs in interactions:
-                        # clean these up since we expose them publically inside self.term_features_ 
+                        # clean these up since we expose them publically inside self.term_features_
                         feature_idxs = tuple(map(int, feature_idxs))
 
                         max_dimensions = max(max_dimensions, len(feature_idxs))
@@ -656,11 +773,14 @@ class EBMModel(BaseEstimator):
 
                     # Warn the users that we have made change to the interactions list
                     if len(boost_groups) != len(interactions):
-                        warn("Detected duplicate interaction terms: removing duplicate interaction terms")
+                        warn(
+                            "Detected duplicate interaction terms: removing duplicate interaction terms"
+                        )
 
                     if 2 < max_dimensions:
-                        warn("Interactions with 3 or more terms are not graphed in global explanations. Local explanations are still available and exact.")
-
+                        warn(
+                            "Interactions with 3 or more terms are not graphed in global explanations. Local explanations are still available and exact."
+                        )
 
                 parallel_args = []
                 for idx in range(self.outer_bags):
@@ -685,17 +805,21 @@ class EBMModel(BaseEstimator):
                         )
                     )
 
-                results = provider.parallel(EBMUtils.cyclic_gradient_boost, parallel_args)
+                results = provider.parallel(
+                    EBMUtils.cyclic_gradient_boost, parallel_args
+                )
 
                 # allow python to reclaim these big memory items via reference counting
-                del parallel_args # this holds references to dataset, scores_bags, and bags
+                del parallel_args  # this holds references to dataset, scores_bags, and bags
                 del dataset
                 del scores_bags
 
                 breakpoint_iteration.append([])
                 for idx in range(self.outer_bags):
                     breakpoint_iteration[-1].append(results[idx][1])
-                    models[idx].extend(after_boosting(boost_groups, results[idx][0], main_bin_weights))
+                    models[idx].extend(
+                        after_boosting(boost_groups, results[idx][0], main_bin_weights)
+                    )
                     rngs[idx] = results[idx][2]
 
                 term_features.extend(boost_groups)
@@ -706,36 +830,38 @@ class EBMModel(BaseEstimator):
         # removing the higher order terms might allow us to eliminate some extra bins now that couldn't before
         _deduplicate_bins(bins)
 
-        bagged_scores = (np.array([model[idx] for model in models], np.float64) for idx in range(len(term_features)))
+        bagged_scores = (
+            np.array([model[idx] for model in models], np.float64)
+            for idx in range(len(term_features))
+        )
 
         term_features, bagged_scores = _order_terms(term_features, bagged_scores)
 
         if is_differential_privacy:
             # for now we only support mains for DP models
-            bin_weights = [main_bin_weights[feature_idxs[0]] for feature_idxs in term_features]
+            bin_weights = [
+                main_bin_weights[feature_idxs[0]] for feature_idxs in term_features
+            ]
         else:
             histogram_edges = make_all_histogram_edges(feature_bounds, histogram_counts)
             bin_weights = make_bin_weights(
-                X, 
+                X,
                 n_samples,
-                sample_weight, 
-                feature_names_in, 
-                feature_types_in, 
-                bins, 
-                term_features
+                sample_weight,
+                feature_names_in,
+                feature_types_in,
+                bins,
+                term_features,
             )
 
         term_scores, standard_deviations, intercept, bagged_scores = _process_terms(
-            n_classes, 
-            bagged_scores, 
-            bin_weights,
-            bag_weights
+            n_classes, bagged_scores, bin_weights, bag_weights
         )
 
         term_names = _generate_term_names(feature_names_in, term_features)
 
         # dependent attributes (can be re-derrived after serialization)
-        self.n_features_in_ = n_features_in # scikit-learn specified name
+        self.n_features_in_ = n_features_in  # scikit-learn specified name
         self.term_names_ = term_names
 
         if is_differential_privacy:
@@ -755,7 +881,7 @@ class EBMModel(BaseEstimator):
             self.zero_val_counts_ = zero_val_counts
 
         if 0 <= n_classes:
-            self.classes_ = classes # required by scikit-learn
+            self.classes_ = classes  # required by scikit-learn
             self._class_idx_ = class_idx
         else:
             self.min_target_ = min_target
@@ -763,7 +889,7 @@ class EBMModel(BaseEstimator):
 
         # per-feature
         self.bins_ = bins
-        self.feature_names_in_ = feature_names_in # scikit-learn specified name
+        self.feature_names_in_ = feature_names_in  # scikit-learn specified name
         self.feature_types_in_ = feature_types_in
         self.feature_bounds_ = feature_bounds
 
@@ -782,8 +908,8 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def _to_inner_jsonable(self, properties='interpretable'):
-        """ Converts the inner model to a JSONable representation.
+    def _to_inner_jsonable(self, properties="interpretable"):
+        """Converts the inner model to a JSONable representation.
 
         Args:
             properties: 'minimal', 'interpretable', 'mergeable', 'all'
@@ -794,13 +920,13 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        if properties == 'minimal':
+        if properties == "minimal":
             level = 0
-        elif properties == 'interpretable':
+        elif properties == "interpretable":
             level = 1
-        elif properties == 'mergeable':
+        elif properties == "mergeable":
             level = 2
-        elif properties == 'all':
+        elif properties == "all":
             level = 3
         else:
             msg = f"Unrecognized export properties: {properties}"
@@ -813,169 +939,173 @@ class EBMModel(BaseEstimator):
         outputs = []
         output = {}
         if is_classifier(self):
-            output['output_type'] = 'classification'
-            output['classes'] = self.classes_.tolist()
-            output['link_function'] = 'logit' # logistic is the inverse link function for logit
+            output["output_type"] = "classification"
+            output["classes"] = self.classes_.tolist()
+            output[
+                "link_function"
+            ] = "logit"  # logistic is the inverse link function for logit
         else:
-            output['output_type'] = 'regression'
+            output["output_type"] = "regression"
             if 3 <= level:
-                min_target = getattr(self, 'min_target_', None)
+                min_target = getattr(self, "min_target_", None)
                 if min_target is not None and not isnan(min_target):
-                    output['min_target'] = EBMUtils.jsonify_item(min_target)
-                max_target = getattr(self, 'max_target_', None)
+                    output["min_target"] = EBMUtils.jsonify_item(min_target)
+                max_target = getattr(self, "max_target_", None)
                 if max_target is not None and not isnan(max_target):
-                    output['max_target'] = EBMUtils.jsonify_item(max_target)
-            output['link_function'] = 'identity'
+                    output["max_target"] = EBMUtils.jsonify_item(max_target)
+            output["link_function"] = "identity"
         outputs.append(output)
-        j['outputs'] = outputs
+        j["outputs"] = outputs
 
         if type(self.intercept_) is float:
-            # scikit-learn requires that we have a single float value as our intercept for compatibility with 
-            # RegressorMixin, but in other scenarios where we want to support things like mulit-output it would be 
+            # scikit-learn requires that we have a single float value as our intercept for compatibility with
+            # RegressorMixin, but in other scenarios where we want to support things like mulit-output it would be
             # easier if the regression intercept were handled identically to classification, so put it in an array
             # for our JSON format to harmonize the cross-language representation
-            j['intercept'] = [EBMUtils.jsonify_item(self.intercept_)]
+            j["intercept"] = [EBMUtils.jsonify_item(self.intercept_)]
         else:
-            j['intercept'] = EBMUtils.jsonify_lists(self.intercept_.tolist())
+            j["intercept"] = EBMUtils.jsonify_lists(self.intercept_.tolist())
 
         if 3 <= level:
-            noise_scale = getattr(self, 'noise_scale_', None)
+            noise_scale = getattr(self, "noise_scale_", None)
             if noise_scale is not None:
-                j['noise_scale'] = EBMUtils.jsonify_item(noise_scale)
+                j["noise_scale"] = EBMUtils.jsonify_item(noise_scale)
         if 1 <= level:
-            n_samples = getattr(self, 'n_samples_', None)
+            n_samples = getattr(self, "n_samples_", None)
             if n_samples is not None:
-                j['num_samples'] = n_samples
+                j["num_samples"] = n_samples
         if 2 <= level:
-            bag_weights = getattr(self, 'bag_weights_', None)
+            bag_weights = getattr(self, "bag_weights_", None)
             if bag_weights is not None:
-                j['bag_weights'] = EBMUtils.jsonify_lists(bag_weights.tolist())
+                j["bag_weights"] = EBMUtils.jsonify_lists(bag_weights.tolist())
         if 3 <= level:
-            breakpoint_iteration = getattr(self, 'breakpoint_iteration_', None)
+            breakpoint_iteration = getattr(self, "breakpoint_iteration_", None)
             if breakpoint_iteration is not None:
-                j['breakpoint_iteration'] = breakpoint_iteration.tolist()
+                j["breakpoint_iteration"] = breakpoint_iteration.tolist()
 
         if 3 <= level:
-            j['implementation'] = 'python'
+            j["implementation"] = "python"
             params = {}
 
             # TODO: we need to clean up and validate our input parameters before putting them into JSON
             # if we were pass a numpy array instead of a list or a numpy type these would fail
             # for now we can just require that anything numpy as input is illegal
 
-            if hasattr(self, 'feature_names'):
-                params['feature_names'] = self.feature_names
+            if hasattr(self, "feature_names"):
+                params["feature_names"] = self.feature_names
 
-            if hasattr(self, 'feature_types'):
-                params['feature_types'] = self.feature_types
+            if hasattr(self, "feature_types"):
+                params["feature_types"] = self.feature_types
 
-            if hasattr(self, 'outer_bags'):
-                params['outer_bags'] = self.outer_bags
+            if hasattr(self, "outer_bags"):
+                params["outer_bags"] = self.outer_bags
 
-            if hasattr(self, 'inner_bags'):
-                params['inner_bags'] = self.inner_bags
+            if hasattr(self, "inner_bags"):
+                params["inner_bags"] = self.inner_bags
 
-            if hasattr(self, 'mains'):
-                params['mains'] = self.mains
+            if hasattr(self, "mains"):
+                params["mains"] = self.mains
 
-            if hasattr(self, 'interactions'):
-                params['interactions'] = self.interactions
+            if hasattr(self, "interactions"):
+                params["interactions"] = self.interactions
 
-            if hasattr(self, 'validation_size'):
-                params['validation_size'] = self.validation_size
+            if hasattr(self, "validation_size"):
+                params["validation_size"] = self.validation_size
 
-            if hasattr(self, 'max_rounds'):
-                params['max_rounds'] = self.max_rounds
+            if hasattr(self, "max_rounds"):
+                params["max_rounds"] = self.max_rounds
 
-            if hasattr(self, 'early_stopping_tolerance'):
-                params['early_stopping_tolerance'] = self.early_stopping_tolerance
+            if hasattr(self, "early_stopping_tolerance"):
+                params["early_stopping_tolerance"] = self.early_stopping_tolerance
 
-            if hasattr(self, 'early_stopping_rounds'):
-                params['early_stopping_rounds'] = self.early_stopping_rounds
+            if hasattr(self, "early_stopping_rounds"):
+                params["early_stopping_rounds"] = self.early_stopping_rounds
 
-            if hasattr(self, 'learning_rate'):
-                params['learning_rate'] = self.learning_rate
+            if hasattr(self, "learning_rate"):
+                params["learning_rate"] = self.learning_rate
 
-            if hasattr(self, 'min_samples_leaf'):
-                params['min_samples_leaf'] = self.min_samples_leaf
+            if hasattr(self, "min_samples_leaf"):
+                params["min_samples_leaf"] = self.min_samples_leaf
 
-            if hasattr(self, 'max_leaves'):
-                params['max_leaves'] = self.max_leaves
+            if hasattr(self, "max_leaves"):
+                params["max_leaves"] = self.max_leaves
 
-            if hasattr(self, 'n_jobs'):
-                params['n_jobs'] = self.n_jobs
+            if hasattr(self, "n_jobs"):
+                params["n_jobs"] = self.n_jobs
 
-            if hasattr(self, 'random_state'):
-                params['random_state'] = self.random_state
+            if hasattr(self, "random_state"):
+                params["random_state"] = self.random_state
 
-            if hasattr(self, 'binning'):
-                params['binning'] = self.binning
+            if hasattr(self, "binning"):
+                params["binning"] = self.binning
 
-            if hasattr(self, 'max_bins'):
-                params['max_bins'] = self.max_bins
+            if hasattr(self, "max_bins"):
+                params["max_bins"] = self.max_bins
 
-            if hasattr(self, 'max_interaction_bins'):
-                params['max_interaction_bins'] = self.max_interaction_bins
+            if hasattr(self, "max_interaction_bins"):
+                params["max_interaction_bins"] = self.max_interaction_bins
 
-            if hasattr(self, 'epsilon'):
-                params['epsilon'] = self.epsilon
+            if hasattr(self, "epsilon"):
+                params["epsilon"] = self.epsilon
 
-            if hasattr(self, 'delta'):
-                params['delta'] = self.delta
+            if hasattr(self, "delta"):
+                params["delta"] = self.delta
 
-            if hasattr(self, 'composition'):
-                params['composition'] = self.composition
+            if hasattr(self, "composition"):
+                params["composition"] = self.composition
 
-            if hasattr(self, 'bin_budget_frac'):
-                params['bin_budget_frac'] = self.bin_budget_frac
+            if hasattr(self, "bin_budget_frac"):
+                params["bin_budget_frac"] = self.bin_budget_frac
 
-            if hasattr(self, 'privacy_schema'):
-                params['privacy_schema'] = self.privacy_schema
+            if hasattr(self, "privacy_schema"):
+                params["privacy_schema"] = self.privacy_schema
 
-            j['implementation_params'] = params
+            j["implementation_params"] = params
 
-        unique_val_counts = getattr(self, 'unique_val_counts_', None)
-        zero_val_counts = getattr(self, 'zero_val_counts_', None)
-        feature_bounds = getattr(self, 'feature_bounds_', None)
-        histogram_counts = getattr(self, 'histogram_counts_', None)
+        unique_val_counts = getattr(self, "unique_val_counts_", None)
+        zero_val_counts = getattr(self, "zero_val_counts_", None)
+        feature_bounds = getattr(self, "feature_bounds_", None)
+        histogram_counts = getattr(self, "histogram_counts_", None)
 
         features = []
         for i in range(len(self.bins_)):
             feature = {}
 
-            feature['name'] = self.feature_names_in_[i]
+            feature["name"] = self.feature_names_in_[i]
             feature_type = self.feature_types_in_[i]
-            feature['type'] = feature_type
+            feature["type"] = feature_type
 
             if 1 <= level:
                 if unique_val_counts is not None:
-                    feature['num_unique_vals'] = int(unique_val_counts[i])
+                    feature["num_unique_vals"] = int(unique_val_counts[i])
                 if zero_val_counts is not None:
-                    feature['num_zero_vals'] = int(zero_val_counts[i])
+                    feature["num_zero_vals"] = int(zero_val_counts[i])
 
-            if feature_type == 'continuous':
+            if feature_type == "continuous":
                 cuts = []
                 for bins in self.bins_[i]:
                     cuts.append(bins.tolist())
-                feature['cuts'] = cuts
+                feature["cuts"] = cuts
                 if 1 <= level:
                     if feature_bounds is not None:
                         feature_min = feature_bounds[i, 0]
                         if not isnan(feature_min):
-                            feature['min'] = EBMUtils.jsonify_item(feature_min)
+                            feature["min"] = EBMUtils.jsonify_item(feature_min)
                         feature_max = feature_bounds[i, 1]
                         if not isnan(feature_max):
-                            feature['max'] = EBMUtils.jsonify_item(feature_max)
+                            feature["max"] = EBMUtils.jsonify_item(feature_max)
                     if histogram_counts is not None:
                         feature_histogram_counts = histogram_counts[i]
                         if feature_histogram_counts is not None:
-                            feature['histogram_counts'] = feature_histogram_counts.tolist()
+                            feature[
+                                "histogram_counts"
+                            ] = feature_histogram_counts.tolist()
             else:
                 categories = []
                 for bins in self.bins_[i]:
                     leveled_categories = []
                     feature_categories = list(map(tuple, map(reversed, bins.items())))
-                    feature_categories.sort() # groupby requires sorted data
+                    feature_categories.sort()  # groupby requires sorted data
                     for _, category_iter in groupby(feature_categories, lambda x: x[0]):
                         category_group = [category for _, category in category_iter]
                         if len(category_group) == 1:
@@ -983,39 +1113,50 @@ class EBMModel(BaseEstimator):
                         else:
                             leveled_categories.append(category_group)
                     categories.append(leveled_categories)
-                feature['categories'] = categories
+                feature["categories"] = categories
 
             features.append(feature)
-        j['features'] = features
+        j["features"] = features
 
-        standard_deviations_all = getattr(self, 'standard_deviations_', None)
-        bagged_scores_all = getattr(self, 'bagged_scores_', None)
+        standard_deviations_all = getattr(self, "standard_deviations_", None)
+        bagged_scores_all = getattr(self, "bagged_scores_", None)
 
         terms = []
         for term_idx in range(len(self.term_features_)):
             term = {}
-            term['term_features'] = [self.feature_names_in_[feature_idx] for feature_idx in self.term_features_[term_idx]]
-            term['scores'] = EBMUtils.jsonify_lists(self.term_scores_[term_idx].tolist())
+            term["term_features"] = [
+                self.feature_names_in_[feature_idx]
+                for feature_idx in self.term_features_[term_idx]
+            ]
+            term["scores"] = EBMUtils.jsonify_lists(
+                self.term_scores_[term_idx].tolist()
+            )
             if 1 <= level:
                 if standard_deviations_all is not None:
-                   standard_deviations = standard_deviations_all[term_idx] 
-                   if standard_deviations is not None:
-                        term['standard_deviations'] = EBMUtils.jsonify_lists(standard_deviations.tolist())
+                    standard_deviations = standard_deviations_all[term_idx]
+                    if standard_deviations is not None:
+                        term["standard_deviations"] = EBMUtils.jsonify_lists(
+                            standard_deviations.tolist()
+                        )
             if 2 <= level:
                 if bagged_scores_all is not None:
-                   bagged_scores = bagged_scores_all[term_idx] 
-                   if bagged_scores is not None:
-                        term['bagged_scores'] = EBMUtils.jsonify_lists(bagged_scores.tolist())
+                    bagged_scores = bagged_scores_all[term_idx]
+                    if bagged_scores is not None:
+                        term["bagged_scores"] = EBMUtils.jsonify_lists(
+                            bagged_scores.tolist()
+                        )
             if 1 <= level:
-                term['bin_weights'] = EBMUtils.jsonify_lists(self.bin_weights_[term_idx].tolist())
-            
+                term["bin_weights"] = EBMUtils.jsonify_lists(
+                    self.bin_weights_[term_idx].tolist()
+                )
+
             terms.append(term)
-        j['terms'] = terms
+        j["terms"] = terms
 
         return j
 
-    def _to_outer_jsonable(self, properties='interpretable'):
-        """ Converts the outer model to a JSONable representation.
+    def _to_outer_jsonable(self, properties="interpretable"):
+        """Converts the outer model to a JSONable representation.
 
         Args:
             properties: 'minimal', 'interpretable', 'mergeable', 'all'
@@ -1025,13 +1166,13 @@ class EBMModel(BaseEstimator):
         """
 
         # NOTES: When recording edits to the EBM within a single file, we should:
-        #        1) Have the final EBM section first.  This allows people to diff two models and the diffs for 
-        #           the current model (the most important information) will be at the top. If people are comparing a 
-        #           non-edited model to an edited model then they will be comparing the non-edited model to the 
-        #           current model, which is what we want. When people open the file they'll see the current model, 
+        #        1) Have the final EBM section first.  This allows people to diff two models and the diffs for
+        #           the current model (the most important information) will be at the top. If people are comparing a
+        #           non-edited model to an edited model then they will be comparing the non-edited model to the
+        #           current model, which is what we want. When people open the file they'll see the current model,
         #           which will confuse people less.
         #        2) Have the initial model LAST.  This will help separate the final and inital model spacially.
-        #           Someone examining the models won't accidentlly stray as easily from the current model into the 
+        #           Someone examining the models won't accidentlly stray as easily from the current model into the
         #           initial model while examining them. This also helps prevent the diffing tool from getting
         #           confused and diffing parts of the final model with parts of the initial model if there are
         #           substantial changes. Two final models that have the same initial model should then have a large
@@ -1041,13 +1182,13 @@ class EBMModel(BaseEstimator):
         #           If two models are derrived from the same initial model, then they will share a common initial
         #           block of text at the bottom of the file. If the two models share a few edits, then the shared edits
         #           will be at the bottom and will therefore form a larger block of unmodified text along with the
-        #           initial model.  Since diff tools look for longest unmodified blocks, this will gobble up the initial 
+        #           initial model.  Since diff tools look for longest unmodified blocks, this will gobble up the initial
         #           model and the initial edits together first, and thus leave the final models for comparison with
         #           eachother. All edits should have a bi-directional nature so someone could start
         #           from the final model and work backwards to the initial model, or vice versa. The overall file
         #           can then be viewed as a reverse chronological ordering from the final model back to its
         #           original/initial model.
-        # - A non-edited EBM file should be saved with just the single JSON for the model and not an initial and 
+        # - A non-edited EBM file should be saved with just the single JSON for the model and not an initial and
         #   final model.  The only section should be marked with the tag "ebm" so that tools that read in EBMs
         #   Are compatible with both editied and non-edited files.  The tools will always look for the "ebm"
         #   section, which will be in both non-edited EBMs and edited EBMs at the top.
@@ -1074,13 +1215,13 @@ class EBMModel(BaseEstimator):
         inner = self._to_inner_jsonable(properties)
 
         outer = {}
-        outer['version'] = '1.0'
-        outer['ebm'] = inner
+        outer["version"] = "1.0"
+        outer["ebm"] = inner
 
         return outer
 
-    def _to_json(self, properties='interpretable'):
-        """ Converts the model to a JSON representation.
+    def _to_json(self, properties="interpretable"):
+        """Converts the model to a JSON representation.
 
         Args:
             properties: 'minimal', 'interpretable', 'mergeable', 'all'
@@ -1093,13 +1234,13 @@ class EBMModel(BaseEstimator):
         return json.dumps(outer, allow_nan=False, indent=2)
 
     def decision_function(self, X):
-        """ Predict scores from model before calling the link function.
+        """Predict scores from model before calling the link function.
 
-            Args:
-                X: Numpy array for samples.
+        Args:
+            X: Numpy array for samples.
 
-            Returns:
-                The sum of the additive term contributions.
+        Returns:
+            The sum of the additive term contributions.
         """
         check_is_fitted(self, "has_fitted_")
 
@@ -1107,18 +1248,18 @@ class EBMModel(BaseEstimator):
         X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function(
-            X, 
-            n_samples, 
-            self.feature_names_in_, 
-            self.feature_types_in_, 
-            self.bins_, 
-            self.intercept_, 
-            self.term_scores_, 
-            self.term_features_
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.intercept_,
+            self.term_scores_,
+            self.term_features_,
         )
 
     def explain_global(self, name=None):
-        """ Provides global explanation for model.
+        """Provides global explanation for model.
 
         Args:
             name: User-defined explanation name.
@@ -1143,11 +1284,19 @@ class EBMModel(BaseEstimator):
 
         mod_weights = remove_last2(self.bin_weights_, self.bin_weights_)
         mod_term_scores = remove_last2(self.term_scores_, self.bin_weights_)
-        mod_standard_deviations = remove_last2(self.standard_deviations_, self.bin_weights_)
+        mod_standard_deviations = remove_last2(
+            self.standard_deviations_, self.bin_weights_
+        )
         for term_idx, feature_idxs in enumerate(self.term_features_):
-            mod_term_scores[term_idx] = trim_tensor(mod_term_scores[term_idx], trim_low=[True] * len(feature_idxs))
-            mod_standard_deviations[term_idx] = trim_tensor(mod_standard_deviations[term_idx], trim_low=[True] * len(feature_idxs))
-            mod_weights[term_idx] = trim_tensor(mod_weights[term_idx], trim_low=[True] * len(feature_idxs))
+            mod_term_scores[term_idx] = trim_tensor(
+                mod_term_scores[term_idx], trim_low=[True] * len(feature_idxs)
+            )
+            mod_standard_deviations[term_idx] = trim_tensor(
+                mod_standard_deviations[term_idx], trim_low=[True] * len(feature_idxs)
+            )
+            mod_weights[term_idx] = trim_tensor(
+                mod_weights[term_idx], trim_low=[True] * len(feature_idxs)
+            )
 
         term_names = self.term_names_
         term_types = _generate_term_types(self.feature_types_in_, self.term_features_)
@@ -1177,7 +1326,7 @@ class EBMModel(BaseEstimator):
                     # TODO: this will fail if we have multiple categories in a bin
                     bin_labels = list(feature_bins.keys())
 
-                    histogram_counts = getattr(self, 'histogram_counts_', None)
+                    histogram_counts = getattr(self, "histogram_counts_", None)
                     if histogram_counts is not None:
                         histogram_counts = histogram_counts[feature_index0]
 
@@ -1185,27 +1334,31 @@ class EBMModel(BaseEstimator):
                         histogram_counts = self.bin_weights_[term_idx]
 
                     if len(bin_labels) != model_graph.shape[0]:
-                        bin_labels.append('DPOther')
+                        bin_labels.append("DPOther")
                         histogram_counts = histogram_counts[1:]
                     else:
                         histogram_counts = histogram_counts[1:-1]
 
-                    names=bin_labels
+                    names = bin_labels
                     densities = list(histogram_counts)
                 else:
                     # continuous
                     min_feature_val = np.nan
                     max_feature_val = np.nan
-                    feature_bounds = getattr(self, 'feature_bounds_', None)
+                    feature_bounds = getattr(self, "feature_bounds_", None)
                     if feature_bounds is not None:
                         min_feature_val = feature_bounds[feature_index0, 0]
                         max_feature_val = feature_bounds[feature_index0, 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_feature_val, max_feature_val)
-                    bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
+                    min_graph, max_graph = native.suggest_graph_bounds(
+                        feature_bins, min_feature_val, max_feature_val
+                    )
+                    bin_labels = list(
+                        np.concatenate(([min_graph], feature_bins, [max_graph]))
+                    )
 
-                    histogram_edges = getattr(self, 'histogram_edges_', None)
+                    histogram_edges = getattr(self, "histogram_edges_", None)
                     if histogram_edges is not None:
                         histogram_edges = histogram_edges[feature_index0]
                     if histogram_edges is not None:
@@ -1261,19 +1414,23 @@ class EBMModel(BaseEstimator):
                     # categorical
                     bin_labels = list(feature_bins.keys())
                     if len(bin_labels) != model_graph.shape[0]:
-                        bin_labels.append('DPOther')
+                        bin_labels.append("DPOther")
                 else:
                     # continuous
                     min_feature_val = np.nan
                     max_feature_val = np.nan
-                    feature_bounds = getattr(self, 'feature_bounds_', None)
+                    feature_bounds = getattr(self, "feature_bounds_", None)
                     if feature_bounds is not None:
                         min_feature_val = feature_bounds[feature_idxs[0], 0]
                         max_feature_val = feature_bounds[feature_idxs[0], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_feature_val, max_feature_val)
-                    bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
+                    min_graph, max_graph = native.suggest_graph_bounds(
+                        feature_bins, min_feature_val, max_feature_val
+                    )
+                    bin_labels = list(
+                        np.concatenate(([min_graph], feature_bins, [max_graph]))
+                    )
 
                 bin_labels_left = bin_labels
 
@@ -1283,22 +1440,25 @@ class EBMModel(BaseEstimator):
                     # categorical
                     bin_labels = list(feature_bins.keys())
                     if len(bin_labels) != model_graph.shape[1]:
-                        bin_labels.append('DPOther')
+                        bin_labels.append("DPOther")
                 else:
                     # continuous
                     min_feature_val = np.nan
                     max_feature_val = np.nan
-                    feature_bounds = getattr(self, 'feature_bounds_', None)
+                    feature_bounds = getattr(self, "feature_bounds_", None)
                     if feature_bounds is not None:
                         min_feature_val = feature_bounds[feature_idxs[1], 0]
                         max_feature_val = feature_bounds[feature_idxs[1], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_feature_val, max_feature_val)
-                    bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
+                    min_graph, max_graph = native.suggest_graph_bounds(
+                        feature_bins, min_feature_val, max_feature_val
+                    )
+                    bin_labels = list(
+                        np.concatenate(([min_graph], feature_bins, [max_graph]))
+                    )
 
                 bin_labels_right = bin_labels
-
 
                 feature_dict = {
                     "type": "interaction",
@@ -1319,7 +1479,9 @@ class EBMModel(BaseEstimator):
                 }
                 data_dicts.append(data_dict)
             else:  # pragma: no cover
-                warn(f"Dropping feature {term_names[term_idx]} from explanation since we can't graph more than 2 dimensions.")
+                warn(
+                    f"Dropping feature {term_names[term_idx]} from explanation since we can't graph more than 2 dimensions."
+                )
 
         importances = self.term_importances()
 
@@ -1344,13 +1506,26 @@ class EBMModel(BaseEstimator):
             "global",
             internal_obj,
             feature_names=[term_names[i] for i in keep_idxs],
-            feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in [term_types[i] for i in keep_idxs]],
+            feature_types=[
+                "categorical" if x == "nominal" or x == "ordinal" else x
+                for x in [term_types[i] for i in keep_idxs]
+            ],
             name=name,
-            selector=gen_global_selector2(getattr(self, 'n_samples_', None), self.n_features_in_, [term_names[i] for i in keep_idxs], ['categorical' if x == 'nominal' or x == 'ordinal' else x for x in [term_types[i] for i in keep_idxs]], getattr(self, 'unique_val_counts_', None), getattr(self, 'zero_val_counts_', None)),
+            selector=gen_global_selector2(
+                getattr(self, "n_samples_", None),
+                self.n_features_in_,
+                [term_names[i] for i in keep_idxs],
+                [
+                    "categorical" if x == "nominal" or x == "ordinal" else x
+                    for x in [term_types[i] for i in keep_idxs]
+                ],
+                getattr(self, "unique_val_counts_", None),
+                getattr(self, "zero_val_counts_", None),
+            ),
         )
 
     def explain_local(self, X, y=None, name=None):
-        """ Provides local explanations for provided samples.
+        """Provides local explanations for provided samples.
 
         Args:
             X: Numpy array for X to explain.
@@ -1391,7 +1566,9 @@ class EBMModel(BaseEstimator):
         if n_samples == 0:
             X_unified = np.empty((0, len(self.feature_names_in_)), dtype=np.object_)
         else:
-            X_unified, _, _ = unify_data2(X, n_samples, self.feature_names_in_, self.feature_types_in_, True)
+            X_unified, _, _ = unify_data2(
+                X, n_samples, self.feature_names_in_, self.feature_types_in_, True
+            )
 
             intercept = self.intercept_
             if not is_classifier(self) or len(self.classes_) <= 2:
@@ -1404,7 +1581,11 @@ class EBMModel(BaseEstimator):
                     "names": [None] * len(self.term_features_),
                     "scores": [None] * len(self.term_features_),
                     "values": [None] * len(self.term_features_),
-                    "extra": {"names": ["Intercept"], "scores": [intercept], "values": [1]},
+                    "extra": {
+                        "names": ["Intercept"],
+                        "scores": [intercept],
+                        "values": [1],
+                    },
                 }
                 if is_classifier(self):
                     data_dict["meta"] = {
@@ -1412,7 +1593,14 @@ class EBMModel(BaseEstimator):
                     }
                 data_dicts.append(data_dict)
 
-            for term_idx, bin_indexes in eval_terms(X, n_samples, self.feature_names_in_, self.feature_types_in_, self.bins_, self.term_features_):
+            for term_idx, bin_indexes in eval_terms(
+                X,
+                n_samples,
+                self.feature_names_in_,
+                self.feature_types_in_,
+                self.bins_,
+                self.term_features_,
+            ):
                 scores = self.term_scores_[term_idx][tuple(bin_indexes)]
                 feature_idxs = self.term_features_[term_idx]
                 for row_idx in range(n_samples):
@@ -1420,19 +1608,21 @@ class EBMModel(BaseEstimator):
                     data_dicts[row_idx]["names"][term_idx] = term_name
                     data_dicts[row_idx]["scores"][term_idx] = scores[row_idx]
                     if len(feature_idxs) == 1:
-                        data_dicts[row_idx]["values"][term_idx] = X_unified[row_idx, feature_idxs[0]]
+                        data_dicts[row_idx]["values"][term_idx] = X_unified[
+                            row_idx, feature_idxs[0]
+                        ]
                     else:
                         data_dicts[row_idx]["values"][term_idx] = ""
 
             pred = ebm_decision_function(
-                X, 
-                n_samples, 
-                self.feature_names_in_, 
-                self.feature_types_in_, 
-                self.bins_, 
-                self.intercept_, 
-                self.term_scores_, 
-                self.term_features_
+                X,
+                n_samples,
+                self.feature_names_in_,
+                self.feature_types_in_,
+                self.bins_,
+                self.intercept_,
+                self.term_scores_,
+                self.term_features_,
             )
 
             if is_classifier(self):
@@ -1456,7 +1646,9 @@ class EBMModel(BaseEstimator):
 
         term_scores = remove_last2(self.term_scores_, self.bin_weights_)
         for term_idx, feature_idxs in enumerate(self.term_features_):
-            term_scores[term_idx] = trim_tensor(term_scores[term_idx], trim_low=[True] * len(feature_idxs))
+            term_scores[term_idx] = trim_tensor(
+                term_scores[term_idx], trim_low=[True] * len(feature_idxs)
+            )
 
         internal_obj = {
             "overall": None,
@@ -1483,13 +1675,16 @@ class EBMModel(BaseEstimator):
             "local",
             internal_obj,
             feature_names=term_names,
-            feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in term_types],
+            feature_types=[
+                "categorical" if x == "nominal" or x == "ordinal" else x
+                for x in term_types
+            ],
             name=gen_name_from_class(self) if name is None else name,
             selector=selector,
         )
 
-    def term_importances(self, importance_type='avg_weight'):
-        """ Provides the term importances
+    def term_importances(self, importance_type="avg_weight"):
+        """Provides the term importances
 
         Args:
             importance_type: the type of term importance requested ('avg_weight', 'min_max')
@@ -1500,28 +1695,38 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        if importance_type == 'avg_weight':
+        if importance_type == "avg_weight":
             importances = np.empty(len(self.term_features_), np.float64)
             for i in range(len(self.term_features_)):
                 if is_classifier(self):
-                    mean_abs_score = 0 # everything is useless if we're predicting 1 class
+                    mean_abs_score = (
+                        0  # everything is useless if we're predicting 1 class
+                    )
                     if 1 < len(self.classes_):
                         mean_abs_score = np.abs(self.term_scores_[i])
                         if 2 < len(self.classes_):
                             mean_abs_score = np.average(mean_abs_score, axis=-1)
-                        mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
+                        mean_abs_score = np.average(
+                            mean_abs_score, weights=self.bin_weights_[i]
+                        )
                 else:
                     mean_abs_score = np.abs(self.term_scores_[i])
-                    mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
+                    mean_abs_score = np.average(
+                        mean_abs_score, weights=self.bin_weights_[i]
+                    )
                 importances.itemset(i, mean_abs_score)
             return importances
-        elif importance_type == 'min_max':
-            return np.array([np.max(tensor) - np.min(tensor) for tensor in self.term_scores_], np.float64)
+        elif importance_type == "min_max":
+            return np.array(
+                [np.max(tensor) - np.min(tensor) for tensor in self.term_scores_],
+                np.float64,
+            )
         else:
             raise ValueError(f"Unrecognized importance_type: {importance_type}")
 
+
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
-    """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog. """
+    """Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog."""
 
     # TODO PK v.3 use underscores here like ClassifierMixin._estimator_type?
     available_explanations = ["global", "local"]
@@ -1557,7 +1762,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         n_jobs=-2,
         random_state=42,
     ):
-        """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog.
+        """Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog.
 
         Args:
             feature_names: List of feature names.
@@ -1610,7 +1815,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         )
 
     def predict_proba(self, X):
-        """ Probability estimates on provided samples.
+        """Probability estimates on provided samples.
 
         Args:
             X: Numpy array for samples.
@@ -1628,14 +1833,14 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             return np.full((n_samples, 1), 1, np.float64)
 
         log_odds_vector = ebm_decision_function(
-            X, 
-            n_samples, 
-            self.feature_names_in_, 
-            self.feature_types_in_, 
-            self.bins_, 
-            self.intercept_, 
-            self.term_scores_, 
-            self.term_features_
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.intercept_,
+            self.term_scores_,
+            self.term_features_,
         )
 
         if log_odds_vector.ndim == 1:
@@ -1645,7 +1850,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         return softmax(log_odds_vector)
 
     def predict(self, X):
-        """ Predicts on provided samples.
+        """Predicts on provided samples.
 
         Args:
             X: Numpy array for samples.
@@ -1659,14 +1864,14 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         X, n_samples = clean_X(X, min_cols)
 
         log_odds_vector = ebm_decision_function(
-            X, 
-            n_samples, 
-            self.feature_names_in_, 
-            self.feature_types_in_, 
-            self.bins_, 
-            self.intercept_, 
-            self.term_scores_, 
-            self.term_features_
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.intercept_,
+            self.term_scores_,
+            self.term_features_,
         )
 
         # TODO: for binary classification we could just look for values greater than zero instead of expanding
@@ -1676,7 +1881,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
         return self.classes_[np.argmax(log_odds_vector, axis=1)]
 
-    def predict_and_contrib(self, X, output='probabilities'):
+    def predict_and_contrib(self, X, output="probabilities"):
         """Predicts on provided samples, returning predictions and explanations for each sample.
 
         Args:
@@ -1693,40 +1898,41 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         X, n_samples = clean_X(X, min_cols)
 
         scores, explanations = ebm_decision_function_and_explain(
-            X, 
-            n_samples, 
-            self.feature_names_in_, 
-            self.feature_types_in_, 
-            self.bins_, 
-            self.intercept_, 
-            self.term_scores_, 
-            self.term_features_
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.intercept_,
+            self.term_scores_,
+            self.term_features_,
         )
 
-        if output == 'probabilities':
+        if output == "probabilities":
             if len(self.classes_) == 1:
                 # if there is only one class then all probabilities are 100%
                 result = np.full((n_samples, 1), 1, np.float64)
             else:
                 if scores.ndim == 1:
-                    scores= np.c_[np.zeros(scores.shape), scores]
+                    scores = np.c_[np.zeros(scores.shape), scores]
                 result = softmax(scores)
-        elif output == 'labels':
+        elif output == "labels":
             # TODO: for binary classification we could just look for values greater than zero instead of expanding
             if scores.ndim == 1:
                 scores = np.c_[np.zeros(scores.shape), scores]
             result = self.classes_[np.argmax(scores, axis=1)]
-        elif output == 'logits':
+        elif output == "logits":
             result = scores
         else:
-            msg = f"Argument 'output' has invalid value. Got '{output}', expected 'probabilities', 'labels', or 'logits'" 
+            msg = f"Argument 'output' has invalid value. Got '{output}', expected 'probabilities', 'labels', or 'logits'"
             _log.error(msg)
             raise ValueError(msg)
 
         return result, explanations
 
+
 class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
-    """ Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog. """
+    """Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog."""
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
     available_explanations = ["global", "local"]
@@ -1762,7 +1968,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         n_jobs=-2,
         random_state=42,
     ):
-        """ Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog.
+        """Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog.
 
         Args:
             feature_names: List of feature names.
@@ -1814,7 +2020,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         )
 
     def predict(self, X):
-        """ Predicts on provided samples.
+        """Predicts on provided samples.
 
         Args:
             X: Numpy array for samples.
@@ -1828,14 +2034,14 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function(
-            X, 
-            n_samples, 
-            self.feature_names_in_, 
-            self.feature_types_in_, 
-            self.bins_, 
-            self.intercept_, 
-            self.term_scores_, 
-            self.term_features_
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.intercept_,
+            self.term_scores_,
+            self.term_features_,
         )
 
     def predict_and_contrib(self, X):
@@ -1854,19 +2060,19 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function_and_explain(
-            X, 
-            n_samples, 
-            self.feature_names_in_, 
-            self.feature_types_in_, 
-            self.bins_, 
-            self.intercept_, 
-            self.term_scores_, 
-            self.term_features_
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.intercept_,
+            self.term_scores_,
+            self.term_features_,
         )
 
 
 class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
-    """ Differentially Private Explainable Boosting Classifier."""
+    """Differentially Private Explainable Boosting Classifier."""
 
     available_explanations = ["global", "local"]
     explainer_type = "model"
@@ -1898,11 +2104,11 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         # Differential Privacy
         epsilon=1,
         delta=1e-5,
-        composition='gdp',
+        composition="gdp",
         bin_budget_frac=0.1,
         privacy_schema=None,
     ):
-        """ Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
+        """Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
 
         Args:
             feature_names: List of feature names.
@@ -1922,13 +2128,13 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             delta: Additive component of differential privacy guarantee. Should be smaller than 1/n_training_samples.
             composition: composition.
             bin_budget_frac: Percentage of total epsilon budget to use for binning.
-            privacy_schema: Dictionary specifying known min/max values of each feature and target. 
+            privacy_schema: Dictionary specifying known min/max values of each feature and target.
                 If None, DP-EBM throws warning and uses data to calculate these values.
         """
         super(DPExplainableBoostingClassifier, self).__init__(
             # Explainer
             feature_names=feature_names,
-            feature_types=feature_types,    
+            feature_types=feature_types,
             # Preprocessor
             max_bins=max_bins,
             max_interaction_bins=None,
@@ -1960,7 +2166,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         )
 
     def predict_proba(self, X):
-        """ Probability estimates on provided samples.
+        """Probability estimates on provided samples.
 
         Args:
             X: Numpy array for samples.
@@ -1978,14 +2184,14 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             return np.full((n_samples, 1), 1, np.float64)
 
         log_odds_vector = ebm_decision_function(
-            X, 
-            n_samples, 
-            self.feature_names_in_, 
-            self.feature_types_in_, 
-            self.bins_, 
-            self.intercept_, 
-            self.term_scores_, 
-            self.term_features_
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.intercept_,
+            self.term_scores_,
+            self.term_features_,
         )
 
         if log_odds_vector.ndim == 1:
@@ -1995,7 +2201,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         return softmax(log_odds_vector)
 
     def predict(self, X):
-        """ Predicts on provided samples.
+        """Predicts on provided samples.
 
         Args:
             X: Numpy array for samples.
@@ -2009,14 +2215,14 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         X, n_samples = clean_X(X, min_cols)
 
         log_odds_vector = ebm_decision_function(
-            X, 
-            n_samples, 
-            self.feature_names_in_, 
-            self.feature_types_in_, 
-            self.bins_, 
-            self.intercept_, 
-            self.term_scores_, 
-            self.term_features_
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.intercept_,
+            self.term_scores_,
+            self.term_features_,
         )
 
         # TODO: for binary classification we could just look for values greater than zero instead of expanding
@@ -2028,7 +2234,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
 
 
 class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
-    """ Differentially Private Explainable Boosting Regressor."""
+    """Differentially Private Explainable Boosting Regressor."""
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
     available_explanations = ["global", "local"]
@@ -2061,11 +2267,11 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Differential Privacy
         epsilon=1,
         delta=1e-5,
-        composition='gdp',
+        composition="gdp",
         bin_budget_frac=0.1,
         privacy_schema=None,
     ):
-        """ Differentially Private Explainable Boosting Regressor. Note that many arguments are defaulted differently than regular EBMs.
+        """Differentially Private Explainable Boosting Regressor. Note that many arguments are defaulted differently than regular EBMs.
 
         Args:
             feature_names: List of feature names.
@@ -2083,9 +2289,9 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             random_state: Random state.
             epsilon: Total privacy budget to be spent across all rounds of training.
             delta: Additive component of differential privacy guarantee. Should be smaller than 1/n_training_samples.
-            composition: Method of tracking noise aggregation. Must be one of 'classic' or 'gdp'. 
+            composition: Method of tracking noise aggregation. Must be one of 'classic' or 'gdp'.
             bin_budget_frac: Percentage of total epsilon budget to use for private binning.
-            privacy_schema: Dictionary specifying known min/max values of each feature and target. 
+            privacy_schema: Dictionary specifying known min/max values of each feature and target.
                 If None, DP-EBM throws warning and uses data to calculate these values.
         """
         super(DPExplainableBoostingRegressor, self).__init__(
@@ -2123,7 +2329,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         )
 
     def predict(self, X):
-        """ Predicts on provided samples.
+        """Predicts on provided samples.
 
         Args:
             X: Numpy array for samples.
@@ -2138,13 +2344,12 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         X, n_samples = clean_X(X, min_cols)
 
         return ebm_decision_function(
-            X, 
-            n_samples, 
-            self.feature_names_in_, 
-            self.feature_types_in_, 
-            self.bins_, 
-            self.intercept_, 
-            self.term_scores_, 
-            self.term_features_
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.intercept_,
+            self.term_scores_,
+            self.term_features_,
         )
-

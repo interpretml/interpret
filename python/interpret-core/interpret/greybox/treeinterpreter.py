@@ -11,22 +11,22 @@ from sklearn.base import is_classifier
 # TODO: Remove pragma when tree interpreter updates.
 # NOTE: Code coverage disabled, upstream dependency failure.
 class TreeInterpreter(ExplainerMixin):  # pragma: no cover
-    """ Provides 'Tree Explainer' algorithm for specific sklearn trees.
+    """Provides 'Tree Explainer' algorithm for specific sklearn trees.
 
-        Wrapper around andosa/treeinterpreter github package.
+    Wrapper around andosa/treeinterpreter github package.
 
-        https://github.com/andosa/treeinterpreter
+    https://github.com/andosa/treeinterpreter
 
-        Currently supports (copied from README.md):
+    Currently supports (copied from README.md):
 
-        - DecisionTreeRegressor
-        - DecisionTreeClassifier
-        - ExtraTreeRegressor
-        - ExtraTreeClassifier
-        - RandomForestRegressor
-        - RandomForestClassifier
-        - ExtraTreesRegressor
-        - ExtraTreesClassifier
+    - DecisionTreeRegressor
+    - DecisionTreeClassifier
+    - ExtraTreeRegressor
+    - ExtraTreeClassifier
+    - RandomForestRegressor
+    - RandomForestClassifier
+    - ExtraTreesRegressor
+    - ExtraTreesClassifier
 
     """
 
@@ -42,7 +42,7 @@ class TreeInterpreter(ExplainerMixin):  # pragma: no cover
         explain_kwargs={},
         **kwargs
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             model: A tree object that works with Tree SHAP.
@@ -65,7 +65,7 @@ class TreeInterpreter(ExplainerMixin):  # pragma: no cover
         self.is_classifier = is_classifier(self.model)
 
     def explain_local(self, X, y=None, name=None):
-        """ Provides local explanations for provided instances.
+        """Provides local explanations for provided instances.
 
         Args:
             X: Numpy array for X to explain.

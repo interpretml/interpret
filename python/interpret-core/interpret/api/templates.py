@@ -5,8 +5,8 @@ from .base import ExplanationMixin
 
 
 class FeatureValueExplanation(ExplanationMixin):
-    """ Handles explanations that can be visualized as horizontal bar graphs.
-        Usually these are feature-value pairs being represented.
+    """Handles explanations that can be visualized as horizontal bar graphs.
+    Usually these are feature-value pairs being represented.
     """
 
     explanation_type = None
@@ -20,7 +20,7 @@ class FeatureValueExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             explanation_type:  Type of explanation.
@@ -38,7 +38,7 @@ class FeatureValueExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
-        """ Provides specific explanation data.
+        """Provides specific explanation data.
 
         Args:
             key: A number/string that references a specific data item.
@@ -62,7 +62,7 @@ class FeatureValueExplanation(ExplanationMixin):
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None, title=None):
-        """ Provides interactive visualizations.
+        """Provides interactive visualizations.
 
         Args:
             key: Either a scalar or list

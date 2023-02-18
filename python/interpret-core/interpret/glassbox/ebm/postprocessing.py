@@ -8,7 +8,7 @@ import numpy as np
 def multiclass_postprocess(
     X_binned, feature_graphs, binned_predict_proba, feature_types
 ):
-    """ Postprocesses multiclass model graphs with desired properties.
+    """Postprocesses multiclass model graphs with desired properties.
 
     Args:
         X_binned: Training dataset, pre-binned. Contains integer values, 0+. Each value is a unique bin.
@@ -74,13 +74,11 @@ def multiclass_postprocess(
             intercepts[k] += mean
     return {"feature_graphs": updated_feature_graphs, "intercepts": intercepts}
 
-def multiclass_postprocess2(
-    n_classes, term_scores, bin_weights, intercept
-):
-    """ Postprocesses multiclass model graphs with desired properties.
-    """
 
-    # TODO: our existing implementation has a bug where it always uses the simpler method of taking 
+def multiclass_postprocess2(n_classes, term_scores, bin_weights, intercept):
+    """Postprocesses multiclass model graphs with desired properties."""
+
+    # TODO: our existing implementation has a bug where it always uses the simpler method of taking
     # the mean of the class scores.  Copy this behavior for now since it's a lot simpler when
     # moving to the generator unify_columns function.  Also, this method generalizes to tensors
 
@@ -90,6 +88,9 @@ def multiclass_postprocess2(
 
     for i in range(len(term_scores)):
         for k in range(n_classes):
-            mean = np.multiply(term_scores[i][:, k], bin_weights[i]).sum() / bin_weights[i].sum()
+            mean = (
+                np.multiply(term_scores[i][:, k], bin_weights[i]).sum()
+                / bin_weights[i].sum()
+            )
             term_scores[i][:, k] = np.subtract(term_scores[i][:, k], mean)
             intercept[k] += mean

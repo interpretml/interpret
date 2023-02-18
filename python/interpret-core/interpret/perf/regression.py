@@ -9,13 +9,13 @@ import numpy as np
 
 
 class RegressionPerf(ExplainerMixin):
-    """ Produces variety of regression metrics (including RMSE, R^2, etc)."""
+    """Produces variety of regression metrics (including RMSE, R^2, etc)."""
 
     available_explanations = ["perf"]
     explainer_type = "perf"
 
     def __init__(self, predict_fn, feature_names=None, feature_types=None, **kwargs):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             predict_fn: Function of blackbox that takes input, and returns prediction.
@@ -29,7 +29,7 @@ class RegressionPerf(ExplainerMixin):
         self.kwargs = kwargs
 
     def explain_perf(self, X, y, name=None):
-        """ Produces regression metrics.
+        """Produces regression metrics.
 
         Args:
             X: Numpy array for X to compare predict function against.
@@ -80,7 +80,7 @@ class RegressionPerf(ExplainerMixin):
 
 
 class RegressionExplanation(ExplanationMixin):
-    """ Produces explanation specific to regression metrics."""
+    """Produces explanation specific to regression metrics."""
 
     explanation_type = None
 
@@ -93,7 +93,7 @@ class RegressionExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             explanation_type:  Type of explanation.
@@ -111,7 +111,7 @@ class RegressionExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
-        """ Provides specific explanation data.
+        """Provides specific explanation data.
 
         Args:
             key: A number/string that references a specific data item.
@@ -124,7 +124,7 @@ class RegressionExplanation(ExplanationMixin):
         return None
 
     def visualize(self, key=None):
-        """ Provides interactive visualizations.
+        """Provides interactive visualizations.
 
         Args:
             key: Either a scalar or list

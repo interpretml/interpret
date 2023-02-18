@@ -8,8 +8,8 @@ import warnings
 
 
 class ShapKernel(ExplainerMixin):
-    """ Exposes SHAP kernel explainer from shap package, in interpret API form.
-        If using this please cite the original authors as can be found here: https://github.com/slundberg/shap
+    """Exposes SHAP kernel explainer from shap package, in interpret API form.
+    If using this please cite the original authors as can be found here: https://github.com/slundberg/shap
     """
 
     available_explanations = ["local"]
@@ -26,7 +26,7 @@ class ShapKernel(ExplainerMixin):
         n_jobs=1,
         **kwargs
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             predict_fn: Function of blackbox that takes input, and returns prediction.
@@ -56,7 +56,7 @@ class ShapKernel(ExplainerMixin):
         self.shap = shap.KernelExplainer(self.predict_fn, data, **self.kwargs)
 
     def explain_local(self, X, y=None, name=None):
-        """ Provides local explanations for provided instances.
+        """Provides local explanations for provided instances.
 
         Args:
             X: Numpy array for X to explain.

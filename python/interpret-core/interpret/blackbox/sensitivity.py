@@ -44,7 +44,7 @@ class MorrisSampler(SamplerMixin):
 
 
 class MorrisSensitivity(ExplainerMixin):
-    """ Method of Morris for analyzing blackbox systems.
+    """Method of Morris for analyzing blackbox systems.
     If using this please cite the package owners as can be found here: https://github.com/SALib/SALib
 
     Morris, Max D. "Factorial sampling plans for preliminary computational experiments." Technometrics 33.2 (1991): 161-174.
@@ -56,7 +56,7 @@ class MorrisSensitivity(ExplainerMixin):
     def __init__(
         self, predict_fn, data, sampler=None, feature_names=None, feature_types=None
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             predict_fn: Function of blackbox that takes input, and returns prediction.
@@ -75,7 +75,7 @@ class MorrisSensitivity(ExplainerMixin):
             self.sampler = MorrisSampler(self.data, self.feature_names)
 
     def explain_global(self, name=None):
-        """ Provides approximate global explanation for blackbox model.
+        """Provides approximate global explanation for blackbox model.
 
         Args:
             name: User-defined explanation name.
@@ -138,7 +138,7 @@ class MorrisSensitivity(ExplainerMixin):
 
 
 class MorrisExplanation(FeatureValueExplanation):
-    """ Visualizations specific to Method of Morris. """
+    """Visualizations specific to Method of Morris."""
 
     explanation_type = None
 
@@ -151,7 +151,7 @@ class MorrisExplanation(FeatureValueExplanation):
         name=None,
         selector=None,
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             explanation_type:  Type of explanation.
@@ -172,7 +172,7 @@ class MorrisExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
-        """ Provides interactive visualizations.
+        """Provides interactive visualizations.
 
         Args:
             key: Either a scalar or list
@@ -260,7 +260,7 @@ class MorrisExplanation(FeatureValueExplanation):
 
 
 def soft_min_max(values, soft_add=1, soft_bounds=1):
-    """ Returns [min, max + soft_add] if difference of min and max is less
+    """Returns [min, max + soft_add] if difference of min and max is less
         than the soft bound.
 
     Args:

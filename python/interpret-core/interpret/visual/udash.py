@@ -78,7 +78,7 @@ def generate_app_mini(
     requests_pathname_prefix=None,
     routes_pathname_prefix=None,
 ):
-    """ Generates the mini Dash application including callbacks..
+    """Generates the mini Dash application including callbacks..
 
     Returns:
         The dash app itself.
@@ -327,7 +327,7 @@ def gen_plot(exp, picker, model_idx, counter):
 def generate_app_full(  # noqa: C901
     url_base_pathname=None, requests_pathname_prefix=None, routes_pathname_prefix=None
 ):
-    """ Generates the Dash application including callbacks.
+    """Generates the Dash application including callbacks.
 
     Returns:
         The dash app itself.
@@ -395,7 +395,7 @@ def generate_app_full(  # noqa: C901
     )
 
     def get_model_records(ctx):
-        """ Extracts model records passed to Dash.
+        """Extracts model records passed to Dash.
 
         Args:
             ctx: List of explanations.
@@ -419,7 +419,7 @@ def generate_app_full(  # noqa: C901
         ]
 
     def gen_overview_tab():
-        """ Generates overview tab.
+        """Generates overview tab.
 
         Returns:
             Dash component that handles overview tab entire.

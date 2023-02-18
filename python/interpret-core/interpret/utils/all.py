@@ -87,7 +87,7 @@ def gen_global_selector(X, feature_names, feature_types, importance_scores, roun
         if feat_idx < X.shape[1]:
             col_vals = X[:, feat_idx]
             nz_count = np.count_nonzero(col_vals)
-            col_vals = col_vals.astype('U')
+            col_vals = col_vals.astype("U")
             record["# Unique"] = len(np.unique(col_vals))
             record["% Non-zero"] = nz_count / X.shape[0]
         else:
@@ -109,20 +109,37 @@ def gen_global_selector(X, feature_names, feature_types, importance_scores, roun
     else:  # pragma: no cover
         return df
 
-def gen_global_selector2(n_samples, n_features, term_names, term_types, unique_val_counts, zero_val_counts, round=3):
+
+def gen_global_selector2(
+    n_samples,
+    n_features,
+    term_names,
+    term_types,
+    unique_val_counts,
+    zero_val_counts,
+    round=3,
+):
     records = []
     for term_idx in range(len(term_names)):
         record = {}
         record["Name"] = term_names[term_idx]
         feature_type = term_types[term_idx]
-        record["Type"] = 'categorical' if feature_type == 'nominal' or feature_type == 'ordinal' else feature_type
+        record["Type"] = (
+            "categorical"
+            if feature_type == "nominal" or feature_type == "ordinal"
+            else feature_type
+        )
 
         if term_idx < n_features:
-            record["# Unique"] = np.nan if unique_val_counts is None else unique_val_counts[term_idx]
+            record["# Unique"] = (
+                np.nan if unique_val_counts is None else unique_val_counts[term_idx]
+            )
             if n_samples is None or zero_val_counts is None:
                 record["% Non-zero"] = np.nan
             else:
-                record["% Non-zero"] = (n_samples - zero_val_counts[term_idx]) / n_samples
+                record["% Non-zero"] = (
+                    n_samples - zero_val_counts[term_idx]
+                ) / n_samples
         else:
             record["# Unique"] = np.nan
             record["% Non-zero"] = np.nan
@@ -136,6 +153,7 @@ def gen_global_selector2(n_samples, n_features, term_names, term_types, unique_v
         return df.round(round)
     else:  # pragma: no cover
         return df
+
 
 def gen_local_selector(data_dicts, round=3, is_classification=True):
     records = []
@@ -167,7 +185,7 @@ def gen_local_selector(data_dicts, round=3, is_classification=True):
 
 
 def gen_name_from_class(obj):
-    """ Generates a name for a given class.
+    """Generates a name for a given class.
 
     Args:
         obj: An object.
@@ -188,7 +206,7 @@ gen_name_from_class.cache = {}
 
 
 def gen_feat_val_list(features, values):
-    """ Generates feature value lists sorted in descending value.
+    """Generates feature value lists sorted in descending value.
 
     Args:
         features: A list of feature names.
@@ -204,7 +222,7 @@ def gen_feat_val_list(features, values):
 
 
 def reverse_map(map):
-    """ Inverts a dictionary.
+    """Inverts a dictionary.
 
     Args:
         map: Target dictionary to invert.
@@ -216,7 +234,7 @@ def reverse_map(map):
 
 
 def sort_feature_value_pairs_list(feature_value_pairs_list):
-    """ Sorts feature value pairs list.
+    """Sorts feature value pairs list.
 
     Args:
         feature_value_pairs_list: List of feature value pairs (list in itself)
@@ -269,7 +287,7 @@ def unify_vector(data):
 
 def _get_new_feature_names(data, feature_names):
     if feature_names is None:
-        return [f'feature_{i:04}' for i in range(1, 1 + data.shape[1])]
+        return [f"feature_{i:04}" for i in range(1, 1 + data.shape[1])]
     else:
         return feature_names
 
@@ -286,8 +304,14 @@ def _get_new_feature_types(data, feature_types, new_feature_names):
 
 
 # TODO: Docs for unify_data.
-def unify_data(data, labels=None, feature_names=None, feature_types=None, missing_data_allowed=False):
-    """ Attempts to unify data into a numpy array with feature names and types.
+def unify_data(
+    data,
+    labels=None,
+    feature_names=None,
+    feature_types=None,
+    missing_data_allowed=False,
+):
+    """Attempts to unify data into a numpy array with feature names and types.
 
     If it cannot unify, returns the original data structure.
 
@@ -315,7 +339,9 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None, missin
 
         if feature_types is None:
             # unique_val_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0, arr=data)
-            bool_indicator = [data[col].isin([np.nan, 0, 1]).all() for col in data.columns]
+            bool_indicator = [
+                data[col].isin([np.nan, 0, 1]).all() for col in data.columns
+            ]
             new_feature_types = [
                 _assign_feature_type(feature_type, bool_indicator[index])
                 for index, feature_type in enumerate(data.dtypes)
@@ -372,7 +398,7 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None, missin
 
 
 def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=None):
-    """ Generates data schema for a given dataset as JSON representable.
+    """Generates data schema for a given dataset as JSON representable.
 
     Args:
         X: Dataframe/ndarray to build schema from.
@@ -393,7 +419,7 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
             "Passing a numpy array to schema autogen when it should be dataframe."
         )
         if feature_names is None:
-            feature_names = [f'feature_{i:04}' for i in range(1, 1 + X.shape[1])]
+            feature_names = [f"feature_{i:04}" for i in range(1, 1 + X.shape[1])]
 
         # NOTE: Use rolled out infer_objects for old pandas.
         # As used from SO:
@@ -433,7 +459,7 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
 
 def _assign_feature_type(feature_type, is_boolean=False):
     if is_boolean or is_string_dtype(feature_type):
-        return 'categorical'
+        return "categorical"
     elif is_numeric_dtype(feature_type):
         return "continuous"
     else:  # pragma: no cover

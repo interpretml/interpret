@@ -8,7 +8,7 @@ this.is_debug_mode = False
 
 
 def print_debug_info(file=None):
-    """ This function varies version-by-version, prints debug info as a pretty string.
+    """This function varies version-by-version, prints debug info as a pretty string.
 
     Args:
         file: File to print to (default goes to sys.stdout).
@@ -28,7 +28,7 @@ def print_debug_info(file=None):
 
 
 def debug_info():
-    """ This function varies version-by-version, designed to help the authors of this package when there's an issue.
+    """This function varies version-by-version, designed to help the authors of this package when there's an issue.
 
     Returns:
         A dictionary that contains debug info across the interpret package.
@@ -45,7 +45,7 @@ def debug_info():
 
 
 def dynamic_system_info():
-    """ Provides dynamic system information (available memory etc.) as a dictionary.
+    """Provides dynamic system information (available memory etc.) as a dictionary.
 
     Returns:
         A dictionary containing dynamic system information.
@@ -84,7 +84,7 @@ def dynamic_system_info():
 
 
 def static_system_info():
-    """ Provides static system information (machine architecture etc.) as a dictionary.
+    """Provides static system information (machine architecture etc.) as a dictionary.
 
     Returns:
         A dictionary containing static system information.
@@ -111,7 +111,7 @@ def static_system_info():
 
 
 def sizeof_fmt(num, suffix="B"):
-    """ Returns bytes in human readable form. Taken from below link:
+    """Returns bytes in human readable form. Taken from below link:
     https://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
 
     Args:
@@ -129,7 +129,7 @@ def sizeof_fmt(num, suffix="B"):
 
 
 def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
-    """ Sets package into debug mode.
+    """Sets package into debug mode.
 
     Args:
         log_filename: A string that is the filepath to log to, or sys.stderr/sys.stdout.
@@ -166,7 +166,7 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
 
 
 def register_log(filename, level="DEBUG"):
-    """ Registers file to have logs written to.
+    """Registers file to have logs written to.
 
     Args:
         filename: A string that is the filepath to log to, or sys.stderr/sys.stdout.

@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 
 # TODO v.3 PK Possibly rename explainer types to (blackbox, glassbox, greybox)
 class ExplainerMixin(ABC):
-    """ An object that computes explanations.
+    """An object that computes explanations.
         This is a contract required for InterpretML.
 
     Attributes:
@@ -28,7 +28,7 @@ class ExplainerMixin(ABC):
 
 
 class ExplanationMixin(ABC):
-    """ The result of calling explain_* from an Explainer. Responsible for providing data and/or visualization.
+    """The result of calling explain_* from an Explainer. Responsible for providing data and/or visualization.
         This is a contract required for InterpretML.
 
     Attributes:
@@ -48,7 +48,7 @@ class ExplanationMixin(ABC):
 
     @abstractmethod
     def data(self, key=None):
-        """ Provides specific explanation data.
+        """Provides specific explanation data.
 
         Args:
             key: A number/string that references a specific data item.
@@ -59,7 +59,7 @@ class ExplanationMixin(ABC):
 
     @abstractmethod
     def visualize(self, key=None):
-        """ Provides interactive visualizations.
+        """Provides interactive visualizations.
 
         Args:
             key: Either a scalar or list

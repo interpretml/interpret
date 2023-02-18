@@ -11,6 +11,7 @@ import plotly.express as px
 from sklearn.utils.validation import check_is_fitted
 from sklearn.base import is_classifier
 
+
 def compute_group_importance(term_list, ebm, X, contributions=None):
     """Computes the importance of a group of terms.
 
@@ -58,6 +59,7 @@ def compute_group_importance(term_list, ebm, X, contributions=None):
 
     return np.average(abs_sum_per_row)
 
+
 def _get_group_name(term_list, ebm_term_names):
     """Returns the group's name in the format "term_name_1, term_name_2, ..."
 
@@ -73,12 +75,23 @@ def _get_group_name(term_list, ebm_term_names):
         if isinstance(term, str) and term in ebm_term_names:
             name += term if len(name) == 0 else ", " + term
         elif isinstance(term, int) and 0 <= term < len(ebm_term_names):
-            name += ebm_term_names[term] if len(name) == 0 else ", " + ebm_term_names[term]
+            name += (
+                ebm_term_names[term] if len(name) == 0 else ", " + ebm_term_names[term]
+            )
         else:
             raise ValueError(f"Term '{term}' is not a string or a valid integer.")
     return name
 
-def append_group_importance(term_list, ebm, X, group_name=None, global_exp=None, global_exp_name=None, contributions=None):
+
+def append_group_importance(
+    term_list,
+    ebm,
+    X,
+    group_name=None,
+    global_exp=None,
+    global_exp_name=None,
+    contributions=None,
+):
     """Computes the importance of a group of terms and appends it to a global explanation.
 
     In case a global explanation is provided, the group importance will be appended to it and returned.
@@ -102,8 +115,13 @@ def append_group_importance(term_list, ebm, X, group_name=None, global_exp=None,
 
     if global_exp is not None:
         if global_exp.explanation_type != "global":
-            raise ValueError(f"The provided explanation is {global_exp.explanation_type} but a global explanation is expected.")
-        elif global_exp._internal_obj is None or global_exp._internal_obj["overall"] is None:
+            raise ValueError(
+                f"The provided explanation is {global_exp.explanation_type} but a global explanation is expected."
+            )
+        elif (
+            global_exp._internal_obj is None
+            or global_exp._internal_obj["overall"] is None
+        ):
             raise ValueError("The global explanation object is incomplete.")
         else:
             global_explanation = global_exp
@@ -114,7 +132,9 @@ def append_group_importance(term_list, ebm, X, group_name=None, global_exp=None,
         group_name = _get_group_name(term_list, ebm.term_names_)
 
     if group_name in global_explanation._internal_obj["overall"]["names"]:
-        raise ValueError(f"The group {group_name} is already in the global explanation.")
+        raise ValueError(
+            f"The group {group_name} is already in the global explanation."
+        )
 
     group_importance = compute_group_importance(term_list, ebm, X, contributions)
 
@@ -122,6 +142,7 @@ def append_group_importance(term_list, ebm, X, group_name=None, global_exp=None,
     global_explanation._internal_obj["overall"]["scores"].append(group_importance)
 
     return global_explanation
+
 
 def get_group_and_individual_importances(term_groups_list, ebm, X, contributions=None):
     """Returns a dict containing the importances of the groups in term_groups_list as well as
@@ -150,19 +171,26 @@ def get_group_and_individual_importances(term_groups_list, ebm, X, contributions
     dict = {}
 
     for term in ebm.term_names_:
-         dict[term] = compute_group_importance([term], ebm, X, contributions)
+        dict[term] = compute_group_importance([term], ebm, X, contributions)
 
     # If it's not a list of lists, we assume it's only one term group (e.g. list of strings or ints)
     if type(term_groups_list[0]) is not list:
         group_name = _get_group_name(term_groups_list, ebm.term_names_)
-        dict[group_name] = compute_group_importance(term_groups_list, ebm, X, contributions)
+        dict[group_name] = compute_group_importance(
+            term_groups_list, ebm, X, contributions
+        )
     else:
         for term_group in term_groups_list:
             group_name = _get_group_name(term_group, ebm.term_names_)
-            dict[group_name] = compute_group_importance(term_group, ebm, X, contributions)
+            dict[group_name] = compute_group_importance(
+                term_group, ebm, X, contributions
+            )
 
-    sorted_dict = {k: v for k, v in sorted(dict.items(), key=lambda item: item[1], reverse=True)}
+    sorted_dict = {
+        k: v for k, v in sorted(dict.items(), key=lambda item: item[1], reverse=True)
+    }
     return sorted_dict
+
 
 def get_individual_importances(ebm, X, contributions=None):
     """Returns a dict containing the importances of all EBM terms
@@ -182,13 +210,16 @@ def get_individual_importances(ebm, X, contributions=None):
 
     dict = {}
     for term in ebm.term_names_:
-         dict[term] = compute_group_importance([term], ebm, X, contributions)
+        dict[term] = compute_group_importance([term], ebm, X, contributions)
 
-    sorted_dict = {k: v for k, v in sorted(dict.items(), key=lambda item: item[1], reverse=True)}
+    sorted_dict = {
+        k: v for k, v in sorted(dict.items(), key=lambda item: item[1], reverse=True)
+    }
     return sorted_dict
 
+
 def get_importance_per_top_groups(ebm, X):
-    """ Returns a Dataframe with the importances of groups of terms, such that:
+    """Returns a Dataframe with the importances of groups of terms, such that:
 
     The first group is the term with the highest individual importance (i.e. top term), the second group is
     composed by the top 2 terms, and so on. For example:
@@ -225,16 +256,19 @@ def get_importance_per_top_groups(ebm, X):
         output_dict[group_name] = compute_group_importance(group, ebm, X, contributions)
         group_index += 1
 
-    df = pd.DataFrame({
-        "groups": output_dict.keys(),
-        "terms_per_group": groups_list,
-        "importances": output_dict.values(),
-    })
+    df = pd.DataFrame(
+        {
+            "groups": output_dict.keys(),
+            "terms_per_group": groups_list,
+            "importances": output_dict.values(),
+        }
+    )
 
     return df
 
+
 def plot_importance_per_top_groups(ebm, X):
-    """ Plots a plotly graph where the x-axis represents groups of top K terms and the y-axis their importances.
+    """Plots a plotly graph where the x-axis represents groups of top K terms and the y-axis their importances.
 
     The first group is the terms with the highest individual importance (i.e. top term), the second group is
     composed by the top 2 terms, and so on. For example:
@@ -250,5 +284,5 @@ def plot_importance_per_top_groups(ebm, X):
     """
     df = get_importance_per_top_groups(ebm, X)
 
-    fig = px.line(df, x="groups", y="importances", title='Group Importances')
+    fig = px.line(df, x="groups", y="importances", title="Group Importances")
     fig.show()

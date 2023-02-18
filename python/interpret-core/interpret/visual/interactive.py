@@ -14,7 +14,7 @@ this.visualize_provider = None
 
 
 def get_visualize_provider():
-    """ Gets visualization provider for show() related calls.
+    """Gets visualization provider for show() related calls.
 
     Returns:
         Visualization provider.
@@ -23,7 +23,7 @@ def get_visualize_provider():
 
 
 def set_visualize_provider(provider):
-    """ Sets visualization provider for show() related calls.
+    """Sets visualization provider for show() related calls.
 
     Args:
         provider: Visualization provider found in "interpret.provider.visualize".
@@ -38,7 +38,7 @@ def set_visualize_provider(provider):
 
 
 def set_show_addr(addr):
-    """ Set a (ip, port) for inline visualizations and dashboard. Has side effects stated below.
+    """Set a (ip, port) for inline visualizations and dashboard. Has side effects stated below.
     Side effect: restarts the app runner for 'show' method.
 
     Args:
@@ -51,7 +51,7 @@ def set_show_addr(addr):
 
 
 def get_show_addr():
-    """ Returns (ip, port) used for show method.
+    """Returns (ip, port) used for show method.
 
     Returns:
         Address tuple (ip, port).
@@ -67,7 +67,7 @@ def get_show_addr():
 
 
 def shutdown_show_server():
-    """ This is a hard shutdown method for the show method's backing server.
+    """This is a hard shutdown method for the show method's backing server.
 
     Returns:
         True if show server has stopped.
@@ -79,7 +79,7 @@ def shutdown_show_server():
 
 
 def status_show_server():
-    """ Returns status and associated information of show method's backing server.
+    """Returns status and associated information of show method's backing server.
 
     Returns:
         Status and associated information as a dictionary.
@@ -96,7 +96,7 @@ def status_show_server():
 
 
 def init_show_server(addr=None, base_url=None, use_relative_links=False):
-    """ Initializes show method's backing server.
+    """Initializes show method's backing server.
 
     Args:
         addr: (ip, port) tuple as address to assign show method to.
@@ -144,7 +144,7 @@ def _get_integer_key(key, explanation):
 
 
 def show(explanation, key=-1, **kwargs):
-    """ Provides an interactive visualization for a given explanation(s).
+    """Provides an interactive visualization for a given explanation(s).
 
     By default, visualization provided is not preserved when the notebook exits.
 
@@ -175,7 +175,7 @@ def show(explanation, key=-1, **kwargs):
 
 
 def show_link(explanation, share_tables=None):
-    """ Provides the backing URL link behind the associated 'show' call for explanation.
+    """Provides the backing URL link behind the associated 'show' call for explanation.
 
     Args:
         explanation: Either a scalar Explanation or list of Explanations
@@ -204,7 +204,7 @@ def show_link(explanation, share_tables=None):
 
 
 def preserve(explanation, selector_key=None, file_name=None, **kwargs):
-    """ Preserves an explanation's visualization for Jupyter cell, or file.
+    """Preserves an explanation's visualization for Jupyter cell, or file.
 
     If file_name is not None the following occurs:
     - For Plotly figures, saves to HTML using `plot`.

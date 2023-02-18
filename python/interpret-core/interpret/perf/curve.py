@@ -10,13 +10,13 @@ import numpy as np
 
 
 class PR(ExplainerMixin):
-    """ Produces precision-recall curves. """
+    """Produces precision-recall curves."""
 
     available_explanations = ["perf"]
     explainer_type = "perf"
 
     def __init__(self, predict_fn, feature_names=None, feature_types=None, **kwargs):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             predict_fn: Function of blackbox that takes input, and returns prediction.
@@ -30,7 +30,7 @@ class PR(ExplainerMixin):
         self.kwargs = kwargs
 
     def explain_perf(self, X, y, name=None):
-        """ Produce precision-recall curves.
+        """Produce precision-recall curves.
 
         Args:
             X: Numpy array for X to compare predict function against.
@@ -76,13 +76,13 @@ class PR(ExplainerMixin):
 
 
 class ROC(ExplainerMixin):
-    """ Produces ROC curves. """
+    """Produces ROC curves."""
 
     available_explanations = ["perf"]
     explainer_type = "perf"
 
     def __init__(self, predict_fn, feature_names=None, feature_types=None, **kwargs):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             predict_fn: Function of blackbox that takes input, and returns prediction.
@@ -96,7 +96,7 @@ class ROC(ExplainerMixin):
         self.kwargs = kwargs
 
     def explain_perf(self, X, y, name=None):
-        """ Produce ROC curves.
+        """Produce ROC curves.
 
         Args:
             X: Numpy array for X to compare predict function against.
@@ -142,7 +142,7 @@ class ROC(ExplainerMixin):
 
 
 class ROCExplanation(ExplanationMixin):
-    """ Explanation object specific to ROC explainer. """
+    """Explanation object specific to ROC explainer."""
 
     explanation_type = None
 
@@ -155,7 +155,7 @@ class ROCExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             explanation_type:  Type of explanation.
@@ -174,7 +174,7 @@ class ROCExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
-        """ Provides specific explanation data.
+        """Provides specific explanation data.
 
         Args:
             key: A number/string that references a specific data item.
@@ -188,7 +188,7 @@ class ROCExplanation(ExplanationMixin):
         return None
 
     def visualize(self, key=None):
-        """ Provides interactive visualizations.
+        """Provides interactive visualizations.
 
         Args:
             key: Either a scalar or list
@@ -215,7 +215,7 @@ class ROCExplanation(ExplanationMixin):
 
 
 class PRExplanation(ExplanationMixin):
-    """ Explanation object specific to PR explainer."""
+    """Explanation object specific to PR explainer."""
 
     explanation_type = None
 
@@ -228,7 +228,7 @@ class PRExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             explanation_type:  Type of explanation.
@@ -246,7 +246,7 @@ class PRExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
-        """ Provides specific explanation data.
+        """Provides specific explanation data.
 
         Args:
             key: A number/string that references a specific data item.
@@ -259,7 +259,7 @@ class PRExplanation(ExplanationMixin):
         return None
 
     def visualize(self, key=None):
-        """ Provides interactive visualizations.
+        """Provides interactive visualizations.
 
         Args:
             key: Either a scalar or list

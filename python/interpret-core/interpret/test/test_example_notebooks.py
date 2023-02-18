@@ -30,9 +30,7 @@ def run_notebook(notebook_path):
     )
     # Set n_jobs to None where appropriate
     for cell in nb.cells:
-        cell["source"] = re.sub(
-        "n_jobs=-1", "n_jobs=None", cell["source"]
-    )
+        cell["source"] = re.sub("n_jobs=-1", "n_jobs=None", cell["source"])
     proc.preprocess(nb, {"metadata": {"path": package_path}})
 
     errors = []
@@ -76,7 +74,12 @@ def test_example_notebooks(notebook_path):
     # https://github.com/jupyter/nbconvert/issues/1372#issuecomment-691596163
     import sys
     import asyncio
-    if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
+
+    if (
+        sys.version_info[0] == 3
+        and sys.version_info[1] >= 8
+        and sys.platform.startswith("win")
+    ):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     check_notebook(notebook_path)

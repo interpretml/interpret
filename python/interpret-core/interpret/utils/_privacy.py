@@ -8,25 +8,36 @@ from scipy.optimize import brentq
 from ._native import Native
 
 import logging
+
 _log = logging.getLogger(__name__)
+
 
 def validate_eps_delta(eps, delta):
     if eps is None or eps <= 0 or delta is None or delta <= 0:
-        raise ValueError(f"Epsilon: '{eps}' and delta: '{delta}' must be set to positive numbers")
+        raise ValueError(
+            f"Epsilon: '{eps}' and delta: '{delta}' must be set to positive numbers"
+        )
+
 
 def calc_classic_noise_multi(total_queries, target_epsilon, delta, sensitivity):
-    variance = (8*total_queries*sensitivity**2 * np.log(np.exp(1) + target_epsilon / delta)) / target_epsilon ** 2
+    variance = (
+        8
+        * total_queries
+        * sensitivity**2
+        * np.log(np.exp(1) + target_epsilon / delta)
+    ) / target_epsilon**2
     return np.sqrt(variance)
+
 
 # General calculations, largely borrowed from tensorflow/privacy and presented in https://arxiv.org/abs/1911.11607
 def delta_eps_mu(eps, mu):
-    ''' Code adapted from: https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/analysis/gdp_accountant.py#L44
-    '''
-    return norm.cdf(-eps/mu + mu/2) - np.exp(eps) * norm.cdf(-eps/mu - mu/2)
+    """Code adapted from: https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/analysis/gdp_accountant.py#L44"""
+    return norm.cdf(-eps / mu + mu / 2) - np.exp(eps) * norm.cdf(-eps / mu - mu / 2)
+
 
 def calc_gdp_noise_multi(total_queries, target_epsilon, delta):
-    ''' GDP analysis following Algorithm 2 in: https://arxiv.org/abs/2106.09680. 
-    '''
+    """GDP analysis following Algorithm 2 in: https://arxiv.org/abs/2106.09680."""
+
     def f(mu, eps, delta):
         return delta_eps_mu(eps, mu) - delta
 
@@ -34,11 +45,27 @@ def calc_gdp_noise_multi(total_queries, target_epsilon, delta):
     sigma = np.sqrt(total_queries) / final_mu
     return sigma
 
-def private_numeric_binning(X_col, sample_weight, noise_scale, max_bins, min_feature_val, max_feature_val, rng=None):
+
+def private_numeric_binning(
+    X_col,
+    sample_weight,
+    noise_scale,
+    max_bins,
+    min_feature_val,
+    max_feature_val,
+    rng=None,
+):
     native = Native.get_native_singleton()
-    uniform_weights, uniform_edges = np.histogram(X_col, bins=max_bins*2, range=(min_feature_val, max_feature_val), weights=sample_weight)
-    noisy_weights = uniform_weights + native.generate_gaussian_random(rng=rng, stddev=noise_scale, count=uniform_weights.shape[0])
-        
+    uniform_weights, uniform_edges = np.histogram(
+        X_col,
+        bins=max_bins * 2,
+        range=(min_feature_val, max_feature_val),
+        weights=sample_weight,
+    )
+    noisy_weights = uniform_weights + native.generate_gaussian_random(
+        rng=rng, stddev=noise_scale, count=uniform_weights.shape[0]
+    )
+
     # Postprocess to ensure realistic bin values (min=0)
     noisy_weights = np.clip(noisy_weights, 0, None)
 
@@ -73,14 +100,17 @@ def private_numeric_binning(X_col, sample_weight, noise_scale, max_bins, min_fea
 
     return bin_cuts, bin_weights
 
+
 def private_categorical_binning(X_col, sample_weight, noise_scale, max_bins, rng=None):
     native = Native.get_native_singleton()
     # Initialize estimate
-    X_col = X_col.astype('U')
+    X_col = X_col.astype("U")
     uniq_vals, uniq_idxs = np.unique(X_col, return_inverse=True)
     weights = np.bincount(uniq_idxs, weights=sample_weight, minlength=len(uniq_vals))
 
-    weights = weights + native.generate_gaussian_random(rng=rng, stddev=noise_scale, count=weights.shape[0])
+    weights = weights + native.generate_gaussian_random(
+        rng=rng, stddev=noise_scale, count=weights.shape[0]
+    )
 
     # Postprocess to ensure realistic bin values (min=0)
     weights = np.clip(weights, 0, None)
@@ -118,5 +148,3 @@ def private_categorical_binning(X_col, sample_weight, noise_scale, max_bins, rng
                 weights = weights[mask]
 
     return uniq_vals, weights
-
-

@@ -9,7 +9,7 @@ from ..utils import unify_data, unify_predict_fn
 
 
 class PartialDependence(ExplainerMixin):
-    """ Partial dependence plots as defined in Friedman's paper on "Greedy function approximation: a gradient boosting machine".
+    """Partial dependence plots as defined in Friedman's paper on "Greedy function approximation: a gradient boosting machine".
 
     Friedman, Jerome H. "Greedy function approximation: a gradient boosting machine." Annals of statistics (2001): 1189-1232.
     """
@@ -27,7 +27,7 @@ class PartialDependence(ExplainerMixin):
         num_points=10,
         std_coef=1.0,
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             predict_fn: Function of blackbox that takes input, and returns prediction.
@@ -78,7 +78,6 @@ class PartialDependence(ExplainerMixin):
         std_coef=1.0,
         num_ice_samples=10,
     ):
-
         num_uniq_vals = len(np.unique(X[:, col_idx]))
         if feature_type == "categorical" or num_uniq_vals <= num_points:
             grid_points = cls._unique_grid_points(X[:, col_idx])
@@ -114,7 +113,7 @@ class PartialDependence(ExplainerMixin):
         }
 
     def explain_global(self, name=None):
-        """ Provides approximate global explanation for blackbox model.
+        """Provides approximate global explanation for blackbox model.
 
         Args:
             name: User-defined explanation name.
@@ -172,8 +171,7 @@ class PartialDependence(ExplainerMixin):
 
 
 class PDPExplanation(ExplanationMixin):
-    """ Visualizes explanation as a partial dependence plot.
-    """
+    """Visualizes explanation as a partial dependence plot."""
 
     explanation_type = None
 
@@ -186,7 +184,7 @@ class PDPExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             explanation_type:  Type of explanation.
@@ -204,7 +202,7 @@ class PDPExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
-        """ Provides specific explanation data.
+        """Provides specific explanation data.
 
         Args:
             key: A number/string that references a specific data item.
@@ -216,7 +214,7 @@ class PDPExplanation(ExplanationMixin):
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None):
-        """ Provides interactive visualizations.
+        """Provides interactive visualizations.
 
         Args:
             key: Either a scalar or list

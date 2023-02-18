@@ -13,7 +13,7 @@ https://github.com/plotly/plotly.py/blob/944af4a0b28bef2b139307a7808c02c51d804c4
 
 
 def _detect_ipython():
-    """ Detects if called in an IPython environment.
+    """Detects if called in an IPython environment.
     Mostly derived from stackoverflow below:
     https://stackoverflow.com/questions/15411967/how-can-i-check-if-code-is-executed-in-the-ipython-notebook
 
@@ -30,7 +30,7 @@ def _detect_ipython():
 
 
 def _detect_ipython_zmq():
-    """ Detects if in an IPython environment using ZMQ (i.e. notebook/qtconsole/lab).
+    """Detects if in an IPython environment using ZMQ (i.e. notebook/qtconsole/lab).
 
     Mostly derived from stackoverflow below:
     https://stackoverflow.com/questions/15411967/how-can-i-check-if-code-is-executed-in-the-ipython-notebook/24937408
@@ -81,7 +81,9 @@ def _detect_azureml():
     # AzureML seems to have multiple ways to render a notebook or lab.
     # If any of the following succeed, consider it within AzureML
     nbvm_file_path = "/mnt/azmnt/.nbvm"
-    azml_notebook_vm_check = os.path.exists(nbvm_file_path) and os.path.isfile(nbvm_file_path)
+    azml_notebook_vm_check = os.path.exists(nbvm_file_path) and os.path.isfile(
+        nbvm_file_path
+    )
     azml_notebook_check = "AZUREML_NB_PATH" in os.environ
     azml_lab_check = "LOGNAME" in os.environ and os.environ["LOGNAME"] == "azureuser"
     return azml_notebook_vm_check or azml_notebook_check or azml_lab_check
@@ -98,14 +100,21 @@ def _detect_databricks():
 def _is_docker_development_mode():
     return os.environ.get("INTERPRET_DOCKER_MODE", None) == "dev"
 
+
 def _detect_azure_synapse():
     return os.environ.get("AZURE_SERVICE", None) == "Microsoft.ProjectArcadia"
 
+
 def enum(**enums):
-    return type('Enum', (), enums)
+    return type("Enum", (), enums)
 
 
-ENV_DETECTED = enum(CLOUD="CLOUD", NON_CLOUD="NON_CLOUD", BOTH_CLOUD_AND_NON_CLOUD='BOTH_CLOUD_AND_NON_CLOUD') 
+ENV_DETECTED = enum(
+    CLOUD="CLOUD",
+    NON_CLOUD="NON_CLOUD",
+    BOTH_CLOUD_AND_NON_CLOUD="BOTH_CLOUD_AND_NON_CLOUD",
+)
+
 
 def is_cloud_env(detected):
     non_cloud_env = [
@@ -121,14 +130,20 @@ def is_cloud_env(detected):
         "sagemaker",
         "binder",
         "colab",
-        "azuresynapse"
+        "azuresynapse",
     ]
-    if len(set(cloud_env).intersection(detected)) != 0 and len(set(non_cloud_env).intersection(detected))==0:
+    if (
+        len(set(cloud_env).intersection(detected)) != 0
+        and len(set(non_cloud_env).intersection(detected)) == 0
+    ):
         return ENV_DETECTED.CLOUD
-   
-    elif len(set(cloud_env).intersection(detected)) != 0 and len(set(non_cloud_env).intersection(detected)) !=0:
+
+    elif (
+        len(set(cloud_env).intersection(detected)) != 0
+        and len(set(non_cloud_env).intersection(detected)) != 0
+    ):
         return ENV_DETECTED.BOTH_CLOUD_AND_NON_CLOUD
-    else: 
+    else:
         return ENV_DETECTED.NON_CLOUD
 
 

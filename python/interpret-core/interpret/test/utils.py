@@ -95,6 +95,7 @@ def _synthetic(mode="regression"):
 
     return dataset
 
+
 def iris_classification():
     from sklearn.datasets import load_iris
 

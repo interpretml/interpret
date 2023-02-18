@@ -12,7 +12,7 @@ import warnings
 
 # TODO: Make kwargs explicit.
 class LimeTabular(ExplainerMixin):
-    """ Exposes LIME tabular explainer from lime package, in interpret API form.
+    """Exposes LIME tabular explainer from lime package, in interpret API form.
     If using this please cite the original authors as can be found here: https://github.com/marcotcr/lime/blob/master/citation.bib
     """
 
@@ -30,7 +30,7 @@ class LimeTabular(ExplainerMixin):
         n_jobs=1,
         **kwargs
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             predict_fn: Function of blackbox that takes input, and returns prediction.
@@ -65,7 +65,7 @@ class LimeTabular(ExplainerMixin):
         self.lime = LimeTabularExplainer(self.data, **final_kwargs)
 
     def explain_local(self, X, y=None, name=None):
-        """ Generates local explanations for provided instances.
+        """Generates local explanations for provided instances.
 
         Args:
             X: Numpy array for X to explain.

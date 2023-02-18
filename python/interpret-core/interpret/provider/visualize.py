@@ -46,15 +46,17 @@ class AutoVisualizeProvider(VisualizeProvider):
         elif self.in_cloud_env == ENV_DETECTED.BOTH_CLOUD_AND_NON_CLOUD:
             log.info("Detected both cloud and non cloud environment.")
             # val = input("Type 'C' if you want to choose Cloud environment or 'NC' for Non Cloud Environment :")
-            val = 'C'
-            if val == 'C':
-                self.provider = InlineProvider(detected_envs=detected_envs, js_url=JS_URL)
+            val = "C"
+            if val == "C":
+                self.provider = InlineProvider(
+                    detected_envs=detected_envs, js_url=JS_URL
+                )
             else:
                 if self.app_runner:
                     self.provider = DashProvider(self.app_runner)
                 else:
                     self.provider = DashProvider.from_address()
-        else: # ENV_DETECTED.NON_CLOUD
+        else:  # ENV_DETECTED.NON_CLOUD
             log.info("Detected non-cloud environment.")
             if self.app_runner:
                 self.provider = DashProvider(self.app_runner)
@@ -108,8 +110,10 @@ class PreserveProvider(VisualizeProvider):
             display_html(final_html, raw=True)
 
         if visual is None:  # pragma: no cover
-            msg = "No visualization for explanation [{0}] with selector_key [{1}]".format(
-                explanation_name, selector_key
+            msg = (
+                "No visualization for explanation [{0}] with selector_key [{1}]".format(
+                    explanation_name, selector_key
+                )
             )
             log.error(msg)
             if file_name is None:
@@ -153,12 +157,13 @@ class PreserveProvider(VisualizeProvider):
 
 
 class DashProvider(VisualizeProvider):
-    """ Provides rendering via Plotly's Dash.
+    """Provides rendering via Plotly's Dash.
 
     This works in the event of an environment that can expose HTTP(s) ports.
     """
+
     def __init__(self, app_runner):
-        """ Initializes class.
+        """Initializes class.
 
         This requires an instantiated `AppRunner`, call `.from_address` instead
         to initialize both.
@@ -170,7 +175,7 @@ class DashProvider(VisualizeProvider):
 
     @classmethod
     def from_address(cls, addr=None, base_url=None, use_relative_links=False):
-        """ Initialize a new `AppRunner` along with the provider.
+        """Initialize a new `AppRunner` along with the provider.
 
         Args:
             addr: A tuple that is (ip_addr, port).
@@ -212,10 +217,10 @@ class DashProvider(VisualizeProvider):
 
 
 class InlineProvider(VisualizeProvider):
-    """ Provides rendering via JavaScript that are invoked within Jupyter cells."""
+    """Provides rendering via JavaScript that are invoked within Jupyter cells."""
 
     def __init__(self, detected_envs=None, js_url=None):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             detected_envs: Environments targetted as defined in `interpret.utils.environment`.

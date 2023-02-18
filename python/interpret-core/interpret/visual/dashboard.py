@@ -89,7 +89,6 @@ class AppRunner:
         return True
 
     def stop(self):
-
         # Shutdown
         if self._thread is None:
             return True
@@ -136,7 +135,7 @@ class AppRunner:
         self._thread.start()
 
     def ping(self):
-        """ Returns true if web service reachable, otherwise False."""
+        """Returns true if web service reachable, otherwise False."""
 
         try:
             path = _build_path("")
@@ -254,7 +253,6 @@ class DispatcherApp:
         log.debug("SCRIPT NAME: {0}".format(script_name))
 
         try:
-
             if path_info == self.root_path:
                 log.info("Root path requested.")
                 start_response("200 OK", [("content-type", "text/html")])

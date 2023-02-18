@@ -44,6 +44,7 @@ def _build_base64_frame_src(html_str):
     html_hex64 = base64.b64encode(html_str.encode("utf-8")).decode("ascii")
     return "data:text/html;base64,{}".format(html_hex64)
 
+
 def _build_cytoscape_json(cytoscape):
     json_di = {
         "elements": cytoscape.elements,
@@ -52,6 +53,7 @@ def _build_cytoscape_json(cytoscape):
         "stylesheet": cytoscape.stylesheet,
     }
     return json.dumps(json_di)
+
 
 def _build_viz_figure(visualization, detected_envs=None):
     import dash_cytoscape as cyto
@@ -64,10 +66,10 @@ def _build_viz_figure(visualization, detected_envs=None):
     elif isinstance(visualization, go.Figure):
         _type = "plotly"
         figure = json.loads(to_json(visualization))
-        if (hasattr(visualization, "_interpret_help_text")):
-            if ("azuresynapse" in detected_envs):
-                link = synapse_help_link 
-            elif (hasattr(visualization, "_interpret_help_link")):
+        if hasattr(visualization, "_interpret_help_text"):
+            if "azuresynapse" in detected_envs:
+                link = synapse_help_link
+            elif hasattr(visualization, "_interpret_help_link"):
                 link = visualization._interpret_help_link
             else:
                 link = interpret_help_link
@@ -235,7 +237,11 @@ def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=
 
     if "databricks" in detected_envs:
         _render_databricks(init_js + body_js)
-    elif "colab" in detected_envs or "azureml" in detected_envs or "azuresynapse" in detected_envs:
+    elif (
+        "colab" in detected_envs
+        or "azureml" in detected_envs
+        or "azuresynapse" in detected_envs
+    ):
         display(HTML(init_js + body_js))
     else:  # Fallthrough assumes we are in an IPython environment at a minimum.
         if not this.jupyter_initialized:

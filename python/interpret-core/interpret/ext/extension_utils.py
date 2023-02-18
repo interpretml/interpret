@@ -13,7 +13,7 @@ module_logger = logging.getLogger(__name__)
 
 # TODO: More checks for explainer validation, specifically on spec for explainer/explanation when instantiated.
 def _validate_class_name(proposed_class_name):
-    """ Used to validate class names before registration.
+    """Used to validate class names before registration.
 
     Attributes:
         proposed_class_name: The string to name the class.
@@ -31,7 +31,7 @@ def _validate_class_name(proposed_class_name):
 
 
 def load_class_extensions(current_module, extension_key, extension_class_validator):
-    """ Load all registered extensions under the `extension_key` namespace in entry_points.
+    """Load all registered extensions under the `extension_key` namespace in entry_points.
 
     Attributes:
         current_module: The module itself where extension classes should be added.

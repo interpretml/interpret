@@ -3,7 +3,12 @@
 
 from sklearn.base import ClassifierMixin
 from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils import gen_name_from_class, gen_global_selector, gen_local_selector, gen_perf_dicts
+from ..utils import (
+    gen_name_from_class,
+    gen_global_selector,
+    gen_local_selector,
+    gen_perf_dicts,
+)
 from ..utils import unify_data
 
 from copy import deepcopy
@@ -17,7 +22,7 @@ log = logging.getLogger(__name__)
 
 
 class RulesExplanation(ExplanationMixin):
-    """ Visualizes rules as HTML for both global and local explanations. """
+    """Visualizes rules as HTML for both global and local explanations."""
 
     explanation_type = None
 
@@ -30,7 +35,7 @@ class RulesExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             explanation_type:  Type of explanation.
@@ -48,7 +53,7 @@ class RulesExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
-        """ Provides specific explanation data.
+        """Provides specific explanation data.
 
         Args:
             key: A number/string that references a specific data item.
@@ -61,7 +66,7 @@ class RulesExplanation(ExplanationMixin):
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None):
-        """ Provides interactive visualizations.
+        """Provides interactive visualizations.
 
         Args:
             key: Either a scalar or list
@@ -99,7 +104,7 @@ class RulesExplanation(ExplanationMixin):
 
 
 class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
-    """ Decision List Classifier
+    """Decision List Classifier
 
     Currently a slight variant of SkopeRules from skope-rules.
     https://github.com/scikit-learn-contrib/skope-rules
@@ -110,7 +115,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
     explainer_type = "model"
 
     def __init__(self, feature_names=None, feature_types=None, **kwargs):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             feature_names: List of feature names.
@@ -122,7 +127,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         self.kwargs = kwargs
 
     def fit(self, X, y):
-        """ Fits model to provided instances.
+        """Fits model to provided instances.
 
         Args:
             X: Numpy array for training instances.
@@ -136,7 +141,8 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         except ImportError:  # NOTE: skoperules loves six, shame it's deprecated.
             import six
             import sys
-            sys.modules['sklearn.externals.six'] = six
+
+            sys.modules["sklearn.externals.six"] = six
             from skrules import SkopeRules as SR
 
         X, y, self.feature_names, self.feature_types = unify_data(
@@ -170,7 +176,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         return self
 
     def predict(self, X):
-        """ Predicts on provided instances.
+        """Predicts on provided instances.
 
         Args:
             X: Numpy array for instances.
@@ -197,7 +203,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         return scores
 
     def predict_proba(self, X):
-        """ Provides probability estimates on provided instances.
+        """Provides probability estimates on provided instances.
 
         Args:
             X: Numpy array for instances.
@@ -258,7 +264,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         return rules, rule_li, prec_li, recall_li, features_dict
 
     def explain_local(self, X, y=None, name=None):
-        """ Provides local explanations for provided instances.
+        """Provides local explanations for provided instances.
 
         Args:
             X: Numpy array for X to explain.
@@ -304,7 +310,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         )
 
     def explain_global(self, name=None):
-        """ Provides global explanation for model.
+        """Provides global explanation for model.
 
         Args:
             name: User-defined explanation name.

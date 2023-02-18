@@ -27,7 +27,7 @@ COLORS = ["#1f77b4", "#ff7f0e", "#808080", "#3a729b", "#ff420e"]
 
 
 class TreeExplanation(ExplanationMixin):
-    """ Explanation object specific to trees. """
+    """Explanation object specific to trees."""
 
     explanation_type = None
 
@@ -40,7 +40,7 @@ class TreeExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             explanation_type:  Type of explanation.
@@ -59,7 +59,7 @@ class TreeExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
-        """ Provides specific explanation data.
+        """Provides specific explanation data.
 
         Args:
             key: A number/string that references a specific data item.
@@ -72,7 +72,7 @@ class TreeExplanation(ExplanationMixin):
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None):
-        """ Provides interactive visualizations.
+        """Provides interactive visualizations.
 
         Args:
             key: Either a scalar or list
@@ -222,7 +222,7 @@ class TreeExplanation(ExplanationMixin):
 
 
 class BaseShallowDecisionTree:
-    """ Shallow Decision Tree (low depth).
+    """Shallow Decision Tree (low depth).
 
     Currently wrapper around DecisionTreeClassifier in scikit-learn.
     To keep the tree shallow, max depth is defaulted to 3.
@@ -235,7 +235,7 @@ class BaseShallowDecisionTree:
     explainer_type = "model"
 
     def __init__(self, max_depth=3, feature_names=None, feature_types=None, **kwargs):
-        """ Initializes tree with low depth.
+        """Initializes tree with low depth.
 
         Args:
             max_depth: Max depth of tree.
@@ -254,7 +254,7 @@ class BaseShallowDecisionTree:
         return None
 
     def fit(self, X, y):
-        """ Fits model to provided instances.
+        """Fits model to provided instances.
 
         Args:
             X: Numpy array for training instances.
@@ -277,7 +277,7 @@ class BaseShallowDecisionTree:
         return self
 
     def predict(self, X):
-        """ Predicts on provided instances.
+        """Predicts on provided instances.
 
         Args:
             X: Numpy array for instances.
@@ -289,7 +289,7 @@ class BaseShallowDecisionTree:
         return self._model().predict(X)
 
     def explain_global(self, name=None):
-        """ Provides global explanation for model.
+        """Provides global explanation for model.
 
         Args:
             name: User-defined explanation name.
@@ -333,7 +333,7 @@ class BaseShallowDecisionTree:
         )
 
     def explain_local(self, X, y=None, name=None):
-        """ Provides local explanations for provided instances.
+        """Provides local explanations for provided instances.
 
         Args:
             X: Numpy array for X to explain.
@@ -388,8 +388,8 @@ class BaseShallowDecisionTree:
         )
 
     def _graph_from_tree(self, tree, feature_names=None, max_depth=None):
-        """ Adapted from:
-            https://github.com/scikit-learn/scikit-learn/blob/79bdc8f711d0af225ed6be9fdb708cea9f98a910/sklearn/tree/export.py
+        """Adapted from:
+        https://github.com/scikit-learn/scikit-learn/blob/79bdc8f711d0af225ed6be9fdb708cea9f98a910/sklearn/tree/export.py
         """
         tree_ = tree.tree_
         nodes = []
@@ -473,10 +473,10 @@ class BaseShallowDecisionTree:
 
 
 class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
-    """ Regression tree with shallow depth. """
+    """Regression tree with shallow depth."""
 
     def __init__(self, max_depth=3, feature_names=None, feature_types=None, **kwargs):
-        """ Initializes tree with low depth.
+        """Initializes tree with low depth.
 
         Args:
             max_depth: Max depth of tree.
@@ -495,7 +495,7 @@ class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
         return self.sk_model_
 
     def fit(self, X, y):
-        """ Fits model to provided instances.
+        """Fits model to provided instances.
 
         Args:
             X: Numpy array for training instances.
@@ -509,10 +509,10 @@ class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
 
 
 class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixin):
-    """ Classification tree with shallow depth. """
+    """Classification tree with shallow depth."""
 
     def __init__(self, max_depth=3, feature_names=None, feature_types=None, **kwargs):
-        """ Initializes tree with low depth.
+        """Initializes tree with low depth.
 
         Args:
             max_depth: Max depth of tree.
@@ -531,7 +531,7 @@ class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixi
         return self.sk_model_
 
     def fit(self, X, y):
-        """ Fits model to provided instances.
+        """Fits model to provided instances.
 
         Args:
             X: Numpy array for training instances.
@@ -544,7 +544,7 @@ class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixi
         return super().fit(X, y)
 
     def predict_proba(self, X):
-        """ Probability estimates on provided instances.
+        """Probability estimates on provided instances.
 
         Args:
             X: Numpy array for instances.

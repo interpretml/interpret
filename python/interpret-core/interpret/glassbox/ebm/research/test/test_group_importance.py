@@ -3,16 +3,24 @@ import numpy as np
 import pytest
 from sklearn.exceptions import NotFittedError
 
-from interpret.glassbox import ExplainableBoostingRegressor, ExplainableBoostingClassifier
-from interpret.test.utils import synthetic_multiclass, synthetic_classification, synthetic_regression
+from interpret.glassbox import (
+    ExplainableBoostingRegressor,
+    ExplainableBoostingClassifier,
+)
+from interpret.test.utils import (
+    synthetic_multiclass,
+    synthetic_classification,
+    synthetic_regression,
+)
 from interpret.glassbox.ebm.research.group_importance import (
     compute_group_importance,
     _get_group_name,
     append_group_importance,
     get_group_and_individual_importances,
     get_individual_importances,
-    get_importance_per_top_groups
+    get_importance_per_top_groups,
 )
+
 
 def test_group_name():
     mocked_ebm_term_list = ["Ft1", "Ft2", "Ft3", "Ft4", "Ft1 & Ft2"]
@@ -29,6 +37,7 @@ def test_group_name():
     out_of_bound_indices = [-1, 5]
     with pytest.raises(ValueError):
         _get_group_name(out_of_bound_indices, mocked_ebm_term_list)
+
 
 def test_append_group_importance():
     data = synthetic_regression()
@@ -55,11 +64,20 @@ def test_append_group_importance():
 
     global_explanation = append_group_importance(term_names, ebm, X)
     assert "A, B" in global_explanation._internal_obj["overall"]["names"]
-    assert compute_group_importance(term_names, ebm, X) in global_explanation._internal_obj["overall"]["scores"]
+    assert (
+        compute_group_importance(term_names, ebm, X)
+        in global_explanation._internal_obj["overall"]["scores"]
+    )
 
-    global_explanation = append_group_importance(term_names, ebm, X, group_name="Comp 1")
+    global_explanation = append_group_importance(
+        term_names, ebm, X, group_name="Comp 1"
+    )
     assert "Comp 1" in global_explanation._internal_obj["overall"]["names"]
-    assert compute_group_importance(term_names, ebm, X) in global_explanation._internal_obj["overall"]["scores"]
+    assert (
+        compute_group_importance(term_names, ebm, X)
+        in global_explanation._internal_obj["overall"]["scores"]
+    )
+
 
 def test_append_multiple_group_importances():
     data = synthetic_regression()
@@ -72,11 +90,20 @@ def test_append_multiple_group_importances():
     ebm.fit(X, y)
 
     global_explanation = append_group_importance(term_names_1, ebm, X)
-    global_explanation = append_group_importance(term_names_2, ebm, X, global_exp=global_explanation)
+    global_explanation = append_group_importance(
+        term_names_2, ebm, X, global_exp=global_explanation
+    )
     assert "A, B" in global_explanation._internal_obj["overall"]["names"]
     assert "C, D" in global_explanation._internal_obj["overall"]["names"]
-    assert compute_group_importance(term_names_1, ebm, X) in global_explanation._internal_obj["overall"]["scores"]
-    assert compute_group_importance(term_names_2, ebm, X) in global_explanation._internal_obj["overall"]["scores"]
+    assert (
+        compute_group_importance(term_names_1, ebm, X)
+        in global_explanation._internal_obj["overall"]["scores"]
+    )
+    assert (
+        compute_group_importance(term_names_2, ebm, X)
+        in global_explanation._internal_obj["overall"]["scores"]
+    )
+
 
 def test_append_same_importance_twice():
     data = synthetic_regression()
@@ -89,7 +116,10 @@ def test_append_same_importance_twice():
 
     global_explanation = append_group_importance(term_names_1, ebm, X)
     with pytest.raises(ValueError):
-        global_explanation = append_group_importance(term_names_1, ebm, X, global_exp=global_explanation)
+        global_explanation = append_group_importance(
+            term_names_1, ebm, X, global_exp=global_explanation
+        )
+
 
 def test_group_and_individual_importances():
     data = synthetic_regression()
@@ -115,6 +145,7 @@ def test_group_and_individual_importances():
     assert dict["A, B"] == compute_group_importance(term_names_1, ebm, X)
     assert dict["C, D"] == compute_group_importance(term_names_2, ebm, X)
 
+
 def test_individual_importances():
     data = synthetic_regression()
     X = data["full"]["X"]
@@ -129,6 +160,7 @@ def test_individual_importances():
     assert dict["B"] == compute_group_importance(["B"], ebm, X, contributions)
     assert dict["C"] == compute_group_importance(["C"], ebm, X, contributions)
     assert dict["D"] == compute_group_importance(["D"], ebm, X, contributions)
+
 
 def test_get_importance_per_top_groups():
     data = synthetic_regression()
@@ -148,6 +180,7 @@ def test_get_importance_per_top_groups():
     assert list(dict.keys())[0] in df["terms_per_group"][1]
     assert list(dict.keys())[1] in df["terms_per_group"][1]
 
+
 def _check_group_importance(X, y, ebm):
     term_names = ["A", "B"]
     term_indices = [0, 1]
@@ -166,20 +199,26 @@ def _check_group_importance(X, y, ebm):
         compute_group_importance([], ebm, X)
 
     # It should be the same for term names and indices
-    assert compute_group_importance(term_names, ebm, X) == \
-        compute_group_importance(term_indices, ebm, X)
+    assert compute_group_importance(term_names, ebm, X) == compute_group_importance(
+        term_indices, ebm, X
+    )
 
     # For one term, its importance should be approx. equal to the one computed by interpret
     # TODO For multiclass this is currently consistent with interpret, but might be changed
-    assert pytest.approx(ebm.term_importances()[0]) == compute_group_importance(["A"], ebm, X)
+    assert pytest.approx(ebm.term_importances()[0]) == compute_group_importance(
+        ["A"], ebm, X
+    )
 
     mixed_list = ["A", 1]
-    assert compute_group_importance(["A", "B"], ebm, X) == \
-        compute_group_importance(mixed_list, ebm, X)
+    assert compute_group_importance(["A", "B"], ebm, X) == compute_group_importance(
+        mixed_list, ebm, X
+    )
 
     _, contributions = ebm.predict_and_contrib(X)
-    assert compute_group_importance(term_names, ebm, X, contributions) == \
-        compute_group_importance(term_names, ebm, X)
+    assert compute_group_importance(
+        term_names, ebm, X, contributions
+    ) == compute_group_importance(term_names, ebm, X)
+
 
 def test_group_importance_regression():
     data = synthetic_regression()
@@ -189,6 +228,7 @@ def test_group_importance_regression():
     ebm = ExplainableBoostingRegressor()
     _check_group_importance(X, y, ebm)
 
+
 def test_group_importance_classification():
     data = synthetic_classification()
     X = data["full"]["X"]
@@ -196,6 +236,7 @@ def test_group_importance_classification():
 
     ebm = ExplainableBoostingClassifier()
     _check_group_importance(X, y, ebm)
+
 
 def test_group_importance_multiclass():
     data = synthetic_multiclass()

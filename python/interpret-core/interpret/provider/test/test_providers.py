@@ -38,7 +38,6 @@ def test_joblib_provider():
     assert results == [2, 4, 6]
 
 
-
 @pytest.mark.slow
 def test_auto_visualize_provider(example_explanation):
     # NOTE: We know this environment is going to use Dash.

@@ -2,7 +2,12 @@
 # Distributed under the MIT software license
 
 import numpy as np
-from interpret.glassbox.ebm.research.purify import purify_row, purify_col, purify_once, purify
+from interpret.glassbox.ebm.research.purify import (
+    purify_row,
+    purify_col,
+    purify_once,
+    purify,
+)
 
 n_rows = 10
 n_cols = 15
@@ -169,6 +174,7 @@ def test_purify_randomize():
 
 def test_purify_identifiable():
     np.random.seed(0)
+
     # Test whether perturbing a model, then purifying it recovers the original model.
     def helper(randomize):
         raw_mat = np.random.uniform(-1, 1, size=(n_rows, n_cols)) * np.random.binomial(

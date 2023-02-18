@@ -16,7 +16,7 @@ from sklearn.linear_model import Lasso as SKLinear
 
 
 class BaseLinear:
-    """ Base linear model.
+    """Base linear model.
 
     Currently wrapper around linear models in scikit-learn.
 
@@ -30,7 +30,7 @@ class BaseLinear:
     def __init__(
         self, feature_names=None, feature_types=None, linear_class=SKLinear, **kwargs
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             feature_names: List of feature names.
@@ -49,7 +49,7 @@ class BaseLinear:
         return None
 
     def fit(self, X, y):
-        """ Fits model to provided instances.
+        """Fits model to provided instances.
 
         Args:
             X: Numpy array for training instances.
@@ -80,7 +80,7 @@ class BaseLinear:
         return self
 
     def predict(self, X):
-        """ Predicts on provided instances.
+        """Predicts on provided instances.
 
         Args:
             X: Numpy array for instances.
@@ -92,7 +92,7 @@ class BaseLinear:
         return self._model().predict(X)
 
     def explain_local(self, X, y=None, name=None):
-        """ Provides local explanations for provided instances.
+        """Provides local explanations for provided instances.
 
         Args:
             X: Numpy array for X to explain.
@@ -181,7 +181,7 @@ class BaseLinear:
         )
 
     def explain_global(self, name=None):
-        """ Provides global explanation for model.
+        """Provides global explanation for model.
 
         Args:
             name: User-defined explanation name.
@@ -255,7 +255,7 @@ class BaseLinear:
 
 
 class LinearExplanation(FeatureValueExplanation):
-    """ Visualizes specifically for Linear methods. """
+    """Visualizes specifically for Linear methods."""
 
     explanation_type = None
 
@@ -268,7 +268,7 @@ class LinearExplanation(FeatureValueExplanation):
         name=None,
         selector=None,
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             explanation_type:  Type of explanation.
@@ -289,7 +289,7 @@ class LinearExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
-        """ Provides interactive visualizations.
+        """Provides interactive visualizations.
 
         Args:
             key: Either a scalar or list
@@ -354,7 +354,7 @@ class LinearExplanation(FeatureValueExplanation):
 
 
 class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):
-    """ Linear regression.
+    """Linear regression.
 
     Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn
     """
@@ -362,7 +362,7 @@ class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):
     def __init__(
         self, feature_names=None, feature_types=None, linear_class=SKLinear, **kwargs
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             feature_names: List of feature names.
@@ -376,7 +376,7 @@ class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):
         return self.sk_model_
 
     def fit(self, X, y):
-        """ Fits model to provided instances.
+        """Fits model to provided instances.
 
         Args:
             X: Numpy array for training instances.
@@ -390,7 +390,7 @@ class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):
 
 
 class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
-    """ Logistic regression.
+    """Logistic regression.
 
     Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn
     """
@@ -398,7 +398,7 @@ class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
     def __init__(
         self, feature_names=None, feature_types=None, linear_class=SKLogistic, **kwargs
     ):
-        """ Initializes class.
+        """Initializes class.
 
         Args:
             feature_names: List of feature names.
@@ -412,7 +412,7 @@ class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
         return self.sk_model_
 
     def fit(self, X, y):
-        """ Fits model to provided instances.
+        """Fits model to provided instances.
 
         Args:
             X: Numpy array for training instances.
@@ -425,7 +425,7 @@ class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
         return super().fit(X, y)
 
     def predict_proba(self, X):
-        """ Probability estimates on provided instances.
+        """Probability estimates on provided instances.
 
         Args:
             X: Numpy array for instances.

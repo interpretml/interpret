@@ -21,6 +21,7 @@ class JobLibProvider(ComputeProvider):
         )
         return results
 
+
 # NOTE: Not implemented yet
 class AzureMLProvider(ComputeProvider):
     def parallel(self, compute_fn, compute_args_iter):
