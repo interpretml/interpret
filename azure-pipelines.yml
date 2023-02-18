@@ -79,7 +79,7 @@ jobs:
       artifactName: asm-arm-$(image.name)
     displayName: 'Publish assembly arm'
 
-- job: 'bld_javascript_inline'
+- job: 'bld_vis'
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
   variables:
@@ -87,16 +87,16 @@ jobs:
   steps:
   - script: npm install && npm run build-prod
     workingDirectory: 'python/interpret-core/js'
-    displayName: 'bld_javascript_inline'
+    displayName: 'bld_vis'
   - task: CopyFiles@2
     inputs:
       sourceFolder: 'python/interpret-core/js/dist'
       contents: 'interpret-inline.js'
-      targetFolder: '$(Build.ArtifactStagingDirectory)'
+      targetFolder: '$(Build.ArtifactStagingDirectory)/vis'
     displayName: 'Copy interpret-inline.js library'
   - task: PublishBuildArtifacts@1
     inputs:
-      pathtoPublish: $(Build.ArtifactStagingDirectory)
+      pathtoPublish: $(Build.ArtifactStagingDirectory)/vis
       artifactName: interpret-inline-bundle
     displayName: 'Publish interpret-inline.js library'
 
@@ -113,11 +113,11 @@ jobs:
     inputs:
       sourceFolder: 'python/interpret-core/js'
       contents: '*.tgz'
-      targetFolder: '$(Build.ArtifactStagingDirectory)'
+      targetFolder: '$(Build.ArtifactStagingDirectory)/npm'
     displayName: 'Copy npm package'
   - task: PublishBuildArtifacts@1
     inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)/npm'
       artifactName: 'npm'
     displayName: 'Publish npm package'
 
@@ -142,11 +142,11 @@ jobs:
     inputs:
       sourceFolder: staging
       contents: 'interpret_*.tar.gz'
-      targetFolder: '$(Build.ArtifactStagingDirectory)'
+      targetFolder: '$(Build.ArtifactStagingDirectory)/R'
     displayName: 'Copy R package'
   - task: PublishBuildArtifacts@1
     inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)/R'
       artifactName: 'R'
     displayName: 'Publish R package'
 
@@ -172,16 +172,16 @@ jobs:
     inputs:
       sourceFolder: staging
       contents: '*.tar.gz'
-      targetFolder: '$(Build.ArtifactStagingDirectory)'
+      targetFolder: '$(Build.ArtifactStagingDirectory)/sdist'
     displayName: 'Copy sdist python package'
   - task: PublishBuildArtifacts@1
     inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)/sdist'
       artifactName: 'sdist'
     displayName: 'Publish sdist python package'
 
 - job: 'bld_bdist_package'
-  dependsOn: ['bld_native', 'bld_javascript_inline']
+  dependsOn: ['bld_native', 'bld_vis']
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
   variables:
@@ -229,11 +229,11 @@ jobs:
     inputs:
       sourceFolder: staging
       contents: '*.whl'
-      targetFolder: '$(Build.ArtifactStagingDirectory)'
+      targetFolder: '$(Build.ArtifactStagingDirectory)/bdist'
     displayName: 'Copy bdist python package'
   - task: PublishBuildArtifacts@1
     inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)/bdist'
       artifactName: 'wheel'
     displayName: 'Publish bdist python package'
 
