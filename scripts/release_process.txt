@@ -1,0 +1,35 @@
+PRE:
+  - update all version numbers for R, PyPi, conda-forge, npm(interpret-inline):
+
+  - download the bdist package from the Azure pipeline and install it in a fresh environment
+  - run through all the sample notebooks in Jupyter notebook to check that they all work visually
+  - set interpret-inline to use the cloud js that we plan to publish and re-run all the sample notebooks
+
+R:
+  - CRAN is very picky on warnings, so release this first so that the version numbers will more likely match up with the python releases
+  - download the R package from Azure pipelines
+  - test it with multiple platforms in: https://builder.r-hub.io
+  - In particular, the "Oracle Developer Studio 12.6" is worth testing as that C++ compiler is picky, and CRAN tests it
+
+interpret-inline:
+  - before releasing make sure to test locally with the inline provider
+  - after uploading to npm, set interpret to use the npm version of interpret-inline and re-run the sample notebooks using the newly uploaded cloud js
+
+conda-forge:
+  - interpret-core:
+    - submit a PR to update the version number, re-enable the pytest tests, and set "pip check" on (perhaps temporarily)
+    - after we get it working satisfactorily, leave the PR until we're ready to publish the package everywhere
+
+pip (bdist):
+  - we've alrady tested this in the pre-check, so if nothing has changed then we're ok
+
+pip (sdist):
+  - create anaconda prompt
+  - get the Visual studio environment with: "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+  - install the sdist and try running the sample notebooks
+
+conda-forge:
+  - interpret:
+    - submit the interpret-core PR and wait until conda updates the package
+    - submit a PR to update the version number for the interpret package, re-enable the pytest tests, and set "pip check" on (maybe temporarily)
+    - submit the interpret PR and wait until conda updates the package

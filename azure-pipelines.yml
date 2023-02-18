@@ -378,35 +378,34 @@ jobs:
 
 - job: 'Test'
   dependsOn: 'Build_Package'
-  # NOTE: Python 3.9 not supported yet in Azure DevOps.
   strategy:
     matrix:
-      LinuxPython37:
-        python.version: '3.7'
-        image.name: '${{ variables.ubuntu_image }}'
       LinuxPython38:
         python.version: '3.8'
         image.name: '${{ variables.ubuntu_image }}'
       LinuxPython39:
         python.version: '3.9'
         image.name: '${{ variables.ubuntu_image }}'
-      WindowsPython37:
-        python.version: '3.7'
-        image.name: '${{ variables.windows_image }}'
+      LinuxPython310:
+        python.version: '3.10'
+        image.name: '${{ variables.ubuntu_image }}'
       WindowsPython38:
         python.version: '3.8'
         image.name: '${{ variables.windows_image }}'
       WindowsPython39:
         python.version: '3.9'
         image.name: '${{ variables.windows_image }}'
-      MacPython37:
-        python.version: '3.7'
-        image.name: '${{ variables.mac_image }}'
+      WindowsPython310:
+        python.version: '3.10'
+        image.name: '${{ variables.windows_image }}'
       MacPython38:
         python.version: '3.8'
         image.name: '${{ variables.mac_image }}'
       MacPython39:
         python.version: '3.9'
+        image.name: '${{ variables.mac_image }}'
+      MacPython310:
+        python.version: '3.10'
         image.name: '${{ variables.mac_image }}'
     maxParallel: 9
   pool:

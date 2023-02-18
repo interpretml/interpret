@@ -89,7 +89,7 @@ extras = {
     ],
     # Testing
     "testing": [
-        "pytest>=4.3.0,<=6.0.2",
+        "pytest>=4.3.0",
         "pytest-runner>=4.4",
         "pytest-xdist>=1.29",
         "nbconvert>=5.4.1",
@@ -201,9 +201,13 @@ setup(
     packages=find_packages(),
     package_data=package_data,
     classifiers=[
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
