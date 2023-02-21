@@ -45,8 +45,7 @@ class ShapTree(ExplainerMixin):
         )
 
         self.model = model
-        self.is_classifier = is_classifier(self.model)
-        if is_classifier:
+        if is_classifier(self.model):
             predict_fn = self.model.predict_proba
         else:
             predict_fn = self.model.predict
@@ -79,6 +78,6 @@ class ShapTree(ExplainerMixin):
             X,
             y=y,
             name=name,
-            is_classification=self.is_classifier,
+            is_classification=is_classifier(self.model),
             check_additivity=check_additivity,
         )
