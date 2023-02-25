@@ -23,6 +23,7 @@ parts:
     - file: lime
     - file: pdp
     - file: msa
+  - file: shap-ebm-comparison
 - caption: Framework
   chapters:
   - file: framework
