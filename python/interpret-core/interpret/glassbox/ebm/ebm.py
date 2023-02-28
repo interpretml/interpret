@@ -959,7 +959,7 @@ class EBMModel(BaseEstimator):
 
         if type(self.intercept_) is float:
             # scikit-learn requires that we have a single float value as our intercept for compatibility with
-            # RegressorMixin, but in other scenarios where we want to support things like mulit-output it would be
+            # RegressorMixin, but in other scenarios where we want to support things like multi-output it would be
             # easier if the regression intercept were handled identically to classification, so put it in an array
             # for our JSON format to harmonize the cross-language representation
             j["intercept"] = [EBMUtils.jsonify_item(self.intercept_)]
@@ -1072,8 +1072,7 @@ class EBMModel(BaseEstimator):
             feature = {}
 
             feature["name"] = self.feature_names_in_[i]
-            feature_type = self.feature_types_in_[i]
-            feature["type"] = feature_type
+            feature["type"] = self.feature_types_in_[i]
 
             if 1 <= level:
                 if unique_val_counts is not None:
@@ -1081,7 +1080,21 @@ class EBMModel(BaseEstimator):
                 if zero_val_counts is not None:
                     feature["num_zero_vals"] = int(zero_val_counts[i])
 
-            if feature_type == "continuous":
+            if isinstance(self.bins_[i][0], dict):
+                categories = []
+                for bins in self.bins_[i]:
+                    leveled_categories = []
+                    feature_categories = list(map(tuple, map(reversed, bins.items())))
+                    feature_categories.sort()  # groupby requires sorted data
+                    for _, category_iter in groupby(feature_categories, lambda x: x[0]):
+                        category_group = [category for _, category in category_iter]
+                        if len(category_group) == 1:
+                            leveled_categories.append(category_group[0])
+                        else:
+                            leveled_categories.append(category_group)
+                    categories.append(leveled_categories)
+                feature["categories"] = categories
+            else:
                 cuts = []
                 for bins in self.bins_[i]:
                     cuts.append(bins.tolist())
@@ -1100,20 +1113,6 @@ class EBMModel(BaseEstimator):
                             feature[
                                 "histogram_counts"
                             ] = feature_histogram_counts.tolist()
-            else:
-                categories = []
-                for bins in self.bins_[i]:
-                    leveled_categories = []
-                    feature_categories = list(map(tuple, map(reversed, bins.items())))
-                    feature_categories.sort()  # groupby requires sorted data
-                    for _, category_iter in groupby(feature_categories, lambda x: x[0]):
-                        category_group = [category for _, category in category_iter]
-                        if len(category_group) == 1:
-                            leveled_categories.append(category_group[0])
-                        else:
-                            leveled_categories.append(category_group)
-                    categories.append(leveled_categories)
-                feature["categories"] = categories
 
             features.append(feature)
         j["features"] = features
