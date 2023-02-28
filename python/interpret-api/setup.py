@@ -15,7 +15,7 @@ https://github.com/interpretml/interpret
 setup(
     name=name,
     version=version,
-    author="InterpretML Team",
+    author="The InterpretML Contributors",
     author_email="interpret@microsoft.com",
     description="Fit interpretable machine learning models. Explain blackbox machine learning.",
     long_description=long_description,

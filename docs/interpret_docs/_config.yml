@@ -6,8 +6,8 @@
 #######################################################################################
 # Book settings
 title                       : ""  # The title of the book. Will be placed in the left navbar.
-author                      : InterpretML Team  # The author of the book
-copyright                   : "2021"  # Copyright year to be placed in the footer
+author                      : The InterpretML Contributors  # The author of the book
+copyright                   : "2023"  # Copyright year to be placed in the footer
 logo                        : logo.png  # A path to the book logo
 
 execute:

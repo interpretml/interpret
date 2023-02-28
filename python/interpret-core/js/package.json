@@ -4,7 +4,7 @@
   "description": "Interpret inline library for rendering visualizations across all notebook environments.",
   "main": "index.js",
   "keywords": [],
-  "author": "InterpretML Team",
+  "author": "The InterpretML Contributors",
   "license": "MIT",
   "scripts": {
     "clean": "rm dist/interpret-inline.js",
