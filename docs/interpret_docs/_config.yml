@@ -43,3 +43,4 @@ sphinx:
     - 'sphinx.ext.autodoc'
     - 'sphinx.ext.napoleon'
     - 'sphinxcontrib.katex'
+    - 'sphinxcontrib.bibtex'

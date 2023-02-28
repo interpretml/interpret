@@ -4,3 +4,4 @@ numpy
 ghp-import
 sphinxcontrib-napoleon
 sphinxcontrib-katex
+sphinxcontrib-bibtex
