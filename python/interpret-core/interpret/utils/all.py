@@ -396,67 +396,6 @@ def unify_data(
 
     return new_data, new_labels, new_feature_names, new_feature_types
 
-
-def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=None):
-    """Generates data schema for a given dataset as JSON representable.
-
-    Args:
-        X: Dataframe/ndarray to build schema from.
-        ordinal_max_items: If a numeric column's cardinality
-            is at most this integer,
-            consider it as ordinal instead of continuous.
-        feature_names: Feature names
-        feature_types: Feature types
-
-    Returns:
-        A dictionary - schema that encapsulates column information,
-        such as type and domain.
-    """
-    schema = OrderedDict()
-    col_number = 0
-    if isinstance(X, np.ndarray):
-        log.warning(
-            "Passing a numpy array to schema autogen when it should be dataframe."
-        )
-        if feature_names is None:
-            feature_names = [f"feature_{i:04}" for i in range(1, 1 + X.shape[1])]
-
-        # NOTE: Use rolled out infer_objects for old pandas.
-        # As used from SO:
-        # https://stackoverflow.com/questions/47393134/attributeerror-dataframe-object-has-no-attribute-infer-objects
-        X = pd.DataFrame(X, columns=feature_names)
-        try:
-            X = X.infer_objects()
-        except AttributeError:
-            for k in list(X):
-                X[k] = pd.to_numeric(X[k], errors="ignore")
-
-    if isinstance(X, NDFrame):
-        for name, col_dtype in zip(X.dtypes.index, X.dtypes):
-            schema[name] = {}
-            if is_numeric_dtype(col_dtype):
-                if X[name].isin([np.nan, 0, 1]).all():
-                    schema[name]["type"] = "categorical"
-                else:
-                    schema[name]["type"] = "continuous"
-            elif is_string_dtype(col_dtype):
-                schema[name]["type"] = "categorical"
-            else:  # pragma: no cover
-                warnings.warn("Unknown column: " + name, RuntimeWarning)
-                schema[name]["type"] = "unknown"
-            schema[name]["column_number"] = col_number
-            col_number += 1
-
-        # Override if feature_types is passed as arg.
-        if feature_types is not None:
-            for idx, name in enumerate(X.dtypes.index):
-                schema[name]["type"] = feature_types[idx]
-    else:  # pragma: no cover
-        raise TypeError("EBMs only supports numpy arrays or pandas dataframes.")
-
-    return schema
-
-
 def _assign_feature_type(feature_type, is_boolean=False):
     if is_boolean or is_string_dtype(feature_type):
         return "categorical"

@@ -4,7 +4,6 @@ from interpret.glassbox.ebm.utils import (
     _convert_categorical_to_continuous,
     _create_proportional_tensor,
 )
-from interpret.utils import unify_data, unify_vector
 from interpret.test.utils import synthetic_regression, adult_classification
 
 import numpy as np
@@ -18,10 +17,10 @@ def test_make_bag_regression():
     X_orig = data["full"]["X"]
     y_orig = data["full"]["y"]
 
-    X, y, _, _ = unify_data(X_orig, y_orig)
+    X = np.array(X_orig)
+    y = np.array(y_orig)
 
     w = np.ones_like(y, dtype=np.float64)
-    w = unify_vector(w).astype(np.float64, casting="unsafe", copy=False)
 
     test_size = 0.20
 
@@ -52,10 +51,10 @@ def test_make_bag_classification():
     X_orig = data["full"]["X"]
     y_orig = data["full"]["y"]
 
-    X, y, _, _ = unify_data(X_orig, y_orig)
+    X = np.array(X_orig)
+    y = np.array(y_orig)
 
     w = np.ones_like(y, dtype=np.float64)
-    w = unify_vector(w).astype(np.float64, casting="unsafe", copy=False)
 
     test_size = 0.20
 

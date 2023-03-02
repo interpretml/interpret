@@ -1563,9 +1563,8 @@ def clean_dimensions(data, param_name):
 
         n_items = len(item)
         if n_items == 1:
-            data[idx] = item[
-                0
-            ]  # keep iterating down into them until they hit a non-1 length
+            # keep iterating down into them until they hit a non-1 length
+            data[idx] = item[0]
             continue
 
         if n_second_dim is not None and n_second_dim != n_items:
@@ -1594,13 +1593,11 @@ def clean_dimensions(data, param_name):
                 _log.error(msg)
                 raise TypeError(msg)
 
-            item[sub_idx] = subitem[
-                0
-            ]  # keep iterating down into them until they hit a non-1 length
+            # keep iterating down into them until they hit a non-1 length
+            item[sub_idx] = subitem[0]
 
-        data[
-            idx
-        ] = item  # if it was an iterable or we dug into any of the items, we need to replace it
+        # if it was an iterable or we dug into any of the items, we need to replace it
+        data[idx] = item
         idx = idx + 1
 
     if n_second_dim == 0:
@@ -2790,3 +2787,104 @@ def unify_data2(
             X_unified[:, feature_idx] = mapping[X_col]
 
     return X_unified, feature_names_in, feature_types_in
+
+
+def determine_n_classes(model, data, n_samples):
+    if n_samples == 0:
+        msg = "data cannot have 0 samples"
+        _log.error(msg)
+        raise ValueError(msg)
+
+    if is_classifier(model):
+        model = model.predict_proba
+        preds = clean_dimensions(model(data), "model")
+        if n_samples == 1:  # then the sample dimension would have been eliminated
+            if preds.ndim != 1:
+                msg = f"model.predict_proba(data) returned inconsistent number of dimensions"
+                _log.error(msg)
+                raise ValueError(msg)
+            n_classes = preds.shape[0]
+        else:
+            if preds.shape[0] == 0:
+                # we have at least 2 samples, so this means classes was an empty dimension
+                n_classes = 0
+            elif preds.shape[0] != n_samples:
+                msg = f"model.predict_proba(data) returned inconsistent number of samples compared to data"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif preds.ndim == 1:
+                # we have at least 2 samples, so the one dimension must be for samples, and the other dimension must have been 1 class (mono-classification)
+                n_classes = 1
+            else:
+                n_classes = preds.shape[1]
+    elif is_regressor(model):
+        n_classes = -1
+        model = model.predict
+        preds = clean_dimensions(model(data), "model")
+        if preds.ndim != 1:
+            msg = f"model.predict(data) must have only 1 dimension"
+            _log.error(msg)
+            raise ValueError(msg)
+        elif preds.shape[0] != n_samples:
+            msg = f"model.predict(data) returned inconsistent number of samples compared to data"
+            _log.error(msg)
+            raise ValueError(msg)
+    else:
+        preds = clean_dimensions(model(data), "model")
+        if n_samples == 1:  # then the sample dimension would have been eliminated
+            if preds.ndim != 1:
+                msg = f"model(data) has an inconsistent number of samples compared to data"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif preds.shape[0] != 1:
+                # regression is always 1, so it's probabilities, and therefore classification
+                n_classes = preds.shape[0]
+            else:
+                # it could be mono-classification, but that's unlikely, so it's regression
+                n_classes = -1
+        else:
+            if preds.shape[0] == 0:
+                # we have at least 2 samples, so this means classes was an empty dimension
+                n_classes = 0
+            elif preds.shape[0] != n_samples:
+                msg = f"model(data) has an inconsistent number of samples compared to data"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif preds.ndim == 1:
+                # we have at least 2 samples, so the first dimension must be for samples, and the second held 1 value.
+                # it could be mono-classification, but that's unlikely, so it's regression
+                n_classes = -1
+            else:
+                # we see a non-1 number of items, so it's probabilities, and therefore classification
+                n_classes = preds.shape[1]
+
+    # at this point model has been converted to a predict_fn
+    return model, n_classes
+
+
+def unify_predict_fn2(n_classes, predict_fn, X):
+    if _pandas_installed and isinstance(X, pd.DataFrame):
+        # scikit-learn now wants a Pandas dataframe if the model was trained on a Pandas dataframe,
+        # so convert it
+        names = X.columns
+        if 0 <= n_classes:
+            # classification
+            def new_predict_fn(x):
+                X_fill = pd.DataFrame(x, columns=names)
+                return predict_fn(X_fill)[:, 1]
+
+            return new_predict_fn
+        else:
+            # regression
+            def new_predict_fn(x):
+                X_fill = pd.DataFrame(x, columns=names)
+                return predict_fn(X_fill)
+
+            return new_predict_fn
+    else:
+        if 0 <= n_classes:
+            # classification
+            return lambda x: predict_fn(x)[:, 1]  # noqa: E731
+        else:
+            # regression
+            return predict_fn

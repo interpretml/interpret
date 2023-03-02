@@ -47,11 +47,11 @@ jobs:
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'win bld_native'
   - script: |
-      sudo apt -y install nvidia-cuda-toolkit
-      if [ $? -ne 0 ]; then 
-         exit 201
-      fi
-      nvcc --version
+      # sudo apt -y install nvidia-cuda-toolkit
+      # if [ $? -ne 0 ]; then 
+      #    exit 201
+      # fi
+      # nvcc --version
       /bin/sh ./build.sh -asm
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: 'linux bld_native'

@@ -6,8 +6,19 @@ from ..api.templates import FeatureValueExplanation
 
 from ..utils import gen_name_from_class, gen_local_selector
 from ..utils import gen_perf_dicts
-from ..utils import unify_data, unify_predict_fn
 import warnings
+
+import numpy as np
+import copy
+from ..utils._binning import (
+    determine_min_cols,
+    clean_X,
+    determine_n_classes,
+    unify_predict_fn2,
+    unify_data2,
+    clean_dimensions,
+    typify_classification,
+)
 
 
 # TODO: Make kwargs explicit.
@@ -19,58 +30,44 @@ class LimeTabular(ExplainerMixin):
     available_explanations = ["local"]
     explainer_type = "blackbox"
 
-    def __init__(
-        self,
-        predict_fn,
-        data,
-        sampler=None,
-        feature_names=None,
-        feature_types=None,
-        explain_kwargs={},
-        n_jobs=1,
-        **kwargs
-    ):
+    def __init__(self, model, data, feature_names=None, feature_types=None, **kwargs):
         """Initializes class.
 
         Args:
-            predict_fn: Function of blackbox that takes input, and returns prediction.
+            model: model or prediction function of model (predict_proba for classification or predict for regression)
             data: Data used to initialize LIME with.
-            sampler: Currently unused. Due for deprecation.
             feature_names: List of feature names.
             feature_types: List of feature types.
-            explain_kwargs: Kwargs that will be sent to lime's explain_instance.
-            n_jobs: Number of jobs to run in parallel.
-            **kwargs: Kwargs that will be sent to lime at initialization time.
+            **kwargs: Kwargs that will be sent to lime
         """
         from lime.lime_tabular import LimeTabularExplainer
 
-        self.data, _, self.feature_names, self.feature_types = unify_data(
-            data, None, feature_names, feature_types
+        min_cols = determine_min_cols(feature_names, feature_types)
+        data, n_samples = clean_X(data, min_cols, None)
+
+        predict_fn, self.n_classes = determine_n_classes(model, data, n_samples)
+
+        self.predict_fn = unify_predict_fn2(self.n_classes, predict_fn, data)
+
+        data, self.feature_names, self.feature_types = unify_data2(
+            data, n_samples, feature_names, feature_types, False, 0
         )
-        self.predict_fn = unify_predict_fn(predict_fn, self.data)
-        self.n_jobs = n_jobs
 
-        if sampler is not None:  # pragma: no cover
-            warnings.warn("Sampler interface not currently supported.")
+        # rewrite these even if the user specified them
+        kwargs = copy.deepcopy(kwargs)
+        kwargs["mode"] = "regression"
+        kwargs["feature_names"] = self.feature_names
 
-        self.sampler = sampler
-        self.explain_kwargs = explain_kwargs
+        self.lime = LimeTabularExplainer(data, **kwargs)
 
-        self.kwargs = kwargs
-        final_kwargs = {"mode": "regression"}
-        if self.feature_names:
-            final_kwargs["feature_names"] = self.feature_names
-        final_kwargs.update(self.kwargs)
-
-        self.lime = LimeTabularExplainer(self.data, **final_kwargs)
-
-    def explain_local(self, X, y=None, name=None):
+    def explain_local(self, X, y=None, name=None, **kwargs):
         """Generates local explanations for provided instances.
 
         Args:
             X: Numpy array for X to explain.
             y: Numpy vector for y to explain.
             name: User-defined explanation name.
+            **kwargs: Kwargs that will be sent to lime
 
         Returns:
             An explanation object, visualizing feature-value pairs
@@ -78,10 +75,27 @@ class LimeTabular(ExplainerMixin):
         """
         if name is None:
             name = gen_name_from_class(self)
-        X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
+
+        n_samples = None
+        if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            n_samples = len(y)
+
+            if 0 <= self.n_classes:
+                y = typify_classification(y)
+            else:
+                y = y.astype(np.float64, copy=False)
+
+        min_cols = determine_min_cols(self.feature_names, self.feature_types)
+        X, n_samples = clean_X(X, min_cols, n_samples)
+
+        X, _, _ = unify_data2(
+            X, n_samples, self.feature_names, self.feature_types, False, 0
+        )
 
         predictions = self.predict_fn(X)
-        pred_fn = self.predict_fn
 
         data_dicts = []
         scores_list = []
@@ -89,7 +103,7 @@ class LimeTabular(ExplainerMixin):
         perf_dicts = gen_perf_dicts(predictions, y, False)
         for i, instance in enumerate(X):
             lime_explanation = self.lime.explain_instance(
-                instance, pred_fn, **self.explain_kwargs
+                instance, self.predict_fn, **kwargs
             )
 
             names = []
