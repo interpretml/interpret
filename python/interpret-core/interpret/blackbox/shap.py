@@ -3,9 +3,15 @@
 from ..utils.shap import shap_explain_local
 
 from ..api.base import ExplainerMixin
-from ..utils import unify_predict_fn, unify_data
 import warnings
 
+from ..utils._binning import (
+    determine_min_cols,
+    clean_X,
+    determine_n_classes,
+    unify_predict_fn2,
+    unify_data2,
+)
 
 class ShapKernel(ExplainerMixin):
     """Exposes SHAP kernel explainer from shap package, in interpret API form.
@@ -17,54 +23,48 @@ class ShapKernel(ExplainerMixin):
 
     def __init__(
         self,
-        predict_fn,
+        model,
         data,
-        sampler=None,
         feature_names=None,
         feature_types=None,
-        explain_kwargs=None,
-        n_jobs=1,
         **kwargs
     ):
         """Initializes class.
 
         Args:
-            predict_fn: Function of blackbox that takes input, and returns prediction.
+            model: model or prediction function of model (predict_proba for classification or predict for regression)
             data: Data used to initialize SHAP with.
-            sampler: Currently unused. Due for deprecation.
             feature_names: List of feature names.
             feature_types: List of feature types.
-            explain_kwargs: Currently unused. Due for deprecation.
-            n_jobs: Number of jobs to run in parallel.
             **kwargs: Kwargs that will be sent to SHAP at initialization time.
         """
 
         import shap
 
-        self.data, _, self.feature_names, self.feature_types = unify_data(
-            data, None, feature_names, feature_types
+        min_cols = determine_min_cols(feature_names, feature_types)
+        data, n_samples = clean_X(data, min_cols, None)
+
+        predict_fn, self.n_classes = determine_n_classes(model, data, n_samples)
+
+        self.predict_fn = unify_predict_fn2(self.n_classes, predict_fn, data)
+
+        data, self.feature_names, self.feature_types = unify_data2(
+            data, n_samples, feature_names, feature_types, False, 0
         )
-        self.predict_fn = unify_predict_fn(predict_fn, self.data)
-        self.n_jobs = n_jobs
 
-        if sampler is not None:  # pragma: no cover
-            warnings.warn("Sampler interface not currently supported.")
-        self.sampler = sampler
-        self.explain_kwargs = explain_kwargs
-        self.kwargs = kwargs
+        self.shap = shap.KernelExplainer(self.predict_fn, data, **kwargs)
 
-        self.shap = shap.KernelExplainer(self.predict_fn, data, **self.kwargs)
-
-    def explain_local(self, X, y=None, name=None):
+    def explain_local(self, X, y=None, name=None, **kwargs):
         """Provides local explanations for provided instances.
 
         Args:
             X: Numpy array for X to explain.
             y: Numpy vector for y to explain.
             name: User-defined explanation name.
+            **kwargs: Kwargs that will be sent to SHAP
 
         Returns:
             An explanation object, visualizing feature-value pairs
             for each instance as horizontal bar charts.
         """
-        return shap_explain_local(self, X, y=y, name=name)
+        return shap_explain_local(self, X, y, name, False, **kwargs)

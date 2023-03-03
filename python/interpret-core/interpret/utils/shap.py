@@ -2,24 +2,50 @@
 # Distributed under the MIT software license
 
 from ..api.templates import FeatureValueExplanation
-from . import gen_name_from_class, unify_data, gen_perf_dicts, gen_local_selector
+from . import gen_name_from_class, gen_perf_dicts, gen_local_selector
 
+import numpy as np
+from ..utils._binning import (
+    determine_min_cols,
+    clean_X,
+    unify_data2,
+    clean_dimensions,
+    typify_classification,
+)
 
 def shap_explain_local(
-    explainer, X, y=None, name=None, is_classification=False, check_additivity=True
+    explainer, X, y, name, is_take_only_second, **kwargs
 ):
     if name is None:
         name = gen_name_from_class(explainer)
-    X, y, _, _ = unify_data(X, y, explainer.feature_names, explainer.feature_types)
 
-    if is_classification:
+    n_samples = None
+    if y is not None:
+        y = clean_dimensions(y, "y")
+        if y.ndim != 1:
+            raise ValueError("y must be 1 dimensional")
+        n_samples = len(y)
+
+        if 0 <= explainer.n_classes:
+            y = typify_classification(y)
+        else:
+            y = y.astype(np.float64, copy=False)
+
+    min_cols = determine_min_cols(explainer.feature_names, explainer.feature_types)
+    X, n_samples = clean_X(X, min_cols, n_samples)
+
+    X, _, _ = unify_data2(
+        X, n_samples, explainer.feature_names, explainer.feature_types, False, 0
+    )
+
+    if is_take_only_second:
         all_shap_values = explainer.shap.shap_values(
-            X, check_additivity=check_additivity
+            X, **kwargs
         )[1]
         expected_value = explainer.shap.expected_value[1]
     else:
         all_shap_values = explainer.shap.shap_values(
-            X, check_additivity=check_additivity
+            X, **kwargs
         )
         expected_value = explainer.shap.expected_value
 

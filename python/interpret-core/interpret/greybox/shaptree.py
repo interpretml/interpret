@@ -5,8 +5,16 @@ from interpret.utils.shap import shap_explain_local
 from sklearn.base import is_classifier
 
 from interpret.api.base import ExplainerMixin
-from interpret.utils import unify_predict_fn, unify_data
 
+import numpy as np
+import copy
+from ..utils._binning import (
+    determine_min_cols,
+    clean_X,
+    determine_n_classes,
+    unify_predict_fn2,
+    unify_data2,
+)
 
 class ShapTree(ExplainerMixin):
     """Exposes tree specific SHAP approximation, in interpret API form.
@@ -22,8 +30,6 @@ class ShapTree(ExplainerMixin):
         data,
         feature_names=None,
         feature_types=None,
-        explain_kwargs=None,
-        n_jobs=1,
         **kwargs
     ):
         """Initializes class.
@@ -31,40 +37,36 @@ class ShapTree(ExplainerMixin):
         Args:
             model: A tree object that works with Tree SHAP.
             data: Data used to initialize SHAP with.
-            sampler: Currently unused. Due for deprecation.
             feature_names: List of feature names.
             feature_types: List of feature types.
-            explain_kwargs: Currently unused. Due for deprecation.
-            n_jobs: Number of jobs to run in parallel.
-            **kwargs: Kwargs that will be sent to SHAP at initialization time.
+            **kwargs: Kwargs that will be sent to SHAP
         """
         import shap
 
-        self.data, _, self.feature_names, self.feature_types = unify_data(
-            data, None, feature_names, feature_types
+        min_cols = determine_min_cols(feature_names, feature_types)
+        data, n_samples = clean_X(data, min_cols, None)
+
+        predict_fn, self.n_classes = determine_n_classes(model, data, n_samples)
+
+        self.predict_fn = unify_predict_fn2(self.n_classes, predict_fn, data)
+
+        data, self.feature_names, self.feature_types = unify_data2(
+            data, n_samples, feature_names, feature_types, False, 0
         )
 
-        self.model = model
-        if is_classifier(self.model):
-            predict_fn = self.model.predict_proba
-        else:
-            predict_fn = self.model.predict
-        self.predict_fn = unify_predict_fn(predict_fn, self.data)
+        # shap.TreeExplainer currently needs data to be np.float64
+        data = data.astype(np.float64, order="C", copy=False)
 
-        self.n_jobs = n_jobs
+        self.shap = shap.TreeExplainer(model, data, **kwargs)
 
-        self.explain_kwargs = explain_kwargs
-        self.kwargs = kwargs
-
-        self.shap = shap.TreeExplainer(model, data, **self.kwargs)
-
-    def explain_local(self, X, y=None, name=None):
+    def explain_local(self, X, y=None, name=None, **kwargs):
         """Provides local explanations for provided instances.
 
         Args:
             X: Numpy array for X to explain.
             y: Numpy vector for y to explain.
             name: User-defined explanation name.
+            **kwargs: Kwargs that will be sent to SHAP
 
         Returns:
             An explanation object, visualizing feature-value pairs
@@ -72,12 +74,13 @@ class ShapTree(ExplainerMixin):
         """
         # NOTE: Check additivity is set to false by default as there is a problem with Mac OS that
         # doesn't always reach the specified precision.
-        check_additivity = self.kwargs.get("check_additivity", False)
+        kwargs = copy.deepcopy(kwargs)
+        kwargs["check_additivity"] = False
         return shap_explain_local(
             self,
             X,
-            y=y,
-            name=name,
-            is_classification=is_classifier(self.model),
-            check_additivity=check_additivity,
+            y,
+            name,
+            0 <= self.n_classes,
+            **kwargs,
         )
