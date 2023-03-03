@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils import unify_data, gen_name_from_class, unify_predict_fn
+from ..utils import gen_name_from_class
 from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import precision_recall_curve, average_precision_score
 
@@ -16,6 +16,7 @@ from ..utils._binning import (
     clean_dimensions,
     typify_classification,
 )
+
 
 class PR(ExplainerMixin):
     """Produces precision-recall curves."""
@@ -57,7 +58,7 @@ class PR(ExplainerMixin):
             n_samples = len(y)
 
         min_cols = determine_min_cols(self.feature_names, self.feature_types)
-        X, n_samples = clean_X(X, min_cols, None)
+        X, n_samples = clean_X(X, min_cols, n_samples)
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
         predict_fn = unify_predict_fn2(n_classes, predict_fn, X)
@@ -139,7 +140,7 @@ class ROC(ExplainerMixin):
             n_samples = len(y)
 
         min_cols = determine_min_cols(self.feature_names, self.feature_types)
-        X, n_samples = clean_X(X, min_cols, None)
+        X, n_samples = clean_X(X, min_cols, n_samples)
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
         predict_fn = unify_predict_fn2(n_classes, predict_fn, X)

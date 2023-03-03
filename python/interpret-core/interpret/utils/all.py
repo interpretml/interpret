@@ -253,15 +253,6 @@ def gen_feature_names_from_df(df):
     return list(df.columns)
 
 
-def unify_predict_fn(predict_fn, X):
-    predictions = predict_fn(X[:1])
-    if predictions.ndim == 2:
-        new_predict_fn = lambda x: predict_fn(x)[:, 1]  # noqa: E731
-        return new_predict_fn
-    else:
-        return predict_fn
-
-
 def unify_vector(data):
     if data is None:
         return None

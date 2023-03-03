@@ -2,10 +2,20 @@
 # Distributed under the MIT software license
 
 from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils import unify_data, gen_name_from_class, unify_predict_fn
+from ..utils import gen_name_from_class
 
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
+
+from ..utils._binning import (
+    determine_min_cols,
+    clean_X,
+    determine_n_classes,
+    unify_predict_fn2,
+    unify_data2,
+    clean_dimensions,
+    typify_classification,
+)
 
 
 class RegressionPerf(ExplainerMixin):
@@ -14,19 +24,17 @@ class RegressionPerf(ExplainerMixin):
     available_explanations = ["perf"]
     explainer_type = "perf"
 
-    def __init__(self, predict_fn, feature_names=None, feature_types=None, **kwargs):
+    def __init__(self, model, feature_names=None, feature_types=None):
         """Initializes class.
 
         Args:
-            predict_fn: Function of blackbox that takes input, and returns prediction.
+            model: model or prediction function of model (predict_proba for classification or predict for regression)
             feature_names: List of feature names.
             feature_types: List of feature types.
-            **kwargs: Currently unused. Due for deprecation.
         """
-        self.predict_fn = predict_fn
+        self.model = model
         self.feature_names = feature_names
         self.feature_types = feature_types
-        self.kwargs = kwargs
 
     def explain_perf(self, X, y, name=None):
         """Produces regression metrics.
@@ -42,11 +50,28 @@ class RegressionPerf(ExplainerMixin):
         if name is None:
             name = gen_name_from_class(self)
 
-        X, y, self.feature_names, self.feature_types = unify_data(
-            X, y, self.feature_names, self.feature_types, missing_data_allowed=True
-        )
+        n_samples = None
+        if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            n_samples = len(y)
 
-        predict_fn = unify_predict_fn(self.predict_fn, X)
+        min_cols = determine_min_cols(self.feature_names, self.feature_types)
+        X, n_samples = clean_X(X, min_cols, n_samples)
+
+        predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
+        predict_fn = unify_predict_fn2(n_classes, predict_fn, X)
+
+        X, feature_names, feature_types = unify_data2(
+            X, n_samples, self.feature_names, self.feature_types, False, 0
+        )
+        if y is not None:
+            if 0 <= n_classes:
+                y = typify_classification(y)
+            else:
+                y = y.astype(np.float64, copy=False)
+
         scores = predict_fn(X)
 
         mse = mean_squared_error(y, scores)
