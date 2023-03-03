@@ -13,6 +13,7 @@ from ..utils._binning import (
     unify_data2,
 )
 
+
 class ShapKernel(ExplainerMixin):
     """Exposes SHAP kernel explainer from shap package, in interpret API form.
     If using this please cite the original authors as can be found here: https://github.com/slundberg/shap
@@ -21,14 +22,7 @@ class ShapKernel(ExplainerMixin):
     available_explanations = ["local"]
     explainer_type = "blackbox"
 
-    def __init__(
-        self,
-        model,
-        data,
-        feature_names=None,
-        feature_types=None,
-        **kwargs
-    ):
+    def __init__(self, model, data, feature_names=None, feature_types=None, **kwargs):
         """Initializes class.
 
         Args:

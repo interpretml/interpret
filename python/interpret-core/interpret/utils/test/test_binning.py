@@ -136,7 +136,7 @@ def check_pandas_normal(dtype, val1, val2):
     assert n_samples == 2
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
 
-    X_cols = list(unify_columns(X, [(0, None)], feature_names_in, None))
+    X_cols = list(unify_columns(X, [(0, None)], feature_names_in, None, 3))
     assert len(X_cols) == 1
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
@@ -147,7 +147,7 @@ def check_pandas_normal(dtype, val1, val2):
     assert X_cols[0][1][1] == X_cols[0][2][str(val2)]
 
     c1 = {str(val1): 1, str(val2): 2}
-    X_cols = list(unify_columns(X, [(0, c1)], feature_names_in, feature_types_given))
+    X_cols = list(unify_columns(X, [(0, c1)], feature_names_in, feature_types_given, 3))
     assert len(X_cols) == 1
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
@@ -158,7 +158,7 @@ def check_pandas_normal(dtype, val1, val2):
     assert X_cols[0][1][1] == X_cols[0][2][str(val2)]
 
     c2 = {str(val2): 1, str(val1): 2}
-    X_cols = list(unify_columns(X, [(0, c2)], feature_names_in, feature_types_given))
+    X_cols = list(unify_columns(X, [(0, c2)], feature_names_in, feature_types_given, 3))
     assert len(X_cols) == 1
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
@@ -194,7 +194,7 @@ def check_pandas_missings(dtype, val1, val2):
 
     X_cols = list(
         unify_columns(
-            X, [(0, None), (1, None), (2, None), (3, None)], feature_names_in, None
+            X, [(0, None), (1, None), (2, None), (3, None)], feature_names_in, None, 3
         )
     )
     assert 4 == len(X_cols)
@@ -245,6 +245,7 @@ def check_pandas_missings(dtype, val1, val2):
             [(0, c1), (1, c1), (2, c1), (3, c1)],
             feature_names_in,
             feature_types_given,
+            3,
         )
     )
     assert 4 == len(X_cols)
@@ -295,6 +296,7 @@ def check_pandas_missings(dtype, val1, val2):
             [(0, c2), (1, c2), (2, c2), (3, c2)],
             feature_names_in,
             feature_types_given,
+            3,
         )
     )
     assert 4 == len(X_cols)
@@ -344,6 +346,7 @@ def check_pandas_missings(dtype, val1, val2):
             [(0, c1), (1, c2), (2, c1), (3, c2)],
             feature_names_in,
             feature_types_given,
+            3,
         )
     )
     assert 4 == len(X_cols)
@@ -459,7 +462,11 @@ def check_numpy_throws(dtype_src, val1, val2):
     try:
         X_cols = list(
             unify_columns(
-                X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+                X,
+                zip(range(len(feature_names_in)), repeat(None)),
+                feature_names_in,
+                None,
+                3,
             )
         )
         assert False
@@ -1237,7 +1244,11 @@ def test_unify_columns_numpy1():
     feature_names_in = unify_feature_names(X)
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert 3 == len(X_cols)
@@ -1253,7 +1264,11 @@ def test_unify_columns_numpy2():
     feature_names_in = unify_feature_names(X)
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert 3 == len(X_cols)
@@ -1280,6 +1295,7 @@ def test_unify_columns_numpy_ignore():
             zip(range(len(feature_names_in)), repeat(None)),
             feature_names_in,
             feature_types_given,
+            3,
         )
     )
     assert 3 == len(X_cols)
@@ -1304,7 +1320,11 @@ def test_unify_columns_scipy():
     feature_names_in = unify_feature_names(X)
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert 3 == len(X_cols)
@@ -1331,7 +1351,11 @@ def test_unify_columns_dict1():
     )
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert 3 == len(X_cols)
@@ -1352,7 +1376,11 @@ def test_unify_columns_dict2():
     )
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert 3 == len(X_cols)
@@ -1377,7 +1405,11 @@ def test_unify_columns_list1():
     feature_names_in = unify_feature_names(X)
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert 4 == len(X_cols)
@@ -1423,7 +1455,11 @@ def test_unify_columns_list2():
     feature_names_in = unify_feature_names(X)
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert 3 == len(X_cols)
@@ -1514,7 +1550,11 @@ def test_unify_columns_tuple1():
     feature_names_in = unify_feature_names(X)
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert 4 == len(X_cols)
@@ -1546,7 +1586,11 @@ def test_unify_columns_tuple2():
     feature_names_in = unify_feature_names(X)
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert 3 == len(X_cols)
@@ -1619,7 +1663,11 @@ def test_unify_columns_generator1():
     feature_names_in = unify_feature_names(X)
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert 4 == len(X_cols)
@@ -1654,7 +1702,11 @@ def test_unify_columns_generator2():
     feature_names_in = unify_feature_names(X)
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert 3 == len(X_cols)
@@ -1850,7 +1902,11 @@ def test_unify_columns_str_throw():
         feature_names_in = ["ANYTHING"]
         X_cols = list(
             unify_columns(
-                X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+                X,
+                zip(range(len(feature_names_in)), repeat(None)),
+                feature_names_in,
+                None,
+                3,
             )
         )
         assert False
@@ -1874,7 +1930,11 @@ def test_unify_columns_int_throw():
         feature_names_in = ["ANYTHING"]
         X_cols = list(
             unify_columns(
-                X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+                X,
+                zip(range(len(feature_names_in)), repeat(None)),
+                feature_names_in,
+                None,
+                3,
             )
         )
         assert False
@@ -1896,7 +1956,11 @@ def test_unify_columns_duplicate_colnames_throw():
         feature_names_in = ["ANYTHING"]
         X_cols = list(
             unify_columns(
-                X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+                X,
+                zip(range(len(feature_names_in)), repeat(None)),
+                feature_names_in,
+                None,
+                3,
             )
         )
         assert False
@@ -1974,7 +2038,11 @@ def test_unify_columns_pandas_obj_to_float():
     feature_names_in = unify_feature_names(X)
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert X_cols[0][0] == "continuous"
@@ -2023,7 +2091,11 @@ def test_unify_columns_pandas_obj_to_str():
     feature_names_in = unify_feature_names(X)
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
 
@@ -2068,7 +2140,11 @@ def test_unify_columns_pandas_categorical():
     feature_names_in = unify_feature_names(X)
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert 1 == len(X_cols)
@@ -2099,7 +2175,11 @@ def test_unify_columns_pandas_ordinal():
     feature_names_in = unify_feature_names(X)
     X_cols = list(
         unify_columns(
-            X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in
+            X,
+            zip(range(len(feature_names_in)), repeat(None)),
+            feature_names_in,
+            None,
+            3,
         )
     )
     assert 1 == len(X_cols)
@@ -2129,7 +2209,7 @@ def test_unify_columns_pandas_categorical_shorter():
     assert n_samples == 5
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
-    X_cols = list(unify_columns(X, [(0, c)], feature_names_in))
+    X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
     assert 1 == len(X_cols)
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
@@ -2153,7 +2233,7 @@ def test_unify_columns_pandas_categorical_equals():
     assert n_samples == 6
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
-    X_cols = list(unify_columns(X, [(0, c)], feature_names_in))
+    X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
     assert 1 == len(X_cols)
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
@@ -2179,7 +2259,7 @@ def test_unify_columns_pandas_categorical_longer():
     assert n_samples == 6
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
-    X_cols = list(unify_columns(X, [(0, c)], feature_names_in))
+    X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
     assert 1 == len(X_cols)
     assert X_cols[0][0] == "nominal"
     assert np.array_equal(
@@ -2206,7 +2286,7 @@ def test_unify_columns_pandas_categorical_reordered_shorter():
     assert n_samples == 5
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
-    X_cols = list(unify_columns(X, [(0, c)], feature_names_in))
+    X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
     assert 1 == len(X_cols)
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
@@ -2230,7 +2310,7 @@ def test_unify_columns_pandas_categorical_reordered_equals():
     assert n_samples == 6
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
-    X_cols = list(unify_columns(X, [(0, c)], feature_names_in))
+    X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
     assert 1 == len(X_cols)
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
@@ -2256,7 +2336,7 @@ def test_unify_columns_pandas_categorical_reordered_longer1():
     assert n_samples == 6
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
-    X_cols = list(unify_columns(X, [(0, c)], feature_names_in))
+    X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
     assert 1 == len(X_cols)
     assert X_cols[0][0] == "nominal"
     assert np.array_equal(
@@ -2285,7 +2365,7 @@ def test_unify_columns_pandas_categorical_reordered_longer2():
     assert n_samples == 6
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
-    X_cols = list(unify_columns(X, [(0, c)], feature_names_in))
+    X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
     assert 1 == len(X_cols)
     assert X_cols[0][0] == "nominal"
     assert np.array_equal(
@@ -2314,7 +2394,7 @@ def test_unify_columns_pandas_categorical_compressed_categories():
     # here we're combining the "a" category and the "0" category into a single one that tracks both.
     # in JSON this can be expressed as the equivalent of [["a", "0"], "bcd"]
     c = {"a": 1, "0": 1, "bcd": 2}
-    X_cols = list(unify_columns(X, [(0, c)], feature_names_in))
+    X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
     assert 1 == len(X_cols)
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None

@@ -208,6 +208,8 @@ def measure_interactions(
         feature_types_given=feature_types,
         max_bins_leveled=[max_interaction_bins],
         binning=binning,
+        min_samples_bin=1,
+        min_unique_continuous=0,
     )
 
     feature_names_in = binning_result[0]

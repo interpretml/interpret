@@ -13,9 +13,8 @@ from ..utils._binning import (
     typify_classification,
 )
 
-def shap_explain_local(
-    explainer, X, y, name, is_take_only_second, **kwargs
-):
+
+def shap_explain_local(explainer, X, y, name, is_take_only_second, **kwargs):
     if name is None:
         name = gen_name_from_class(explainer)
 
@@ -39,14 +38,10 @@ def shap_explain_local(
     )
 
     if is_take_only_second:
-        all_shap_values = explainer.shap.shap_values(
-            X, **kwargs
-        )[1]
+        all_shap_values = explainer.shap.shap_values(X, **kwargs)[1]
         expected_value = explainer.shap.expected_value[1]
     else:
-        all_shap_values = explainer.shap.shap_values(
-            X, **kwargs
-        )
+        all_shap_values = explainer.shap.shap_values(X, **kwargs)
         expected_value = explainer.shap.expected_value
 
     predictions = explainer.predict_fn(X)

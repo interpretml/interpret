@@ -16,6 +16,7 @@ from ..utils._binning import (
     unify_data2,
 )
 
+
 class ShapTree(ExplainerMixin):
     """Exposes tree specific SHAP approximation, in interpret API form.
     If using this please cite the original authors as can be found here: https://github.com/slundberg/shap
@@ -24,14 +25,7 @@ class ShapTree(ExplainerMixin):
     available_explanations = ["local"]
     explainer_type = "specific"
 
-    def __init__(
-        self,
-        model,
-        data,
-        feature_names=None,
-        feature_types=None,
-        **kwargs
-    ):
+    def __init__(self, model, data, feature_names=None, feature_types=None, **kwargs):
         """Initializes class.
 
         Args:

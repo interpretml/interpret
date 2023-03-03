@@ -1106,7 +1106,7 @@ def unify_columns(
     requests,
     feature_names_in,
     feature_types=None,
-    min_unique_continuous=3,
+    min_unique_continuous=0,
     go_fast=False,
 ):
     # If the requests paramter contains a categories dictionary, then that same categories object is guaranteed to
@@ -2045,7 +2045,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         max_bins=256,
         binning="quantile",
         min_samples_bin=1,
-        min_unique_continuous=3,
+        min_unique_continuous=0,
         epsilon=None,
         delta=None,
         composition=None,
@@ -2495,7 +2495,7 @@ def construct_bins(
     max_bins_leveled,
     binning="quantile",
     min_samples_bin=1,
-    min_unique_continuous=3,
+    min_unique_continuous=0,
     epsilon=None,
     delta=None,
     composition=None,
@@ -2718,7 +2718,7 @@ def unify_data2(
     feature_names=None,
     feature_types=None,
     missing_data_allowed=False,
-    min_unique_continuous=3,
+    min_unique_continuous=0,
 ):
     _log.info("Unifying data")
 

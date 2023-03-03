@@ -450,7 +450,7 @@ class EBMModel(BaseEstimator):
             max_bins_leveled=bin_levels,
             binning=self.binning,
             min_samples_bin=1,
-            min_unique_continuous=3,
+            min_unique_continuous=0,
             epsilon=bin_eps,
             delta=bin_delta,
             composition=composition,

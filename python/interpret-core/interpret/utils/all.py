@@ -396,6 +396,7 @@ def unify_data(
 
     return new_data, new_labels, new_feature_names, new_feature_types
 
+
 def _assign_feature_type(feature_type, is_boolean=False):
     if is_boolean or is_string_dtype(feature_type):
         return "categorical"
