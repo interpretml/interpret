@@ -7,7 +7,6 @@ from sklearn.base import is_classifier
 from interpret.api.base import ExplainerMixin
 
 import numpy as np
-import copy
 from ..utils._binning import (
     determine_min_cols,
     clean_X,
@@ -48,7 +47,8 @@ class ShapTree(ExplainerMixin):
             data, n_samples, feature_names, feature_types, False, 0
         )
 
-        # shap.TreeExplainer currently needs data to be np.float64
+        # SHAP does not support string categoricals, and np.object_ is slower,
+        # so convert to np.float64 until we implement some automatic categorical handling
         data = data.astype(np.float64, order="C", copy=False)
 
         self.shap = shap.TreeExplainer(model, data, **kwargs)
@@ -68,7 +68,7 @@ class ShapTree(ExplainerMixin):
         """
         # NOTE: Check additivity is set to false by default as there is a problem with Mac OS that
         # doesn't always reach the specified precision.
-        kwargs = copy.deepcopy(kwargs)
+        kwargs = kwargs.copy()
         kwargs["check_additivity"] = False
         return shap_explain_local(
             self,

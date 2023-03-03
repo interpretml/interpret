@@ -37,6 +37,10 @@ def shap_explain_local(explainer, X, y, name, is_take_only_second, **kwargs):
         X, n_samples, explainer.feature_names, explainer.feature_types, False, 0
     )
 
+    # SHAP does not support string categoricals, and np.object_ is slower,
+    # so convert to np.float64 until we implement some automatic categorical handling
+    X = X.astype(np.float64, order="C", copy=False)
+
     if is_take_only_second:
         all_shap_values = explainer.shap.shap_values(X, **kwargs)[1]
         expected_value = explainer.shap.expected_value[1]

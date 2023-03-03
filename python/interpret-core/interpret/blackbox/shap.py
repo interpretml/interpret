@@ -5,6 +5,7 @@ from ..utils.shap import shap_explain_local
 from ..api.base import ExplainerMixin
 import warnings
 
+import numpy as np
 from ..utils._binning import (
     determine_min_cols,
     clean_X,
@@ -45,6 +46,10 @@ class ShapKernel(ExplainerMixin):
         data, self.feature_names, self.feature_types = unify_data2(
             data, n_samples, feature_names, feature_types, False, 0
         )
+
+        # SHAP does not support string categoricals, and np.object_ is slower,
+        # so convert to np.float64 until we implement some automatic categorical handling
+        data = data.astype(np.float64, order="C", copy=False)
 
         self.shap = shap.KernelExplainer(self.predict_fn, data, **kwargs)
 

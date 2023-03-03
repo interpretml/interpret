@@ -33,8 +33,8 @@ class MorrisSampler(SamplerMixin):
     def sample(self):
         from SALib.sample import morris as morris_sampler
 
-        kwargs = {"num_levels": 4}
-        kwargs.update(self.kwargs)
+        kwargs = self.kwargs.copy()
+        kwargs["num_levels"] = 4
 
         problem = self.gen_problem_from_data(self.data, self.feature_names)
         return morris_sampler.sample(problem, N=self.N, **kwargs)
@@ -77,11 +77,16 @@ class MorrisSensitivity(ExplainerMixin):
 
         self.predict_fn = unify_predict_fn2(self.n_classes, predict_fn, data)
 
-        self.data, self.feature_names, self.feature_types = unify_data2(
+        data, self.feature_names, self.feature_types = unify_data2(
             data, n_samples, feature_names, feature_types, False, 0
         )
 
+        # SALib does not support string categoricals, and np.object_ is slower,
+        # so convert to np.float64 until we implement some automatic categorical handling
+        data = data.astype(np.float64, order="C", copy=False)
+
         # TODO: we can probably pre-process self.data and not store it in this class
+        self.data = data
 
         # if we're going to expose MorrisSampler as a public class that
         # can be passed in we need to somehow clean any data that comes

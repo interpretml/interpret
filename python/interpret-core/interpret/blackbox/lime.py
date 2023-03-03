@@ -9,7 +9,6 @@ from ..utils import gen_perf_dicts
 import warnings
 
 import numpy as np
-import copy
 from ..utils._binning import (
     determine_min_cols,
     clean_X,
@@ -53,8 +52,12 @@ class LimeTabular(ExplainerMixin):
             data, n_samples, feature_names, feature_types, False, 0
         )
 
+        # LimeTabularExplainer does not support string categoricals, and np.object_ is slower,
+        # so convert to np.float64 until we implement some automatic categorical handling
+        data = data.astype(np.float64, order="C", copy=False)
+
         # rewrite these even if the user specified them
-        kwargs = copy.deepcopy(kwargs)
+        kwargs = kwargs.copy()
         kwargs["mode"] = "regression"
         kwargs["feature_names"] = self.feature_names
 
@@ -94,6 +97,10 @@ class LimeTabular(ExplainerMixin):
         X, _, _ = unify_data2(
             X, n_samples, self.feature_names, self.feature_types, False, 0
         )
+
+        # LimeTabularExplainer does not support string categoricals, and np.object_ is slower,
+        # so convert to np.float64 until we implement some automatic categorical handling
+        X = X.astype(np.float64, order="C", copy=False)
 
         predictions = self.predict_fn(X)
 

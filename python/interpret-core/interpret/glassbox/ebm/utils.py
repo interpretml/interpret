@@ -14,7 +14,6 @@ from sklearn.base import is_classifier
 import numbers
 import numpy as np
 import warnings
-import copy
 from itertools import islice
 
 
