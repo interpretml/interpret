@@ -5,7 +5,6 @@ from ..api.base import ExplainerMixin, ExplanationMixin
 import numpy as np
 import warnings
 from ..utils import gen_name_from_class, gen_global_selector
-from ..utils import unify_data, unify_predict_fn
 
 from ..utils._binning import (
     determine_min_cols,
@@ -14,6 +13,7 @@ from ..utils._binning import (
     unify_predict_fn2,
     unify_data2,
 )
+
 
 class PartialDependence(ExplainerMixin):
     """Partial dependence plots as defined in Friedman's paper on "Greedy function approximation: a gradient boosting machine".
@@ -61,7 +61,6 @@ class PartialDependence(ExplainerMixin):
         # TODO: we should preprocess the data here so that we do not need to preserve
         # a reference to an entire dataset
 
-
     @classmethod
     def _unique_grid_points(cls, values):
         unique_points = np.unique(values)
@@ -91,7 +90,11 @@ class PartialDependence(ExplainerMixin):
         num_ice_samples=10,
     ):
         num_uniq_vals = len(np.unique(X[:, col_idx]))
-        if feature_type == "nominal" or feature_type == "ordinal" or num_uniq_vals <= num_points:
+        if (
+            feature_type == "nominal"
+            or feature_type == "ordinal"
+            or num_uniq_vals <= num_points
+        ):
             grid_points = cls._unique_grid_points(X[:, col_idx])
             values, counts = np.unique(X[:, col_idx], return_counts=True)
         else:

@@ -3,11 +3,18 @@
 
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
-from ..utils import unify_predict_fn, unify_data
 from ..utils import gen_name_from_class, gen_global_selector
 
 from abc import ABC, abstractmethod
 import numpy as np
+
+from ..utils._binning import (
+    determine_min_cols,
+    clean_X,
+    determine_n_classes,
+    unify_predict_fn2,
+    unify_data2,
+)
 
 
 class SamplerMixin(ABC):
@@ -53,26 +60,33 @@ class MorrisSensitivity(ExplainerMixin):
     available_explanations = ["global"]
     explainer_type = "blackbox"
 
-    def __init__(
-        self, predict_fn, data, sampler=None, feature_names=None, feature_types=None
-    ):
+    def __init__(self, model, data, feature_names=None, feature_types=None):
         """Initializes class.
 
         Args:
-            predict_fn: Function of blackbox that takes input, and returns prediction.
+            model: model or prediction function of model (predict_proba for classification or predict for regression)
             data: Data used to initialize LIME with.
-            sampler: Currently not user configurable. Due for deprecation.
             feature_names: List of feature names.
             feature_types: List of feature types.
         """
-        self.data, _, self.feature_names, self.feature_types = unify_data(
-            data, None, feature_names, feature_types
-        )
-        self.predict_fn = unify_predict_fn(predict_fn, self.data)
-        self.sampler = sampler
 
-        if self.sampler is None:
-            self.sampler = MorrisSampler(self.data, self.feature_names)
+        min_cols = determine_min_cols(feature_names, feature_types)
+        data, n_samples = clean_X(data, min_cols, None)
+
+        predict_fn, self.n_classes = determine_n_classes(model, data, n_samples)
+
+        self.predict_fn = unify_predict_fn2(self.n_classes, predict_fn, data)
+
+        self.data, self.feature_names, self.feature_types = unify_data2(
+            data, n_samples, feature_names, feature_types, False, 0
+        )
+
+        # TODO: we can probably pre-process self.data and not store it in this class
+
+        # if we're going to expose MorrisSampler as a public class that
+        # can be passed in we need to somehow clean any data that comes
+        # into it where we are currently passing self.data
+        self.sampler = MorrisSampler(self.data, self.feature_names)
 
     def explain_global(self, name=None):
         """Provides approximate global explanation for blackbox model.
