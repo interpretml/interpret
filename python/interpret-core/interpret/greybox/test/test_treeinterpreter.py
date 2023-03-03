@@ -9,8 +9,6 @@ from interpret.greybox import TreeInterpreter
 import pytest
 
 
-# TODO: Stop ignoring when treeinterpreter updates upstream.
-@pytest.mark.skip
 def test_that_tree_works():
     from treeinterpreter import treeinterpreter as ti
 
