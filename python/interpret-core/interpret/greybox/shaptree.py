@@ -11,7 +11,7 @@ from ..utils._binning import (
     determine_min_cols,
     clean_X,
     determine_n_classes,
-    unify_predict_fn2,
+    unify_predict_fn,
     unify_data2,
 )
 
@@ -41,7 +41,7 @@ class ShapTree(ExplainerMixin):
 
         predict_fn, self.n_classes = determine_n_classes(model, data, n_samples)
 
-        self.predict_fn = unify_predict_fn2(self.n_classes, predict_fn, data)
+        self.predict_fn = unify_predict_fn(predict_fn, data, 1 if 2 <= self.n_classes else -1)
 
         data, self.feature_names, self.feature_types = unify_data2(
             data, n_samples, feature_names, feature_types, False, 0

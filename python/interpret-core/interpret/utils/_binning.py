@@ -2862,16 +2862,16 @@ def determine_n_classes(model, data, n_samples):
     return model, n_classes
 
 
-def unify_predict_fn2(n_classes, predict_fn, X):
+def unify_predict_fn(predict_fn, X, class_idx):
     if _pandas_installed and isinstance(X, pd.DataFrame):
         # scikit-learn now wants a Pandas dataframe if the model was trained on a Pandas dataframe,
         # so convert it
         names = X.columns
-        if 0 <= n_classes:
+        if 0 <= class_idx:
             # classification
             def new_predict_fn(x):
                 X_fill = pd.DataFrame(x, columns=names)
-                return predict_fn(X_fill)[:, 1]
+                return predict_fn(X_fill)[:, class_idx]
 
             return new_predict_fn
         else:
@@ -2882,9 +2882,9 @@ def unify_predict_fn2(n_classes, predict_fn, X):
 
             return new_predict_fn
     else:
-        if 0 <= n_classes:
+        if 0 <= class_idx:
             # classification
-            return lambda x: predict_fn(x)[:, 1]  # noqa: E731
+            return lambda x: predict_fn(x)[:, class_idx]  # noqa: E731
         else:
             # regression
             return predict_fn

@@ -11,7 +11,7 @@ from ..utils._binning import (
     determine_min_cols,
     clean_X,
     determine_n_classes,
-    unify_predict_fn2,
+    unify_predict_fn,
     unify_data2,
     clean_dimensions,
     typify_classification,
@@ -61,7 +61,7 @@ class PR(ExplainerMixin):
         X, n_samples = clean_X(X, min_cols, n_samples)
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
-        predict_fn = unify_predict_fn2(n_classes, predict_fn, X)
+        predict_fn = unify_predict_fn(predict_fn, X, 1 if 2 <= n_classes else -1)
 
         X, feature_names, feature_types = unify_data2(
             X, n_samples, self.feature_names, self.feature_types, False, 0
@@ -143,7 +143,7 @@ class ROC(ExplainerMixin):
         X, n_samples = clean_X(X, min_cols, n_samples)
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
-        predict_fn = unify_predict_fn2(n_classes, predict_fn, X)
+        predict_fn = unify_predict_fn(predict_fn, X, 1 if 2 <= n_classes else -1)
 
         X, feature_names, feature_types = unify_data2(
             X, n_samples, self.feature_names, self.feature_types, False, 0
