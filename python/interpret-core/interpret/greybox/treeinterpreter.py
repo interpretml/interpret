@@ -5,8 +5,15 @@ from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
 from ..utils import gen_name_from_class, unify_data, gen_perf_dicts, gen_local_selector
 
-from sklearn.base import is_classifier
-
+from ..utils._binning import (
+    determine_min_cols,
+    clean_X,
+    determine_n_classes,
+    unify_predict_fn,
+    unify_data2,
+    clean_dimensions,
+    typify_classification,
+)
 
 class TreeInterpreter(ExplainerMixin):
     """Provides 'Tree Explainer' algorithm for specific sklearn trees.
@@ -34,41 +41,31 @@ class TreeInterpreter(ExplainerMixin):
     def __init__(
         self,
         model,
-        data,
+        data=None, 
         feature_names=None,
         feature_types=None,
-        explain_kwargs={},
-        **kwargs
     ):
         """Initializes class.
 
         Args:
-            model: A tree object that works with Tree SHAP.
-            data: Data used to initialize SHAP with.
-            sampler: Currently unused. Due for deprecation.
+            model: A scikit-learn tree object
+            data: ignored
             feature_names: List of feature names.
             feature_types: List of feature types.
-            explain_kwargs: Currently unused. Due for deprecation.
-            n_jobs: Number of jobs to run in parallel.
-            **kwargs: Kwargs that will be sent to SHAP at initialization time.
         """
 
-        self.data, _, self.feature_names, self.feature_types = unify_data(
-            data, None, feature_names, feature_types
-        )
-
-        self.explain_kwargs = explain_kwargs
-        self.kwargs = kwargs
         self.model = model
-        self.is_classifier = is_classifier(self.model)
+        self.feature_names=feature_names
+        self.feature_types=feature_types
 
-    def explain_local(self, X, y=None, name=None):
+    def explain_local(self, X, y=None, name=None, **kwargs):
         """Provides local explanations for provided instances.
 
         Args:
             X: Numpy array for X to explain.
             y: Numpy vector for y to explain.
             name: User-defined explanation name.
+            **kwargs: Kwargs that will be sent to treeinterpreter
 
         Returns:
             An explanation object, visualizing feature-value pairs
@@ -78,18 +75,36 @@ class TreeInterpreter(ExplainerMixin):
 
         if name is None:
             name = gen_name_from_class(self)
-        X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
 
-        if self.is_classifier:
-            predictions = self.model.predict_proba(X)
-        else:
-            predictions = self.model.predict(X)
+        n_samples = None
+        if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            n_samples = len(y)
 
-        _, biases, contributions = ti.predict(self.model, X, **self.explain_kwargs)
+        min_cols = determine_min_cols(self.feature_names, self.feature_types)
+        X, n_samples = clean_X(X, min_cols, n_samples)
+
+        predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
+        predict_fn = unify_predict_fn(predict_fn, X, -1)
+
+        X, feature_names, feature_types = unify_data2(
+            X, n_samples, self.feature_names, self.feature_types, False, 0
+        )
+        if y is not None:
+            if 0 <= n_classes:
+                y = typify_classification(y)
+            else:
+                y = y.astype(np.float64, copy=False)
+
+        predictions = predict_fn(X)
+
+        _, biases, contributions = ti.predict(self.model, X, **kwargs)
 
         data_dicts = []
         perf_list = []
-        perf_dicts = gen_perf_dicts(predictions, y, self.is_classifier)
+        perf_dicts = gen_perf_dicts(predictions, y, 0 <= n_classes)
         for i, instance in enumerate(X):
             data_dict = {}
             data_dict["data_type"] = "univariate"
@@ -100,8 +115,8 @@ class TreeInterpreter(ExplainerMixin):
             perf_list.append(perf_dict_obj)
 
             # Names/scores
-            data_dict["names"] = self.feature_names
-            if self.is_classifier:
+            data_dict["names"] = feature_names
+            if 0 <= n_classes:
                 data_dict["scores"] = contributions[i, :, 1]
             else:
                 data_dict["scores"] = contributions[i, :]
@@ -109,18 +124,18 @@ class TreeInterpreter(ExplainerMixin):
             # Values
             data_dict["values"] = instance
             # TODO: Value 1 doesn't make sense for this bias, consider refactoring values to take None.
-            bias = biases[0, 1] if self.is_classifier else biases[0]
+            bias = biases[0, 1] if 0 <= n_classes else biases[0]
             data_dict["extra"] = {"names": ["Bias"], "scores": [bias], "values": [1]}
             data_dicts.append(data_dict)
 
         internal_obj = {"overall": None, "specific": data_dicts}
-        selector = gen_local_selector(data_dicts, is_classification=self.is_classifier)
+        selector = gen_local_selector(data_dicts, is_classification=0 <= n_classes)
 
         return FeatureValueExplanation(
             "local",
             internal_obj,
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
+            feature_names=feature_names,
+            feature_types=feature_types,
             name=name,
             selector=selector,
         )
