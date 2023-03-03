@@ -7,6 +7,13 @@ import warnings
 from ..utils import gen_name_from_class, gen_global_selector
 from ..utils import unify_data, unify_predict_fn
 
+from ..utils._binning import (
+    determine_min_cols,
+    clean_X,
+    determine_n_classes,
+    unify_predict_fn2,
+    unify_data2,
+)
 
 class PartialDependence(ExplainerMixin):
     """Partial dependence plots as defined in Friedman's paper on "Greedy function approximation: a gradient boosting machine".
@@ -19,9 +26,8 @@ class PartialDependence(ExplainerMixin):
 
     def __init__(
         self,
-        predict_fn,
+        model,
         data,
-        sampler=None,
         feature_names=None,
         feature_types=None,
         num_points=10,
@@ -30,25 +36,31 @@ class PartialDependence(ExplainerMixin):
         """Initializes class.
 
         Args:
-            predict_fn: Function of blackbox that takes input, and returns prediction.
-            data: Data used to initialize LIME with.
-            sampler: Currently unused. Due for deprecation.
+            model: model or prediction function of model (predict_proba for classification or predict for regression)
+            data: Data used to initialize PartialDependence with.
             feature_names: List of feature names.
             feature_types: List of feature types.
             num_points: Number of grid points for the x axis.
             std_coef: Co-efficient for standard deviation.
         """
 
-        self.data, _, self.feature_names, self.feature_types = unify_data(
-            data, None, feature_names, feature_types
+        min_cols = determine_min_cols(feature_names, feature_types)
+        data, n_samples = clean_X(data, min_cols, None)
+
+        predict_fn, self.n_classes = determine_n_classes(model, data, n_samples)
+
+        self.predict_fn = unify_predict_fn2(self.n_classes, predict_fn, data)
+
+        self.data, self.feature_names, self.feature_types = unify_data2(
+            data, n_samples, feature_names, feature_types, False, 0
         )
-        self.predict_fn = unify_predict_fn(predict_fn, self.data)
+
         self.num_points = num_points
         self.std_coef = std_coef
 
-        if sampler is not None:  # pragma: no cover
-            warnings.warn("Sampler interface not currently supported.")
-        self.sampler = sampler
+        # TODO: we should preprocess the data here so that we do not need to preserve
+        # a reference to an entire dataset
+
 
     @classmethod
     def _unique_grid_points(cls, values):
@@ -79,7 +91,7 @@ class PartialDependence(ExplainerMixin):
         num_ice_samples=10,
     ):
         num_uniq_vals = len(np.unique(X[:, col_idx]))
-        if feature_type == "categorical" or num_uniq_vals <= num_points:
+        if feature_type == "nominal" or feature_type == "ordinal" or num_uniq_vals <= num_points:
             grid_points = cls._unique_grid_points(X[:, col_idx])
             values, counts = np.unique(X[:, col_idx], return_counts=True)
         else:
@@ -234,7 +246,7 @@ class PDPExplanation(ExplanationMixin):
         feature_name = self.feature_names[key]
         if feature_type == "continuous":
             figure = plot_line(data_dict, title=feature_name)
-        elif feature_type == "categorical":
+        elif feature_type == "nominal" or feature_type == "ordinal":
             figure = plot_bar(data_dict, title=feature_name)
         else:
             raise Exception("Feature type {0} is not supported.".format(feature_type))
