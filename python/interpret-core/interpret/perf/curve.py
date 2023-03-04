@@ -50,27 +50,26 @@ class PR(ExplainerMixin):
         if name is None:
             name = gen_name_from_class(self)
 
-        n_samples = None
-        if y is not None:
-            y = clean_dimensions(y, "y")
-            if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
-            n_samples = len(y)
+        if y is None:
+            raise Exception("y must be specified in call to PR")
+
+        y = clean_dimensions(y, "y")
+        if y.ndim != 1:
+            raise ValueError("y must be 1 dimensional")
 
         min_cols = determine_min_cols(self.feature_names, self.feature_types)
-        X, n_samples = clean_X(X, min_cols, n_samples)
+        X, n_samples = clean_X(X, min_cols, len(y))
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
-        predict_fn = unify_predict_fn(predict_fn, X, 1 if 2 <= n_classes else -1)
+        if n_classes != 2:
+            raise Exception("Only binary classification supported in the PR class")
+        predict_fn = unify_predict_fn(predict_fn, X, 1)
 
         X, feature_names, feature_types = unify_data2(
             X, n_samples, self.feature_names, self.feature_types, False, 0
         )
-        if y is not None:
-            if 0 <= n_classes:
-                y = typify_classification(y)
-            else:
-                y = y.astype(np.float64, copy=False)
+
+        y = typify_classification(y)
 
         scores = predict_fn(X)
 
@@ -132,28 +131,26 @@ class ROC(ExplainerMixin):
         if name is None:
             name = gen_name_from_class(self)
 
-        n_samples = None
-        if y is not None:
-            y = clean_dimensions(y, "y")
-            if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
-            n_samples = len(y)
+        if y is None:
+            raise Exception("y must be specified in call to ROC")
+
+        y = clean_dimensions(y, "y")
+        if y.ndim != 1:
+            raise ValueError("y must be 1 dimensional")
 
         min_cols = determine_min_cols(self.feature_names, self.feature_types)
-        X, n_samples = clean_X(X, min_cols, n_samples)
+        X, n_samples = clean_X(X, min_cols, len(y))
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
-        predict_fn = unify_predict_fn(predict_fn, X, 1 if 2 <= n_classes else -1)
+        if n_classes != 2:
+            raise Exception("Only binary classification supported in the PR class")
+        predict_fn = unify_predict_fn(predict_fn, X, 1)
 
         X, feature_names, feature_types = unify_data2(
             X, n_samples, self.feature_names, self.feature_types, False, 0
         )
 
-        if y is not None:
-            if 0 <= n_classes:
-                y = typify_classification(y)
-            else:
-                y = y.astype(np.float64, copy=False)
+        y = typify_classification(y)
 
         scores = predict_fn(X)
 
