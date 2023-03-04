@@ -2,7 +2,6 @@
 # Distributed under the MIT software license
 
 from interpret.utils.shap import shap_explain_local
-from sklearn.base import is_classifier
 
 from interpret.api.base import ExplainerMixin
 
@@ -36,22 +35,28 @@ class ShapTree(ExplainerMixin):
         """
         import shap
 
-        min_cols = determine_min_cols(feature_names, feature_types)
-        data, n_samples = clean_X(data, min_cols, None)
+        self.model = model
+        self.feature_names = feature_names
+        self.feature_types = feature_types
 
-        predict_fn, self.n_classes = determine_n_classes(model, data, n_samples)
+        self.feature_names_in_ = None
+        self.feature_types_in_ = None
 
-        self.predict_fn = unify_predict_fn(predict_fn, data, 1 if 2 <= self.n_classes else -1)
+        if data is not None:
+            # data can be None for some tree SHAP options
 
-        data, self.feature_names, self.feature_types = unify_data2(
-            data, n_samples, feature_names, feature_types, False, 0
-        )
+            min_cols = determine_min_cols(feature_names, feature_types)
+            data, n_samples = clean_X(data, min_cols, None)
 
-        # SHAP does not support string categoricals, and np.object_ is slower,
-        # so convert to np.float64 until we implement some automatic categorical handling
-        data = data.astype(np.float64, order="C", copy=False)
+            data, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+                data, n_samples, feature_names, feature_types, False, 0
+            )
 
-        self.shap = shap.TreeExplainer(model, data, **kwargs)
+            # SHAP does not support string categoricals, and np.object_ is slower,
+            # so convert to np.float64 until we implement some automatic categorical handling
+            data = data.astype(np.float64, order="C", copy=False)
+
+        self.shap_ = shap.TreeExplainer(model, data, **kwargs)
 
     def explain_local(self, X, y=None, name=None, **kwargs):
         """Provides local explanations for provided instances.
@@ -68,13 +73,13 @@ class ShapTree(ExplainerMixin):
         """
         # NOTE: Check additivity is set to false by default as there is a problem with Mac OS that
         # doesn't always reach the specified precision.
-        kwargs = kwargs.copy()
-        kwargs["check_additivity"] = False
+        new_kwargs = { "check_additivity": False }
+        new_kwargs.update(kwargs)
         return shap_explain_local(
             self,
             X,
             y,
             name,
-            0 <= self.n_classes,
-            **kwargs,
+            True,
+            **new_kwargs,
         )

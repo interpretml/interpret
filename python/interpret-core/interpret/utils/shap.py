@@ -5,16 +5,19 @@ from ..api.templates import FeatureValueExplanation
 from . import gen_name_from_class, gen_perf_dicts, gen_local_selector
 
 import numpy as np
+
 from ..utils._binning import (
     determine_min_cols,
     clean_X,
+    determine_n_classes,
+    unify_predict_fn,
     unify_data2,
     clean_dimensions,
     typify_classification,
 )
 
 
-def shap_explain_local(explainer, X, y, name, is_take_only_second, **kwargs):
+def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
     if name is None:
         name = gen_name_from_class(explainer)
 
@@ -25,30 +28,39 @@ def shap_explain_local(explainer, X, y, name, is_take_only_second, **kwargs):
             raise ValueError("y must be 1 dimensional")
         n_samples = len(y)
 
-        if 0 <= explainer.n_classes:
-            y = typify_classification(y)
-        else:
-            y = y.astype(np.float64, copy=False)
+    feature_names = explainer.feature_names if explainer.feature_names_in_ is None else explainer.feature_names_in_
+    feature_types = explainer.feature_types if explainer.feature_types_in_ is None else explainer.feature_types_in_
 
-    min_cols = determine_min_cols(explainer.feature_names, explainer.feature_types)
+    min_cols = determine_min_cols(feature_names, feature_types)
     X, n_samples = clean_X(X, min_cols, n_samples)
 
-    X, _, _ = unify_data2(
-        X, n_samples, explainer.feature_names, explainer.feature_types, False, 0
+    predict_fn, n_classes = determine_n_classes(explainer.model, X, n_samples)
+    if 3 <= n_classes:
+        raise Exception("multiclass SHAP not supported")
+    predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
+
+    X, feature_names, feature_types = unify_data2(
+        X, n_samples, feature_names, feature_types, False, 0
     )
 
     # SHAP does not support string categoricals, and np.object_ is slower,
     # so convert to np.float64 until we implement some automatic categorical handling
     X = X.astype(np.float64, order="C", copy=False)
 
-    if is_take_only_second:
-        all_shap_values = explainer.shap.shap_values(X, **kwargs)[1]
-        expected_value = explainer.shap.expected_value[1]
-    else:
-        all_shap_values = explainer.shap.shap_values(X, **kwargs)
-        expected_value = explainer.shap.expected_value
+    if y is not None:
+        if 0 <= n_classes:
+            y = typify_classification(y)
+        else:
+            y = y.astype(np.float64, copy=False)
 
-    predictions = explainer.predict_fn(X)
+    if is_treeshap and n_classes == 2:
+        all_shap_values = explainer.shap_.shap_values(X, **kwargs)[1]
+        expected_value = explainer.shap_.expected_value[1]
+    else:
+        all_shap_values = explainer.shap_.shap_values(X, **kwargs)
+        expected_value = explainer.shap_.expected_value
+
+    predictions = predict_fn(X)
 
     data_dicts = []
     scores_list = all_shap_values
@@ -62,7 +74,7 @@ def shap_explain_local(explainer, X, y, name, is_take_only_second, **kwargs):
 
         data_dict = {
             "type": "univariate",
-            "names": explainer.feature_names,
+            "names": feature_names,
             "perf": perf_dict_obj,
             "scores": shap_values,
             "values": instance,
@@ -99,8 +111,8 @@ def shap_explain_local(explainer, X, y, name, is_take_only_second, **kwargs):
     return FeatureValueExplanation(
         "local",
         internal_obj,
-        feature_names=explainer.feature_names,
-        feature_types=explainer.feature_types,
+        feature_names=feature_names,
+        feature_types=feature_types,
         name=name,
         selector=selector,
     )

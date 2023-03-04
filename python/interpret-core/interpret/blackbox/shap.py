@@ -36,14 +36,19 @@ class ShapKernel(ExplainerMixin):
 
         import shap
 
+        self.model = model
+        self.feature_names = feature_names
+        self.feature_types = feature_types
+
         min_cols = determine_min_cols(feature_names, feature_types)
         data, n_samples = clean_X(data, min_cols, None)
 
-        predict_fn, self.n_classes = determine_n_classes(model, data, n_samples)
+        predict_fn, n_classes = determine_n_classes(model, data, n_samples)
+        if 3 <= n_classes:
+            raise Exception("multiclass SHAP not supported")
+        predict_fn = unify_predict_fn(predict_fn, data, 1 if n_classes == 2 else -1)
 
-        self.predict_fn = unify_predict_fn(predict_fn, data, 1 if 2 <= self.n_classes else -1)
-
-        data, self.feature_names, self.feature_types = unify_data2(
+        data, self.feature_names_in_, self.feature_types_in_ = unify_data2(
             data, n_samples, feature_names, feature_types, False, 0
         )
 
@@ -51,7 +56,7 @@ class ShapKernel(ExplainerMixin):
         # so convert to np.float64 until we implement some automatic categorical handling
         data = data.astype(np.float64, order="C", copy=False)
 
-        self.shap = shap.KernelExplainer(self.predict_fn, data, **kwargs)
+        self.shap_ = shap.KernelExplainer(predict_fn, data, **kwargs)
 
     def explain_local(self, X, y=None, name=None, **kwargs):
         """Provides local explanations for provided instances.

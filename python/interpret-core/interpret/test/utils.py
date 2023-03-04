@@ -33,7 +33,7 @@ def get_all_explainers():
     perf_explainer_classes = [ROC, PR, RegressionPerf]
     model_explainer_classes = [
         ClassificationTree,
-        DecisionListClassifier,
+        # not working in python 3.10 currently: DecisionListClassifier,
         LogisticRegression,
         ExplainableBoostingClassifier,
         RegressionTree,
