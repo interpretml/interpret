@@ -4,7 +4,7 @@
 from ..api.base import ExplainerMixin, ExplanationMixin
 import numpy as np
 import warnings
-from ..utils import gen_name_from_class, gen_global_selector
+from ..utils import gen_name_from_class, gen_global_selector2
 
 from ..utils._binning import (
     determine_min_cols,
@@ -13,6 +13,68 @@ from ..utils._binning import (
     unify_predict_fn,
     unify_data2,
 )
+
+def _unique_grid_points(values):
+    unique_points = np.unique(values)
+    unique_points.sort()
+    return unique_points
+
+def _percentile_grid_points(values, num_points=10):
+    percentiles = np.linspace(0, 100, num=num_points)
+    grid_points = np.percentile(values, percentiles)
+    return grid_points
+
+# def _equal_spaced_grid_points(values, num_points=10):
+#     grid_points = np.linspace(min(values), max(values), num=num_points)
+#     return grid_points
+
+def _gen_pdp(
+    X,
+    predict_fn,
+    col_idx,
+    feature_type,
+    num_points=10,
+    std_coef=1.0,
+    num_ice_samples=10,
+):
+    num_uniq_vals = len(np.unique(X[:, col_idx]))
+    if (
+        feature_type == "nominal"
+        or feature_type == "ordinal"
+        or num_uniq_vals <= num_points
+    ):
+        grid_points = _unique_grid_points(X[:, col_idx])
+        values, counts = np.unique(X[:, col_idx], return_counts=True)
+    else:
+        grid_points = _percentile_grid_points(
+            X[:, col_idx], num_points=num_points
+        )
+        counts, values = np.histogram(X[:, col_idx], bins="doane")
+
+    X_mut = X.copy()
+    ice_lines = np.zeros((X.shape[0], grid_points.shape[0]))
+    for idx, grid_point in enumerate(grid_points):
+        X_mut[:, col_idx] = grid_point
+        ice_lines[:, idx] = predict_fn(X_mut)
+    mean = np.mean(ice_lines, axis=0)
+    std = np.std(ice_lines, axis=0)
+
+    ice_lines = ice_lines[
+        np.random.choice(ice_lines.shape[0], num_ice_samples, replace=False), :
+    ]
+
+    return {
+        "type": "univariate",
+        "names": grid_points,
+        "scores": mean,
+        # TODO: can we get rid of this column of X?
+        "values": X[:, col_idx],
+        "density": {"names": values, "scores": counts},
+        # NOTE: We can take either bounds or background values, picked one.
+        "upper_bounds": mean + std * std_coef,
+        "lower_bounds": mean - std * std_coef,
+        "background_scores": ice_lines,
+    }
 
 
 class PartialDependence(ExplainerMixin):
@@ -47,85 +109,43 @@ class PartialDependence(ExplainerMixin):
         min_cols = determine_min_cols(feature_names, feature_types)
         data, n_samples = clean_X(data, min_cols, None)
 
-        predict_fn, self.n_classes = determine_n_classes(model, data, n_samples)
+        predict_fn, n_classes = determine_n_classes(model, data, n_samples)
+        if 3 <= n_classes:
+            raise Exception("multiclass PDP not supported")
+        predict_fn = unify_predict_fn(predict_fn, data, 1 if n_classes == 2 else -1)
 
-        self.predict_fn = unify_predict_fn(predict_fn, data, 1 if 2 <= self.n_classes else -1)
-
-        self.data, self.feature_names, self.feature_types = unify_data2(
+        data, self.feature_names_in_, self.feature_types_in_ = unify_data2(
             data, n_samples, feature_names, feature_types, False, 0
         )
 
-        self.num_points = num_points
-        self.std_coef = std_coef
-
-        # TODO: we should preprocess the data here so that we do not need to preserve
-        # a reference to an entire dataset
-
-    @classmethod
-    def _unique_grid_points(cls, values):
-        unique_points = np.unique(values)
-        unique_points.sort()
-        return unique_points
-
-    @classmethod
-    def _percentile_grid_points(cls, values, num_points=10):
-        percentiles = np.linspace(0, 100, num=num_points)
-        grid_points = np.percentile(values, percentiles)
-        return grid_points
-
-    # @classmethod
-    # def _equal_spaced_grid_points(cls, values, num_points=10):
-    #     grid_points = np.linspace(min(values), max(values), num=num_points)
-    #     return grid_points
-
-    @classmethod
-    def _gen_pdp(
-        cls,
-        X,
-        predict_fn,
-        col_idx,
-        feature_type,
-        num_points=10,
-        std_coef=1.0,
-        num_ice_samples=10,
-    ):
-        num_uniq_vals = len(np.unique(X[:, col_idx]))
-        if (
-            feature_type == "nominal"
-            or feature_type == "ordinal"
-            or num_uniq_vals <= num_points
-        ):
-            grid_points = cls._unique_grid_points(X[:, col_idx])
-            values, counts = np.unique(X[:, col_idx], return_counts=True)
-        else:
-            grid_points = cls._percentile_grid_points(
-                X[:, col_idx], num_points=num_points
+        pdps = []
+        unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
+        zero_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
+        for col_idx, feature in enumerate(self.feature_names_in_):
+            feature_type = self.feature_types_in_[col_idx]
+            pdp = _gen_pdp(
+                data,
+                predict_fn,
+                col_idx,
+                feature_type,
+                num_points=num_points,
+                std_coef=std_coef,
             )
-            counts, values = np.histogram(X[:, col_idx], bins="doane")
+            pdps.append(pdp)
 
-        X_mut = X.copy()
-        ice_lines = np.zeros((X.shape[0], grid_points.shape[0]))
-        for idx, grid_point in enumerate(grid_points):
-            X_mut[:, col_idx] = grid_point
-            ice_lines[:, idx] = predict_fn(X_mut)
-        mean = np.mean(ice_lines, axis=0)
-        std = np.std(ice_lines, axis=0)
+            X_col = data[:, col_idx]
+            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            zero_val_counts.itemset(
+                col_idx, len(X_col) - np.count_nonzero(X_col)
+            )
 
-        ice_lines = ice_lines[
-            np.random.choice(ice_lines.shape[0], num_ice_samples, replace=False), :
-        ]
+        # TODO: we can probably extract the data in pdps_ to be less opaque 
+        # to this class and construct the JSONable data later
+        self.pdps_ = pdps
+        self.n_samples_ = n_samples
+        self.unique_val_counts_ = unique_val_counts
+        self.zero_val_counts_ = zero_val_counts
 
-        return {
-            "type": "univariate",
-            "names": grid_points,
-            "scores": mean,
-            "values": X[:, col_idx],
-            "density": {"names": values, "scores": counts},
-            # NOTE: We can take either bounds or background values, picked one.
-            "upper_bounds": mean + std * std_coef,
-            "lower_bounds": mean - std * std_coef,
-            "background_scores": ice_lines,
-        }
 
     def explain_global(self, name=None):
         """Provides approximate global explanation for blackbox model.
@@ -142,16 +162,9 @@ class PartialDependence(ExplainerMixin):
         data_dicts = []
         feature_list = []
         density_list = []
-        for col_idx, feature in enumerate(self.feature_names):
-            feature_type = self.feature_types[col_idx]
-            pdp = PartialDependence._gen_pdp(
-                self.data,
-                self.predict_fn,
-                col_idx,
-                feature_type,
-                num_points=self.num_points,
-                std_coef=self.std_coef,
-            )
+        for col_idx, feature in enumerate(self.feature_names_in_):
+            feature_type = self.feature_types_in_[col_idx]
+            pdp = self.pdps_[col_idx]
             feature_dict = {
                 "feature_values": pdp["values"],
                 "scores": pdp["scores"],
@@ -171,15 +184,20 @@ class PartialDependence(ExplainerMixin):
             ],
         }
 
-        selector = gen_global_selector(
-            self.data, self.feature_names, self.feature_types, None
+        selector = gen_global_selector2(
+            self.n_samples_, 
+            len(self.feature_names_in_),
+            self.feature_names_in_,
+            ["categorical" if x == "nominal" or x == "ordinal" else x for x in self.feature_types_in_],
+            self.unique_val_counts_,
+            self.zero_val_counts_,
         )
-
+      
         return PDPExplanation(
             "global",
             internal_obj,
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
+            feature_names=self.feature_names_in_,
+            feature_types=self.feature_types_in_,
             name=name,
             selector=selector,
         )
