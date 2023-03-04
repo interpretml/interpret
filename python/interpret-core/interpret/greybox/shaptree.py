@@ -33,7 +33,8 @@ class ShapTree(ExplainerMixin):
             feature_types: List of feature types.
             **kwargs: Kwargs that will be sent to SHAP
         """
-        import shap
+
+        from shap import TreeExplainer
 
         self.model = model
         self.feature_names = feature_names
@@ -56,7 +57,7 @@ class ShapTree(ExplainerMixin):
             # so convert to np.float64 until we implement some automatic categorical handling
             data = data.astype(np.float64, order="C", copy=False)
 
-        self.shap_ = shap.TreeExplainer(model, data, **kwargs)
+        self.shap_ = TreeExplainer(model, data, **kwargs)
 
     def explain_local(self, X, y=None, name=None, **kwargs):
         """Provides local explanations for provided instances.

@@ -39,29 +39,35 @@ class LimeTabular(ExplainerMixin):
             feature_types: List of feature types.
             **kwargs: Kwargs that will be sent to lime
         """
+
         from lime.lime_tabular import LimeTabularExplainer
+
+        self.model = model
+        self.feature_names = feature_names
+        self.feature_types = feature_types
 
         min_cols = determine_min_cols(feature_names, feature_types)
         data, n_samples = clean_X(data, min_cols, None)
 
-        predict_fn, self.n_classes = determine_n_classes(model, data, n_samples)
+        predict_fn, n_classes = determine_n_classes(model, data, n_samples)
+        if 3 <= n_classes:
+            raise Exception("multiclass LIME not supported")
+        predict_fn = unify_predict_fn(predict_fn, data, 1 if n_classes == 2 else -1)
 
-        self.predict_fn = unify_predict_fn(predict_fn, data, 1 if 2 <= self.n_classes else -1)
-
-        data, self.feature_names, self.feature_types = unify_data2(
+        data, self.feature_names_in_, self.feature_types_in_ = unify_data2(
             data, n_samples, feature_names, feature_types, False, 0
         )
 
-        # LimeTabularExplainer does not support string categoricals, and np.object_ is slower,
+        # LIME does not support string categoricals, and np.object_ is slower,
         # so convert to np.float64 until we implement some automatic categorical handling
         data = data.astype(np.float64, order="C", copy=False)
 
         # rewrite these even if the user specified them
         kwargs = kwargs.copy()
         kwargs["mode"] = "regression"
-        kwargs["feature_names"] = self.feature_names
+        kwargs["feature_names"] = self.feature_names_in_
 
-        self.lime = LimeTabularExplainer(data, **kwargs)
+        self.lime_ = LimeTabularExplainer(data, **kwargs)
 
     def explain_local(self, X, y=None, name=None, **kwargs):
         """Generates local explanations for provided instances.
@@ -86,31 +92,37 @@ class LimeTabular(ExplainerMixin):
                 raise ValueError("y must be 1 dimensional")
             n_samples = len(y)
 
-            if 0 <= self.n_classes:
-                y = typify_classification(y)
-            else:
-                y = y.astype(np.float64, copy=False)
-
-        min_cols = determine_min_cols(self.feature_names, self.feature_types)
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
         X, n_samples = clean_X(X, min_cols, n_samples)
 
+        predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
+        if 3 <= n_classes:
+            raise Exception("multiclass LIME not supported")
+        predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
+
         X, _, _ = unify_data2(
-            X, n_samples, self.feature_names, self.feature_types, False, 0
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
         )
 
         # LimeTabularExplainer does not support string categoricals, and np.object_ is slower,
         # so convert to np.float64 until we implement some automatic categorical handling
         X = X.astype(np.float64, order="C", copy=False)
 
-        predictions = self.predict_fn(X)
+        if y is not None:
+            if 0 <= n_classes:
+                y = typify_classification(y)
+            else:
+                y = y.astype(np.float64, copy=False)
+
+        predictions = predict_fn(X)
 
         data_dicts = []
         scores_list = []
         perf_list = []
         perf_dicts = gen_perf_dicts(predictions, y, False)
         for i, instance in enumerate(X):
-            lime_explanation = self.lime.explain_instance(
-                instance, self.predict_fn, **kwargs
+            lime_explanation = self.lime_.explain_instance(
+                instance, predict_fn, **kwargs
             )
 
             names = []
@@ -118,7 +130,7 @@ class LimeTabular(ExplainerMixin):
             values = []
             feature_idx_imp_pairs = lime_explanation.as_map()[1]
             for feat_idx, imp in feature_idx_imp_pairs:
-                names.append(self.feature_names[feat_idx])
+                names.append(self.feature_names_in_[feat_idx])
                 scores.append(imp)
                 values.append(instance[feat_idx])
             intercept = lime_explanation.intercept[1]
@@ -163,8 +175,8 @@ class LimeTabular(ExplainerMixin):
         return FeatureValueExplanation(
             "local",
             internal_obj,
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
+            feature_names=self.feature_names_in_,
+            feature_types=self.feature_types_in_,
             name=name,
             selector=selector,
         )

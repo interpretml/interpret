@@ -34,7 +34,7 @@ class ShapKernel(ExplainerMixin):
             **kwargs: Kwargs that will be sent to SHAP at initialization time.
         """
 
-        import shap
+        from shap import KernelExplainer
 
         self.model = model
         self.feature_names = feature_names
@@ -56,7 +56,7 @@ class ShapKernel(ExplainerMixin):
         # so convert to np.float64 until we implement some automatic categorical handling
         data = data.astype(np.float64, order="C", copy=False)
 
-        self.shap_ = shap.KernelExplainer(predict_fn, data, **kwargs)
+        self.shap_ = KernelExplainer(predict_fn, data, **kwargs)
 
     def explain_local(self, X, y=None, name=None, **kwargs):
         """Provides local explanations for provided instances.
