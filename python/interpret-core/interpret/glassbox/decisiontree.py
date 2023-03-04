@@ -234,13 +234,13 @@ class BaseShallowDecisionTree:
     available_explanations = ["global", "local"]
     explainer_type = "model"
 
-    def __init__(self, max_depth=3, feature_names=None, feature_types=None, **kwargs):
+    def __init__(self, feature_names=None, feature_types=None, max_depth=3, **kwargs):
         """Initializes tree with low depth.
 
         Args:
-            max_depth: Max depth of tree.
             feature_names: List of feature names.
             feature_types: List of feature types.
+            max_depth: Max depth of tree.
             **kwargs: Kwargs sent to fit() method of tree.
         """
         self.feature_names = feature_names
@@ -475,19 +475,19 @@ class BaseShallowDecisionTree:
 class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
     """Regression tree with shallow depth."""
 
-    def __init__(self, max_depth=3, feature_names=None, feature_types=None, **kwargs):
+    def __init__(self, feature_names=None, feature_types=None, max_depth=3, **kwargs):
         """Initializes tree with low depth.
 
         Args:
-            max_depth: Max depth of tree.
             feature_names: List of feature names.
             feature_types: List of feature types.
+            max_depth: Max depth of tree.
             **kwargs: Kwargs sent to fit() method of tree.
         """
         super().__init__(
-            max_depth=max_depth,
             feature_names=feature_names,
             feature_types=feature_types,
+            max_depth=max_depth,
             **kwargs
         )
 
@@ -511,19 +511,19 @@ class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
 class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixin):
     """Classification tree with shallow depth."""
 
-    def __init__(self, max_depth=3, feature_names=None, feature_types=None, **kwargs):
+    def __init__(self, feature_names=None, feature_types=None, max_depth=3, **kwargs):
         """Initializes tree with low depth.
 
         Args:
-            max_depth: Max depth of tree.
             feature_names: List of feature names.
             feature_types: List of feature types.
+            max_depth: Max depth of tree.
             **kwargs: Kwargs sent to fit() method of tree.
         """
         super().__init__(
-            max_depth=max_depth,
             feature_names=feature_names,
             feature_types=feature_types,
+            max_depth=max_depth,
             **kwargs
         )
 

@@ -51,7 +51,7 @@
 #     explainer_type = "blackbox"
 #
 #     def __init__(
-#         self, predict_fn, data, labels, metric=None, sampler=None, feature_names=None, feature_types=None
+#         self, model, data, feature_names=None, feature_types=None, ??labels, ??metric=None
 #     ):
 #         self.data, self.labels, self.feature_names, self.feature_types = unify_data(
 #             data, labels, feature_names, feature_types
@@ -73,7 +73,6 @@
 #             raise Exception("Unsupported metric input type {}.".format(type(metric)))
 #
 #         self.metric = metric_func
-#         self.sampler = sampler
 #
 #     def _add_metric(self, predict_function, shuffled_dataset, true_labels,
 #                     base_metric, global_importance_values, idx):
