@@ -28,8 +28,16 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
             raise ValueError("y must be 1 dimensional")
         n_samples = len(y)
 
-    feature_names = explainer.feature_names if explainer.feature_names_in_ is None else explainer.feature_names_in_
-    feature_types = explainer.feature_types if explainer.feature_types_in_ is None else explainer.feature_types_in_
+    feature_names = (
+        explainer.feature_names
+        if explainer.feature_names_in_ is None
+        else explainer.feature_names_in_
+    )
+    feature_types = (
+        explainer.feature_types
+        if explainer.feature_types_in_ is None
+        else explainer.feature_types_in_
+    )
 
     min_cols = determine_min_cols(feature_names, feature_types)
     X, n_samples = clean_X(X, min_cols, n_samples)

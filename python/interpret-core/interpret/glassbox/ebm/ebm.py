@@ -188,7 +188,7 @@ class EBMExplanation(FeatureValueExplanation):
                     "The contribution (score) of the term {0} to predictions "
                     "made by the model.".format(self.feature_names[key])
                 )
-            else: # pragma: no cover
+            else:  # pragma: no cover
                 raise Exception(
                     "Not supported configuration: {0}, {1}".format(
                         self.explanation_type, self.feature_types[key]

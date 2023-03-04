@@ -74,7 +74,7 @@ class ShapTree(ExplainerMixin):
         """
         # NOTE: Check additivity is set to false by default as there is a problem with Mac OS that
         # doesn't always reach the specified precision.
-        new_kwargs = { "check_additivity": False }
+        new_kwargs = {"check_additivity": False}
         new_kwargs.update(kwargs)
         return shap_explain_local(
             self,

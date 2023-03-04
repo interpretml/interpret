@@ -14,19 +14,23 @@ from ..utils._binning import (
     unify_data2,
 )
 
+
 def _unique_grid_points(values):
     unique_points = np.unique(values)
     unique_points.sort()
     return unique_points
+
 
 def _percentile_grid_points(values, num_points=10):
     percentiles = np.linspace(0, 100, num=num_points)
     grid_points = np.percentile(values, percentiles)
     return grid_points
 
+
 # def _equal_spaced_grid_points(values, num_points=10):
 #     grid_points = np.linspace(min(values), max(values), num=num_points)
 #     return grid_points
+
 
 def _gen_pdp(
     X,
@@ -46,9 +50,7 @@ def _gen_pdp(
         grid_points = _unique_grid_points(X[:, col_idx])
         values, counts = np.unique(X[:, col_idx], return_counts=True)
     else:
-        grid_points = _percentile_grid_points(
-            X[:, col_idx], num_points=num_points
-        )
+        grid_points = _percentile_grid_points(X[:, col_idx], num_points=num_points)
         counts, values = np.histogram(X[:, col_idx], bins="doane")
 
     X_mut = X.copy()
@@ -135,17 +137,14 @@ class PartialDependence(ExplainerMixin):
 
             X_col = data[:, col_idx]
             unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
-            zero_val_counts.itemset(
-                col_idx, len(X_col) - np.count_nonzero(X_col)
-            )
+            zero_val_counts.itemset(col_idx, len(X_col) - np.count_nonzero(X_col))
 
-        # TODO: we can probably extract the data in pdps_ to be less opaque 
+        # TODO: we can probably extract the data in pdps_ to be less opaque
         # to this class and construct the JSONable data later
         self.pdps_ = pdps
         self.n_samples_ = n_samples
         self.unique_val_counts_ = unique_val_counts
         self.zero_val_counts_ = zero_val_counts
-
 
     def explain_global(self, name=None):
         """Provides approximate global explanation for blackbox model.
@@ -185,14 +184,17 @@ class PartialDependence(ExplainerMixin):
         }
 
         selector = gen_global_selector2(
-            self.n_samples_, 
+            self.n_samples_,
             len(self.feature_names_in_),
             self.feature_names_in_,
-            ["categorical" if x == "nominal" or x == "ordinal" else x for x in self.feature_types_in_],
+            [
+                "categorical" if x == "nominal" or x == "ordinal" else x
+                for x in self.feature_types_in_
+            ],
             self.unique_val_counts_,
             self.zero_val_counts_,
         )
-      
+
         return PDPExplanation(
             "global",
             internal_obj,

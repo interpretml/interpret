@@ -16,6 +16,7 @@ from ..utils._binning import (
     typify_classification,
 )
 
+
 class TreeInterpreter(ExplainerMixin):
     """Provides 'Tree Explainer' algorithm for specific sklearn trees.
 
@@ -42,7 +43,7 @@ class TreeInterpreter(ExplainerMixin):
     def __init__(
         self,
         model,
-        data=None, 
+        data=None,
         feature_names=None,
         feature_types=None,
     ):
@@ -50,14 +51,14 @@ class TreeInterpreter(ExplainerMixin):
 
         Args:
             model: A scikit-learn tree object
-            data: ignored
+            data: ignored. Only included for conformance to the greybox API
             feature_names: List of feature names.
             feature_types: List of feature types.
         """
 
         self.model = model
-        self.feature_names=feature_names
-        self.feature_types=feature_types
+        self.feature_names = feature_names
+        self.feature_types = feature_types
 
     def explain_local(self, X, y=None, name=None, **kwargs):
         """Provides local explanations for provided instances.
@@ -72,6 +73,7 @@ class TreeInterpreter(ExplainerMixin):
             An explanation object, visualizing feature-value pairs
             for each instance as horizontal bar charts.
         """
+
         from treeinterpreter import treeinterpreter as ti
 
         if name is None:
@@ -93,8 +95,10 @@ class TreeInterpreter(ExplainerMixin):
         X, feature_names, feature_types = unify_data2(
             X, n_samples, self.feature_names, self.feature_types, False, 0
         )
+
+        is_classification = 0 <= n_classes
         if y is not None:
-            if 0 <= n_classes:
+            if is_classification:
                 y = typify_classification(y)
             else:
                 y = y.astype(np.float64, copy=False)
@@ -105,7 +109,7 @@ class TreeInterpreter(ExplainerMixin):
 
         data_dicts = []
         perf_list = []
-        perf_dicts = gen_perf_dicts(predictions, y, 0 <= n_classes)
+        perf_dicts = gen_perf_dicts(predictions, y, is_classification)
         for i, instance in enumerate(X):
             data_dict = {}
             data_dict["data_type"] = "univariate"
@@ -117,7 +121,7 @@ class TreeInterpreter(ExplainerMixin):
 
             # Names/scores
             data_dict["names"] = feature_names
-            if 0 <= n_classes:
+            if n_classes == 2:
                 data_dict["scores"] = contributions[i, :, 1]
             else:
                 data_dict["scores"] = contributions[i, :]
@@ -125,12 +129,12 @@ class TreeInterpreter(ExplainerMixin):
             # Values
             data_dict["values"] = instance
             # TODO: Value 1 doesn't make sense for this bias, consider refactoring values to take None.
-            bias = biases[0, 1] if 0 <= n_classes else biases[0]
+            bias = biases[0, 1] if n_classes == 2 else biases[0]
             data_dict["extra"] = {"names": ["Bias"], "scores": [bias], "values": [1]}
             data_dicts.append(data_dict)
 
         internal_obj = {"overall": None, "specific": data_dicts}
-        selector = gen_local_selector(data_dicts, is_classification=0 <= n_classes)
+        selector = gen_local_selector(data_dicts, is_classification=is_classification)
 
         return FeatureValueExplanation(
             "local",
