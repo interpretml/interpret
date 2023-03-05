@@ -32,7 +32,7 @@ class ExamplePerfExplainer(ExplainerMixin):
     available_explanations = ["perf"]
     explainer_type = "perf"
 
-    def __init__(self, predict_fn, feature_names=None, feature_types=None, **kwargs):
+    def __init__(self, model, feature_names=None, feature_types=None):
         pass
 
     def explain_perf(self, X, y, name=None):
@@ -71,9 +71,7 @@ class ExampleBlackboxExplainer(ExplainerMixin):
     available_explanations = ["local"]
     explainer_type = "blackbox"
 
-    def __init__(
-        self, predict_fn, data, sampler=None, feature_names=None, feature_types=None
-    ):
+    def __init__(self, model, data, feature_names=None, feature_types=None):
         pass
 
     def explain_local(self, X, y=None, name=None):

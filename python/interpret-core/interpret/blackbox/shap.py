@@ -31,7 +31,7 @@ class ShapKernel(ExplainerMixin):
             data: Data used to initialize SHAP with.
             feature_names: List of feature names.
             feature_types: List of feature types.
-            **kwargs: Kwargs that will be sent to SHAP at initialization time.
+            **kwargs: Kwargs that will be sent to shap.KernelExplainer
         """
 
         from shap import KernelExplainer

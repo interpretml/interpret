@@ -19,8 +19,6 @@ class Marginal(ExplainerMixin):
         feature_names=None,
         feature_types=None,
         max_scatter_samples=400,
-        random_state=1,
-        **kwargs
     ):
         """Initializes class.
 
@@ -28,14 +26,10 @@ class Marginal(ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             max_scatter_samples: Number of sample points in visualization.
-            random_state: Random state.
-            **kwargs: Unused. Due for deprecation.
         """
-        self.max_scatter_samples = max_scatter_samples
-        self.random_state = random_state
-        self.kwargs = kwargs
         self.feature_names = feature_names
         self.feature_types = feature_types
+        self.max_scatter_samples = max_scatter_samples
 
     def explain_data(self, X, y, name=None):
         """Explains data as visualizations.
@@ -71,7 +65,6 @@ class Marginal(ExplainerMixin):
         n_samples = (
             self.max_scatter_samples if len(y) > self.max_scatter_samples else len(y)
         )
-        np.random.seed(self.random_state)
         idx = np.random.choice(np.arange(len(y)), n_samples, replace=False)
         X_sample = X[idx, :]
         y_sample = y[idx]
@@ -267,15 +260,13 @@ class ClassHistogram(ExplainerMixin):
     available_explanations = ["data"]
     explainer_type = "data"
 
-    def __init__(self, feature_names=None, feature_types=None, **kwargs):
+    def __init__(self, feature_names=None, feature_types=None):
         """Initializes class.
 
         Args:
             feature_names: List of feature names.
             feature_types: List of feature types.
-            **kwargs: Unused. Due for deprecation.
         """
-        self.kwargs = kwargs
         self.feature_names = feature_names
         self.feature_types = feature_types
 

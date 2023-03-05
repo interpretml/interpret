@@ -482,7 +482,7 @@ class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             max_depth: Max depth of tree.
-            **kwargs: Kwargs sent to fit() method of tree.
+            **kwargs: Kwargs sent to __init__() method of tree.
         """
         super().__init__(
             feature_names=feature_names,
@@ -518,7 +518,7 @@ class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixi
             feature_names: List of feature names.
             feature_types: List of feature types.
             max_depth: Max depth of tree.
-            **kwargs: Kwargs sent to fit() method of tree.
+            **kwargs: Kwargs sent to __init__() method of tree.
         """
         super().__init__(
             feature_names=feature_names,

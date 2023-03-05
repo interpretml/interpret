@@ -20,31 +20,29 @@ from ..utils._binning import (
 # TODO: move this to a more general location where other blackbox methods can access it
 class SamplerMixin(ABC):
     @abstractmethod
-    def sample(self, data, feature_names, feature_types, **kwargs):
-        # kwargs are parameters that the blackbox method can pass to us
-        #     if the blackbox method accepts a sampling function or abstract class
+    def sample(self, data, feature_names, feature_types):
+        # if the blackbox or greybox underlying method accepts a sampling
+        # function or abstract class they may want to pass us additional
+        # options, which the class that derrives from SamplerMixin may
+        # want to add as either explicit arguments or kwargs
         pass  # pragma: no cover
 
 
 class MorrisSampler(SamplerMixin):
-    def __init__(self, N=1000, **kwargs):
-        # self.kwargs are parameters that the user can pass to SALib.sample(...)
-        #     without writing their own MorrisSampler or understanding SALib.sample
+    def __init__(self, N=1000, num_levels=4, **kwargs):
         self.N = N
+        self.num_levels = num_levels
         self.kwargs = kwargs
 
-    def sample(self, data, feature_names, feature_types, **kwargs):
+    def sample(self, data, feature_names, feature_types):
         # data, feature_names, and feature_types are materialized after unify_data has been called
-        # kwargs are parameters that the blackbox method can pass to us
-        #     if the blackbox method accepts a sampling function or abstract class
 
         from SALib.sample import morris as morris_sampler
 
-        new_kwargs = {"num_levels": 4}
-        new_kwargs.update(self.kwargs)
-
         problem = _gen_problem_from_data(data, feature_names)
-        return morris_sampler.sample(problem, N=self.N, **new_kwargs)
+        return morris_sampler.sample(
+            problem, N=self.N, num_levels=self.num_levels, **self.kwargs
+        )
 
 
 class MorrisSensitivity(ExplainerMixin):
@@ -58,7 +56,13 @@ class MorrisSensitivity(ExplainerMixin):
     explainer_type = "blackbox"
 
     def __init__(
-        self, model, data, feature_names=None, feature_types=None, sampler=None
+        self,
+        model,
+        data,
+        feature_names=None,
+        feature_types=None,
+        sampler=None,
+        **kwargs
     ):
         """Initializes class.
 
@@ -68,6 +72,7 @@ class MorrisSensitivity(ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             sampler: A SamplerMixin derrived class that can generate samples from data
+            **kwargs: Kwargs that will be sent to SALib.analyze.morris.analyze
         """
 
         from SALib.analyze import morris
@@ -93,7 +98,9 @@ class MorrisSensitivity(ExplainerMixin):
 
         samples = sampler.sample(data, self.feature_names_in_, self.feature_types_in_)
         problem = _gen_problem_from_data(data, self.feature_names_in_)
-        analysis = morris.analyze(problem, samples, predict_fn(samples).astype(float))
+        analysis = morris.analyze(
+            problem, samples, predict_fn(samples).astype(float), **kwargs
+        )
 
         # TODO: see if we can clean up these datatypes to simpler and easier to understand
 

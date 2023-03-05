@@ -31,7 +31,7 @@ class ShapTree(ExplainerMixin):
             data: Data used to initialize SHAP with.
             feature_names: List of feature names.
             feature_types: List of feature types.
-            **kwargs: Kwargs that will be sent to SHAP
+            **kwargs: Kwargs that will be sent to shap.TreeExplainer
         """
 
         from shap import TreeExplainer
