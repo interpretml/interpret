@@ -117,6 +117,7 @@ def gen_global_selector2(
     term_types,
     unique_val_counts,
     zero_val_counts,
+    importance_scores,
     round=3,
 ):
     records = []
@@ -140,9 +141,15 @@ def gen_global_selector2(
                 record["% Non-zero"] = (
                     n_samples - zero_val_counts[term_idx]
                 ) / n_samples
+
+            # if importance_scores is None:
+            #     record["Importance"] = np.nan
+            # else:
+            #     record["Importance"] = importance_scores[term_idx]
         else:
             record["# Unique"] = np.nan
             record["% Non-zero"] = np.nan
+            # record["Importance"] = np.nan
 
         records.append(record)
 

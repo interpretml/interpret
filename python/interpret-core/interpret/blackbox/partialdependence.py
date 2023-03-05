@@ -193,6 +193,7 @@ class PartialDependence(ExplainerMixin):
             ],
             self.unique_val_counts_,
             self.zero_val_counts_,
+            None,
         )
 
         return PDPExplanation(

@@ -3,7 +3,7 @@
 
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
-from ..utils import gen_name_from_class, gen_global_selector
+from ..utils import gen_name_from_class, gen_global_selector2
 
 from abc import ABC, abstractmethod
 import numpy as np
@@ -17,37 +17,34 @@ from ..utils._binning import (
 )
 
 
+# TODO: move this to a more general location where other blackbox methods can access it
 class SamplerMixin(ABC):
     @abstractmethod
-    def sample(self):
+    def sample(self, data, feature_names, feature_types, **kwargs):
+        # kwargs are parameters that the blackbox method can pass to us
+        #     if the blackbox method accepts a sampling function or abstract class
         pass  # pragma: no cover
 
 
 class MorrisSampler(SamplerMixin):
-    def __init__(self, data, feature_names, N=1000, **kwargs):
-        self.data = data
-        self.feature_names = feature_names
+    def __init__(self, N=1000, **kwargs):
+        # self.kwargs are parameters that the user can pass to SALib.sample(...)
+        #     without writing their own MorrisSampler or understanding SALib.sample
         self.N = N
         self.kwargs = kwargs
 
-    def sample(self):
+    def sample(self, data, feature_names, feature_types, **kwargs):
+        # data, feature_names, and feature_types are materialized after unify_data has been called
+        # kwargs are parameters that the blackbox method can pass to us
+        #     if the blackbox method accepts a sampling function or abstract class
+
         from SALib.sample import morris as morris_sampler
 
-        kwargs = self.kwargs.copy()
-        kwargs["num_levels"] = 4
+        new_kwargs = {"num_levels": 4}
+        new_kwargs.update(self.kwargs)
 
-        problem = self.gen_problem_from_data(self.data, self.feature_names)
-        return morris_sampler.sample(problem, N=self.N, **kwargs)
-
-    @classmethod
-    def gen_problem_from_data(cls, data, feature_names):
-        bounds = [soft_min_max(data[:, i]) for i, _ in enumerate(feature_names)]
-        problem = {
-            "num_vars": len(feature_names),
-            "names": feature_names,
-            "bounds": bounds,
-        }
-        return problem
+        problem = _gen_problem_from_data(data, feature_names)
+        return morris_sampler.sample(problem, N=self.N, **new_kwargs)
 
 
 class MorrisSensitivity(ExplainerMixin):
@@ -60,7 +57,9 @@ class MorrisSensitivity(ExplainerMixin):
     available_explanations = ["global"]
     explainer_type = "blackbox"
 
-    def __init__(self, model, data, feature_names=None, feature_types=None):
+    def __init__(
+        self, model, data, feature_names=None, feature_types=None, sampler=None
+    ):
         """Initializes class.
 
         Args:
@@ -68,18 +67,20 @@ class MorrisSensitivity(ExplainerMixin):
             data: Data used to initialize LIME with.
             feature_names: List of feature names.
             feature_types: List of feature types.
+            sampler: A SamplerMixin derrived class that can generate samples from data
         """
+
+        from SALib.analyze import morris
 
         min_cols = determine_min_cols(feature_names, feature_types)
         data, n_samples = clean_X(data, min_cols, None)
 
-        predict_fn, self.n_classes = determine_n_classes(model, data, n_samples)
+        predict_fn, n_classes = determine_n_classes(model, data, n_samples)
+        if 3 <= n_classes:
+            raise Exception("multiclass MorrisSensitivity not supported")
+        predict_fn = unify_predict_fn(predict_fn, data, 1 if n_classes == 2 else -1)
 
-        self.predict_fn = unify_predict_fn(
-            predict_fn, data, 1 if 2 <= self.n_classes else -1
-        )
-
-        data, self.feature_names, self.feature_types = unify_data2(
+        data, self.feature_names_in_, self.feature_types_in_ = unify_data2(
             data, n_samples, feature_names, feature_types, False, 0
         )
 
@@ -87,13 +88,36 @@ class MorrisSensitivity(ExplainerMixin):
         # so convert to np.float64 until we implement some automatic categorical handling
         data = data.astype(np.float64, order="C", copy=False)
 
-        # TODO: we can probably pre-process self.data and not store it in this class
-        self.data = data
+        if sampler is None:
+            sampler = MorrisSampler()
 
-        # if we're going to expose MorrisSampler as a public class that
-        # can be passed in we need to somehow clean any data that comes
-        # into it where we are currently passing self.data
-        self.sampler = MorrisSampler(self.data, self.feature_names)
+        samples = sampler.sample(data, self.feature_names_in_, self.feature_types_in_)
+        problem = _gen_problem_from_data(data, self.feature_names_in_)
+        analysis = morris.analyze(problem, samples, predict_fn(samples).astype(float))
+
+        # TODO: see if we can clean up these datatypes to simpler and easier to understand
+
+        self.mu_ = analysis["mu"]
+        self.mu_star_ = analysis["mu_star"]
+        self.sigma_ = analysis["sigma"]
+        self.mu_star_conf_ = analysis["mu_star_conf"]
+
+        mask = self.mu_star_ > 0
+        self.convergence_index_ = np.max(
+            np.array(self.mu_star_conf_)[mask] / np.array(self.mu_star_)[mask]
+        )
+
+        unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
+        zero_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
+        for col_idx, feature in enumerate(self.feature_names_in_):
+            feature_type = self.feature_types_in_[col_idx]
+            X_col = data[:, col_idx]
+            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            zero_val_counts.itemset(col_idx, len(X_col) - np.count_nonzero(X_col))
+
+        self.n_samples_ = n_samples
+        self.unique_val_counts_ = unique_val_counts
+        self.zero_val_counts_ = zero_val_counts
 
     def explain_global(self, name=None):
         """Provides approximate global explanation for blackbox model.
@@ -104,55 +128,47 @@ class MorrisSensitivity(ExplainerMixin):
         Returns:
             An explanation object, visualizes dependence plots.
         """
-        from SALib.analyze import morris
 
         if name is None:
             name = gen_name_from_class(self)
 
-        samples = self.sampler.sample()
-        problem = self.sampler.gen_problem_from_data(self.data, self.feature_names)
-        analysis = morris.analyze(
-            problem, samples, self.predict_fn(samples).astype(float)
-        )
-
-        mu = analysis["mu"]
-        mu_star = analysis["mu_star"]
-        sigma = analysis["sigma"]
-        mu_star_conf = analysis["mu_star_conf"]
-
-        mask = mu_star > 0
-        convergence_index = np.max(
-            np.array(mu_star_conf)[mask] / np.array(mu_star)[mask]
-        )
-
         overall_data_dict = {
-            "names": self.feature_names,
-            "scores": mu_star,
-            "convergence_index": convergence_index,
+            "names": self.feature_names_in_,
+            "scores": self.mu_star_,
+            "convergence_index": self.convergence_index_,
         }
 
         specific_data_dicts = []
-        for feat_idx, feature_name in enumerate(self.feature_names):
+        for feat_idx, feature_name in enumerate(self.feature_names_in_):
             specific_data_dict = {
                 "type": "morris",
-                "mu": mu[feat_idx],
-                "mu_star": mu_star[feat_idx],
-                "sigma": sigma[feat_idx],
-                "mu_star_conf": mu_star_conf[feat_idx],
+                "mu": self.mu_[feat_idx],
+                "mu_star": self.mu_star_[feat_idx],
+                "sigma": self.sigma_[feat_idx],
+                "mu_star_conf": self.mu_star_conf_[feat_idx],
             }
             specific_data_dicts.append(specific_data_dict)
 
         internal_obj = {"overall": overall_data_dict, "specific": specific_data_dicts}
 
-        global_selector = gen_global_selector(
-            self.data, self.feature_names, self.feature_types, mu_star
+        global_selector = gen_global_selector2(
+            self.n_samples_,
+            len(self.feature_names_in_),
+            self.feature_names_in_,
+            [
+                "categorical" if x == "nominal" or x == "ordinal" else x
+                for x in self.feature_types_in_
+            ],
+            self.unique_val_counts_,
+            self.zero_val_counts_,
+            self.mu_star_,
         )
 
         return MorrisExplanation(
             "global",
             internal_obj,
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
+            feature_names=self.feature_names_in_,
+            feature_types=self.feature_types_in_,
             name=name,
             selector=global_selector,
         )
@@ -280,7 +296,7 @@ class MorrisExplanation(FeatureValueExplanation):
         return super().visualize(key)
 
 
-def soft_min_max(values, soft_add=1, soft_bounds=1):
+def _soft_min_max(values, soft_add=1, soft_bounds=1):
     """Returns [min, max + soft_add] if difference of min and max is less
         than the soft bound.
 
@@ -298,3 +314,13 @@ def soft_min_max(values, soft_add=1, soft_bounds=1):
     diff_val = max_val - min_val
     max_increment = soft_add if abs(diff_val) < soft_bounds else 0
     return [min_val, max_val + max_increment]
+
+
+def _gen_problem_from_data(data, feature_names):
+    bounds = [_soft_min_max(data[:, i]) for i, _ in enumerate(feature_names)]
+    problem = {
+        "num_vars": len(feature_names),
+        "names": feature_names,
+        "bounds": bounds,
+    }
+    return problem

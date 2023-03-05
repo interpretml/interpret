@@ -1518,6 +1518,7 @@ class EBMModel(BaseEstimator):
                 ],
                 getattr(self, "unique_val_counts_", None),
                 getattr(self, "zero_val_counts_", None),
+                None,
             ),
         )
 
