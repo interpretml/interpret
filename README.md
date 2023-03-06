@@ -602,8 +602,8 @@ We also build on top of many great packages. Please check them out!
 # Papers that use or compare EBMs
 
 - [Federated Boosted Decision Trees with Differential Privacy](https://arxiv.org/pdf/2210.02910.pdf)
-- [Pest Presence Prediction Using Interpretable Machine Learning](https://ieeexplore.ieee.org/document/9816284) - [preprint](https://arxiv.org/pdf/2205.07723.pdf)
 - [GAM(E) CHANGER OR NOT? AN EVALUATION OF INTERPRETABLE MACHINE LEARNING MODELS](https://arxiv.org/pdf/2204.09123.pdf)
+- [GAM Coach: Towards Interactive and User-centered Algorithmic Recourse](https://arxiv.org/pdf/2302.14165.pdf)
 - [Revealing the Galaxy-Halo Connection Through Machine Learning](https://arxiv.org/pdf/2204.10332.pdf)
 - [Explainable Artificial Intelligence for COVID-19 Diagnosis Through Blood Test Variables](https://link.springer.com/content/pdf/10.1007/s40313-021-00858-y.pdf)
 - [Using Explainable Boosting Machines (EBMs) to Detect Common Flaws in Data](https://link.springer.com/chapter/10.1007/978-3-030-93736-2_40)
@@ -618,6 +618,7 @@ We also build on top of many great packages. Please check them out!
 - [Interpretable machine learning for predicting pathologic complete response in patients treated with chemoradiation therapy for rectal adenocarcinoma](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9771385/pdf/frai-05-1059033.pdf)
 - [Exploring the Balance between Interpretability and Performance with carefully designed Constrainable Neural Additive Models](https://deliverypdf.ssrn.com/delivery.php?ID=998105006000069122073098120102102121021040051018055094125029122011041003059093125102072122106122077081069015087124028097016003127095087091028087010007035098086102086081014043013113004081117108011028041097095064071100112069081100069120077067116088100069070097093080074087115080072064086111126&EXT=pdf&INDEX=TRUE)
 - [Estimating Discontinuous Time-Varying Risk Factors and Treatment Benefits for COVID-19 with Interpretable ML](https://arxiv.org/pdf/2211.08991.pdf)
+- [Pest Presence Prediction Using Interpretable Machine Learning](https://arxiv.org/pdf/2205.07723.pdf)
 - [epitope1D: Accurate Taxonomy-Aware B-Cell Linear Epitope Prediction](https://www.biorxiv.org/content/10.1101/2022.10.17.512613v1.full.pdf)
 - [Explainable Boosting Machines for Slope Failure Spatial Predictive Modeling](https://www.mdpi.com/2072-4292/13/24/4991/htm)
 - [Micromodels for Efficient, Explainable, and Reusable Systems: A Case Study on Mental Health](https://arxiv.org/pdf/2109.13770.pdf)

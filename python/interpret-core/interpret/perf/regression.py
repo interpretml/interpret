@@ -61,18 +61,15 @@ class RegressionPerf(ExplainerMixin):
         X, n_samples = clean_X(X, min_cols, len(y))
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
-        if 3 <= n_classes:
-            raise Exception("multiclass not supported by the RegressionPerf class")
-        predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
+        if 0 <= n_classes:
+            raise Exception("Classification not supported by the RegressionPerf class")
+        predict_fn = unify_predict_fn(predict_fn, X, -1)
 
         X, feature_names, feature_types = unify_data2(
-            X, n_samples, self.feature_names, self.feature_types, False, 0
+            X, n_samples, self.feature_names, self.feature_types, True, 0
         )
 
-        if 0 <= n_classes:
-            y = typify_classification(y)
-        else:
-            y = y.astype(np.float64, copy=False)
+        y = y.astype(np.float64, copy=False)
 
         scores = predict_fn(X)
 

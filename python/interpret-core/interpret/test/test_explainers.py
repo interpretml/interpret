@@ -1,14 +1,12 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from interpret.test.utils import synthetic_classification, get_all_explainers
 from interpret.test.utils import assert_valid_explanation, assert_valid_model_explainer
 
 # from interpret.blackbox import PermutationImportance
-
-from interpret.glassbox import LogisticRegression
 
 import pytest
 
@@ -16,30 +14,39 @@ import pytest
 @pytest.mark.slow
 def test_spec_synthetic():
     all_explainers = get_all_explainers()
+    # use the same dataset for both regression and classification
     data = synthetic_classification()
 
-    blackbox = LogisticRegression()
-    blackbox.fit(data["train"]["X"], data["train"]["y"])
-    tree = RandomForestClassifier()
-    tree.fit(data["train"]["X"], data["train"]["y"])
+    binary_model = RandomForestClassifier()
+    binary_model.fit(data["train"]["X"], data["train"]["y"])
 
-    predict_fn = lambda x: blackbox.predict_proba(x)  # noqa: E731
+    regression_model = RandomForestRegressor()
+    regression_model.fit(data["train"]["X"], data["train"]["y"])
 
-    for explainer_class in all_explainers:
+    for explainer_class, is_classification in all_explainers:
         # if explainer_class == PermutationImportance:  # TODO should true labels be passed in the constructor here?
-        #     explainer = explainer_class(predict_fn, data["train"]["X"], data["train"]["y"])
+        #     explainer = explainer_class(binary_model, data["train"]["X"], data["train"]["y"])
         if explainer_class.explainer_type == "blackbox":
-            explainer = explainer_class(predict_fn, data["train"]["X"])
+            if is_classification:
+                explainer = explainer_class(binary_model, data["train"]["X"])
+            else:
+                explainer = explainer_class(regression_model, data["train"]["X"])
         elif explainer_class.explainer_type == "model":
             explainer = explainer_class()
             explainer.fit(data["train"]["X"], data["train"]["y"])
             assert_valid_model_explainer(explainer, data["test"]["X"].head())
         elif explainer_class.explainer_type == "specific":
-            explainer = explainer_class(tree, data["train"]["X"])
+            if is_classification:
+                explainer = explainer_class(binary_model, data["train"]["X"])
+            else:
+                explainer = explainer_class(regression_model, data["train"]["X"])
         elif explainer_class.explainer_type == "data":
             explainer = explainer_class()
         elif explainer_class.explainer_type == "perf":
-            explainer = explainer_class(predict_fn)
+            if is_classification:
+                explainer = explainer_class(binary_model)
+            else:
+                explainer = explainer_class(regression_model)
         else:
             raise Exception("Not supported explainer type.")
 

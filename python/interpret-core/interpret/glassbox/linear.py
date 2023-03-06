@@ -62,8 +62,8 @@ class BaseLinear:
             X, y, self.feature_names, self.feature_types
         )
 
-        sk_model_ = self._model()
-        sk_model_.fit(X, y)
+        model = self._model()
+        model.fit(X, y)
 
         self.X_mins_ = np.min(X, axis=0)
         self.X_maxs_ = np.max(X, axis=0)
@@ -107,17 +107,17 @@ class BaseLinear:
             name = gen_name_from_class(self)
         X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
 
-        sk_model_ = self._model()
+        model = self._model()
 
         is_classification = is_classifier(self)
         if is_classification:
             predictions = self.predict_proba(X)[:, 1]
-            intercept = sk_model_.intercept_[0]
-            coef = sk_model_.coef_[0]
+            intercept = model.intercept_[0]
+            coef = model.coef_[0]
         else:
             predictions = self.predict(X)
-            intercept = sk_model_.intercept_
-            coef = sk_model_.coef_
+            intercept = model.intercept_
+            coef = model.coef_
 
         data_dicts = []
         scores_list = []
@@ -193,13 +193,13 @@ class BaseLinear:
         if name is None:
             name = gen_name_from_class(self)
 
-        sk_model_ = self._model()
+        model = self._model()
         if is_classifier(self):
-            intercept = sk_model_.intercept_[0]
-            coef = sk_model_.coef_[0]
+            intercept = model.intercept_[0]
+            coef = model.coef_[0]
         else:
-            intercept = sk_model_.intercept_
-            coef = sk_model_.coef_
+            intercept = model.intercept_
+            coef = model.coef_
 
         overall_data_dict = {
             "names": self.feature_names,

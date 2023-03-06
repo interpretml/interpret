@@ -51,7 +51,8 @@ class TreeInterpreter(ExplainerMixin):
 
         Args:
             model: A scikit-learn tree object
-            data: ignored. Only included for conformance to the greybox API
+            data: mostly ignored. Only included for conformance to the greybox API
+                  if data is provided though we use it to determine the feature names and types
             feature_names: List of feature names.
             feature_types: List of feature types.
         """
@@ -59,6 +60,18 @@ class TreeInterpreter(ExplainerMixin):
         self.model = model
         self.feature_names = feature_names
         self.feature_types = feature_types
+
+        self.feature_names_in_ = None
+        self.feature_types_in_ = None
+
+        if data is not None:
+            # if the user provides data, we use it as a larger corpus than X
+            min_cols = determine_min_cols(feature_names, feature_types)
+            data, n_samples = clean_X(data, min_cols, None)
+
+            _, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+                data, n_samples, feature_names, feature_types, False, 0
+            )
 
     def explain_local(self, X, y=None, name=None, **kwargs):
         """Provides local explanations for provided instances.
@@ -86,14 +99,25 @@ class TreeInterpreter(ExplainerMixin):
                 raise ValueError("y must be 1 dimensional")
             n_samples = len(y)
 
-        min_cols = determine_min_cols(self.feature_names, self.feature_types)
+        feature_names = (
+            self.feature_names
+            if self.feature_names_in_ is None
+            else self.feature_names_in_
+        )
+        feature_types = (
+            self.feature_types
+            if self.feature_types_in_ is None
+            else self.feature_types_in_
+        )
+
+        min_cols = determine_min_cols(feature_names, feature_types)
         X, n_samples = clean_X(X, min_cols, n_samples)
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
         predict_fn = unify_predict_fn(predict_fn, X, -1)
 
         X, feature_names, feature_types = unify_data2(
-            X, n_samples, self.feature_names, self.feature_types, False, 0
+            X, n_samples, feature_names, feature_types, False, 0
         )
 
         is_classification = 0 <= n_classes

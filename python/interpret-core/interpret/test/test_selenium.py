@@ -1,9 +1,7 @@
 import pytest
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from interpret.test.utils import synthetic_classification, get_all_explainers
-from interpret.glassbox import LogisticRegression
-from interpret.glassbox.decisiontree import TreeExplanation
 
 # from interpret.blackbox import PermutationImportance
 from interpret.visual.interactive import set_show_addr, shutdown_show_server, show_link
@@ -17,28 +15,39 @@ TIMEOUT = 60
 @pytest.fixture(scope="module")
 def all_explanations():
     all_explainers = get_all_explainers()
+    # use the same dataset for both regression and classification
     data = synthetic_classification()
-    blackbox = LogisticRegression()
-    blackbox.fit(data["train"]["X"], data["train"]["y"])
-    tree = RandomForestClassifier()
-    tree.fit(data["train"]["X"], data["train"]["y"])
+
+    binary_model = RandomForestClassifier()
+    binary_model.fit(data["train"]["X"], data["train"]["y"])
+
+    regression_model = RandomForestRegressor()
+    regression_model.fit(data["train"]["X"], data["train"]["y"])
 
     explanations = []
-    predict_fn = lambda x: blackbox.predict_proba(x)  # noqa: E731
-    for explainer_class in all_explainers:
+    for explainer_class, is_classification in all_explainers:
         # if explainer_class == PermutationImportance:
-        #     explainer = explainer_class(predict_fn, data["train"]["X"], data["train"]["y"])
+        #     explainer = explainer_class(binary_model, data["train"]["X"], data["train"]["y"])
         if explainer_class.explainer_type == "blackbox":
-            explainer = explainer_class(predict_fn, data["train"]["X"])
+            if is_classification:
+                explainer = explainer_class(binary_model, data["train"]["X"])
+            else:
+                explainer = explainer_class(regression_model, data["train"]["X"])
         elif explainer_class.explainer_type == "model":
             explainer = explainer_class()
             explainer.fit(data["train"]["X"], data["train"]["y"])
         elif explainer_class.explainer_type == "specific":
-            explainer = explainer_class(tree, data["train"]["X"])
+            if is_classification:
+                explainer = explainer_class(binary_model, data["train"]["X"])
+            else:
+                explainer = explainer_class(regression_model, data["train"]["X"])
         elif explainer_class.explainer_type == "data":
             explainer = explainer_class()
         elif explainer_class.explainer_type == "perf":
-            explainer = explainer_class(predict_fn)
+            if is_classification:
+                explainer = explainer_class(binary_model)
+            else:
+                explainer = explainer_class(regression_model)
         else:
             raise Exception("Not supported explainer type.")
 

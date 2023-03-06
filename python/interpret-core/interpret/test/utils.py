@@ -29,23 +29,33 @@ from sklearn.base import is_classifier
 
 
 def get_all_explainers():
-    data_explainer_classes = [ClassHistogram, Marginal]
-    perf_explainer_classes = [ROC, PR, RegressionPerf]
+    # True means run on classification.  False means run on regression
+    data_explainer_classes = [(ClassHistogram, None), (Marginal, None)]
+    perf_explainer_classes = [(ROC, True), (PR, True), (RegressionPerf, False)]
     model_explainer_classes = [
-        ClassificationTree,
-        # not working in python 3.10 currently: DecisionListClassifier,
-        LogisticRegression,
-        ExplainableBoostingClassifier,
-        RegressionTree,
-        LinearRegression,
-        ExplainableBoostingRegressor,
+        (ClassificationTree, True),
+        (RegressionTree, False),
+        # not working in python 3.10 currently: (DecisionListClassifier, True),
+        (LogisticRegression, True),
+        (LinearRegression, False),
+        (ExplainableBoostingClassifier, True),
+        (ExplainableBoostingRegressor, False),
     ]
-    specific_explainer_classes = [TreeInterpreter, ShapTree]
+    specific_explainer_classes = [
+        (TreeInterpreter, True),
+        (TreeInterpreter, False),
+        (ShapTree, True),
+        (ShapTree, False),
+    ]
     blackbox_explainer_classes = [
-        LimeTabular,
-        ShapKernel,
-        MorrisSensitivity,
-        PartialDependence,
+        (LimeTabular, True),
+        (LimeTabular, False),
+        (ShapKernel, True),
+        (ShapKernel, False),
+        (MorrisSensitivity, True),
+        (MorrisSensitivity, False),
+        (PartialDependence, True),
+        (PartialDependence, False),
         # PermutationImportance
     ]
     all_explainers = []

@@ -32,6 +32,7 @@ class PR(ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
         """
+
         self.model = model
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -66,7 +67,7 @@ class PR(ExplainerMixin):
         predict_fn = unify_predict_fn(predict_fn, X, 1)
 
         X, feature_names, feature_types = unify_data2(
-            X, n_samples, self.feature_names, self.feature_types, False, 0
+            X, n_samples, self.feature_names, self.feature_types, True, 0
         )
 
         y = typify_classification(y)
@@ -143,11 +144,11 @@ class ROC(ExplainerMixin):
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
         if n_classes != 2:
-            raise Exception("Only binary classification supported in the PR class")
+            raise Exception("Only binary classification supported in the ROC class")
         predict_fn = unify_predict_fn(predict_fn, X, 1)
 
         X, feature_names, feature_types = unify_data2(
-            X, n_samples, self.feature_names, self.feature_types, False, 0
+            X, n_samples, self.feature_names, self.feature_types, True, 0
         )
 
         y = typify_classification(y)

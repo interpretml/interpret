@@ -224,7 +224,7 @@ class TreeExplanation(ExplanationMixin):
 class BaseShallowDecisionTree:
     """Shallow Decision Tree (low depth).
 
-    Currently wrapper around DecisionTreeClassifier in scikit-learn.
+    Currently wrapper around DecisionTreeClassifier or DecisionTreeRegressor in scikit-learn.
     To keep the tree shallow, max depth is defaulted to 3.
 
     https://github.com/scikit-learn/scikit-learn
@@ -241,7 +241,7 @@ class BaseShallowDecisionTree:
             feature_names: List of feature names.
             feature_types: List of feature types.
             max_depth: Max depth of tree.
-            **kwargs: Kwargs sent to fit() method of tree.
+            **kwargs: Kwargs sent to __init__() method of tree.
         """
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -266,10 +266,10 @@ class BaseShallowDecisionTree:
         X, y, self.feature_names, self.feature_types = unify_data(
             X, y, self.feature_names, self.feature_types
         )
-        sk_model_ = self._model()
-        sk_model_.fit(X, y)
+        model = self._model()
+        model.fit(X, y)
 
-        feat_imp = sk_model_.feature_importances_
+        feat_imp = model.feature_importances_
         self.global_selector = gen_global_selector(
             X, self.feature_names, self.feature_types, feat_imp
         )
