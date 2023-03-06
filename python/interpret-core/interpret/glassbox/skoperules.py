@@ -2,6 +2,8 @@
 # Distributed under the MIT software license
 
 from sklearn.base import ClassifierMixin
+from sklearn.utils.validation import check_is_fitted
+
 from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils import (
     gen_name_from_class,
@@ -9,12 +11,19 @@ from ..utils import (
     gen_local_selector,
     gen_perf_dicts,
 )
-from ..utils import unify_data
 
 from copy import deepcopy
 import numpy as np
 import pandas as pd
 import re
+
+from ..utils._binning import (
+    determine_min_cols,
+    clean_X,
+    unify_data2,
+    clean_dimensions,
+    typify_classification,
+)
 
 import logging
 
@@ -145,18 +154,42 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             sys.modules["sklearn.externals.six"] = six
             from skrules import SkopeRules as SR
 
-        X, y, self.feature_names, self.feature_types = unify_data(
-            X, y, self.feature_names, self.feature_types
+        if y is None:
+            raise Exception("y must be specified in call to DecisionListClassifier")
+
+        y = clean_dimensions(y, "y")
+        if y.ndim != 1:
+            raise ValueError("y must be 1 dimensional")
+
+        min_cols = determine_min_cols(self.feature_names, self.feature_types)
+        X, n_samples = clean_X(X, min_cols, len(y))
+
+        X, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+            X, n_samples, self.feature_names, self.feature_types, False, 0
         )
+
+        y = typify_classification(y)
+        # skope-rules handles binary and multiclass classification.
+        # It checks this, so we do not need to.
+
+        # TODO: it might be cleaner to pass is no feature names, then use mapping property.  That way if they change their names we'll use their new names
+
+        # skope-rules seems to want to record things in their names, so replicate their format
+        # they seem to have changed this to make rules_ use the given feature_names, but just
+        # in case we want to look at any of their other internals, use their naming
+        BASE_FEATURE_NAME = "__C__"
         self.feature_index_ = [
-            f"feature_{i:04}" for i, v in enumerate(self.feature_names)
+            BASE_FEATURE_NAME + x
+            for x in np.arange(len(self.feature_names_in_)).astype(str)
         ]
         self.feature_map_ = {
-            v: self.feature_names[i] for i, v in enumerate(self.feature_index_)
+            key: name for key, name in zip(self.feature_index_, self.feature_names_in_)
         }
         self.sk_model_ = SR(feature_names=self.feature_index_, **self.kwargs)
 
         self.classes_, y = np.unique(y, return_inverse=True)
+        self._class_idx_ = {x: index for index, x in enumerate(self.classes_)}
+
         self.sk_model_.fit(X, y)
         self.pos_ratio_ = np.mean(y)
 
@@ -169,9 +202,13 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             self.feat_rule_map_,
         ) = self._extract_rules(self.sk_model_.rules_)
 
-        self.global_selector = gen_global_selector(
-            X, self.feature_names, self.feature_types, None
+        # TODO: move this call into the explain_global function and extract the information needed
+        #       in a cleaner way.  Also, look over the above fields to see if we can simplify
+        self.global_selector_ = gen_global_selector(
+            X, self.feature_names_in_, self.feature_types_in_, None
         )
+
+        self.has_fitted_ = True
 
         return self
 
@@ -185,7 +222,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             Predicted class label per instance.
         """
 
-        X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        # let predict_proba clean X and check if we are fitted
         scores = self.predict_proba(X)
         return self.classes_[np.argmax(scores, axis=1)]
 
@@ -212,7 +249,15 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             Probability estimate of instance for each class.
         """
 
-        X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        check_is_fitted(self, "has_fitted_")
+
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+        X, n_samples = clean_X(X, min_cols, None)
+
+        X, _, _ = unify_data2(
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+        )
+
         scores = self._scores(X)
         prec_ar = np.array(self.prec_)
         return np.c_[1.0 - prec_ar[scores], prec_ar[scores]]
@@ -225,7 +270,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         prec_li = []
         recall_li = []
         predict_li = []
-        features_dict = {feat: [] for feat in self.feature_names}
+        features_dict = {feat: [] for feat in self.feature_names_in_}
 
         def extract_orig_features(pattern, rule):
             feature_set = set()
@@ -274,14 +319,35 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         Returns:
             An explanation object.
         """
+
+        check_is_fitted(self, "has_fitted_")
+
         if name is None:
             name = gen_name_from_class(self)
 
-        X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
+        n_samples = None
+        if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            n_samples = len(y)
 
-        scores = self._scores(X)
+            y = typify_classification(y)
+            y = np.array([self._class_idx_[el] for el in y], dtype=np.int64)
+
+        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
+        X, n_samples = clean_X(X, min_cols, n_samples)
+
+        # predict and predict_proba call unify_data already, so call them before unifying
+        # but after doing the light cleaning for iterators
         outcomes = self.predict(X)
         predictions = self.predict_proba(X)
+
+        X, _, _ = unify_data2(
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+        )
+
+        scores = self._scores(X)
 
         perf_dicts = gen_perf_dicts(predictions, y, True)
         data_dicts = []
@@ -303,8 +369,8 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         return RulesExplanation(
             "local",
             internal_obj,
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
+            feature_names=self.feature_names_in_,
+            feature_types=self.feature_types_in_,
             name=name,
             selector=selector,
         )
@@ -318,6 +384,9 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         Returns:
             An explanation object.
         """
+
+        check_is_fitted(self, "has_fitted_")
+
         if name is None:
             name = gen_name_from_class(self)
 
@@ -347,7 +416,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
                 "recall": [recall[i] for i in feat_rule_map[feature]],
                 "outcome": [outcomes[i] for i in feat_rule_map[feature]],
             }
-            for feature in self.feature_names
+            for feature in self.feature_names_in_
         ]
 
         internal_obj = {"overall": overall_data_dict, "specific": data_dicts}
@@ -355,8 +424,8 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         return RulesExplanation(
             "global",
             internal_obj,
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
+            feature_names=self.feature_names_in_,
+            feature_types=self.feature_types_in_,
             name=name,
-            selector=self.global_selector,
+            selector=self.global_selector_,
         )

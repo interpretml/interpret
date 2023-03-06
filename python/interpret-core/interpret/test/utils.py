@@ -27,6 +27,8 @@ from pandas.core.generic import NDFrame
 from plotly import graph_objs as go
 from sklearn.base import is_classifier
 
+import sys
+
 
 def get_all_explainers():
     # True means run on classification.  False means run on regression
@@ -35,7 +37,6 @@ def get_all_explainers():
     model_explainer_classes = [
         (ClassificationTree, True),
         (RegressionTree, False),
-        # not working in python 3.10 currently: (DecisionListClassifier, True),
         (LogisticRegression, True),
         (LinearRegression, False),
         (ExplainableBoostingClassifier, True),
@@ -64,6 +65,12 @@ def get_all_explainers():
     all_explainers.extend(blackbox_explainer_classes)
     all_explainers.extend(data_explainer_classes)
     all_explainers.extend(perf_explainer_classes)
+
+    if sys.version_info[0] <= 3 and sys.version_info[1] < 10:
+        # skope-rules doesn't work in python 3.10 as of March 2023,
+        # although there was a PR accepted to change this a few weeks ago
+        # so the version after 1.0.1 should work
+        all_explainers.append((DecisionListClassifier, True))
 
     return all_explainers
 
