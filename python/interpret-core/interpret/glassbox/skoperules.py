@@ -188,12 +188,13 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         }
         self.sk_model_ = SR(feature_names=self.feature_index_, **self.kwargs)
 
-        # TODO: it might be better to pass the typified y into skope-rules so that the self.sk_model_
-        #       class is more capable, but this would be true only if it's able to handle strings
-        self.classes_, y = np.unique(y, return_inverse=True)
-        self._class_idx_ = {x: index for index, x in enumerate(self.classes_)}
-
         self.sk_model_.fit(X, y)
+        
+        self.classes_ = self.sk_model_.classes_
+        class_idx = {x: index for index, x in enumerate(self.classes_)}
+        y = np.array([class_idx[el] for el in y], dtype=np.int64)
+        
+        # TODO: this mean approach is going to fail to be useful for multiclass
         self.pos_ratio_ = np.mean(y)
 
         # Extract rules
@@ -210,6 +211,8 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         self.global_selector_ = gen_global_selector(
             X, self.feature_names_in_, self.feature_types_in_, None
         )
+
+        self.n_features_in_ = len(self.feature_names_in_)
 
         self.has_fitted_ = True
 
@@ -335,7 +338,6 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             n_samples = len(y)
 
             y = typify_classification(y)
-            y = np.array([self._class_idx_[el] for el in y], dtype=np.int64)
 
         X, n_samples = preclean_X(
             X, self.feature_names_in_, self.feature_types_in_, n_samples
