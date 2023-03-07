@@ -10,7 +10,7 @@ from interpret.glassbox.ebm.bin import (
     make_bin_weights,
     ebm_decision_function,
 )
-from interpret.utils._binning import clean_X
+from interpret.utils._binning import preclean_X
 
 
 def test_eval_terms():
@@ -77,7 +77,7 @@ def test_eval_terms():
         )
     )
 
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, feature_names_in, feature_types_in)
 
     bin_weights = make_bin_weights(
         X, n_samples, None, feature_names_in, feature_types_in, bins, term_features

@@ -7,8 +7,7 @@ import warnings
 
 import numpy as np
 from ..utils._binning import (
-    determine_min_cols,
-    clean_X,
+    preclean_X,
     determine_n_classes,
     unify_predict_fn,
     unify_data2,
@@ -40,8 +39,7 @@ class ShapKernel(ExplainerMixin):
         self.feature_names = feature_names
         self.feature_types = feature_types
 
-        min_cols = determine_min_cols(feature_names, feature_types)
-        data, n_samples = clean_X(data, min_cols, None)
+        data, n_samples = preclean_X(data, feature_names, feature_types)
 
         predict_fn, n_classes = determine_n_classes(model, data, n_samples)
         if 3 <= n_classes:

@@ -7,8 +7,7 @@ from ..utils import gen_name_from_class, unify_data, gen_perf_dicts, gen_local_s
 
 import numpy as np
 from ..utils._binning import (
-    determine_min_cols,
-    clean_X,
+    preclean_X,
     determine_n_classes,
     unify_predict_fn,
     unify_data2,
@@ -66,8 +65,7 @@ class TreeInterpreter(ExplainerMixin):
 
         if data is not None:
             # if the user provides data, we use it as a larger corpus than X
-            min_cols = determine_min_cols(feature_names, feature_types)
-            data, n_samples = clean_X(data, min_cols, None)
+            data, n_samples = preclean_X(data, feature_names, feature_types)
 
             _, self.feature_names_in_, self.feature_types_in_ = unify_data2(
                 data, n_samples, feature_names, feature_types, False, 0
@@ -110,8 +108,7 @@ class TreeInterpreter(ExplainerMixin):
             else self.feature_types_in_
         )
 
-        min_cols = determine_min_cols(feature_names, feature_types)
-        X, n_samples = clean_X(X, min_cols, n_samples)
+        X, n_samples = preclean_X(X, feature_names, feature_types, n_samples)
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
         predict_fn = unify_predict_fn(predict_fn, X, -1)

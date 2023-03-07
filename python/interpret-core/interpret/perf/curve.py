@@ -8,8 +8,7 @@ from sklearn.metrics import precision_recall_curve, average_precision_score
 
 import numpy as np
 from ..utils._binning import (
-    determine_min_cols,
-    clean_X,
+    preclean_X,
     determine_n_classes,
     unify_predict_fn,
     unify_data2,
@@ -51,15 +50,11 @@ class PR(ExplainerMixin):
         if name is None:
             name = gen_name_from_class(self)
 
-        if y is None:
-            raise Exception("y must be specified in call to PR")
-
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
             raise ValueError("y must be 1 dimensional")
 
-        min_cols = determine_min_cols(self.feature_names, self.feature_types)
-        X, n_samples = clean_X(X, min_cols, len(y))
+        X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
         if n_classes != 2:
@@ -132,15 +127,11 @@ class ROC(ExplainerMixin):
         if name is None:
             name = gen_name_from_class(self)
 
-        if y is None:
-            raise Exception("y must be specified in call to ROC")
-
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
             raise ValueError("y must be 1 dimensional")
 
-        min_cols = determine_min_cols(self.feature_names, self.feature_types)
-        X, n_samples = clean_X(X, min_cols, len(y))
+        X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
         if n_classes != 2:

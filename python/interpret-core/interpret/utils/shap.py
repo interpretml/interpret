@@ -7,8 +7,7 @@ from . import gen_name_from_class, gen_perf_dicts, gen_local_selector
 import numpy as np
 
 from ..utils._binning import (
-    determine_min_cols,
-    clean_X,
+    preclean_X,
     determine_n_classes,
     unify_predict_fn,
     unify_data2,
@@ -39,8 +38,7 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
         else explainer.feature_types_in_
     )
 
-    min_cols = determine_min_cols(feature_names, feature_types)
-    X, n_samples = clean_X(X, min_cols, n_samples)
+    X, n_samples = preclean_X(X, feature_names, feature_types, n_samples)
 
     predict_fn, n_classes = determine_n_classes(explainer.model, X, n_samples)
     if 3 <= n_classes:

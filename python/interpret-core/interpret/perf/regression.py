@@ -8,8 +8,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
 
 from ..utils._binning import (
-    determine_min_cols,
-    clean_X,
+    preclean_X,
     determine_n_classes,
     unify_predict_fn,
     unify_data2,
@@ -50,15 +49,11 @@ class RegressionPerf(ExplainerMixin):
         if name is None:
             name = gen_name_from_class(self)
 
-        if y is None:
-            raise Exception("y must be specified in call to RegressionPerf")
-
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
             raise ValueError("y must be 1 dimensional")
 
-        min_cols = determine_min_cols(self.feature_names, self.feature_types)
-        X, n_samples = clean_X(X, min_cols, len(y))
+        X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
         if 0 <= n_classes:

@@ -10,8 +10,7 @@ import warnings
 
 import numpy as np
 from ..utils._binning import (
-    determine_min_cols,
-    clean_X,
+    preclean_X,
     determine_n_classes,
     unify_predict_fn,
     unify_data2,
@@ -46,8 +45,7 @@ class LimeTabular(ExplainerMixin):
         self.feature_names = feature_names
         self.feature_types = feature_types
 
-        min_cols = determine_min_cols(feature_names, feature_types)
-        data, n_samples = clean_X(data, min_cols, None)
+        data, n_samples = preclean_X(data, feature_names, feature_types)
 
         predict_fn, n_classes = determine_n_classes(model, data, n_samples)
         if 3 <= n_classes:
@@ -92,8 +90,9 @@ class LimeTabular(ExplainerMixin):
                 raise ValueError("y must be 1 dimensional")
             n_samples = len(y)
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-        X, n_samples = clean_X(X, min_cols, n_samples)
+        X, n_samples = preclean_X(
+            X, self.feature_names_in_, self.feature_types_in_, n_samples
+        )
 
         predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
         if 3 <= n_classes:

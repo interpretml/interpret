@@ -7,8 +7,7 @@ from interpret.api.base import ExplainerMixin
 
 import numpy as np
 from ..utils._binning import (
-    determine_min_cols,
-    clean_X,
+    preclean_X,
     determine_n_classes,
     unify_predict_fn,
     unify_data2,
@@ -46,8 +45,7 @@ class ShapTree(ExplainerMixin):
         if data is not None:
             # data can be None for some tree SHAP options
 
-            min_cols = determine_min_cols(feature_names, feature_types)
-            data, n_samples = clean_X(data, min_cols, None)
+            data, n_samples = preclean_X(data, feature_names, feature_types)
 
             data, self.feature_names_in_, self.feature_types_in_ = unify_data2(
                 data, n_samples, feature_names, feature_types, False, 0

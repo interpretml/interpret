@@ -7,8 +7,7 @@ import warnings
 from ..utils import gen_name_from_class, gen_global_selector2
 
 from ..utils._binning import (
-    determine_min_cols,
-    clean_X,
+    preclean_X,
     determine_n_classes,
     unify_predict_fn,
     unify_data2,
@@ -108,8 +107,7 @@ class PartialDependence(ExplainerMixin):
             std_coef: Co-efficient for standard deviation.
         """
 
-        min_cols = determine_min_cols(feature_names, feature_types)
-        data, n_samples = clean_X(data, min_cols, None)
+        data, n_samples = preclean_X(data, feature_names, feature_types)
 
         predict_fn, n_classes = determine_n_classes(model, data, n_samples)
         if 3 <= n_classes:

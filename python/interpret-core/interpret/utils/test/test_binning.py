@@ -132,7 +132,7 @@ def check_pandas_normal(dtype, val1, val2):
 
     feature_types_given = ["nominal"]
 
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
 
@@ -188,7 +188,7 @@ def check_pandas_missings(dtype, val1, val2):
     c2 = {str(val2): 1, str(val1): 2}
     feature_types_given = ["nominal", "nominal", "nominal", "nominal"]
 
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 3
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
 
@@ -407,7 +407,7 @@ def check_pandas_float(dtype, val1, val2):
         np.array([val2, val1, None], dtype=np.object_), dtype=dtype
     )
 
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 3
     feature_names_in = unify_feature_names(X)
 
@@ -456,7 +456,7 @@ def check_pandas_float(dtype, val1, val2):
 
 def check_numpy_throws(dtype_src, val1, val2):
     X = np.array([[val1, val2], [val1, val2]], dtype=dtype_src)
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
     try:
@@ -1239,7 +1239,7 @@ def test_process_column_initial_choose_floats():
 
 def test_unify_columns_numpy1():
     X = np.array([1, 2, 3])
-    X, n_samples = clean_X(X, None, 1)
+    X, n_samples = preclean_X(X, None, None, 1)
     assert n_samples == 1
     feature_names_in = unify_feature_names(X)
     X_cols = list(
@@ -1259,7 +1259,7 @@ def test_unify_columns_numpy1():
 
 def test_unify_columns_numpy2():
     X = np.array([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
     X_cols = list(
@@ -1286,7 +1286,7 @@ def test_unify_columns_numpy2():
 def test_unify_columns_numpy_ignore():
     X = np.array([["abc", None, "def"], ["ghi", "jkl", None]])
     feature_types_given = ["ignore", "ignore", "ignore"]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
     X_cols = list(
@@ -1315,7 +1315,7 @@ def test_unify_columns_numpy_ignore():
 
 def test_unify_columns_scipy():
     X = sp.sparse.csc_matrix([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
     X_cols = list(
@@ -1344,7 +1344,7 @@ def test_unify_columns_scipy():
 
 def test_unify_columns_dict1():
     X = {"feature1": [1], "feature2": "hi", "feature3": None}
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 1
     feature_names_in = unify_feature_names(
         X, feature_names_given=["feature3", "feature2", "feature1"]
@@ -1369,7 +1369,7 @@ def test_unify_columns_dict1():
 
 def test_unify_columns_dict2():
     X = {"feature1": [1, 4], "feature2": [2, 5], "feature3": [3, 6]}
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(
         X, feature_names_given=["feature3", "feature2", "feature1"]
@@ -1400,7 +1400,7 @@ def test_unify_columns_dict2():
 
 def test_unify_columns_list1():
     X = [1, 2.0, "hi", None]
-    X, n_samples = clean_X(X, None, 1)
+    X, n_samples = preclean_X(X, None, None, 1)
     assert n_samples == 1
     feature_names_in = unify_feature_names(X)
     X_cols = list(
@@ -1450,7 +1450,7 @@ def test_unify_columns_list2():
         S1,
         S2,
     ]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 16
     feature_names_in = unify_feature_names(X)
     X_cols = list(
@@ -1545,7 +1545,7 @@ def test_unify_columns_list2():
 
 def test_unify_columns_tuple1():
     X = (1, 2.0, "hi", None)
-    X, n_samples = clean_X(X, None, 1)
+    X, n_samples = preclean_X(X, None, None, 1)
     assert n_samples == 1
     feature_names_in = unify_feature_names(X)
     X_cols = list(
@@ -1581,7 +1581,7 @@ def test_unify_columns_tuple2():
         (x for x in [1, 2, 3]),
         np.array([1, 2, 3], dtype=np.object_),
     )
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 10
     feature_names_in = unify_feature_names(X)
     X_cols = list(
@@ -1658,7 +1658,7 @@ def test_unify_columns_tuple2():
 
 def test_unify_columns_generator1():
     X = (x for x in [1, 2.0, "hi", None])
-    X, n_samples = clean_X(X, None, 1)
+    X, n_samples = preclean_X(X, None, None, 1)
     assert n_samples == 1
     feature_names_in = unify_feature_names(X)
     X_cols = list(
@@ -1697,7 +1697,7 @@ def test_unify_columns_generator2():
             np.array([1, 2, 3], dtype=np.object_),
         ]
     )
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 10
     feature_names_in = unify_feature_names(X)
     X_cols = list(
@@ -1889,7 +1889,7 @@ def test_unify_columns_pandas_missings_mixed_floats2():
 def test_unify_columns_str_throw():
     X = "abc"
     try:
-        X, n_samples = clean_X(X)
+        X, n_samples = preclean_X(X, None, None)
         assert False
     except:
         pass
@@ -1917,7 +1917,7 @@ def test_unify_columns_str_throw():
 def test_unify_columns_int_throw():
     X = 1
     try:
-        X, n_samples = clean_X(X)
+        X, n_samples = preclean_X(X, None, None)
         assert False
     except:
         pass
@@ -2033,7 +2033,7 @@ def test_unify_columns_pandas_obj_to_float():
     na = X["feature1"].isna()
     assert all(na[0:3])
     assert all(~na[3:])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 10
     feature_names_in = unify_feature_names(X)
     X_cols = list(
@@ -2086,7 +2086,7 @@ def test_unify_columns_pandas_obj_to_str():
     na = X["feature1"].isna()
     assert all(na[0:3])
     assert all(~na[3:])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 12
     feature_names_in = unify_feature_names(X)
     X_cols = list(
@@ -2135,7 +2135,7 @@ def test_unify_columns_pandas_categorical():
     na = X["feature1"].isna()
     assert all(na[0:3])
     assert all(~na[3:])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 6
     feature_names_in = unify_feature_names(X)
     X_cols = list(
@@ -2170,7 +2170,7 @@ def test_unify_columns_pandas_ordinal():
     na = X["feature1"].isna()
     assert all(na[0:3])
     assert all(~na[3:])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 6
     feature_names_in = unify_feature_names(X)
     X_cols = list(
@@ -2205,7 +2205,7 @@ def test_unify_columns_pandas_categorical_shorter():
     na = X["feature1"].isna()
     assert all(na[0:3])
     assert all(~na[3:])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 5
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
@@ -2229,7 +2229,7 @@ def test_unify_columns_pandas_categorical_equals():
     na = X["feature1"].isna()
     assert all(na[0:3])
     assert all(~na[3:])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 6
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
@@ -2255,7 +2255,7 @@ def test_unify_columns_pandas_categorical_longer():
     na = X["feature1"].isna()
     assert all(na[0:2])
     assert all(~na[2:])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 6
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
@@ -2282,7 +2282,7 @@ def test_unify_columns_pandas_categorical_reordered_shorter():
     na = X["feature1"].isna()
     assert all(na[0:3])
     assert all(~na[3:])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 5
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
@@ -2306,7 +2306,7 @@ def test_unify_columns_pandas_categorical_reordered_equals():
     na = X["feature1"].isna()
     assert all(na[0:3])
     assert all(~na[3:])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 6
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
@@ -2332,7 +2332,7 @@ def test_unify_columns_pandas_categorical_reordered_longer1():
     na = X["feature1"].isna()
     assert all(na[0:2])
     assert all(~na[2:])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 6
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
@@ -2361,7 +2361,7 @@ def test_unify_columns_pandas_categorical_reordered_longer2():
     na = X["feature1"].isna()
     assert all(na[0:2])
     assert all(~na[2:])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 6
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
@@ -2388,7 +2388,7 @@ def test_unify_columns_pandas_categorical_compressed_categories():
     na = X["feature1"].isna()
     assert all(na[0:3])
     assert all(~na[3:])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 6
     feature_names_in = unify_feature_names(X)
     # here we're combining the "a" category and the "0" category into a single one that tracks both.
@@ -2407,7 +2407,7 @@ def test_unify_columns_pandas_categorical_compressed_categories():
 
 def test_unify_feature_names_numpy1():
     X = np.array([1, 2, 3])
-    X, n_samples = clean_X(X, None, 1)
+    X, n_samples = preclean_X(X, None, None, 1)
     assert n_samples == 1
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
@@ -2427,7 +2427,7 @@ def test_unify_feature_names_numpy1():
 
 def test_unify_feature_names_numpy2():
     X = np.array([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
@@ -2450,7 +2450,7 @@ def test_unify_feature_names_numpy2():
 
 def test_unify_feature_names_data_frame1():
     X = pd.DataFrame([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["0", "1", "2"]
@@ -2476,7 +2476,7 @@ def test_unify_feature_names_data_frame2():
     X["feature1"] = [1, 4]
     X["feature2"] = [2, 5]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["feature1", "feature2", "feature3"]
@@ -2499,7 +2499,7 @@ def test_unify_feature_names_data_frame2():
 
 def test_unify_feature_names_scipy():
     X = sp.sparse.csc_matrix([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
@@ -2522,7 +2522,7 @@ def test_unify_feature_names_scipy():
 
 def test_unify_feature_names_dict1():
     X = {"feature1": [1], "feature2": [2], "feature3": [3]}
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 1
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["feature1", "feature2", "feature3"]
@@ -2542,7 +2542,7 @@ def test_unify_feature_names_dict1():
 
 def test_unify_feature_names_dict2():
     X = {"feature2": [1, 4], "feature1": [2, 5], "feature3": [3, 6]}
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["feature1", "feature2", "feature3"]
@@ -2565,7 +2565,7 @@ def test_unify_feature_names_dict2():
 
 def test_unify_feature_names_list1():
     X = [1, 2, 3]
-    X, n_samples = clean_X(X, None, 1)
+    X, n_samples = preclean_X(X, None, None, 1)
     assert n_samples == 1
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
@@ -2585,7 +2585,7 @@ def test_unify_feature_names_list1():
 
 def test_unify_feature_names_list2():
     X = [pd.Series([1, 2, 3]), (4, 5, 6)]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
@@ -2608,7 +2608,7 @@ def test_unify_feature_names_list2():
 
 def test_unify_feature_names_tuple1():
     X = (1, 2, 3)
-    X, n_samples = clean_X(X, None, 1)
+    X, n_samples = preclean_X(X, None, None, 1)
     assert n_samples == 1
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
@@ -2628,7 +2628,7 @@ def test_unify_feature_names_tuple1():
 
 def test_unify_feature_names_tuple2():
     X = (np.array([1, 2, 3]), [4, 5, 6])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
@@ -2651,7 +2651,7 @@ def test_unify_feature_names_tuple2():
 
 def test_unify_feature_names_feature_types1():
     X = np.array([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "continuous", "continuous"]
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
@@ -2676,7 +2676,7 @@ def test_unify_feature_names_feature_types1():
 
 def test_unify_feature_names_feature_types2():
     X = np.array([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
@@ -2699,7 +2699,7 @@ def test_unify_feature_names_feature_types2():
 
 def test_unify_feature_names_feature_types3():
     X = np.array([[1, 3], [4, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
@@ -2725,7 +2725,7 @@ def test_unify_feature_names_pandas_feature_types1():
     X["feature1"] = [1, 4]
     X["feature2"] = [2, 5]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "continuous", "continuous"]
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
@@ -2754,7 +2754,7 @@ def test_unify_pandas_ignored_existing():
     X["feature2"] = [2, 5]
     X["feature3"] = [3, 6]
     feature_types_given = ["continuous", "ignore", "continuous"]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
     assert feature_names_in == ["feature1", "feature2", "feature3"]
@@ -2778,7 +2778,7 @@ def test_unify_feature_names_pandas_feature_types3():
     X = pd.DataFrame()
     X["feature1"] = [1, 4]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
@@ -2801,7 +2801,7 @@ def test_unify_feature_names_pandas_feature_types3():
 
 def test_unify_feature_names_names1():
     X = np.array([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X, feature_names_given=pd.Series([0, 1, 2]))
     assert feature_names_in == ["0", "1", "2"]
@@ -2824,7 +2824,7 @@ def test_unify_feature_names_names1():
 
 def test_unify_feature_names_names2():
     X = np.array([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X, feature_names_given=[0, "SOMETHING", 2])
     assert isinstance(feature_names_in, list)
@@ -2851,7 +2851,7 @@ def test_unify_feature_names_pandas_names1():
     X["feature1"] = [1, 4]
     X["feature2"] = [2, 5]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X, feature_names_given=pd.Series([0, 1, 2]))
     assert feature_names_in == ["0", "1", "2"]
@@ -2877,7 +2877,7 @@ def test_unify_feature_names_pandas_names2():
     X["feature1"] = [1, 4]
     X["feature2"] = [2, 5]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X, feature_names_given=[0, "SOMETHING", 2])
     assert feature_names_in == ["0", "SOMETHING", "2"]
@@ -2900,7 +2900,7 @@ def test_unify_feature_names_pandas_names2():
 
 def test_unify_feature_names_types_names1():
     X = np.array([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "continuous", "continuous"]
     feature_names_in = unify_feature_names(
@@ -2929,7 +2929,7 @@ def test_unify_feature_names_types_names1():
 
 def test_unify_feature_names_types_names2():
     X = np.array([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "continuous", "continuous"]
     feature_names_in = unify_feature_names(
@@ -2961,7 +2961,7 @@ def test_unify_feature_names_types_pandas_names1():
     X["feature1"] = [1, 4]
     X["feature2"] = [2, 5]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "continuous", "continuous"]
     feature_names_in = unify_feature_names(
@@ -2993,7 +2993,7 @@ def test_unify_feature_names_types_pandas_names2():
     X["feature1"] = [1, 4]
     X["feature2"] = [2, 5]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "continuous", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3022,7 +3022,7 @@ def test_unify_feature_names_types_pandas_names2():
 
 def test_unify_feature_names_types_ignored_names1():
     X = np.array([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3049,7 +3049,7 @@ def test_unify_feature_names_types_ignored_names1():
 
 def test_unify_feature_names_types_ignored_names2():
     X = np.array([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3079,7 +3079,7 @@ def test_unify_feature_names_types_ignored_pandas_names1():
     X["feature1"] = [1, 4]
     X["feature2"] = [2, 5]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3109,7 +3109,7 @@ def test_unify_feature_names_types_ignored_pandas_names2():
     X["feature1"] = [1, 4]
     X["feature2"] = [2, 5]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3136,7 +3136,7 @@ def test_unify_feature_names_types_ignored_pandas_names2():
 
 def test_unify_feature_names_types_dropped_names1():
     X = np.array([[1, 3], [4, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3163,7 +3163,7 @@ def test_unify_feature_names_types_dropped_names1():
 
 def test_unify_feature_names_types_dropped_names2():
     X = np.array([[1, 3], [4, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3192,7 +3192,7 @@ def test_unify_feature_names_types_dropped_pandas_names1():
     X = pd.DataFrame()
     X["feature1"] = [1, 4]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3221,7 +3221,7 @@ def test_unify_feature_names_types_dropped_pandas_names2():
     X = pd.DataFrame()
     X["feature1"] = [1, 4]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3248,7 +3248,7 @@ def test_unify_feature_names_types_dropped_pandas_names2():
 
 def test_unify_feature_names_types_nondropped2_names2():
     X = np.array([[1, 2, 3], [4, 5, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3276,7 +3276,7 @@ def test_unify_feature_names_types_nondropped2_pandas_names1():
     X["feature1"] = [1, 4]
     X["feature2"] = [2, 5]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3303,7 +3303,7 @@ def test_unify_feature_names_types_nondropped2_pandas_names1():
 
 def test_unify_feature_names_types_dropped2_names2():
     X = np.array([[1, 3], [4, 6]])
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3330,7 +3330,7 @@ def test_unify_feature_names_types_dropped2_pandas_names1():
     X = pd.DataFrame()
     X["feature1"] = [1, 4]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3360,7 +3360,7 @@ def test_unify_feature_names_types_keep_pandas_names1():
     X["feature1"] = [1, 4]
     X["feature2"] = [2, 5]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "continuous", "continuous"]
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
@@ -3388,7 +3388,7 @@ def test_unify_feature_names_types_dropped3_pandas_names1():
     X["feature1"] = [1, 4]
     X["feature2"] = [2, 5]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
@@ -3413,7 +3413,7 @@ def test_unify_feature_names_types_dropped3_pandas_names2():
     X = pd.DataFrame()
     X["feature1"] = [1, 4]
     X["feature3"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
@@ -3439,7 +3439,7 @@ def test_unify_feature_names_types_rearrange1_drop1():
     X["width"] = [1, 4]
     X["UNUSED"] = [2, 5]
     X["length"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3468,7 +3468,7 @@ def test_unify_feature_names_types_rearrange1_drop2():
     X = pd.DataFrame()
     X["width"] = [1, 4]
     X["length"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3498,7 +3498,7 @@ def test_unify_feature_names_types_rearrange2_drop1():
     X["width"] = [1, 4]
     X["UNUSED"] = [2, 5]
     X["length"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3527,7 +3527,7 @@ def test_unify_feature_names_types_rearrange2_drop2():
     X = pd.DataFrame()
     X["width"] = [1, 4]
     X["length"] = [3, 6]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3558,7 +3558,7 @@ def test_unify_feature_names_types_rearrange_more1():
     X["UNUSED1"] = [2, 5]
     X["length"] = [3, 6]
     X["UNUSED2"] = [9, 9]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3589,7 +3589,7 @@ def test_unify_feature_names_types_rearrange_more2():
     X["UNUSED1"] = [2, 5]
     X["length"] = [3, 6]
     X["UNUSED2"] = [9, 9]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3620,7 +3620,7 @@ def test_unify_feature_names_types_rearrange_more3():
     X["UNUSED"] = [2, 5]
     X["length"] = [3, 6]
     X["width"] = [8, 9]
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_types_given = ["continuous", "continuous", "continuous"]
     feature_names_in = unify_feature_names(
@@ -3650,7 +3650,7 @@ def test_unify_feature_names_types_rearrange_more3():
 def test_unify_columns_ma_no_mask():
     X = ma.array([[np.nan], [1], [None]], dtype=np.object_)
     assert X.mask is ma.nomask
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 3
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["feature_0001"]
@@ -3670,7 +3670,7 @@ def test_unify_columns_ma_no_mask():
 def test_unify_columns_ma_empty_mask():
     X = ma.array([[np.nan], [1], [None]], mask=[[0], [0], [0]], dtype=np.object_)
     assert X.mask is not ma.nomask
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 3
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["feature_0001"]
@@ -3693,7 +3693,7 @@ def test_unify_columns_ma_objects():
         mask=[[0], [1], [0], [1], [0], [0], [1]],
         dtype=np.object_,
     )
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
     assert n_samples == 7
     feature_names_in = unify_feature_names(X)
     assert feature_names_in == ["feature_0001"]
@@ -3735,7 +3735,7 @@ def test_bin_native():
     assert sample_weight.ndim == 1
     sample_weight = sample_weight.astype(np.float64, copy=False)
 
-    X, n_samples = clean_X(X)
+    X, n_samples = preclean_X(X, None, None)
 
     (
         feature_names_in,

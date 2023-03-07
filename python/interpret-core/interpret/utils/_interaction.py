@@ -17,8 +17,7 @@ from sklearn.utils.multiclass import type_of_target
 from sklearn.base import is_classifier, is_regressor
 
 from ._binning import (
-    determine_min_cols,
-    clean_X,
+    preclean_X,
     clean_dimensions,
     typify_classification,
     clean_init_score,
@@ -197,8 +196,7 @@ def measure_interactions(
             )
         sample_weight = sample_weight.astype(np.float64, copy=False)
 
-    min_cols = determine_min_cols(feature_names, feature_types)
-    X, n_samples = clean_X(X, min_cols, len(y))
+    X, n_samples = preclean_X(X, feature_names, feature_types, len(y))
 
     binning_result = construct_bins(
         X=X,

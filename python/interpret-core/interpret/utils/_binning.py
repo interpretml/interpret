@@ -46,8 +46,8 @@ from ._privacy import (
 # - write a cython single instance prediction pathway
 # - consider re-writing most of this bin.py functionality in cython for anything that gets used during prediction for speed
 # - test: clean_dimensions with ma.masked_array... and other stuff in there
-# - test: clean_X with pd.Series with missing values and maybe a categorical -> gets converted as N features and 1 sample
-# - test: clean_X with list that CONTAINS a ma.masked_array sample entry with missing data and without missing data
+# - test: preclean_X with pd.Series with missing values and maybe a categorical -> gets converted as N features and 1 sample
+# - test: preclean_X with list that CONTAINS a ma.masked_array sample entry with missing data and without missing data
 # - add better processing for ignored columsn where we return the existing data if we can, and we return all None
 #  values if not which our caller can detect.  Then unify_data2 can convert that to int(0) values which should work for
 #  all feature types
@@ -1087,7 +1087,7 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
     else:
         try:
             # we don't support iterables that get exhausted on their first examination.  This condition
-            # should be detected though in clean_X where we get the length or bin_native where we check the
+            # should be detected though in preclean_X where we get the length or bin_native where we check the
             # number of samples on the 2nd run through the generator
             X_col = list(X_col)
             X_col = np.array(X_col, np.object_)
@@ -1282,7 +1282,7 @@ def unify_columns(
         raise ValueError(msg)
 
 
-def determine_min_cols(feature_names=None, feature_types=None):
+def _determine_min_cols(feature_names=None, feature_types=None):
     if feature_types is None:
         return None if feature_names is None else len(feature_names)
     else:
@@ -1444,6 +1444,11 @@ def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
 
 def clean_dimensions(data, param_name):
     # called under: fit
+
+    if data is None:
+        msg = f"{param_name} cannot be None"
+        _log.error(msg)
+        raise ValueError(msg)
 
     while True:
         if isinstance(data, ma.masked_array):
@@ -1781,8 +1786,9 @@ def reshape_X(X, min_cols, n_samples, sample_source):
         raise ValueError(msg)
 
 
-def clean_X(X, min_cols=None, n_samples=None, sample_source="y"):
+def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y"):
     # called under: fit or predict
+    min_cols = _determine_min_cols(feature_names, feature_types)
 
     if isinstance(X, np.ndarray):  # this includes ma.masked_array
         if X.ndim != 2:
@@ -2121,9 +2127,12 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 _log.error(msg)
                 raise ValueError(msg)
 
-        min_cols = determine_min_cols(self.feature_names, self.feature_types)
-        X, n_samples = clean_X(
-            X, min_cols, n_samples, "sample_weight" if y is None else "y"
+        X, n_samples = preclean_X(
+            X,
+            self.feature_names,
+            self.feature_types,
+            n_samples,
+            "sample_weight" if y is None else "y",
         )
 
         # TODO: should preprocessors handle 0 samples?
@@ -2399,9 +2408,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-
-        X, n_samples = clean_X(X, min_cols)
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         X_binned = np.empty(
             (n_samples, len(self.feature_names_in_)), np.int64, order="F"
@@ -2455,8 +2462,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 raise ValueError("y must be 1 dimensional")
             n_samples = len(y)
 
-        min_cols = determine_min_cols(self.feature_names, self.feature_types)
-        X, _ = clean_X(X, min_cols, n_samples)  # materialize any iterators first
+        X, _ = preclean_X(
+            X, self.feature_names, self.feature_types, n_samples
+        )  # materialize any iterators first
         return self.fit(X, y, sample_weight).transform(X)
 
 

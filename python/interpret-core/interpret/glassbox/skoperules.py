@@ -18,8 +18,7 @@ import pandas as pd
 import re
 
 from ..utils._binning import (
-    determine_min_cols,
-    clean_X,
+    preclean_X,
     unify_data2,
     clean_dimensions,
     typify_classification,
@@ -154,15 +153,17 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             sys.modules["sklearn.externals.six"] = six
             from skrules import SkopeRules as SR
 
-        if y is None:
-            raise Exception("y must be specified in call to DecisionListClassifier")
-
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
+            msg = "y must be 1 dimensional"
+            log.error(msg)
+            raise ValueError(msg)
+        if len(y) == 0:
+            msg = "y cannot have 0 samples"
+            log.error(msg)
+            raise ValueError(msg)
 
-        min_cols = determine_min_cols(self.feature_names, self.feature_types)
-        X, n_samples = clean_X(X, min_cols, len(y))
+        X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         X, self.feature_names_in_, self.feature_types_in_ = unify_data2(
             X, n_samples, self.feature_names, self.feature_types, False, 0
@@ -187,6 +188,8 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         }
         self.sk_model_ = SR(feature_names=self.feature_index_, **self.kwargs)
 
+        # TODO: it might be better to pass the typified y into skope-rules so that the self.sk_model_
+        #       class is more capable, but this would be true only if it's able to handle strings
         self.classes_, y = np.unique(y, return_inverse=True)
         self._class_idx_ = {x: index for index, x in enumerate(self.classes_)}
 
@@ -251,8 +254,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
 
         check_is_fitted(self, "has_fitted_")
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-        X, n_samples = clean_X(X, min_cols, None)
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         X, _, _ = unify_data2(
             X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
@@ -335,8 +337,9 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             y = typify_classification(y)
             y = np.array([self._class_idx_[el] for el in y], dtype=np.int64)
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-        X, n_samples = clean_X(X, min_cols, n_samples)
+        X, n_samples = preclean_X(
+            X, self.feature_names_in_, self.feature_types_in_, n_samples
+        )
 
         # predict and predict_proba call unify_data already, so call them before unifying
         # but after doing the light cleaning for iterators

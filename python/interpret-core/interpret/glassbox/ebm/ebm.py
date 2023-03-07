@@ -16,8 +16,7 @@ from .utils import (
     _generate_term_types,
 )
 from ...utils._binning import (
-    determine_min_cols,
-    clean_X,
+    preclean_X,
     clean_dimensions,
     typify_classification,
     construct_bins,
@@ -385,8 +384,7 @@ class EBMModel(BaseEstimator):
                 raise ValueError(msg)
             sample_weight = sample_weight.astype(np.float64, copy=False)
 
-        min_cols = determine_min_cols(self.feature_names, self.feature_types)
-        X, n_samples = clean_X(X, min_cols, len(y))
+        X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         # Privacy calculations
         is_differential_privacy = is_private(self)
@@ -1241,8 +1239,7 @@ class EBMModel(BaseEstimator):
         """
         check_is_fitted(self, "has_fitted_")
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-        X, n_samples = clean_X(X, min_cols)
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         return ebm_decision_function(
             X,
@@ -1553,8 +1550,9 @@ class EBMModel(BaseEstimator):
             else:
                 y = y.astype(np.float64, copy=False)
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-        X, n_samples = clean_X(X, min_cols, n_samples)
+        X, n_samples = preclean_X(
+            X, self.feature_names_in_, self.feature_types_in_, n_samples
+        )
 
         term_names = self.term_names_
         term_types = _generate_term_types(self.feature_types_in_, self.term_features_)
@@ -1823,8 +1821,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-        X, n_samples = clean_X(X, min_cols)
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         if len(self.classes_) == 1:
             # if there is only one class then all probabilities are 100%
@@ -1858,8 +1855,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-        X, n_samples = clean_X(X, min_cols)
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         log_odds_vector = ebm_decision_function(
             X,
@@ -1892,8 +1888,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
         check_is_fitted(self, "has_fitted_")
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-        X, n_samples = clean_X(X, min_cols)
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         scores, explanations = ebm_decision_function_and_explain(
             X,
@@ -2028,8 +2023,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-        X, n_samples = clean_X(X, min_cols)
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         return ebm_decision_function(
             X,
@@ -2054,8 +2048,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
         check_is_fitted(self, "has_fitted_")
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-        X, n_samples = clean_X(X, min_cols)
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         return ebm_decision_function_and_explain(
             X,
@@ -2174,8 +2167,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         """
         check_is_fitted(self, "has_fitted_")
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-        X, n_samples = clean_X(X, min_cols)
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         if len(self.classes_) == 1:
             # if there is only one class then all probabilities are 100%
@@ -2209,8 +2201,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         """
         check_is_fitted(self, "has_fitted_")
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-        X, n_samples = clean_X(X, min_cols)
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         log_odds_vector = ebm_decision_function(
             X,
@@ -2337,9 +2328,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        min_cols = determine_min_cols(self.feature_names_in_, self.feature_types_in_)
-
-        X, n_samples = clean_X(X, min_cols)
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         return ebm_decision_function(
             X,
