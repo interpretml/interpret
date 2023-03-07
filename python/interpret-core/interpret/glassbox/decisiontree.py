@@ -2,7 +2,6 @@
 # Distributed under the MIT software license
 
 from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils import unify_data
 from ..utils import (
     gen_name_from_class,
     gen_local_selector,
@@ -14,10 +13,20 @@ from sklearn.base import ClassifierMixin, RegressorMixin
 from sklearn.tree import DecisionTreeClassifier as SKDT
 from sklearn.tree import DecisionTreeRegressor as SKRT
 from sklearn.base import is_classifier
+from sklearn.utils.validation import check_is_fitted
 import numpy as np
 from abc import abstractmethod
 from sklearn.tree import _tree
 from copy import deepcopy
+
+
+from ..utils._binning import (
+    preclean_X,
+    unify_data2,
+    clean_dimensions,
+    typify_classification,
+)
+
 
 import logging
 
@@ -263,17 +272,39 @@ class BaseShallowDecisionTree:
         Returns:
             Itself.
         """
-        X, y, self.feature_names, self.feature_types = unify_data(
-            X, y, self.feature_names, self.feature_types
+
+        y = clean_dimensions(y, "y")
+        if y.ndim != 1:
+            raise ValueError("y must be 1 dimensional")
+        if len(y) == 0:
+            raise ValueError("y cannot have 0 samples")
+
+        if is_classifier(self):
+            y = typify_classification(y)
+        else:
+            y = y.astype(np.float64, copy=False)
+
+        X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
+
+        X, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+            X, n_samples, self.feature_names, self.feature_types, False, 0
         )
+
         model = self._model()
         model.fit(X, y)
 
         feat_imp = model.feature_importances_
-        self.global_selector = gen_global_selector(
-            X, self.feature_names, self.feature_types, feat_imp
+        self.global_selector_ = gen_global_selector(
+            X, self.feature_names_in_, self.feature_types_in_, feat_imp
         )
-        self.n_samples_ = X.shape[0]
+        self.n_samples_ = n_samples
+
+        self.n_features_in_ = len(self.feature_names_in_)
+        if is_classifier(self):
+            self.classes_ = model.classes_
+
+        self.has_fitted_ = True
+
         return self
 
     def predict(self, X):
@@ -285,7 +316,14 @@ class BaseShallowDecisionTree:
         Returns:
             Predicted class label per instance.
         """
-        X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+
+        check_is_fitted(self, "has_fitted_")
+
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
+        X, _, _ = unify_data2(
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+        )
+
         return self._model().predict(X)
 
     def explain_global(self, name=None):
@@ -298,27 +336,30 @@ class BaseShallowDecisionTree:
             An explanation object,
             visualizing feature-value pairs as horizontal bar chart.
         """
+
+        check_is_fitted(self, "has_fitted_")
+
         if name is None:
             name = gen_name_from_class(self)
 
         # Extract decision tree structure
         nodes, edges = self._graph_from_tree(
-            self._model(), self.feature_names, max_depth=self.max_depth
+            self._model(), self.feature_names_in_, max_depth=self.max_depth
         )
         overall_data_dict = {
             "type": "tree",
-            "features": self.feature_names,
+            "features": self.feature_names_in_,
             "nodes": nodes,
             "edges": edges,
         }
         data_dicts = [
             {
                 "type": "tree",
-                "features": self.feature_names,
+                "features": self.feature_names_in_,
                 "nodes": nodes,
                 "edges": edges,
             }
-            for _ in self.feature_names
+            for _ in self.feature_names_in_
         ]
 
         internal_obj = {"overall": overall_data_dict, "specific": data_dicts}
@@ -326,10 +367,10 @@ class BaseShallowDecisionTree:
         return TreeExplanation(
             "global",
             internal_obj,
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
+            feature_names=self.feature_names_in_,
+            feature_types=self.feature_types_in_,
             name=name,
-            selector=self.global_selector,
+            selector=self.global_selector_,
         )
 
     def explain_local(self, X, y=None, name=None):
@@ -343,13 +384,38 @@ class BaseShallowDecisionTree:
         Returns:
             An explanation object.
         """
+
+        check_is_fitted(self, "has_fitted_")
+
         if name is None:
             name = gen_name_from_class(self)
 
-        X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
+        n_samples = None
+        if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            n_samples = len(y)
+
+            if is_classifier(self):
+                y = typify_classification(y)
+            else:
+                y = y.astype(np.float64, copy=False)
+
+        X, n_samples = preclean_X(
+            X, self.feature_names_in_, self.feature_types_in_, n_samples
+        )
+
+        if n_samples == 0:
+            # TODO: we could probably handle this case
+            raise ValueError("X has zero samples")
 
         # Extract decision tree structure
-        nodes, edges = self._graph_from_tree(self._model(), self.feature_names)
+        nodes, edges = self._graph_from_tree(self._model(), self.feature_names_in_)
+
+        X, _, _ = unify_data2(
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+        )
 
         decisions = [
             self._model().decision_path(instance.reshape(1, -1)).nonzero()[1] + 1
@@ -358,7 +424,9 @@ class BaseShallowDecisionTree:
 
         is_classification = is_classifier(self)
         if is_classification:
-            predictions = self.predict_proba(X)[:, 1]
+            predictions = self.predict_proba(X)
+            if len(self.classes_) == 2:
+                predictions = predictions[:, 1]
         else:
             predictions = self.predict(X)
 
@@ -366,7 +434,7 @@ class BaseShallowDecisionTree:
         data_dicts = [
             {
                 "type": "tree",
-                "features": self.feature_names,
+                "features": self.feature_names_in_,
                 "nodes": nodes,
                 "edges": edges,
                 "decision": decision,
@@ -381,8 +449,8 @@ class BaseShallowDecisionTree:
         return TreeExplanation(
             "local",
             internal_obj,
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
+            feature_names=self.feature_names_in_,
+            feature_types=self.feature_types_in_,
             name=name,
             selector=selector,
         )
@@ -552,5 +620,12 @@ class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixi
         Returns:
             Probability estimate of instance for each class.
         """
-        X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+
+        check_is_fitted(self, "has_fitted_")
+
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
+        X, _, _ = unify_data2(
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+        )
+
         return self._model().predict_proba(X)
