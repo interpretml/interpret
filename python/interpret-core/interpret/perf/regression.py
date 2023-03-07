@@ -9,11 +9,10 @@ import numpy as np
 
 from ..utils._binning import (
     preclean_X,
-    determine_n_classes,
+    determine_classes,
     unify_predict_fn,
     unify_data2,
     clean_dimensions,
-    typify_classification,
 )
 
 
@@ -55,7 +54,7 @@ class RegressionPerf(ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
-        predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
+        predict_fn, n_classes, _ = determine_classes(self.model, X, n_samples)
         if 0 <= n_classes:
             raise Exception("Classification not supported by the RegressionPerf class")
         predict_fn = unify_predict_fn(predict_fn, X, -1)

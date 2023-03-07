@@ -422,15 +422,17 @@ class BaseShallowDecisionTree:
             for instance in X
         ]
 
+        classes = None
         is_classification = is_classifier(self)
         if is_classification:
+            classes = self.classes_
             predictions = self.predict_proba(X)
             if len(self.classes_) == 2:
                 predictions = predictions[:, 1]
         else:
             predictions = self.predict(X)
 
-        perf_dicts = gen_perf_dicts(predictions, y, is_classification)
+        perf_dicts = gen_perf_dicts(predictions, y, is_classification, classes)
         data_dicts = [
             {
                 "type": "tree",

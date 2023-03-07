@@ -2797,13 +2797,15 @@ def unify_data2(
     return X_unified, feature_names_in, feature_types_in
 
 
-def determine_n_classes(model, data, n_samples):
+def determine_classes(model, data, n_samples):
     if n_samples == 0:
         msg = "data cannot have 0 samples"
         _log.error(msg)
         raise ValueError(msg)
 
+    classes = None
     if is_classifier(model):
+        classes = model.classes_
         model = model.predict_proba
         preds = clean_dimensions(model(data), "model")
         if n_samples == 1:  # then the sample dimension would have been eliminated
@@ -2825,6 +2827,10 @@ def determine_n_classes(model, data, n_samples):
                 n_classes = 1
             else:
                 n_classes = preds.shape[1]
+        if n_classes != len(classes):
+            msg = "class number mismatch"
+            _log.error(msg)
+            raise ValueError(msg)
     elif is_regressor(model):
         n_classes = -1
         model = model.predict
@@ -2867,7 +2873,7 @@ def determine_n_classes(model, data, n_samples):
                 n_classes = preds.shape[1]
 
     # at this point model has been converted to a predict_fn
-    return model, n_classes
+    return model, n_classes, classes
 
 
 def unify_predict_fn(predict_fn, X, class_idx):
@@ -2878,6 +2884,7 @@ def unify_predict_fn(predict_fn, X, class_idx):
         if 0 <= class_idx:
             # classification
             def new_predict_fn(x):
+                # TODO: at some point we should also handle column position remapping when the column names match
                 X_fill = pd.DataFrame(x, columns=names)
                 return predict_fn(X_fill)[:, class_idx]
 

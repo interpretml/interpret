@@ -8,8 +8,6 @@ from interpret.api.base import ExplainerMixin
 import numpy as np
 from ..utils._binning import (
     preclean_X,
-    determine_n_classes,
-    unify_predict_fn,
     unify_data2,
 )
 

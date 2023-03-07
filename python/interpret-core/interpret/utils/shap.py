@@ -8,7 +8,7 @@ import numpy as np
 
 from ..utils._binning import (
     preclean_X,
-    determine_n_classes,
+    determine_classes,
     unify_predict_fn,
     unify_data2,
     clean_dimensions,
@@ -40,7 +40,7 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
 
     X, n_samples = preclean_X(X, feature_names, feature_types, n_samples)
 
-    predict_fn, n_classes = determine_n_classes(explainer.model, X, n_samples)
+    predict_fn, n_classes, classes = determine_classes(explainer.model, X, n_samples)
     if 3 <= n_classes:
         raise Exception("multiclass SHAP not supported")
     predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
@@ -71,7 +71,7 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
     data_dicts = []
     scores_list = all_shap_values
     perf_list = []
-    perf_dicts = gen_perf_dicts(predictions, y, False)
+    perf_dicts = gen_perf_dicts(predictions, y, False, classes)
     for i, instance in enumerate(X):
         shap_values = all_shap_values[i]
         perf_dict_obj = None if perf_dicts is None else perf_dicts[i]

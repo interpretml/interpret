@@ -9,6 +9,7 @@ of the interaction of all pairs of features in a dataset.
 [1] http://www.cs.cornell.edu/~yinlou/papers/lou-kdd13.pdf
 """
 
+from itertools import count
 import numpy as np
 import heapq
 from itertools import combinations
@@ -111,7 +112,10 @@ def measure_interactions(
     elif objective in ["regression"]:
         is_classification = False
 
+    classes = None
     if is_classifier(init_score):
+        # all scikit-learn classification models need to expose self.classes_
+        classes = init_score.classes_
         if is_classification == False:
             raise ValueError(
                 "objective is for regresion but the init_score is a classification model"
@@ -160,7 +164,12 @@ def measure_interactions(
 
     if is_classification:
         y = typify_classification(y)
-        classes, y = np.unique(y, return_inverse=True)
+        if classes is None:
+            # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
+            classes, y = np.unique(y, return_inverse=True)
+        else:
+            invert_classes = dict(zip(classes, count(0)))
+            y = np.array([invert_classes[el] for el in y], dtype=np.int64)
         n_classes = len(classes)
     else:
         y = y.astype(np.float64, copy=False)

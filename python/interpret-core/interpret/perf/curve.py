@@ -1,6 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+from itertools import count
 from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils import gen_name_from_class
 from sklearn.metrics import roc_curve, auc
@@ -9,7 +10,7 @@ from sklearn.metrics import precision_recall_curve, average_precision_score
 import numpy as np
 from ..utils._binning import (
     preclean_X,
-    determine_n_classes,
+    determine_classes,
     unify_predict_fn,
     unify_data2,
     clean_dimensions,
@@ -56,7 +57,7 @@ class PR(ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
-        predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
+        predict_fn, n_classes, classes = determine_classes(self.model, X, n_samples)
         if n_classes != 2:
             raise Exception("Only binary classification supported in the PR class")
         predict_fn = unify_predict_fn(predict_fn, X, 1)
@@ -66,6 +67,14 @@ class PR(ExplainerMixin):
         )
 
         y = typify_classification(y)
+        if classes is None:
+            # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
+            classes, y = np.unique(y, return_inverse=True)
+            if len(classes) != n_classes:
+                raise ValueError("class number mismatch")
+        else:
+            invert_classes = dict(zip(classes, count(0)))
+            y = np.array([invert_classes[el] for el in y], dtype=np.int64)
 
         scores = predict_fn(X)
 
@@ -133,7 +142,7 @@ class ROC(ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
-        predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
+        predict_fn, n_classes, classes = determine_classes(self.model, X, n_samples)
         if n_classes != 2:
             raise Exception("Only binary classification supported in the ROC class")
         predict_fn = unify_predict_fn(predict_fn, X, 1)
@@ -143,6 +152,14 @@ class ROC(ExplainerMixin):
         )
 
         y = typify_classification(y)
+        if classes is None:
+            # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
+            classes, y = np.unique(y, return_inverse=True)
+            if len(classes) != n_classes:
+                raise ValueError("class number mismatch")
+        else:
+            invert_classes = dict(zip(classes, count(0)))
+            y = np.array([invert_classes[el] for el in y], dtype=np.int64)
 
         scores = predict_fn(X)
 

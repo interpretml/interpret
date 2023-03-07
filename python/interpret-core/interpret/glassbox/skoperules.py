@@ -1,6 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+from itertools import count
 from sklearn.base import ClassifierMixin
 from sklearn.utils.validation import check_is_fitted
 
@@ -189,11 +190,11 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         self.sk_model_ = SR(feature_names=self.feature_index_, **self.kwargs)
 
         self.sk_model_.fit(X, y)
-        
+
         self.classes_ = self.sk_model_.classes_
-        class_idx = {x: index for index, x in enumerate(self.classes_)}
+        class_idx = dict(zip(self.classes_, count(0)))
         y = np.array([class_idx[el] for el in y], dtype=np.int64)
-        
+
         # TODO: this mean approach is going to fail to be useful for multiclass
         self.pos_ratio_ = np.mean(y)
 
@@ -354,7 +355,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
 
         scores = self._scores(X)
 
-        perf_dicts = gen_perf_dicts(predictions, y, True)
+        perf_dicts = gen_perf_dicts(predictions, y, True, self.classes_)
         data_dicts = []
         for idx, score in enumerate(scores):
             data_dict = {

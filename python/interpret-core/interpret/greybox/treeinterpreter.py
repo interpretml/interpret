@@ -8,7 +8,7 @@ from ..utils import gen_name_from_class, unify_data, gen_perf_dicts, gen_local_s
 import numpy as np
 from ..utils._binning import (
     preclean_X,
-    determine_n_classes,
+    determine_classes,
     unify_predict_fn,
     unify_data2,
     clean_dimensions,
@@ -110,7 +110,7 @@ class TreeInterpreter(ExplainerMixin):
 
         X, n_samples = preclean_X(X, feature_names, feature_types, n_samples)
 
-        predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
+        predict_fn, n_classes, classes = determine_classes(self.model, X, n_samples)
         predict_fn = unify_predict_fn(predict_fn, X, -1)
 
         X, feature_names, feature_types = unify_data2(
@@ -130,7 +130,7 @@ class TreeInterpreter(ExplainerMixin):
 
         data_dicts = []
         perf_list = []
-        perf_dicts = gen_perf_dicts(predictions, y, is_classification)
+        perf_dicts = gen_perf_dicts(predictions, y, is_classification, classes)
         for i, instance in enumerate(X):
             data_dict = {}
             data_dict["data_type"] = "univariate"

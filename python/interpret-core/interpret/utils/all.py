@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import itertools
+from itertools import count
 import warnings
 from collections import OrderedDict
 
@@ -23,26 +23,67 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def gen_perf_dicts(scores, y=None, is_classification=True):
-    n_dim = len(scores.shape)
-
-    if not is_classification:
-        predicted = scores
-    else:
-        if n_dim == 1:
+def gen_perf_dicts(scores, y, is_classification, classes=None):
+    # TODO: rename from scores to something else: predicted & make predicted best_predicted
+    #       or perhaps make it predicted but then add a predicted_proba just for classification
+    if is_classification:
+        if classes is not None:
+            invert_classes = dict(zip(classes, count(0)))
+        if scores.ndim == 1:
             scores = np.vstack([1 - scores, scores]).T
+
         predicted = np.argmax(scores, axis=1)
+    else:
+        predicted = scores
 
     records = []
-    for i, _ in enumerate(scores):
+    for i in range(len(predicted)):
         di = {}
         di["is_classification"] = is_classification
         di["actual"] = np.nan if y is None else y[i]
 
         if is_classification:
-            di["predicted"] = predicted[i]
-            di["actual_score"] = np.nan if y is None else scores[i, y[i]]
+            di["predicted"] = predicted[i] if classes is None else classes[predicted[i]]
+            actual_prob = np.nan
+            if y is not None:
+                if classes is None:
+                    # if y is a legal integer then we should assume it's an index
+                    inv_index = y[i]
+                    try:
+                        inv_index = int(inv_index)
+                        if inv_index < scores.shape[1]:
+                            actual_prob = scores[i, inv_index]
+                    except ValueError:
+                        pass
+                else:
+                    inv_index = invert_classes.get(y[i], -1)
+                    actual_prob = 0 if inv_index < 0 else scores[i, inv_index]
+            di["actual_score"] = actual_prob
             di["predicted_score"] = scores[i, predicted[i]]
+
+            # TODO: The UI currently expects an index in di["predicted"] and di["actual"]
+            #       and then it uses the classes to map to the original strings, so it
+            #       works in all cases EXCEPT if di["actual"] is something new like
+            #       y[0] = "NEVER_SEEN_BEFORE".  In that case the value is not in the classes
+            #       array and therefore is not preserved.  If we change di["predicted"] and
+            #       di["actual"] to hold the actual value then we could display
+            #       "NEVER_SEEN_BEFORE" in the "actual" value field
+            #       FOR NOW WE'RE MAPPING IT BACK TO INDEXES SO THAT THE UI WORKS, BUT CHANGE THIS
+            # START SECTION TO BE REMOVED
+            di["predicted"] = predicted[i]
+            di["actual"] = np.nan
+            if y is not None:
+                if classes is None:
+                    inv_index = y[i]
+                    try:
+                        inv_index = int(inv_index)
+                        if inv_index < scores.shape[1]:
+                            di["actual"] = inv_index
+                    except ValueError:
+                        pass
+                else:
+                    di["actual"] = invert_classes.get(y[i], np.nan)
+            # TODO: END SECTION TO BE REMOVED
         else:
             di["predicted"] = predicted[i]
             di["actual_score"] = np.nan if y is None else y[i]
@@ -203,7 +244,7 @@ def gen_name_from_class(obj):
     """
     class_name = obj.__class__.__name__
     if class_name not in gen_name_from_class.cache:
-        gen_name_from_class.cache[class_name] = itertools.count(0)
+        gen_name_from_class.cache[class_name] = count(0)
     identifier = next(gen_name_from_class.cache[class_name])
 
     return str(obj.__class__.__name__) + "_" + str(identifier)

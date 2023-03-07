@@ -891,12 +891,10 @@ def merge_ebms(models):
 
     if is_classifier:
         ebm.classes_ = models[0].classes_.copy()
-        if any(
-            not np.array_equal(ebm.classes_, model.classes_) for model in models
-        ):  # pragma: no cover
+        if any(not np.array_equal(ebm.classes_, model.classes_) for model in models):
+            # pragma: no cover
             raise Exception("The target classes should be identical.")
 
-        ebm._class_idx_ = {x: index for index, x in enumerate(ebm.classes_)}
         n_classes = len(ebm.classes_)
     else:
         if any(hasattr(model, "min_target_") for model in models):

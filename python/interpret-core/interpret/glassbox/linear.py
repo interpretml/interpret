@@ -65,6 +65,10 @@ class BaseLinear:
         model = self._model()
         model.fit(X, y)
 
+        self.n_features_in_ = len(self.feature_names)
+        if is_classifier(self):
+            self.classes_ = model.classes_
+
         self.X_mins_ = np.min(X, axis=0)
         self.X_maxs_ = np.max(X, axis=0)
         self.categorical_uniq_ = {}
@@ -73,7 +77,7 @@ class BaseLinear:
             if feature_type == "categorical":
                 self.categorical_uniq_[i] = list(sorted(set(X[:, i])))
 
-        self.global_selector = gen_global_selector(
+        self.global_selector_ = gen_global_selector(
             X, self.feature_names, self.feature_types, None
         )
         self.bin_counts_, self.bin_edges_ = hist_per_column(X, self.feature_types)
@@ -109,8 +113,10 @@ class BaseLinear:
 
         model = self._model()
 
+        classes = None
         is_classification = is_classifier(self)
         if is_classification:
+            classes = self.classes_
             predictions = self.predict_proba(X)[:, 1]
             intercept = model.intercept_[0]
             coef = model.coef_[0]
@@ -122,7 +128,7 @@ class BaseLinear:
         data_dicts = []
         scores_list = []
         perf_list = []
-        perf_dicts = gen_perf_dicts(predictions, y, is_classification)
+        perf_dicts = gen_perf_dicts(predictions, y, is_classification, classes)
         for i, instance in enumerate(X):
             scores = list(coef * instance)
             scores_list.append(scores)
@@ -250,7 +256,7 @@ class BaseLinear:
             feature_names=self.feature_names,
             feature_types=self.feature_types,
             name=name,
-            selector=self.global_selector,
+            selector=self.global_selector_,
         )
 
 

@@ -11,7 +11,7 @@ import warnings
 import numpy as np
 from ..utils._binning import (
     preclean_X,
-    determine_n_classes,
+    determine_classes,
     unify_predict_fn,
     unify_data2,
     clean_dimensions,
@@ -46,11 +46,6 @@ class LimeTabular(ExplainerMixin):
         self.feature_types = feature_types
 
         data, n_samples = preclean_X(data, feature_names, feature_types)
-
-        predict_fn, n_classes = determine_n_classes(model, data, n_samples)
-        if 3 <= n_classes:
-            raise Exception("multiclass LIME not supported")
-        predict_fn = unify_predict_fn(predict_fn, data, 1 if n_classes == 2 else -1)
 
         data, self.feature_names_in_, self.feature_types_in_ = unify_data2(
             data, n_samples, feature_names, feature_types, False, 0
@@ -94,7 +89,7 @@ class LimeTabular(ExplainerMixin):
             X, self.feature_names_in_, self.feature_types_in_, n_samples
         )
 
-        predict_fn, n_classes = determine_n_classes(self.model, X, n_samples)
+        predict_fn, n_classes, classes = determine_classes(self.model, X, n_samples)
         if 3 <= n_classes:
             raise Exception("multiclass LIME not supported")
         predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
@@ -118,7 +113,7 @@ class LimeTabular(ExplainerMixin):
         data_dicts = []
         scores_list = []
         perf_list = []
-        perf_dicts = gen_perf_dicts(predictions, y, False)
+        perf_dicts = gen_perf_dicts(predictions, y, False, classes)
         for i, instance in enumerate(X):
             lime_explanation = self.lime_.explain_instance(
                 instance, predict_fn, **kwargs

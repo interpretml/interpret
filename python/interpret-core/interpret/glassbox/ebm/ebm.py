@@ -367,7 +367,6 @@ class EBMModel(BaseEstimator):
             # in two separate runs, which would flip the ordering of the classes within our score tensors.
             classes, y = np.unique(y, return_inverse=True)
             n_classes = len(classes)
-            class_idx = {x: index for index, x in enumerate(classes)}
         else:
             y = y.astype(np.float64, copy=False)
             min_target = y.min()
@@ -878,7 +877,6 @@ class EBMModel(BaseEstimator):
 
         if 0 <= n_classes:
             self.classes_ = classes  # required by scikit-learn
-            self._class_idx_ = class_idx
         else:
             self.min_target_ = min_target
             self.max_target_ = max_target
@@ -1546,7 +1544,6 @@ class EBMModel(BaseEstimator):
 
             if is_classifier(self):
                 y = typify_classification(y)
-                y = np.array([self._class_idx_[el] for el in y], dtype=np.int64)
             else:
                 y = y.astype(np.float64, copy=False)
 
@@ -1621,7 +1618,9 @@ class EBMModel(BaseEstimator):
                 self.term_features_,
             )
 
+            classes = None
             if is_classifier(self):
+                classes = self.classes_
                 if len(self.classes_) == 1:
                     # if there is only one class then all probabilities are 100%
                     pred = np.full((n_samples, 1), 1, np.float64)
@@ -1632,7 +1631,7 @@ class EBMModel(BaseEstimator):
 
                     pred = softmax(pred)
 
-            perf_dicts = gen_perf_dicts(pred, y, is_classifier(self))
+            perf_dicts = gen_perf_dicts(pred, y, is_classifier(self), classes)
             for row_idx in range(n_samples):
                 perf = None if perf_dicts is None else perf_dicts[row_idx]
                 perf_list.append(perf)
