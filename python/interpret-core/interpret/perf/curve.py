@@ -12,7 +12,7 @@ from ..utils._binning import (
     preclean_X,
     determine_classes,
     unify_predict_fn,
-    unify_data2,
+    unify_data,
     clean_dimensions,
     typify_classification,
 )
@@ -62,7 +62,7 @@ class PR(ExplainerMixin):
             raise Exception("Only binary classification supported in the PR class")
         predict_fn = unify_predict_fn(predict_fn, X, 1)
 
-        X, feature_names, feature_types = unify_data2(
+        X, feature_names, feature_types = unify_data(
             X, n_samples, self.feature_names, self.feature_types, True, 0
         )
 
@@ -147,7 +147,7 @@ class ROC(ExplainerMixin):
             raise Exception("Only binary classification supported in the ROC class")
         predict_fn = unify_predict_fn(predict_fn, X, 1)
 
-        X, feature_names, feature_types = unify_data2(
+        X, feature_names, feature_types = unify_data(
             X, n_samples, self.feature_names, self.feature_types, True, 0
         )
 

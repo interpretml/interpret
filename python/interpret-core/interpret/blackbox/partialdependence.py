@@ -4,13 +4,13 @@
 from ..api.base import ExplainerMixin, ExplanationMixin
 import numpy as np
 import warnings
-from ..utils import gen_name_from_class, gen_global_selector2
+from ..utils import gen_name_from_class, gen_global_selector
 
 from ..utils._binning import (
     preclean_X,
     determine_classes,
     unify_predict_fn,
-    unify_data2,
+    unify_data,
 )
 
 
@@ -114,7 +114,7 @@ class PartialDependence(ExplainerMixin):
             raise Exception("multiclass PDP not supported")
         predict_fn = unify_predict_fn(predict_fn, data, 1 if n_classes == 2 else -1)
 
-        data, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+        data, self.feature_names_in_, self.feature_types_in_ = unify_data(
             data, n_samples, feature_names, feature_types, False, 0
         )
 
@@ -180,7 +180,7 @@ class PartialDependence(ExplainerMixin):
             ],
         }
 
-        selector = gen_global_selector2(
+        selector = gen_global_selector(
             self.n_samples_,
             len(self.feature_names_in_),
             self.feature_names_in_,

@@ -8,7 +8,7 @@ from sklearn.utils.validation import check_is_fitted
 from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils import (
     gen_name_from_class,
-    gen_global_selector2,
+    gen_global_selector,
     gen_local_selector,
     gen_perf_dicts,
 )
@@ -20,7 +20,7 @@ import re
 
 from ..utils._binning import (
     preclean_X,
-    unify_data2,
+    unify_data,
     clean_dimensions,
     typify_classification,
 )
@@ -166,7 +166,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
-        X, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+        X, self.feature_names_in_, self.feature_types_in_ = unify_data(
             X, n_samples, self.feature_names, self.feature_types, False, 0
         )
 
@@ -216,7 +216,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
 
         # TODO: move this call into the explain_global function and extract the information needed
         #       in a cleaner way.  Also, look over the above fields to see if we can simplify
-        self.global_selector_ = gen_global_selector2(
+        self.global_selector_ = gen_global_selector(
             n_samples,
             len(self.feature_names_in_),
             self.feature_names_in_,
@@ -273,7 +273,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
-        X, _, _ = unify_data2(
+        X, _, _ = unify_data(
             X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
         )
 
@@ -362,7 +362,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         outcomes = self.predict(X)
         predictions = self.predict_proba(X)
 
-        X, _, _ = unify_data2(
+        X, _, _ = unify_data(
             X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
         )
 

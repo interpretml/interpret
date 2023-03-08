@@ -13,7 +13,7 @@ from ..utils._binning import (
     preclean_X,
     determine_classes,
     unify_predict_fn,
-    unify_data2,
+    unify_data,
     clean_dimensions,
     typify_classification,
 )
@@ -47,7 +47,7 @@ class LimeTabular(ExplainerMixin):
 
         data, n_samples = preclean_X(data, feature_names, feature_types)
 
-        data, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+        data, self.feature_names_in_, self.feature_types_in_ = unify_data(
             data, n_samples, feature_names, feature_types, False, 0
         )
 
@@ -94,7 +94,7 @@ class LimeTabular(ExplainerMixin):
             raise Exception("multiclass LIME not supported")
         predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
 
-        X, _, _ = unify_data2(
+        X, _, _ = unify_data(
             X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
         )
 

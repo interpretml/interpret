@@ -3,7 +3,7 @@
 
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
-from ..utils import gen_name_from_class, gen_global_selector2
+from ..utils import gen_name_from_class, gen_global_selector
 
 from abc import ABC, abstractmethod
 import numpy as np
@@ -12,7 +12,7 @@ from ..utils._binning import (
     preclean_X,
     determine_classes,
     unify_predict_fn,
-    unify_data2,
+    unify_data,
 )
 
 
@@ -83,7 +83,7 @@ class MorrisSensitivity(ExplainerMixin):
             raise Exception("multiclass MorrisSensitivity not supported")
         predict_fn = unify_predict_fn(predict_fn, data, 1 if n_classes == 2 else -1)
 
-        data, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+        data, self.feature_names_in_, self.feature_types_in_ = unify_data(
             data, n_samples, feature_names, feature_types, False, 0
         )
 
@@ -155,7 +155,7 @@ class MorrisSensitivity(ExplainerMixin):
 
         internal_obj = {"overall": overall_data_dict, "specific": specific_data_dicts}
 
-        global_selector = gen_global_selector2(
+        global_selector = gen_global_selector(
             self.n_samples_,
             len(self.feature_names_in_),
             self.feature_names_in_,

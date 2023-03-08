@@ -21,7 +21,7 @@ from ...utils._binning import (
     typify_classification,
     construct_bins,
     bin_native_by_dimension,
-    unify_data2,
+    unify_data,
     _deduplicate_bins,
     normalize_initial_seed,
 )
@@ -30,7 +30,7 @@ from .bin import (
     ebm_decision_function_and_explain,
     make_boosting_weights,
     after_boosting,
-    remove_last2,
+    remove_last,
     make_bin_weights,
     trim_tensor,
     eval_terms,
@@ -41,7 +41,7 @@ from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
 from ...utils import (
     gen_name_from_class,
-    gen_global_selector2,
+    gen_global_selector,
     gen_local_selector,
 )
 from ...utils._interaction import _get_ranked_interactions
@@ -1274,9 +1274,9 @@ class EBMModel(BaseEstimator):
 
         bounds = (lower_bound, upper_bound)
 
-        mod_weights = remove_last2(self.bin_weights_, self.bin_weights_)
-        mod_term_scores = remove_last2(self.term_scores_, self.bin_weights_)
-        mod_standard_deviations = remove_last2(
+        mod_weights = remove_last(self.bin_weights_, self.bin_weights_)
+        mod_term_scores = remove_last(self.term_scores_, self.bin_weights_)
+        mod_standard_deviations = remove_last(
             self.standard_deviations_, self.bin_weights_
         )
         for term_idx, feature_idxs in enumerate(self.term_features_):
@@ -1500,7 +1500,7 @@ class EBMModel(BaseEstimator):
             feature_names=[term_names[i] for i in keep_idxs],
             feature_types=[term_types[i] for i in keep_idxs],
             name=name,
-            selector=gen_global_selector2(
+            selector=gen_global_selector(
                 getattr(self, "n_samples_", None),
                 self.n_features_in_,
                 [term_names[i] for i in keep_idxs],
@@ -1553,7 +1553,7 @@ class EBMModel(BaseEstimator):
         if n_samples == 0:
             X_unified = np.empty((0, len(self.feature_names_in_)), dtype=np.object_)
         else:
-            X_unified, _, _ = unify_data2(
+            X_unified, _, _ = unify_data(
                 X, n_samples, self.feature_names_in_, self.feature_types_in_, True
             )
 
@@ -1633,7 +1633,7 @@ class EBMModel(BaseEstimator):
 
         selector = gen_local_selector(data_dicts, is_classification=is_classifier(self))
 
-        term_scores = remove_last2(self.term_scores_, self.bin_weights_)
+        term_scores = remove_last(self.term_scores_, self.bin_weights_)
         for term_idx, feature_idxs in enumerate(self.term_features_):
             term_scores[term_idx] = trim_tensor(
                 term_scores[term_idx], trim_low=[True] * len(feature_idxs)

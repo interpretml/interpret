@@ -82,7 +82,7 @@ def gen_perf_dicts(scores, y, is_classification, classes=None):
     return records
 
 
-def gen_global_selector2(
+def gen_global_selector(
     n_samples,
     n_features,
     term_names,

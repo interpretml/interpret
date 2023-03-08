@@ -49,7 +49,7 @@ from ._privacy import (
 # - test: preclean_X with pd.Series with missing values and maybe a categorical -> gets converted as N features and 1 sample
 # - test: preclean_X with list that CONTAINS a ma.masked_array sample entry with missing data and without missing data
 # - add better processing for ignored columsn where we return the existing data if we can, and we return all None
-#  values if not which our caller can detect.  Then unify_data2 can convert that to int(0) values which should work for
+#  values if not which our caller can detect.  Then unify_data can convert that to int(0) values which should work for
 #  all feature types
 # - disable 'ignore' columns temporarily.  We need to update C++ to make a distinction because you can have 3 real columns and 5 referencable columsn and our datastructures need to be updated to handle this in C++ first
 # - handle the thorny questions of converting float to int for categorical strings
@@ -2720,7 +2720,7 @@ def bin_native_by_dimension(
     )
 
 
-def unify_data2(
+def unify_data(
     X,
     n_samples,
     feature_names=None,

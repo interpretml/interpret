@@ -2,14 +2,14 @@
 # Distributed under the MIT software license
 
 from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils import gen_name_from_class, gen_global_selector2
+from ..utils import gen_name_from_class, gen_global_selector
 
 import numpy as np
 from scipy.stats import pearsonr
 
 from ..utils._binning import (
     preclean_X,
-    unify_data2,
+    unify_data,
     clean_dimensions,
     typify_classification,
 )
@@ -67,7 +67,7 @@ class Marginal(ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
-        X, feature_names, feature_types = unify_data2(
+        X, feature_names, feature_types = unify_data(
             X, n_samples, self.feature_names, self.feature_types, False, 0
         )
 
@@ -78,7 +78,7 @@ class Marginal(ExplainerMixin):
             unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
             zero_val_counts.itemset(col_idx, len(X_col) - np.count_nonzero(X_col))
 
-        global_selector = gen_global_selector2(
+        global_selector = gen_global_selector(
             n_samples,
             len(feature_names),
             feature_names,
@@ -337,7 +337,7 @@ class ClassHistogram(ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
-        X, feature_names, feature_types = unify_data2(
+        X, feature_names, feature_types = unify_data(
             X, n_samples, self.feature_names, self.feature_types, False, 0
         )
 
@@ -348,7 +348,7 @@ class ClassHistogram(ExplainerMixin):
             unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
             zero_val_counts.itemset(col_idx, len(X_col) - np.count_nonzero(X_col))
 
-        global_selector = gen_global_selector2(
+        global_selector = gen_global_selector(
             n_samples,
             len(feature_names),
             feature_names,

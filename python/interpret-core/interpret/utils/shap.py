@@ -10,7 +10,7 @@ from ..utils._binning import (
     preclean_X,
     determine_classes,
     unify_predict_fn,
-    unify_data2,
+    unify_data,
     clean_dimensions,
     typify_classification,
 )
@@ -45,7 +45,7 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
         raise Exception("multiclass SHAP not supported")
     predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
 
-    X, feature_names, feature_types = unify_data2(
+    X, feature_names, feature_types = unify_data(
         X, n_samples, feature_names, feature_types, False, 0
     )
 

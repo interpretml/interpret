@@ -5,7 +5,7 @@ from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils import (
     gen_name_from_class,
     gen_local_selector,
-    gen_global_selector2,
+    gen_global_selector,
     gen_perf_dicts,
 )
 
@@ -22,7 +22,7 @@ from copy import deepcopy
 
 from ..utils._binning import (
     preclean_X,
-    unify_data2,
+    unify_data,
     clean_dimensions,
     typify_classification,
 )
@@ -286,7 +286,7 @@ class BaseShallowDecisionTree:
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
-        X, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+        X, self.feature_names_in_, self.feature_types_in_ = unify_data(
             X, n_samples, self.feature_names, self.feature_types, False, 0
         )
 
@@ -301,7 +301,7 @@ class BaseShallowDecisionTree:
             zero_val_counts.itemset(col_idx, len(X_col) - np.count_nonzero(X_col))
 
         feat_imp = model.feature_importances_
-        self.global_selector_ = gen_global_selector2(
+        self.global_selector_ = gen_global_selector(
             n_samples,
             len(self.feature_names_in_),
             self.feature_names_in_,
@@ -333,7 +333,7 @@ class BaseShallowDecisionTree:
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-        X, _, _ = unify_data2(
+        X, _, _ = unify_data(
             X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
         )
 
@@ -426,7 +426,7 @@ class BaseShallowDecisionTree:
         # Extract decision tree structure
         nodes, edges = self._graph_from_tree(self._model(), self.feature_names_in_)
 
-        X, _, _ = unify_data2(
+        X, _, _ = unify_data(
             X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
         )
 
@@ -639,7 +639,7 @@ class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixi
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-        X, _, _ = unify_data2(
+        X, _, _ = unify_data(
             X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
         )
 

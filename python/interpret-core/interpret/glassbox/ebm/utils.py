@@ -17,7 +17,7 @@ import warnings
 from itertools import islice
 
 
-from .postprocessing import multiclass_postprocess2
+from .postprocessing import multiclass_postprocess
 
 from itertools import count, chain
 
@@ -281,7 +281,7 @@ def _process_terms(n_classes, bagged_scores, bin_weights, bag_weights):
                 intercept += score_mean
         else:
             # Postprocess model graphs for multiclass
-            multiclass_postprocess2(n_classes, term_scores, bin_weights, intercept)
+            multiclass_postprocess(n_classes, term_scores, bin_weights, intercept)
 
         for scores, weights in zip(term_scores, bin_weights):
             # set these to zero again since zero-centering them causes the missing/unknown to shift away from zero

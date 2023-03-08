@@ -10,7 +10,7 @@ from ..utils._binning import (
     preclean_X,
     determine_classes,
     unify_predict_fn,
-    unify_data2,
+    unify_data,
     clean_dimensions,
     typify_classification,
 )
@@ -67,7 +67,7 @@ class TreeInterpreter(ExplainerMixin):
             # if the user provides data, we use it as a larger corpus than X
             data, n_samples = preclean_X(data, feature_names, feature_types)
 
-            _, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+            _, self.feature_names_in_, self.feature_types_in_ = unify_data(
                 data, n_samples, feature_names, feature_types, False, 0
             )
 
@@ -113,7 +113,7 @@ class TreeInterpreter(ExplainerMixin):
         predict_fn, n_classes, classes = determine_classes(self.model, X, n_samples)
         predict_fn = unify_predict_fn(predict_fn, X, -1)
 
-        X, feature_names, feature_types = unify_data2(
+        X, feature_names, feature_types = unify_data(
             X, n_samples, feature_names, feature_types, False, 0
         )
 

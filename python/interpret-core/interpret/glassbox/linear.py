@@ -3,7 +3,7 @@
 
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
-from ..utils import gen_name_from_class, gen_global_selector2, gen_local_selector
+from ..utils import gen_name_from_class, gen_global_selector, gen_local_selector
 from ..utils import gen_perf_dicts
 
 from abc import abstractmethod
@@ -16,7 +16,7 @@ from sklearn.linear_model import Lasso as SKLinear
 
 from ..utils._binning import (
     preclean_X,
-    unify_data2,
+    unify_data,
     clean_dimensions,
     typify_classification,
 )
@@ -79,7 +79,7 @@ class BaseLinear:
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
-        X, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+        X, self.feature_names_in_, self.feature_types_in_ = unify_data(
             X, n_samples, self.feature_names, self.feature_types, False, 0
         )
 
@@ -105,7 +105,7 @@ class BaseLinear:
             unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
             zero_val_counts.itemset(col_idx, len(X_col) - np.count_nonzero(X_col))
 
-        self.global_selector_ = gen_global_selector2(
+        self.global_selector_ = gen_global_selector(
             n_samples,
             len(self.feature_names_in_),
             self.feature_names_in_,
@@ -133,7 +133,7 @@ class BaseLinear:
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-        X, _, _ = unify_data2(
+        X, _, _ = unify_data(
             X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
         )
 
@@ -177,7 +177,7 @@ class BaseLinear:
             # TODO: we could probably handle this case
             raise ValueError("X has zero samples")
 
-        X, _, _ = unify_data2(
+        X, _, _ = unify_data(
             X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
         )
 
@@ -518,7 +518,7 @@ class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-        X, _, _ = unify_data2(
+        X, _, _ = unify_data(
             X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
         )
 

@@ -316,7 +316,7 @@ def after_boosting(term_features, tensors, feature_bin_weights):
     return new_tensors
 
 
-def remove_last2(tensors, term_bin_weights):
+def remove_last(tensors, term_bin_weights):
     new_tensors = []
     for idx, tensor, weights in zip(count(), tensors, term_bin_weights):
         n_dimensions = weights.ndim

@@ -8,7 +8,7 @@ from interpret.api.base import ExplainerMixin
 import numpy as np
 from ..utils._binning import (
     preclean_X,
-    unify_data2,
+    unify_data,
 )
 
 
@@ -45,7 +45,7 @@ class ShapTree(ExplainerMixin):
 
             data, n_samples = preclean_X(data, feature_names, feature_types)
 
-            data, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+            data, self.feature_names_in_, self.feature_types_in_ = unify_data(
                 data, n_samples, feature_names, feature_types, False, 0
             )
 

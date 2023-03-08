@@ -10,7 +10,7 @@ from ..utils._binning import (
     preclean_X,
     determine_classes,
     unify_predict_fn,
-    unify_data2,
+    unify_data,
 )
 
 
@@ -46,7 +46,7 @@ class ShapKernel(ExplainerMixin):
             raise Exception("multiclass SHAP not supported")
         predict_fn = unify_predict_fn(predict_fn, data, 1 if n_classes == 2 else -1)
 
-        data, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+        data, self.feature_names_in_, self.feature_types_in_ = unify_data(
             data, n_samples, feature_names, feature_types, False, 0
         )
 
