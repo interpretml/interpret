@@ -92,11 +92,17 @@ def gen_global_selector(
     importance_scores,
     round=3,
 ):
+    # TODO: we should not use Pandas in a public interface like this
     records = []
     for term_idx in range(len(term_names)):
         record = {}
         record["Name"] = term_names[term_idx]
-        record["Type"] = _legacy_type(term_types[term_idx])
+        # TODO: update the javascript to accept "nominal" or "ordinal" instead of "categorical"
+        record["Type"] = (
+            "categorical"
+            if term_types[term_idx] == "nominal" or term_types[term_idx] == "ordinal"
+            else term_types[term_idx]
+        )
 
         if term_idx < n_features:
             record["# Unique"] = (
@@ -177,12 +183,3 @@ def gen_name_from_class(obj):
 
 
 gen_name_from_class.cache = {}
-
-
-def _legacy_type(feature_type):
-    # TODO: someday get rid of this when we've propagated nominal and ordinal to the UI
-    return (
-        "categorical"
-        if feature_type == "nominal" or feature_type == "ordinal"
-        else feature_type
-    )
