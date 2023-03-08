@@ -7,6 +7,13 @@ from ..utils import unify_data, gen_name_from_class, gen_global_selector
 import numpy as np
 from scipy.stats import pearsonr
 
+from ..utils._binning import (
+    preclean_X,
+    unify_data2,
+    clean_dimensions,
+    typify_classification,
+)
+
 
 class Marginal(ExplainerMixin):
     """Provides a marginal plot for provided data."""
@@ -45,13 +52,26 @@ class Marginal(ExplainerMixin):
         if name is None:
             name = gen_name_from_class(self)
 
-        X, y, self.feature_names, self.feature_types = unify_data(
-            X, y, self.feature_names, self.feature_types
+        y = clean_dimensions(y, "y")
+        if y.ndim != 1:
+            raise ValueError("y must be 1 dimensional")
+
+        try:
+            y = y.astype(np.float64, copy=False)
+        except (TypeError, ValueError):
+            # we get a TypeError whenever we have an np.object_ array and numpy attempts to call float(), but the
+            # object doesn't have a __float__ function.  We get a ValueError when either a str object inside an
+            # np.object_ array or when an np.unicode_ array attempts to convert a string to a float and fails
+
+            y = typify_classification(y)
+
+        X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
+
+        X, feature_names, feature_types = unify_data2(
+            X, n_samples, self.feature_names, self.feature_types, False, 0
         )
 
-        global_selector = gen_global_selector(
-            X, self.feature_names, self.feature_types, None
-        )
+        global_selector = gen_global_selector(X, feature_names, feature_types, None)
         counts, values = np.histogram(y, bins="doane")
         response_density_data_dict = {"names": values, "scores": counts}
         overall_dict = {
@@ -69,12 +89,12 @@ class Marginal(ExplainerMixin):
         X_sample = X[idx, :]
         y_sample = y[idx]
         specific_dicts = []
-        for feat_idx, feature_name in enumerate(self.feature_names):
-            feature_type = self.feature_types[feat_idx]
+        for feat_idx, feature_name in enumerate(feature_names):
+            feature_type = feature_types[feat_idx]
             if feature_type == "continuous":
                 counts, values = np.histogram(X[:, feat_idx], bins="doane")
                 corr = pearsonr(X[:, feat_idx], y)[0]
-            elif feature_type == "categorical":
+            elif feature_type == "nominal" or feature_type == "ordinal":
                 values, counts = np.unique(X[:, feat_idx], return_counts=True)
                 corr = None
             else:
@@ -97,8 +117,8 @@ class Marginal(ExplainerMixin):
         return MarginalExplanation(
             "data",
             internal_obj,
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
+            feature_names=feature_names,
+            feature_types=feature_types,
             name=name,
             selector=global_selector,
         )
@@ -284,13 +304,26 @@ class ClassHistogram(ExplainerMixin):
         if name is None:
             name = gen_name_from_class(self)
 
-        X, y, self.feature_names, self.feature_types = unify_data(
-            X, y, self.feature_names, self.feature_types
+        y = clean_dimensions(y, "y")
+        if y.ndim != 1:
+            raise ValueError("y must be 1 dimensional")
+
+        try:
+            y = y.astype(np.float64, copy=False)
+        except (TypeError, ValueError):
+            # we get a TypeError whenever we have an np.object_ array and numpy attempts to call float(), but the
+            # object doesn't have a __float__ function.  We get a ValueError when either a str object inside an
+            # np.object_ array or when an np.unicode_ array attempts to convert a string to a float and fails
+
+            y = typify_classification(y)
+
+        X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
+
+        X, feature_names, feature_types = unify_data2(
+            X, n_samples, self.feature_names, self.feature_types, False, 0
         )
 
-        global_selector = gen_global_selector(
-            X, self.feature_names, self.feature_types, None
-        )
+        global_selector = gen_global_selector(X, feature_names, feature_types, None)
 
         overall_dict = {"type": "hist", "X": X, "y": y}
         internal_obj = {
@@ -301,8 +334,8 @@ class ClassHistogram(ExplainerMixin):
         return ClassHistogramExplanation(
             "data",
             internal_obj,
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
+            feature_names=feature_names,
+            feature_types=feature_types,
             name=name,
             selector=global_selector,
         )
