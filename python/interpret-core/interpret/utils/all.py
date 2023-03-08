@@ -82,40 +82,6 @@ def gen_perf_dicts(scores, y, is_classification, classes=None):
     return records
 
 
-def gen_global_selector(X, feature_names, feature_types, importance_scores, round=3):
-    records = []
-
-    for feat_idx, _ in enumerate(feature_names):
-        record = {}
-        record["Name"] = feature_names[feat_idx]
-        record["Type"] = _legacy_type(feature_types[feat_idx])
-
-        if feat_idx < X.shape[1]:
-            col_vals = X[:, feat_idx]
-            nz_count = np.count_nonzero(col_vals)
-            col_vals = col_vals.astype("U")
-            record["# Unique"] = len(np.unique(col_vals))
-            record["% Non-zero"] = nz_count / X.shape[0]
-        else:
-            record["# Unique"] = np.nan
-            record["% Non-zero"] = np.nan
-
-        # if importance_scores is None:
-        #     record["Importance"] = np.nan
-        # else:
-        #     record["Importance"] = importance_scores[feat_idx]
-
-        records.append(record)
-
-    # columns = ["Name", "Type", "# Unique", "% Non-zero", "Importance"]
-    columns = ["Name", "Type", "# Unique", "% Non-zero"]
-    df = pd.DataFrame.from_records(records, columns=columns)
-    if round is not None:
-        return df.round(round)
-    else:  # pragma: no cover
-        return df
-
-
 def gen_global_selector2(
     n_samples,
     n_features,

@@ -3,7 +3,7 @@
 
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
-from ..utils import gen_name_from_class, gen_global_selector, gen_local_selector
+from ..utils import gen_name_from_class, gen_global_selector2, gen_local_selector
 from ..utils import gen_perf_dicts
 
 from abc import abstractmethod
@@ -98,8 +98,21 @@ class BaseLinear:
             if feature_type == "nominal" or feature_type == "ordinal":
                 self.categorical_uniq_[i] = list(sorted(set(X[:, i])))
 
-        self.global_selector_ = gen_global_selector(
-            X, self.feature_names_in_, self.feature_types_in_, None
+        unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
+        zero_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
+        for col_idx in range(len(self.feature_names_in_)):
+            X_col = X[:, col_idx]
+            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            zero_val_counts.itemset(col_idx, len(X_col) - np.count_nonzero(X_col))
+
+        self.global_selector_ = gen_global_selector2(
+            n_samples,
+            len(self.feature_names_in_),
+            self.feature_names_in_,
+            self.feature_types_in_,
+            unique_val_counts,
+            zero_val_counts,
+            None,
         )
         self.bin_counts_, self.bin_edges_ = _hist_per_column(X, self.feature_types_in_)
 

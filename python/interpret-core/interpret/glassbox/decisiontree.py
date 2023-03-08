@@ -5,7 +5,7 @@ from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils import (
     gen_name_from_class,
     gen_local_selector,
-    gen_global_selector,
+    gen_global_selector2,
     gen_perf_dicts,
 )
 
@@ -293,9 +293,22 @@ class BaseShallowDecisionTree:
         model = self._model()
         model.fit(X, y)
 
+        unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
+        zero_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
+        for col_idx in range(len(self.feature_names_in_)):
+            X_col = X[:, col_idx]
+            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            zero_val_counts.itemset(col_idx, len(X_col) - np.count_nonzero(X_col))
+
         feat_imp = model.feature_importances_
-        self.global_selector_ = gen_global_selector(
-            X, self.feature_names_in_, self.feature_types_in_, feat_imp
+        self.global_selector_ = gen_global_selector2(
+            n_samples,
+            len(self.feature_names_in_),
+            self.feature_names_in_,
+            self.feature_types_in_,
+            unique_val_counts,
+            zero_val_counts,
+            feat_imp,
         )
         self.n_samples_ = n_samples
 

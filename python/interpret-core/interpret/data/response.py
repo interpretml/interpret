@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils import gen_name_from_class, gen_global_selector
+from ..utils import gen_name_from_class, gen_global_selector2
 
 import numpy as np
 from scipy.stats import pearsonr
@@ -71,7 +71,23 @@ class Marginal(ExplainerMixin):
             X, n_samples, self.feature_names, self.feature_types, False, 0
         )
 
-        global_selector = gen_global_selector(X, feature_names, feature_types, None)
+        unique_val_counts = np.zeros(len(feature_names), dtype=np.int64)
+        zero_val_counts = np.zeros(len(feature_names), dtype=np.int64)
+        for col_idx in range(len(feature_names)):
+            X_col = X[:, col_idx]
+            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            zero_val_counts.itemset(col_idx, len(X_col) - np.count_nonzero(X_col))
+
+        global_selector = gen_global_selector2(
+            n_samples,
+            len(feature_names),
+            feature_names,
+            feature_types,
+            unique_val_counts,
+            zero_val_counts,
+            None,
+        )
+
         counts, values = np.histogram(y, bins="doane")
         response_density_data_dict = {"names": values, "scores": counts}
         overall_dict = {
@@ -325,7 +341,22 @@ class ClassHistogram(ExplainerMixin):
             X, n_samples, self.feature_names, self.feature_types, False, 0
         )
 
-        global_selector = gen_global_selector(X, feature_names, feature_types, None)
+        unique_val_counts = np.zeros(len(feature_names), dtype=np.int64)
+        zero_val_counts = np.zeros(len(feature_names), dtype=np.int64)
+        for col_idx in range(len(feature_names)):
+            X_col = X[:, col_idx]
+            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            zero_val_counts.itemset(col_idx, len(X_col) - np.count_nonzero(X_col))
+
+        global_selector = gen_global_selector2(
+            n_samples,
+            len(feature_names),
+            feature_names,
+            feature_types,
+            unique_val_counts,
+            zero_val_counts,
+            None,
+        )
 
         overall_dict = {"type": "hist", "X": X, "y": y}
         internal_obj = {
