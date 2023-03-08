@@ -104,7 +104,7 @@ def hist_per_column(arr, feature_types=None):
                 count, bin_edge = np.histogram(arr[:, i], bins="doane")
                 counts.append(count)
                 bin_edges.append(bin_edge)
-            elif feat_type == "categorical":
+            elif feat_type == "nominal" or feat_type == "ordinal":
                 # Todo: check if this call
                 bin_edge, count = np.unique(arr[:, i], return_counts=True)
                 counts.append(count)

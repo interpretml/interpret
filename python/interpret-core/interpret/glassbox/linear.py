@@ -9,10 +9,18 @@ from ..utils import unify_data
 
 from abc import abstractmethod
 from sklearn.base import is_classifier
+from sklearn.utils.validation import check_is_fitted
 import numpy as np
 from sklearn.base import ClassifierMixin, RegressorMixin
 from sklearn.linear_model import LogisticRegression as SKLogistic
 from sklearn.linear_model import Lasso as SKLinear
+
+from ..utils._binning import (
+    preclean_X,
+    unify_data2,
+    clean_dimensions,
+    typify_classification,
+)
 
 
 class BaseLinear:
@@ -58,14 +66,28 @@ class BaseLinear:
         Returns:
             Itself.
         """
-        X, y, self.feature_names, self.feature_types = unify_data(
-            X, y, self.feature_names, self.feature_types
+
+        y = clean_dimensions(y, "y")
+        if y.ndim != 1:
+            raise ValueError("y must be 1 dimensional")
+        if len(y) == 0:
+            raise ValueError("y cannot have 0 samples")
+
+        if is_classifier(self):
+            y = typify_classification(y)
+        else:
+            y = y.astype(np.float64, copy=False)
+
+        X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
+
+        X, self.feature_names_in_, self.feature_types_in_ = unify_data2(
+            X, n_samples, self.feature_names, self.feature_types, False, 0
         )
 
         model = self._model()
         model.fit(X, y)
 
-        self.n_features_in_ = len(self.feature_names)
+        self.n_features_in_ = len(self.feature_names_in_)
         if is_classifier(self):
             self.classes_ = model.classes_
 
@@ -73,14 +95,17 @@ class BaseLinear:
         self.X_maxs_ = np.max(X, axis=0)
         self.categorical_uniq_ = {}
 
-        for i, feature_type in enumerate(self.feature_types):
-            if feature_type == "categorical":
+        for i, feature_type in enumerate(self.feature_types_in_):
+            if feature_type == "nominal" or feature_type == "ordinal":
                 self.categorical_uniq_[i] = list(sorted(set(X[:, i])))
 
         self.global_selector_ = gen_global_selector(
-            X, self.feature_names, self.feature_types, None
+            X, self.feature_names_in_, self.feature_types_in_, None
         )
-        self.bin_counts_, self.bin_edges_ = hist_per_column(X, self.feature_types)
+        self.bin_counts_, self.bin_edges_ = hist_per_column(X, self.feature_types_in_)
+
+        self.has_fitted_ = True
+
         return self
 
     def predict(self, X):
@@ -92,7 +117,14 @@ class BaseLinear:
         Returns:
             Predicted class label per instance.
         """
-        X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+
+        check_is_fitted(self, "has_fitted_")
+
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
+        X, _, _ = unify_data2(
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+        )
+
         return self._model().predict(X)
 
     def explain_local(self, X, y=None, name=None):
@@ -107,23 +139,51 @@ class BaseLinear:
             An explanation object, visualizing feature-value pairs
             for each instance as horizontal bar charts.
         """
+
+        check_is_fitted(self, "has_fitted_")
+
         if name is None:
             name = gen_name_from_class(self)
-        X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
+
+        n_samples = None
+        if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            n_samples = len(y)
+
+            if is_classifier(self):
+                y = typify_classification(y)
+            else:
+                y = y.astype(np.float64, copy=False)
+
+        X, n_samples = preclean_X(
+            X, self.feature_names_in_, self.feature_types_in_, n_samples
+        )
+
+        if n_samples == 0:
+            # TODO: we could probably handle this case
+            raise ValueError("X has zero samples")
+
+        X, _, _ = unify_data2(
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+        )
 
         model = self._model()
 
         classes = None
         is_classification = is_classifier(self)
+        intercept = model.intercept_
+        coef = model.coef_
         if is_classification:
             classes = self.classes_
-            predictions = self.predict_proba(X)[:, 1]
-            intercept = model.intercept_[0]
-            coef = model.coef_[0]
+            predictions = self.predict_proba(X)
+            if len(classes) == 2:
+                predictions = predictions[:, 1]
+                intercept = intercept[0]
+                coef = coef[0]
         else:
             predictions = self.predict(X)
-            intercept = model.intercept_
-            coef = model.coef_
 
         data_dicts = []
         scores_list = []
@@ -141,7 +201,7 @@ class BaseLinear:
             perf_list.append(perf_dict_obj)
 
             # Names/scores
-            data_dict["names"] = self.feature_names
+            data_dict["names"] = self.feature_names_in_
             data_dict["scores"] = scores
 
             # Values
@@ -180,8 +240,8 @@ class BaseLinear:
         return FeatureValueExplanation(
             "local",
             internal_obj,
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
+            feature_names=self.feature_names_in_,
+            feature_types=self.feature_types_in_,
             name=name,
             selector=selector,
         )
@@ -196,6 +256,9 @@ class BaseLinear:
             An explanation object,
             visualizing feature-value pairs as horizontal bar chart.
         """
+
+        check_is_fitted(self, "has_fitted_")
+
         if name is None:
             name = gen_name_from_class(self)
 
@@ -208,18 +271,18 @@ class BaseLinear:
             coef = model.coef_
 
         overall_data_dict = {
-            "names": self.feature_names,
+            "names": self.feature_names_in_,
             "scores": list(coef),
             "extra": {"names": ["Intercept"], "scores": [intercept]},
         }
 
         specific_data_dicts = []
-        for index, feature in enumerate(self.feature_names):
+        for index, feature in enumerate(self.feature_names_in_):
             feat_min = self.X_mins_[index]
             feat_max = self.X_maxs_[index]
             feat_coef = coef[index]
 
-            feat_type = self.feature_types[index]
+            feat_type = self.feature_types_in_[index]
 
             if feat_type == "continuous":
                 # Generate x, y points to plot from coef for continuous features
@@ -253,8 +316,8 @@ class BaseLinear:
         return LinearExplanation(
             "global",
             internal_obj,
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
+            feature_names=self.feature_names_in_,
+            feature_types=self.feature_types_in_,
             name=name,
             selector=self.global_selector_,
         )
@@ -439,5 +502,12 @@ class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
         Returns:
             Probability estimate of instance for each class.
         """
-        X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+
+        check_is_fitted(self, "has_fitted_")
+
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
+        X, _, _ = unify_data2(
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+        )
+
         return self._model().predict_proba(X)
