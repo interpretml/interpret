@@ -199,7 +199,9 @@ class MarginalExplanation(ExplanationMixin):
         density_dict = data_dict["feature_density"]
 
         bin_size = density_dict["names"][1] - density_dict["names"][0]
-        is_categorical = self.feature_types[key] == "categorical"
+        is_categorical = (
+            self.feature_types[key] == "nominal" or self.feature_types[key] == "ordinal"
+        )
 
         if is_categorical:
             trace1 = go.Histogram(x=data_dict["x"], name="x density", yaxis="y2")
@@ -429,7 +431,9 @@ class ClassHistogramExplanation(ExplanationMixin):
 
         classes = list(sorted(set(y)))
         data = []
-        is_categorical = self.feature_types[key] == "categorical"
+        is_categorical = (
+            self.feature_types[key] == "nominal" or self.feature_types[key] == "ordinal"
+        )
         if not is_categorical:
             _, bins = np.histogram(x, bins="doane")
         for idx, current_class in enumerate(classes):

@@ -115,7 +115,6 @@ class MorrisSensitivity(ExplainerMixin):
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
         zero_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
         for col_idx, feature in enumerate(self.feature_names_in_):
-            feature_type = self.feature_types_in_[col_idx]
             X_col = data[:, col_idx]
             unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
             zero_val_counts.itemset(col_idx, len(X_col) - np.count_nonzero(X_col))
@@ -160,10 +159,7 @@ class MorrisSensitivity(ExplainerMixin):
             self.n_samples_,
             len(self.feature_names_in_),
             self.feature_names_in_,
-            [
-                "categorical" if x == "nominal" or x == "ordinal" else x
-                for x in self.feature_types_in_
-            ],
+            self.feature_types_in_,
             self.unique_val_counts_,
             self.zero_val_counts_,
             self.mu_star_,

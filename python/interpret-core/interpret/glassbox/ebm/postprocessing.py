@@ -5,7 +5,7 @@ import copy
 import numpy as np
 
 
-def multiclass_postprocess(
+def multiclass_postprocess_RESTORE_THIS(
     X_binned, feature_graphs, binned_predict_proba, feature_types
 ):
     """Postprocesses multiclass model graphs with desired properties.
@@ -14,7 +14,7 @@ def multiclass_postprocess(
         X_binned: Training dataset, pre-binned. Contains integer values, 0+. Each value is a unique bin.
         feature_graphs: List of 2d numpy arrays. List is size d for d features. Each numpy array is of size b for b bins in the feature. Each bin has k elements for k classes.
         binned_predict_proba: Function that takes in X_binned, returns 2d numpy array of predictions. Each row in the return vector has k elements, with probability of belonging to class k.
-        feature_types: List of strings containing either "categorical" or "numeric" for each feature.
+        feature_types: List of strings "nominal" or "ordinal" or "continuous" for each feature.
 
     Returns:
         Dictionary with updated model graphs and new intercepts.
@@ -36,8 +36,7 @@ def multiclass_postprocess(
     intercepts = np.zeros(K)
     for i in range(len(feature_graphs)):
         bincount = np.bincount(X_binned[i, :].astype(int))
-        # TODO: shouldn't this be "continuous" instead of "numeric"?
-        if feature_types[i] == "numeric":
+        if feature_types[i] == "continuous":
             num_bins = feature_graphs[i].shape[0]
             change = np.zeros(num_bins)
             for v in range(1, num_bins):
@@ -85,6 +84,8 @@ def multiclass_postprocess2(n_classes, term_scores, bin_weights, intercept):
     # TODO: we can probably do all the classes together, and that would make it generalize to interactions as well
     # TODO: this code, if we continue to do multiclass this way, can be merged with binary and regression handling
     #       Look at the alternate branch in the caller to multiclass_postprocess2
+
+    # TODO: the original intended algorithm from the paper is in the function multiclass_postprocess_RESTORE_THIS
 
     for i in range(len(term_scores)):
         for k in range(n_classes):

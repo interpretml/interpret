@@ -151,7 +151,7 @@ class FeatureValueExplanation(ExplanationMixin):
             title = self.feature_names[key]
         if feature_type == "continuous":
             return plot_line(data_dict, title=title)
-        elif feature_type == "categorical":
+        elif feature_type == "nominal" or feature_type == "ordinal":
             return plot_bar(data_dict, title=title)
         elif feature_type == "interaction":
             # TODO: Generalize this out.

@@ -4,7 +4,7 @@
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
 from ..utils import gen_name_from_class, gen_global_selector, gen_local_selector
-from ..utils import gen_perf_dicts, hist_per_column
+from ..utils import gen_perf_dicts
 
 from abc import abstractmethod
 from sklearn.base import is_classifier
@@ -101,7 +101,7 @@ class BaseLinear:
         self.global_selector_ = gen_global_selector(
             X, self.feature_names_in_, self.feature_types_in_, None
         )
-        self.bin_counts_, self.bin_edges_ = hist_per_column(X, self.feature_types_in_)
+        self.bin_counts_, self.bin_edges_ = _hist_per_column(X, self.feature_types_in_)
 
         self.has_fitted_ = True
 
@@ -510,3 +510,26 @@ class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
         )
 
         return self._model().predict_proba(X)
+
+
+def _hist_per_column(arr, feature_types=None):
+    counts = []
+    bin_edges = []
+
+    if feature_types is not None:
+        for i, feat_type in enumerate(feature_types):
+            if feat_type == "continuous":
+                count, bin_edge = np.histogram(arr[:, i], bins="doane")
+                counts.append(count)
+                bin_edges.append(bin_edge)
+            elif feat_type == "nominal" or feat_type == "ordinal":
+                # Todo: check if this call
+                bin_edge, count = np.unique(arr[:, i], return_counts=True)
+                counts.append(count)
+                bin_edges.append(bin_edge)
+    else:
+        for i in range(arr.shape[1]):
+            count, bin_edge = np.histogram(arr[:, i], bins="doane")
+            counts.append(count)
+            bin_edges.append(bin_edge)
+    return counts, bin_edges

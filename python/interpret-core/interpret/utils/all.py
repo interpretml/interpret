@@ -82,36 +82,13 @@ def gen_perf_dicts(scores, y, is_classification, classes=None):
     return records
 
 
-def hist_per_column(arr, feature_types=None):
-    counts = []
-    bin_edges = []
-
-    if feature_types is not None:
-        for i, feat_type in enumerate(feature_types):
-            if feat_type == "continuous":
-                count, bin_edge = np.histogram(arr[:, i], bins="doane")
-                counts.append(count)
-                bin_edges.append(bin_edge)
-            elif feat_type == "nominal" or feat_type == "ordinal":
-                # Todo: check if this call
-                bin_edge, count = np.unique(arr[:, i], return_counts=True)
-                counts.append(count)
-                bin_edges.append(bin_edge)
-    else:
-        for i in range(arr.shape[1]):
-            count, bin_edge = np.histogram(arr[:, i], bins="doane")
-            counts.append(count)
-            bin_edges.append(bin_edge)
-    return counts, bin_edges
-
-
 def gen_global_selector(X, feature_names, feature_types, importance_scores, round=3):
     records = []
 
     for feat_idx, _ in enumerate(feature_names):
         record = {}
         record["Name"] = feature_names[feat_idx]
-        record["Type"] = feature_types[feat_idx]
+        record["Type"] = _legacy_type(feature_types[feat_idx])
 
         if feat_idx < X.shape[1]:
             col_vals = X[:, feat_idx]
@@ -153,12 +130,7 @@ def gen_global_selector2(
     for term_idx in range(len(term_names)):
         record = {}
         record["Name"] = term_names[term_idx]
-        feature_type = term_types[term_idx]
-        record["Type"] = (
-            "categorical"
-            if feature_type == "nominal" or feature_type == "ordinal"
-            else feature_type
-        )
+        record["Type"] = _legacy_type(term_types[term_idx])
 
         if term_idx < n_features:
             record["# Unique"] = (
@@ -239,3 +211,12 @@ def gen_name_from_class(obj):
 
 
 gen_name_from_class.cache = {}
+
+
+def _legacy_type(feature_type):
+    # TODO: someday get rid of this when we've propagated nominal and ordinal to the UI
+    return (
+        "categorical"
+        if feature_type == "nominal" or feature_type == "ordinal"
+        else feature_type
+    )

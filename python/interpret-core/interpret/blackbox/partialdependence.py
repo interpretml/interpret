@@ -160,7 +160,6 @@ class PartialDependence(ExplainerMixin):
         feature_list = []
         density_list = []
         for col_idx, feature in enumerate(self.feature_names_in_):
-            feature_type = self.feature_types_in_[col_idx]
             pdp = self.pdps_[col_idx]
             feature_dict = {
                 "feature_values": pdp["values"],
@@ -185,10 +184,7 @@ class PartialDependence(ExplainerMixin):
             self.n_samples_,
             len(self.feature_names_in_),
             self.feature_names_in_,
-            [
-                "categorical" if x == "nominal" or x == "ordinal" else x
-                for x in self.feature_types_in_
-            ],
+            self.feature_types_in_,
             self.unique_val_counts_,
             self.zero_val_counts_,
             None,

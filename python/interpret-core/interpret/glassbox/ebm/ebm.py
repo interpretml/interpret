@@ -41,7 +41,6 @@ from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
 from ...utils import (
     gen_name_from_class,
-    gen_global_selector,
     gen_global_selector2,
     gen_local_selector,
 )
@@ -179,7 +178,8 @@ class EBMExplanation(FeatureValueExplanation):
                     figure = plot_continuous_bar(data_dict, title=title, xtitle=xtitle)
 
             elif (
-                self.feature_types[key] == "categorical"
+                self.feature_types[key] == "nominal"
+                or self.feature_types[key] == "ordinal"
                 or self.feature_types[key] == "interaction"
             ):
                 figure = super().visualize(key, title)
@@ -1498,19 +1498,13 @@ class EBMModel(BaseEstimator):
             "global",
             internal_obj,
             feature_names=[term_names[i] for i in keep_idxs],
-            feature_types=[
-                "categorical" if x == "nominal" or x == "ordinal" else x
-                for x in [term_types[i] for i in keep_idxs]
-            ],
+            feature_types=[term_types[i] for i in keep_idxs],
             name=name,
             selector=gen_global_selector2(
                 getattr(self, "n_samples_", None),
                 self.n_features_in_,
                 [term_names[i] for i in keep_idxs],
-                [
-                    "categorical" if x == "nominal" or x == "ordinal" else x
-                    for x in [term_types[i] for i in keep_idxs]
-                ],
+                [term_types[i] for i in keep_idxs],
                 getattr(self, "unique_val_counts_", None),
                 getattr(self, "zero_val_counts_", None),
                 None,
@@ -1670,10 +1664,7 @@ class EBMModel(BaseEstimator):
             "local",
             internal_obj,
             feature_names=term_names,
-            feature_types=[
-                "categorical" if x == "nominal" or x == "ordinal" else x
-                for x in term_types
-            ],
+            feature_types=term_types,
             name=gen_name_from_class(self) if name is None else name,
             selector=selector,
         )
