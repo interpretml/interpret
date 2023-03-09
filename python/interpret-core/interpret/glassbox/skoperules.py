@@ -29,6 +29,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
+_BASE_FEATURE_NAME = "__C__"
 
 class RulesExplanation(ExplanationMixin):
     """Visualizes rules as HTML for both global and local explanations."""
@@ -179,9 +180,8 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         # skope-rules seems to want to record things in their names, so replicate their format
         # they seem to have changed this to make rules_ use the given feature_names, but just
         # in case we want to look at any of their other internals, use their naming
-        BASE_FEATURE_NAME = "__C__"
         self.feature_index_ = [
-            BASE_FEATURE_NAME + x
+            _BASE_FEATURE_NAME + x
             for x in np.arange(len(self.feature_names_in_)).astype(str)
         ]
         self.feature_map_ = {
@@ -298,6 +298,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
                 feature_set.add(orig_feature)
             return feature_set
 
+        pattern = "(" + _BASE_FEATURE_NAME + "[0-9]+)"
         for indx, rule_rec in enumerate(rules):
             rule = rule_rec[0]
             rule_round = " ".join(
@@ -306,7 +307,6 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
                     for x in rule.split(" ")
                 ]
             )
-            pattern = r"(feature_[0-9]+)"
             feature_set = extract_orig_features(pattern, rule_round)
             rule_fix = re.sub(
                 pattern, lambda m: self.feature_map_[m.group(1)], rule_round
