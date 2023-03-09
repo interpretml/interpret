@@ -31,6 +31,7 @@ log = logging.getLogger(__name__)
 
 _BASE_FEATURE_NAME = "__C__"
 
+
 class RulesExplanation(ExplanationMixin):
     """Visualizes rules as HTML for both global and local explanations."""
 

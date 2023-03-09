@@ -180,6 +180,36 @@ jobs:
       artifactName: 'sdist'
     displayName: 'Publish sdist python package'
 
+- job: 'docs'
+  dependsOn: 'bld_sdist_package'
+  pool:
+    vmImage: '${{ variables.ubuntu_image }}'
+  variables:
+    runCodesignValidationInjection: false
+  steps:
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      artifactName: 'sdist'
+      itemPattern: 'sdist/interpret-core-*.tar.gz'
+      targetPath: '$(System.ArtifactsDirectory)/sdist'
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.8'
+  - script: |
+      cd $(System.ArtifactsDirectory)/sdist
+      tarball_path=$(echo interpret-core-*.tar.gz)
+      python -m pip install --upgrade pip setuptools wheel
+      python -m pip install "$tarball_path"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
+      cd $(Build.SourcesDirectory)/docs/
+      pip install -r requirements.txt
+      /bin/sh ./build.sh
+    displayName: 'Build docs'
+  - task: PublishPipelineArtifact@1
+    inputs:
+      targetPath: 'docs/interpret_docs/_build/html/'
+      artifactName: 'docs'
+    displayName: 'Publish docs'
+
 - job: 'bld_bdist_package'
   dependsOn: ['bld_native', 'bld_vis']
   pool:
