@@ -137,7 +137,6 @@ def is_cloud_env(detected):
         and len(set(non_cloud_env).intersection(detected)) == 0
     ):
         return ENV_DETECTED.CLOUD
-
     elif (
         len(set(cloud_env).intersection(detected)) != 0
         and len(set(non_cloud_env).intersection(detected)) != 0

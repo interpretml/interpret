@@ -4,6 +4,7 @@
 # TODO: Add unit tests for internal EBM interfacing
 import platform
 import ctypes as ct
+from ctypes.util import find_library
 import numpy as np
 import os
 import struct
@@ -549,6 +550,18 @@ class Native:
         Returns:
             A string representing filepath.
         """
+
+        conda_path = None
+        if platform.system() == "Windows":  # pragma: no cover
+            conda_path = find_library("libebm.dll")
+        elif platform.system() == "Linux":  # pragma: no cover
+            conda_path = find_library("libebm.so")
+        elif platform.system() == "Darwin":  # pragma: no cover
+            conda_path = find_library("libebm.dylib")
+
+        if conda_path is not None:
+            return conda_path
+
         bitsize = struct.calcsize("P") * 8
         is_64_bit = bitsize == 64
 
