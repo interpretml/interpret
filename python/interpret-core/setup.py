@@ -1,18 +1,20 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from setuptools import setup, find_packages
-from setuptools.command.sdist import sdist
+import subprocess
+import os
+import shutil
 from distutils.command.build import build
 from distutils.command.install import install
-from wheel.bdist_wheel import bdist_wheel
 
+from setuptools import setup, find_packages
+from setuptools.command.sdist import sdist
 
 name = "interpret-core"
 # NOTE: Version is replaced by a regex script.
 version = "0.3.1"
 long_description = """
-Core system for **the** interpret package.
+Core system for the interpret package.
 
 https://github.com/interpretml/interpret
 """
@@ -103,9 +105,6 @@ extras = {
 
 
 def _copy_native_code_to_setup():
-    import os
-    import shutil
-
     script_path = os.path.dirname(os.path.abspath(__file__))
     root_path = os.path.join(script_path, "..", "..")
     sym_path = os.path.join(script_path, "symbolic")
@@ -130,81 +129,91 @@ def _copy_native_code_to_setup():
                 "Shared directory in symbolic not found. This should be configured either by setup.py or alternative build processes."
             )
 
+def build_libebm():
+    script_path = os.path.dirname(os.path.abspath(__file__))
+    sym_path = os.path.join(script_path, "symbolic")
+
+    # Native compile
+    if os.name == "nt":
+        build_script = os.path.join(sym_path, "build.bat")
+        subprocess.check_call([build_script], cwd=sym_path)
+    else:
+        build_script = os.path.join(sym_path, "build.sh")
+        subprocess.check_call(["/bin/sh", build_script], cwd=sym_path)
+
+    source_dir = os.path.join(
+        sym_path, "python", "interpret-core", "interpret", "lib"
+    )
+    target_dir = os.path.join(script_path, "interpret", "lib")
+    os.makedirs(target_dir, exist_ok=True)
+    file_names = os.listdir(source_dir)
+    for file_name in file_names:
+        shutil.move(
+            os.path.join(source_dir, file_name), os.path.join(target_dir, file_name)
+        )
+
+def build_vis():
+    script_path = os.path.dirname(os.path.abspath(__file__))
+
+    # JavaScript compile
+    js_path = os.path.join(script_path, "js")
+    subprocess.run("npm install && npm run build-prod", cwd=js_path, shell=True)
+
+    js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
+    js_bundle_dest = os.path.join(script_path, "interpret", "lib", "interpret-inline.js")
+    os.makedirs(os.path.dirname(js_bundle_dest), exist_ok=True)
+    shutil.copyfile(js_bundle_src, js_bundle_dest)
 
 class BuildCommand(build):
     def run(self):
-        _copy_native_code_to_setup()
-
-        # Run native compilation as well as JavaScript build.
-        import subprocess
-        import os
-        import shutil
+        # when making a wheel we depend on a cloud build platform to make the various OS and platform
+        # shared library binaries, so we do not need to build them here. In conda-forge we use the
+        # libebm dependency which is the shared library. When downloading from source we prefer to
+        # build the library when used since the C++ code could change. The only place we want to
+        # build the C++ code is when build is being called as part of an sdist installation, so
+        # check if the symbolic path exists
 
         script_path = os.path.dirname(os.path.abspath(__file__))
         sym_path = os.path.join(script_path, "symbolic")
 
-        # Native compile
-        if os.name == "nt":
-            build_script = os.path.join(sym_path, "build.bat")
-            subprocess.check_call([build_script], cwd=sym_path)
-        else:
-            build_script = os.path.join(sym_path, "build.sh")
-            subprocess.check_call(["/bin/sh", build_script], cwd=sym_path)
+        if os.path.exists(sym_path):
+            # this should only be triggered in an sdist
+            build_libebm()
 
-        source_dir = os.path.join(
-            sym_path, "python", "interpret-core", "interpret", "lib"
-        )
-        target_dir = os.path.join(script_path, "interpret", "lib")
-        os.makedirs(target_dir, exist_ok=True)
-        file_names = os.listdir(source_dir)
-        for file_name in file_names:
-            shutil.move(
-                os.path.join(source_dir, file_name), os.path.join(target_dir, file_name)
-            )
-
-        # JavaScript compile
-        js_path = os.path.join(script_path, "js")
-        subprocess.run("npm install && npm run build-prod", cwd=js_path, shell=True)
-
-        js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
-        js_bundle_dest = os.path.join("interpret", "lib", "interpret-inline.js")
-        os.makedirs(os.path.dirname(js_bundle_dest), exist_ok=True)
-        shutil.copyfile(js_bundle_src, js_bundle_dest)
+        js_bundle_dest = os.path.join(script_path, "interpret", "lib", "interpret-inline.js")
+        if not os.path.exists(js_bundle_dest):
+            # this will trigger from github source or during conda building
+            # but it wil not trigger on bdist or sdist build in azure-pipelines since the js file will exist
+            build_vis()
 
         build.run(self)
 
 
 class InstallCommand(install):
     def run(self):
-        _copy_native_code_to_setup()  # This needs to run pre-build to store native code in the sdist.
         install.run(self)
 
 
 class SDistCommand(sdist):
     def run(self):
-        _copy_native_code_to_setup()  # This needs to run pre-build to store native code in the sdist.
+        # This needs to run pre-build to store native code in the sdist.
+        _copy_native_code_to_setup()
+        # the sdist is just for building on odd platforms, but js should work on any platform
+        build_vis()
         sdist.run(self)
-
-
-class BDistWheelCommand(bdist_wheel):
-    def run(self):
-        bdist_wheel.run(self)
-
 
 setup(
     name=name,
     version=version,
     author="The InterpretML Contributors",
     author_email="interpret@microsoft.com",
-    description="Fit interpretable machine learning models. Explain blackbox machine learning.",
+    description="Fit interpretable models. Explain blackbox machine learning.",
     long_description=long_description,
-    long_description_content_type="text/markdown",
     url="https://github.com/interpretml/interpret",
     cmdclass={
         "install": InstallCommand,
         "sdist": SDistCommand,
         "build": BuildCommand,
-        "bdist_wheel": BDistWheelCommand,
     },
     packages=find_packages(),
     package_data=package_data,
@@ -216,11 +225,11 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
     extras_require=extras,
     entry_points=entry_points,
-    install_requires=[],
 )
