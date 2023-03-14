@@ -5,11 +5,11 @@
 
 variables:
 - name: ubuntu_image
-  value: ubuntu-latest
+  value: ubuntu-20.04
 - name: mac_image
-  value: macOS-latest
+  value: macOS-11
 - name: windows_image
-  value: windows-latest
+  value: windows-2022
 
 jobs:
 - job: 'bld_native'
