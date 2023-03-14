@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.2] - 2023-03-14
+### Fixed
+- fix the issue that the shared library would only work on newer linux versions
+
 ## [v0.3.1] - 2023-03-13
 ### Added
 - Mac m1 support in conda-forge
