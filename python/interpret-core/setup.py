@@ -84,7 +84,11 @@ extras = {
     "treeinterpreter": ["treeinterpreter>=0.2.2"],
     # Dash
     "dash": [
+        # dash 2.* removed the dependencies on: dash-html-components, dash-core-components, dash-table
         "dash>=1.0.0",
+        "dash-core-components>=1.0.0",  # dash 2.* removes the need for this dependency
+        "dash-html-components>=1.0.0",  # dash 2.* removes the need for this dependency
+        "dash-table>=4.1.0",  # dash 2.* removes the need for this dependency
         "dash-cytoscape>=0.1.1",
         "gevent>=1.3.6",
         "requests>=2.19.0",
@@ -129,6 +133,7 @@ def _copy_native_code_to_setup():
                 "Shared directory in symbolic not found. This should be configured either by setup.py or alternative build processes."
             )
 
+
 def build_libebm():
     script_path = os.path.dirname(os.path.abspath(__file__))
     sym_path = os.path.join(script_path, "symbolic")
@@ -141,9 +146,7 @@ def build_libebm():
         build_script = os.path.join(sym_path, "build.sh")
         subprocess.check_call(["/bin/sh", build_script], cwd=sym_path)
 
-    source_dir = os.path.join(
-        sym_path, "python", "interpret-core", "interpret", "lib"
-    )
+    source_dir = os.path.join(sym_path, "python", "interpret-core", "interpret", "lib")
     target_dir = os.path.join(script_path, "interpret", "lib")
     os.makedirs(target_dir, exist_ok=True)
     file_names = os.listdir(source_dir)
@@ -151,6 +154,7 @@ def build_libebm():
         shutil.move(
             os.path.join(source_dir, file_name), os.path.join(target_dir, file_name)
         )
+
 
 def build_vis():
     script_path = os.path.dirname(os.path.abspath(__file__))
@@ -160,9 +164,12 @@ def build_vis():
     subprocess.run("npm install && npm run build-prod", cwd=js_path, shell=True)
 
     js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
-    js_bundle_dest = os.path.join(script_path, "interpret", "lib", "interpret-inline.js")
+    js_bundle_dest = os.path.join(
+        script_path, "interpret", "lib", "interpret-inline.js"
+    )
     os.makedirs(os.path.dirname(js_bundle_dest), exist_ok=True)
     shutil.copyfile(js_bundle_src, js_bundle_dest)
+
 
 class BuildCommand(build):
     def run(self):
@@ -180,7 +187,9 @@ class BuildCommand(build):
             # this should only be triggered in an sdist
             build_libebm()
 
-        js_bundle_dest = os.path.join(script_path, "interpret", "lib", "interpret-inline.js")
+        js_bundle_dest = os.path.join(
+            script_path, "interpret", "lib", "interpret-inline.js"
+        )
         if not os.path.exists(js_bundle_dest):
             # this will trigger from github source or during conda building
             # but it wil not trigger on bdist or sdist build in azure-pipelines since the js file will exist
@@ -201,6 +210,7 @@ class SDistCommand(sdist):
         # the sdist is just for building on odd platforms, but js should work on any platform
         build_vis()
         sdist.run(self)
+
 
 setup(
     name=name,

@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.1] - 2023-03-13
+### Added
+- Mac m1 support in conda-forge
+- SPOTGreedy prototype selection (PR #392)
+### Fixed
+- fix visualization when both cloud and non-cloud environments are detected (PR #210)
+- fix ShapTree bug where it was treating classifiers as regressors
+- resolve scikit-learn warnings occurring when models were trained using Pandas DataFrames
+- change the defaults to prefer 'continuous' over 'nominal' when a feature has 1 or 2 unique float64 values
+### Breaking Changes
+- in the blackbox and greybox explainers, change from accepting a predict_fn to 
+  accepting either a model or a predict_fn
+- feature type 'categorical' has been renamed to 'nominal' for the remaining 
+  feature_type parameters in the package (EBMs were already using 'nominal')
+- removed the unused sampler parameters to the Explainer classes
+
 ## [v0.3.0] - 2022-11-16
 ### Added
 - Full Complexity EBMs with higher order interactions supported: GA3M, GA4M, GA5M, etc... 
