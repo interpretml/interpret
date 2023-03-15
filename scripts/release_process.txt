@@ -20,6 +20,7 @@
 - update the CHANGELOG.md file
 
 - download the following into a separate directory. From azure-pipelines, in "published artifacts":
+  - docs: download the entire "docs" artifact as a zip file
   - npm: interpretml-interpret-inline-*.tgz
   - R: interpret_*.tar.gz
   - sdist: interpret-*.tar.gz
@@ -71,7 +72,9 @@
   - In particular, the "Oracle Developer Studio 12.6" is worth testing as that C++ compiler is picky, and CRAN tests it
 
 - check the docs
-  - download the following into a separate directory. From azure-pipelines, in "published artifacts", download "docs"
+  - cd <PACKAGE_DOWNLOAD_DIRECTORY>
+  - unzip the docs.zip file
+  - open one of the html files and go to the first document in the list
   - do a side by side browser comparison to the existing documentation at: https://interpret.ml/docs
   - clone the repo: https://github.com/interpretml/docs
   - delete all the files, except possibly for ".gitignore" (TODO: can we remove .gitignore even since all the files are uploaded?)
