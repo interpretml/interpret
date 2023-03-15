@@ -1,35 +1,176 @@
-PRE:
-  - update all version numbers for R, PyPi, conda-forge, npm(interpret-inline):
+- quick check of internal notes
 
-  - download the bdist package from the Azure pipeline and install it in a fresh environment
-  - run through all the sample notebooks in Jupyter notebook to check that they all work visually
-  - set interpret-inline to use the cloud js that we plan to publish and re-run all the sample notebooks
+- quick check of github issues
 
-R:
-  - CRAN is very picky on warnings, so release this first so that the version numbers will more likely match up with the python releases
-  - download the R package from Azure pipelines
-  - test it with multiple platforms in: https://builder.r-hub.io
+- quick check of github pull requests
+
+- quick check of existing documentation
+
+- IMPORTANT: check that the linux shared library is manylinux:
+  - in azure-pipelines, under the published artifacts, under asm-x64-ubuntu-*, open lib_ebm_native_linux_x64.s
+  - look for the section "Version References"
+  - if there is anything above GLIBC_2.5 (GLIBC_2.4 is ok), then we probably want to add a wrapper
+
+- update version numbers for R, PyPi, npm(interpret-inline):
+  - R/DESCRIPTION (also update the date!)
+  - python/interpret/setup.py
+  - python/interpret-core/setup.py
+  - python/interpret-core/js/package.json
+  - python/interpret-core/interpret/version.py
+- update the CHANGELOG.md file
+
+- download the following into a separate directory. From azure-pipelines, in "published artifacts":
+  - npm: interpretml-interpret-inline-*.tgz
+  - R: interpret_*.tar.gz
+  - sdist: interpret-*.tar.gz
+  - sdist: interpret-core-*.tar.gz
+  - bdist: interpret-*-py3-none-any.whl
+  - bdist: interpret_core-*-py3-none-any.whl
+
+- test the bdist:
+  - cd <PACKAGE_DOWNLOAD_DIRECTORY>
+  - conda create --name interpret_N python=3.10
+  - conda activate interpret_N
+  - pip install interpret_core-*-py3-none-any.whl[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
+  - pip install jupyter
+  - cd <REPO_ROOT>
+  - cd examples/python/notebooks
+  - jupyter notebook
+  - open all the example notebooks, run them, and check the visualizations
+  - clear all outputs on all notebooks
+  - add the following lines to the top of each notebook:
+      from interpret import set_visualize_provider
+      from interpret.provider import InlineProvider
+      set_visualize_provider(InlineProvider())
+  - re-run all the notebooks and check the visualizations again
+
+- test the sdist:
+  - cd <PACKAGE_DOWNLOAD_DIRECTORY>
+  - conda create --name interpret_N python=3.10
+  - conda activate interpret_N
+  - IN WINDOWS: get the Visual studio environment with: "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+  - pip install interpret-core-*.tar.gz[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
+  - pip install jupyter
+  - cd <REPO_ROOT>
+  - cd examples/python/notebooks
+  - jupyter notebook
+  - open all the example notebooks, run them, and check the visualizations
+  - clear all outputs on all notebooks
+  - add the following lines to the top of each notebook:
+      from interpret import set_visualize_provider
+      from interpret.provider import InlineProvider
+      set_visualize_provider(InlineProvider())
+  - re-run all the notebooks and check the visualizations again
+
+- test the R package
+  - run the "--as-cran" checks on the downloaded package:
+    - TODO: add this as a step in the build pipeline so that we can just check it there, but make it not fail the pipeline if it fails since we'd then have to keep updating the date in the package
+    - cd <PACKAGE_DOWNLOAD_DIRECTORY>
+    - R CMD check --as-cran -o ../tmp/R interpret_*.tar.gz
+  - upload the R package at <PACKAGE_DOWNLOAD_DIRECTORY> to test on multiple platforms in: https://builder.r-hub.io
   - In particular, the "Oracle Developer Studio 12.6" is worth testing as that C++ compiler is picky, and CRAN tests it
 
-interpret-inline:
-  - before releasing make sure to test locally with the inline provider
-  - after uploading to npm, set interpret to use the npm version of interpret-inline and re-run the sample notebooks using the newly uploaded cloud js
+- check the docs
+  - download the following into a separate directory. From azure-pipelines, in "published artifacts", download "docs"
+  - do a side by side browser comparison to the existing documentation at: https://interpret.ml/docs
+  - clone the repo: https://github.com/interpretml/docs
+  - delete all the files, except possibly for ".gitignore" (TODO: can we remove .gitignore even since all the files are uploaded?)
+  - copy the new files into that repo, BUT DO NOT PUSH YET
 
-conda-forge:
+- publish on NPM
+  - we can't re-use previously published versions, but the visualization code is likely to remain unchanged, and our 
+    NPM package isn't really directly accessed by users, and it's used by all our different language packages, so publish this first
+  - to publish:
+    - npm login
+    - it will ask for our email, which for us is the @outlook.com email, then it will ask for the "one-time password from your authenticator app" 
+      which is a confusing way to say that it has emailed us a code.
+    - cd <PACKAGE_DOWNLOAD_DIRECTORY>
+    - npm publish <FILENAME>
+    - verify that is was published at: https://www.npmjs.com/package/@interpretml/interpret-inline
+
+- test the NPM interpret-inline.js
+  - TODO: how do we specify that the interpret python code uses the NPM interpret-inline.js instead of the local interpret-inline.js?
+  - re-test the bdist as above, but with the cloud interpret-inline.js
+
+- publish R package on CRAN:
+  - CRAN is very picky on warnings, so this is our first publicly visible release so that the version numbers will more likely match up with the python releases
+  - submit to CRAN at: https://cran.r-project.org/submit.html
+  - login to @outlook.com email to accept the publication
+  - wait a day (or until it's been checked)
+  - check at: https://cran.r-project.org/package=interpret
+  - wait 2-3 days if possible to see if CRAN has any issues at: https://cran.r-project.org/web/checks/check_results_interpret.html
+
+- publish on conda-forge:
+  - we can re-do a release with the same version number, unlike pypi, so release this first for testing
+  - PRE:
+    - get the git ID:
+      - go to: https://github.com/interpretml/interpret
+      - click "commits"
+      - click "Copy the full SHA" icon
+      - open an ubuntu window
+      - get the sha256 for the tar.gz: curl -sL https://github.com/interpretml/interpret/archive/<GIT_SHA>.tar.gz | openssl sha256
+  - libebm:
+    - fork into a new github username repo from (if not already forked): https://github.com/conda-forge/libebm-feedstock
+    - edit the local repo in github: https://github.com/<USERNAME>/libebm-feedstock/blob/main/recipe/meta.yaml
+      - update the github URL with the git hash
+      - update the sha256 with the tar.gz SHA hash
+      - set build number to 0
+      - update the version number
+      - POSSIBLY: re-enable any libebm tests
+      - commit the changes
+    - on the "code" page, click "contribute" to make a PR back to the conda-forge repo in: https://github.com/<USERNAME>/libebm-feedstock/blob/main/recipe/meta.yaml 
+    - wait for conda-forge the build it. It it works, merge the PR
   - interpret-core:
-    - submit a PR to update the version number, re-enable the pytest tests, and set "pip check" on (perhaps temporarily)
-    - after we get it working satisfactorily, leave the PR until we're ready to publish the package everywhere
-
-pip (bdist):
-  - we've alrady tested this in the pre-check, so if nothing has changed then we're ok
-
-pip (sdist):
-  - create anaconda prompt
-  - get the Visual studio environment with: "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-  - install the sdist and try running the sample notebooks
-
-conda-forge:
+    - fork into a new github username repo from (if not already forked): https://github.com/conda-forge/interpret-core-feedstock
+    - edit the local repo in github: https://github.com/<USERNAME>/interpret-core-feedstock/blob/main/recipe/meta.yaml
+      - update the github URL with the git hash
+      - update the sha256 with the tar.gz SHA hash
+      - set build number to 0
+      - update the version number
+      - POSSIBLY: re-enable the pytest tests, and set "pip check" on
+      - commit the changes
+    - on the "code" page, click "contribute" to make a PR back to the conda-forge repo in: https://github.com/<USERNAME>/interpret-core-feedstock/blob/main/recipe/meta.yaml 
+    - wait for conda-forge the build it. It it works, merge the PR
   - interpret:
-    - submit the interpret-core PR and wait until conda updates the package
-    - submit a PR to update the version number for the interpret package, re-enable the pytest tests, and set "pip check" on (maybe temporarily)
-    - submit the interpret PR and wait until conda updates the package
+    - fork into a new github username repo from (if not already forked): https://github.com/conda-forge/interpret-feedstock
+    - edit the local repo in github: https://github.com/<USERNAME>/interpret-feedstock/blob/main/recipe/meta.yaml
+      - update the github URL with the git hash
+      - update the sha256 with the tar.gz SHA hash
+      - set build number to 0
+      - update the version number
+      - POSSIBLY: re-enable the pytest tests, and set "pip check" on
+      - commit the changes
+    - on the "code" page, click "contribute" to make a PR back to the conda-forge repo in: https://github.com/<USERNAME>/interpret-feedstock/blob/main/recipe/meta.yaml 
+    - wait for conda-forge the build it. It it works, merge the PR
+
+- TODO: fill in: test the conda-forge release in colab
+
+- publish on PyPi:
+  - upload the sdist and bdist together:
+    - cd <PACKAGE_DOWNLOAD_DIRECTORY>
+    - pip install twine
+    - in an otherwise empty directory that only contains the 4 files, run
+    - twine upload interpret*
+    - fill in the username/password
+
+- TODO: fill in: test the pypi release in mybinder
+
+- publish the docs:
+  - push the docs repo from above
+  - verify the files are uploaded at: https://interpret.ml/docs
+
+- in github:
+  - select the "develop" branch
+  - in the main code window, click on "tags" next to the branch
+  - click on "releases"
+  - click on "Draft a new release"
+  - choose a tag in the format "v0.x.x", and allow it to be created
+  - set the release title to "Version 0.x.x"
+  - paste the CHANGELOG changes into the "Describe this release" window
+  - preview it just to be sure
+  - click "publish release".  Github will automatically attach the source code .zip and .tar.gz files
+- in your local git
+  - pull/fetch to get the "v0.x.x" tag that github added to the repo
+  - switch to the "master" branch
+  - merge "develop" into "master" (this will also cary along with it the tag)
+  - push the "master" branch
