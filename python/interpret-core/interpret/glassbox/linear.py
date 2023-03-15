@@ -12,7 +12,7 @@ from sklearn.utils.validation import check_is_fitted
 import numpy as np
 from sklearn.base import ClassifierMixin, RegressorMixin
 from sklearn.linear_model import LogisticRegression as SKLogistic
-from sklearn.linear_model import Lasso as SKLinear
+from sklearn.linear_model import LinearRegression as SKLinear
 
 from ..utils._binning import (
     preclean_X,
