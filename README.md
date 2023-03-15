@@ -1,11 +1,12 @@
 # InterpretML
 
 ![License](https://img.shields.io/github/license/interpretml/interpret.svg?style=flat-square)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/interpretml/interpret/develop?labpath=examples%2Fpython%2Fnotebooks%2FInterpretable%20Classification%20Methods.ipynb)
 ![Python Version](https://img.shields.io/pypi/pyversions/interpret.svg?style=flat-square)
 ![Package Version](https://img.shields.io/pypi/v/interpret.svg?style=flat-square)
+![Conda](https://img.shields.io/conda/v/conda-forge/interpret)
 ![Build Status](https://img.shields.io/azure-devops/build/ms/interpret/293/develop.svg?style=flat-square)
 ![Coverage](https://img.shields.io/azure-devops/coverage/ms/interpret/293/develop.svg?style=flat-square)
-![LGTM Grade](https://img.shields.io/lgtm/grade/python/github/interpretml/interpret?style=flat-square)
 ![Maintenance](https://img.shields.io/maintenance/yes/2023?style=flat-square)
 <br/>
 > ### In the beginning machines learned in darkness, and data scientists struggled in the void to explain them. 
