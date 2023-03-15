@@ -14,7 +14,7 @@ def test_linear_regression():
     feature_names = dataset.feature_names
 
     sk_lr = SKLinear(random_state=1)
-    our_lr = LinearRegression(feature_names=feature_names, random_state=1)
+    our_lr = LinearRegression(feature_names=feature_names)
 
     sk_lr.fit(X, y)
     our_lr.fit(X, y)
