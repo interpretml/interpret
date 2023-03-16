@@ -4,7 +4,7 @@
 from interpret.glassbox import LogisticRegression, LinearRegression
 from sklearn.datasets import load_breast_cancer, load_diabetes
 from sklearn.linear_model import LogisticRegression as SKLogistic
-from sklearn.linear_model import Lasso as SKLinear
+from sklearn.linear_model import LinearRegression as SKLinear
 import numpy as np
 
 
@@ -13,7 +13,7 @@ def test_linear_regression():
     X, y = dataset.data, dataset.target
     feature_names = dataset.feature_names
 
-    sk_lr = SKLinear(random_state=1)
+    sk_lr = SKLinear()
     our_lr = LinearRegression(feature_names=feature_names)
 
     sk_lr.fit(X, y)
