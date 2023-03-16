@@ -23,7 +23,13 @@ parts:
     - file: lime
     - file: pdp
     - file: msa
-  - file: shap-ebm-comparison
+- caption: More EBMs
+  chapters:
+  - file: ebm-internals
+    sections:
+    - file: ebm-internals-regression
+    - file: ebm-internals-classification
+    - file: ebm-internals-multiclass
 - caption: Framework
   chapters:
   - file: framework
