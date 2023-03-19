@@ -161,7 +161,9 @@
 - TODO: fill in: test the pypi release in mybinder
 
 - publish the docs:
-  - push the docs repo from above
+  - delete all the files in the https://interpretml/docs repo (except the .git directory)
+  - copy the docs that we got from the azure build pipeline into the docs repo
+  - push the repo
   - verify the files are uploaded at: https://interpret.ml/docs
 
 - in github:
