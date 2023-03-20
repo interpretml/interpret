@@ -5,7 +5,7 @@
 
 #######################################################################################
 # Book settings
-title                       : ""  # The title of the book. Will be placed in the left navbar.
+title                       : "InterpretML documentation"  # The title of the book. Will be placed in the left navbar.
 author                      : The InterpretML Contributors  # The author of the book
 copyright                   : "2023"  # Copyright year to be placed in the footer
 logo                        : logo.png  # A path to the book logo
@@ -16,19 +16,8 @@ execute:
 
 images_url: "/assets/images"
 
-myst_enable_extensions:
-  - colon_fence
-  - dollarmath
-  - html_image
-  - linkify
-  - substitution
-
 sphinx:
   config:
-    # mathjax_path: https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
-    napoleon_google_docstring: True
-    napoleon_use_param: True
-    napoleon_use_ivar: True
     autoclass_content: 'init'
   extra_extensions:
     - 'sphinx.ext.napoleon'
