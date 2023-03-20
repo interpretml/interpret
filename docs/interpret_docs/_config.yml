@@ -14,10 +14,6 @@ execute:
   timeout: 120
   allow_errors: true
 
-bibtex_bibfiles:
-  - references.bib
-
-
 images_url: "/assets/images"
 
 myst_enable_extensions:
@@ -43,4 +39,3 @@ sphinx:
     - 'sphinx.ext.autodoc'
     - 'sphinx.ext.napoleon'
     - 'sphinxcontrib.katex'
-    - 'sphinxcontrib.bibtex'
