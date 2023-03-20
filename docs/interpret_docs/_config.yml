@@ -18,6 +18,8 @@ images_url: "/assets/images"
 
 sphinx:
   config:
+    napoleon_use_ivar: True
     autoclass_content: 'init'
   extra_extensions:
+    - 'sphinx.ext.autodoc'
     - 'sphinx.ext.napoleon'
