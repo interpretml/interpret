@@ -17,15 +17,10 @@ execute:
 images_url: "/assets/images"
 
 myst_enable_extensions:
-  # - amsmath
   - colon_fence
-  # - deflist
   - dollarmath
-  # - html_admonition
   - html_image
   - linkify
-  # - replacements
-  # - smartquotes
   - substitution
 
 sphinx:
@@ -36,6 +31,4 @@ sphinx:
     napoleon_use_ivar: True
     autoclass_content: 'init'
   extra_extensions:
-    - 'sphinx.ext.autodoc'
     - 'sphinx.ext.napoleon'
-    - 'sphinxcontrib.katex'
