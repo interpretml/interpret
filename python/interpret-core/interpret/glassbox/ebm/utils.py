@@ -432,13 +432,16 @@ def _harmonize_tensor(
         old_feature_idxs[old_idx] = -1  # in case we have duplicate feature idxs
         axes.append(old_idx)
 
+    if bin_evidence_weight is not None:
+        bin_evidence_weight = bin_evidence_weight.transpose(tuple(axes))
+
+    n_multiclasses = 1
     if len(axes) != old_tensor.ndim:
         # multiclass. The last dimension always stays put
         axes.append(len(axes))
+        n_multiclasses = old_tensor.shape[-1]
 
     old_tensor = old_tensor.transpose(tuple(axes))
-    if bin_evidence_weight is not None:
-        bin_evidence_weight = bin_evidence_weight.transpose(tuple(axes))
 
     mapping = []
     lookups = []
@@ -569,12 +572,17 @@ def _harmonize_tensor(
     new_shape = tuple(len(lookup) for lookup in lookups)
     n_cells = np.prod(new_shape)
 
+    if 1 < n_multiclasses:
+        # for multiclass we need to add another dimension for the logits of each class
+        new_shape += (n_multiclasses,)
+
     lookups.reverse()
     percentages.reverse()
     mapping.reverse()
 
     # now we need to inflate it
-    new_tensor = np.empty(n_cells, np.float64)
+    intermediate_shape = (n_cells, n_multiclasses) if 1 < n_multiclasses else n_cells
+    new_tensor = np.empty(intermediate_shape, np.float64)
     for cell_idx in range(n_cells):
         remainder = cell_idx
         old_reversed_bin_idxs = []
@@ -591,7 +599,7 @@ def _harmonize_tensor(
             for map_bins, bin_idx in zip(mapping, old_reversed_bin_idxs)
         ]
         n_cells2 = np.prod([len(x) for x in cell_map])
-        val = 0.0
+        val = np.zeros(n_multiclasses, np.float64)
         total_weight = 0.0
         for cell2_idx in range(n_cells2):
             remainder2 = cell2_idx
@@ -622,7 +630,7 @@ def _harmonize_tensor(
             # but if the total_weight is zero then val should be zero and
             # our update should still be zero, which it already is
             val = val / total_weight
-        new_tensor.itemset(cell_idx, val)
+        new_tensor[cell_idx] = val
     new_tensor = new_tensor.reshape(new_shape)
     return new_tensor
 
