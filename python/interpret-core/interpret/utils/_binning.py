@@ -787,10 +787,11 @@ def _process_ndarray(X_col, nonmissings, categories, processing, min_unique_cont
     elif processing == "ordinal":
         if categories is None:
             # called under: fit
-            # It's an error since we need to also provide the ordinal definition during fit
-            msg = "ordinal category definition missing for ordinal type"
-            _log.error(msg)
-            raise ValueError(msg)
+            # if the caller passes "ordinal" during fit, the only order that makes sense is either
+            # alphabetical or based on float values. Frequency doesn't make sense
+            # if the caller would prefer an error, they can check feature_types themselves
+            X_col, categories = _process_column_initial(X_col, nonmissings, None, None)
+            return "ordinal", X_col, categories, None
         else:
             # called under: predict
             X_col, bad = _encode_categorical_existing(X_col, nonmissings, categories)
