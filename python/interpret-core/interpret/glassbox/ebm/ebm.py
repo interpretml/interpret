@@ -350,6 +350,81 @@ class EBMModel(BaseEstimator):
             Itself.
         """
 
+        if not isinstance(self.outer_bags, int) and not self.outer_bags.is_integer():
+            msg = "outer_bags must be an integer"
+            _log.error(msg)
+            raise ValueError(msg)
+        elif self.outer_bags < 1:
+            msg = "outer_bags must be 1 or greater. Did you mean to set: outer_bags=1, validation_size=0?"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        if not isinstance(self.validation_size, int) and not isinstance(self.validation_size, float):
+            msg = "validation_size must be an integer or float"
+            _log.error(msg)
+            raise ValueError(msg)
+        elif self.validation_size <= 0:
+            if self.validation_size < 0:
+                msg = "validation_size cannot be negative"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif 1 < self.outer_bags:
+                warn("If validation_size is 0, the outer_bags have no purpose. Set outer_bags=1 to remove this warning.")
+        elif 1 <= self.validation_size:
+            # validation_size equal to 1 or more is an exact number specification, so it must be an integer
+            if not isinstance(self.validation_size, int) and not self.validation_size.is_integer():
+                msg = "If 1 <= validation_size, it is an exact count of samples, and must be an integer"
+                _log.error(msg)
+                raise ValueError(msg)
+
+        if not isinstance(self.max_rounds, int) and not self.max_rounds.is_integer():
+            msg = "max_rounds must be an integer"
+            _log.error(msg)
+            raise ValueError(msg)
+        elif self.max_rounds < 0:
+            # max_rounds == 0 means no boosting. This can be useful to just perform discretization
+            msg = "max_rounds cannot be negative"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        if not is_private(self):
+            if not isinstance(self.inner_bags, int) and not self.inner_bags.is_integer():
+                msg = "inner_bags must be an integer"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif self.inner_bags < 0:
+                # inner_bags == 0 turns off inner bagging
+                msg = "inner_bags cannot be negative"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            if not isinstance(self.early_stopping_rounds, int) and not self.early_stopping_rounds.is_integer():
+                msg = "early_stopping_rounds must be an integer"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif self.early_stopping_rounds < 0:
+                # early_stopping_rounds == 0 means turn off early_stopping
+                # early_stopping_rounds == 1 means check after the first round, etc
+                msg = "early_stopping_rounds cannot be negative"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            if not isinstance(self.early_stopping_tolerance, int) and not isinstance(self.early_stopping_tolerance, float):
+                msg = "early_stopping_tolerance must be a float"
+                _log.error(msg)
+                raise ValueError(msg)
+
+        if not isinstance(self.learning_rate, int) and not isinstance(self.learning_rate, float):
+            msg = "learning_rate must be a float"
+            _log.error(msg)
+            raise ValueError(msg)
+        elif self.learning_rate <= 0:
+            msg = "learning_rate must be a positive number"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        # TODO: check the other inputs for common mistakes here
+
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
             msg = "y must be 1 dimensional"
@@ -514,8 +589,8 @@ class EBMModel(BaseEstimator):
                 Native.BoostFlags_GradientSums | Native.BoostFlags_RandomSplits
             )
             inner_bags = 0
-            early_stopping_rounds = -1
-            early_stopping_tolerance = -1
+            early_stopping_rounds = 0
+            early_stopping_tolerance = 0
             interactions = 0
         else:
             noise_scale = None
@@ -611,6 +686,12 @@ class EBMModel(BaseEstimator):
 
             parallel_args = []
             for idx in range(self.outer_bags):
+                early_stopping_rounds_local = early_stopping_rounds
+                if bags[idx] is None or (0 <= bags[idx]).all():
+                    # if there are no validation samples, turn off early stopping
+                    # because the validation metric cannot improve each round
+                    early_stopping_rounds_local = 0
+
                 parallel_args.append(
                     (
                         dataset,
@@ -622,7 +703,7 @@ class EBMModel(BaseEstimator):
                         self.learning_rate,
                         self.min_samples_leaf,
                         self.max_leaves,
-                        early_stopping_rounds,
+                        early_stopping_rounds_local,
                         early_stopping_tolerance,
                         self.max_rounds,
                         noise_scale,
@@ -779,6 +860,12 @@ class EBMModel(BaseEstimator):
 
                 parallel_args = []
                 for idx in range(self.outer_bags):
+                    early_stopping_rounds_local = early_stopping_rounds
+                    if bags[idx] is None or (0 <= bags[idx]).all():
+                        # if there are no validation samples, turn off early stopping
+                        # because the validation metric cannot improve each round
+                        early_stopping_rounds_local = 0
+
                     parallel_args.append(
                         (
                             dataset,
@@ -790,7 +877,7 @@ class EBMModel(BaseEstimator):
                             self.learning_rate,
                             self.min_samples_leaf,
                             self.max_leaves,
-                            early_stopping_rounds,
+                            early_stopping_rounds_local,
                             early_stopping_tolerance,
                             self.max_rounds,
                             noise_scale,
@@ -1712,7 +1799,7 @@ class EBMModel(BaseEstimator):
 
 
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
-    """Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog."""
+    """Explainable Boosting Classifier"""
 
     # TODO PK v.3 use underscores here like ClassifierMixin._estimator_type?
     available_explanations = ["global", "local"]
@@ -1748,7 +1835,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         n_jobs=-2,
         random_state=42,
     ):
-        """Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog.
+        """Explainable Boosting Classifier
 
         Args:
             feature_names: List of feature names.
@@ -1758,13 +1845,15 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             binning: Method to bin values for pre-processing. Choose "uniform", "quantile", or "rounded_quantile". 'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
-                Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
+                Either a list of tuples of feature indices, or an integer for number of automatically detected interactions.
                 Interactions are forcefully set to 0 for multiclass problems.
             outer_bags: Number of outer bags.
-            inner_bags: Number of inner bags.
+            inner_bags: Number of inner bags. 0 turns off inner bagging.
             learning_rate: Learning rate for boosting.
             validation_size: Validation set size for boosting.
-            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
+                validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
+            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping. 
+                0 turns off early stopping and boosting will occur for exactly max_rounds
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
             max_rounds: Number of rounds for boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
@@ -1915,7 +2004,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
 
 class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
-    """Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog."""
+    """Explainable Boosting Regressor"""
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
     available_explanations = ["global", "local"]
@@ -1951,7 +2040,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         n_jobs=-2,
         random_state=42,
     ):
-        """Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog.
+        """Explainable Boosting Regressor
 
         Args:
             feature_names: List of feature names.
@@ -1961,12 +2050,15 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             binning: Method to bin values for pre-processing. Choose "uniform", "quantile", or "rounded_quantile". 'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
-                Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
+                Either a list of tuples of feature indices, or an integer for number of automatically detected interactions.
+                Interactions are forcefully set to 0 for multiclass problems.
             outer_bags: Number of outer bags.
-            inner_bags: Number of inner bags.
+            inner_bags: Number of inner bags. 0 turns off inner bagging.
             learning_rate: Learning rate for boosting.
             validation_size: Validation set size for boosting.
+                validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
+                0 turns off early stopping and boosting will occur for exactly max_rounds
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
             max_rounds: Number of rounds for boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
@@ -2053,7 +2145,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
 
 class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
-    """Differentially Private Explainable Boosting Classifier."""
+    """Differentially Private Explainable Boosting Classifier"""
 
     available_explanations = ["global", "local"]
     explainer_type = "model"
@@ -2100,6 +2192,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             outer_bags: Number of outer bags.
             learning_rate: Learning rate for boosting.
             validation_size: Validation set size for boosting.
+                validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
             max_rounds: Number of rounds for boosting.
             max_leaves: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
@@ -2129,8 +2222,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             # Boosting
             learning_rate=learning_rate,
             validation_size=validation_size,
-            early_stopping_rounds=-1,
-            early_stopping_tolerance=-1,
+            early_stopping_rounds=0,
+            early_stopping_tolerance=0,
             max_rounds=max_rounds,
             # Trees
             min_samples_leaf=min_samples_leaf,
@@ -2213,7 +2306,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
 
 
 class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
-    """Differentially Private Explainable Boosting Regressor."""
+    """Differentially Private Explainable Boosting Regressor"""
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
     available_explanations = ["global", "local"]
@@ -2261,6 +2354,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             outer_bags: Number of outer bags.
             learning_rate: Learning rate for boosting.
             validation_size: Validation set size for boosting.
+                validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
             max_rounds: Number of rounds for boosting.
             max_leaves: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
@@ -2290,8 +2384,8 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             # Boosting
             learning_rate=learning_rate,
             validation_size=validation_size,
-            early_stopping_rounds=-1,
-            early_stopping_tolerance=-1,
+            early_stopping_rounds=0,
+            early_stopping_tolerance=0,
             max_rounds=max_rounds,
             # Trees
             min_samples_leaf=min_samples_leaf,

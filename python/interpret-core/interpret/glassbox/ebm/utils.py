@@ -1272,9 +1272,10 @@ class EBMUtils:
                         term_update_tensor = booster.get_term_update()
                         noisy_update_tensor = term_update_tensor.copy()
 
+                        # Make splits iteration friendly
                         splits_iter = (
                             [0] + list(splits + 1) + [len(term_update_tensor)]
-                        )  # Make splits iteration friendly
+                        )
 
                         n_sections = len(splits_iter) - 1
                         noises = native.generate_gaussian_random(
@@ -1286,7 +1287,8 @@ class EBMUtils:
                             splits_iter[:-1], splits_iter[1:], noises
                         ):
                             if s == 1:
-                                continue  # Skip cuts that fall on 0th (missing value) bin -- missing values not supported in DP
+                                # Skip cuts that fall on 0th (missing value) bin -- missing values not supported in DP
+                                continue  
 
                             noisy_update_tensor[f:s] = term_update_tensor[f:s] + noise
 
@@ -1297,9 +1299,10 @@ class EBMUtils:
                                 noisy_update_tensor[f:s] / region_weight
                             )
 
+                        # Invert gradients before updates
                         noisy_update_tensor = (
                             noisy_update_tensor * -1
-                        )  # Invert gradients before updates
+                        )
                         booster.set_term_update(term_idx, noisy_update_tensor)
 
                     cur_metric = booster.apply_term_update()
@@ -1315,13 +1318,18 @@ class EBMUtils:
                 #      window a circular buffer would be best choice with O(1).
                 if no_change_run_length == 0:
                     bp_metric = min_metric
+
+                # TODO: PK, I think this is a bug and the first iteration no_change_run_length
+                # get incremented to 1, so if early_stopping_rounds is 1 it will always
+                # exit on the first round? I haven't changed it since it's just going to affect 1
+                # and changing it would change the results so I need to benchmark update it
                 if min_metric + early_stopping_tolerance < bp_metric:
                     no_change_run_length = 0
                 else:
                     no_change_run_length += 1
 
                 if (
-                    early_stopping_rounds >= 0
+                    early_stopping_rounds > 0
                     and no_change_run_length >= early_stopping_rounds
                 ):
                     break
@@ -1332,12 +1340,9 @@ class EBMUtils:
                 )
             )
 
-            # TODO: Add more ways to call alternative get_current_model
-            # Use latest model if there are no instances in the (transposed) validation set
-            # or if training with privacy
-            if bag is None or noise_scale is not None:
-                model_update = booster.get_current_model()
-            else:
+            if early_stopping_rounds > 0:
                 model_update = booster.get_best_model()
+            else:
+                model_update = booster.get_current_model()
 
         return model_update, episode_index, rng

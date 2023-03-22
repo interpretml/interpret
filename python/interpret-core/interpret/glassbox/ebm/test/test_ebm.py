@@ -550,7 +550,7 @@ def test_ebm_sample_weight():
     clf = ExplainableBoostingClassifier(
         outer_bags=1,
         validation_size=0,
-        early_stopping_rounds=-1,
+        early_stopping_rounds=0,
         max_rounds=100,
         n_jobs=1,
     )
@@ -564,7 +564,7 @@ def test_ebm_sample_weight():
     clf_u = ExplainableBoostingClassifier(
         outer_bags=1,
         validation_size=0,
-        early_stopping_rounds=-1,
+        early_stopping_rounds=0,
         max_rounds=100,
         n_jobs=1,
     )
