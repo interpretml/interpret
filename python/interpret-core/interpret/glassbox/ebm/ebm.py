@@ -1872,22 +1872,23 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         max_interaction_bins=32,
         # Stages
         interactions=10,
-        exclude=None,
+        exclude=[],
         # Ensemble
+        validation_size=0.15,
         outer_bags=8,
         inner_bags=0,
         # Boosting
         learning_rate=0.01,
-        validation_size=0.15,
+        # greediness,
+        max_rounds=5000,
         early_stopping_rounds=50,
         early_stopping_tolerance=1e-4,
-        max_rounds=5000,
         # Trees
         min_samples_leaf=2,
         max_leaves=3,
         # Overall
         n_jobs=-2,
-        random_state=42,
+        random_state=42
     ):
         """Explainable Boosting Classifier
 
@@ -1900,45 +1901,38 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
                 Either a list of tuples of feature indices, or an integer for number of automatically detected interactions.
                 Interactions are forcefully set to 0 for multiclass problems.
             exclude: Features or terms to be excluded. "mains" excludes all main effect features
+            validation_size: Validation set size for boosting.
+                validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
             outer_bags: Number of outer bags.
             inner_bags: Number of inner bags. 0 turns off inner bagging.
             learning_rate: Learning rate for boosting.
-            validation_size: Validation set size for boosting.
-                validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
+            max_rounds: Number of rounds for boosting.
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
                 0 turns off early stopping and boosting will occur for exactly max_rounds
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
-            max_rounds: Number of rounds for boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
             max_leaves: Maximum leaf nodes used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
         """
         super(ExplainableBoostingClassifier, self).__init__(
-            # Explainer
             feature_names=feature_names,
             feature_types=feature_types,
-            # Preprocessor
             max_bins=max_bins,
             max_interaction_bins=max_interaction_bins,
-            # Stages
             interactions=interactions,
             exclude=exclude,
-            # Ensemble
+            validation_size=validation_size,
             outer_bags=outer_bags,
             inner_bags=inner_bags,
-            # Boosting
             learning_rate=learning_rate,
-            validation_size=validation_size,
+            max_rounds=max_rounds,
             early_stopping_rounds=early_stopping_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
-            max_rounds=max_rounds,
-            # Trees
             min_samples_leaf=min_samples_leaf,
             max_leaves=max_leaves,
-            # Overall
             n_jobs=n_jobs,
-            random_state=random_state,
+            random_state=random_state
         )
 
     def predict_proba(self, X):
@@ -2074,22 +2068,23 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         max_interaction_bins=32,
         # Stages
         interactions=10,
-        exclude=None,
+        exclude=[],
         # Ensemble
+        validation_size=0.15,
         outer_bags=8,
         inner_bags=0,
         # Boosting
         learning_rate=0.01,
-        validation_size=0.15,
+        # greediness,
+        max_rounds=5000,
         early_stopping_rounds=50,
         early_stopping_tolerance=1e-4,
-        max_rounds=5000,
         # Trees
         min_samples_leaf=2,
         max_leaves=3,
         # Overall
         n_jobs=-2,
-        random_state=42,
+        random_state=42
     ):
         """Explainable Boosting Regressor
 
@@ -2102,45 +2097,38 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
                 Either a list of tuples of feature indices, or an integer for number of automatically detected interactions.
                 Interactions are forcefully set to 0 for multiclass problems.
             exclude: Features or terms to be excluded. "mains" excludes all main effect features
+            validation_size: Validation set size for boosting.
+                validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
             outer_bags: Number of outer bags.
             inner_bags: Number of inner bags. 0 turns off inner bagging.
             learning_rate: Learning rate for boosting.
-            validation_size: Validation set size for boosting.
-                validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
+            max_rounds: Number of rounds for boosting.
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
                 0 turns off early stopping and boosting will occur for exactly max_rounds
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
-            max_rounds: Number of rounds for boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
             max_leaves: Maximum leaf nodes used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
         """
         super(ExplainableBoostingRegressor, self).__init__(
-            # Explainer
             feature_names=feature_names,
             feature_types=feature_types,
-            # Preprocessor
             max_bins=max_bins,
             max_interaction_bins=max_interaction_bins,
-            # Stages
             interactions=interactions,
             exclude=exclude,
-            # Ensemble
+            validation_size=validation_size,
             outer_bags=outer_bags,
             inner_bags=inner_bags,
-            # Boosting
             learning_rate=learning_rate,
-            validation_size=validation_size,
+            max_rounds=max_rounds,
             early_stopping_rounds=early_stopping_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
-            max_rounds=max_rounds,
-            # Trees
             min_samples_leaf=min_samples_leaf,
             max_leaves=max_leaves,
-            # Overall
             n_jobs=n_jobs,
-            random_state=random_state,
+            random_state=random_state
         )
 
     def predict(self, X):
@@ -2209,12 +2197,12 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         # Preprocessor
         max_bins=32,
         # Stages
-        exclude=None,
+        exclude=[],
         # Ensemble
+        validation_size=0,
         outer_bags=1,
         # Boosting
         learning_rate=0.01,
-        validation_size=0,
         max_rounds=300,
         # Trees
         min_samples_leaf=2,
@@ -2227,7 +2215,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         delta=1e-5,
         composition="gdp",
         bin_budget_frac=0.1,
-        privacy_schema=None,
+        privacy_schema=None
     ):
         """Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
 
@@ -2236,13 +2224,13 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
             exclude: Features or terms to be excluded. "mains" excludes all main effect features
-            outer_bags: Number of outer bags.
-            learning_rate: Learning rate for boosting.
             validation_size: Validation set size for boosting.
                 validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
+            outer_bags: Number of outer bags.
+            learning_rate: Learning rate for boosting.
             max_rounds: Number of rounds for boosting.
-            max_leaves: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
+            max_leaves: Maximum leaf nodes used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
             epsilon: Total privacy budget to be spent across all rounds of training.
@@ -2253,36 +2241,28 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
                 If None, DP-EBM throws warning and uses data to calculate these values.
         """
         super(DPExplainableBoostingClassifier, self).__init__(
-            # Explainer
             feature_names=feature_names,
             feature_types=feature_types,
-            # Preprocessor
             max_bins=max_bins,
             max_interaction_bins=None,
-            # Stages
             interactions=0,
             exclude=exclude,
-            # Ensemble
+            validation_size=validation_size,
             outer_bags=outer_bags,
             inner_bags=0,
-            # Boosting
             learning_rate=learning_rate,
-            validation_size=validation_size,
+            max_rounds=max_rounds,
             early_stopping_rounds=0,
             early_stopping_tolerance=0,
-            max_rounds=max_rounds,
-            # Trees
             min_samples_leaf=min_samples_leaf,
             max_leaves=max_leaves,
-            # Overall
             n_jobs=n_jobs,
             random_state=random_state,
-            # Differential Privacy
             epsilon=epsilon,
             delta=delta,
             composition=composition,
             bin_budget_frac=bin_budget_frac,
-            privacy_schema=privacy_schema,
+            privacy_schema=privacy_schema
         )
 
     def predict_proba(self, X):
@@ -2368,12 +2348,12 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Preprocessor
         max_bins=32,
         # Stages
-        exclude=None,
+        exclude=[],
         # Ensemble
+        validation_size=0,
         outer_bags=1,
         # Boosting
         learning_rate=0.01,
-        validation_size=0,
         max_rounds=300,
         # Trees
         min_samples_leaf=2,
@@ -2386,7 +2366,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         delta=1e-5,
         composition="gdp",
         bin_budget_frac=0.1,
-        privacy_schema=None,
+        privacy_schema=None
     ):
         """Differentially Private Explainable Boosting Regressor. Note that many arguments are defaulted differently than regular EBMs.
 
@@ -2395,13 +2375,13 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
             exclude: Features or terms to be excluded. "mains" excludes all main effect features
-            outer_bags: Number of outer bags.
-            learning_rate: Learning rate for boosting.
             validation_size: Validation set size for boosting.
                 validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
+            outer_bags: Number of outer bags.
+            learning_rate: Learning rate for boosting.
             max_rounds: Number of rounds for boosting.
-            max_leaves: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
+            max_leaves: Maximum leaf nodes used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
             epsilon: Total privacy budget to be spent across all rounds of training.
@@ -2412,36 +2392,28 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
                 If None, DP-EBM throws warning and uses data to calculate these values.
         """
         super(DPExplainableBoostingRegressor, self).__init__(
-            # Explainer
             feature_names=feature_names,
             feature_types=feature_types,
-            # Preprocessor
             max_bins=max_bins,
             max_interaction_bins=None,
-            # Stages
             interactions=0,
             exclude=exclude,
-            # Ensemble
+            validation_size=validation_size,
             outer_bags=outer_bags,
             inner_bags=0,
-            # Boosting
             learning_rate=learning_rate,
-            validation_size=validation_size,
+            max_rounds=max_rounds,
             early_stopping_rounds=0,
             early_stopping_tolerance=0,
-            max_rounds=max_rounds,
-            # Trees
             min_samples_leaf=min_samples_leaf,
             max_leaves=max_leaves,
-            # Overall
             n_jobs=n_jobs,
             random_state=random_state,
-            # Differential Privacy
             epsilon=epsilon,
             delta=delta,
             composition=composition,
             bin_budget_frac=bin_budget_frac,
-            privacy_schema=privacy_schema,
+            privacy_schema=privacy_schema
         )
 
     def predict(self, X):
