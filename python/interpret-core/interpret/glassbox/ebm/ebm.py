@@ -359,7 +359,9 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        if not isinstance(self.validation_size, int) and not isinstance(self.validation_size, float):
+        if not isinstance(self.validation_size, int) and not isinstance(
+            self.validation_size, float
+        ):
             msg = "validation_size must be an integer or float"
             _log.error(msg)
             raise ValueError(msg)
@@ -369,10 +371,15 @@ class EBMModel(BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
             elif 1 < self.outer_bags:
-                warn("If validation_size is 0, the outer_bags have no purpose. Set outer_bags=1 to remove this warning.")
+                warn(
+                    "If validation_size is 0, the outer_bags have no purpose. Set outer_bags=1 to remove this warning."
+                )
         elif 1 <= self.validation_size:
             # validation_size equal to 1 or more is an exact number specification, so it must be an integer
-            if not isinstance(self.validation_size, int) and not self.validation_size.is_integer():
+            if (
+                not isinstance(self.validation_size, int)
+                and not self.validation_size.is_integer()
+            ):
                 msg = "If 1 <= validation_size, it is an exact count of samples, and must be an integer"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -388,7 +395,10 @@ class EBMModel(BaseEstimator):
             raise ValueError(msg)
 
         if not is_private(self):
-            if not isinstance(self.inner_bags, int) and not self.inner_bags.is_integer():
+            if (
+                not isinstance(self.inner_bags, int)
+                and not self.inner_bags.is_integer()
+            ):
                 msg = "inner_bags must be an integer"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -398,7 +408,10 @@ class EBMModel(BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
 
-            if not isinstance(self.early_stopping_rounds, int) and not self.early_stopping_rounds.is_integer():
+            if (
+                not isinstance(self.early_stopping_rounds, int)
+                and not self.early_stopping_rounds.is_integer()
+            ):
                 msg = "early_stopping_rounds must be an integer"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -409,12 +422,16 @@ class EBMModel(BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
 
-            if not isinstance(self.early_stopping_tolerance, int) and not isinstance(self.early_stopping_tolerance, float):
+            if not isinstance(self.early_stopping_tolerance, int) and not isinstance(
+                self.early_stopping_tolerance, float
+            ):
                 msg = "early_stopping_tolerance must be a float"
                 _log.error(msg)
                 raise ValueError(msg)
 
-        if not isinstance(self.learning_rate, int) and not isinstance(self.learning_rate, float):
+        if not isinstance(self.learning_rate, int) and not isinstance(
+            self.learning_rate, float
+        ):
             msg = "learning_rate must be a float"
             _log.error(msg)
             raise ValueError(msg)
@@ -1852,7 +1869,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             learning_rate: Learning rate for boosting.
             validation_size: Validation set size for boosting.
                 validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
-            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping. 
+            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
                 0 turns off early stopping and boosting will occur for exactly max_rounds
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
             max_rounds: Number of rounds for boosting.

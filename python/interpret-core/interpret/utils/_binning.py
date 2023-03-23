@@ -1422,10 +1422,9 @@ def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
         for feature_type_given in feature_types_given:
             if feature_type_given == "ignore":
                 while True:
-                    # non-devs looking at our models will like 1 indexing better than 0 indexing
                     # give 4 digits to the number so that anything below 9999 gets sorted in the right order in string format
-                    feature_idx += 1
                     name = f"feature_{feature_idx:04}"
+                    feature_idx += 1
                     if name not in names_set:
                         break
             else:

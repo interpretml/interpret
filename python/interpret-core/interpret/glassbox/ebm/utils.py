@@ -1273,9 +1273,7 @@ class EBMUtils:
                         noisy_update_tensor = term_update_tensor.copy()
 
                         # Make splits iteration friendly
-                        splits_iter = (
-                            [0] + list(splits + 1) + [len(term_update_tensor)]
-                        )
+                        splits_iter = [0] + list(splits + 1) + [len(term_update_tensor)]
 
                         n_sections = len(splits_iter) - 1
                         noises = native.generate_gaussian_random(
@@ -1288,7 +1286,7 @@ class EBMUtils:
                         ):
                             if s == 1:
                                 # Skip cuts that fall on 0th (missing value) bin -- missing values not supported in DP
-                                continue  
+                                continue
 
                             noisy_update_tensor[f:s] = term_update_tensor[f:s] + noise
 
@@ -1300,9 +1298,7 @@ class EBMUtils:
                             )
 
                         # Invert gradients before updates
-                        noisy_update_tensor = (
-                            noisy_update_tensor * -1
-                        )
+                        noisy_update_tensor = -noisy_update_tensor
                         booster.set_term_update(term_idx, noisy_update_tensor)
 
                     cur_metric = booster.apply_term_update()
