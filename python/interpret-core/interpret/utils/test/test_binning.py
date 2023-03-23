@@ -2410,7 +2410,7 @@ def test_unify_feature_names_numpy1():
     X, n_samples = preclean_X(X, None, None, 1)
     assert n_samples == 1
     feature_names_in = unify_feature_names(X)
-    assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
+    assert feature_names_in == ["feature_0000", "feature_0001", "feature_0002"]
     X_cols = list(
         unify_columns(
             X,
@@ -2430,7 +2430,7 @@ def test_unify_feature_names_numpy2():
     X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
-    assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
+    assert feature_names_in == ["feature_0000", "feature_0001", "feature_0002"]
     X_cols = list(
         unify_columns(
             X,
@@ -2502,7 +2502,7 @@ def test_unify_feature_names_scipy():
     X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
-    assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
+    assert feature_names_in == ["feature_0000", "feature_0001", "feature_0002"]
     X_cols = list(
         unify_columns(
             X,
@@ -2568,7 +2568,7 @@ def test_unify_feature_names_list1():
     X, n_samples = preclean_X(X, None, None, 1)
     assert n_samples == 1
     feature_names_in = unify_feature_names(X)
-    assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
+    assert feature_names_in == ["feature_0000", "feature_0001", "feature_0002"]
     X_cols = list(
         unify_columns(
             X,
@@ -2588,7 +2588,7 @@ def test_unify_feature_names_list2():
     X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
-    assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
+    assert feature_names_in == ["feature_0000", "feature_0001", "feature_0002"]
     X_cols = list(
         unify_columns(
             X,
@@ -2611,7 +2611,7 @@ def test_unify_feature_names_tuple1():
     X, n_samples = preclean_X(X, None, None, 1)
     assert n_samples == 1
     feature_names_in = unify_feature_names(X)
-    assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
+    assert feature_names_in == ["feature_0000", "feature_0001", "feature_0002"]
     X_cols = list(
         unify_columns(
             X,
@@ -2631,7 +2631,7 @@ def test_unify_feature_names_tuple2():
     X, n_samples = preclean_X(X, None, None)
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
-    assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
+    assert feature_names_in == ["feature_0000", "feature_0001", "feature_0002"]
     X_cols = list(
         unify_columns(
             X,
@@ -2655,7 +2655,7 @@ def test_unify_feature_names_feature_types1():
     assert n_samples == 2
     feature_types_given = ["continuous", "continuous", "continuous"]
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
-    assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
+    assert feature_names_in == ["feature_0000", "feature_0001", "feature_0002"]
     X_cols = list(
         unify_columns(
             X,
@@ -2680,7 +2680,7 @@ def test_unify_feature_names_feature_types2():
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
-    assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
+    assert feature_names_in == ["feature_0000", "feature_0001", "feature_0002"]
     X_cols = list(
         unify_columns(
             X,
@@ -2703,7 +2703,7 @@ def test_unify_feature_names_feature_types3():
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
-    assert feature_names_in == ["feature_0001", "feature_0002", "feature_0003"]
+    assert feature_names_in == ["feature_0000", "feature_0001", "feature_0002"]
     X_cols = list(
         unify_columns(
             X,
@@ -2782,7 +2782,7 @@ def test_unify_feature_names_pandas_feature_types3():
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
-    assert feature_names_in == ["feature1", "feature_0001", "feature3"]
+    assert feature_names_in == ["feature1", "feature_0000", "feature3"]
     X_cols = list(
         unify_columns(
             X,
@@ -3254,7 +3254,7 @@ def test_unify_feature_names_types_nondropped2_names2():
     feature_names_in = unify_feature_names(
         X, feature_names_given=[0, 2], feature_types_given=feature_types_given
     )
-    assert feature_names_in == ["0", "feature_0001", "2"]
+    assert feature_names_in == ["0", "feature_0000", "2"]
     X_cols = list(
         unify_columns(
             X,
@@ -3284,7 +3284,7 @@ def test_unify_feature_names_types_nondropped2_pandas_names1():
         feature_names_given=pd.Series([0, 2]),
         feature_types_given=feature_types_given,
     )
-    assert feature_names_in == ["0", "feature_0001", "2"]
+    assert feature_names_in == ["0", "feature_0000", "2"]
     X_cols = list(
         unify_columns(
             X,
@@ -3309,7 +3309,7 @@ def test_unify_feature_names_types_dropped2_names2():
     feature_names_in = unify_feature_names(
         X, feature_names_given=[0, 2], feature_types_given=feature_types_given
     )
-    assert feature_names_in == ["0", "feature_0001", "2"]
+    assert feature_names_in == ["0", "feature_0000", "2"]
     X_cols = list(
         unify_columns(
             X,
@@ -3338,7 +3338,7 @@ def test_unify_feature_names_types_dropped2_pandas_names1():
         feature_names_given=pd.Series([0, 2]),
         feature_types_given=feature_types_given,
     )
-    assert feature_names_in == ["0", "feature_0001", "2"]
+    assert feature_names_in == ["0", "feature_0000", "2"]
     X_cols = list(
         unify_columns(
             X,
@@ -3417,7 +3417,7 @@ def test_unify_feature_names_types_dropped3_pandas_names2():
     assert n_samples == 2
     feature_types_given = ["continuous", "ignore", "continuous"]
     feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
-    assert feature_names_in == ["feature1", "feature_0001", "feature3"]
+    assert feature_names_in == ["feature1", "feature_0000", "feature3"]
     X_cols = list(
         unify_columns(
             X,
@@ -3506,7 +3506,7 @@ def test_unify_feature_names_types_rearrange2_drop1():
         feature_names_given=["length", "width"],
         feature_types_given=feature_types_given,
     )
-    assert feature_names_in == ["length", "feature_0001", "width"]
+    assert feature_names_in == ["length", "feature_0000", "width"]
     X_cols = list(
         unify_columns(
             X,
@@ -3535,7 +3535,7 @@ def test_unify_feature_names_types_rearrange2_drop2():
         feature_names_given=["length", "width"],
         feature_types_given=feature_types_given,
     )
-    assert feature_names_in == ["length", "feature_0001", "width"]
+    assert feature_names_in == ["length", "feature_0000", "width"]
     X_cols = list(
         unify_columns(
             X,
@@ -3597,7 +3597,7 @@ def test_unify_feature_names_types_rearrange_more2():
         feature_names_given=["length", "width"],
         feature_types_given=feature_types_given,
     )
-    assert feature_names_in == ["length", "feature_0001", "width"]
+    assert feature_names_in == ["length", "feature_0000", "width"]
     X_cols = list(
         unify_columns(
             X,
@@ -3653,7 +3653,7 @@ def test_unify_columns_ma_no_mask():
     X, n_samples = preclean_X(X, None, None)
     assert n_samples == 3
     feature_names_in = unify_feature_names(X)
-    assert feature_names_in == ["feature_0001"]
+    assert feature_names_in == ["feature_0000"]
     X_cols = list(
         unify_columns(X, [(0, None)], feature_names_in, min_unique_continuous=0)
     )
@@ -3673,7 +3673,7 @@ def test_unify_columns_ma_empty_mask():
     X, n_samples = preclean_X(X, None, None)
     assert n_samples == 3
     feature_names_in = unify_feature_names(X)
-    assert feature_names_in == ["feature_0001"]
+    assert feature_names_in == ["feature_0000"]
     X_cols = list(
         unify_columns(X, [(0, None)], feature_names_in, min_unique_continuous=0)
     )
@@ -3696,7 +3696,7 @@ def test_unify_columns_ma_objects():
     X, n_samples = preclean_X(X, None, None)
     assert n_samples == 7
     feature_names_in = unify_feature_names(X)
-    assert feature_names_in == ["feature_0001"]
+    assert feature_names_in == ["feature_0000"]
     X_cols = list(
         unify_columns(X, [(0, None)], feature_names_in, min_unique_continuous=0)
     )
