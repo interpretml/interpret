@@ -16,7 +16,7 @@ def gen_perf_dicts(scores, y, is_classification, classes=None):
     #       or perhaps make it predicted but then add a predicted_proba just for classification
     if is_classification:
         if classes is not None:
-            invert_classes = dict(zip(classes, count(0)))
+            invert_classes = dict(zip(classes, count()))
         if scores.ndim == 1:
             scores = np.vstack([1 - scores, scores]).T
 
@@ -176,7 +176,7 @@ def gen_name_from_class(obj):
     """
     class_name = obj.__class__.__name__
     if class_name not in gen_name_from_class.cache:
-        gen_name_from_class.cache[class_name] = count(0)
+        gen_name_from_class.cache[class_name] = count()
     identifier = next(gen_name_from_class.cache[class_name])
 
     return str(obj.__class__.__name__) + "_" + str(identifier)

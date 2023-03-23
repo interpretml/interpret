@@ -936,3 +936,43 @@ def test_json_dp_regression():
     clf = DPExplainableBoostingRegressor(max_bins=5, feature_types=feature_types)
     clf.fit(X, y)
     json_text = clf._to_json(properties="all")
+
+
+def test_exclude_explicit():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingRegressor(
+        interactions=[(1, 2), (2, 3)], exclude=[(3, 2), "B", (2,)]
+    )
+    clf.fit(X, y)
+    clf.predict(X)
+
+    assert (2, 3) not in clf.term_features_
+    assert (1,) not in clf.term_features_
+    assert (2,) not in clf.term_features_
+    assert (0,) in clf.term_features_
+    assert (3,) in clf.term_features_
+
+    valid_ebm(clf)
+
+
+def test_exclude_implicit():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingRegressor(
+        interactions=99999999, exclude=[(3, "C"), 1, (2,)]
+    )
+    clf.fit(X, y)
+    clf.predict(X)
+
+    assert (2, 3) not in clf.term_features_
+    assert (1,) not in clf.term_features_
+    assert (2,) not in clf.term_features_
+    assert (0,) in clf.term_features_
+    assert (3,) in clf.term_features_
+
+    valid_ebm(clf)

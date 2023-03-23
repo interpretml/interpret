@@ -193,7 +193,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         self.sk_model_.fit(X, y)
 
         self.classes_ = self.sk_model_.classes_
-        class_idx = dict(zip(self.classes_, count(0)))
+        class_idx = dict(zip(self.classes_, count()))
         y = np.array([class_idx[el] for el in y], dtype=np.int64)
 
         # TODO: this mean approach is going to fail to be useful for multiclass

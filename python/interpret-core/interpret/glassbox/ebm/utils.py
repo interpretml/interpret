@@ -949,7 +949,7 @@ def merge_ebms(models):
         fg_sorted = [
             tuple(sorted(feature_idxs)) for feature_idxs in model.term_features_
         ]
-        fg_dicts.append(dict(zip(fg_sorted, count(0))))
+        fg_dicts.append(dict(zip(fg_sorted, count())))
         all_fg.update(fg_sorted)
 
     sorted_fgs = _order_terms(list(all_fg))

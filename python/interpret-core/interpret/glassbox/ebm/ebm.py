@@ -4,6 +4,8 @@
 
 from typing import DefaultDict
 
+from itertools import count
+
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
 from .utils import EBMUtils
@@ -241,6 +243,41 @@ def is_private(estimator):
     )
 
 
+def _clean_exclude(exclude, feature_map):
+    ret = set()
+    for term in exclude:
+        if isinstance(term, int) or isinstance(term, float) or isinstance(term, str):
+            term = (term,)
+
+        cleaned = []
+        for feature in term:
+            if isinstance(feature, float):
+                if not feature.is_integer():
+                    msg = "exclude must contain integers or feature names"
+                    _log.error(msg)
+                    raise ValueError(msg)
+                feature = int(feature)
+            elif isinstance(feature, str):
+                if feature not in feature_map:
+                    msg = f"exclude item {feature} not in feature names"
+                    _log.error(msg)
+                    raise ValueError(msg)
+                feature = feature_map[feature]
+            elif not isinstance(feature, int):
+                msg = f"unrecognized item type {type(feature)} in exclude"
+                _log.error(msg)
+                raise ValueError(msg)
+            cleaned.append(feature)
+        if len(set(cleaned)) != len(cleaned):
+            msg = f"exclude contains duplicate features: {cleaned}"
+            _log.error(msg)
+            raise ValueError(msg)
+        cleaned.sort()
+        # allow duplicates in the exclude list
+        ret.add(tuple(cleaned))
+    return ret
+
+
 class EBMModel(BaseEstimator):
     """Base class for all EBMs"""
 
@@ -263,8 +300,8 @@ class EBMModel(BaseEstimator):
         outer_bags,
         inner_bags,
         # Core
-        mains,  # TODO PK v.3 replace "mains" with a more flexible "exclude" parameter
         interactions,
+        exclude,
         validation_size,
         max_rounds,
         early_stopping_tolerance,
@@ -290,35 +327,29 @@ class EBMModel(BaseEstimator):
         bin_budget_frac=None,
         privacy_schema=None,
     ):
-        # Arguments for explainer
         self.feature_names = feature_names
         self.feature_types = feature_types
 
-        # Arguments for ensemble
         self.outer_bags = outer_bags
         if not is_private(self):
             self.inner_bags = inner_bags
 
-        # Arguments for EBM beyond training a feature-step.
-        self.mains = mains
         if not is_private(self):
             self.interactions = interactions
+        self.exclude = exclude
         self.validation_size = validation_size
         self.max_rounds = max_rounds
         if not is_private(self):
             self.early_stopping_tolerance = early_stopping_tolerance
             self.early_stopping_rounds = early_stopping_rounds
 
-        # Arguments for internal EBM.
         self.learning_rate = learning_rate
         self.min_samples_leaf = min_samples_leaf
         self.max_leaves = max_leaves
 
-        # Arguments for overall
         self.n_jobs = n_jobs
         self.random_state = random_state
 
-        # Arguments for preprocessor
         self.binning = binning
         self.max_bins = max_bins
         if not is_private(self):
@@ -565,10 +596,18 @@ class EBMModel(BaseEstimator):
 
         n_features_in = len(bins)
 
-        if isinstance(self.mains, str) and self.mains == "all":
+        feature_map = dict(zip(feature_names_in, count()))
+
+        exclude = self.exclude
+        if exclude is None:
+            exclude = set()
             term_features = [(x,) for x in range(n_features_in)]
+        elif exclude == "mains":
+            exclude = set()
+            term_features = []
         else:
-            term_features = [(int(x),) for x in self.mains]
+            exclude = _clean_exclude(exclude, feature_map)
+            term_features = [(x,) for x in range(n_features_in) if (x,) not in exclude]
 
         if is_differential_privacy:
             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
@@ -808,6 +847,7 @@ class EBMModel(BaseEstimator):
                                 bags[idx],
                                 scores_bags[idx],
                                 combinations(range(n_features_in), 2),
+                                exclude,
                                 Native.InteractionFlags_Default,
                                 self.min_samples_leaf,
                                 None,
@@ -860,15 +900,16 @@ class EBMModel(BaseEstimator):
 
                         max_dimensions = max(max_dimensions, len(feature_idxs))
                         sorted_tuple = tuple(sorted(feature_idxs))
-                        if sorted_tuple not in uniquifier:
+                        if (
+                            sorted_tuple not in uniquifier
+                            and sorted_tuple not in exclude
+                        ):
                             uniquifier.add(sorted_tuple)
                             boost_groups.append(feature_idxs)
 
                     # Warn the users that we have made change to the interactions list
                     if len(boost_groups) != len(interactions):
-                        warn(
-                            "Detected duplicate interaction terms: removing duplicate interaction terms"
-                        )
+                        warn("Removed interaction terms")
 
                     if 2 < max_dimensions:
                         warn(
@@ -1101,11 +1142,11 @@ class EBMModel(BaseEstimator):
             if hasattr(self, "inner_bags"):
                 params["inner_bags"] = self.inner_bags
 
-            if hasattr(self, "mains"):
-                params["mains"] = self.mains
-
             if hasattr(self, "interactions"):
                 params["interactions"] = self.interactions
+
+            if hasattr(self, "exclude"):
+                params["exclude"] = self.exclude
 
             if hasattr(self, "validation_size"):
                 params["validation_size"] = self.validation_size
@@ -1834,8 +1875,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         max_interaction_bins=32,
         binning="quantile",
         # Stages
-        mains="all",
         interactions=10,
+        exclude=None,
         # Ensemble
         outer_bags=8,
         inner_bags=0,
@@ -1860,10 +1901,10 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             max_bins: Max number of bins per feature for pre-processing stage.
             max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
             binning: Method to bin values for pre-processing. Choose "uniform", "quantile", or "rounded_quantile". 'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
-            mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of tuples of feature indices, or an integer for number of automatically detected interactions.
                 Interactions are forcefully set to 0 for multiclass problems.
+            exclude: Features or terms to be excluded. "mains" excludes all main effect features
             outer_bags: Number of outer bags.
             inner_bags: Number of inner bags. 0 turns off inner bagging.
             learning_rate: Learning rate for boosting.
@@ -1887,8 +1928,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             max_interaction_bins=max_interaction_bins,
             binning=binning,
             # Stages
-            mains=mains,
             interactions=interactions,
+            exclude=exclude,
             # Ensemble
             outer_bags=outer_bags,
             inner_bags=inner_bags,
@@ -2039,8 +2080,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         max_interaction_bins=32,
         binning="quantile",
         # Stages
-        mains="all",
         interactions=10,
+        exclude=None,
         # Ensemble
         outer_bags=8,
         inner_bags=0,
@@ -2065,10 +2106,10 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             max_bins: Max number of bins per feature for pre-processing stage on main effects.
             max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
             binning: Method to bin values for pre-processing. Choose "uniform", "quantile", or "rounded_quantile". 'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
-            mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of tuples of feature indices, or an integer for number of automatically detected interactions.
                 Interactions are forcefully set to 0 for multiclass problems.
+            exclude: Features or terms to be excluded. "mains" excludes all main effect features
             outer_bags: Number of outer bags.
             inner_bags: Number of inner bags. 0 turns off inner bagging.
             learning_rate: Learning rate for boosting.
@@ -2092,8 +2133,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             max_interaction_bins=max_interaction_bins,
             binning=binning,
             # Stages
-            mains=mains,
             interactions=interactions,
+            exclude=exclude,
             # Ensemble
             outer_bags=outer_bags,
             inner_bags=inner_bags,
@@ -2178,7 +2219,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         max_bins=32,
         binning="private",
         # Stages
-        mains="all",
+        exclude=None,
         # Ensemble
         outer_bags=1,
         # Boosting
@@ -2205,7 +2246,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
             binning: Method to bin values for pre-processing. 'private' is the only legal option currently for DP.
-            mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
+            exclude: Features or terms to be excluded. "mains" excludes all main effect features
             outer_bags: Number of outer bags.
             learning_rate: Learning rate for boosting.
             validation_size: Validation set size for boosting.
@@ -2231,8 +2272,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             max_interaction_bins=None,
             binning=binning,
             # Stages
-            mains=mains,
             interactions=0,
+            exclude=exclude,
             # Ensemble
             outer_bags=outer_bags,
             inner_bags=0,
@@ -2340,7 +2381,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         max_bins=32,
         binning="private",
         # Stages
-        mains="all",
+        exclude=None,
         # Ensemble
         outer_bags=1,
         # Boosting
@@ -2367,7 +2408,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
             binning: Method to bin values for pre-processing. 'private' is the only legal option currently for DP.
-            mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
+            exclude: Features or terms to be excluded. "mains" excludes all main effect features
             outer_bags: Number of outer bags.
             learning_rate: Learning rate for boosting.
             validation_size: Validation set size for boosting.
@@ -2393,8 +2434,8 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             max_interaction_bins=None,
             binning=binning,
             # Stages
-            mains=mains,
             interactions=0,
+            exclude=exclude,
             # Ensemble
             outer_bags=outer_bags,
             inner_bags=0,

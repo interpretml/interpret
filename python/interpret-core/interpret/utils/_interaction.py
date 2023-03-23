@@ -33,6 +33,7 @@ def _get_ranked_interactions(
     bag,
     scores,
     iter_term_features,
+    exclude,
     interaction_flags,
     min_samples_leaf,
     experimental_params=None,
@@ -43,6 +44,8 @@ def _get_ranked_interactions(
         dataset, bag, scores, experimental_params
     ) as interaction_detector:
         for feature_idxs in iter_term_features:
+            if tuple(sorted(feature_idxs)) in exclude:
+                continue
             strength = interaction_detector.calc_interaction_strength(
                 feature_idxs,
                 interaction_flags,
@@ -168,7 +171,7 @@ def measure_interactions(
             # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
             classes, y = np.unique(y, return_inverse=True)
         else:
-            invert_classes = dict(zip(classes, count(0)))
+            invert_classes = dict(zip(classes, count()))
             y = np.array([invert_classes[el] for el in y], dtype=np.int64)
         n_classes = len(classes)
     else:
@@ -250,6 +253,7 @@ def measure_interactions(
         bag=None,
         scores=init_score,
         iter_term_features=iter_term_features,
+        exclude=set(),
         interaction_flags=Native.InteractionFlags_Pure,
         min_samples_leaf=min_samples_leaf,
         experimental_params=None,

@@ -73,7 +73,7 @@ class PR(ExplainerMixin):
             if len(classes) != n_classes:
                 raise ValueError("class number mismatch")
         else:
-            invert_classes = dict(zip(classes, count(0)))
+            invert_classes = dict(zip(classes, count()))
             y = np.array([invert_classes[el] for el in y], dtype=np.int64)
 
         scores = predict_fn(X)
@@ -158,7 +158,7 @@ class ROC(ExplainerMixin):
             if len(classes) != n_classes:
                 raise ValueError("class number mismatch")
         else:
-            invert_classes = dict(zip(classes, count(0)))
+            invert_classes = dict(zip(classes, count()))
             y = np.array([invert_classes[el] for el in y], dtype=np.int64)
 
         scores = predict_fn(X)
