@@ -317,7 +317,6 @@ class EBMModel(BaseEstimator):
         n_jobs,
         random_state,
         # Preprocessor
-        binning,
         max_bins,
         max_interaction_bins,
         # Differential Privacy
@@ -350,7 +349,6 @@ class EBMModel(BaseEstimator):
         self.n_jobs = n_jobs
         self.random_state = random_state
 
-        self.binning = binning
         self.max_bins = max_bins
         if not is_private(self):
             self.max_interaction_bins = max_interaction_bins
@@ -544,6 +542,7 @@ class EBMModel(BaseEstimator):
             bin_delta = self.delta / 2
             composition = self.composition
             privacy_schema = self.privacy_schema
+            binning = "private"
 
             bin_levels = [self.max_bins]
         else:
@@ -551,6 +550,7 @@ class EBMModel(BaseEstimator):
             bin_delta = None
             composition = None
             privacy_schema = None
+            binning = "quantile"
 
             bin_levels = [self.max_bins, self.max_interaction_bins]
 
@@ -567,7 +567,7 @@ class EBMModel(BaseEstimator):
             feature_names_given=self.feature_names,
             feature_types_given=self.feature_types,
             max_bins_leveled=bin_levels,
-            binning=self.binning,
+            binning=binning,
             min_samples_bin=1,
             min_unique_continuous=0,
             epsilon=bin_eps,
@@ -1174,9 +1174,6 @@ class EBMModel(BaseEstimator):
 
             if hasattr(self, "random_state"):
                 params["random_state"] = self.random_state
-
-            if hasattr(self, "binning"):
-                params["binning"] = self.binning
 
             if hasattr(self, "max_bins"):
                 params["max_bins"] = self.max_bins
@@ -1873,7 +1870,6 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         # Preprocessor
         max_bins=256,
         max_interaction_bins=32,
-        binning="quantile",
         # Stages
         interactions=10,
         exclude=None,
@@ -1900,7 +1896,6 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
             max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
-            binning: Method to bin values for pre-processing. Choose "uniform", "quantile", or "rounded_quantile". 'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
             interactions: Interactions to be trained on.
                 Either a list of tuples of feature indices, or an integer for number of automatically detected interactions.
                 Interactions are forcefully set to 0 for multiclass problems.
@@ -1926,7 +1921,6 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             # Preprocessor
             max_bins=max_bins,
             max_interaction_bins=max_interaction_bins,
-            binning=binning,
             # Stages
             interactions=interactions,
             exclude=exclude,
@@ -2078,7 +2072,6 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Preprocessor
         max_bins=256,
         max_interaction_bins=32,
-        binning="quantile",
         # Stages
         interactions=10,
         exclude=None,
@@ -2105,7 +2098,6 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage on main effects.
             max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
-            binning: Method to bin values for pre-processing. Choose "uniform", "quantile", or "rounded_quantile". 'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
             interactions: Interactions to be trained on.
                 Either a list of tuples of feature indices, or an integer for number of automatically detected interactions.
                 Interactions are forcefully set to 0 for multiclass problems.
@@ -2131,7 +2123,6 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             # Preprocessor
             max_bins=max_bins,
             max_interaction_bins=max_interaction_bins,
-            binning=binning,
             # Stages
             interactions=interactions,
             exclude=exclude,
@@ -2217,7 +2208,6 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         feature_types=None,
         # Preprocessor
         max_bins=32,
-        binning="private",
         # Stages
         exclude=None,
         # Ensemble
@@ -2245,7 +2235,6 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             feature_names: List of feature names.
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
-            binning: Method to bin values for pre-processing. 'private' is the only legal option currently for DP.
             exclude: Features or terms to be excluded. "mains" excludes all main effect features
             outer_bags: Number of outer bags.
             learning_rate: Learning rate for boosting.
@@ -2270,7 +2259,6 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             # Preprocessor
             max_bins=max_bins,
             max_interaction_bins=None,
-            binning=binning,
             # Stages
             interactions=0,
             exclude=exclude,
@@ -2379,7 +2367,6 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         feature_types=None,
         # Preprocessor
         max_bins=32,
-        binning="private",
         # Stages
         exclude=None,
         # Ensemble
@@ -2407,7 +2394,6 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
-            binning: Method to bin values for pre-processing. 'private' is the only legal option currently for DP.
             exclude: Features or terms to be excluded. "mains" excludes all main effect features
             outer_bags: Number of outer bags.
             learning_rate: Learning rate for boosting.
@@ -2432,7 +2418,6 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             # Preprocessor
             max_bins=max_bins,
             max_interaction_bins=None,
-            binning=binning,
             # Stages
             interactions=0,
             exclude=exclude,
