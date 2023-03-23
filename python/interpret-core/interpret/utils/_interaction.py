@@ -31,7 +31,7 @@ from ._native import Native, InteractionDetector
 def _get_ranked_interactions(
     dataset,
     bag,
-    scores,
+    init_scores,
     iter_term_features,
     exclude,
     interaction_flags,
@@ -41,7 +41,7 @@ def _get_ranked_interactions(
 ):
     interaction_strengths = []
     with InteractionDetector(
-        dataset, bag, scores, experimental_params
+        dataset, bag, init_scores, experimental_params
     ) as interaction_detector:
         for feature_idxs in iter_term_features:
             if tuple(sorted(feature_idxs)) in exclude:
@@ -90,7 +90,6 @@ def measure_interactions(
         feature_names: List of feature names
         feature_types: List of feature types, for example "continuous" or "nominal"
         max_interaction_bins: Max number of bins per interaction terms
-        binning: Method to bin values for pre-processing - "uniform", "quantile", or "rounded_quantile".
         min_samples_leaf: Minimum number of samples for tree splits used when calculating gain
         objective: 'regression' (RMSE) or 'classification' (log loss) or None for auto. More objectives to come
     Returns:
@@ -250,7 +249,7 @@ def measure_interactions(
     ranked_interactions = _get_ranked_interactions(
         dataset=dataset,
         bag=None,
-        scores=init_score,
+        init_scores=init_score,
         iter_term_features=iter_term_features,
         exclude=set(),
         interaction_flags=Native.InteractionFlags_Pure,

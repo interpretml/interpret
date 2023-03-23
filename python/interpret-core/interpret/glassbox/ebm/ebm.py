@@ -281,80 +281,71 @@ def _clean_exclude(exclude, feature_map):
 class EBMModel(BaseEstimator):
     """Base class for all EBMs"""
 
-    # Interface modeled after:
-    # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingClassifier.html
-    # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
-    # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
-    # https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html
-    # https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeRegressor.html
-    # https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
-    # https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html
-
-    # TODO: order these parameters the same as our public parameter list
     def __init__(
         self,
         # Explainer
-        feature_names,
-        feature_types,
-        # Ensemble
-        outer_bags,
-        inner_bags,
-        # Core
-        interactions,
-        exclude,
-        validation_size,
-        max_rounds,
-        early_stopping_tolerance,
-        early_stopping_rounds,
-        # Native
-        learning_rate,
-        # Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets"
-        # says use 6 as the minimum samples https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
-        # TODO PK try setting this (not here, but in our caller) to 6 and run tests to verify the best value.
-        min_samples_leaf,
-        max_leaves,
-        # Overall
-        n_jobs,
-        random_state,
+        feature_names=None,
+        feature_types=None,
         # Preprocessor
-        max_bins,
-        max_interaction_bins,
+        max_bins=256,
+        max_interaction_bins=32,
+        # Stages
+        interactions=10,
+        exclude=[],
+        # Ensemble
+        validation_size=0.15,
+        outer_bags=8,
+        inner_bags=0,
+        # Boosting
+        learning_rate=0.01,
+        # greediness,
+        max_rounds=5000,
+        early_stopping_rounds=50,
+        early_stopping_tolerance=1e-4,
+        # Trees
+        # objective,
+        min_samples_leaf=2,
+        max_leaves=3,
+        # Overall
+        n_jobs=-2,
+        random_state=42,
         # Differential Privacy
-        epsilon=None,
-        delta=None,
-        composition=None,
-        bin_budget_frac=None,
+        epsilon=1,
+        delta=1e-5,
+        composition="gdp",
+        bin_budget_frac=0.1,
         privacy_schema=None,
     ):
         self.feature_names = feature_names
         self.feature_types = feature_types
 
-        self.outer_bags = outer_bags
+        self.max_bins = max_bins
         if not is_private(self):
-            self.inner_bags = inner_bags
+            self.max_interaction_bins = max_interaction_bins
 
         if not is_private(self):
             self.interactions = interactions
         self.exclude = exclude
+
         self.validation_size = validation_size
-        self.max_rounds = max_rounds
+        self.outer_bags = outer_bags
         if not is_private(self):
-            self.early_stopping_tolerance = early_stopping_tolerance
-            self.early_stopping_rounds = early_stopping_rounds
+            self.inner_bags = inner_bags
 
         self.learning_rate = learning_rate
+        self.max_rounds = max_rounds
+        if not is_private(self):
+            self.early_stopping_rounds = early_stopping_rounds
+            self.early_stopping_tolerance = early_stopping_tolerance
+
         self.min_samples_leaf = min_samples_leaf
         self.max_leaves = max_leaves
 
         self.n_jobs = n_jobs
         self.random_state = random_state
 
-        self.max_bins = max_bins
-        if not is_private(self):
-            self.max_interaction_bins = max_interaction_bins
-
-        # Arguments for differential privacy
         if is_private(self):
+            # Arguments for differential privacy
             self.epsilon = epsilon
             self.delta = delta
             self.composition = composition
@@ -570,11 +561,11 @@ class EBMModel(BaseEstimator):
             binning=binning,
             min_samples_bin=1,
             min_unique_continuous=0,
+            random_state=init_random_state,
             epsilon=bin_eps,
             delta=bin_delta,
             composition=composition,
             privacy_schema=privacy_schema,
-            random_state=init_random_state,
         )
         feature_names_in = binning_result[0]
         feature_types_in = binning_result[1]
@@ -759,9 +750,9 @@ class EBMModel(BaseEstimator):
                         self.learning_rate,
                         self.min_samples_leaf,
                         self.max_leaves,
+                        self.max_rounds,
                         early_stopping_rounds_local,
                         early_stopping_tolerance,
-                        self.max_rounds,
                         noise_scale,
                         bin_data_weights,
                         rngs[idx],
@@ -935,9 +926,9 @@ class EBMModel(BaseEstimator):
                             self.learning_rate,
                             self.min_samples_leaf,
                             self.max_leaves,
+                            self.max_rounds,
                             early_stopping_rounds_local,
                             early_stopping_tolerance,
-                            self.max_rounds,
                             noise_scale,
                             bin_data_weights,
                             rngs[idx],
@@ -1884,18 +1875,19 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         early_stopping_rounds=50,
         early_stopping_tolerance=1e-4,
         # Trees
+        # objective,
         min_samples_leaf=2,
         max_leaves=3,
         # Overall
         n_jobs=-2,
-        random_state=42
+        random_state=42,
     ):
         """Explainable Boosting Classifier
 
         Args:
             feature_names: List of feature names.
             feature_types: List of feature types.
-            max_bins: Max number of bins per feature for pre-processing stage.
+            max_bins: Max number of bins per feature for pre-processing stage on main effects.
             max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
             interactions: Interactions to be trained on.
                 Either a list of tuples of feature indices, or an integer for number of automatically detected interactions.
@@ -1932,7 +1924,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             min_samples_leaf=min_samples_leaf,
             max_leaves=max_leaves,
             n_jobs=n_jobs,
-            random_state=random_state
+            random_state=random_state,
         )
 
     def predict_proba(self, X):
@@ -2080,11 +2072,12 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         early_stopping_rounds=50,
         early_stopping_tolerance=1e-4,
         # Trees
+        # objective,
         min_samples_leaf=2,
         max_leaves=3,
         # Overall
         n_jobs=-2,
-        random_state=42
+        random_state=42,
     ):
         """Explainable Boosting Regressor
 
@@ -2128,7 +2121,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             min_samples_leaf=min_samples_leaf,
             max_leaves=max_leaves,
             n_jobs=n_jobs,
-            random_state=random_state
+            random_state=random_state,
         )
 
     def predict(self, X):
@@ -2215,7 +2208,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         delta=1e-5,
         composition="gdp",
         bin_budget_frac=0.1,
-        privacy_schema=None
+        privacy_schema=None,
     ):
         """Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
 
@@ -2235,8 +2228,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             random_state: Random state.
             epsilon: Total privacy budget to be spent across all rounds of training.
             delta: Additive component of differential privacy guarantee. Should be smaller than 1/n_training_samples.
-            composition: composition.
-            bin_budget_frac: Percentage of total epsilon budget to use for binning.
+            composition: Method of tracking noise aggregation. Must be one of 'classic' or 'gdp'.
+            bin_budget_frac: Percentage of total epsilon budget to use for private binning.
             privacy_schema: Dictionary specifying known min/max values of each feature and target.
                 If None, DP-EBM throws warning and uses data to calculate these values.
         """
@@ -2262,7 +2255,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             delta=delta,
             composition=composition,
             bin_budget_frac=bin_budget_frac,
-            privacy_schema=privacy_schema
+            privacy_schema=privacy_schema,
         )
 
     def predict_proba(self, X):
@@ -2366,7 +2359,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         delta=1e-5,
         composition="gdp",
         bin_budget_frac=0.1,
-        privacy_schema=None
+        privacy_schema=None,
     ):
         """Differentially Private Explainable Boosting Regressor. Note that many arguments are defaulted differently than regular EBMs.
 
@@ -2413,7 +2406,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             delta=delta,
             composition=composition,
             bin_budget_frac=bin_budget_frac,
-            privacy_schema=privacy_schema
+            privacy_schema=privacy_schema,
         )
 
     def predict(self, X):

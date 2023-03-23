@@ -2052,11 +2052,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         binning="quantile",
         min_samples_bin=1,
         min_unique_continuous=0,
+        random_state=None,
         epsilon=None,
         delta=None,
         composition=None,
         privacy_schema=None,
-        random_state=None,
     ):
         """Initializes EBM preprocessor.
 
@@ -2067,10 +2067,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             binning: Strategy to compute bins: "quantile", "rounded_quantile", "uniform", or "private".
             min_samples_bin: minimum number of samples to put into a quantile or rounded_quantile bin
             min_unique_continuous: number of unique numbers required before a feature is considered continuous
+            random_state: Random state.
             epsilon: Privacy budget parameter. Only applicable when binning is "private".
             delta: Privacy budget parameter. Only applicable when binning is "private".
+            composition: Method of tracking noise aggregation. Must be one of 'classic' or 'gdp'.
             privacy_schema: User specified min/max values for numeric features as dictionary. Only applicable when binning is "private".
-            random_state: Random state.
         """
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -2078,11 +2079,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.binning = binning
         self.min_samples_bin = min_samples_bin
         self.min_unique_continuous = min_unique_continuous
+        self.random_state = random_state
         self.epsilon = epsilon
         self.delta = delta
         self.composition = composition
         self.privacy_schema = privacy_schema
-        self.random_state = random_state
 
     def fit(self, X, y=None, sample_weight=None):
         """Fits transformer to provided samples.
@@ -2388,7 +2389,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.feature_types_in_ = feature_types_in
         self.bins_ = bins
         self.bin_weights_ = bin_weights
-        self.noise_scale_ = noise_scale
         self.feature_bounds_ = feature_bounds
         self.histogram_counts_ = histogram_counts
         self.missing_val_counts_ = missing_val_counts
@@ -2504,11 +2504,11 @@ def construct_bins(
     binning="quantile",
     min_samples_bin=1,
     min_unique_continuous=0,
+    random_state=None,
     epsilon=None,
     delta=None,
     composition=None,
     privacy_schema=None,
-    random_state=None,
 ):
     is_mains = True
     native = Native.get_native_singleton()
@@ -2520,11 +2520,11 @@ def construct_bins(
             binning,
             min_samples_bin,
             min_unique_continuous,
+            random_state,
             epsilon,
             delta,
             composition,
             privacy_schema,
-            random_state,
         )
 
         random_state = increment_seed(random_state)
