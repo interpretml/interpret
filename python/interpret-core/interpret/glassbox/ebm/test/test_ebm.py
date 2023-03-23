@@ -360,14 +360,17 @@ def test_ebm_uniform():
     X_te = data["test"]["X"]
     y_te = data["test"]["y"]
 
-    clf = ExplainableBoostingClassifier(binning="uniform", n_jobs=-2, interactions=3)
+    feature_types = [None] * X.shape[1]
+    feature_types[0] = "uniform"
+
+    clf = ExplainableBoostingClassifier(feature_types=feature_types, n_jobs=-2, interactions=3)
     n_splits = 3
     ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
     cross_validate(
         clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
     )
 
-    clf = ExplainableBoostingClassifier(binning="uniform", n_jobs=-2, interactions=3)
+    clf = ExplainableBoostingClassifier(feature_types=feature_types, n_jobs=-2, interactions=3)
     clf.fit(X_tr, y_tr)
 
     prob_scores = clf.predict_proba(X_te)
@@ -397,7 +400,10 @@ def test_ebm_uniform_multiclass():
     X_test = data["test"]["X"]
     y_test = data["test"]["y"]
 
-    clf = ExplainableBoostingClassifier(binning="uniform")
+    feature_types = [None] * data.shape[1]
+    feature_types[0] = "uniform"
+
+    clf = ExplainableBoostingClassifier(feature_types=feature_types)
     clf.fit(X_train, y_train)
 
     assert accuracy_score(y_test, clf.predict(X_test)) > 0.9

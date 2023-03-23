@@ -73,7 +73,6 @@ def measure_interactions(
     feature_names=None,
     feature_types=None,
     max_interaction_bins=32,
-    binning="quantile",
     min_samples_leaf=2,
     objective=None,
 ):
@@ -217,7 +216,7 @@ def measure_interactions(
         feature_names_given=feature_names,
         feature_types_given=feature_types,
         max_bins_leveled=[max_interaction_bins],
-        binning=binning,
+        binning="quantile",
         min_samples_bin=1,
         min_unique_continuous=0,
     )

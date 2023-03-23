@@ -187,17 +187,19 @@ def test_max_bins_and_binning_options(regression_data):
     X, y = regression_data
 
     max_interaction_bins = 64
-    binning = "uniform"
+
+    feature_types = [None] * X.shape[1]
+    feature_types[0] = "uniform"
 
     ranked_pairs = measure_interactions(
-        X, y, max_interaction_bins=max_interaction_bins, binning=binning
+        X, y, max_interaction_bins=max_interaction_bins, feature_types=feature_types
     )
     assert 6 == len(ranked_pairs)
 
-    binning = "rounded_quantile"
+    feature_types[0] = "rounded_quantile"
 
     ranked_pairs = measure_interactions(
-        X, y, max_interaction_bins=max_interaction_bins, binning=binning
+        X, y, max_interaction_bins=max_interaction_bins, feature_types=feature_types
     )
     assert 6 == len(ranked_pairs)
 
