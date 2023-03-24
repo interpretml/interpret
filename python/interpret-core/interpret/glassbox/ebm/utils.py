@@ -1268,7 +1268,11 @@ class EBMUtils:
                 boost_flags_local = boost_flags
                 if 0 < smoothing_rounds:
                     # modify some of our parameters temporarily
-                    boost_flags_local |= Native.BoostFlags_DisableNewtonGain | Native.BoostFlags_DisableNewtonUpdate | Native.BoostFlags_RandomSplits
+                    boost_flags_local |= (
+                        Native.BoostFlags_DisableNewtonGain
+                        | Native.BoostFlags_DisableNewtonUpdate
+                        | Native.BoostFlags_RandomSplits
+                    )
 
                 for term_idx in range(len(term_features)):
                     if 1.0 <= greedy_portion:

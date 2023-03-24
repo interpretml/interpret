@@ -54,7 +54,7 @@ from ...utils._privacy import (
 )
 
 import json
-from math import isnan
+from math import isnan, ceil
 
 import numpy as np
 from warnings import warn
@@ -807,24 +807,50 @@ class EBMModel(BaseEstimator):
                     bagged_rng
                 )  # retrieve our rng state since this was used outside of our process
 
-            if 2 < n_classes:
-                if isinstance(interactions, int):
-                    if interactions != 0:
-                        warn(
-                            "Detected multiclass problem. Forcing interactions to 0. Multiclass interactions work except for global visualizations, so the line below setting interactions to zero can be disabled if you know what you are doing."
-                        )
-                        interactions = 0
-                elif len(interactions) != 0:
-                    raise ValueError(
-                        "Interactions are not supported for multiclass. Multiclass interactions work except for global visualizations, so this exception can be disabled if you know what you are doing."
-                    )
+            while True:  # this isn't for looping. Just for break statements to exit
+                if interactions is None:
+                    break
 
-            if (
-                isinstance(interactions, int)
-                and 0 < interactions
-                or not isinstance(interactions, int)
-                and 0 < len(interactions)
-            ):
+                if isinstance(interactions, int) or isinstance(interactions, float):
+                    if interactions <= 0:
+                        if interactions == 0:
+                            break
+                        msg = "interactions cannot be negative"
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+                    if interactions < 1.0:
+                        interactions = int(ceil(n_features_in * interactions))
+                    elif isinstance(interactions, float):
+                        if not interactions.is_integer():
+                            msg = "interactions above 1 cannot be a float percentage and need to be an int instead"
+                            _log.error(msg)
+                            raise ValueError(msg)
+                        interactions = int(interactions)
+
+                    if 2 < n_classes:
+                        warn(
+                            "Detected multiclass problem. Forcing interactions to 0. "
+                            "Multiclass interactions work except for global "
+                            "visualizations, so the break statement below that "
+                            "disables multiclass interactions can be removed."
+                        )
+                        break
+
+                    # at this point interactions will be a positive, nonzero integer
+                else:
+                    # interactions must be a list of the interactions
+                    if len(interactions) == 0:
+                        break
+
+                    if 2 < n_classes:
+                        raise ValueError(
+                            "Interactions are not supported for multiclass. "
+                            "Multiclass interactions work except for global "
+                            "visualizations, so this exception can be disabled "
+                            "if you know what you are doing."
+                        )
+
                 initial_intercept = np.zeros(
                     Native.get_count_scores_c(n_classes), np.float64
                 )
@@ -958,7 +984,7 @@ class EBMModel(BaseEstimator):
                             self.min_samples_leaf,
                             self.max_leaves,
                             greediness,
-                            0, # no smoothing rounds for interactions
+                            0,  # no smoothing rounds for interactions
                             self.max_rounds,
                             early_stopping_rounds_local,
                             early_stopping_tolerance,
@@ -987,6 +1013,8 @@ class EBMModel(BaseEstimator):
                     rngs[idx] = results[idx][2]
 
                 term_features.extend(boost_groups)
+
+                break  # do not loop!
 
         breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
 
@@ -1927,7 +1955,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             max_bins: Max number of bins per feature for pre-processing stage on main effects.
             max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
             interactions: Interactions to be trained on.
-                Either a list of tuples of feature indices, or an integer for number of automatically detected interactions.
+                Either a list of tuples of feature indices, an integer or percentage of the count of main effects for number of automatically detected interactions.
                 Interactions are forcefully set to 0 for multiclass problems.
             exclude: Features or terms to be excluded. "mains" excludes all main effect features
             validation_size: Validation set size for boosting.
@@ -1936,7 +1964,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             inner_bags: Number of inner bags. 0 turns off inner bagging.
             learning_rate: Learning rate for boosting.
             greediness: percentage of rounds where boosting is greedy instead of round-robin
-            smoothing_rounds: Number of initial highly regularized rounds to set the basic shape of the feature graphs.
+            smoothing_rounds: Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
             max_rounds: Number of rounds for boosting.
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
                 0 turns off early stopping and boosting will occur for exactly max_rounds
@@ -2129,7 +2157,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             max_bins: Max number of bins per feature for pre-processing stage on main effects.
             max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
             interactions: Interactions to be trained on.
-                Either a list of tuples of feature indices, or an integer for number of automatically detected interactions.
+                Either a list of tuples of feature indices, an integer or percentage of the count of main effects for number of automatically detected interactions.
                 Interactions are forcefully set to 0 for multiclass problems.
             exclude: Features or terms to be excluded. "mains" excludes all main effect features
             validation_size: Validation set size for boosting.
@@ -2138,7 +2166,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             inner_bags: Number of inner bags. 0 turns off inner bagging.
             learning_rate: Learning rate for boosting.
             greediness: percentage of rounds where boosting is greedy instead of round-robin
-            smoothing_rounds: Number of initial highly regularized rounds to set the basic shape of the feature graphs
+            smoothing_rounds: Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs
             max_rounds: Number of rounds for boosting.
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
                 0 turns off early stopping and boosting will occur for exactly max_rounds
