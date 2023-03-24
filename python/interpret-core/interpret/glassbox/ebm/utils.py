@@ -1228,6 +1228,7 @@ class EBMUtils:
         min_samples_leaf,
         max_leaves,
         greediness,
+        smoothing_rounds,
         max_rounds,
         early_stopping_rounds,
         early_stopping_tolerance,
@@ -1264,6 +1265,11 @@ class EBMUtils:
                     # we're doing a cyclic round
                     heap = []
 
+                boost_flags_local = boost_flags
+                if 0 < smoothing_rounds:
+                    # modify some of our parameters temporarily
+                    boost_flags_local |= Native.BoostFlags_DisableNewtonGain | Native.BoostFlags_DisableNewtonUpdate | Native.BoostFlags_RandomSplits
+
                 for term_idx in range(len(term_features)):
                     if 1.0 <= greedy_portion:
                         # we're being greedy, so select something from our
@@ -1272,7 +1278,7 @@ class EBMUtils:
 
                     avg_gain = booster.generate_term_update(
                         term_idx=term_idx,
-                        boost_flags=boost_flags,
+                        boost_flags=boost_flags_local,
                         learning_rate=learning_rate,
                         min_samples_leaf=min_samples_leaf,
                         max_leaves=max_leaves,
@@ -1346,7 +1352,12 @@ class EBMUtils:
 
                 if 1.0 <= greedy_portion:
                     greedy_portion -= 1.0
-                greedy_portion += greediness
+
+                if 0 < smoothing_rounds:
+                    smoothing_rounds -= 1
+                else:
+                    # do not progress into greedy rounds until we're done with the smoothing_rounds
+                    greedy_portion += greediness
 
             _log.info(
                 "End boosting, Best Metric: {0}, Num Rounds: {1}".format(
