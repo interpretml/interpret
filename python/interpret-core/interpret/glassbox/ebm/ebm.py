@@ -298,7 +298,7 @@ class EBMModel(BaseEstimator):
         inner_bags=0,
         # Boosting
         learning_rate=0.01,
-        # greediness,
+        greediness=0.0,
         max_rounds=5000,
         early_stopping_rounds=50,
         early_stopping_tolerance=1e-4,
@@ -333,6 +333,8 @@ class EBMModel(BaseEstimator):
             self.inner_bags = inner_bags
 
         self.learning_rate = learning_rate
+        if not is_private(self):
+            self.greediness = greediness
         self.max_rounds = max_rounds
         if not is_private(self):
             self.early_stopping_rounds = early_stopping_rounds
@@ -415,6 +417,15 @@ class EBMModel(BaseEstimator):
             raise ValueError(msg)
 
         if not is_private(self):
+            if self.greediness < 0.0:
+                msg = "greediness cannot be negative"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif 1.0 < self.greediness:
+                msg = "greediness must be a percentage between 0.0 and 1.0 inclusive"
+                _log.error(msg)
+                raise ValueError(msg)
+
             if (
                 not isinstance(self.inner_bags, int)
                 and not self.inner_bags.is_integer()
@@ -636,6 +647,7 @@ class EBMModel(BaseEstimator):
                 Native.BoostFlags_GradientSums | Native.BoostFlags_RandomSplits
             )
             inner_bags = 0
+            greediness = 0.0
             early_stopping_rounds = 0
             early_stopping_tolerance = 0
             interactions = 0
@@ -644,6 +656,7 @@ class EBMModel(BaseEstimator):
             bin_data_weights = None
             boost_flags = Native.BoostFlags_Default
             inner_bags = self.inner_bags
+            greediness = self.greediness
             early_stopping_rounds = self.early_stopping_rounds
             early_stopping_tolerance = self.early_stopping_tolerance
             interactions = self.interactions
@@ -750,6 +763,7 @@ class EBMModel(BaseEstimator):
                         self.learning_rate,
                         self.min_samples_leaf,
                         self.max_leaves,
+                        greediness,
                         self.max_rounds,
                         early_stopping_rounds_local,
                         early_stopping_tolerance,
@@ -926,6 +940,7 @@ class EBMModel(BaseEstimator):
                             self.learning_rate,
                             self.min_samples_leaf,
                             self.max_leaves,
+                            greediness,
                             self.max_rounds,
                             early_stopping_rounds_local,
                             early_stopping_tolerance,
@@ -1127,11 +1142,11 @@ class EBMModel(BaseEstimator):
             if hasattr(self, "feature_types"):
                 params["feature_types"] = self.feature_types
 
-            if hasattr(self, "outer_bags"):
-                params["outer_bags"] = self.outer_bags
+            if hasattr(self, "max_bins"):
+                params["max_bins"] = self.max_bins
 
-            if hasattr(self, "inner_bags"):
-                params["inner_bags"] = self.inner_bags
+            if hasattr(self, "max_interaction_bins"):
+                params["max_interaction_bins"] = self.max_interaction_bins
 
             if hasattr(self, "interactions"):
                 params["interactions"] = self.interactions
@@ -1142,17 +1157,26 @@ class EBMModel(BaseEstimator):
             if hasattr(self, "validation_size"):
                 params["validation_size"] = self.validation_size
 
+            if hasattr(self, "outer_bags"):
+                params["outer_bags"] = self.outer_bags
+
+            if hasattr(self, "inner_bags"):
+                params["inner_bags"] = self.inner_bags
+
+            if hasattr(self, "learning_rate"):
+                params["learning_rate"] = self.learning_rate
+
+            if hasattr(self, "greediness"):
+                params["greediness"] = self.greediness
+
             if hasattr(self, "max_rounds"):
                 params["max_rounds"] = self.max_rounds
-
-            if hasattr(self, "early_stopping_tolerance"):
-                params["early_stopping_tolerance"] = self.early_stopping_tolerance
 
             if hasattr(self, "early_stopping_rounds"):
                 params["early_stopping_rounds"] = self.early_stopping_rounds
 
-            if hasattr(self, "learning_rate"):
-                params["learning_rate"] = self.learning_rate
+            if hasattr(self, "early_stopping_tolerance"):
+                params["early_stopping_tolerance"] = self.early_stopping_tolerance
 
             if hasattr(self, "min_samples_leaf"):
                 params["min_samples_leaf"] = self.min_samples_leaf
@@ -1165,12 +1189,6 @@ class EBMModel(BaseEstimator):
 
             if hasattr(self, "random_state"):
                 params["random_state"] = self.random_state
-
-            if hasattr(self, "max_bins"):
-                params["max_bins"] = self.max_bins
-
-            if hasattr(self, "max_interaction_bins"):
-                params["max_interaction_bins"] = self.max_interaction_bins
 
             if hasattr(self, "epsilon"):
                 params["epsilon"] = self.epsilon
@@ -1870,7 +1888,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         inner_bags=0,
         # Boosting
         learning_rate=0.01,
-        # greediness,
+        greediness=0.0,
         max_rounds=5000,
         early_stopping_rounds=50,
         early_stopping_tolerance=1e-4,
@@ -1898,6 +1916,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             outer_bags: Number of outer bags.
             inner_bags: Number of inner bags. 0 turns off inner bagging.
             learning_rate: Learning rate for boosting.
+            greediness: percentage of rounds where boosting is greedy instead of round-robin
             max_rounds: Number of rounds for boosting.
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
                 0 turns off early stopping and boosting will occur for exactly max_rounds
@@ -1918,6 +1937,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             outer_bags=outer_bags,
             inner_bags=inner_bags,
             learning_rate=learning_rate,
+            greediness=greediness,
             max_rounds=max_rounds,
             early_stopping_rounds=early_stopping_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
@@ -2067,7 +2087,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         inner_bags=0,
         # Boosting
         learning_rate=0.01,
-        # greediness,
+        greediness=0.0,
         max_rounds=5000,
         early_stopping_rounds=50,
         early_stopping_tolerance=1e-4,
@@ -2095,6 +2115,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             outer_bags: Number of outer bags.
             inner_bags: Number of inner bags. 0 turns off inner bagging.
             learning_rate: Learning rate for boosting.
+            greediness: percentage of rounds where boosting is greedy instead of round-robin
             max_rounds: Number of rounds for boosting.
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
                 0 turns off early stopping and boosting will occur for exactly max_rounds
@@ -2115,6 +2136,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             outer_bags=outer_bags,
             inner_bags=inner_bags,
             learning_rate=learning_rate,
+            greediness=greediness,
             max_rounds=max_rounds,
             early_stopping_rounds=early_stopping_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
@@ -2244,9 +2266,10 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             outer_bags=outer_bags,
             inner_bags=0,
             learning_rate=learning_rate,
+            greediness=0.0,
             max_rounds=max_rounds,
             early_stopping_rounds=0,
-            early_stopping_tolerance=0,
+            early_stopping_tolerance=0.0,
             min_samples_leaf=min_samples_leaf,
             max_leaves=max_leaves,
             n_jobs=n_jobs,
@@ -2395,9 +2418,10 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             outer_bags=outer_bags,
             inner_bags=0,
             learning_rate=learning_rate,
+            greediness=0.0,
             max_rounds=max_rounds,
             early_stopping_rounds=0,
-            early_stopping_tolerance=0,
+            early_stopping_tolerance=0.0,
             min_samples_leaf=min_samples_leaf,
             max_leaves=max_leaves,
             n_jobs=n_jobs,

@@ -14,12 +14,11 @@ from sklearn.base import is_classifier
 import numbers
 import numpy as np
 import warnings
-from itertools import islice
+from itertools import islice, count, chain
 
+import heapq
 
 from .postprocessing import multiclass_postprocess
-
-from itertools import count, chain
 
 import logging
 
@@ -1228,6 +1227,7 @@ class EBMUtils:
         learning_rate,
         min_samples_leaf,
         max_leaves,
+        greediness,
         max_rounds,
         early_stopping_rounds,
         early_stopping_tolerance,
@@ -1236,7 +1236,6 @@ class EBMUtils:
         rng,
         experimental_params=None,
     ):
-        min_metric = np.inf
         episode_index = 0
         with Booster(
             dataset,
@@ -1247,6 +1246,10 @@ class EBMUtils:
             rng,
             experimental_params,
         ) as booster:
+            # the first round is alwasy cyclic since we need to get the initial gains
+            greedy_portion = 0.0
+
+            min_metric = np.inf
             no_change_run_length = 0
             bp_metric = np.inf
             _log.info("Start boosting")
@@ -1257,7 +1260,16 @@ class EBMUtils:
                     _log.debug("Sweep Index {0}".format(episode_index))
                     _log.debug("Metric: {0}".format(min_metric))
 
+                if greedy_portion < 1.0:
+                    # we're doing a cyclic round
+                    heap = []
+
                 for term_idx in range(len(term_features)):
+                    if 1.0 <= greedy_portion:
+                        # we're being greedy, so select something from our
+                        # queue and overwrite the term_idx we'll work on
+                        _, term_idx = heapq.heappop(heap)
+
                     avg_gain = booster.generate_term_update(
                         term_idx=term_idx,
                         boost_flags=boost_flags,
@@ -1265,6 +1277,8 @@ class EBMUtils:
                         min_samples_leaf=min_samples_leaf,
                         max_leaves=max_leaves,
                     )
+
+                    heapq.heappush(heap, (-avg_gain, term_idx))
 
                     if noise_scale:  # Differentially private updates
                         splits = booster.get_term_update_splits()[0]
@@ -1329,6 +1343,10 @@ class EBMUtils:
                     and no_change_run_length >= early_stopping_rounds
                 ):
                     break
+
+                if 1.0 <= greedy_portion:
+                    greedy_portion -= 1.0
+                greedy_portion += greediness
 
             _log.info(
                 "End boosting, Best Metric: {0}, Num Rounds: {1}".format(
