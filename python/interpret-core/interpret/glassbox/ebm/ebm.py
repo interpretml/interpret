@@ -374,6 +374,9 @@ class EBMModel(BaseEstimator):
             Itself.
         """
 
+        # with 64 bytes per tensor cell, a 2^24 tensor would be 1 gigabyte
+        max_cardinality = 16777216
+
         if not isinstance(self.outer_bags, int) and not self.outer_bags.is_integer():
             msg = "outer_bags must be an integer"
             _log.error(msg)
@@ -897,6 +900,7 @@ class EBMModel(BaseEstimator):
                                 combinations(range(n_features_in), 2),
                                 exclude,
                                 Native.InteractionFlags_Default,
+                                max_cardinality,
                                 self.min_samples_leaf,
                                 None,
                             )

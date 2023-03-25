@@ -426,6 +426,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    IntEbm countDimensions,
    const IntEbm * featureIndexes,
    InteractionFlags flags,
+   IntEbm maxCardinality,
    IntEbm minSamplesLeaf,
    double * avgInteractionStrengthOut
 );

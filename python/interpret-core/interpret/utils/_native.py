@@ -1093,6 +1093,8 @@ class Native:
             ct.c_void_p,
             # InteractionFlags flags
             ct.c_int32,
+            # int64_t maxCardinality
+            ct.c_int64,
             # int64_t minSamplesLeaf
             ct.c_int64,
             # double * avgInteractionStrengthOut
@@ -1615,7 +1617,7 @@ class InteractionDetector(AbstractContextManager):
         log.info("Deallocation interaction end")
 
     def calc_interaction_strength(
-        self, feature_idxs, interaction_flags, min_samples_leaf
+        self, feature_idxs, interaction_flags, max_cardinality, min_samples_leaf
     ):
         """Provides strength for an feature interaction. Higher is better."""
         log.info("Fast interaction strength start")
@@ -1628,6 +1630,7 @@ class InteractionDetector(AbstractContextManager):
             len(feature_idxs),
             Native._make_pointer(np.array(feature_idxs, np.int64), np.int64),
             interaction_flags,
+            max_cardinality,
             min_samples_leaf,
             ct.byref(strength),
         )

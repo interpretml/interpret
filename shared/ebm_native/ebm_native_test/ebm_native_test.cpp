@@ -1055,6 +1055,7 @@ double TestApi::TestCalcInteractionStrength(
       features.size(),
       0 == features.size() ? nullptr : &features[0],
       flags,
+      0,
       minSamplesLeaf,
       &avgInteractionStrength
    );

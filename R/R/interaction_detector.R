@@ -28,7 +28,7 @@ free_interaction_detector <- function(interaction_handle) {
    return(NULL)
 }
 
-calc_interaction_strength <- function(interaction_handle, feature_indexes, count_samples_required_for_child_split_min) {
+calc_interaction_strength <- function(interaction_handle, feature_indexes, max_cardinality, count_samples_required_for_child_split_min) {
    stopifnot(class(interaction_handle) == "externalptr")
    feature_indexes <- as.double(feature_indexes)
    count_samples_required_for_child_split_min <- as.double(count_samples_required_for_child_split_min)
@@ -37,6 +37,7 @@ calc_interaction_strength <- function(interaction_handle, feature_indexes, count
       CalcInteractionStrength_R, 
       interaction_handle, 
       feature_indexes, 
+      max_cardinality,
       count_samples_required_for_child_split_min
    )
    return(interaction_strength)

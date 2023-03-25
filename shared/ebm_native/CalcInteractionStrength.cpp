@@ -63,6 +63,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    IntEbm countDimensions,
    const IntEbm * featureIndexes,
    InteractionFlags flags,
+   IntEbm maxCardinality,
    IntEbm minSamplesLeaf,
    double * avgInteractionStrengthOut
 ) {
@@ -75,6 +76,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       "countDimensions=%" IntEbmPrintf ", "
       "featureIndexes=%p, "
       "flags=0x%" UInteractionFlagsPrintf ", "
+      "maxCardinality=%" IntEbmPrintf ", "
       "minSamplesLeaf=%" IntEbmPrintf ", "
       "avgInteractionStrengthOut=%p"
       ,
@@ -82,6 +84,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       countDimensions,
       static_cast<const void *>(featureIndexes),
       static_cast<UInteractionFlags>(flags), // signed to unsigned conversion is defined behavior in C++
+      maxCardinality,
       minSamplesLeaf,
       static_cast<void *>(avgInteractionStrengthOut)
    );
@@ -108,6 +111,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       static_cast<UInteractionFlags>(InteractionFlags_Pure)
       ))) {
       LOG_0(Trace_Error, "ERROR CalcInteractionStrength flags contains unknown flags. Ignoring extras.");
+   }
+
+   size_t cCardinalityMax = std::numeric_limits<size_t>::max(); // set off by default
+   if(IntEbm { 0 } <= maxCardinality) {
+      if(IntEbm { 0 } != maxCardinality) {
+         if(!IsConvertError<size_t>(maxCardinality)) {
+            // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to 
+            // overflow because it will generate the same results as if we used the true number
+            cCardinalityMax = static_cast<size_t>(maxCardinality);
+         }
+      }
+   } else {
+      LOG_0(Trace_Warning, "WARNING CalcInteractionStrength maxCardinality can't be less than 0. Turning off.");
    }
 
    size_t cSamplesLeafMin = size_t { 1 }; // this is the min value
@@ -220,8 +236,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          // unlike in the boosting code where we check at allocation time if the tensor created overflows on multiplication
          // we don't know what group of features our caller will give us for calculating the interaction scores,
          // so we need to check if our caller gave us a tensor that overflows multiplication
-         LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cTensorBins, cBins)");
-         return Error_OutOfMemory;
+         // if we overflow this, then we'd be above the cCardinalityMax value, so set it to 0.0
+         LOG_0(Trace_Info, "INFO CalcInteractionStrength IsMultiplyError(cTensorBins, cBins)");
+         if (nullptr != avgInteractionStrengthOut) {
+            *avgInteractionStrengthOut = 0.0;
+         }
+         return Error_None;
       }
       cTensorBins *= cBins;
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins) at runtime
@@ -234,6 +254,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
       ++iDimension;
    } while(cDimensions != iDimension);
+
+   if(cCardinalityMax < cTensorBins) {
+      LOG_0(Trace_Info, "INFO CalcInteractionStrength cCardinalityMax < cTensorBins");
+      if (nullptr != avgInteractionStrengthOut) {
+         *avgInteractionStrengthOut = 0.0;
+      }
+      return Error_None;
+   }
 
    const bool bClassification = IsClassification(cClasses);
    const size_t cScores = GetCountScores(cClasses);

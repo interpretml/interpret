@@ -35,6 +35,7 @@ def _get_ranked_interactions(
     iter_term_features,
     exclude,
     interaction_flags,
+    max_cardinality,
     min_samples_leaf,
     experimental_params=None,
     n_output_interactions=0,
@@ -49,6 +50,7 @@ def _get_ranked_interactions(
             strength = interaction_detector.calc_interaction_strength(
                 feature_idxs,
                 interaction_flags,
+                max_cardinality,
                 min_samples_leaf,
             )
             item = (strength, feature_idxs)
@@ -96,6 +98,9 @@ def measure_interactions(
         List containing a tuple of feature indices for the terms and interaction strengths,
             e.g. [((1, 2), 0.134), ((3, 7), 0.0842)].  Ordered by decreasing interaction strengths.
     """
+
+    # with 64 bytes per tensor cell, a 2^24 tensor would be 1 gigabyte
+    max_cardinality = 16777216
 
     y = clean_dimensions(y, "y")
     if y.ndim != 1:
@@ -253,6 +258,7 @@ def measure_interactions(
         iter_term_features=iter_term_features,
         exclude=set(),
         interaction_flags=Native.InteractionFlags_Pure,
+        max_cardinality=max_cardinality,
         min_samples_leaf=min_samples_leaf,
         experimental_params=None,
         n_output_interactions=n_output_interactions,

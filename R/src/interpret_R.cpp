@@ -1046,9 +1046,10 @@ SEXP FreeInteractionDetector_R(SEXP interactionHandleWrapped) {
    return R_NilValue;
 }
 
-SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexes, SEXP minSamplesLeaf) {
+SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexes, SEXP maxCardinality, SEXP minSamplesLeaf) {
    EBM_ASSERT(nullptr != interactionHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != featureIndexes); // shouldn't be possible
+   EBM_ASSERT(nullptr != maxCardinality);
    EBM_ASSERT(nullptr != minSamplesLeaf);
 
    if(EXTPTRSXP != TYPEOF(interactionHandleWrapped)) {
@@ -1062,6 +1063,7 @@ SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexe
    const IntEbm cDimensions = CountDoubles(featureIndexes);
    const IntEbm * const aFeatureIndexes = ConvertDoublesToIndexes(cDimensions, featureIndexes);
 
+   const IntEbm cardinalityMax = ConvertIndexApprox(maxCardinality);
    const IntEbm samplesLeafMin = ConvertIndexApprox(minSamplesLeaf);
 
    double avgInteractionStrength;
@@ -1070,6 +1072,7 @@ SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexe
       cDimensions, 
       aFeatureIndexes, 
       InteractionFlags_Default, 
+      cardinalityMax, 
       samplesLeafMin, 
       &avgInteractionStrength
    );
@@ -1104,7 +1107,7 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "GetCurrentTermScores_R", (DL_FUNC)&GetCurrentTermScores_R, 2 },
    { "CreateInteractionDetector_R", (DL_FUNC)&CreateInteractionDetector_R, 3 },
    { "FreeInteractionDetector_R", (DL_FUNC)&FreeInteractionDetector_R, 1 },
-   { "CalcInteractionStrength_R", (DL_FUNC)&CalcInteractionStrength_R, 3 },
+   { "CalcInteractionStrength_R", (DL_FUNC)&CalcInteractionStrength_R, 4 },
    { NULL, NULL, 0 }
 };
 
