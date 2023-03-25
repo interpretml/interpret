@@ -2056,7 +2056,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         epsilon=None,
         delta=None,
         composition=None,
-        privacy_schema=None,
     ):
         """Initializes EBM preprocessor.
 
@@ -2071,7 +2070,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             epsilon: Privacy budget parameter. Only applicable when binning is "private".
             delta: Privacy budget parameter. Only applicable when binning is "private".
             composition: Method of tracking noise aggregation. Must be one of 'classic' or 'gdp'.
-            privacy_schema: User specified min/max values for numeric features as dictionary. Only applicable when binning is "private".
         """
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -2083,7 +2081,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.epsilon = epsilon
         self.delta = delta
         self.composition = composition
-        self.privacy_schema = privacy_schema
 
     def fit(self, X, y=None, sample_weight=None):
         """Fits transformer to provided samples.
@@ -2217,24 +2214,16 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     _log.error(msg)
                     raise ValueError(msg)
 
+                min_feature_val = np.nanmin(X_col)
+                max_feature_val = np.nanmax(X_col)
+                
                 if self.binning == "private":
                     if np.isnan(X_col).any():
                         msg = "missing values in X not supported for private binning"
                         _log.error(msg)
                         raise ValueError(msg)
 
-                    bounds = (
-                        None
-                        if self.privacy_schema is None
-                        else self.privacy_schema.get(feature_idx, None)
-                    )
-                    if bounds is None:
-                        is_privacy_warning = True
-                        min_feature_val = np.nanmin(X_col)
-                        max_feature_val = np.nanmax(X_col)
-                    else:
-                        min_feature_val = bounds[0]
-                        max_feature_val = bounds[1]
+
                     cuts, feature_bin_weights = private_numeric_binning(
                         X_col,
                         sample_weight,
@@ -2247,8 +2236,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     feature_bin_weights.append(0)
                     feature_bin_weights = np.array(feature_bin_weights, np.float64)
                 else:
-                    min_feature_val = np.nanmin(X_col)
-                    max_feature_val = np.nanmax(X_col)
                     feature_type_given = (
                         None
                         if self.feature_types is None
@@ -2379,12 +2366,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 bins[feature_idx] = categories
             bin_weights[feature_idx] = feature_bin_weights
 
-        if is_privacy_warning:
-            warn(
-                "Possible privacy violation: assuming min/max values per feature are public info. "
-                "Pass a privacy schema with known public ranges per feature to avoid this warning."
-            )
-
         self.feature_names_in_ = feature_names_in
         self.feature_types_in_ = feature_types_in
         self.bins_ = bins
@@ -2508,7 +2489,6 @@ def construct_bins(
     epsilon=None,
     delta=None,
     composition=None,
-    privacy_schema=None,
 ):
     is_mains = True
     native = Native.get_native_singleton()
@@ -2524,7 +2504,6 @@ def construct_bins(
             epsilon,
             delta,
             composition,
-            privacy_schema,
         )
 
         random_state = increment_seed(random_state)

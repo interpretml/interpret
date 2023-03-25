@@ -695,23 +695,6 @@ def test_dp_ebm_synthetic_regression():
     valid_ebm(clf)
 
 
-def test_dp_ebm_external_privacy_schema():
-    from interpret.privacy import DPExplainableBoostingRegressor
-
-    data = synthetic_regression()
-    X = data["full"]["X"]
-    y = data["full"]["y"]
-
-    # synthetic regression is all sampled from N(0, 1)
-    privacy_schema = {0: (-3, 3), 1: (-3, 3), 2: (-3, 3), 3: (-3, 3), "target": (-3, 3)}
-
-    clf = DPExplainableBoostingRegressor(privacy_schema=privacy_schema)
-    clf.fit(X, y)
-    clf.predict(X)
-
-    valid_ebm(clf)
-
-
 @pytest.mark.slow
 def test_ebm_calibrated_classifier_cv():
     """Tests if unsigned integers can be handled when

@@ -315,7 +315,6 @@ class EBMModel(BaseEstimator):
         delta=1e-5,
         composition="gdp",
         bin_budget_frac=0.1,
-        privacy_schema=None,
     ):
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -354,7 +353,6 @@ class EBMModel(BaseEstimator):
             self.delta = delta
             self.composition = composition
             self.bin_budget_frac = bin_budget_frac
-            self.privacy_schema = privacy_schema
 
             if random_state is not None:
                 warn(
@@ -528,39 +526,17 @@ class EBMModel(BaseEstimator):
         # Privacy calculations
         is_differential_privacy = is_private(self)
         if is_differential_privacy:
-            validate_eps_delta(self.epsilon, self.delta)
-
-            if is_classifier(self):
-                if 2 < n_classes:  # pragma: no cover
-                    raise ValueError(
-                        "multiclass not supported in Differentially private EBMs."
-                    )
-            else:
-                bounds = (
-                    None
-                    if self.privacy_schema is None
-                    else self.privacy_schema.get("target", None)
+            if is_classifier(self) and 2 < n_classes:  # pragma: no cover
+                raise ValueError(
+                    "multiclass not supported in Differentially private EBMs."
                 )
-                if bounds is None:
-                    warn(
-                        "Possible privacy violation: assuming min/max values for target are public info."
-                        "Pass a privacy schema with known public target ranges to avoid this warning."
-                    )
-                else:
-                    min_target = bounds[0]
-                    max_target = bounds[1]
-                    if max_target < min_target:
-                        raise ValueError(
-                            f"target minimum {min_target} must be smaller than maximum {max_target}"
-                        )
 
-                    y = np.clip(y, min_target, max_target)
+            validate_eps_delta(self.epsilon, self.delta)
 
             # Split epsilon, delta budget for binning and learning
             bin_eps = self.epsilon * self.bin_budget_frac
             bin_delta = self.delta / 2
             composition = self.composition
-            privacy_schema = self.privacy_schema
             binning = "private"
 
             bin_levels = [self.max_bins]
@@ -568,7 +544,6 @@ class EBMModel(BaseEstimator):
             bin_eps = None
             bin_delta = None
             composition = None
-            privacy_schema = None
             binning = "quantile"
 
             bin_levels = [self.max_bins, self.max_interaction_bins]
@@ -593,7 +568,6 @@ class EBMModel(BaseEstimator):
             epsilon=bin_eps,
             delta=bin_delta,
             composition=composition,
-            privacy_schema=privacy_schema,
         )
         feature_names_in = binning_result[0]
         feature_types_in = binning_result[1]
@@ -1251,9 +1225,6 @@ class EBMModel(BaseEstimator):
 
             if hasattr(self, "bin_budget_frac"):
                 params["bin_budget_frac"] = self.bin_budget_frac
-
-            if hasattr(self, "privacy_schema"):
-                params["privacy_schema"] = self.privacy_schema
 
             j["implementation_params"] = params
 
@@ -2286,7 +2257,6 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         delta=1e-5,
         composition="gdp",
         bin_budget_frac=0.1,
-        privacy_schema=None,
     ):
         """Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
 
@@ -2308,8 +2278,6 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             delta: Additive component of differential privacy guarantee. Should be smaller than 1/n_training_samples.
             composition: Method of tracking noise aggregation. Must be one of 'classic' or 'gdp'.
             bin_budget_frac: Percentage of total epsilon budget to use for private binning.
-            privacy_schema: Dictionary specifying known min/max values of each feature and target.
-                If None, DP-EBM throws warning and uses data to calculate these values.
         """
         super(DPExplainableBoostingClassifier, self).__init__(
             feature_names=feature_names,
@@ -2335,7 +2303,6 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             delta=delta,
             composition=composition,
             bin_budget_frac=bin_budget_frac,
-            privacy_schema=privacy_schema,
         )
 
     def predict_proba(self, X):
@@ -2439,7 +2406,6 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         delta=1e-5,
         composition="gdp",
         bin_budget_frac=0.1,
-        privacy_schema=None,
     ):
         """Differentially Private Explainable Boosting Regressor. Note that many arguments are defaulted differently than regular EBMs.
 
@@ -2461,8 +2427,6 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             delta: Additive component of differential privacy guarantee. Should be smaller than 1/n_training_samples.
             composition: Method of tracking noise aggregation. Must be one of 'classic' or 'gdp'.
             bin_budget_frac: Percentage of total epsilon budget to use for private binning.
-            privacy_schema: Dictionary specifying known min/max values of each feature and target.
-                If None, DP-EBM throws warning and uses data to calculate these values.
         """
         super(DPExplainableBoostingRegressor, self).__init__(
             feature_names=feature_names,
@@ -2488,7 +2452,6 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             delta=delta,
             composition=composition,
             bin_budget_frac=bin_budget_frac,
-            privacy_schema=privacy_schema,
         )
 
     def predict(self, X):
