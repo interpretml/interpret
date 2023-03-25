@@ -113,15 +113,11 @@ class MorrisSensitivity(ExplainerMixin):
         )
 
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
-        zero_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
         for col_idx, feature in enumerate(self.feature_names_in_):
             X_col = data[:, col_idx]
             unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
-            zero_val_counts.itemset(col_idx, len(X_col) - np.count_nonzero(X_col))
 
-        self.n_samples_ = n_samples
         self.unique_val_counts_ = unique_val_counts
-        self.zero_val_counts_ = zero_val_counts
 
     def explain_global(self, name=None):
         """Provides approximate global explanation for blackbox model.
@@ -156,12 +152,10 @@ class MorrisSensitivity(ExplainerMixin):
         internal_obj = {"overall": overall_data_dict, "specific": specific_data_dicts}
 
         global_selector = gen_global_selector(
-            self.n_samples_,
             len(self.feature_names_in_),
             self.feature_names_in_,
             self.feature_types_in_,
             self.unique_val_counts_,
-            self.zero_val_counts_,
             self.mu_star_,
         )
 

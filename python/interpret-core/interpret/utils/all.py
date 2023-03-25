@@ -83,12 +83,10 @@ def gen_perf_dicts(scores, y, is_classification, classes=None):
 
 
 def gen_global_selector(
-    n_samples,
     n_features,
     term_names,
     term_types,
     unique_val_counts,
-    zero_val_counts,
     importance_scores,
     round=3,
 ):
@@ -108,12 +106,8 @@ def gen_global_selector(
             record["# Unique"] = (
                 np.nan if unique_val_counts is None else unique_val_counts[term_idx]
             )
-            if n_samples is None or zero_val_counts is None:
-                record["% Non-zero"] = np.nan
-            else:
-                record["% Non-zero"] = (
-                    n_samples - zero_val_counts[term_idx]
-                ) / n_samples
+            # TODO: remove this.. we don't seem to use it
+            record["% Non-zero"] = np.nan
 
             # if importance_scores is None:
             #     record["Importance"] = np.nan

@@ -120,7 +120,6 @@ class PartialDependence(ExplainerMixin):
 
         pdps = []
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
-        zero_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
         for col_idx, feature in enumerate(self.feature_names_in_):
             feature_type = self.feature_types_in_[col_idx]
             pdp = _gen_pdp(
@@ -135,14 +134,11 @@ class PartialDependence(ExplainerMixin):
 
             X_col = data[:, col_idx]
             unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
-            zero_val_counts.itemset(col_idx, len(X_col) - np.count_nonzero(X_col))
 
         # TODO: we can probably extract the data in pdps_ to be less opaque
         # to this class and construct the JSONable data later
         self.pdps_ = pdps
-        self.n_samples_ = n_samples
         self.unique_val_counts_ = unique_val_counts
-        self.zero_val_counts_ = zero_val_counts
 
     def explain_global(self, name=None):
         """Provides approximate global explanation for blackbox model.
@@ -181,12 +177,10 @@ class PartialDependence(ExplainerMixin):
         }
 
         selector = gen_global_selector(
-            self.n_samples_,
             len(self.feature_names_in_),
             self.feature_names_in_,
             self.feature_types_in_,
             self.unique_val_counts_,
-            self.zero_val_counts_,
             None,
         )
 

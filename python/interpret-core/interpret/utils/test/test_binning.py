@@ -3746,7 +3746,6 @@ def test_bin_native():
         histogram_counts,
         missing_val_counts,
         unique_val_counts,
-        zero_val_counts,
     ) = construct_bins(
         X, y, sample_weight, feature_names_given, feature_types_given, [256, 5, 3]
     )
@@ -3758,7 +3757,6 @@ def test_bin_native():
     assert histogram_counts is not None
     assert missing_val_counts is not None
     assert unique_val_counts is not None
-    assert zero_val_counts is not None
 
     feature_idxs_origin = (
         range(len(feature_names_given))

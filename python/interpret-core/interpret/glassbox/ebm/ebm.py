@@ -577,7 +577,6 @@ class EBMModel(BaseEstimator):
         histogram_counts = binning_result[5]
         missing_val_counts = binning_result[6]
         unique_val_counts = binning_result[7]
-        zero_val_counts = binning_result[8]
 
         if np.count_nonzero(missing_val_counts):
             warn(
@@ -1043,12 +1042,9 @@ class EBMModel(BaseEstimator):
             # dependent attributes (can be re-derrived after serialization)
             self.histogram_edges_ = histogram_edges
 
-            self.n_samples_ = n_samples
-
             # per-feature
             self.histogram_counts_ = histogram_counts
             self.unique_val_counts_ = unique_val_counts
-            self.zero_val_counts_ = zero_val_counts
 
         if 0 <= n_classes:
             self.classes_ = classes  # required by scikit-learn
@@ -1139,10 +1135,6 @@ class EBMModel(BaseEstimator):
             noise_scale = getattr(self, "noise_scale_", None)
             if noise_scale is not None:
                 j["noise_scale"] = EBMUtils.jsonify_item(noise_scale)
-        if 1 <= level:
-            n_samples = getattr(self, "n_samples_", None)
-            if n_samples is not None:
-                j["num_samples"] = n_samples
         if 2 <= level:
             bag_weights = getattr(self, "bag_weights_", None)
             if bag_weights is not None:
@@ -1229,7 +1221,6 @@ class EBMModel(BaseEstimator):
             j["implementation_params"] = params
 
         unique_val_counts = getattr(self, "unique_val_counts_", None)
-        zero_val_counts = getattr(self, "zero_val_counts_", None)
         feature_bounds = getattr(self, "feature_bounds_", None)
         histogram_counts = getattr(self, "histogram_counts_", None)
 
@@ -1243,8 +1234,6 @@ class EBMModel(BaseEstimator):
             if 1 <= level:
                 if unique_val_counts is not None:
                     feature["num_unique_vals"] = int(unique_val_counts[i])
-                if zero_val_counts is not None:
-                    feature["num_zero_vals"] = int(zero_val_counts[i])
 
             if isinstance(self.bins_[i][0], dict):
                 categories = []
@@ -1673,12 +1662,10 @@ class EBMModel(BaseEstimator):
             feature_types=[term_types[i] for i in keep_idxs],
             name=name,
             selector=gen_global_selector(
-                getattr(self, "n_samples_", None),
                 self.n_features_in_,
                 [term_names[i] for i in keep_idxs],
                 [term_types[i] for i in keep_idxs],
                 getattr(self, "unique_val_counts_", None),
-                getattr(self, "zero_val_counts_", None),
                 None,
             ),
         )

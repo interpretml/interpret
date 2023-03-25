@@ -725,11 +725,6 @@ def merge_ebms(models):
             if n_features != len(unique_val_counts):  # pragma: no cover
                 raise Exception("Inconsistent numbers of features in the models.")
 
-        zero_val_counts = getattr(model, "zero_val_counts_", None)
-        if zero_val_counts is not None:
-            if n_features != len(zero_val_counts):  # pragma: no cover
-                raise Exception("Inconsistent numbers of features in the models.")
-
     old_bounds = []
     old_mapping = []
     old_bins = []
@@ -877,9 +872,6 @@ def merge_ebms(models):
                 )
 
     if not is_private:
-        if all(hasattr(model, "n_samples_") for model in models):
-            ebm.n_samples_ = sum(model.n_samples_ for model in models)
-
         if all(
             hasattr(model, "histogram_counts_") and hasattr(model, "feature_bounds_")
             for model in models
@@ -890,11 +882,6 @@ def merge_ebms(models):
                 # them to the floor of their counts and then assign any remaining integers based on how much
                 # they reduce the RMSE of the integer counts from the ideal floating point counts.
                 pass
-
-        if all(hasattr(model, "zero_val_counts_") for model in models):
-            ebm.zero_val_counts_ = np.sum(
-                [model.zero_val_counts_ for model in models], axis=0
-            )
 
     if is_classifier:
         ebm.classes_ = models[0].classes_.copy()
