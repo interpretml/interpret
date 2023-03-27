@@ -304,9 +304,9 @@ class EBMModel(BaseEstimator):
         early_stopping_rounds=50,
         early_stopping_tolerance=1e-4,
         # Trees
-        # objective,
         min_samples_leaf=2,
         max_leaves=3,
+        # objective,
         # Overall
         n_jobs=-2,
         random_state=42,
@@ -606,9 +606,9 @@ class EBMModel(BaseEstimator):
             domain_size = 1 if is_classifier(self) else max_target - min_target
             max_weight = 1 if sample_weight is None else np.max(sample_weight)
             training_eps = self.epsilon - bin_eps
-            training_delta = self.delta / 2
+            training_delta = self.delta - bin_delta
             if self.composition == "classic":
-                noise_scale = calc_classic_noise_multi(
+                noise_scale_boosting = calc_classic_noise_multi(
                     total_queries=self.max_rounds
                     * len(term_features)
                     * self.outer_bags,
@@ -617,14 +617,14 @@ class EBMModel(BaseEstimator):
                     sensitivity=domain_size * self.learning_rate * max_weight,
                 )
             elif self.composition == "gdp":
-                noise_scale = calc_gdp_noise_multi(
+                noise_scale_boosting = calc_gdp_noise_multi(
                     total_queries=self.max_rounds
                     * len(term_features)
                     * self.outer_bags,
                     target_epsilon=training_eps,
                     delta=training_delta,
                 )
-                noise_scale *= (
+                noise_scale_boosting *= (
                     domain_size * self.learning_rate * max_weight
                 )  # Alg Line 17
             else:
@@ -643,7 +643,7 @@ class EBMModel(BaseEstimator):
             early_stopping_tolerance = 0
             interactions = 0
         else:
-            noise_scale = None
+            noise_scale_boosting = None
             bin_data_weights = None
             boost_flags = Native.BoostFlags_Default
             inner_bags = self.inner_bags
@@ -760,7 +760,7 @@ class EBMModel(BaseEstimator):
                         self.max_rounds,
                         early_stopping_rounds_local,
                         early_stopping_tolerance,
-                        noise_scale,
+                        noise_scale_boosting,
                         bin_data_weights,
                         rngs[idx],
                         None,
@@ -965,7 +965,7 @@ class EBMModel(BaseEstimator):
                             self.max_rounds,
                             early_stopping_rounds_local,
                             early_stopping_tolerance,
-                            noise_scale,
+                            noise_scale_boosting,
                             bin_data_weights,
                             rngs[idx],
                             None,
@@ -1034,12 +1034,13 @@ class EBMModel(BaseEstimator):
         self.term_names_ = term_names
 
         if is_differential_privacy:
-            self.noise_scale_ = noise_scale
+            # TODO: add noise_scale_binning_
+            self.noise_scale_boosting_ = noise_scale_boosting
         else:
             # differentially private models would need to pay additional privacy budget to make
             # these public, but they are non-essential so we don't disclose them in the DP setting
 
-            # dependent attributes (can be re-derrived after serialization)
+            # dependent attribute (can be re-derrived after serialization from feature_bounds_)
             self.histogram_edges_ = histogram_edges
 
             # per-feature
@@ -1049,6 +1050,8 @@ class EBMModel(BaseEstimator):
         if 0 <= n_classes:
             self.classes_ = classes  # required by scikit-learn
         else:
+            # we do not use these currently, but they indicate the domain for DP and
+            # we could use them in the future to indicate on the graphs the target range
             self.min_target_ = min_target
             self.max_target_ = max_target
 
@@ -1132,9 +1135,9 @@ class EBMModel(BaseEstimator):
             j["intercept"] = EBMUtils.jsonify_lists(self.intercept_.tolist())
 
         if 3 <= level:
-            noise_scale = getattr(self, "noise_scale_", None)
-            if noise_scale is not None:
-                j["noise_scale"] = EBMUtils.jsonify_item(noise_scale)
+            noise_scale_boosting = getattr(self, "noise_scale_boosting_", None)
+            if noise_scale_boosting is not None:
+                j["noise_scale_boosting"] = EBMUtils.jsonify_item(noise_scale_boosting)
         if 2 <= level:
             bag_weights = getattr(self, "bag_weights_", None)
             if bag_weights is not None:
@@ -1902,9 +1905,9 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         early_stopping_rounds=50,
         early_stopping_tolerance=1e-4,
         # Trees
-        # objective,
         min_samples_leaf=2,
         max_leaves=3,
+        # objective,
         # Overall
         n_jobs=-2,
         random_state=42,
@@ -1913,26 +1916,40 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
         Args:
             feature_names: List of feature names.
-            feature_types: List of feature types.
-            max_bins: Max number of bins per feature for pre-processing stage on main effects.
-            max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
-            interactions: Interactions to be trained on.
-                Either a list of tuples of feature indices, an integer or percentage of the count of main effects for number of automatically detected interactions.
-                Interactions are forcefully set to 0 for multiclass problems.
-            exclude: Features or terms to be excluded. "mains" excludes all main effect features
-            validation_size: Validation set size for boosting.
-                validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
-            outer_bags: Number of outer bags.
-            inner_bags: Number of inner bags. 0 turns off inner bagging.
+            feature_types: List of feature types. Options are:
+                "quantile" - Equally dense bins
+                "rounded_quantile" - Quantile bins, but the cut values are rounded when possible
+                "uniform" - Equally spaced bins
+                "winsorized" - Equally spaced bins, but the leftmost and rightmost cut are chosen by quantiles
+                "continuous" - Use the default for continuous features, which is "quantile" currently
+                List of floats - Specific cut values for a continuous feature. Eg: [5.5, 8.75]
+                List of strings - Ordinal categorical where the order has meaning. Eg: ["low", "medium", "high"]
+                "ordinal" - Ordinal categorical where the order is determined by sorting the string values
+                "nominal" - Categorical where the order has no meaning. Eg: country names
+            max_bins: Max number of bins per feature for the main effects stage.
+            max_interaction_bins: Max number of bins per feature for interaction terms.
+            interactions: Interaction terms to be included in the model. Options are:
+                List of tuples - The tuples contain the feature indices of each interaction term
+                Integer - Count of interactions to be automatically determined
+                Percentage (less than 1.0) - Determine the integer count of interactions by multiplying the number of features by this percentage
+            exclude: Features or terms to be excluded. Options are:
+                List of tuples - The tuples contain the feature indices or feature names in the terms
+                "mains" - Excludes all main effects. Useful when building EBMs in successive stages
+            validation_size: Validation set size. Used for early stopping during boosting, and is needed to create outer bags.
+                Percentage (validation_size < 1.0) - Percentage of the data to put in the validation sets
+                Integer (1 <= validation_size) - Count of samples to put in the validation sets
+                0 - Turns off early stopping. Outer bags have no utility. Error bounds will be eliminated
+            outer_bags: Number of outer bags. Outer bags are used to generate error bounds and helps smooth the graphs.
+            inner_bags: Number of inner bags. 0 turns off inner bagging. Default is 0.
             learning_rate: Learning rate for boosting.
-            greediness: percentage of rounds where boosting is greedy instead of round-robin
+            greediness: Percentage of rounds where boosting is greedy instead of round-robin. Greedy rounds are intermixed with cyclic rounds.
             smoothing_rounds: Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-            max_rounds: Number of rounds for boosting.
-            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
-                0 turns off early stopping and boosting will occur for exactly max_rounds
+            max_rounds: Total number of rounds for boosting.
+            early_stopping_rounds: Number of rounds with no improvement to trigger early stopping.
+                0 - Turns off early stopping and boosting will occur for exactly max_rounds
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
-            min_samples_leaf: Minimum number of cases for tree splits used in boosting.
-            max_leaves: Maximum leaf nodes used in boosting.
+            min_samples_leaf: Minimum number of samples in a proposed leaf to allow tree splits.
+            max_leaves: Maximum number of leaf nodes in the trees.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
         """
@@ -2104,9 +2121,9 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         early_stopping_rounds=50,
         early_stopping_tolerance=1e-4,
         # Trees
-        # objective,
         min_samples_leaf=2,
         max_leaves=3,
+        # objective,
         # Overall
         n_jobs=-2,
         random_state=42,
@@ -2115,26 +2132,40 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
         Args:
             feature_names: List of feature names.
-            feature_types: List of feature types.
-            max_bins: Max number of bins per feature for pre-processing stage on main effects.
-            max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
-            interactions: Interactions to be trained on.
-                Either a list of tuples of feature indices, an integer or percentage of the count of main effects for number of automatically detected interactions.
-                Interactions are forcefully set to 0 for multiclass problems.
-            exclude: Features or terms to be excluded. "mains" excludes all main effect features
-            validation_size: Validation set size for boosting.
-                validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
-            outer_bags: Number of outer bags.
-            inner_bags: Number of inner bags. 0 turns off inner bagging.
+            feature_types: List of feature types. Options are:
+                "quantile" - Equally dense bins
+                "rounded_quantile" - Quantile bins, but the cut values are rounded when possible
+                "uniform" - Equally spaced bins
+                "winsorized" - Equally spaced bins, but the leftmost and rightmost cut are chosen by quantiles
+                "continuous" - Use the default for continuous features, which is "quantile" currently
+                List of floats - Specific cut values for a continuous feature. Eg: [5.5, 8.75]
+                List of strings - Ordinal categorical where the order has meaning. Eg: ["low", "medium", "high"]
+                "ordinal" - Ordinal categorical where the order is determined by sorting the string values
+                "nominal" - Categorical where the order has no meaning. Eg: country names
+            max_bins: Max number of bins per feature for the main effects stage.
+            max_interaction_bins: Max number of bins per feature for interaction terms.
+            interactions: Interaction terms to be included in the model. Options are:
+                List of tuples - The tuples contain the feature indices of each interaction term
+                Integer - Count of interactions to be automatically determined
+                Percentage (less than 1.0) - Determine the integer count of interactions by multiplying the number of features by this percentage
+            exclude: Features or terms to be excluded. Options are:
+                List of tuples - The tuples contain the feature indices or feature names in the terms
+                "mains" - Excludes all main effects. Useful when building EBMs in successive stages
+            validation_size: Validation set size. Used for early stopping during boosting, and is needed to create outer bags.
+                Percentage (validation_size < 1.0) - Percentage of the data to put in the validation sets
+                Integer (1 <= validation_size) - Count of samples to put in the validation sets
+                0 - Turns off early stopping. Outer bags have no utility. Error bounds will be eliminated
+            outer_bags: Number of outer bags. Outer bags are used to generate error bounds and helps smooth the graphs.
+            inner_bags: Number of inner bags. 0 turns off inner bagging. Default is 0.
             learning_rate: Learning rate for boosting.
-            greediness: percentage of rounds where boosting is greedy instead of round-robin
-            smoothing_rounds: Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs
-            max_rounds: Number of rounds for boosting.
-            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
-                0 turns off early stopping and boosting will occur for exactly max_rounds
+            greediness: Percentage of rounds where boosting is greedy instead of round-robin. Greedy rounds are intermixed with cyclic rounds.
+            smoothing_rounds: Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
+            max_rounds: Total number of rounds for boosting.
+            early_stopping_rounds: Number of rounds with no improvement to trigger early stopping.
+                0 - Turns off early stopping and boosting will occur for exactly max_rounds
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
-            min_samples_leaf: Minimum number of cases for tree splits used in boosting.
-            max_leaves: Maximum leaf nodes used in boosting.
+            min_samples_leaf: Minimum number of samples in a proposed leaf to allow tree splits.
+            max_leaves: Maximum number of leaf nodes in the trees.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
         """
@@ -2250,17 +2281,20 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         Args:
             feature_names: List of feature names.
             feature_types: List of feature types.
-            max_bins: Max number of bins per feature for pre-processing stage.
-            exclude: Features or terms to be excluded. "mains" excludes all main effect features
-            validation_size: Validation set size for boosting.
-                validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
-            outer_bags: Number of outer bags.
+            max_bins: Max number of bins per feature.
+            exclude: Features or terms to be excluded. Options are:
+                List of tuples - The tuples contain the feature indices or feature names in the terms
+            validation_size: Validation set size. Needed to create outer bags.
+                Percentage (validation_size < 1.0) - Percentage of the data to put in the validation sets
+                Integer (1 <= validation_size) - Count of samples to put in the validation sets
+                0 - Outer bags have no utility. Error bounds will be eliminated
+            outer_bags: Number of outer bags. Outer bags are used to generate error bounds and helps smooth the graphs.
             learning_rate: Learning rate for boosting.
-            max_rounds: Number of rounds for boosting.
-            min_samples_leaf: Minimum number of cases for tree splits used in boosting.
-            max_leaves: Maximum leaf nodes used in boosting.
+            max_rounds: Total number of rounds for boosting.
+            min_samples_leaf: Minimum number of samples in a proposed leaf to allow tree splits.
+            max_leaves: Maximum number of leaf nodes in the trees.
             n_jobs: Number of jobs to run in parallel.
-            random_state: Random state.
+            random_state: Random state. Should be set to 'None' for DP, but can be set to an integer for testing and repeatability.
             epsilon: Total privacy budget to be spent across all rounds of training.
             delta: Additive component of differential privacy guarantee. Should be smaller than 1/n_training_samples.
             composition: Method of tracking noise aggregation. Must be one of 'classic' or 'gdp'.
@@ -2399,17 +2433,20 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Args:
             feature_names: List of feature names.
             feature_types: List of feature types.
-            max_bins: Max number of bins per feature for pre-processing stage.
-            exclude: Features or terms to be excluded. "mains" excludes all main effect features
-            validation_size: Validation set size for boosting.
-                validation_size < 1.0 are percentages. 1 <= validation_size are counts of samples
-            outer_bags: Number of outer bags.
+            max_bins: Max number of bins per feature.
+            exclude: Features or terms to be excluded. Options are:
+                List of tuples - The tuples contain the feature indices or feature names in the terms
+            validation_size: Validation set size. Needed to create outer bags.
+                Percentage (validation_size < 1.0) - Percentage of the data to put in the validation sets
+                Integer (1 <= validation_size) - Count of samples to put in the validation sets
+                0 - Outer bags have no utility. Error bounds will be eliminated
+            outer_bags: Number of outer bags. Outer bags are used to generate error bounds and helps smooth the graphs.
             learning_rate: Learning rate for boosting.
-            max_rounds: Number of rounds for boosting.
-            min_samples_leaf: Minimum number of cases for tree splits used in boosting.
-            max_leaves: Maximum leaf nodes used in boosting.
+            max_rounds: Total number of rounds for boosting.
+            min_samples_leaf: Minimum number of samples in a proposed leaf to allow tree splits.
+            max_leaves: Maximum number of leaf nodes in the trees.
             n_jobs: Number of jobs to run in parallel.
-            random_state: Random state.
+            random_state: Random state. Should be set to 'None' for DP, but can be set to an integer for testing and repeatability.
             epsilon: Total privacy budget to be spent across all rounds of training.
             delta: Additive component of differential privacy guarantee. Should be smaller than 1/n_training_samples.
             composition: Method of tracking noise aggregation. Must be one of 'classic' or 'gdp'.

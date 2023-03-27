@@ -1335,20 +1335,24 @@ class EBMUtils:
                 else:
                     no_change_run_length += 1
 
+                if 1.0 <= greedy_portion:
+                    greedy_portion -= 1.0
+
+                if 0 < smoothing_rounds:
+                    # disable early stopping progress during the smoothing rounds since
+                    # cuts are chosen randomly, which will lead to high variance on the
+                    # validation metric
+                    no_change_run_length = 0
+                    smoothing_rounds -= 1
+                else:
+                    # do not progress into greedy rounds until we're done with the smoothing_rounds
+                    greedy_portion += greediness
+
                 if (
                     early_stopping_rounds > 0
                     and no_change_run_length >= early_stopping_rounds
                 ):
                     break
-
-                if 1.0 <= greedy_portion:
-                    greedy_portion -= 1.0
-
-                if 0 < smoothing_rounds:
-                    smoothing_rounds -= 1
-                else:
-                    # do not progress into greedy rounds until we're done with the smoothing_rounds
-                    greedy_portion += greediness
 
             _log.info(
                 "End boosting, Best Metric: {0}, Num Rounds: {1}".format(
