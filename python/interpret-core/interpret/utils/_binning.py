@@ -2354,6 +2354,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.histogram_counts_ = histogram_counts
         self.missing_val_counts_ = missing_val_counts
         self.unique_val_counts_ = unique_val_counts
+        self.noise_scale_ = noise_scale
         self.has_fitted_ = True
         return self
 
@@ -2501,6 +2502,7 @@ def construct_bins(
             histogram_counts = preprocessor.histogram_counts_
             missing_val_counts = preprocessor.missing_val_counts_
             unique_val_counts = preprocessor.unique_val_counts_
+            noise_scale = preprocessor.noise_scale_
         else:
             if feature_names_in != preprocessor.feature_names_in_:
                 raise RuntimeError("Mismatched feature_names")
@@ -2522,6 +2524,7 @@ def construct_bins(
         histogram_counts,
         missing_val_counts,
         unique_val_counts,
+        noise_scale,
     )
 
 

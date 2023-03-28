@@ -577,6 +577,7 @@ class EBMModel(BaseEstimator):
         histogram_counts = binning_result[5]
         missing_val_counts = binning_result[6]
         unique_val_counts = binning_result[7]
+        noise_scale_binning = binning_result[8]
 
         if np.count_nonzero(missing_val_counts):
             warn(
@@ -1034,7 +1035,7 @@ class EBMModel(BaseEstimator):
         self.term_names_ = term_names
 
         if is_differential_privacy:
-            # TODO: add noise_scale_binning_
+            self.noise_scale_binning_ = noise_scale_binning
             self.noise_scale_boosting_ = noise_scale_boosting
         else:
             # differentially private models would need to pay additional privacy budget to make
@@ -1135,6 +1136,9 @@ class EBMModel(BaseEstimator):
             j["intercept"] = EBMUtils.jsonify_lists(self.intercept_.tolist())
 
         if 3 <= level:
+            noise_scale_binning = getattr(self, "noise_scale_binning_", None)
+            if noise_scale_binning is not None:
+                j["noise_scale_binning"] = EBMUtils.jsonify_item(noise_scale_binning)
             noise_scale_boosting = getattr(self, "noise_scale_boosting_", None)
             if noise_scale_boosting is not None:
                 j["noise_scale_boosting"] = EBMUtils.jsonify_item(noise_scale_boosting)

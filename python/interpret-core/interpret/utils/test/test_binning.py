@@ -3746,6 +3746,7 @@ def test_bin_native():
         histogram_counts,
         missing_val_counts,
         unique_val_counts,
+        noise_scale_binning,
     ) = construct_bins(
         X, y, sample_weight, feature_names_given, feature_types_given, [256, 5, 3]
     )
