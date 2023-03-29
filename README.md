@@ -1,7 +1,7 @@
 # InterpretML
 
-![License](https://img.shields.io/github/license/interpretml/interpret.svg?style=flat-square)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/interpretml/interpret/develop?labpath=examples%2Fpython%2FInterpretable_Classification_Methods.ipynb)
+![License](https://img.shields.io/github/license/interpretml/interpret.svg?style=flat-square)
 ![Python Version](https://img.shields.io/pypi/pyversions/interpret.svg?style=flat-square)
 ![Package Version](https://img.shields.io/pypi/v/interpret.svg?style=flat-square)
 ![Conda](https://img.shields.io/conda/v/conda-forge/interpret)
