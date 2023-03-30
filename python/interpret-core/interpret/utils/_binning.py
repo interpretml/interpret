@@ -239,7 +239,7 @@ from ._privacy import (
 #     YES!  ->   float to string in MIT license:
 #     https://github.com/numpy/numpy/blob/3de252be1215c0f9bc0a2f5c3aebdd7ffc86e410/numpy/core/src/multiarray/dragon4.h
 #     https://github.com/numpy/numpy/blob/3de252be1215c0f9bc0a2f5c3aebdd7ffc86e410/numpy/core/src/multiarray/dragon4.c
-#   - Python uses the gold standard for float/string conversion: http://www.netlib.org/fp/dtoa.c
+#   - Python uses the gold standard for float/string conversion: https://www.netlib.org/fp/dtoa.c
 #     https://github.com/python/cpython/blob/main/Python/dtoa.c
 #     This code outputs the shortest possible string that uses IEEE 754 "exact rounding" using bankers' rounding
 #     which also guarantees rountrips precicely.  This is great for interpretability.  Unfortunatetly this means

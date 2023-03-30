@@ -270,7 +270,7 @@ static bool FloatToFullString(const double val, char * const str) noexcept {
 // are converted back to floats.  This also applies to serialization to JSON and other text.  To support this
 // we implement our own converters that are guararanteed to be identical between languages.  
 // 
-// The gold standard for float/string conversion is this: http://www.netlib.org/fp/dtoa.c
+// The gold standard for float/string conversion is this: https://www.netlib.org/fp/dtoa.c
 // It is used in python: https://github.com/python/cpython/blob/main/Python/dtoa.c
 // Microsoft Edge for Android uses it: https://www.microsoft.com/en-us/legal/products/notices/msedgeandroid
 // Java uses a port of this made to the Java language

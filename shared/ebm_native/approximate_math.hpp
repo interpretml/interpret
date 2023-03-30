@@ -61,7 +61,7 @@ namespace DEFINED_ZONE_NAME {
 
 // This paper details our fast exp/log approximation -> "A Fast, Compact Approximation of the Exponential Function"
 // by Nicol N. Schraudolph
-// http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
+// https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
 //
 // Here's an implementation from the paper, but includes other options, like float/int32_t versions, and log
 // https://github.com/ekmett/approximate/blob/master/cbits/fast.c
@@ -71,7 +71,7 @@ namespace DEFINED_ZONE_NAME {
 // Here's a description by Paul Mineiro on how his works
 // http://www.machinedlearnings.com/2011/06/fast-approximate-logarithm-exponential.html
 // and a Mathematica Notebook where the constants were calculated by Paul Mineiro (more precise numbers are available):
-// http://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
+// https://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
 // The Paul Mineiro variants seem to be based on a Pade approximant
 // https://math.stackexchange.com/questions/55830/how-to-calculate-ex-with-a-standard-calculator/56064#56064
 //
@@ -413,7 +413,7 @@ INLINE_ALWAYS static T ExpApproxBest(T val) {
    // Here's a description by Paul Mineiro on how it works
    // http://www.machinedlearnings.com/2011/06/fast-approximate-logarithm-exponential.html
    // and a Mathematica Notebook where the constants were calculated (and longer ones are available):
-   // http://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
+   // https://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
    // This blog shows benchmarks and errors for this approximation and some others:
    // https://deathandthepenguinblog.wordpress.com/2015/04/13/writing-a-faster-exp/
    // according to this, SSE 4.1 (launched in 2006) solved the performance issues on Intel with fast EXPs 
@@ -513,7 +513,7 @@ INLINE_ALWAYS static T ExpApproxBest(T val) {
 
       // original formula from here: https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastexp.h
       // from the Mathematica Notebook where the constants were calculated (and longer ones are available):
-      // http://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
+      // https://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
       // 121.2740575f is really 121.27405755366965833343835512821308140575
       // 27.7280233f is really 27.72802338968109763318198810783757358521
       // 4.84252568f is really 4.84252568892855574935929971220272175743
@@ -625,7 +625,7 @@ static constexpr float k_logTermZeroMeanErrorForLogFrom1_To1_5 = -87.9865799f; /
 
 
 // the more exact log constancts from https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastlog.h
-// listed in http://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
+// listed in https://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
 // are (we might need them someday if we want to construct a more exact log function):
 // 0.69314718f is really: ln(2)
 // 1.1920928955078125e-7f is really: 1/8388608 = 1 / (1 << 23)

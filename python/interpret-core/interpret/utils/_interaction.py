@@ -6,7 +6,7 @@
 This module exposes a method called FAST [1] to measure and rank the strengths
 of the interaction of all pairs of features in a dataset.
 
-[1] http://www.cs.cornell.edu/~yinlou/papers/lou-kdd13.pdf
+[1] https://www.cs.cornell.edu/~yinlou/papers/lou-kdd13.pdf
 """
 
 from itertools import count

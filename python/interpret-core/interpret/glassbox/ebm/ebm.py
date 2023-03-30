@@ -1996,7 +1996,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Per-bag record of the total weight within each bag.
     breakpoint_iteration\_ : array of int with shape ``(n_stages, n_outer_bags)``
         The number of boosting rounds performed until either early stopping, or the max_rounds was reached.
-        Normally, the main effects boosting rounds will be in breakpoint_iteration_[0], 
+        Normally, the main effects boosting rounds will be in breakpoint_iteration_[0],
         and the interaction boosting rounds will be in breakpoint_iteration_[1].
     intercept\_ : array of float with shape ``(n_classes,)`` or ``(1,)``
         Intercept of the model. Binary classification is shape ``(1,)``, and multiclass is shape ``(n_classes,)``
@@ -2486,9 +2486,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             bin_budget_frac=bin_budget_frac,
         )
 
-    def fit(
-        self, X, y, sample_weight=None
-    ):
+    def fit(self, X, y, sample_weight=None):
         """Fits model to provided samples.
 
         Args:
@@ -2500,8 +2498,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             Itself.
         """
         super(DPExplainableBoostingClassifier, self).fit(
-            X=X, 
-            y=y, 
+            X=X,
+            y=y,
             sample_weight=sample_weight,
         )
 
@@ -2681,9 +2679,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             bin_budget_frac=bin_budget_frac,
         )
 
-    def fit(
-        self, X, y, sample_weight=None
-    ):
+    def fit(self, X, y, sample_weight=None):
         """Fits model to provided samples.
 
         Args:
@@ -2695,8 +2691,8 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             Itself.
         """
         super(DPExplainableBoostingRegressor, self).fit(
-            X=X, 
-            y=y, 
+            X=X,
+            y=y,
             sample_weight=sample_weight,
         )
 

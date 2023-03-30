@@ -102,7 +102,7 @@ show([logistic_regression_global, decision_tree_global])
 
 <br/>
 
-If you need to keep your data private, use Differentially Private EBMs (see [DP-EBMs](http://proceedings.mlr.press/v139/nori21a/nori21a.pdf))
+If you need to keep your data private, use Differentially Private EBMs (see [DP-EBMs](https://proceedings.mlr.press/v139/nori21a/nori21a.pdf))
 
 ```python
 from interpret.privacy import DPExplainableBoostingClassifier, DPExplainableBoostingRegressor
@@ -205,7 +205,7 @@ We also build on top of many great packages. Please check them out!
   organization={ACM}
 }
     </pre>
-    <a href="http://www.cs.cornell.edu/~yinlou/papers/lou-kdd13.pdf">Paper link</a>
+    <a href="https://www.cs.cornell.edu/~yinlou/papers/lou-kdd13.pdf">Paper link</a>
   </details>
 
   <details>
@@ -308,7 +308,7 @@ We also build on top of many great packages. Please check them out!
   year={2020}
 }
     </pre>
-    <a href="http://www-personal.umich.edu/~harmank/Papers/CHI2020_Interpretability.pdf">Paper link</a>
+    <a href="https://www.microsoft.com/en-us/research/publication/interpreting-interpretability-understanding-data-scientists-use-of-interpretability-tools-for-machine-learning/">Paper link</a>
   </details>
 
   <details>
@@ -351,7 +351,7 @@ We also build on top of many great packages. Please check them out!
   publisher =    {PMLR}
 }
     </pre>
-    <a href="http://proceedings.mlr.press/v139/nori21a/nori21a.pdf">Paper link</a>
+    <a href="https://proceedings.mlr.press/v139/nori21a/nori21a.pdf">Paper link</a>
   </details>
 
   <hr/>
@@ -400,10 +400,10 @@ We also build on top of many great packages. Please check them out!
  pages = {4765--4774},
  year = {2017},
  publisher = {Curran Associates, Inc.},
- url = {http://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions.pdf}
+ url = {https://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions.pdf}
 }
     </pre>
-    <a href="http://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions.pdf">Paper link</a>
+    <a href="https://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions.pdf">Paper link</a>
   </details>
 
   <details>
@@ -536,7 +536,7 @@ We also build on top of many great packages. Please check them out!
   year={2011}
 }
     </pre>
-    <a href="http://www.jmlr.org/papers/volume12/pedregosa11a/pedregosa11a.pdf">Paper link</a>
+    <a href="https://www.jmlr.org/papers/volume12/pedregosa11a/pedregosa11a.pdf">Paper link</a>
   </details>
 
   <details>
@@ -639,7 +639,7 @@ We also build on top of many great packages. Please check them out!
 - [A Concept and Argumentation based Interpretable Model in High Risk Domains](https://arxiv.org/pdf/2208.08149.pdf)
 - [Analyzing the Differences between Professional and Amateur Esports through Win Probability](https://dl.acm.org/doi/pdf/10.1145/3485447.3512277)
 - [Explainable machine learning with pairwise interactions for the classifcation of Parkinson’s disease and SWEDD from clinical and imaging features](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9132761/pdf/11682_2022_Article_688.pdf)
-- [Interpretable Prediction of Goals in Soccer](http://statsbomb.com/wp-content/uploads/2019/10/decroos-interpretability-statsbomb.pdf)
+- [Interpretable Prediction of Goals in Soccer](https://statsbomb.com/wp-content/uploads/2019/10/decroos-interpretability-statsbomb.pdf)
 - [Extending the Tsetlin Machine with Integer-Weighted Clauses for Increased Interpretability](https://arxiv.org/pdf/2005.05131.pdf)
 - [In Pursuit of Interpretable, Fair and Accurate Machine Learning for Criminal Recidivism Prediction](https://arxiv.org/pdf/2005.04176.pdf)
 - [From Shapley Values to Generalized Additive Models and back](https://arxiv.org/pdf/2209.04012.pdf)
