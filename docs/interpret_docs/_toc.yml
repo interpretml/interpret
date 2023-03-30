@@ -23,6 +23,9 @@ parts:
     - file: lime
     - file: pdp
     - file: msa
+  - file: privacy
+    sections:
+    - file: dpebm
 - caption: More EBMs
   chapters:
   - file: ebm-internals

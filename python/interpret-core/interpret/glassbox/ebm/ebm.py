@@ -535,6 +535,8 @@ class EBMModel(BaseEstimator):
             bin_delta = self.delta / 2
             composition = self.composition
             binning = "private"
+            # TODO: should this be 10 with a warning if feature_types is None?
+            min_unique_continuous = 0
 
             bin_levels = [self.max_bins]
         else:
@@ -542,6 +544,10 @@ class EBMModel(BaseEstimator):
             bin_delta = None
             composition = None
             binning = "quantile"
+            # TODO: bump this up to something like 10 again, but ONLY after we've standardized
+            #       our code to turn 1 and 1.0 both into the categorical "1" AND we can handle
+            #       categorical to continuous soft transitions.
+            min_unique_continuous = 0
 
             bin_levels = [self.max_bins, self.max_interaction_bins]
 
@@ -560,7 +566,7 @@ class EBMModel(BaseEstimator):
             max_bins_leveled=bin_levels,
             binning=binning,
             min_samples_bin=1,
-            min_unique_continuous=0,
+            min_unique_continuous=min_unique_continuous,
             random_state=init_random_state,
             epsilon=bin_eps,
             delta=bin_delta,
@@ -1875,7 +1881,126 @@ class EBMModel(BaseEstimator):
 
 
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
-    """Explainable Boosting Classifier"""
+    """An Explainable Boosting Classifier
+
+    Parameters
+    ----------
+    feature_names : list of str, default=None
+        List of feature names.
+    feature_types : list of FeatureType, default=None
+
+        List of feature types. FeatureType can be:
+
+            - `None`: Auto-detect
+            - `'quantile'`: Continuous with equal density bins
+            - `'rounded_quantile'`: Continuous with quantile bins, but the cut values are rounded when possible
+            - `'uniform'`: Continuous with equal width bins
+            - `'winsorized'`: Continuous with equal width bins, but the leftmost and rightmost cut are chosen by quantiles
+            - `'continuous'`: Use the default binning for continuous features, which is 'quantile' currently
+            - `[List of float]`: Continuous with specified cut values. Eg: [5.5, 8.75]
+            - `[List of str]`: Ordinal categorical where the order has meaning. Eg: ["low", "medium", "high"]
+            - `'ordinal'`: Ordinal categorical where the order is determined by sorting the feature string values
+            - `'nominal'`: Categorical where the order has no meaning. Eg: country names
+    max_bins : int, default=256
+        Max number of bins per feature for the main effects stage.
+    max_interaction_bins : int, default=32
+        Max number of bins per feature for interaction terms.
+    interactions : int, float, or list of tuples of feature indices, default=10
+
+        Interaction terms to be included in the model. Options are:
+
+            - Integer (1 <= interactions): Count of interactions to be automatically selected
+            - Percentage (interactions < 1.0): Determine the integer count of interactions by multiplying the number of features by this percentage
+            - List of tuples: The tuples contain the indices of the features within the additive term
+    exclude : 'mains' or list of tuples of feature indices|names, default=[]
+        Features or terms to be excluded.
+    validation_size : int or float, default=0.15
+
+        Validation set size. Used for early stopping during boosting, and is needed to create outer bags.
+
+            - Integer (1 <= validation_size): Count of samples to put in the validation sets
+            - Percentage (validation_size < 1.0): Percentage of the data to put in the validation sets
+            - 0: Turns off early stopping. Outer bags have no utility. Error bounds will be eliminated
+    outer_bags : int, default=8
+        Number of outer bags. Outer bags are used to generate error bounds and help with smoothing the graphs.
+    inner_bags : int, default=0
+        Number of inner bags. 0 turns off inner bagging.
+    learning_rate : float, default=0.01
+        Learning rate for boosting.
+    greediness : float, default=0.0
+        Percentage of rounds where boosting is greedy instead of round-robin. Greedy rounds are intermixed with cyclic rounds.
+    smoothing_rounds : int, default=0
+        Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
+    max_rounds : int, default=5000
+        Total number of boosting rounds with n_terms boosting steps per round.
+    early_stopping_rounds : int, default=50
+        Number of rounds with no improvement to trigger early stopping. 0 turns off
+        early stopping and boosting will occur for exactly max_rounds.
+    early_stopping_tolerance : float, default=1e-4
+        Tolerance that dictates the smallest delta required to be considered an improvement.
+    min_samples_leaf : int, default=2
+        Minimum number of samples allowed in the leaves.
+    max_leaves : int, default=3
+        Maximum number of leaves allowed in each tree.
+    n_jobs : int, default=-2
+        Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
+        (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
+    random_state : int or None, default=42
+        Random state. None uses device_random and generates non-repeatable sequences.
+
+    Attributes
+    ----------
+    classes\_ : array of bool, int, or unicode with shape ``(n_classes,)``
+        The class labels.
+    n_features_in\_ : int
+        Number of features.
+    feature_names_in\_ : List of str
+        Resolved feature names. Names can come from feature_names, X, or be auto-generated.
+    feature_types_in\_ : List of str
+        Resolved feature types. Can be: 'continuous', 'nominal', or 'ordinal'.
+    bins\_ : List[Union[List[Dict[str, int]], List[array of float with shape ``(n_cuts,)``]]]
+        Per-feature list that defines how to bin each feature. Each feature in the list contains
+        a list of binning resolutions. The first item in the binning resolution list is for binning
+        main effect features. If there are more items in the binning resolution list, they define the
+        binning for successive levels of resolutions. The list at index 1, if it exists, defines the
+        binning for pairs. The last binning resolution defines the bins for all successive interaction levels.
+        If the binning resolution list contains dictionaries, then the feature is either a 'nominal' or
+        'ordinal' categorical. If the binning resolution list contains arrays, then the feature is 'continuous'
+        and the arrays will contain float cut points that separate continuous values into bins.
+    feature_bounds\_ : array of float with shape ``(n_features, 2)``
+        min/max bounds for each feature. feature_bounds_[feature_index, 0] is the min value of the feature
+        and feature_bounds_[feature_index, 1] is the max value of the feature. Categoricals have min & max
+        values of NaN.
+    histogram_edges\_ : List of None or array of float with shape ``(n_hist_edges,)``
+        Per-feature list of the histogram edges. Categorical features contain None within the List.
+    histogram_counts\_ : List of array of int with shape ``(n_hist_bins,)``
+        Per-feature list of the bin sample counts in the histogram bins.
+    unique_val_counts\_ : array of int with shape ``(n_features,)``
+        Per-feature count of unique feature values.
+    term_features\_ : List of tuples of feature indices
+        Terms used in the model and their component feature indices.
+    term_names\_ : List of str
+        List of term names.
+    bin_weights\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins)``
+        Per-term list of the total sample weights in each tensor bin
+    bagged_scores\_ : List of array of float with shape ``(n_outer_bags, n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_outer_bags, n_feature0_bins, ..., n_featureN_bins)``
+        Per-term list of the bagged model scores.
+        The last dimension of length n_classes is dropped for binary classification.
+    term_scores\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_feature0_bins, ..., n_featureN_bins)``
+        Per-term list of the model scores.
+        The last dimension of length n_classes is dropped for binary classification.
+    standard_deviations\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_feature0_bins, ..., n_featureN_bins)``
+        Per-term list of the variances of the bagged model scores.
+        The last dimension of length n_classes is dropped for binary classification.
+    bag_weights\_ : array of float with shape ``(n_bags,)``
+        Per-bag record of the total weight within each bag.
+    breakpoint_iteration\_ : array of int with shape ``(n_stages, n_outer_bags)``
+        The number of boosting rounds performed until either early stopping, or the max_rounds was reached.
+        Normally, the main effects boosting rounds will be in breakpoint_iteration_[0], 
+        and the interaction boosting rounds will be in breakpoint_iteration_[1].
+    intercept\_ : array of float with shape ``(n_classes,)`` or ``(1,)``
+        Intercept of the model. Binary classification is shape ``(1,)``, and multiclass is shape ``(n_classes,)``
+    """
 
     n_features_in_: int
     term_names_: List[str]
@@ -1895,7 +2020,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     histogram_counts_: List[np.ndarray]  # np.int64, 1D[hist_bin]
     unique_val_counts_: np.ndarray  # np.int64, 1D[feature]
 
-    classes_: Union[List[int], List[str]]
+    classes_: np.ndarray  # np.int64, np.bool_, or np.unicode_, 1D[class]
     intercept_: np.ndarray  # np.float64, 1D[class]
 
     # TODO PK v.3 use underscores here like ClassifierMixin._estimator_type?
@@ -1939,47 +2064,6 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         n_jobs: int = -2,
         random_state: Optional[int] = 42,
     ):
-        """Explainable Boosting Classifier
-
-        Args:
-            feature_names: List of feature names.
-            feature_types: List of feature types. Options are:
-                "quantile" - Equally dense bins
-                "rounded_quantile" - Quantile bins, but the cut values are rounded when possible
-                "uniform" - Equally spaced bins
-                "winsorized" - Equally spaced bins, but the leftmost and rightmost cut are chosen by quantiles
-                "continuous" - Use the default for continuous features, which is "quantile" currently
-                List of floats - Specific cut values for a continuous feature. Eg: [5.5, 8.75]
-                List of strings - Ordinal categorical where the order has meaning. Eg: ["low", "medium", "high"]
-                "ordinal" - Ordinal categorical where the order is determined by sorting the string values
-                "nominal" - Categorical where the order has no meaning. Eg: country names
-            max_bins: Max number of bins per feature for the main effects stage.
-            max_interaction_bins: Max number of bins per feature for interaction terms.
-            interactions: Interaction terms to be included in the model. Options are:
-                List of tuples - The tuples contain the feature indices of each interaction term
-                Integer - Count of interactions to be automatically determined
-                Percentage (less than 1.0) - Determine the integer count of interactions by multiplying the number of features by this percentage
-            exclude: Features or terms to be excluded. Options are:
-                List of tuples - The tuples contain the feature indices or feature names in the terms
-                "mains" - Excludes all main effects. Useful when building EBMs in successive stages
-            validation_size: Validation set size. Used for early stopping during boosting, and is needed to create outer bags.
-                Percentage (validation_size < 1.0) - Percentage of the data to put in the validation sets
-                Integer (1 <= validation_size) - Count of samples to put in the validation sets
-                0 - Turns off early stopping. Outer bags have no utility. Error bounds will be eliminated
-            outer_bags: Number of outer bags. Outer bags are used to generate error bounds and helps smooth the graphs.
-            inner_bags: Number of inner bags. 0 turns off inner bagging. Default is 0.
-            learning_rate: Learning rate for boosting.
-            greediness: Percentage of rounds where boosting is greedy instead of round-robin. Greedy rounds are intermixed with cyclic rounds.
-            smoothing_rounds: Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-            max_rounds: Total number of rounds for boosting.
-            early_stopping_rounds: Number of rounds with no improvement to trigger early stopping.
-                0 - Turns off early stopping and boosting will occur for exactly max_rounds
-            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
-            min_samples_leaf: Minimum number of samples in a proposed leaf to allow tree splits.
-            max_leaves: Maximum number of leaf nodes in the trees.
-            n_jobs: Number of jobs to run in parallel.
-            random_state: Random state.
-        """
         super(ExplainableBoostingClassifier, self).__init__(
             feature_names=feature_names,
             feature_types=feature_types,
@@ -2314,7 +2398,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
     noise_scale_binning_: float
     noise_scale_boosting_: float
 
-    classes_: Union[List[int], List[str]]
+    classes_: np.ndarray  # np.int64, np.bool_, or np.unicode_, 1D[class]
     intercept_: np.ndarray  # np.float64, 1D[class]
 
     available_explanations = ["global", "local"]
@@ -2400,6 +2484,25 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             delta=delta,
             composition=composition,
             bin_budget_frac=bin_budget_frac,
+        )
+
+    def fit(
+        self, X, y, sample_weight=None
+    ):
+        """Fits model to provided samples.
+
+        Args:
+            X: Numpy array for training samples. IMPORTANT: The features in X must be pre-clipped to public min/max values.
+            y: Numpy array as training labels.
+            sample_weight: Optional array of weights per sample. Should be same length as X and y.
+
+        Returns:
+            Itself.
+        """
+        super(DPExplainableBoostingClassifier, self).fit(
+            X=X, 
+            y=y, 
+            sample_weight=sample_weight,
         )
 
     def predict_proba(self, X):
@@ -2576,6 +2679,25 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             delta=delta,
             composition=composition,
             bin_budget_frac=bin_budget_frac,
+        )
+
+    def fit(
+        self, X, y, sample_weight=None
+    ):
+        """Fits model to provided samples.
+
+        Args:
+            X: Numpy array for training samples. IMPORTANT: The features in X must be pre-clipped to public min/max values.
+            y: Numpy array as training labels. IMPORTANT: The y values must be pre-clipped to public min/max values.
+            sample_weight: Optional array of weights per sample. Should be same length as X and y.
+
+        Returns:
+            Itself.
+        """
+        super(DPExplainableBoostingRegressor, self).fit(
+            X=X, 
+            y=y, 
+            sample_weight=sample_weight,
         )
 
     def predict(self, X):
