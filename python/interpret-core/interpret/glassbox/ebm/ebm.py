@@ -2087,27 +2087,27 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         max_bins: int = 256,
         max_interaction_bins: int = 32,
         # Stages
-        interactions: Union[
-            None, int, float, Sequence[Union[int, str, Tuple[Union[int, str], ...]]]
+        interactions: Optional[
+            Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
         ] = 10,
-        exclude: Optional[Sequence[Union[int, str, Tuple[Union[int, str], ...]]]] = [],
+        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = [],
         # Ensemble
-        validation_size: Union[int, float] = 0.15,
+        validation_size: Optional[Union[int, float]] = 0.15,
         outer_bags: int = 8,
-        inner_bags: int = 0,
+        inner_bags: Optional[int] = 0,
         # Boosting
         learning_rate: float = 0.01,
-        greediness: float = 0.0,
-        smoothing_rounds: int = 0,
-        max_rounds: int = 5000,
-        early_stopping_rounds: int = 50,
-        early_stopping_tolerance: float = 1e-4,
+        greediness: Optional[float] = 0.0,
+        smoothing_rounds: Optional[int] = 0,
+        max_rounds: Optional[int] = 5000,
+        early_stopping_rounds: Optional[int] = 50,
+        early_stopping_tolerance: Optional[float] = 1e-4,
         # Trees
-        min_samples_leaf: int = 2,
+        min_samples_leaf: Optional[int] = 2,
         max_leaves: int = 3,
         # objective,
         # Overall
-        n_jobs: int = -2,
+        n_jobs: Optional[int] = -2,
         random_state: Optional[int] = 42,
     ):
         super(ExplainableBoostingClassifier, self).__init__(
@@ -2288,27 +2288,27 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         max_bins: int = 256,
         max_interaction_bins: int = 32,
         # Stages
-        interactions: Union[
-            None, int, float, Sequence[Union[int, str, Tuple[Union[int, str], ...]]]
+        interactions: Optional[
+            Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
         ] = 10,
-        exclude: Optional[Sequence[Union[int, str, Tuple[Union[int, str], ...]]]] = [],
+        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = [],
         # Ensemble
-        validation_size: Union[int, float] = 0.15,
+        validation_size: Optional[Union[int, float]] = 0.15,
         outer_bags: int = 8,
-        inner_bags: int = 0,
+        inner_bags: Optional[int] = 0,
         # Boosting
         learning_rate: float = 0.01,
-        greediness: float = 0.0,
-        smoothing_rounds: int = 0,
-        max_rounds: int = 5000,
-        early_stopping_rounds: int = 50,
-        early_stopping_tolerance: float = 1e-4,
+        greediness: Optional[float] = 0.0,
+        smoothing_rounds: Optional[int] = 0,
+        max_rounds: Optional[int] = 5000,
+        early_stopping_rounds: Optional[int] = 50,
+        early_stopping_tolerance: Optional[float] = 1e-4,
         # Trees
-        min_samples_leaf: int = 2,
+        min_samples_leaf: Optional[int] = 2,
         max_leaves: int = 3,
         # objective,
         # Overall
-        n_jobs: int = -2,
+        n_jobs: Optional[int] = -2,
         random_state: Optional[int] = 42,
     ):
         """Explainable Boosting Regressor
@@ -2462,19 +2462,19 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         # Preprocessor
         max_bins: int = 32,
         # Stages
-        exclude: Optional[Sequence[Union[int, str, Tuple[Union[int, str], ...]]]] = [],
+        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = [],
         # Ensemble
-        validation_size: Union[int, float] = 0,
+        validation_size: Optional[Union[int, float]] = 0,
         outer_bags: int = 1,
         # Boosting
         learning_rate: float = 0.01,
-        max_rounds: int = 300,
+        max_rounds: Optional[int] = 300,
         # Trees
-        min_samples_leaf: int = 2,
+        min_samples_leaf: Optional[int] = 2,
         max_leaves: int = 3,
         # objective,
         # Overall
-        n_jobs: int = -2,
+        n_jobs: Optional[int] = -2,
         random_state: Optional[int] = None,
         # Differential Privacy
         epsilon: float = 1.0,
@@ -2644,19 +2644,19 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Preprocessor
         max_bins: int = 32,
         # Stages
-        exclude: Optional[Sequence[Union[int, str, Tuple[Union[int, str], ...]]]] = [],
+        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = [],
         # Ensemble
-        validation_size: Union[int, float] = 0,
+        validation_size: Optional[Union[int, float]] = 0,
         outer_bags: int = 1,
         # Boosting
         learning_rate: float = 0.01,
-        max_rounds: int = 300,
+        max_rounds: Optional[int] = 300,
         # Trees
-        min_samples_leaf: int = 2,
+        min_samples_leaf: Optional[int] = 2,
         max_leaves: int = 3,
         # objective,
         # Overall
-        n_jobs: int = -2,
+        n_jobs: Optional[int] = -2,
         random_state: Optional[int] = None,
         # Differential Privacy
         epsilon: float = 1.0,
