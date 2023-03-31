@@ -312,6 +312,7 @@ class EBMModel(BaseEstimator):
         delta=1e-5,
         composition="gdp",
         bin_budget_frac=0.1,
+        privacy_bounds=None,
     ):
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -350,6 +351,7 @@ class EBMModel(BaseEstimator):
             self.delta = delta
             self.composition = composition
             self.bin_budget_frac = bin_budget_frac
+            self.privacy_bounds = privacy_bounds
 
             if random_state is not None:
                 warn(
@@ -534,6 +536,7 @@ class EBMModel(BaseEstimator):
             bin_eps = self.epsilon * self.bin_budget_frac
             bin_delta = self.delta / 2
             composition = self.composition
+            privacy_bounds = self.privacy_bounds
             binning = "private"
             # TODO: should this be 10 with a warning if feature_types is None?
             min_unique_continuous = 0
@@ -543,6 +546,7 @@ class EBMModel(BaseEstimator):
             bin_eps = None
             bin_delta = None
             composition = None
+            privacy_bounds = None
             binning = "quantile"
             # TODO: bump this up to something like 10 again, but ONLY after we've standardized
             #       our code to turn 1 and 1.0 both into the categorical "1" AND we can handle
@@ -571,6 +575,7 @@ class EBMModel(BaseEstimator):
             epsilon=bin_eps,
             delta=bin_delta,
             composition=composition,
+            privacy_bounds=privacy_bounds,
         )
         feature_names_in = binning_result[0]
         feature_types_in = binning_result[1]
@@ -1227,6 +1232,9 @@ class EBMModel(BaseEstimator):
 
             if hasattr(self, "bin_budget_frac"):
                 params["bin_budget_frac"] = self.bin_budget_frac
+
+            if hasattr(self, "privacy_bounds"):
+                params["privacy_bounds"] = self.privacy_bounds
 
             j["implementation_params"] = params
 
@@ -2435,6 +2443,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         delta: float = 1e-5,
         composition: str = "gdp",
         bin_budget_frac: float = 0.1,
+        privacy_bounds=None,
     ):
         """Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
 
@@ -2459,6 +2468,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             delta: Additive component of differential privacy guarantee. Should be smaller than 1/n_training_samples.
             composition: Method of tracking noise aggregation. Must be one of 'classic' or 'gdp'.
             bin_budget_frac: Percentage of total epsilon budget to use for private binning.
+            privacy_bounds: Specifies known min/max values for each feature.
+                If None, DP-EBM throws warning and uses data to calculate these values.
         """
         super(DPExplainableBoostingClassifier, self).__init__(
             feature_names=feature_names,
@@ -2484,13 +2495,14 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             delta=delta,
             composition=composition,
             bin_budget_frac=bin_budget_frac,
+            privacy_bounds=privacy_bounds,
         )
 
     def fit(self, X, y, sample_weight=None):
         """Fits model to provided samples.
 
         Args:
-            X: Numpy array for training samples. IMPORTANT: The features in X must be pre-clipped to public min/max values.
+            X: Numpy array for training samples.
             y: Numpy array as training labels.
             sample_weight: Optional array of weights per sample. Should be same length as X and y.
 
@@ -2628,6 +2640,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         delta: float = 1e-5,
         composition: str = "gdp",
         bin_budget_frac: float = 0.1,
+        privacy_bounds=None,
     ):
         """Differentially Private Explainable Boosting Regressor. Note that many arguments are defaulted differently than regular EBMs.
 
@@ -2652,6 +2665,8 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             delta: Additive component of differential privacy guarantee. Should be smaller than 1/n_training_samples.
             composition: Method of tracking noise aggregation. Must be one of 'classic' or 'gdp'.
             bin_budget_frac: Percentage of total epsilon budget to use for private binning.
+            privacy_bounds: Specifies known min/max values for each feature.
+                If None, DP-EBM throws warning and uses data to calculate these values.
         """
         super(DPExplainableBoostingRegressor, self).__init__(
             feature_names=feature_names,
@@ -2677,13 +2692,14 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             delta=delta,
             composition=composition,
             bin_budget_frac=bin_budget_frac,
+            privacy_bounds=privacy_bounds,
         )
 
     def fit(self, X, y, sample_weight=None):
         """Fits model to provided samples.
 
         Args:
-            X: Numpy array for training samples. IMPORTANT: The features in X must be pre-clipped to public min/max values.
+            X: Numpy array for training samples.
             y: Numpy array as training labels. IMPORTANT: The y values must be pre-clipped to public min/max values.
             sample_weight: Optional array of weights per sample. Should be same length as X and y.
 
