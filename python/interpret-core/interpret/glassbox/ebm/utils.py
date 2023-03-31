@@ -329,7 +329,7 @@ def _remove_unused_higher_bins(term_features, bins):
         del bin_levels[max_level:]
 
 
-def make_histogram_edges(min_feature_val, max_feature_val, histogram_counts):
+def make_histogram_edges(min_feature_val, max_feature_val, histogram_weights):
     native = Native.get_native_singleton()
 
     # the EBM model spec disallows subnormal values since they can be problems in computation
@@ -339,7 +339,7 @@ def make_histogram_edges(min_feature_val, max_feature_val, histogram_counts):
     min_feature_val = native.clean_float(min_feature_val)
     max_feature_val = native.clean_float(max_feature_val)
 
-    n_cuts = len(histogram_counts) - 3
+    n_cuts = len(histogram_weights) - 3
     cuts = native.cut_uniform(
         np.array([min_feature_val, max_feature_val], np.float64), n_cuts
     )
@@ -351,36 +351,36 @@ def make_histogram_edges(min_feature_val, max_feature_val, histogram_counts):
     return np.concatenate(([min_feature_val], cuts, [max_feature_val]))
 
 
-def make_all_histogram_edges(feature_bounds, histogram_counts):
+def make_all_histogram_edges(feature_bounds, histogram_weights):
     if feature_bounds is None:
         msg = "feature_bounds is None"
         _log.error(msg)
         raise ValueError(msg)
 
-    if histogram_counts is None:
-        msg = "histogram_counts is None"
+    if histogram_weights is None:
+        msg = "histogram_weights is None"
         _log.error(msg)
         raise ValueError(msg)
 
-    if len(feature_bounds) != len(histogram_counts):
-        msg = "feature_bounds and histogram_counts have different lengths"
+    if len(feature_bounds) != len(histogram_weights):
+        msg = "feature_bounds and histogram_weights have different lengths"
         _log.error(msg)
         raise ValueError(msg)
 
-    ret = [None] * len(histogram_counts)
+    ret = [None] * len(histogram_weights)
     for idx in range(len(ret)):
         min_feature_val = feature_bounds[idx, 0]
         max_feature_val = feature_bounds[idx, 1]
 
         if not isnan(min_feature_val) and not isnan(max_feature_val):
-            histogram_bin_counts = histogram_counts[idx]
-            if histogram_bin_counts is None:
-                msg = "histogram_counts[idx] is None"
+            histogram_bin_weights = histogram_weights[idx]
+            if histogram_bin_weights is None:
+                msg = "histogram_weights[idx] is None"
                 _log.error(msg)
                 raise ValueError(msg)
 
             ret[idx] = make_histogram_edges(
-                min_feature_val, max_feature_val, histogram_bin_counts
+                min_feature_val, max_feature_val, histogram_bin_weights
             )
     return ret
 
@@ -715,9 +715,9 @@ def merge_ebms(models):
             if n_features != feature_bounds.shape[0]:  # pragma: no cover
                 raise Exception("Inconsistent numbers of features in the models.")
 
-        histogram_counts = getattr(model, "histogram_counts_", None)
-        if histogram_counts is not None:
-            if n_features != len(histogram_counts):  # pragma: no cover
+        histogram_weights = getattr(model, "histogram_weights_", None)
+        if histogram_weights is not None:
+            if n_features != len(histogram_weights):  # pragma: no cover
                 raise Exception("Inconsistent numbers of features in the models.")
 
         unique_val_counts = getattr(model, "unique_val_counts_", None)
@@ -873,7 +873,7 @@ def merge_ebms(models):
 
     if not is_private:
         if all(
-            hasattr(model, "histogram_counts_") and hasattr(model, "feature_bounds_")
+            hasattr(model, "histogram_weights_") and hasattr(model, "feature_bounds_")
             for model in models
         ):
             if hasattr(ebm, "feature_bounds_"):

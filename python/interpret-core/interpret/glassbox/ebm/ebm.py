@@ -614,7 +614,7 @@ class EBMModel(BaseEstimator):
         bins = binning_result[2]
         main_bin_weights = binning_result[3]
         feature_bounds = binning_result[4]
-        histogram_counts = binning_result[5]
+        histogram_weights = binning_result[5]
         missing_val_counts = binning_result[6]
         unique_val_counts = binning_result[7]
         noise_scale_binning = binning_result[8]
@@ -1053,7 +1053,9 @@ class EBMModel(BaseEstimator):
                 main_bin_weights[feature_idxs[0]] for feature_idxs in term_features
             ]
         else:
-            histogram_edges = make_all_histogram_edges(feature_bounds, histogram_counts)
+            histogram_edges = make_all_histogram_edges(
+                feature_bounds, histogram_weights
+            )
             bin_weights = make_bin_weights(
                 X,
                 n_samples,
@@ -1085,7 +1087,7 @@ class EBMModel(BaseEstimator):
             self.histogram_edges_ = histogram_edges
 
             # per-feature
-            self.histogram_counts_ = histogram_counts
+            self.histogram_weights_ = histogram_weights
             self.unique_val_counts_ = unique_val_counts
 
         if 0 <= n_classes:
@@ -1278,7 +1280,7 @@ class EBMModel(BaseEstimator):
 
         unique_val_counts = getattr(self, "unique_val_counts_", None)
         feature_bounds = getattr(self, "feature_bounds_", None)
-        histogram_counts = getattr(self, "histogram_counts_", None)
+        histogram_weights = getattr(self, "histogram_weights_", None)
 
         features = []
         for i in range(len(self.bins_)):
@@ -1318,12 +1320,12 @@ class EBMModel(BaseEstimator):
                         feature_max = feature_bounds[i, 1]
                         if not isnan(feature_max):
                             feature["max"] = EBMUtils.jsonify_item(feature_max)
-                    if histogram_counts is not None:
-                        feature_histogram_counts = histogram_counts[i]
-                        if feature_histogram_counts is not None:
+                    if histogram_weights is not None:
+                        feature_histogram_weights = histogram_weights[i]
+                        if feature_histogram_weights is not None:
                             feature[
-                                "histogram_counts"
-                            ] = feature_histogram_counts.tolist()
+                                "histogram_weights"
+                            ] = feature_histogram_weights.tolist()
 
             features.append(feature)
         j["features"] = features
@@ -1535,21 +1537,21 @@ class EBMModel(BaseEstimator):
                     # TODO: this will fail if we have multiple categories in a bin
                     bin_labels = list(feature_bins.keys())
 
-                    histogram_counts = getattr(self, "histogram_counts_", None)
-                    if histogram_counts is not None:
-                        histogram_counts = histogram_counts[feature_index0]
+                    histogram_weights = getattr(self, "histogram_weights_", None)
+                    if histogram_weights is not None:
+                        histogram_weights = histogram_weights[feature_index0]
 
-                    if histogram_counts is None:
-                        histogram_counts = self.bin_weights_[term_idx]
+                    if histogram_weights is None:
+                        histogram_weights = self.bin_weights_[term_idx]
 
                     if len(bin_labels) != model_graph.shape[0]:
                         bin_labels.append("DPOther")
-                        histogram_counts = histogram_counts[1:]
+                        histogram_weights = histogram_weights[1:]
                     else:
-                        histogram_counts = histogram_counts[1:-1]
+                        histogram_weights = histogram_weights[1:-1]
 
                     names = bin_labels
-                    densities = list(histogram_counts)
+                    densities = list(histogram_weights)
                 else:
                     # continuous
                     min_feature_val = np.nan
@@ -1572,7 +1574,7 @@ class EBMModel(BaseEstimator):
                         histogram_edges = histogram_edges[feature_index0]
                     if histogram_edges is not None:
                         names = list(histogram_edges)
-                        densities = list(self.histogram_counts_[feature_index0][1:-1])
+                        densities = list(self.histogram_weights_[feature_index0][1:-1])
                     else:
                         names = bin_labels
                         densities = list(mod_weights[term_idx])
@@ -2019,7 +2021,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         values of NaN.
     histogram_edges\\_ : List of None or array of float with shape ``(n_hist_edges,)``
         Per-feature list of the histogram edges. Categorical features contain None within the List.
-    histogram_counts\\_ : List of array of int with shape ``(n_hist_bins,)``
+    histogram_weights\\_ : List of array of float with shape ``(n_hist_bins,)``
         Per-feature list of the bin sample counts in the histogram bins.
     unique_val_counts\\_ : array of int with shape ``(n_features,)``
         Per-feature count of unique feature values.
@@ -2063,7 +2065,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
 
     histogram_edges_: List[Union[None, np.ndarray]]  # np.float64, 1D[hist_cut]
-    histogram_counts_: List[np.ndarray]  # np.int64, 1D[hist_bin]
+    histogram_weights_: List[np.ndarray]  # np.float64, 1D[hist_bin]
     unique_val_counts_: np.ndarray  # np.int64, 1D[feature]
 
     classes_: np.ndarray  # np.int64, np.bool_, or np.unicode_, 1D[class]
@@ -2264,7 +2266,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
 
     histogram_edges_: List[Union[None, np.ndarray]]  # np.float64, 1D[hist_cut]
-    histogram_counts_: List[np.ndarray]  # np.int64, 1D[hist_bin]
+    histogram_weights_: List[np.ndarray]  # np.float64, 1D[hist_bin]
     unique_val_counts_: np.ndarray  # np.int64, 1D[feature]
 
     intercept_: float

@@ -2176,7 +2176,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         bins = _none_list * n_features
         bin_weights = _none_list * n_features
         feature_bounds = np.full((n_features, 2), np.nan, dtype=np.float64)
-        histogram_counts = _none_list * n_features
+        histogram_weights = _none_list * n_features
         missing_val_counts = np.zeros(n_features, dtype=np.int64)
         unique_val_counts = np.zeros(n_features, dtype=np.int64)
 
@@ -2287,14 +2287,16 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     n_cuts = native.get_histogram_cut_count(X_col)
                     histogram_cuts = native.cut_uniform(X_col, n_cuts)
                     bin_indexes = native.discretize(X_col, histogram_cuts)
-                    feature_histogram_counts = np.bincount(
-                        bin_indexes, minlength=len(histogram_cuts) + 3
+                    feature_histogram_weights = np.bincount(
+                        bin_indexes,
+                        weights=sample_weight,
+                        minlength=len(histogram_cuts) + 3,
                     )
-                    feature_histogram_counts = feature_histogram_counts.astype(
-                        np.int64, copy=False
+                    feature_histogram_weights = feature_histogram_weights.astype(
+                        np.float64, copy=False
                     )
 
-                    histogram_counts[feature_idx] = feature_histogram_counts
+                    histogram_weights[feature_idx] = feature_histogram_weights
 
                     n_missing = len(X_col)
                     X_col = X_col[~np.isnan(X_col)]
@@ -2364,13 +2366,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         np.float64, copy=False
                     )
 
-                    feature_histogram_counts = np.bincount(
-                        X_col, minlength=n_unique_indexes + 2
-                    )
-                    feature_histogram_counts = feature_histogram_counts.astype(
-                        np.int64, copy=False
-                    )
-                    histogram_counts[feature_idx] = feature_histogram_counts
+                    # for categoricals histograms and bin weights are the same
+                    histogram_weights[feature_idx] = feature_bin_weights
 
                     missing_val_counts.itemset(
                         feature_idx, len(X_col) - np.count_nonzero(X_col)
@@ -2397,7 +2394,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.bins_ = bins
         self.bin_weights_ = bin_weights
         self.feature_bounds_ = feature_bounds
-        self.histogram_counts_ = histogram_counts
+        self.histogram_weights_ = histogram_weights
         self.missing_val_counts_ = missing_val_counts
         self.unique_val_counts_ = unique_val_counts
         self.noise_scale_ = noise_scale
@@ -2547,7 +2544,7 @@ def construct_bins(
             feature_types_in = preprocessor.feature_types_in_
             bin_weights = preprocessor.bin_weights_
             feature_bounds = preprocessor.feature_bounds_
-            histogram_counts = preprocessor.histogram_counts_
+            histogram_weights = preprocessor.histogram_weights_
             missing_val_counts = preprocessor.missing_val_counts_
             unique_val_counts = preprocessor.unique_val_counts_
             noise_scale = preprocessor.noise_scale_
@@ -2569,7 +2566,7 @@ def construct_bins(
         bins,
         bin_weights,
         feature_bounds,
-        histogram_counts,
+        histogram_weights,
         missing_val_counts,
         unique_val_counts,
         noise_scale,

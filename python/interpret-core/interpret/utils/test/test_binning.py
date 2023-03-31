@@ -3743,7 +3743,7 @@ def test_bin_native():
         bins,
         bin_weights,
         feature_bounds,
-        histogram_counts,
+        histogram_weights,
         missing_val_counts,
         unique_val_counts,
         noise_scale_binning,
@@ -3755,7 +3755,7 @@ def test_bin_native():
     assert bins is not None
     assert bin_weights is not None
     assert feature_bounds is not None
-    assert histogram_counts is not None
+    assert histogram_weights is not None
     assert missing_val_counts is not None
     assert unique_val_counts is not None
 
