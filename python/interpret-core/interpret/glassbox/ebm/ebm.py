@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 
-from typing import Optional, List, Tuple, Sequence, Dict, Union
+from typing import Optional, List, Tuple, Sequence, Dict, Mapping, Union
 
 from itertools import count
 
@@ -313,6 +313,8 @@ class EBMModel(BaseEstimator):
         composition="gdp",
         bin_budget_frac=0.1,
         privacy_bounds=None,
+        privacy_target_min=None,
+        privacy_target_max=None,
     ):
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -352,6 +354,8 @@ class EBMModel(BaseEstimator):
             self.composition = composition
             self.bin_budget_frac = bin_budget_frac
             self.privacy_bounds = privacy_bounds
+            self.privacy_target_min = privacy_target_min
+            self.privacy_target_max = privacy_target_max
 
             if random_state is not None:
                 warn(
@@ -525,12 +529,40 @@ class EBMModel(BaseEstimator):
         # Privacy calculations
         is_differential_privacy = is_private(self)
         if is_differential_privacy:
-            if is_classifier(self) and 2 < n_classes:  # pragma: no cover
-                raise ValueError(
-                    "multiclass not supported in Differentially private EBMs."
-                )
-
             validate_eps_delta(self.epsilon, self.delta)
+
+            if is_classifier(self):
+                if 2 < n_classes:  # pragma: no cover
+                    raise ValueError(
+                        "Multiclass not supported for Differentially Private EBMs."
+                    )
+            else:
+                is_privacy_warning = False
+                is_clipping = False
+
+                if self.privacy_target_min is None or isnan(self.privacy_target_min):
+                    is_privacy_warning = True
+                else:
+                    is_clipping = True
+                    min_target = float(self.privacy_target_min)
+
+                if self.privacy_target_max is None or isnan(self.privacy_target_max):
+                    is_privacy_warning = True
+                else:
+                    is_clipping = True
+                    max_target = float(self.privacy_target_max)
+
+                # In theory privacy_target_min and privacy_target_max are not needed
+                # in our interface since the caller could clip 'y' themselves, but
+                # having it here is a check that the clipping was not overlooked.
+                if is_privacy_warning:
+                    warn(
+                        "Possible privacy violation: assuming min/max values for target are public info."
+                        "Pass in privacy_target_min and privacy_target_max with known public values to avoid this warning."
+                    )
+
+                if is_clipping:
+                    y = np.clip(y, min_target, max_target)
 
             # Split epsilon, delta budget for binning and learning
             bin_eps = self.epsilon * self.bin_budget_frac
@@ -1235,6 +1267,12 @@ class EBMModel(BaseEstimator):
 
             if hasattr(self, "privacy_bounds"):
                 params["privacy_bounds"] = self.privacy_bounds
+
+            if hasattr(self, "privacy_target_min"):
+                params["privacy_target_min"] = self.privacy_target_min
+
+            if hasattr(self, "privacy_target_max"):
+                params["privacy_target_max"] = self.privacy_target_max
 
             j["implementation_params"] = params
 
@@ -1958,15 +1996,15 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
     Attributes
     ----------
-    classes\_ : array of bool, int, or unicode with shape ``(n_classes,)``
+    classes\\_ : array of bool, int, or unicode with shape ``(n_classes,)``
         The class labels.
-    n_features_in\_ : int
+    n_features_in\\_ : int
         Number of features.
-    feature_names_in\_ : List of str
+    feature_names_in\\_ : List of str
         Resolved feature names. Names can come from feature_names, X, or be auto-generated.
-    feature_types_in\_ : List of str
+    feature_types_in\\_ : List of str
         Resolved feature types. Can be: 'continuous', 'nominal', or 'ordinal'.
-    bins\_ : List[Union[List[Dict[str, int]], List[array of float with shape ``(n_cuts,)``]]]
+    bins\\_ : List[Union[List[Dict[str, int]], List[array of float with shape ``(n_cuts,)``]]]
         Per-feature list that defines how to bin each feature. Each feature in the list contains
         a list of binning resolutions. The first item in the binning resolution list is for binning
         main effect features. If there are more items in the binning resolution list, they define the
@@ -1975,38 +2013,38 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         If the binning resolution list contains dictionaries, then the feature is either a 'nominal' or
         'ordinal' categorical. If the binning resolution list contains arrays, then the feature is 'continuous'
         and the arrays will contain float cut points that separate continuous values into bins.
-    feature_bounds\_ : array of float with shape ``(n_features, 2)``
+    feature_bounds\\_ : array of float with shape ``(n_features, 2)``
         min/max bounds for each feature. feature_bounds_[feature_index, 0] is the min value of the feature
         and feature_bounds_[feature_index, 1] is the max value of the feature. Categoricals have min & max
         values of NaN.
-    histogram_edges\_ : List of None or array of float with shape ``(n_hist_edges,)``
+    histogram_edges\\_ : List of None or array of float with shape ``(n_hist_edges,)``
         Per-feature list of the histogram edges. Categorical features contain None within the List.
-    histogram_counts\_ : List of array of int with shape ``(n_hist_bins,)``
+    histogram_counts\\_ : List of array of int with shape ``(n_hist_bins,)``
         Per-feature list of the bin sample counts in the histogram bins.
-    unique_val_counts\_ : array of int with shape ``(n_features,)``
+    unique_val_counts\\_ : array of int with shape ``(n_features,)``
         Per-feature count of unique feature values.
-    term_features\_ : List of tuples of feature indices
+    term_features\\_ : List of tuples of feature indices
         Terms used in the model and their component feature indices.
-    term_names\_ : List of str
+    term_names\\_ : List of str
         List of term names.
-    bin_weights\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins)``
+    bin_weights\\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the total sample weights in each tensor bin
-    bagged_scores\_ : List of array of float with shape ``(n_outer_bags, n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_outer_bags, n_feature0_bins, ..., n_featureN_bins)``
+    bagged_scores\\_ : List of array of float with shape ``(n_outer_bags, n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_outer_bags, n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the bagged model scores.
         The last dimension of length n_classes is dropped for binary classification.
-    term_scores\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_feature0_bins, ..., n_featureN_bins)``
+    term_scores\\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the model scores.
         The last dimension of length n_classes is dropped for binary classification.
-    standard_deviations\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_feature0_bins, ..., n_featureN_bins)``
+    standard_deviations\\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the variances of the bagged model scores.
         The last dimension of length n_classes is dropped for binary classification.
-    bag_weights\_ : array of float with shape ``(n_bags,)``
+    bag_weights\\_ : array of float with shape ``(n_bags,)``
         Per-bag record of the total weight within each bag.
-    breakpoint_iteration\_ : array of int with shape ``(n_stages, n_outer_bags)``
+    breakpoint_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
         The number of boosting rounds performed until either early stopping, or the max_rounds was reached.
         Normally, the main effects boosting rounds will be in breakpoint_iteration_[0],
         and the interaction boosting rounds will be in breakpoint_iteration_[1].
-    intercept\_ : array of float with shape ``(n_classes,)`` or ``(1,)``
+    intercept\\_ : array of float with shape ``(n_classes,)`` or ``(1,)``
         Intercept of the model. Binary classification is shape ``(1,)``, and multiclass is shape ``(n_classes,)``
     """
 
@@ -2443,7 +2481,9 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         delta: float = 1e-5,
         composition: str = "gdp",
         bin_budget_frac: float = 0.1,
-        privacy_bounds=None,
+        privacy_bounds: Optional[
+            Union[np.ndarray, Mapping[Union[int, str], Tuple[float, float]]]
+        ] = None,
     ):
         """Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
 
@@ -2496,23 +2536,6 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             composition=composition,
             bin_budget_frac=bin_budget_frac,
             privacy_bounds=privacy_bounds,
-        )
-
-    def fit(self, X, y, sample_weight=None):
-        """Fits model to provided samples.
-
-        Args:
-            X: Numpy array for training samples.
-            y: Numpy array as training labels.
-            sample_weight: Optional array of weights per sample. Should be same length as X and y.
-
-        Returns:
-            Itself.
-        """
-        super(DPExplainableBoostingClassifier, self).fit(
-            X=X,
-            y=y,
-            sample_weight=sample_weight,
         )
 
     def predict_proba(self, X):
@@ -2640,7 +2663,11 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         delta: float = 1e-5,
         composition: str = "gdp",
         bin_budget_frac: float = 0.1,
-        privacy_bounds=None,
+        privacy_bounds: Optional[
+            Union[np.ndarray, Mapping[Union[int, str], Tuple[float, float]]]
+        ] = None,
+        privacy_target_min: Optional[float] = None,
+        privacy_target_max: Optional[float] = None,
     ):
         """Differentially Private Explainable Boosting Regressor. Note that many arguments are defaulted differently than regular EBMs.
 
@@ -2667,6 +2694,8 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             bin_budget_frac: Percentage of total epsilon budget to use for private binning.
             privacy_bounds: Specifies known min/max values for each feature.
                 If None, DP-EBM throws warning and uses data to calculate these values.
+            privacy_target_min: Known target minimum. y values will be clipped to this min.
+            privacy_target_max: Known target maximum. y values will be clipped to this max.
         """
         super(DPExplainableBoostingRegressor, self).__init__(
             feature_names=feature_names,
@@ -2693,23 +2722,8 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             composition=composition,
             bin_budget_frac=bin_budget_frac,
             privacy_bounds=privacy_bounds,
-        )
-
-    def fit(self, X, y, sample_weight=None):
-        """Fits model to provided samples.
-
-        Args:
-            X: Numpy array for training samples.
-            y: Numpy array as training labels. IMPORTANT: The y values must be pre-clipped to public min/max values.
-            sample_weight: Optional array of weights per sample. Should be same length as X and y.
-
-        Returns:
-            Itself.
-        """
-        super(DPExplainableBoostingRegressor, self).fit(
-            X=X,
-            y=y,
-            sample_weight=sample_weight,
+            privacy_target_min=privacy_target_min,
+            privacy_target_max=privacy_target_max,
         )
 
     def predict(self, X):

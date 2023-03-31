@@ -22,14 +22,10 @@ from interpret.privacy import (
 )
 
 import numpy as np
-import pandas as pd
-from sklearn.model_selection import (
-    cross_validate,
-    StratifiedShuffleSplit,
-    train_test_split,
-)
-from sklearn.metrics import accuracy_score
-from sklearn.utils.estimator_checks import check_estimator
+import pandas as pd  # type: ignore
+from sklearn.model_selection import cross_validate, StratifiedShuffleSplit, train_test_split  # type: ignore
+from sklearn.metrics import accuracy_score  # type: ignore
+from sklearn.utils.estimator_checks import check_estimator  # type: ignore
 import pytest
 
 import warnings
@@ -350,7 +346,7 @@ def test_ebm_synthetic_singleclass_classification():
 @pytest.mark.visual
 @pytest.mark.slow
 def test_ebm_uniform():
-    from sklearn.metrics import roc_auc_score
+    from sklearn.metrics import roc_auc_score  # type: ignore
 
     data = adult_classification()
     X = data["full"]["X"]
@@ -421,7 +417,7 @@ def test_ebm_uniform_multiclass():
 @pytest.mark.visual
 @pytest.mark.slow
 def test_ebm_adult():
-    from sklearn.metrics import roc_auc_score
+    from sklearn.metrics import roc_auc_score  # type: ignore
 
     data = adult_classification()
     X = data["full"]["X"]
@@ -608,7 +604,7 @@ def test_ebm_iris():
 @pytest.mark.slow
 def test_ebm_sparse():
     """Validate running EBM on scipy sparse data"""
-    from sklearn.datasets import make_multilabel_classification
+    from sklearn.datasets import make_multilabel_classification  # type: ignore
 
     np.random.seed(0)
     n_features = 5
@@ -639,7 +635,7 @@ def test_zero_validation():
 @pytest.mark.visual
 @pytest.mark.slow
 def test_dp_ebm_adult():
-    from sklearn.metrics import roc_auc_score
+    from sklearn.metrics import roc_auc_score  # type: ignore
     from interpret.privacy import DPExplainableBoostingClassifier
 
     data = adult_classification(sample=1)
@@ -705,7 +701,9 @@ def test_dp_ebm_external_privacy_bounds():
     # synthetic regression is all sampled from N(0, 1)
     privacy_bounds = {0: (-3, 3), 1: (-3, 3), 2: (-3, 3), 3: (-3, 3)}
 
-    clf = DPExplainableBoostingRegressor(privacy_bounds=privacy_bounds)
+    clf = DPExplainableBoostingRegressor(
+        privacy_bounds=privacy_bounds, privacy_target_min=-3, privacy_target_max=3
+    )
     clf.fit(X, y)
     clf.predict(X)
 
@@ -717,7 +715,7 @@ def test_ebm_calibrated_classifier_cv():
     """Tests if unsigned integers can be handled when
     using CalibratedClassifierCV.
     """
-    from sklearn.calibration import CalibratedClassifierCV
+    from sklearn.calibration import CalibratedClassifierCV  # type: ignore
 
     X = np.array(
         [
