@@ -2182,7 +2182,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
         native = Native.get_native_singleton()
         rng = native.create_rng(normalize_initial_seed(self.random_state))
-        is_privacy_warning = False
+        is_privacy_bounds_warning = False
+        is_privacy_types_warning = False
         for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(
             unify_columns(
                 X,
@@ -2209,6 +2210,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 X_col = X_col.copy()
 
             feature_types_in[feature_idx] = feature_type_in
+            feature_type_given = (
+                None if self.feature_types is None else self.feature_types[feature_idx]
+            )
             if categories is None:
                 # continuous feature
                 if bad is not None:
@@ -2221,6 +2225,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         msg = "missing values in X not supported for private binning"
                         _log.error(msg)
                         raise ValueError(msg)
+
+                    if feature_type_given != "continuous":
+                        is_privacy_types_warning = True
 
                     min_feature_val = np.nan
                     max_feature_val = np.nan
@@ -2240,11 +2247,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                             max_feature_val = bounds[1]
 
                     if math.isnan(min_feature_val):
-                        is_privacy_warning = True
+                        is_privacy_bounds_warning = True
                         min_feature_val = np.nanmin(X_col)
 
                     if math.isnan(max_feature_val):
-                        is_privacy_warning = True
+                        is_privacy_bounds_warning = True
                         max_feature_val = np.nanmax(X_col)
 
                     cuts, feature_bin_weights = private_numeric_binning(
@@ -2261,11 +2268,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 else:
                     min_feature_val = np.nanmin(X_col)
                     max_feature_val = np.nanmax(X_col)
-                    feature_type_given = (
-                        None
-                        if self.feature_types is None
-                        else self.feature_types[feature_idx]
-                    )
                     cuts = _cut_continuous(
                         native,
                         X_col,
@@ -2315,6 +2317,10 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         msg = "missing values in X not supported for private binning"
                         _log.error(msg)
                         raise ValueError(msg)
+
+                    if feature_type_given is None:
+                        # if auto-detected then we need to show a privacy warning
+                        is_privacy_types_warning = True
 
                     # TODO: clean up this hack that uses strings of the indexes
                     keep_bins, old_feature_bin_weights = private_categorical_binning(
@@ -2373,10 +2379,17 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 bins[feature_idx] = categories
             bin_weights[feature_idx] = feature_bin_weights
 
-        if is_privacy_warning:
+        if is_privacy_bounds_warning:
             warn(
                 "Possible privacy violation: assuming min/max values per feature are public info. "
                 "Pass in privacy_bounds with known public ranges per feature to avoid this warning."
+            )
+        if is_privacy_types_warning:
+            warn(
+                "Possible privacy violation: Automatic determination of the feature"
+                "types examines the data and is unacounted for in the privacy budget. "
+                "Pass in fully specified feature_types of 'continuous', 'nominal', "
+                "'ordinal', or a list of strings to avoid this warning."
             )
 
         self.feature_names_in_ = feature_names_in

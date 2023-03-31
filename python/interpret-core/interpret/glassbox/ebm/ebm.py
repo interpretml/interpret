@@ -570,8 +570,8 @@ class EBMModel(BaseEstimator):
             composition = self.composition
             privacy_bounds = self.privacy_bounds
             binning = "private"
-            # TODO: should this be 10 with a warning if feature_types is None?
-            min_unique_continuous = 0
+            # TODO: should we make this something higher?
+            min_unique_continuous = 3
 
             bin_levels = [self.max_bins]
         else:
