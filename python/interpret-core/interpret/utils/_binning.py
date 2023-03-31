@@ -2384,7 +2384,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         if is_privacy_types_warning:
             warn(
                 "Possible privacy violation: Automatic determination of the feature"
-                "types examines the data and is unacounted for in the privacy budget. "
+                "types examines the data and is unaccounted for in the privacy budget. "
                 "Pass in fully specified feature_types of 'continuous', 'nominal', "
                 "'ordinal', or a list of strings to avoid this warning."
             )
