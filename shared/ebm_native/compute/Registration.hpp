@@ -234,11 +234,13 @@ class RegistrationPack final : public Registration {
       void * const pRegistrableMemory = malloc(sizeof(TRegistrable<TFloat>));
       if(nullptr != pRegistrableMemory) {
          try {
+            static_assert(std::is_trivially_destructible<TRegistrable<TFloat>>::value,
+               "This removes the need to call the destructor, so it can be freed in the main zone.");
             static_assert(std::is_standard_layout<TRegistrable<TFloat>>::value,
-               "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+               "This allows offsetof, inter-language, GPU and cross-machine access.");
 #if !(defined(__GNUC__) && __GNUC__ < 5)
             static_assert(std::is_trivially_copyable<TRegistrable<TFloat>>::value,
-               "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+               "This allows us to memcpy the struct to a GPU or the network.");
 #endif // !(defined(__GNUC__) && __GNUC__ < 5)
 
             // use the in-place constructor to constrct our specialized Loss/Metric function in our pre-reserved memory

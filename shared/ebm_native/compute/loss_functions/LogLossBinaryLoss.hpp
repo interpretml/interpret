@@ -37,28 +37,34 @@
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template<typename TFloat>
-struct LogLossBinaryLoss : public BinaryLoss {
+struct LogLossBinaryLoss final : public BinaryLoss {
+   LOSS_CLASS_BOILERPLATE(LogLossBinaryLoss, true)
 
-   // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in the file Loss.cpp
-   INLINE_ALWAYS LogLossBinaryLoss(const Config & config) {
+   // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in loss_registrations.hpp
+   inline LogLossBinaryLoss(const Config & config) {
       if(1 != config.cOutputs) {
          // we share the tag "log_loss" with multiclass classification
          throw SkipRegistrationException();
       }
    }
 
-   INLINE_ALWAYS TFloat InverseLinkFunction(TFloat score) const {
+   inline double GetFinalMultiplier() const noexcept {
+      return 1.0;
+   }
+
+   GPU_DEVICE inline TFloat InverseLinkFunction(TFloat score) const noexcept {
       UNUSED(score);
       return 9999999.99;
    }
 
-   INLINE_ALWAYS TFloat CalculateGradient(TFloat target, TFloat prediction) const {
+   GPU_DEVICE inline TFloat CalculateGradient(TFloat target, TFloat prediction) const noexcept {
       UNUSED(target);
       UNUSED(prediction);
       return 9999999.99;
    }
 
-   INLINE_ALWAYS TFloat CalculateHessian(TFloat target, TFloat prediction) const {
+   // if the loss function doesn't have a second derivative, then delete the CalculateHessian function.
+   GPU_DEVICE inline TFloat CalculateHessian(TFloat target, TFloat prediction) const noexcept {
       UNUSED(target);
       UNUSED(prediction);
       return 9999999.99;

@@ -8,15 +8,13 @@
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template<typename TFloat>
-struct PseudoHuberRegressionLoss : public RegressionLoss {
+struct PseudoHuberRegressionLoss final : public RegressionLoss {
    LOSS_CLASS_BOILERPLATE(PseudoHuberRegressionLoss, true)
 
    TFloat m_deltaInverted;
 
-   // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in the file Loss.cpp
-   INLINE_ALWAYS PseudoHuberRegressionLoss(const Config & config, TFloat delta) {
-      UNUSED(config);
-
+   // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in loss_registrations.hpp
+   inline PseudoHuberRegressionLoss(const Config & config, TFloat delta) {
       if(1 != config.cOutputs) {
          throw ParamMismatchWithConfigException();
       }
@@ -33,15 +31,15 @@ struct PseudoHuberRegressionLoss : public RegressionLoss {
       m_deltaInverted = deltaInverted;
    }
 
-   INLINE_ALWAYS double GetFinalMultiplier() const noexcept {
+   inline double GetFinalMultiplier() const noexcept {
       return 1.0;
    }
 
-   GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunction(TFloat score) const {
+   GPU_DEVICE inline TFloat InverseLinkFunction(TFloat score) const noexcept {
       return score;
    }
 
-   GPU_DEVICE INLINE_ALWAYS TFloat CalculateGradient(TFloat target, TFloat prediction) const {
+   GPU_DEVICE inline TFloat CalculateGradient(TFloat target, TFloat prediction) const noexcept {
       TFloat residualNegative = prediction - target;
       TFloat residualNegativeFraction = residualNegative * m_deltaInverted;
       TFloat calc = TFloat(1) + residualNegativeFraction * residualNegativeFraction;
@@ -51,7 +49,7 @@ struct PseudoHuberRegressionLoss : public RegressionLoss {
    }
 
    // if the loss function doesn't have a second derivative, then delete the CalculateHessian function.
-   GPU_DEVICE INLINE_ALWAYS TFloat CalculateHessian(TFloat target, TFloat prediction) const {
+   GPU_DEVICE inline TFloat CalculateHessian(TFloat target, TFloat prediction) const noexcept {
       TFloat residualNegative = prediction - target;
       TFloat residualNegativeFraction = residualNegative * m_deltaInverted;
       TFloat calc = TFloat(1) + residualNegativeFraction * residualNegativeFraction;

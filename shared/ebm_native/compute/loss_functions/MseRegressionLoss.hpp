@@ -11,12 +11,31 @@
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template<typename TFloat>
-struct MseRegressionLoss : public RegressionLoss {
+struct MseRegressionLoss final : public RegressionLoss {
+   LOSS_CLASS_BOILERPLATE(MseRegressionLoss, true)
 
-   INLINE_ALWAYS MseRegressionLoss(const Config & config) {
+   // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in loss_registrations.hpp
+   inline MseRegressionLoss(const Config & config) {
       if(1 != config.cOutputs) {
          throw ParamMismatchWithConfigException();
       }
+   }
+
+   inline double GetFinalMultiplier() const noexcept {
+      return 1.0;
+   }
+
+   GPU_DEVICE inline TFloat CalculateGradient(TFloat target, TFloat prediction) const noexcept {
+      UNUSED(target);
+      UNUSED(prediction);
+      return 9999999.99;
+   }
+
+   // if the loss function doesn't have a second derivative, then delete the CalculateHessian function.
+   GPU_DEVICE inline TFloat CalculateHessian(TFloat target, TFloat prediction) const noexcept {
+      UNUSED(target);
+      UNUSED(prediction);
+      return 9999999.99;
    }
 
    // MSE is super super special in that we can calculate the new gradient from the old gradient without

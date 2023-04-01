@@ -12,6 +12,7 @@
 
 #include "ebm_native.h" // ErrorEbm
 #include "common_c.h" // ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
+#include "bridge_c.h" // LossWrapper
 #include "zones.h"
 
 #include "ebm_internal.hpp" // FloatBig
@@ -64,6 +65,8 @@ class BoosterCore final {
    DataSetBoosting m_trainingSet;
    DataSetBoosting m_validationSet;
 
+   LossWrapper m_loss;
+
    static void DeleteTensors(const size_t cTerms, Tensor ** const apTensors);
 
    static ErrorEbm InitializeTensors(
@@ -96,6 +99,7 @@ class BoosterCore final {
    {
       m_trainingSet.InitializeUnfailing();
       m_validationSet.InitializeUnfailing();
+      InitializeLossWrapperUnfailing(&m_loss);
    }
 
 public:

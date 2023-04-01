@@ -13,6 +13,7 @@
 #include "logging.h" // EBM_ASSERT
 
 #include "common_cpp.hpp" // IsConvertError, IsMultiplyError
+#include "compute_accessors.hpp"
 #include "ebm_internal.hpp" // AddPositiveFloatsSafeBig
 
 #include "dataset_shared.hpp" // GetDataSetSharedHeader
@@ -146,6 +147,8 @@ BoosterCore::~BoosterCore() {
 
    DeleteTensors(m_cTerms, m_apCurrentTermTensors);
    DeleteTensors(m_cTerms, m_apBestTermTensors);
+
+   FreeLossWrapperInternals(&m_loss);
 };
 
 void BoosterCore::Free(BoosterCore * const pBoosterCore) {
@@ -588,6 +591,18 @@ ErrorEbm BoosterCore::Create(
       }
    }
    LOG_0(Trace_Info, "BoosterCore::Create finished feature group processing");
+
+   static const char g_sMse[] = "mse";
+   static const char g_sLogLoss[] = "log_loss";
+   const char * const sLoss = bClassification ? g_sLogLoss : g_sMse;
+
+   Config config;
+   config.cOutputs = GetCountScores(cClasses);
+   error = GetLoss(&config, sLoss, &pBoosterCore->m_loss);
+   if (Error_None != error) {
+      // already logged
+      return error;
+   }
 
    error = pBoosterCore->m_trainingSet.Initialize(
       cClasses,

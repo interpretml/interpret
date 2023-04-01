@@ -18,15 +18,15 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-INLINE_ALWAYS static ErrorEbm GetLoss(
+INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetLoss(
    const Config * const pConfig,
    const char * sLoss,
    LossWrapper * const pLossWrapperOut
 ) noexcept {
    EBM_ASSERT(nullptr != pConfig);
    EBM_ASSERT(nullptr != pLossWrapperOut);
-   pLossWrapperOut->m_pLoss = nullptr;
-   pLossWrapperOut->m_pFunctionPointersCpp = nullptr;
+   EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
+   EBM_ASSERT(nullptr == pLossWrapperOut->m_pFunctionPointersCpp);
 
    if(nullptr == sLoss) {
       // TODO: in the future use a default
@@ -46,7 +46,7 @@ INLINE_ALWAYS static ErrorEbm GetLoss(
    return error;
 }
 
-INLINE_ALWAYS static ErrorEbm GetMetrics(
+INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetMetrics(
    const Config * const pConfig,
    const char * sMetric
 //   MetricWrapper * const aMetricWrapperOut

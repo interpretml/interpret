@@ -36,7 +36,9 @@
 static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
    // IMPORTANT: the *LossParam types here must match the parameters types in your Loss* constructor
    return {
+      RegisterLoss<LogLossBinaryLoss>("log_loss"),
       RegisterLoss<LogLossMulticlassLoss>("log_loss"),
+      RegisterLoss<MseRegressionLoss>("mse"),
       RegisterLoss<PseudoHuberRegressionLoss>("pseudo_huber", FloatParam("delta", 1))
       // TODO: add a "c_sample" here and adapt the instructions above to handle it
    };
