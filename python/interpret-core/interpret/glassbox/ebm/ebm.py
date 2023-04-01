@@ -2602,7 +2602,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
     bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
         Per-bag record of the total weight within each bag.
     breakpoint_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
-        The number of boosting rounds performed within each stage. Normally, the count of main effects 
+        The number of boosting rounds performed within each stage. Normally, the count of main effects
         boosting rounds will be in breakpoint_iteration_[0].
     intercept\\_ : array of float with shape ``(1,)``
         Intercept of the model.
@@ -2864,14 +2864,14 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         boosting rounds will be in breakpoint_iteration_[0].
     intercept\\_ : float
         Intercept of the model.
-    noise_scale_binning\\_ : float
-        The noise scale during binning.
-    noise_scale_boosting\\_ : float
-        The noise scale during boosting.
     min_target\\_ : float
         The minimum value found in 'y', or privacy_target_min if provided.
     max_target\\_ : float
         The maximum value found in 'y', or privacy_target_max if provided.
+    noise_scale_binning\\_ : float
+        The noise scale during binning.
+    noise_scale_boosting\\_ : float
+        The noise scale during boosting.
     """
 
     n_features_in_: int
