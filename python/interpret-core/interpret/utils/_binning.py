@@ -2234,7 +2234,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     if self.privacy_bounds is not None:
                         if isinstance(self.privacy_bounds, dict):
                             # TODO: check for names/indexes in the dict that are not
-                            # in feature_names_in_ or out of bounds, or duplicate 
+                            # in feature_names_in_ or out of bounds, or duplicate
                             # int vs names situations
                             bounds = self.privacy_bounds.get(feature_idx, None)
                             if bounds is None:
