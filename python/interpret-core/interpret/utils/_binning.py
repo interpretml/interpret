@@ -2233,10 +2233,14 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     max_feature_val = np.nan
                     if self.privacy_bounds is not None:
                         if isinstance(self.privacy_bounds, dict):
-                            # TODO: change this to also accept feature string names
                             # TODO: check for names/indexes in the dict that are not
-                            # in feature_names_in_ or out of bounds
+                            # in feature_names_in_ or out of bounds, or duplicate 
+                            # int vs names situations
                             bounds = self.privacy_bounds.get(feature_idx, None)
+                            if bounds is None:
+                                feature_name = feature_names_in[feature_idx]
+                                bounds = self.privacy_bounds.get(feature_name, None)
+
                             if bounds is not None:
                                 min_feature_val = bounds[0]
                                 max_feature_val = bounds[1]
