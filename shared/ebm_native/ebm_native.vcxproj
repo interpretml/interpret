@@ -289,11 +289,12 @@ EXIT /B 0
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="approximate_math.hpp" />
     <ClInclude Include="bridge_cpp\Bin.hpp" />
     <ClInclude Include="bridge_cpp\bridge_cpp.hpp" />
     <ClInclude Include="bridge_cpp\GradientPair.hpp" />
     <ClInclude Include="bridge_c\bridge_c.h" />
+    <ClInclude Include="common_cpp\approximate_math.hpp" />
+    <ClInclude Include="common_cpp\ebm_stats.hpp" />
     <ClInclude Include="common_c\logging.h" />
     <ClInclude Include="bridge_c\zones.h" />
     <ClInclude Include="common_cpp\common_cpp.hpp" />
@@ -311,7 +312,6 @@ EXIT /B 0
     <ClInclude Include="DataSetInteraction.hpp" />
     <ClInclude Include="DataSetBoosting.hpp" />
     <ClInclude Include="ebm_internal.hpp" />
-    <ClInclude Include="ebm_stats.hpp" />
     <ClInclude Include="precompiled_header_cpp.hpp" />
     <ClInclude Include="RandomNondeterministic.hpp" />
     <ClInclude Include="RandomDeterministic.hpp" />
