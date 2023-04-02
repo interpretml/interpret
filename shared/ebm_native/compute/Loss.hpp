@@ -110,7 +110,7 @@ struct Loss : public Registrable {
    template<typename TLoss, typename TFloat, size_t cCompilerScores>
    struct CountScores final {
       INLINE_ALWAYS static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         if(cCompilerScores == pData->m_cRuntimeScores) {
+         if(cCompilerScores == pData->m_cScores) {
             return pLoss->BitPackPostApplyUpdate<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackDynamic>(pData);
          } else {
             return CountScores<TLoss, TFloat, k_cCompilerScoresMax == cCompilerScores ? k_dynamicScores : cCompilerScores + 1>::ApplyUpdate(pLoss, pData);

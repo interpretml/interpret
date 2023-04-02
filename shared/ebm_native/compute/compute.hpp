@@ -45,9 +45,12 @@ static_assert(
    "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would "
    "output model files with two values instead of our special case 1");
 
-// TODO: re-evaluate if we want to disable compiler bit packing like this.  There's little benefit in any case
-static constexpr ptrdiff_t k_cItemsPerBitPackMax = ptrdiff_t { 0 }; // k_cBitsForStorageType
-static constexpr ptrdiff_t k_cItemsPerBitPackMin = ptrdiff_t { 0 }; // 1
+// 64 for k_cItemsPerBitPackMax is too big since it'll replicate the loss functions 64 times, and then 32, 21, etc..
+// 8 is nice for k_cItemsPerBitPackMax since 2^8 = 256 bins, which gets 8 items packed into each 64 bit number.
+static constexpr ptrdiff_t k_cItemsPerBitPackMax = ptrdiff_t { 8 };
+// 1 is too low for k_cItemsPerBitPackMin since nobody should have 2^64 bins. 4 is nice since it allows there
+// to be 2^16 bins = 65,536 bins. 5 would only allow 2^12 bins = 4096 which someone might want to exceed.
+static constexpr ptrdiff_t k_cItemsPerBitPackMin = ptrdiff_t { 4 };
 
 static_assert(k_cItemsPerBitPackMax <= ptrdiff_t { k_cBitsForStorageType }, "k_cItemsPerBitPackMax too big");
 static_assert(1 <= k_cItemsPerBitPackMin || (k_cItemsPerBitPackDynamic == k_cItemsPerBitPackMin && k_cItemsPerBitPackDynamic == k_cItemsPerBitPackMax), "k_cItemsPerBitPackMin must be positive and can only be zero if both min and max are zero (which means we only use dynamic)");
