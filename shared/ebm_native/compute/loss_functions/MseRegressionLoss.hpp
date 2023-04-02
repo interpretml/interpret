@@ -12,6 +12,7 @@
 // TFloat could be double, float, or some SIMD intrinsic type
 template<typename TFloat>
 struct MseRegressionLoss final : public RegressionLoss {
+   static constexpr bool k_bMse = true;
    LOSS_CLASS_BOILERPLATE(MseRegressionLoss, true)
 
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in loss_registrations.hpp

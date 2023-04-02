@@ -38,6 +38,7 @@
 // TFloat could be double, float, or some SIMD intrinsic type
 template<typename TFloat>
 struct LogLossBinaryLoss final : public BinaryLoss {
+   static constexpr bool k_bMse = false;
    LOSS_CLASS_BOILERPLATE(LogLossBinaryLoss, true)
 
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in loss_registrations.hpp

@@ -9,6 +9,7 @@
 // TFloat could be double, float, or some SIMD intrinsic type
 template<typename TFloat>
 struct LogLossMulticlassLoss final : public MulticlassLoss {
+   static constexpr bool k_bMse = false;
    LOSS_CLASS_BOILERPLATE(LogLossMulticlassLoss, true)
 
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in loss_registrations.hpp

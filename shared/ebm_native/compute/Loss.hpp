@@ -79,74 +79,73 @@ struct Loss : public Registrable {
    // part of our template blowup issue of having N * M starting point templates where N is the number
    // of scores and M is the number of bit packs.  If we use 8 * 16 that's already 128 copies of the
    // templated function at this point and more later.  Reducing this to just 16 is very very helpful.
-   template<typename TLoss, typename std::enable_if<!TLoss::IsMultiScore, TLoss>::type * = nullptr>
+   template<typename TLoss, typename TFloat, typename std::enable_if<!TLoss::IsMultiScore, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm CountScoresPreApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
-         return BitPackPostApplyUpdate<TLoss, k_oneScore, k_cItemsPerBitPackNone>(pData);
+         return BitPackPostApplyUpdate<TLoss, TFloat, k_oneScore, k_cItemsPerBitPackNone>(pData);
       } else {
-         return BitPack<TLoss, k_oneScore, k_cItemsPerBitPackMax>::ApplyUpdate(this, pData);
+         return BitPack<TLoss, TFloat, k_oneScore, k_cItemsPerBitPackMax>::ApplyUpdate(this, pData);
       }
    }
-   template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, TLoss>::type * = nullptr>
+   template<typename TLoss, typename TFloat, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm CountScoresPreApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
-         return BitPackPostApplyUpdate<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(pData);
+         return BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicClassification, k_cItemsPerBitPackNone>(pData);
       } else {
          // if our inner loop is dynamic scores, then the compiler won't do a full unwind of the bit pack
          // loop, so just short circuit it to using dynamic
-         return BitPackPostApplyUpdate<TLoss, k_dynamicClassification, k_cItemsPerBitPackDynamic>(pData);
+         return BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicClassification, k_cItemsPerBitPackDynamic>(pData);
       }
    }
-   template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, TLoss>::type * = nullptr>
+   template<typename TLoss, typename TFloat, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm CountScoresPreApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
-         return BitPackPostApplyUpdate<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(pData);
+         return BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicClassification, k_cItemsPerBitPackNone>(pData);
       } else {
-         return CountScores<TLoss, (k_cCompilerClassesMax2 < k_cCompilerClassesStart2 ? k_dynamicClassification : k_cCompilerClassesStart2)>::ApplyUpdate(this, pData);
+         return CountScores<TLoss, TFloat, (k_cCompilerClassesMax2 < k_cCompilerClassesStart2 ? k_dynamicClassification : k_cCompilerClassesStart2)>::ApplyUpdate(this, pData);
       }
    }
-   template<typename TLoss, ptrdiff_t cCompilerScores>
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores>
    struct CountScores final {
       INLINE_ALWAYS static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
          if(cCompilerScores == pData->m_cRuntimeScores) {
-            return pLoss->BitPackPostApplyUpdate<TLoss, cCompilerScores, k_cItemsPerBitPackDynamic>(pData);
+            return pLoss->BitPackPostApplyUpdate<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackDynamic>(pData);
          } else {
-            return CountScores<TLoss, k_cCompilerClassesMax2 == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyUpdate(pLoss, pData);
+            return CountScores<TLoss, TFloat, k_cCompilerClassesMax2 == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyUpdate(pLoss, pData);
          }
       }
    };
-   template<typename TLoss>
-   struct CountScores<TLoss, k_dynamicClassification> final {
+   template<typename TLoss, typename TFloat>
+   struct CountScores<TLoss, TFloat, k_dynamicClassification> final {
       INLINE_ALWAYS static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         return pLoss->BitPackPostApplyUpdate<TLoss, k_dynamicClassification, k_cItemsPerBitPackDynamic>(pData);
+         return pLoss->BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicClassification, k_cItemsPerBitPackDynamic>(pData);
       }
    };
 
 
    // in our current format cCompilerScores will always be 1, but just in case we change our code to allow
    // for special casing multiclass with compile time unrolling of the compiler pack, leave cCompilerScores here
-   template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    struct BitPack final {
       INLINE_ALWAYS static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
          if(cCompilerPack == pData->m_cPack) {
-            return pLoss->BitPackPostApplyUpdate<TLoss, cCompilerScores, cCompilerPack>(pData);
+            return pLoss->BitPackPostApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack>(pData);
          } else {
-            return BitPack<TLoss, cCompilerScores, GetNextBitPack(cCompilerPack)>::ApplyUpdate(pLoss, pData);
+            return BitPack<TLoss, TFloat, cCompilerScores, GetNextBitPack(cCompilerPack)>::ApplyUpdate(pLoss, pData);
          }
       }
    };
-   template<typename TLoss, ptrdiff_t cCompilerScores>
-   struct BitPack<TLoss, cCompilerScores, k_cItemsPerBitPackLast> final {
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores>
+   struct BitPack<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackLast> final {
       INLINE_ALWAYS static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         return pLoss->BitPackPostApplyUpdate<TLoss, cCompilerScores, k_cItemsPerBitPackLast>(pData);
+         return pLoss->BitPackPostApplyUpdate<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackLast>(pData);
       }
    };
-   template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED ErrorEbm BitPackPostApplyUpdate(ApplyUpdateBridge * const pData) const {
-      const TLoss * const pTLoss = static_cast<const TLoss *>(this);
-      return pTLoss->template ApplyUpdateTemplated<cCompilerScores, cCompilerPack>(pData);
+      return AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss, TFloat>()>::ApplyUpdate(this, pData);
    }
 
    template<typename TLoss, bool bHessian>
@@ -256,17 +255,10 @@ protected:
       Shared<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyUpdate(pLossSpecific, pData);
    }
 
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
-   INLINE_RELEASE_TEMPLATED ErrorEbm SharedApplyUpdate(ApplyUpdateBridge * const pData) const {
-      static_assert(IsEdgeLoss<TLoss>(), "TLoss must inherit from one of the children of the Loss class");
-      return AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss, TFloat>()>::ApplyUpdate(this, pData);
-   }
-
-
-   template<typename TLoss>
+   template<typename TLoss, typename TFloat>
    INLINE_RELEASE_TEMPLATED ErrorEbm LossApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(IsEdgeLoss<TLoss>(), "TLoss must inherit from one of the children of the Loss class");
-      return CountScoresPreApplyUpdate<TLoss>(pData);
+      return CountScoresPreApplyUpdate<TLoss, TFloat>(pData);
    }
 
 
@@ -408,11 +400,6 @@ protected:
 
 #define LOSS_CLASS_TEMPLATE_BOILERPLATE \
    public: \
-      template<ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack> \
-      ErrorEbm ApplyUpdateTemplated(ApplyUpdateBridge * const pData) const { \
-         return Loss::SharedApplyUpdate<typename std::remove_pointer<decltype(this)>::type, TFloat, \
-            cCompilerScores, cCompilerPack>(pData); \
-      } \
       template<ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian> \
       GPU_DEVICE void InteriorApplyUpdateTemplated(ApplyUpdateBridge * const pData) const { \
          Loss::InteriorApplyUpdate<typename std::remove_pointer<decltype(this)>::type, TFloat, \
@@ -422,7 +409,7 @@ protected:
 #define LOSS_CLASS_VIRTUAL_BOILERPLATE(__EBM_TYPE) \
    public: \
       static ErrorEbm ApplyUpdate(const Loss * const pThis, ApplyUpdateBridge * const pData) { \
-         return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->LossApplyUpdate<const __EBM_TYPE<TFloat>>(pData); \
+         return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->LossApplyUpdate<const __EBM_TYPE<TFloat>, TFloat>(pData); \
       } \
       void FillWrapper(void * const pWrapperOut) noexcept { \
          static_assert( \
