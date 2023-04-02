@@ -301,6 +301,7 @@ EXIT /B 0
     <ClInclude Include="common_c\common_c.h" />
     <ClInclude Include="compute_accessors.hpp" />
     <ClInclude Include="dataset_shared.hpp" />
+    <ClInclude Include="ebm_stats.hpp" />
     <ClInclude Include="GaussianDistribution.hpp" />
     <ClInclude Include="InteractionShell.hpp" />
     <ClInclude Include="InteractionCore.hpp" />

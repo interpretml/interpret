@@ -22,7 +22,7 @@
 #include "Loss.hpp"
 
 #include "approximate_math.hpp"
-#include "ebm_stats.hpp"
+#include "compute_stats.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
