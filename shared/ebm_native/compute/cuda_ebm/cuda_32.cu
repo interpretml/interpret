@@ -28,7 +28,7 @@ template <typename TLoss>
 GPU_GLOBAL void TestGpuAdd(const Loss * const pLoss, const int * const pVal1, const int * const pVal2, int * const pResult) {
    TLoss * const pLossSpecific = static_cast<TLoss *>(pLoss);
    const size_t iGpuThread = threadIdx.x;
-   pResult[iGpuThread] = static_cast<int>(static_cast<float>(pLossSpecific->CalculateGradient(static_cast<float>(pVal1[iGpuThread]), static_cast<float>(pVal2[iGpuThread]))));
+//   pResult[iGpuThread] = static_cast<int>(static_cast<float>(pLossSpecific->CalculateGradient(static_cast<float>(pVal1[iGpuThread]), static_cast<float>(pVal2[iGpuThread]))));
 }
 
 struct Cuda_32_Operators final {

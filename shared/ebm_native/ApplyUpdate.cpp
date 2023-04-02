@@ -7,7 +7,13 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "logging.h" // EBM_ASSERT
+#include "common_c.h"
+#include "bridge_c.h"
+
 #include "zones.h"
+
+#include "bridge_cpp.hpp"
+#include "ebm_internal.hpp"
 
 #include "approximate_math.hpp"
 #include "ebm_stats.hpp"

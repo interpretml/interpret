@@ -162,6 +162,10 @@ INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * const dest, const char * c
 #define FAST_EXP
 #define FAST_LOG
 
+typedef double FloatBig;
+// TODO: someday flip FloatFast to float32
+typedef double FloatFast;
+
 static const char k_registrationSeparator = ',';
 
 extern const char * SkipWhitespace(const char * s);

@@ -7,6 +7,9 @@
 
 #include "Loss.hpp"
 
+#include "approximate_math.hpp"
+#include "ebm_stats.hpp"
+
 template<typename TFloat>
 struct MseRegressionLoss final : public RegressionLoss {
    static constexpr bool k_bMse = true;

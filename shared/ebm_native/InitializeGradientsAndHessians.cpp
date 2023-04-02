@@ -12,6 +12,8 @@
 #include "common_c.h" // FloatFast
 #include "zones.h"
 
+#include "ebm_internal.hpp"
+
 #include "ebm_stats.hpp"
 #include "dataset_shared.hpp" // GetDataSetSharedTarget
 

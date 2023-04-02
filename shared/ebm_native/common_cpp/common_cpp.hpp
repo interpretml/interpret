@@ -10,6 +10,8 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <stdlib.h> // malloc
 
+#include "common_c.h"
+
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {
@@ -35,6 +37,16 @@ namespace DEFINED_ZONE_NAME {
 #define INLINE_RELEASE_UNTEMPLATED template<bool bUnusedInline = false>
 #define INLINE_RELEASE_TEMPLATED
 #endif //NDEBUG
+
+static constexpr FloatFast k_epsilonGradient = FloatFast { 1e-7 };
+static constexpr FloatFast k_epsilonLogLoss = FloatFast { 1e-7 };
+
+#if defined(FAST_EXP) || defined(FAST_LOG)
+// with the approximate exp function we can expect a bit of noise.  We might need to increase this further
+static constexpr FloatFast k_epsilonGradientForBinaryToMulticlass = FloatFast{ 1e-1 };
+#else // defined(FAST_EXP) || defined(FAST_LOG)
+static constexpr FloatFast k_epsilonGradientForBinaryToMulticlass = FloatFast{ 1e-7 };
+#endif // defined(FAST_EXP) || defined(FAST_LOG)
 
 // The C++ standard makes it undefined behavior to access memory past the end of an array with a declared length.
 // So, without mitigation, the struct hack would be undefined behavior.  We can however formally turn an array 

@@ -30,8 +30,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-typedef double FloatBig;
-
 template<typename TTo, typename TFrom>
 INLINE_ALWAYS static TTo SafeConvertFloat(const TFrom val) {
    // TODO: call this function from anywhere we convert floats of any kind
@@ -61,14 +59,6 @@ INLINE_ALWAYS static TTo SafeConvertFloat(const TFrom val) {
 static constexpr FloatBig k_illegalGainFloat = std::numeric_limits<FloatBig>::lowest();
 static constexpr double k_illegalGainDouble = std::numeric_limits<double>::lowest();
 static constexpr FloatBig k_epsilonNegativeGainAllowed = FloatBig { -1e-7 };
-static constexpr FloatFast k_epsilonGradient = FloatFast { 1e-7 };
-#if defined(FAST_EXP) || defined(FAST_LOG)
-// with the approximate exp function we can expect a bit of noise.  We might need to increase this further
-static constexpr FloatFast k_epsilonGradientForBinaryToMulticlass = FloatFast { 1e-1 };
-#else // defined(FAST_EXP) || defined(FAST_LOG)
-static constexpr FloatFast k_epsilonGradientForBinaryToMulticlass = FloatFast { 1e-7 };
-#endif // defined(FAST_EXP) || defined(FAST_LOG)
-static constexpr FloatFast k_epsilonLogLoss = FloatFast { 1e-7 };
 
 // there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerClassesMax value.  The bottleneck seems to be 
 // that setting it too high increases compile time and module size

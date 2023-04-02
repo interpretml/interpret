@@ -12,8 +12,7 @@
 #include "common_c.h" // INLINE_ALWAYS, LIKELY, UNLIKELY
 #include "zones.h"
 
-#include "ebm_internal.hpp" // k_epsilonGradient
-
+#include "common_cpp.hpp"
 #include "approximate_math.hpp" // ExpForBinaryClassification, ...
 
 namespace DEFINED_ZONE_NAME {

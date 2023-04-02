@@ -7,6 +7,9 @@
 
 #include "Loss.hpp"
 
+#include "approximate_math.hpp"
+#include "ebm_stats.hpp"
+
 template<typename TFloat>
 struct LogLossBinaryLoss final : public BinaryLoss {
    static constexpr bool k_bMse = false;
