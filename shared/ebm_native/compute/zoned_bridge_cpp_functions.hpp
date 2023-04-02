@@ -9,7 +9,6 @@
 #include "zones.h"
 
 struct ApplyTrainingData;
-struct ApplyValidationData;
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -21,7 +20,6 @@ struct Loss;
 // these are going to be extern "C++", which we require to call our static member functions per:
 // https://www.drdobbs.com/c-theory-and-practice/184403437
 typedef ErrorEbm (* APPLY_TRAINING_CPP)(const Loss * const pLoss, ApplyTrainingData * const pData);
-typedef ErrorEbm (* APPLY_VALIDATION_CPP)(const Loss * const pLoss, ApplyValidationData * const pData);
 
 struct FunctionPointersCpp {
    // unfortunately, function pointers are not interchangable with data pointers since in some architectures
@@ -29,7 +27,6 @@ struct FunctionPointersCpp {
    // https://stackoverflow.com/questions/12358843/why-are-function-pointers-and-data-pointers-incompatible-in-c-c
 
    APPLY_TRAINING_CPP m_pApplyTrainingCpp;
-   APPLY_VALIDATION_CPP m_pApplyValidationCpp;
 };
 
 } // DEFINED_ZONE_NAME

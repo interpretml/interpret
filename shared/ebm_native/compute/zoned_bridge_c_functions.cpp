@@ -35,14 +35,4 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining) (
    return (*pApplyTrainingCpp)(pLoss, pData);
 }
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyValidation) (
-   const LossWrapper * const pLossWrapper,
-   ApplyValidationData * const pData
-) {
-   const Loss * const pLoss = static_cast<const Loss *>(pLossWrapper->m_pLoss);
-   const APPLY_VALIDATION_CPP pApplyValidationCpp = 
-      (static_cast<FunctionPointersCpp *>(pLossWrapper->m_pFunctionPointersCpp))->m_pApplyValidationCpp;
-   return (*pApplyValidationCpp)(pLoss, pData);
-}
-
 } // DEFINED_ZONE_NAME

@@ -31,14 +31,6 @@ struct ApplyTrainingData {
    BoolEbm m_bHessianNeeded;
 };
 
-struct ApplyValidationData {
-   // TODO: remove this and switch to ApplyUpdateBridge
-   ptrdiff_t m_cRuntimeScores;
-   ptrdiff_t m_cRuntimePack;
-   BoolEbm m_bHessianNeeded;
-   double m_metricOut;
-};
-
 struct ApplyUpdateBridge {
    ptrdiff_t m_cClasses;
    ptrdiff_t m_cPack;
@@ -58,11 +50,9 @@ struct LossWrapper;
 
 // these are extern "C" function pointers so we can't call anything other than an extern "C" function with them
 typedef ErrorEbm (* APPLY_TRAINING_C)(const LossWrapper * const pLossWrapper, ApplyTrainingData * const pData);
-typedef ErrorEbm (* APPLY_VALIDATION_C)(const LossWrapper * const pLossWrapper, ApplyValidationData * const pData);
 
 struct LossWrapper {
    APPLY_TRAINING_C m_pApplyTrainingC;
-   APPLY_VALIDATION_C m_pApplyValidationC;
    // everything below here the C++ *Loss specific class needs to fill out
 
    // this needs to be void since our Registrable object is C++ visible and we cannot define it initially 

@@ -223,20 +223,6 @@ public:
 
       return bExitError ? Error_UnexpectedInternal : Error_None;
    }
-
-   template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) noexcept {
-      // this allows us to switch execution onto GPU, FPGA, or other local computation
-
-      // TODO: use something other than <<<1, 1>>>
-      ExecuteApplyValidation<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian><<<1, 1>>>(
-         pLoss,
-         pData->m_cRuntimeScores,
-         pData->m_cRuntimePack,
-         nullptr
-      );
-      return Error_None;
-   }
 };
 static_assert(std::is_standard_layout<Cuda_32_Operators>::value &&
    std::is_trivially_copyable<Cuda_32_Operators>::value,

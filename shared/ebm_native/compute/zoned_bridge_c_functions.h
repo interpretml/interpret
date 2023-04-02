@@ -18,11 +18,6 @@ INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining
    ApplyTrainingData * const pData
 );
 
-INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyValidation)(
-   const LossWrapper * const pLossWrapper,
-   ApplyValidationData * const pData
-);
-
 #ifdef __cplusplus
 }
 #endif // __cplusplus

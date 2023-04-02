@@ -51,7 +51,6 @@ ErrorEbm Loss::CreateLoss(
          if(!bFailed) {
             EBM_ASSERT(nullptr != pLossWrapperOut->m_pLoss);
             pLossWrapperOut->m_pApplyTrainingC = MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining);
-            pLossWrapperOut->m_pApplyValidationC = MAKE_ZONED_C_FUNCTION_NAME(ApplyValidation);
             LOG_0(Trace_Info, "Exited Loss::CreateLoss");
             return Error_None;
          }

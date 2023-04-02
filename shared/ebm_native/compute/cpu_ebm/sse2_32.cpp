@@ -99,18 +99,6 @@ public:
       );
       return Error_None;
    }
-
-   template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
-      // this allows us to switch execution onto GPU, FPGA, or other local computation
-      ExecuteApplyValidation<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>(
-         pLoss,
-         pData->m_cRuntimeScores,
-         pData->m_cRuntimePack,
-         &pData->m_metricOut
-      );
-      return Error_None;
-   }
 };
 static_assert(std::is_standard_layout<Sse_32_Operators>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
