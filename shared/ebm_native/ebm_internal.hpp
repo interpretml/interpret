@@ -81,6 +81,7 @@ static constexpr FloatFast k_epsilonLogLoss = FloatFast { 1e-7 };
 // TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the 
 //   runtime looped version of our code
 
+// TODO: remove these?
 static constexpr ptrdiff_t k_cCompilerClassesMax = 8;
 static constexpr ptrdiff_t k_cCompilerClassesStart = 3;
 
@@ -96,21 +97,8 @@ static_assert(1 <= k_cCompilerOptimizedCountDimensionsMax,
 static_assert(k_cCompilerOptimizedCountDimensionsMax <= k_cDimensionsMax,
    "k_cCompilerOptimizedCountDimensionsMax cannot be larger than the maximum number of dimensions.");
 
+// TODO: remove this?
 static constexpr size_t k_dynamicDimensions = 0;
-
-#ifndef TODO_remove_this
-static constexpr ptrdiff_t k_cItemsPerBitPackDynamic = 0;
-static constexpr ptrdiff_t k_cItemsPerBitPackMax = 0; // if there are more than 16 (4 bits), then we should just use a loop since the code will be pretty big
-static constexpr ptrdiff_t k_cItemsPerBitPackMin = 0; // our default binning leads us to 256 values, which is 8 units per 64-bit data pack
-INLINE_ALWAYS constexpr static ptrdiff_t GetNextCountItemsBitPacked(const ptrdiff_t cItemsBitPackedPrev) noexcept {
-   // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1 [there are 15 of these]
-   // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1 [which are all included in 64 bits]
-   return k_cItemsPerBitPackMin == cItemsBitPackedPrev ?
-      k_cItemsPerBitPackDynamic : 
-      ptrdiff_t { k_cBitsForStorageType } / ((ptrdiff_t { k_cBitsForStorageType } / cItemsBitPackedPrev) + ptrdiff_t { 1 });
-}
-#endif
-
 
 static constexpr bool k_bUseLogitboost = false;
 

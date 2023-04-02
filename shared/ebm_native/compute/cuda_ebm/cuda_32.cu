@@ -162,7 +162,7 @@ public:
       ExecuteApplyUpdate<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian><<<1, k_cItems>>>(
          pLoss,
          pData->m_cRuntimeScores,
-         pData->m_cRuntimePack
+         pData->m_cPack
       );
 
       error = cudaGetLastError();

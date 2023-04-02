@@ -25,9 +25,8 @@ typedef size_t StorageDataType;
 typedef UIntEbm ActiveDataType; // TODO: in most places we could use size_t for this and only use the uint64 version where we have cross-platform considerations.
 
 struct ApplyUpdateBridge {
-   // TODO: remove these first 3 items
+   // TODO: remove these first 2 items
    ptrdiff_t m_cRuntimeScores;
-   ptrdiff_t m_cRuntimePack;
    BoolEbm m_bHessianNeeded;
    // End REMOVE section
 

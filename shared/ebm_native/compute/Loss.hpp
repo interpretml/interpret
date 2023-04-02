@@ -89,26 +89,26 @@ struct Loss : public Registrable {
    // templated function at this point and more later.  Reducing this to just 16 is very very helpful.
    template<typename TLoss, typename std::enable_if<!TLoss::IsMultiScore, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm CountScoresPreApplyUpdate(ApplyUpdateBridge * const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cRuntimePack) {
+      if(k_cItemsPerBitPackNone == pData->m_cPack) {
          return BitPackPostApplyUpdate<TLoss, k_oneScore, k_cItemsPerBitPackNone>(pData);
       } else {
-         return BitPack<TLoss, k_oneScore, k_cItemsPerBitPackMax2>::ApplyUpdate(this, pData);
+         return BitPack<TLoss, k_oneScore, k_cItemsPerBitPackMax>::ApplyUpdate(this, pData);
       }
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm CountScoresPreApplyUpdate(ApplyUpdateBridge * const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cRuntimePack) {
+      if(k_cItemsPerBitPackNone == pData->m_cPack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyUpdate<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(pData);
       } else {
          // if our inner loop is dynamic scores, then the compiler won't do a full unwind of the bit pack
          // loop, so just short circuit it to using dynamic
-         return BitPackPostApplyUpdate<TLoss, k_dynamicClassification, k_cItemsPerBitPackDynamic2>(pData);
+         return BitPackPostApplyUpdate<TLoss, k_dynamicClassification, k_cItemsPerBitPackDynamic>(pData);
       }
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm CountScoresPreApplyUpdate(ApplyUpdateBridge * const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cRuntimePack) {
+      if(k_cItemsPerBitPackNone == pData->m_cPack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyUpdate<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(pData);
       } else {
@@ -119,7 +119,7 @@ struct Loss : public Registrable {
    struct CountScores final {
       INLINE_ALWAYS static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
          if(cCompilerScores == pData->m_cRuntimeScores) {
-            return pLoss->BitPackPostApplyUpdate<TLoss, cCompilerScores, k_cItemsPerBitPackDynamic2>(pData);
+            return pLoss->BitPackPostApplyUpdate<TLoss, cCompilerScores, k_cItemsPerBitPackDynamic>(pData);
          } else {
             return CountScores<TLoss, k_cCompilerClassesMax2 == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyUpdate(pLoss, pData);
          }
@@ -128,7 +128,7 @@ struct Loss : public Registrable {
    template<typename TLoss>
    struct CountScores<TLoss, k_dynamicClassification> final {
       INLINE_ALWAYS static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         return pLoss->BitPackPostApplyUpdate<TLoss, k_dynamicClassification, k_cItemsPerBitPackDynamic2>(pData);
+         return pLoss->BitPackPostApplyUpdate<TLoss, k_dynamicClassification, k_cItemsPerBitPackDynamic>(pData);
       }
    };
 
@@ -138,7 +138,7 @@ struct Loss : public Registrable {
    template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    struct BitPack final {
       INLINE_ALWAYS static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         if(cCompilerPack == pData->m_cRuntimePack) {
+         if(cCompilerPack == pData->m_cPack) {
             return pLoss->BitPackPostApplyUpdate<TLoss, cCompilerScores, cCompilerPack>(pData);
          } else {
             return BitPack<TLoss, cCompilerScores, GetNextBitPack(cCompilerPack)>::ApplyUpdate(pLoss, pData);

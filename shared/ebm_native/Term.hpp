@@ -10,7 +10,7 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 #include "common_cpp.hpp" // k_cDimensionsMax
-#include "bridge_cpp.hpp" // k_cItemsPerBitPackDynamic2
+#include "bridge_cpp.hpp" // k_cItemsPerBitPackDynamic
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -61,7 +61,7 @@ public:
    static void FreeTerms(const size_t cTerms, Term ** apTerms) noexcept;
 
    inline void SetBitPack(const ptrdiff_t cItemsPerBitPack) noexcept {
-      EBM_ASSERT(k_cItemsPerBitPackDynamic2 != cItemsPerBitPack);
+      EBM_ASSERT(k_cItemsPerBitPackDynamic != cItemsPerBitPack);
       m_cItemsPerBitPack = cItemsPerBitPack;
    }
 

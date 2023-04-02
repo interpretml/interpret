@@ -74,7 +74,7 @@ inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) noexcept
 // having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in 
 // places where you couldn't do so with variable loop iterations
 #define GET_ITEMS_PER_BIT_PACK(MACRO_compilerBitPack, MACRO_runtimeBitPack) \
-   (k_cItemsPerBitPackDynamic2 == (MACRO_compilerBitPack) ? (MACRO_runtimeBitPack) : (MACRO_compilerBitPack))
+   (k_cItemsPerBitPackDynamic == (MACRO_compilerBitPack) ? (MACRO_runtimeBitPack) : (MACRO_compilerBitPack))
 
 static constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 
@@ -98,7 +98,7 @@ inline constexpr static T MakeLowMask(const size_t cBits) noexcept {
 
 static constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin
 // TODO : remove the 2 suffixes from these, and verify these are being used!!  AND at the same time verify that we like the sign of anything that uses these constants size_t vs ptrdiff_t
-static constexpr ptrdiff_t k_cItemsPerBitPackDynamic2 = ptrdiff_t { 0 };
+static constexpr ptrdiff_t k_cItemsPerBitPackDynamic = ptrdiff_t { 0 };
 
 struct BinSumsBoostingBridge {
    ptrdiff_t m_cClasses;

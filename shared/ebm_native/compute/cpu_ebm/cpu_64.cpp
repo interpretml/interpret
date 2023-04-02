@@ -97,7 +97,7 @@ public:
       ExecuteApplyUpdate<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>(
          pLoss, 
          pData->m_cRuntimeScores,
-         pData->m_cRuntimePack
+         pData->m_cPack
       );
       return Error_None;
    }

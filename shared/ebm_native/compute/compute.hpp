@@ -45,24 +45,26 @@ static_assert(
    "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would "
    "output model files with two values instead of our special case 1");
 
-static constexpr ptrdiff_t k_cItemsPerBitPackMax2 = ptrdiff_t { k_cBitsForStorageType };
-static_assert(k_cItemsPerBitPackMax2 <= ptrdiff_t { k_cBitsForStorageType }, "k_cItemsPerBitPackMax too big");
-static constexpr ptrdiff_t k_cItemsPerBitPackMin2 = ptrdiff_t { 1 };
-static_assert(1 <= k_cItemsPerBitPackMin2 || (k_cItemsPerBitPackDynamic2 == k_cItemsPerBitPackMin2 && k_cItemsPerBitPackDynamic2 == k_cItemsPerBitPackMax2), "k_cItemsPerBitPackMin must be positive and can only be zero if both min and max are zero (which means we only use dynamic)");
-static_assert(k_cItemsPerBitPackMin2 <= k_cItemsPerBitPackMax2, "bit pack max less than min");
+// TODO: re-evaluate if we want to disable compiler bit packing like this.  There's little benefit in any case
+static constexpr ptrdiff_t k_cItemsPerBitPackMax = ptrdiff_t { 0 }; // k_cBitsForStorageType
+static constexpr ptrdiff_t k_cItemsPerBitPackMin = ptrdiff_t { 0 }; // 1
+
+static_assert(k_cItemsPerBitPackMax <= ptrdiff_t { k_cBitsForStorageType }, "k_cItemsPerBitPackMax too big");
+static_assert(1 <= k_cItemsPerBitPackMin || (k_cItemsPerBitPackDynamic == k_cItemsPerBitPackMin && k_cItemsPerBitPackDynamic == k_cItemsPerBitPackMax), "k_cItemsPerBitPackMin must be positive and can only be zero if both min and max are zero (which means we only use dynamic)");
+static_assert(k_cItemsPerBitPackMin <= k_cItemsPerBitPackMax, "bit pack max less than min");
 static_assert(
-   k_cItemsPerBitPackDynamic2 == k_cItemsPerBitPackMin2 ||
-   k_cItemsPerBitPackMin2 ==
-   ptrdiff_t { k_cBitsForStorageType } / (ptrdiff_t { k_cBitsForStorageType } / k_cItemsPerBitPackMin2),
+   k_cItemsPerBitPackDynamic == k_cItemsPerBitPackMin ||
+   k_cItemsPerBitPackMin ==
+   ptrdiff_t { k_cBitsForStorageType } / (ptrdiff_t { k_cBitsForStorageType } / k_cItemsPerBitPackMin),
    "k_cItemsPerBitPackMin needs to be on the progression series");
 static_assert(
-   k_cItemsPerBitPackDynamic2 == k_cItemsPerBitPackMax2 ||
-   k_cItemsPerBitPackMax2 ==
-   ptrdiff_t { k_cBitsForStorageType } / (ptrdiff_t { k_cBitsForStorageType } / k_cItemsPerBitPackMax2),
+   k_cItemsPerBitPackDynamic == k_cItemsPerBitPackMax ||
+   k_cItemsPerBitPackMax ==
+   ptrdiff_t { k_cBitsForStorageType } / (ptrdiff_t { k_cBitsForStorageType } / k_cItemsPerBitPackMax),
    "k_cItemsPerBitPackMax needs to be on the progression series");
 // if we cover the entire range of possible bit packing, then we don't need the dynamic case!
-static constexpr ptrdiff_t k_cItemsPerBitPackLast = (ptrdiff_t { k_cBitsForStorageType } == k_cItemsPerBitPackMax2 &&
-   ptrdiff_t { 1 } == k_cItemsPerBitPackMin2) ? ptrdiff_t { 1 } : k_cItemsPerBitPackDynamic2;
+static constexpr ptrdiff_t k_cItemsPerBitPackLast = (ptrdiff_t { k_cBitsForStorageType } == k_cItemsPerBitPackMax &&
+   ptrdiff_t { 1 } == k_cItemsPerBitPackMin) ? ptrdiff_t { 1 } : k_cItemsPerBitPackDynamic;
 inline constexpr static ptrdiff_t GetNextBitPack(const ptrdiff_t cItemsBitPackedPrev) noexcept {
    // for 64 bits, the progression is: 64,32,21,16,12,10,9,8,7,6,5,4,3,2,1,0 (optionaly),-1 (never occurs in this function)
    // [there are 15 of these + the dynamic case + onebin case]
@@ -70,7 +72,7 @@ inline constexpr static ptrdiff_t GetNextBitPack(const ptrdiff_t cItemsBitPacked
    // [which are all included in 64 bits + the dynamic case + onebin case]
    // we can have bit packs of -1, but this function should never see that value
    // this function should also never see the dynamic value 0 because we should terminate the chain at that point
-   return k_cItemsPerBitPackMin2 == cItemsBitPackedPrev ? k_cItemsPerBitPackDynamic2 :
+   return k_cItemsPerBitPackMin == cItemsBitPackedPrev ? k_cItemsPerBitPackDynamic :
       ptrdiff_t { k_cBitsForStorageType } / ((ptrdiff_t { k_cBitsForStorageType } / cItemsBitPackedPrev) + 1);
 }
 
