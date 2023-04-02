@@ -31,16 +31,14 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE void InteriorApplyUpdateTemplated(ApplyUpdateBridge * const pData) const {
-      static_assert(IsClassification(cCompilerClasses), "must be classification");
-      static_assert(!IsBinaryClassification(cCompilerClasses), "must be multiclass");
+      static constexpr bool bDynamic = k_dynamicScores == cCompilerScores;
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetExp = bCalcMetric || bKeepGradHess;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
-      FloatFast aLocalExpVector[GetCountScores(cCompilerClasses)];
+      FloatFast aLocalExpVector[bDynamic ? size_t { 1 } : cCompilerScores];
       FloatFast * aExps;
       if(bGetExp) {
-         static constexpr bool bDynamic = k_dynamicClassification == cCompilerClasses;
          if(bDynamic) {
             EBM_ASSERT(nullptr != pData->m_aMulticlassMidwayTemp);
             aExps = pData->m_aMulticlassMidwayTemp;
@@ -49,8 +47,7 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
          }
       }
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pData->m_cClasses);
-      const size_t cScores = GetCountScores(cClasses);
+      const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
 
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
       EBM_ASSERT(nullptr != aUpdateTensorScores);
