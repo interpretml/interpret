@@ -11,7 +11,6 @@ PKG_CXXFLAGS=$(CXX_VISIBILITY)
 
 OBJECTS = \
    $(NATIVEDIR)/ApplyTermUpdate.o \
-   $(NATIVEDIR)/ApplyUpdate.o \
    $(NATIVEDIR)/BinSumsBoosting.o \
    $(NATIVEDIR)/BinSumsInteraction.o \
    $(NATIVEDIR)/BoosterCore.o \

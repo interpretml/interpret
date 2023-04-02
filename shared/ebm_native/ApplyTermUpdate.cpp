@@ -24,8 +24,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern ErrorEbm ApplyUpdate(ApplyUpdateBridge * const pData);
-
 // we made this a global because if we had put this variable inside the BoosterCore object, then we would need to dereference that before 
 // getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
@@ -152,8 +150,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
 
    if(0 != pBoosterCore->GetTrainingSet()->GetCountSamples()) {
       ApplyUpdateBridge data;
-      data.m_cClasses = pBoosterCore->GetCountClasses();
+      data.m_cScores = GetCountScores(pBoosterCore->GetCountClasses());
       data.m_cPack = pTerm->GetTermBitPack();
+      data.m_bHessianNeeded = EBM_TRUE;
       data.m_bCalcMetric = false;
       data.m_aMulticlassMidwayTemp = pBoosterShell->GetMulticlassMidwayTemp();
       data.m_aUpdateTensorScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
@@ -163,7 +162,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       data.m_aWeights = nullptr;
       data.m_aSampleScores = pBoosterCore->GetTrainingSet()->GetSampleScores();
       data.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
-      error = ApplyUpdate(&data);
+      error = pBoosterCore->LossApplyUpdate(&data);
       if(Error_None != error) {
          return error;
       }
@@ -183,8 +182,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
       ApplyUpdateBridge data;
-      data.m_cClasses = pBoosterCore->GetCountClasses();
+      data.m_cScores = GetCountScores(pBoosterCore->GetCountClasses());
       data.m_cPack = pTerm->GetTermBitPack();
+      data.m_bHessianNeeded = EBM_TRUE;
       data.m_bCalcMetric = true;
       data.m_aMulticlassMidwayTemp = pBoosterShell->GetMulticlassMidwayTemp();
       data.m_aUpdateTensorScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
@@ -194,7 +194,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       data.m_aWeights = pBoosterCore->GetValidationWeights();
       data.m_aSampleScores = pBoosterCore->GetValidationSet()->GetSampleScores();
       data.m_aGradientsAndHessians = pBoosterCore->GetValidationSet()->GetGradientsAndHessiansPointer();
-      error = ApplyUpdate(&data);
+      error = pBoosterCore->LossApplyUpdate(&data);
       if(Error_None != error) {
          return error;
       }

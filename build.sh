@@ -269,7 +269,6 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    printf "%s\n" "LDLIBS=${LDLIBS}"
 
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/ApplyTermUpdate.cpp" -o "$tmp_path/ApplyTermUpdate.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/ApplyUpdate.cpp" -o "$tmp_path/ApplyUpdate.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/BinSumsBoosting.cpp" -o "$tmp_path/BinSumsBoosting.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/BinSumsInteraction.cpp" -o "$tmp_path/BinSumsInteraction.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/BoosterCore.cpp" -o "$tmp_path/BoosterCore.o"
@@ -310,7 +309,6 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
 
    ${CXX} ${LDFLAGS} -shared \
    "$tmp_path/ApplyTermUpdate.o" \
-   "$tmp_path/ApplyUpdate.o" \
    "$tmp_path/BinSumsBoosting.o" \
    "$tmp_path/BinSumsInteraction.o" \
    "$tmp_path/BoosterCore.o" \

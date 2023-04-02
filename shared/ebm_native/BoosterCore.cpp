@@ -36,8 +36,6 @@ namespace DEFINED_ZONE_NAME {
 
 class RandomDeterministic;
 
-extern ErrorEbm ApplyUpdate(ApplyUpdateBridge * const pData);
-
 extern ErrorEbm Unbag(
    const size_t cSamples,
    const BagEbm * const aBag,
@@ -725,8 +723,9 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
 #endif // NDEBUG
 
    ApplyUpdateBridge data;
-   data.m_cClasses = GetCountClasses();
+   data.m_cScores = GetCountScores(GetCountClasses());
    data.m_cPack = k_cItemsPerBitPackNone;
+   data.m_bHessianNeeded = EBM_TRUE;
    data.m_bCalcMetric = false;
    data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
    data.m_aUpdateTensorScores = aUpdateScores;
@@ -736,7 +735,7 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
    data.m_aWeights = nullptr;
    data.m_aSampleScores = GetTrainingSet()->GetSampleScores();
    data.m_aGradientsAndHessians = GetTrainingSet()->GetGradientsAndHessiansPointer();
-   return ApplyUpdate(&data);
+   return LossApplyUpdate(&data);
 }
 
 } // DEFINED_ZONE_NAME

@@ -46,7 +46,6 @@
       <Filter>common_c</Filter>
     </ClCompile>
     <ClCompile Include="random.cpp" />
-    <ClCompile Include="ApplyUpdate.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InteractionShell.hpp" />

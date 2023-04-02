@@ -12,6 +12,7 @@
 
 #include "bridge_cpp.hpp" // GetCountScores
 
+#include "compute_accessors.hpp"
 #include "ebm_internal.hpp" // SafeConvertFloat
 
 #include "Feature.hpp" // Feature
@@ -30,8 +31,6 @@ extern ErrorEbm Unbag(
    size_t * const pcTrainingSamplesOut,
    size_t * const pcValidationSamplesOut
 );
-
-extern ErrorEbm ApplyUpdate(ApplyUpdateBridge * const pData);
 
 void InteractionCore::Free(InteractionCore * const pInteractionCore) {
    LOG_0(Trace_Info, "Entered InteractionCore::Free");
@@ -213,6 +212,18 @@ ErrorEbm InteractionCore::Create(
    }
    LOG_0(Trace_Info, "InteractionCore::Allocate done feature processing");
 
+   static const char g_sMse[] = "mse";
+   static const char g_sLogLoss[] = "log_loss";
+   const char* const sLoss = bClassification ? g_sLogLoss : g_sMse;
+
+   Config config;
+   config.cOutputs = GetCountScores(cClasses);
+   error = GetLoss(&config, sLoss, &pRet->m_loss);
+   if (Error_None != error) {
+      // already logged
+      return error;
+   }
+
    error = pRet->m_dataFrame.Initialize(
       ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses,  // regression, binary, multiclass
       ptrdiff_t { 1 } < cClasses,  // binary, multiclass
@@ -379,8 +390,9 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       }
 
       ApplyUpdateBridge data;
-      data.m_cClasses = cClasses;
+      data.m_cScores = GetCountScores(cClasses);
       data.m_cPack = k_cItemsPerBitPackNone;
+      data.m_bHessianNeeded = EBM_TRUE;
       data.m_bCalcMetric = false;
       data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
       data.m_aUpdateTensorScores = aUpdateScores;
@@ -392,7 +404,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       data.m_aGradientsAndHessians = m_dataFrame.GetGradientsAndHessiansPointer();
       // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
       // reuse the same code that we use for boosting in order to generate our gradients and hessians
-      const ErrorEbm error = ApplyUpdate(&data);
+      const ErrorEbm error = LossApplyUpdate(&data);
 
       free(aMulticlassMidwayTemp); // nullptr ok
       free(aUpdateScores);

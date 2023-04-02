@@ -38,11 +38,14 @@ class InteractionCore final {
 
    DataSetInteraction m_dataFrame;
 
+   LossWrapper m_loss;
+
    inline ~InteractionCore() {
       // this only gets called after our reference count has been decremented to zero
 
       m_dataFrame.Destruct();
       free(m_aFeatures);
+      FreeLossWrapperInternals(&m_loss);
    };
 
    inline InteractionCore() noexcept :
@@ -52,6 +55,7 @@ class InteractionCore final {
       m_aFeatures(nullptr)
    {
       m_dataFrame.InitializeUnfailing();
+      InitializeLossWrapperUnfailing(&m_loss);
    }
 
 public:
@@ -95,6 +99,10 @@ public:
       const BagEbm * const aBag,
       const double * const aInitScores
    );
+
+   inline ErrorEbm LossApplyUpdate(ApplyUpdateBridge * const pData) {
+      return (*m_loss.m_pApplyUpdateC)(&m_loss, pData);
+   }
 };
 
 } // DEFINED_ZONE_NAME

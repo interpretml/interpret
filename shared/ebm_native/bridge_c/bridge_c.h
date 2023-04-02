@@ -26,12 +26,10 @@ typedef UIntEbm ActiveDataType; // TODO: in most places we could use size_t for 
 
 struct ApplyUpdateBridge {
    size_t m_cScores;
+   ptrdiff_t m_cPack;
+
    BoolEbm m_bHessianNeeded;
 
-
-
-   ptrdiff_t m_cClasses; // TODO: REMOVE THIS
-   ptrdiff_t m_cPack;
    bool m_bCalcMetric;
    FloatFast * m_aMulticlassMidwayTemp;
    const FloatFast * m_aUpdateTensorScores;
@@ -41,6 +39,7 @@ struct ApplyUpdateBridge {
    const FloatFast * m_aWeights;
    FloatFast * m_aSampleScores;
    FloatFast * m_aGradientsAndHessians;
+
    double m_metricOut;
 };
 
