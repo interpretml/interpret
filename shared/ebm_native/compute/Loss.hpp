@@ -54,10 +54,10 @@ struct MulticlassMultitaskLoss;
 struct RegressionMultitaskLoss;
 
 
-template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
 GPU_GLOBAL static void ExecuteApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
    const TLoss * const pLossSpecific = static_cast<const TLoss *>(pLoss);
-   pLossSpecific->template InteriorApplyUpdateTemplated<cCompilerScores, cCompilerPack, bHessian>(pData);
+   pLossSpecific->template InteriorApplyUpdateTemplated<cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
 }
 
 struct Registrable {
@@ -161,7 +161,7 @@ struct Loss : public Registrable {
       }
    };
 
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    struct Shared final {
       GPU_DEVICE static void ApplyUpdate(const TLoss * const pLoss, ApplyUpdateBridge * const pData) {
          UNUSED(pLoss);
@@ -170,8 +170,8 @@ struct Loss : public Registrable {
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
       }
    };
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerPack, bool bHessian>
-   struct Shared <TLoss, TFloat, k_oneScore, cCompilerPack, bHessian> final {
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+   struct Shared <TLoss, TFloat, k_oneScore, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight> final {
       GPU_DEVICE static void ApplyUpdate(const TLoss * const pLoss, ApplyUpdateBridge * const pData) {
          UNUSED(pLoss);
          UNUSED(pData);
@@ -180,6 +180,88 @@ struct Loss : public Registrable {
       }
    };
 
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+   INLINE_RELEASE_TEMPLATED ErrorEbm CallbackTFloat(ApplyUpdateBridge * const pData) const {
+      return TFloat::template ApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(this, pData);
+   }
+
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<!TLoss::k_bMse, TLoss>::type* = nullptr>
+   INLINE_RELEASE_TEMPLATED ErrorEbm FinalOptions(ApplyUpdateBridge * const pData) const {
+      if (nullptr != pData->m_aGradientsAndHessians) {
+         static constexpr bool bKeepGradHess = true;
+
+         // if we are updating the gradients then we are doing training and do not need to calculate the metric
+         EBM_ASSERT(!pData->m_bCalcMetric);
+         static constexpr bool bCalcMetric = false;
+
+         if (nullptr != pData->m_aWeights) {
+            static constexpr bool bWeight = true;
+
+            // this branch will only be taking during interaction initialization
+
+            return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+         }
+         else {
+            static constexpr bool bWeight = false;
+            return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+         }
+      }
+      else {
+         static constexpr bool bKeepGradHess = false;
+
+         if (pData->m_bCalcMetric) {
+            static constexpr bool bCalcMetric = true;
+
+            if (nullptr != pData->m_aWeights) {
+               static constexpr bool bWeight = true;
+               return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+            }
+            else {
+               static constexpr bool bWeight = false;
+               return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+            }
+         }
+         else {
+            static constexpr bool bCalcMetric = false;
+
+            // currently this branch is not taken, but if would be if we wanted to allow in the future
+            // non-metric calculating validation for boosting.  For instance if we wanted to substitute an alternate
+            // metric or if for performance reasons we only want to calculate the metric every N rounds of boosting
+
+            EBM_ASSERT(nullptr == pData->m_aWeights);
+            static constexpr bool bWeight = false; // if we are not calculating the metric or updating gradients then we never need the weights
+
+            return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+         }
+      }
+   }
+
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<TLoss::k_bMse, TLoss>::type* = nullptr>
+   INLINE_RELEASE_TEMPLATED ErrorEbm FinalOptions(ApplyUpdateBridge * const pData) const {
+      EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
+      static constexpr bool bKeepGradHess = true;
+
+      if (pData->m_bCalcMetric) {
+         static constexpr bool bCalcMetric = true;
+
+         if (nullptr != pData->m_aWeights) {
+            static constexpr bool bWeight = true;
+            return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+         }
+         else {
+            static constexpr bool bWeight = false;
+            return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+         }
+      }
+      else {
+         static constexpr bool bCalcMetric = false;
+
+         EBM_ASSERT(nullptr == pData->m_aWeights);
+         static constexpr bool bWeight = false; // if we are not calculating the metric then we never need the weights
+
+         return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+      }
+   }
 
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
    struct AttachHessian;
@@ -187,16 +269,16 @@ struct Loss : public Registrable {
    struct AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, true> final {
       INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
          if(pData->m_bHessianNeeded) {
-            return TFloat::template ApplyUpdate<TLoss, cCompilerScores, cCompilerPack, true>(pLoss, pData);
+            return pLoss->FinalOptions<TLoss, TFloat, cCompilerScores, cCompilerPack, true>(pData);
          } else {
-            return TFloat::template ApplyUpdate<TLoss, cCompilerScores, cCompilerPack, false>(pLoss, pData);
+            return pLoss->FinalOptions<TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pData);
          }
       }
    };
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    struct AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, false> final {
       INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         return TFloat::template ApplyUpdate<TLoss, cCompilerScores, cCompilerPack, false>(pLoss, pData);
+         return pLoss->FinalOptions<TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pData);
       }
    };
 
@@ -249,10 +331,10 @@ protected:
          std::is_base_of<RegressionMultitaskLoss, TLoss>::value;
    }
 
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE INLINE_RELEASE_TEMPLATED void InteriorApplyUpdate(ApplyUpdateBridge * const pData) const {
       const TLoss * const pLossSpecific = static_cast<const TLoss *>(this);
-      Shared<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyUpdate(pLossSpecific, pData);
+      Shared<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>::ApplyUpdate(pLossSpecific, pData);
    }
 
    template<typename TLoss, typename TFloat>
@@ -400,10 +482,10 @@ protected:
 
 #define LOSS_CLASS_TEMPLATE_BOILERPLATE \
    public: \
-      template<ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian> \
+      template<ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight> \
       GPU_DEVICE void InteriorApplyUpdateTemplated(ApplyUpdateBridge * const pData) const { \
          Loss::InteriorApplyUpdate<typename std::remove_pointer<decltype(this)>::type, TFloat, \
-            cCompilerScores, cCompilerPack, bHessian>(pData); \
+            cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData); \
       }
 
 #define LOSS_CLASS_VIRTUAL_BOILERPLATE(__EBM_TYPE) \
