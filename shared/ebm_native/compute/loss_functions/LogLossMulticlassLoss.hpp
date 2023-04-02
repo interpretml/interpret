@@ -40,7 +40,6 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
       FloatFast * aExps;
       if(bGetExp) {
          if(bDynamic) {
-            EBM_ASSERT(nullptr != pData->m_aMulticlassMidwayTemp);
             aExps = pData->m_aMulticlassMidwayTemp;
          } else {
             aExps = aLocalExpVector;
@@ -50,10 +49,8 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
 
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
-      EBM_ASSERT(nullptr != aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
-      EBM_ASSERT(1 <= cSamples);
 
       FloatFast * pSampleScore = pData->m_aSampleScores;
       const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples * cScores;
@@ -71,15 +68,10 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
          aBinScores = aUpdateTensorScores;
       } else {
          const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
-         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
 
          const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
-         EBM_ASSERT(1 <= cItemsPerBitPack);
-         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
          cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
-         EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
          cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
@@ -192,7 +184,6 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
                const FloatFast itemExp = aExps[targetData];
 
                FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(sumExp, itemExp);
-               EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
 
                if(bWeight) {
                   sampleLogLoss *= weight;

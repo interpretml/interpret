@@ -31,10 +31,8 @@ struct LogLossBinaryLoss final : public BinaryLoss {
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
-      EBM_ASSERT(nullptr != aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
-      EBM_ASSERT(1 <= cSamples);
 
       FloatFast * pSampleScore = pData->m_aSampleScores;
       const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples;
@@ -51,15 +49,10 @@ struct LogLossBinaryLoss final : public BinaryLoss {
          updateScore = aUpdateTensorScores[0];
       } else {
          const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
-         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
 
          const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
-         EBM_ASSERT(1 <= cItemsPerBitPack);
-         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
          cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
-         EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
          cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
@@ -136,7 +129,6 @@ struct LogLossBinaryLoss final : public BinaryLoss {
 
             if(bCalcMetric) {
                FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(sampleScore, targetData);
-               EBM_ASSERT(std::isnan(sampleLogLoss) || 0 <= sampleLogLoss);
 
                if(bWeight) {
                   sampleLogLoss *= weight;

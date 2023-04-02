@@ -337,11 +337,7 @@ static constexpr FloatBig k_gainMin = 0;
 //     histogram generation in separate work items less than a certain size, we can then merge the resulting histograms
 //     which would sidestep the issue since we'd never be adding 1 to a number that was fairly small.
 
-class EbmStats final {
-public:
-
-   EbmStats() = delete; // this is a static class.  Do not construct
-
+namespace EbmStats {
    INLINE_ALWAYS static FloatFast CalculateHessianFromGradientBinaryClassification(const FloatFast gradient) {
       // this function IS performance critical as it's called on every sample * cClasses * cInnerBags
 
@@ -628,89 +624,6 @@ public:
       return originalGradient;
    }
 
-   INLINE_ALWAYS static FloatFast InverseLinkFunctionThenCalculateGradientBinaryClassification(
-      const FloatFast sampleScore, 
-      const size_t target
-   ) {
-      // this IS a performance critical function.  It gets called per sample!
-
-      // sampleScore can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdate
-      //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
-      //   logit
-
-      // sampleScore can be +-infinity -> we can overflow to +-infinity
-
-      EBM_ASSERT(0 == target || 1 == target);
-
-      // this function outputs 0 if we perfectly predict the target with 100% certainty.  To do so, sampleScore would need to be either 
-      //   infinity or -infinity
-      // this function outputs 1 if actual value was 1 but we incorrectly predicted with 100% certainty that it was 0 by having 
-      //   sampleScore be -infinity
-      // this function outputs -1 if actual value was 0 but we incorrectly predicted with 100% certainty that it was 1 by having sampleScore 
-      //   be infinity
-      //
-      // this function outputs 0.5 if actual value was 1 but we were 50%/50% by having sampleScore be 0
-      // this function outputs -0.5 if actual value was 0 but we were 50%/50% by having sampleScore be 0
-
-      // TODO : In the future we'll sort our data by the target value, so we'll know ahead of time if 0 == target.  We expect 0 to be the 
-      //   default target, so we should flip the value of sampleScore so that we don't need to negate it for the default 0 case
-      // TODO: we can probably remove the negation on 1 == target via : return  binned_actual_value - 1 + (1 / (np.exp(training_log_odds_prediction) + 1)) 
-      // once we've moved to sorted training data
-      // exp will return the same type that it is given, either float or double
-      // TODO: for the ApproxExp function, we can change the constant to being a negative once we change to sorting by our target value
-      //       then we don't need to even take the negative of sampleScore below
-
-      // !!! IMPORTANT: when using an approximate exp function, the formula used to compute the gradients becomes very
-      //                important.  We want something that is balanced from positive to negative, which this version
-      //                does IF the classes are roughly balanced since the positive or negative value is
-      //                determined by only the target, unlike if we used a forumala that relied
-      //                on the exp function returning a 1 at the 0 value, which our approximate exp does not give
-      //                In time, you'd expect boosting to make targets with 0 more negative, leading to a positive
-      //                term in the exp, and targets with 1 more positive, leading to a positive term in the exp
-      //                So both classes get the same treatment in terms of errors in the exp function (both in the
-      //                positive domain)
-      //                We do still want the error of the positive cases and the error of the negative cases to
-      //                sum to zero in the aggregate, so we want to choose our exp function to have average error
-      //                sums of zero.
-      //                I've made a copy of this formula as a comment to reference to what is good in-case the 
-      //                formula is changed in the code without reading this comment
-      //                const FloatFast gradient = (UNPREDICTABLE(0 == target) ? FloatFast { -1 } : FloatFast { 1 }) / (FloatFast{ 1 } + ExpForBinaryClassification(UNPREDICTABLE(0 == target) ? -sampleScore : sampleScore));
-      // !!! IMPORTANT: SEE ABOVE
-      const FloatFast gradient = (UNPREDICTABLE(size_t { 0 } == target) ? FloatFast { 1 } : FloatFast { -1 }) / (FloatFast { 1 } +
-         ExpForBinaryClassification<false>(UNPREDICTABLE(size_t { 0 } == target) ? -sampleScore : sampleScore));
-
-      // exp always yields a positive number or zero, and I can't imagine any reasonable implementation that would violate this by returning a negative number
-      // given that 1.0 is an exactly representable number in IEEE 754, I can't see 1 + exp(anything) ever being less than 1, even with floating point jitter
-      // again, given that the numerator 1.0 is an exactly representable number, I can't see (+-1.0 / something_1_or_greater) ever having an absolute value
-      // above 1.0 especially, since IEEE 754 guarnatees that addition and division yield numbers rounded correctly to the last binary decimal place
-      // IEEE 754, which we check for at compile time, specifies that +-1/infinity = 0
-
-      // gradient cannot be +-infinity -> even if sampleScore is +-infinity we then get +-1 division by 1, or division by +infinity, which are +-1 
-      //   or 0 respectively
-
-      // gradient can only be NaN if our inputs are NaN
-
-      // So...
-      EBM_ASSERT(std::isnan(sampleScore) || !std::isinf(gradient) && -1 <= gradient && gradient <= 1);
-
-      // gradient can't be +-infinity, since an infinity in the denominator would just lead us to zero for the gradient value!
-
-#ifndef NDEBUG
-      const FloatFast expVal = std::exp(sampleScore);
-      FloatFast gradientDebug;
-      FloatFast hessianDebug;
-      InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(FloatFast { 1 } / (FloatFast { 1 } + expVal), expVal, gradientDebug, hessianDebug);
-      if(1 == target) {
-         gradientDebug = MulticlassFixTargetGradient(gradientDebug, FloatFast { 1 });
-      }
-      // the TransformScoreToGradientMulticlass can't be +-infinity per notes in TransformScoreToGradientMulticlass, 
-      // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
-      // if either is a NaN value, then don't compare since we aren't sure that we're exactly equal in those cases because of numeric instability reasons
-      EBM_ASSERT(std::isnan(sampleScore) || std::isnan(gradientDebug) || std::abs(gradientDebug - gradient) < k_epsilonGradientForBinaryToMulticlass);
-#endif // NDEBUG
-      return gradient;
-   }
-
    INLINE_ALWAYS static void InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(
       const FloatFast sumExpInverted,
       const FloatFast itemExp, 
@@ -803,56 +716,87 @@ public:
       return oldGradient - weight;
    }
 
-   INLINE_ALWAYS static FloatFast ComputeSingleSampleLogLossBinaryClassification(
+   INLINE_ALWAYS static FloatFast InverseLinkFunctionThenCalculateGradientBinaryClassification(
       const FloatFast sampleScore, 
       const size_t target
    ) {
-      // this IS a performance critical function.  It gets called per validation sample!
+      // this IS a performance critical function.  It gets called per sample!
 
-      // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
-
-      // trainingLogWeight can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdate
+      // sampleScore can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdate
       //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
       //   logit
 
-      // trainingLogWeight can be any number from -infinity to +infinity -> through addition, it can overflow to +-infinity
+      // sampleScore can be +-infinity -> we can overflow to +-infinity
 
       EBM_ASSERT(0 == target || 1 == target);
 
-      const FloatFast ourExp = ExpForBinaryClassification<false>(UNPREDICTABLE(size_t { 0 } == target) ? sampleScore : -sampleScore);
-      // no reasonable implementation of exp should lead to a negative value
-      EBM_ASSERT(std::isnan(sampleScore) || 0 <= ourExp);
+      // this function outputs 0 if we perfectly predict the target with 100% certainty.  To do so, sampleScore would need to be either 
+      //   infinity or -infinity
+      // this function outputs 1 if actual value was 1 but we incorrectly predicted with 100% certainty that it was 0 by having 
+      //   sampleScore be -infinity
+      // this function outputs -1 if actual value was 0 but we incorrectly predicted with 100% certainty that it was 1 by having sampleScore 
+      //   be infinity
+      //
+      // this function outputs 0.5 if actual value was 1 but we were 50%/50% by having sampleScore be 0
+      // this function outputs -0.5 if actual value was 0 but we were 50%/50% by having sampleScore be 0
 
-      // exp will always be positive, and when we add 1, we'll always be guaranteed to have a positive number, so log shouldn't ever fail due to negative 
-      // numbers the exp term could overlfow to infinity, but that should only happen in pathalogical scenarios where our train set is driving the logits 
-      // one way to a very very certain outcome (essentially 100%) and the validation set has the opposite, but in that case our ultimate convergence is 
-      // infinity anyways, and we'll be generaly driving up the log loss, so we legitimately want our loop to terminate training since we're getting a 
-      // worse and worse model, so going to infinity isn't bad in that case
-      const FloatFast singleSampleLogLoss = LogForLogLoss<false>(FloatFast { 1 } + ourExp); // log & exp will return the same type that it is given, either float or double
+      // TODO : In the future we'll sort our data by the target value, so we'll know ahead of time if 0 == target.  We expect 0 to be the 
+      //   default target, so we should flip the value of sampleScore so that we don't need to negate it for the default 0 case
+      // TODO: we can probably remove the negation on 1 == target via : return  binned_actual_value - 1 + (1 / (np.exp(training_log_odds_prediction) + 1)) 
+      // once we've moved to sorted training data
+      // exp will return the same type that it is given, either float or double
+      // TODO: for the ApproxExp function, we can change the constant to being a negative once we change to sorting by our target value
+      //       then we don't need to even take the negative of sampleScore below
 
-      // singleSampleLogLoss can be NaN, but only though propagation -> we're never taking the log of any number close to a negative, 
-      // so we should only get propagation NaN values
+      // !!! IMPORTANT: when using an approximate exp function, the formula used to compute the gradients becomes very
+      //                important.  We want something that is balanced from positive to negative, which this version
+      //                does IF the classes are roughly balanced since the positive or negative value is
+      //                determined by only the target, unlike if we used a forumala that relied
+      //                on the exp function returning a 1 at the 0 value, which our approximate exp does not give
+      //                In time, you'd expect boosting to make targets with 0 more negative, leading to a positive
+      //                term in the exp, and targets with 1 more positive, leading to a positive term in the exp
+      //                So both classes get the same treatment in terms of errors in the exp function (both in the
+      //                positive domain)
+      //                We do still want the error of the positive cases and the error of the negative cases to
+      //                sum to zero in the aggregate, so we want to choose our exp function to have average error
+      //                sums of zero.
+      //                I've made a copy of this formula as a comment to reference to what is good in-case the 
+      //                formula is changed in the code without reading this comment
+      //                const FloatFast gradient = (UNPREDICTABLE(0 == target) ? FloatFast { -1 } : FloatFast { 1 }) / (FloatFast{ 1 } + ExpForBinaryClassification(UNPREDICTABLE(0 == target) ? -sampleScore : sampleScore));
+      // !!! IMPORTANT: SEE ABOVE
+      const FloatFast gradient = (UNPREDICTABLE(size_t { 0 } == target) ? FloatFast { 1 } : FloatFast { -1 }) / (FloatFast { 1 } +
+         ExpForBinaryClassification<false>(UNPREDICTABLE(size_t { 0 } == target) ? -sampleScore : sampleScore));
 
-      // singleSampleLogLoss can be +infinity -> can happen when the logit is greater than 709, which can happen after about 70,900 boosting rounds
+      // exp always yields a positive number or zero, and I can't imagine any reasonable implementation that would violate this by returning a negative number
+      // given that 1.0 is an exactly representable number in IEEE 754, I can't see 1 + exp(anything) ever being less than 1, even with floating point jitter
+      // again, given that the numerator 1.0 is an exactly representable number, I can't see (+-1.0 / something_1_or_greater) ever having an absolute value
+      // above 1.0 especially, since IEEE 754 guarnatees that addition and division yield numbers rounded correctly to the last binary decimal place
+      // IEEE 754, which we check for at compile time, specifies that +-1/infinity = 0
 
-      // singleSampleLogLoss always positive -> the 1 term inside the log has an exact floating point representation, so no reasonable floating point framework should 
-      // make adding a positive number to 1 a number less than 1.  It's hard to see how any reasonable log implementatation that would give a negative 
-      // exp given a 1, since 1 has an exact floating point number representation, and it computes to another exact floating point number, and who 
-      // would seriously make a log function that take 1 and returns a negative.
-      // So, 
-      EBM_ASSERT(std::isnan(sampleScore) || 0 <= singleSampleLogLoss); // log(1) == 0
-      // TODO : check our approxmiate log above for handling of 1 exactly.  We might need to change the above assert to allow a small negative value
-      //   if our approxmiate log doesn't guarantee non-negative results AND numbers slightly larger than 1
+      // gradient cannot be +-infinity -> even if sampleScore is +-infinity we then get +-1 division by 1, or division by +infinity, which are +-1 
+      //   or 0 respectively
+
+      // gradient can only be NaN if our inputs are NaN
+
+      // So...
+      EBM_ASSERT(std::isnan(sampleScore) || !std::isinf(gradient) && -1 <= gradient && gradient <= 1);
+
+      // gradient can't be +-infinity, since an infinity in the denominator would just lead us to zero for the gradient value!
 
 #ifndef NDEBUG
       const FloatFast expVal = std::exp(sampleScore);
-      const FloatFast singleSampleLogLossDebug = EbmStats::ComputeSingleSampleLogLossMulticlass(
-         1 + expVal, 0 == target ? FloatFast { 1 } : expVal
-      );
-      EBM_ASSERT(std::isnan(singleSampleLogLoss) || std::isinf(singleSampleLogLoss) || std::isnan(singleSampleLogLossDebug) || std::isinf(singleSampleLogLossDebug) || std::abs(singleSampleLogLossDebug - singleSampleLogLoss) < k_epsilonGradientForBinaryToMulticlass);
+      FloatFast gradientDebug;
+      FloatFast hessianDebug;
+      InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(FloatFast { 1 } / (FloatFast { 1 } + expVal), expVal, gradientDebug, hessianDebug);
+      if(1 == target) {
+         gradientDebug = EbmStats::MulticlassFixTargetGradient(gradientDebug, FloatFast { 1 });
+      }
+      // the TransformScoreToGradientMulticlass can't be +-infinity per notes in TransformScoreToGradientMulticlass, 
+      // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
+      // if either is a NaN value, then don't compare since we aren't sure that we're exactly equal in those cases because of numeric instability reasons
+      EBM_ASSERT(std::isnan(sampleScore) || std::isnan(gradientDebug) || std::abs(gradientDebug - gradient) < k_epsilonGradientForBinaryToMulticlass);
 #endif // NDEBUG
-
-      return singleSampleLogLoss;
+      return gradient;
    }
 
    INLINE_ALWAYS static FloatFast ComputeSingleSampleLogLossMulticlass(
@@ -929,6 +873,58 @@ public:
       // so, the fraction might be a tiny bit smaller than one, in which case the output would be a tiny
       // bit negative.  We can just let other subsequent adds cover this up
       EBM_ASSERT(std::isnan(singleSampleLogLoss) || -k_epsilonLogLoss <= singleSampleLogLoss); // log(1) == 0
+      return singleSampleLogLoss;
+   }
+
+   INLINE_ALWAYS static FloatFast ComputeSingleSampleLogLossBinaryClassification(
+      const FloatFast sampleScore, 
+      const size_t target
+   ) {
+      // this IS a performance critical function.  It gets called per validation sample!
+
+      // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
+
+      // trainingLogWeight can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdate
+      //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
+      //   logit
+
+      // trainingLogWeight can be any number from -infinity to +infinity -> through addition, it can overflow to +-infinity
+
+      EBM_ASSERT(0 == target || 1 == target);
+
+      const FloatFast ourExp = ExpForBinaryClassification<false>(UNPREDICTABLE(size_t { 0 } == target) ? sampleScore : -sampleScore);
+      // no reasonable implementation of exp should lead to a negative value
+      EBM_ASSERT(std::isnan(sampleScore) || 0 <= ourExp);
+
+      // exp will always be positive, and when we add 1, we'll always be guaranteed to have a positive number, so log shouldn't ever fail due to negative 
+      // numbers the exp term could overlfow to infinity, but that should only happen in pathalogical scenarios where our train set is driving the logits 
+      // one way to a very very certain outcome (essentially 100%) and the validation set has the opposite, but in that case our ultimate convergence is 
+      // infinity anyways, and we'll be generaly driving up the log loss, so we legitimately want our loop to terminate training since we're getting a 
+      // worse and worse model, so going to infinity isn't bad in that case
+      const FloatFast singleSampleLogLoss = LogForLogLoss<false>(FloatFast { 1 } + ourExp); // log & exp will return the same type that it is given, either float or double
+
+      // singleSampleLogLoss can be NaN, but only though propagation -> we're never taking the log of any number close to a negative, 
+      // so we should only get propagation NaN values
+
+      // singleSampleLogLoss can be +infinity -> can happen when the logit is greater than 709, which can happen after about 70,900 boosting rounds
+
+      // singleSampleLogLoss always positive -> the 1 term inside the log has an exact floating point representation, so no reasonable floating point framework should 
+      // make adding a positive number to 1 a number less than 1.  It's hard to see how any reasonable log implementatation that would give a negative 
+      // exp given a 1, since 1 has an exact floating point number representation, and it computes to another exact floating point number, and who 
+      // would seriously make a log function that take 1 and returns a negative.
+      // So, 
+      EBM_ASSERT(std::isnan(sampleScore) || 0 <= singleSampleLogLoss); // log(1) == 0
+      // TODO : check our approxmiate log above for handling of 1 exactly.  We might need to change the above assert to allow a small negative value
+      //   if our approxmiate log doesn't guarantee non-negative results AND numbers slightly larger than 1
+
+#ifndef NDEBUG
+      const FloatFast expVal = std::exp(sampleScore);
+      const FloatFast singleSampleLogLossDebug = EbmStats::ComputeSingleSampleLogLossMulticlass(
+         1 + expVal, 0 == target ? FloatFast { 1 } : expVal
+      );
+      EBM_ASSERT(std::isnan(singleSampleLogLoss) || std::isinf(singleSampleLogLoss) || std::isnan(singleSampleLogLossDebug) || std::isinf(singleSampleLogLossDebug) || std::abs(singleSampleLogLossDebug - singleSampleLogLoss) < k_epsilonGradientForBinaryToMulticlass);
+#endif // NDEBUG
+
       return singleSampleLogLoss;
    }
 

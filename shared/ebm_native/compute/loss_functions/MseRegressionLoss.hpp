@@ -31,10 +31,8 @@ struct MseRegressionLoss final : public RegressionLoss {
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
 
       const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
-      EBM_ASSERT(nullptr != aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
-      EBM_ASSERT(1 <= cSamples);
 
       FloatFast * pGradient = pData->m_aGradientsAndHessians; // no hessians for regression
       const FloatFast * const pGradientsEnd = pGradient + cSamples;
@@ -51,15 +49,10 @@ struct MseRegressionLoss final : public RegressionLoss {
          updateScore = aUpdateTensorScores[0];
       } else {
          const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
-         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
 
          const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
-         EBM_ASSERT(1 <= cItemsPerBitPack);
-         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
 
          cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
-         EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
 
          cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
          cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
@@ -103,7 +96,6 @@ struct MseRegressionLoss final : public RegressionLoss {
 
             if(bCalcMetric) {
                FloatFast sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
-               EBM_ASSERT(std::isnan(sampleSquaredError) || 0 <= sampleSquaredError);
 
                if(bWeight) {
                   const FloatFast weight = *pWeight;
