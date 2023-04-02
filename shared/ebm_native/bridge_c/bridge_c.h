@@ -24,14 +24,15 @@ typedef double FloatFast;
 typedef size_t StorageDataType;
 typedef UIntEbm ActiveDataType; // TODO: in most places we could use size_t for this and only use the uint64 version where we have cross-platform considerations.
 
-struct ApplyTrainingData {
-   // TODO: remove this and switch to ApplyUpdateBridge
+struct ApplyUpdateBridge {
+   // TODO: remove these first 3 items
    ptrdiff_t m_cRuntimeScores;
    ptrdiff_t m_cRuntimePack;
    BoolEbm m_bHessianNeeded;
-};
+   // End REMOVE section
 
-struct ApplyUpdateBridge {
+
+
    ptrdiff_t m_cClasses;
    ptrdiff_t m_cPack;
    bool m_bCalcMetric;
@@ -49,10 +50,10 @@ struct ApplyUpdateBridge {
 struct LossWrapper;
 
 // these are extern "C" function pointers so we can't call anything other than an extern "C" function with them
-typedef ErrorEbm (* APPLY_TRAINING_C)(const LossWrapper * const pLossWrapper, ApplyTrainingData * const pData);
+typedef ErrorEbm (* APPLY_UPDATE_C)(const LossWrapper * const pLossWrapper, ApplyUpdateBridge * const pData);
 
 struct LossWrapper {
-   APPLY_TRAINING_C m_pApplyTrainingC;
+   APPLY_UPDATE_C m_pApplyUpdateC;
    // everything below here the C++ *Loss specific class needs to fill out
 
    // this needs to be void since our Registrable object is C++ visible and we cannot define it initially 

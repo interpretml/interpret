@@ -98,7 +98,7 @@ public:
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) noexcept {
+   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) noexcept {
       static constexpr size_t k_cItems = 5;
 
       bool bExitError = true;
@@ -159,7 +159,7 @@ public:
       }
 
       TestGpuAdd<TLoss><<<1, k_cItems>>>(static_cast<Loss *>(pDeviceLoss), aDeviceVal1, aDeviceVal2, aDeviceResult);
-      ExecuteApplyTraining<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian><<<1, k_cItems>>>(
+      ExecuteApplyUpdate<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian><<<1, k_cItems>>>(
          pLoss,
          pData->m_cRuntimeScores,
          pData->m_cRuntimePack

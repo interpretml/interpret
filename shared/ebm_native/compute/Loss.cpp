@@ -50,7 +50,7 @@ ErrorEbm Loss::CreateLoss(
          const bool bFailed = Registration::CreateRegistrable(pConfig, sLoss, sLossEnd, pLossWrapperOut, registrations);
          if(!bFailed) {
             EBM_ASSERT(nullptr != pLossWrapperOut->m_pLoss);
-            pLossWrapperOut->m_pApplyTrainingC = MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining);
+            pLossWrapperOut->m_pApplyUpdateC = MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate);
             LOG_0(Trace_Info, "Exited Loss::CreateLoss");
             return Error_None;
          }

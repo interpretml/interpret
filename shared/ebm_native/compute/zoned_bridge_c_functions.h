@@ -13,9 +13,9 @@
 extern "C" {
 #endif // __cplusplus
 
-INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining)(
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate)(
    const LossWrapper * const pLossWrapper,
-   ApplyTrainingData * const pData
+   ApplyUpdateBridge * const pData
 );
 
 #ifdef __cplusplus

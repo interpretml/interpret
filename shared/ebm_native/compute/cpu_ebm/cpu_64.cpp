@@ -92,9 +92,9 @@ public:
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
+   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
-      ExecuteApplyTraining<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>(
+      ExecuteApplyUpdate<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>(
          pLoss, 
          pData->m_cRuntimeScores,
          pData->m_cRuntimePack

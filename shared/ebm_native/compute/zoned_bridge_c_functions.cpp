@@ -25,14 +25,14 @@ namespace DEFINED_ZONE_NAME {
 
 struct Loss;
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining) (
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate) (
    const LossWrapper * const pLossWrapper,
-   ApplyTrainingData * const pData
+   ApplyUpdateBridge * const pData
 ) {
    const Loss * const pLoss = static_cast<const Loss *>(pLossWrapper->m_pLoss);
-   const APPLY_TRAINING_CPP pApplyTrainingCpp = 
-      (static_cast<FunctionPointersCpp *>(pLossWrapper->m_pFunctionPointersCpp))->m_pApplyTrainingCpp;
-   return (*pApplyTrainingCpp)(pLoss, pData);
+   const APPLY_UPDATE_CPP pApplyUpdateCpp = 
+      (static_cast<FunctionPointersCpp *>(pLossWrapper->m_pFunctionPointersCpp))->m_pApplyUpdateCpp;
+   return (*pApplyUpdateCpp)(pLoss, pData);
 }
 
 } // DEFINED_ZONE_NAME
