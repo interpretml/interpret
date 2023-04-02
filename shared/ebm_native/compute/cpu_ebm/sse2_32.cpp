@@ -89,14 +89,10 @@ public:
       return Sse_32_Operators(_mm_sqrt_ss(m_data));
    }
 
-   template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+   template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
    INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
-      ExecuteApplyUpdate<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>(
-         pLoss,
-         pData->m_cRuntimeScores,
-         pData->m_cPack
-      );
+      ExecuteApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian>(pLoss, pData);
       return Error_None;
    }
 };

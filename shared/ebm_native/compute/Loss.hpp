@@ -54,18 +54,10 @@ struct MulticlassMultitaskLoss;
 struct RegressionMultitaskLoss;
 
 
-template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-GPU_GLOBAL static void ExecuteApplyUpdate(
-   const Loss * const pLoss, 
-   const ptrdiff_t cRuntimeScores,
-   const ptrdiff_t cRuntimePack
-) {
-   TLoss * const pLossSpecific = static_cast<TLoss *>(pLoss);
-   TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyUpdate(
-      pLossSpecific, 
-      cRuntimeScores,
-      cRuntimePack
-   );
+template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+GPU_GLOBAL static void ExecuteApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
+   const TLoss * const pLossSpecific = static_cast<const TLoss *>(pLoss);
+   pLossSpecific->template InteriorApplyUpdateTemplated<cCompilerScores, cCompilerPack, bHessian>(pData);
 }
 
 struct Registrable {
@@ -172,56 +164,18 @@ struct Loss : public Registrable {
 
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
    struct Shared final {
-      GPU_DEVICE static void ApplyUpdate(
-         const TLoss * const pLoss,
-         const ptrdiff_t cRuntimeScores,
-         const ptrdiff_t cRuntimePack
-      ) {
+      GPU_DEVICE static void ApplyUpdate(const TLoss * const pLoss, ApplyUpdateBridge * const pData) {
          UNUSED(pLoss);
-         UNUSED(cRuntimeScores);
-         UNUSED(cRuntimePack);
-
-         ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
-      }
-   };
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, bool bHessian>
-   struct Shared<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackNone, bHessian> final {
-      GPU_DEVICE static void ApplyUpdate(
-         const TLoss * const pLoss,
-         const ptrdiff_t cRuntimeScores,
-         const ptrdiff_t cRuntimePack
-      ) {
-         UNUSED(pLoss);
-         UNUSED(cRuntimeScores);
-         UNUSED(cRuntimePack);
+         UNUSED(pData);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
       }
    };
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerPack, bool bHessian>
    struct Shared <TLoss, TFloat, k_oneScore, cCompilerPack, bHessian> final {
-      GPU_DEVICE static void ApplyUpdate(
-         const TLoss * const pLoss,
-         const ptrdiff_t cRuntimeScores,
-         const ptrdiff_t cRuntimePack
-      ) {
+      GPU_DEVICE static void ApplyUpdate(const TLoss * const pLoss, ApplyUpdateBridge * const pData) {
          UNUSED(pLoss);
-         UNUSED(cRuntimeScores);
-         UNUSED(cRuntimePack);
-
-         ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
-      }
-   };
-   template<typename TLoss, typename TFloat, bool bHessian>
-   struct Shared<TLoss, TFloat, k_oneScore, k_cItemsPerBitPackNone, bHessian> final {
-      GPU_DEVICE static void ApplyUpdate(
-         const TLoss * const pLoss, 
-         const ptrdiff_t cRuntimeScores,
-         const ptrdiff_t cRuntimePack
-      ) {
-         UNUSED(pLoss);
-         UNUSED(cRuntimeScores);
-         UNUSED(cRuntimePack);
+         UNUSED(pData);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
       }
@@ -234,16 +188,16 @@ struct Loss : public Registrable {
    struct AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, true> final {
       INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
          if(pData->m_bHessianNeeded) {
-            return TFloat::template ApplyUpdate<Shared, TLoss, TFloat, cCompilerScores, cCompilerPack, true>(pLoss, pData);
+            return TFloat::template ApplyUpdate<TLoss, cCompilerScores, cCompilerPack, true>(pLoss, pData);
          } else {
-            return TFloat::template ApplyUpdate<Shared, TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pLoss, pData);
+            return TFloat::template ApplyUpdate<TLoss, cCompilerScores, cCompilerPack, false>(pLoss, pData);
          }
       }
    };
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    struct AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, false> final {
       INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         return TFloat::template ApplyUpdate<Shared, TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pLoss, pData);
+         return TFloat::template ApplyUpdate<TLoss, cCompilerScores, cCompilerPack, false>(pLoss, pData);
       }
    };
 
@@ -296,6 +250,11 @@ protected:
          std::is_base_of<RegressionMultitaskLoss, TLoss>::value;
    }
 
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+   GPU_DEVICE INLINE_RELEASE_TEMPLATED void InteriorApplyUpdate(ApplyUpdateBridge * const pData) const {
+      const TLoss * const pLossSpecific = static_cast<const TLoss *>(this);
+      Shared<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyUpdate(pLossSpecific, pData);
+   }
 
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED ErrorEbm SharedApplyUpdate(ApplyUpdateBridge * const pData) const {
@@ -453,6 +412,11 @@ protected:
       ErrorEbm ApplyUpdateTemplated(ApplyUpdateBridge * const pData) const { \
          return Loss::SharedApplyUpdate<typename std::remove_pointer<decltype(this)>::type, TFloat, \
             cCompilerScores, cCompilerPack>(pData); \
+      } \
+      template<ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian> \
+      GPU_DEVICE void InteriorApplyUpdateTemplated(ApplyUpdateBridge * const pData) const { \
+         Loss::InteriorApplyUpdate<typename std::remove_pointer<decltype(this)>::type, TFloat, \
+            cCompilerScores, cCompilerPack, bHessian>(pData); \
       }
 
 #define LOSS_CLASS_VIRTUAL_BOILERPLATE(__EBM_TYPE) \

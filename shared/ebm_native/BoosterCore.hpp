@@ -198,6 +198,10 @@ public:
       FloatFast * const aMulticlassMidwayTemp,
       FloatFast * const aUpdateScores
    );
+
+   inline ErrorEbm LossApplyUpdate(ApplyUpdateBridge * const pData) {
+      return (*m_loss.m_pApplyUpdateC)(&m_loss, pData);
+   }
 };
 
 } // DEFINED_ZONE_NAME
