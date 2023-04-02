@@ -31,7 +31,7 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
       return 1.0;
    }
 
-   template<ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+   template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE void InteriorApplyUpdateTemplated(ApplyUpdateBridge * const pData) const {
       Loss::InteriorApplyUpdate<typename std::remove_pointer<decltype(this)>::type, TFloat,
          cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);

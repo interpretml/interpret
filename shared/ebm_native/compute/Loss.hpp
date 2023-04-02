@@ -54,7 +54,7 @@ struct MulticlassMultitaskLoss;
 struct RegressionMultitaskLoss;
 
 
-template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
 GPU_GLOBAL static void ExecuteApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
    const TLoss * const pLossSpecific = static_cast<const TLoss *>(pLoss);
    pLossSpecific->template InteriorApplyUpdateTemplated<cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
@@ -91,43 +91,43 @@ struct Loss : public Registrable {
    INLINE_RELEASE_TEMPLATED ErrorEbm CountScoresPreApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
-         return BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicClassification, k_cItemsPerBitPackNone>(pData);
+         return BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackNone>(pData);
       } else {
          // if our inner loop is dynamic scores, then the compiler won't do a full unwind of the bit pack
          // loop, so just short circuit it to using dynamic
-         return BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicClassification, k_cItemsPerBitPackDynamic>(pData);
+         return BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackDynamic>(pData);
       }
    }
    template<typename TLoss, typename TFloat, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm CountScoresPreApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
-         return BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicClassification, k_cItemsPerBitPackNone>(pData);
+         return BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackNone>(pData);
       } else {
-         return CountScores<TLoss, TFloat, (k_cCompilerClassesMax2 < k_cCompilerClassesStart2 ? k_dynamicClassification : k_cCompilerClassesStart2)>::ApplyUpdate(this, pData);
+         return CountScores<TLoss, TFloat, (k_cCompilerScoresMax < k_cCompilerScoresStart ? k_dynamicScores : k_cCompilerScoresStart)>::ApplyUpdate(this, pData);
       }
    }
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores>
    struct CountScores final {
       INLINE_ALWAYS static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
          if(cCompilerScores == pData->m_cRuntimeScores) {
             return pLoss->BitPackPostApplyUpdate<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackDynamic>(pData);
          } else {
-            return CountScores<TLoss, TFloat, k_cCompilerClassesMax2 == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyUpdate(pLoss, pData);
+            return CountScores<TLoss, TFloat, k_cCompilerScoresMax == cCompilerScores ? k_dynamicScores : cCompilerScores + 1>::ApplyUpdate(pLoss, pData);
          }
       }
    };
    template<typename TLoss, typename TFloat>
-   struct CountScores<TLoss, TFloat, k_dynamicClassification> final {
+   struct CountScores<TLoss, TFloat, k_dynamicScores> final {
       INLINE_ALWAYS static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         return pLoss->BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicClassification, k_cItemsPerBitPackDynamic>(pData);
+         return pLoss->BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackDynamic>(pData);
       }
    };
 
 
    // in our current format cCompilerScores will always be 1, but just in case we change our code to allow
    // for special casing multiclass with compile time unrolling of the compiler pack, leave cCompilerScores here
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack>
    struct BitPack final {
       INLINE_ALWAYS static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
          if(cCompilerPack == pData->m_cPack) {
@@ -137,13 +137,13 @@ struct Loss : public Registrable {
          }
       }
    };
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores>
    struct BitPack<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackLast> final {
       INLINE_ALWAYS static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
          return pLoss->BitPackPostApplyUpdate<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackLast>(pData);
       }
    };
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED ErrorEbm BitPackPostApplyUpdate(ApplyUpdateBridge * const pData) const {
       return AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss, TFloat>()>::ApplyUpdate(this, pData);
    }
@@ -161,7 +161,7 @@ struct Loss : public Registrable {
       }
    };
 
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    struct Shared final {
       GPU_DEVICE static void ApplyUpdate(const TLoss * const pLoss, ApplyUpdateBridge * const pData) {
          UNUSED(pLoss);
@@ -180,12 +180,12 @@ struct Loss : public Registrable {
       }
    };
 
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    INLINE_RELEASE_TEMPLATED ErrorEbm CallbackTFloat(ApplyUpdateBridge * const pData) const {
       return TFloat::template ApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(this, pData);
    }
 
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<!TLoss::k_bMse, TLoss>::type* = nullptr>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<!TLoss::k_bMse, TLoss>::type* = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm FinalOptions(ApplyUpdateBridge * const pData) const {
       if (nullptr != pData->m_aGradientsAndHessians) {
          static constexpr bool bKeepGradHess = true;
@@ -236,7 +236,7 @@ struct Loss : public Registrable {
       }
    }
 
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<TLoss::k_bMse, TLoss>::type* = nullptr>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<TLoss::k_bMse, TLoss>::type* = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm FinalOptions(ApplyUpdateBridge * const pData) const {
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
       static constexpr bool bKeepGradHess = true;
@@ -263,9 +263,9 @@ struct Loss : public Registrable {
       }
    }
 
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
    struct AttachHessian;
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack>
    struct AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, true> final {
       INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
          if(pData->m_bHessianNeeded) {
@@ -275,7 +275,7 @@ struct Loss : public Registrable {
          }
       }
    };
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack>
    struct AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, false> final {
       INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
          return pLoss->FinalOptions<TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pData);
@@ -331,7 +331,7 @@ protected:
          std::is_base_of<RegressionMultitaskLoss, TLoss>::value;
    }
 
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE INLINE_RELEASE_TEMPLATED void InteriorApplyUpdate(ApplyUpdateBridge * const pData) const {
       const TLoss * const pLossSpecific = static_cast<const TLoss *>(this);
       Shared<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>::ApplyUpdate(pLossSpecific, pData);
@@ -482,7 +482,7 @@ protected:
 
 #define LOSS_CLASS_TEMPLATE_BOILERPLATE \
    public: \
-      template<ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight> \
+      template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight> \
       GPU_DEVICE void InteriorApplyUpdateTemplated(ApplyUpdateBridge * const pData) const { \
          Loss::InteriorApplyUpdate<typename std::remove_pointer<decltype(this)>::type, TFloat, \
             cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData); \

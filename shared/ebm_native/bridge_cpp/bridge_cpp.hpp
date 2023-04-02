@@ -20,7 +20,8 @@ namespace DEFINED_ZONE_NAME {
 
 static constexpr ptrdiff_t k_regression = -1;
 static constexpr ptrdiff_t k_dynamicClassification = 0;
-static constexpr ptrdiff_t k_oneScore = 1;
+static constexpr size_t k_oneScore = 1;
+static constexpr size_t k_dynamicScores = 0;
 inline constexpr static bool IsRegression(const ptrdiff_t cClasses) noexcept {
    return k_regression == cClasses;
 }
@@ -47,6 +48,10 @@ inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) noexcept
    return cClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
 #endif // EXPAND_BINARY_LOGITS
 }
+
+#define GET_COUNT_SCORES(MACRO_cCompilerScores, MACRO_cRuntimeScores) \
+   (k_dynamicScores == (MACRO_cCompilerScores) ? (MACRO_cRuntimeScores) : \
+   (MACRO_cCompilerScores))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed

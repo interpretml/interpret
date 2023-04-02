@@ -37,8 +37,8 @@ struct ApplyUpdateInternal final {
       FloatFast aLocalExpVector[GetCountScores(cCompilerClasses)];
       FloatFast * aExps;
       if(bGetExp) {
-         static constexpr bool bDynamicClasses = k_dynamicClassification == cCompilerClasses;
-         if(bDynamicClasses) {
+         static constexpr bool bDynamic = k_dynamicClassification == cCompilerClasses;
+         if(bDynamic) {
             EBM_ASSERT(nullptr != pData->m_aMulticlassMidwayTemp);
             aExps = pData->m_aMulticlassMidwayTemp;
          } else {

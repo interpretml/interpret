@@ -37,11 +37,11 @@ namespace DEFINED_ZONE_NAME {
 // TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the 
 //   runtime looped version of our code
 
-static constexpr ptrdiff_t k_cCompilerClassesMax2 = 8;
-static constexpr ptrdiff_t k_cCompilerClassesStart2 = 3;
+static constexpr size_t k_cCompilerScoresMax = 8;
+static constexpr size_t k_cCompilerScoresStart = 3;
 
 static_assert(
-   2 <= k_cCompilerClassesMax2,
+   2 <= k_cCompilerScoresMax,
    "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would "
    "output model files with two values instead of our special case 1");
 
