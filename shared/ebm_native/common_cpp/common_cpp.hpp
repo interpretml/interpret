@@ -109,6 +109,11 @@ inline static size_t CountBytes(const T * const pHigh, const T * const pLow) noe
    return reinterpret_cast<const char *>(pHigh) - reinterpret_cast<const char *>(pLow);
 }
 
+template<typename T>
+inline constexpr static T EbmIsNaN(T v) noexcept {
+   return v != v;
+}
+
 // TODO : replace all std::min and std::max and similar comparions that get the min/max with this function
 // unlike std::min/std::max, our version has explicit noexcept semantics, constexpr static, and is variadic
 template<typename T>

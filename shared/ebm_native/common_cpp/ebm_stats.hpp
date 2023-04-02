@@ -13,7 +13,6 @@
 #include "zones.h"
 
 #include "common_cpp.hpp"
-#include "approximate_math.hpp" // ExpForBinaryClassification, ...
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -338,7 +337,7 @@ static constexpr FloatBig k_gainMin = 0;
 //     which would sidestep the issue since we'd never be adding 1 to a number that was fairly small.
 
 namespace EbmStats {
-   INLINE_ALWAYS static FloatFast CalculateHessianFromGradientBinaryClassification(const FloatFast gradient) {
+   GPU_DEVICE INLINE_ALWAYS static FloatFast CalculateHessianFromGradientBinaryClassification(const FloatFast gradient) {
       // this function IS performance critical as it's called on every sample * cClasses * cInnerBags
 
       // normally you would calculate the hessian from the class probability, but for classification it's possible
@@ -372,10 +371,10 @@ namespace EbmStats {
 
       // propagate NaN or deliver weird results if NaNs aren't properly propaged.  This is acceptable considering how hard you have to 
       // work to generate such an illegal value, and given that we won't crash
-      EBM_ASSERT(
-         std::isnan(gradient) || 
-         !std::isinf(gradient) && -1 - k_epsilonGradient <= gradient && gradient <= 1
-      );
+      //EBM_ASSERT(
+      //   std::isnan(gradient) || 
+      //   !std::isinf(gradient) && -1 - k_epsilonGradient <= gradient && gradient <= 1
+      //);
 
       // this function pre-computes a portion of an equation that we'll use later.  We're computing it now since we can share
       // the work of computing it between inner bags.  It's not possible to reason about this function in isolation though.
@@ -449,7 +448,7 @@ namespace EbmStats {
 
       // with our abs inputs confined to the range of -k_epsilonGradient -> 1, we can't get a new NaN value here, so only check against propaged NaN 
       // values from gradient
-      EBM_ASSERT(std::isnan(gradient) || !std::isinf(hessian) && -k_epsilonGradient <= hessian && hessian <= FloatFast { 0.25 });
+      //EBM_ASSERT(std::isnan(gradient) || !std::isinf(hessian) && -k_epsilonGradient <= hessian && hessian <= FloatFast { 0.25 });
 
       return hessian;
    }
@@ -611,7 +610,7 @@ namespace EbmStats {
       return gradient;
    }
 
-   INLINE_ALWAYS static FloatFast ComputeGradientRegressionMSEFromOriginalGradient(const FloatFast originalGradient) {
+   GPU_DEVICE INLINE_ALWAYS static FloatFast ComputeGradientRegressionMSEFromOriginalGradient(const FloatFast originalGradient) {
       // this function IS performance critical as it's called on every sample
 
       // for MSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
@@ -624,7 +623,7 @@ namespace EbmStats {
       return originalGradient;
    }
 
-   INLINE_ALWAYS static void InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(
+   GPU_DEVICE INLINE_ALWAYS static void InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(
       const FloatFast sumExpInverted,
       const FloatFast itemExp, 
       FloatFast & gradientOut,
@@ -642,10 +641,10 @@ namespace EbmStats {
 
       // sumExpInverted can be any number from 0 to +infinity -> each e^logit term can't be less than zero, and I can't imagine any implementation 
       //   that would result in a negative exp result from adding a series of positive values.
-      EBM_ASSERT(std::isnan(sumExpInverted) || 0 <= sumExpInverted);
+      // EBM_ASSERT(std::isnan(sumExpInverted) || 0 <= sumExpInverted);
 
       // itemExp can be anything from 0 to +infinity, or NaN (through propagation)
-      EBM_ASSERT(std::isnan(itemExp) || 0 <= itemExp); // no reasonable implementation should lead to a negative exp value
+      // EBM_ASSERT(std::isnan(itemExp) || 0 <= itemExp); // no reasonable implementation should lead to a negative exp value
 
       // mathematically sumExp must be larger than itemExp BUT in practice itemExp might be SLIGHTLY larger due to numerical issues -> 
       //   since sumExp is a sum of positive terms that includes itemExp, it cannot be lower mathematically.
@@ -655,7 +654,7 @@ namespace EbmStats {
       //   added to numbers below the threshold of epsilon at the value of EbmExp(trainingLogWeight), then by the time we get to the division of 
       //   EbmExp(trainingLogWeight) / sumExp could see the numerator as higher, and result in a value slightly greater than 1!
 
-      EBM_ASSERT(std::isnan(sumExpInverted) || itemExp - k_epsilonGradient <= FloatFast { 1 } / sumExpInverted);
+      // EBM_ASSERT(std::isnan(sumExpInverted) || itemExp - k_epsilonGradient <= FloatFast { 1 } / sumExpInverted);
 
       const FloatFast probability = itemExp * sumExpInverted;
 
@@ -688,8 +687,8 @@ namespace EbmStats {
       // probability can't be infinity -> even if itemExp is slightly bigger than sumExp due to numeric reasons, the division is going to be close to 1
       //   we can't really get an infinity in itemExp without also getting an infinity in sumExp, so probability can't be infinity without getting a NaN
 
-      EBM_ASSERT(std::isnan(probability) || 
-         !std::isinf(probability) && 0 <= probability && probability <= 1 + k_epsilonGradient);
+      // EBM_ASSERT(std::isnan(probability) || 
+      //   !std::isinf(probability) && 0 <= probability && probability <= 1 + k_epsilonGradient);
 
 
       //const FloatFast yi = UNPREDICTABLE(iScore == target) ? FloatFast { 1 } : FloatFast { 0 };
@@ -704,7 +703,7 @@ namespace EbmStats {
       // just like for the division by zero conditions, we'd need many many boosting rounds for probability to get to 1, since
       // the sum of e^logit must be about equal to e^logit for this class, which should require thousands of rounds (70,900 or so)
       // also, the boosting algorthm tends to push results to zero, so a result more negative than -1 would be very exceptional
-      EBM_ASSERT(std::isnan(probability) || !std::isinf(gradient) && -1 - k_epsilonGradient <= gradient && gradient <= 1);
+      // EBM_ASSERT(std::isnan(probability) || !std::isinf(gradient) && -1 - k_epsilonGradient <= gradient && gradient <= 1);
 
       const FloatFast hessian = probability * (FloatFast { 1 } - probability);
 
@@ -712,11 +711,11 @@ namespace EbmStats {
       hessianOut = hessian;
    }
 
-   INLINE_ALWAYS static FloatFast MulticlassFixTargetGradient(const FloatFast oldGradient, const FloatFast weight) {
+   GPU_DEVICE INLINE_ALWAYS static FloatFast MulticlassFixTargetGradient(const FloatFast oldGradient, const FloatFast weight) {
       return oldGradient - weight;
    }
 
-   INLINE_ALWAYS static FloatFast InverseLinkFunctionThenCalculateGradientBinaryClassification(
+   GPU_DEVICE INLINE_ALWAYS static FloatFast InverseLinkFunctionThenCalculateGradientBinaryClassification(
       const FloatFast sampleScore, 
       const size_t target
    ) {
@@ -728,7 +727,7 @@ namespace EbmStats {
 
       // sampleScore can be +-infinity -> we can overflow to +-infinity
 
-      EBM_ASSERT(0 == target || 1 == target);
+      // EBM_ASSERT(0 == target || 1 == target);
 
       // this function outputs 0 if we perfectly predict the target with 100% certainty.  To do so, sampleScore would need to be either 
       //   infinity or -infinity
@@ -779,7 +778,7 @@ namespace EbmStats {
       // gradient can only be NaN if our inputs are NaN
 
       // So...
-      EBM_ASSERT(std::isnan(sampleScore) || !std::isinf(gradient) && -1 <= gradient && gradient <= 1);
+      // EBM_ASSERT(std::isnan(sampleScore) || !std::isinf(gradient) && -1 <= gradient && gradient <= 1);
 
       // gradient can't be +-infinity, since an infinity in the denominator would just lead us to zero for the gradient value!
 
@@ -794,12 +793,12 @@ namespace EbmStats {
       // the TransformScoreToGradientMulticlass can't be +-infinity per notes in TransformScoreToGradientMulticlass, 
       // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
       // if either is a NaN value, then don't compare since we aren't sure that we're exactly equal in those cases because of numeric instability reasons
-      EBM_ASSERT(std::isnan(sampleScore) || std::isnan(gradientDebug) || std::abs(gradientDebug - gradient) < k_epsilonGradientForBinaryToMulticlass);
+      // EBM_ASSERT(std::isnan(sampleScore) || std::isnan(gradientDebug) || std::abs(gradientDebug - gradient) < k_epsilonGradientForBinaryToMulticlass);
 #endif // NDEBUG
       return gradient;
    }
 
-   INLINE_ALWAYS static FloatFast ComputeSingleSampleLogLossMulticlass(
+   GPU_DEVICE INLINE_ALWAYS static FloatFast ComputeSingleSampleLogLossMulticlass(
       const FloatFast sumExp,
       const FloatFast itemExp
    ) {
@@ -818,12 +817,12 @@ namespace EbmStats {
       // sumExp can be any number from 0 to +infinity -> each e^logit term can't be less than zero, and I can't imagine any implementation 
       //   that would result in a negative exp result from adding a series of positive values.
 
-      EBM_ASSERT(std::isnan(sumExp) || 0 <= sumExp);
+      // EBM_ASSERT(std::isnan(sumExp) || 0 <= sumExp);
 
       // validationLogWeight (calculates itemExp) can be any number between -infinity to +infinity, or NaN
 
       // itemExp can be anything from 0 to +infinity, or NaN (through propagation)
-      EBM_ASSERT(std::isnan(itemExp) || 0 <= itemExp); // no reasonable implementation of exp should lead to a negative value
+      // EBM_ASSERT(std::isnan(itemExp) || 0 <= itemExp); // no reasonable implementation of exp should lead to a negative value
 
       // mathematically sumExp must be larger than itemExp BUT in practice itemExp might be SLIGHTLY larger due to numerical issues -> 
       //   since sumExp is a sum of positive terms that includes itemExp, it cannot be lower mathematically.
@@ -833,7 +832,7 @@ namespace EbmStats {
       //   added to numbers below the threshold of epsilon at the value of EbmExp(trainingLogWeight), then by the time we get to the division of 
       //   EbmExp(trainingLogWeight) / sumExp could see the numerator as higher, and result in a value slightly greater than 1!
 
-      EBM_ASSERT(std::isnan(sumExp) || itemExp - k_epsilonGradient <= sumExp);
+      // EBM_ASSERT(std::isnan(sumExp) || itemExp - k_epsilonGradient <= sumExp);
 
       const FloatFast invertedProbability = sumExp / itemExp;
 
@@ -862,7 +861,7 @@ namespace EbmStats {
       // we can tollerate numbers very very slightly less than 1.  These make the log loss go down slightly as they lead to negative log
       // values, but we can tollerate this drop and rely on other features for the log loss calculation
 
-      EBM_ASSERT(std::isnan(invertedProbability) || 1 - k_epsilonLogLoss <= invertedProbability);
+      // EBM_ASSERT(std::isnan(invertedProbability) || 1 - k_epsilonLogLoss <= invertedProbability);
 
       const FloatFast singleSampleLogLoss = LogForLogLoss<false>(invertedProbability);
 
@@ -872,11 +871,11 @@ namespace EbmStats {
       // we're using two numbers that probably can't be represented by exact representations
       // so, the fraction might be a tiny bit smaller than one, in which case the output would be a tiny
       // bit negative.  We can just let other subsequent adds cover this up
-      EBM_ASSERT(std::isnan(singleSampleLogLoss) || -k_epsilonLogLoss <= singleSampleLogLoss); // log(1) == 0
+      // EBM_ASSERT(std::isnan(singleSampleLogLoss) || -k_epsilonLogLoss <= singleSampleLogLoss); // log(1) == 0
       return singleSampleLogLoss;
    }
 
-   INLINE_ALWAYS static FloatFast ComputeSingleSampleLogLossBinaryClassification(
+   GPU_DEVICE INLINE_ALWAYS static FloatFast ComputeSingleSampleLogLossBinaryClassification(
       const FloatFast sampleScore, 
       const size_t target
    ) {
@@ -890,11 +889,11 @@ namespace EbmStats {
 
       // trainingLogWeight can be any number from -infinity to +infinity -> through addition, it can overflow to +-infinity
 
-      EBM_ASSERT(0 == target || 1 == target);
+      // EBM_ASSERT(0 == target || 1 == target);
 
       const FloatFast ourExp = ExpForBinaryClassification<false>(UNPREDICTABLE(size_t { 0 } == target) ? sampleScore : -sampleScore);
       // no reasonable implementation of exp should lead to a negative value
-      EBM_ASSERT(std::isnan(sampleScore) || 0 <= ourExp);
+      // EBM_ASSERT(std::isnan(sampleScore) || 0 <= ourExp);
 
       // exp will always be positive, and when we add 1, we'll always be guaranteed to have a positive number, so log shouldn't ever fail due to negative 
       // numbers the exp term could overlfow to infinity, but that should only happen in pathalogical scenarios where our train set is driving the logits 
@@ -913,7 +912,7 @@ namespace EbmStats {
       // exp given a 1, since 1 has an exact floating point number representation, and it computes to another exact floating point number, and who 
       // would seriously make a log function that take 1 and returns a negative.
       // So, 
-      EBM_ASSERT(std::isnan(sampleScore) || 0 <= singleSampleLogLoss); // log(1) == 0
+      // EBM_ASSERT(std::isnan(sampleScore) || 0 <= singleSampleLogLoss); // log(1) == 0
       // TODO : check our approxmiate log above for handling of 1 exactly.  We might need to change the above assert to allow a small negative value
       //   if our approxmiate log doesn't guarantee non-negative results AND numbers slightly larger than 1
 
@@ -922,13 +921,13 @@ namespace EbmStats {
       const FloatFast singleSampleLogLossDebug = EbmStats::ComputeSingleSampleLogLossMulticlass(
          1 + expVal, 0 == target ? FloatFast { 1 } : expVal
       );
-      EBM_ASSERT(std::isnan(singleSampleLogLoss) || std::isinf(singleSampleLogLoss) || std::isnan(singleSampleLogLossDebug) || std::isinf(singleSampleLogLossDebug) || std::abs(singleSampleLogLossDebug - singleSampleLogLoss) < k_epsilonGradientForBinaryToMulticlass);
+      // EBM_ASSERT(std::isnan(singleSampleLogLoss) || std::isinf(singleSampleLogLoss) || std::isnan(singleSampleLogLossDebug) || std::isinf(singleSampleLogLossDebug) || std::abs(singleSampleLogLossDebug - singleSampleLogLoss) < k_epsilonGradientForBinaryToMulticlass);
 #endif // NDEBUG
 
       return singleSampleLogLoss;
    }
 
-   INLINE_ALWAYS static FloatFast ComputeSingleSampleSquaredErrorRegressionFromGradient(const FloatFast gradient) {
+   GPU_DEVICE INLINE_ALWAYS static FloatFast ComputeSingleSampleSquaredErrorRegressionFromGradient(const FloatFast gradient) {
       // this IS a performance critical function.  It gets called per validation sample!
 
       // for MSE, the gradient is the error and we square it

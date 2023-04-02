@@ -304,14 +304,14 @@ template<
    bool bSpecialCaseZero = false,
    typename T
 >
-INLINE_ALWAYS static T ExpApproxSchraudolph(T val, const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) {
+GPU_DEVICE INLINE_ALWAYS static T ExpApproxSchraudolph(T val, const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) {
    // This function guarnatees non-decreasing monotonicity, so it never decreases with increasing inputs, but
    // it can sometimes yield equal outputs on increasing inputs
 
-   EBM_ASSERT(k_expTermLowerBound <= addExpSchraudolphTerm);
-   EBM_ASSERT(addExpSchraudolphTerm <= k_expTermUpperBound);
+   //EBM_ASSERT(k_expTermLowerBound <= addExpSchraudolphTerm);
+   //EBM_ASSERT(addExpSchraudolphTerm <= k_expTermUpperBound);
 
-   const bool bPassNaN = bNaNPossible && UNLIKELY(std::isnan(val));
+   const bool bPassNaN = bNaNPossible && UNLIKELY(EbmIsNaN(val));
    if(LIKELY(!bPassNaN)) {
       // we need to check the following before converting val to a float, if a conversion is needed
       // The following things we do below would invoke undefined behavior otherwise:
@@ -399,7 +399,7 @@ template<
    bool bSpecialCaseZero = false,
    typename T
 >
-INLINE_ALWAYS static T ExpApproxBest(T val) {
+GPU_DEVICE INLINE_ALWAYS static T ExpApproxBest(T val) {
    // This function DOES NOT guarnatee monotonicity, and in fact I've seen small monotonicity violations, so it's
    // not just a theoretical consideration.  Unlike the ExpApproxSchraudolph, we have discontinuities
    // at the integer rounding points due to floating point rounding inexactness.
@@ -560,7 +560,7 @@ INLINE_ALWAYS static T ExpApproxBest(T val) {
 }
 
 template<bool bNegateInput = false, typename T>
-INLINE_ALWAYS static T ExpForBinaryClassification(const T val) {
+GPU_DEVICE INLINE_ALWAYS static T ExpForBinaryClassification(const T val) {
 #ifdef FAST_EXP
    // the optimal addExpSchraudolphTerm would be different between binary 
    // and multiclass since the softmax form we use is different
@@ -576,7 +576,7 @@ INLINE_ALWAYS static T ExpForBinaryClassification(const T val) {
 }
 
 template<bool bNegateInput = false, typename T>
-INLINE_ALWAYS static T ExpForMulticlass(const T val) {
+GPU_DEVICE INLINE_ALWAYS static T ExpForMulticlass(const T val) {
 #ifdef FAST_EXP
    // the optimal addExpSchraudolphTerm would be different between binary
    // and multiclass since the softmax form we use is different
@@ -651,7 +651,7 @@ template<
    bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
    typename T
 >
-INLINE_ALWAYS static T LogApproxSchraudolph(T val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) {
+GPU_DEVICE INLINE_ALWAYS static T LogApproxSchraudolph(T val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) {
    // NOTE: this function will have large errors on denomal inputs, but the results are reliably big negative numbers
 
    // to get the log, just reverse the approximate exp function steps
@@ -663,10 +663,10 @@ INLINE_ALWAYS static T LogApproxSchraudolph(T val, const float addLogSchraudolph
    // or inversely, calculate the equivalent exp term:
    // -(-87.999417112957322202915588367286 * (1 << 23) / ln(2)) = 1064986824
 
-   EBM_ASSERT(k_logTermLowerBound <= addLogSchraudolphTerm);
-   EBM_ASSERT(addLogSchraudolphTerm <= k_logTermUpperBound);
+   //EBM_ASSERT(k_logTermLowerBound <= addLogSchraudolphTerm);
+   //EBM_ASSERT(addLogSchraudolphTerm <= k_logTermUpperBound);
 
-   const bool bPassNaN = bNaNPossible && !bNegativePossible && UNLIKELY(std::isnan(val));
+   const bool bPassNaN = bNaNPossible && !bNegativePossible && UNLIKELY(EbmIsNaN(val));
    if(LIKELY(!bPassNaN)) {
       const bool bPassInfinity = bPositiveInfinityPossible && std::is_same<T, float>::value &&
          UNLIKELY(std::numeric_limits<T>::infinity() == val);
@@ -729,7 +729,7 @@ INLINE_ALWAYS static T LogApproxSchraudolph(T val, const float addLogSchraudolph
 }
 
 template<bool bNegateOutput = false, typename T>
-INLINE_ALWAYS static T LogForLogLoss(const T val) {
+GPU_DEVICE INLINE_ALWAYS static T LogForLogLoss(const T val) {
 
    // the log function is only used to calculate the log loss on the valididation set only in our codebase
    // the log loss is calculated for the validation set and then returned as a single number to the caller
