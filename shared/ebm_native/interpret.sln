@@ -67,6 +67,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cpu_ebm", "compute\cpu_ebm\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3DB96E-A28F-4032-8E41-C6D2E408FC72}"
 	ProjectSection(SolutionItems) = preProject
+		compute\approximate_math.hpp = compute\approximate_math.hpp
 		compute\compute.hpp = compute\compute.hpp
 		compute\compute_stats.hpp = compute\compute_stats.hpp
 		compute\Directory.Build.targets = compute\Directory.Build.targets
