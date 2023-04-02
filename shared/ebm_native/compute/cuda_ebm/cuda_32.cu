@@ -19,6 +19,9 @@
 #include "Registration.hpp"
 #include "Loss.hpp"
 
+#include "approximate_math.hpp"
+#include "ebm_stats.hpp"
+
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined

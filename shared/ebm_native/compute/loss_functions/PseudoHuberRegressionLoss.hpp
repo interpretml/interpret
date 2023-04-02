@@ -4,7 +4,7 @@
 
 // !! To add a new loss/objective function in C++ follow the steps at the top of the "loss_registrations.hpp" file !!
 
-#include "Loss.hpp"
+// DO NOT INCLUDE ANY FILES IN THIS FILE. THEY WILL NOT BE ZONED PROPERLY
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template<typename TFloat>
