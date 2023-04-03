@@ -119,14 +119,6 @@ ErrorEbm InteractionCore::Create(
       return Error_IllegalParamVal;
    }
 
-   ptrdiff_t cClasses;
-   if(nullptr == GetDataSetSharedTarget(pDataSetShared, 0, &cClasses)) {
-      LOG_0(Trace_Warning, "WARNING InteractionCore::Create cClasses cannot fit into ptrdiff_t");
-      return Error_IllegalParamVal;
-   }
-
-   pRet->m_cClasses = cClasses;
-
    size_t cTrainingSamples;
    size_t cValidationSamples;
    error = Unbag(cSamples, aBag, &cTrainingSamples, &cValidationSamples);
@@ -135,16 +127,8 @@ ErrorEbm InteractionCore::Create(
       return error;
    }
 
-   const bool bClassification = IsClassification(cClasses);
-
    LOG_0(Trace_Info, "InteractionCore::Allocate starting feature processing");
    if(0 != cFeatures) {
-      const size_t cScores = GetCountScores(cClasses);
-      if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)) {
-         LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsOverflowBinSize overflow");
-         return Error_OutOfMemory;
-      }
-
       if(IsMultiplyError(sizeof(FeatureInteraction), cFeatures)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate IsMultiplyError(sizeof(Feature), cFeatures)");
          return Error_OutOfMemory;
@@ -212,31 +196,48 @@ ErrorEbm InteractionCore::Create(
    }
    LOG_0(Trace_Info, "InteractionCore::Allocate done feature processing");
 
-   static const char g_sMse[] = "mse";
-   static const char g_sLogLoss[] = "log_loss";
-   const char* const sLoss = bClassification ? g_sLogLoss : g_sMse;
 
-   Config config;
-   config.cOutputs = GetCountScores(cClasses);
-   error = GetLoss(&config, sLoss, &pRet->m_loss);
-   if (Error_None != error) {
-      // already logged
-      return error;
+   ptrdiff_t cClasses;
+   if(nullptr == GetDataSetSharedTarget(pDataSetShared, 0, &cClasses)) {
+      LOG_0(Trace_Warning, "WARNING InteractionCore::Create cClasses cannot fit into ptrdiff_t");
+      return Error_IllegalParamVal;
    }
+   pRet->m_cClasses = cClasses;
 
-   error = pRet->m_dataFrame.Initialize(
-      ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses,  // regression, binary, multiclass
-      ptrdiff_t { 1 } < cClasses,  // binary, multiclass
-      pDataSetShared,
-      cSamples,
-      aBag,
-      cTrainingSamples,
-      cWeights,
-      cFeatures
-   );
-   if(Error_None != error) {
-      LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate m_dataFrame.Initialize");
-      return error;
+   if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
+      const bool bClassification = IsClassification(cClasses);
+      const size_t cScores = GetCountScores(cClasses);
+
+      static const char g_sMse[] = "mse";
+      static const char g_sLogLoss[] = "log_loss";
+      const char* const sLoss = bClassification ? g_sLogLoss : g_sMse;
+
+      Config config;
+      config.cOutputs = cScores;
+      error = GetLoss(&config, sLoss, &pRet->m_loss);
+      if (Error_None != error) {
+         // already logged
+         return error;
+      }
+
+      if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)) {
+         LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsOverflowBinSize overflow");
+         return Error_OutOfMemory;
+      }
+
+      error = pRet->m_dataFrame.Initialize(
+         ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses,  // regression, binary, multiclass
+         ptrdiff_t { 1 } < cClasses,  // binary, multiclass
+         pDataSetShared,
+         cSamples,
+         aBag,
+         cTrainingSamples,
+         cWeights,
+         cFeatures
+      );
+      if(Error_None != error) {
+         return error;
+      }
    }
 
    LOG_0(Trace_Info, "Exited InteractionCore::Allocate");

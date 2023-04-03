@@ -335,9 +335,6 @@ ErrorEbm BoosterCore::Create(
    }
    LOG_0(Trace_Info, "BoosterCore::Create done feature processing");
 
-   EBM_ASSERT(nullptr == pBoosterCore->m_apCurrentTermTensors);
-   EBM_ASSERT(nullptr == pBoosterCore->m_apBestTermTensors);
-
    size_t cFastBinsMax = 0;
    size_t cBigBinsMax = 0;
    size_t cSingleDimensionBinsMax = 0;
@@ -561,7 +558,6 @@ ErrorEbm BoosterCore::Create(
       }
    }
 
-
    ptrdiff_t cClasses;
    if(nullptr == GetDataSetSharedTarget(pDataSetShared, 0, &cClasses)) {
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create cClasses cannot fit into ptrdiff_t");
@@ -569,22 +565,24 @@ ErrorEbm BoosterCore::Create(
    }
    pBoosterCore->m_cClasses = cClasses;
 
-   const bool bClassification = IsClassification(cClasses);
-
-   static const char g_sMse[] = "mse";
-   static const char g_sLogLoss[] = "log_loss";
-   const char * const sLoss = bClassification ? g_sLogLoss : g_sMse;
-
-   Config config;
-   config.cOutputs = GetCountScores(cClasses);
-   error = GetLoss(&config, sLoss, &pBoosterCore->m_loss);
-   if (Error_None != error) {
-      // already logged
-      return error;
-   }
-
+   // having 1 class means that all predictions are perfect. In the C interface we reduce this into having 0 scores, 
+   // which means that we do not write anything to our upper level callers, and we don't need a bunch of things
+   // since they have zero memory allocated to them. Having 0 classes means there are also 0 samples.
    if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
+      const bool bClassification = IsClassification(cClasses);
       const size_t cScores = GetCountScores(cClasses);
+
+      static const char g_sMse[] = "mse";
+      static const char g_sLogLoss[] = "log_loss";
+      const char * const sLoss = bClassification ? g_sLogLoss : g_sMse;
+
+      Config config;
+      config.cOutputs = cScores;
+      error = GetLoss(&config, sLoss, &pBoosterCore->m_loss);
+      if (Error_None != error) {
+         // already logged
+         return error;
+      }
 
       if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || 
          IsOverflowBinSize<FloatBig>(bClassification, cScores))
@@ -654,57 +652,53 @@ ErrorEbm BoosterCore::Create(
       if(0 != cTerms) {
          error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apCurrentTermTensors);
          if(Error_None != error) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == m_apCurrentTermTensors");
             return error;
          }
          error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apBestTermTensors);
          if(Error_None != error) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == m_apBestTermTensors");
             return error;
          }
       }
-   }
 
-   error = pBoosterCore->m_trainingSet.Initialize(
-      cClasses,
-      ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses, // regression, binary, multiclass
-      ptrdiff_t { 1 } < cClasses, // binary, multiclass
-      ptrdiff_t { 1 } < cClasses, // binary, multiclass
-      bClassification,
-      pDataSetShared,
-      cSamples,
-      BagEbm { 1 },
-      aBag,
-      aInitScores,
-      cTrainingSamples,
-      aiTermFeatures,
-      cTerms,
-      pBoosterCore->m_apTerms
-   );
-   if(Error_None != error) {
-      LOG_0(Trace_Warning, "WARNING BoosterCore::Create m_trainingSet.Initialize");
-      return error;
-   }
+      error = pBoosterCore->m_trainingSet.Initialize(
+         cClasses,
+         ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses, // regression, binary, multiclass
+         ptrdiff_t { 1 } < cClasses, // binary, multiclass
+         ptrdiff_t { 1 } < cClasses, // binary, multiclass
+         bClassification,
+         pDataSetShared,
+         cSamples,
+         BagEbm { 1 },
+         aBag,
+         aInitScores,
+         cTrainingSamples,
+         aiTermFeatures,
+         cTerms,
+         pBoosterCore->m_apTerms
+      );
+      if(Error_None != error) {
+         return error;
+      }
 
-   error = pBoosterCore->m_validationSet.Initialize(
-      cClasses,
-      !bClassification,
-      false,
-      ptrdiff_t { 1 } < cClasses, // binary, multiclass
-      bClassification,
-      pDataSetShared,
-      cSamples,
-      BagEbm { -1 },
-      aBag,
-      aInitScores,
-      cValidationSamples,
-      aiTermFeatures,
-      cTerms,
-      pBoosterCore->m_apTerms
-   );
-   if(Error_None != error) {
-      LOG_0(Trace_Warning, "WARNING BoosterCore::Create m_validationSet.Initialize");
-      return error;
+      error = pBoosterCore->m_validationSet.Initialize(
+         cClasses,
+         !bClassification,
+         false,
+         ptrdiff_t { 1 } < cClasses, // binary, multiclass
+         bClassification,
+         pDataSetShared,
+         cSamples,
+         BagEbm { -1 },
+         aBag,
+         aInitScores,
+         cValidationSamples,
+         aiTermFeatures,
+         cTerms,
+         pBoosterCore->m_apTerms
+      );
+      if(Error_None != error) {
+         return error;
+      }
    }
 
    LOG_0(Trace_Info, "Exited BoosterCore::Create");

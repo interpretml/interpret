@@ -181,27 +181,29 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    }
 
    const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
-   if(IsClassification(cClasses)) {
-      error = pInteractionCore->InitializeInteractionGradientsAndHessians(
-         static_cast<const unsigned char *>(dataSet),
-         bag,
-         initScores
-      );
-      if(Error_None != error) {
-         InteractionCore::Free(pInteractionCore);
-         return error;
-      }
-   } else {
-      if(!pInteractionCore->GetDataSetInteraction()->IsGradientsAndHessiansNull()) {
-         InitializeMSEGradientsAndHessians(
+   if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
+      if(IsClassification(cClasses)) {
+         error = pInteractionCore->InitializeInteractionGradientsAndHessians(
             static_cast<const unsigned char *>(dataSet),
-            BagEbm { 1 },
             bag,
-            initScores,
-            pInteractionCore->GetDataSetInteraction()->GetCountSamples(),
-            pInteractionCore->GetDataSetInteraction()->GetGradientsAndHessiansPointer(),
-            pInteractionCore->GetDataSetInteraction()->GetWeights()
+            initScores
          );
+         if(Error_None != error) {
+            InteractionCore::Free(pInteractionCore);
+            return error;
+         }
+      } else {
+         if(!pInteractionCore->GetDataSetInteraction()->IsGradientsAndHessiansNull()) {
+            InitializeMSEGradientsAndHessians(
+               static_cast<const unsigned char *>(dataSet),
+               BagEbm { 1 },
+               bag,
+               initScores,
+               pInteractionCore->GetDataSetInteraction()->GetCountSamples(),
+               pInteractionCore->GetDataSetInteraction()->GetGradientsAndHessiansPointer(),
+               pInteractionCore->GetDataSetInteraction()->GetWeights()
+            );
+         }
       }
    }
 

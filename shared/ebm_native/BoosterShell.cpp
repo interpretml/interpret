@@ -248,39 +248,41 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    }
 
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   if(IsClassification(cClasses)) {
-      if(!pBoosterCore->GetTrainingSet()->IsGradientsAndHessiansNull()) {
-         error = pBoosterCore->InitializeBoosterGradientsAndHessians(
-            pBoosterShell->GetMulticlassMidwayTemp(),
-            pBoosterShell->GetTermUpdate()->GetTensorScoresPointer() // initialized to zero at this point
-         );
-         if(UNLIKELY(Error_None != error)) {
-            BoosterShell::Free(pBoosterShell);
-            return error;
+   if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
+      if(IsClassification(cClasses)) {
+         if(!pBoosterCore->GetTrainingSet()->IsGradientsAndHessiansNull()) {
+            error = pBoosterCore->InitializeBoosterGradientsAndHessians(
+               pBoosterShell->GetMulticlassMidwayTemp(),
+               pBoosterShell->GetTermUpdate()->GetTensorScoresPointer() // initialized to zero at this point
+            );
+            if(UNLIKELY(Error_None != error)) {
+               BoosterShell::Free(pBoosterShell);
+               return error;
+            }
          }
-      }
-   } else {
-      if(!pBoosterCore->GetTrainingSet()->IsGradientsAndHessiansNull()) {
-         InitializeMSEGradientsAndHessians(
-            static_cast<const unsigned char *>(dataSet),
-            BagEbm { 1 },
-            bag,
-            initScores,
-            pBoosterCore->GetTrainingSet()->GetCountSamples(),
-            pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer(),
-            nullptr // for boosting do not pre-multiply the gradients by the weight
-         );
-      }
-      if(!pBoosterCore->GetValidationSet()->IsGradientsAndHessiansNull()) {
-         InitializeMSEGradientsAndHessians(
-            static_cast<const unsigned char *>(dataSet),
-            BagEbm { -1 },
-            bag,
-            initScores,
-            pBoosterCore->GetValidationSet()->GetCountSamples(),
-            pBoosterCore->GetValidationSet()->GetGradientsAndHessiansPointer(),
-            nullptr // for boosting do not pre-multiply the gradients by the weight
-         );
+      } else {
+         if(!pBoosterCore->GetTrainingSet()->IsGradientsAndHessiansNull()) {
+            InitializeMSEGradientsAndHessians(
+               static_cast<const unsigned char *>(dataSet),
+               BagEbm { 1 },
+               bag,
+               initScores,
+               pBoosterCore->GetTrainingSet()->GetCountSamples(),
+               pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer(),
+               nullptr // for boosting do not pre-multiply the gradients by the weight
+            );
+         }
+         if(!pBoosterCore->GetValidationSet()->IsGradientsAndHessiansNull()) {
+            InitializeMSEGradientsAndHessians(
+               static_cast<const unsigned char *>(dataSet),
+               BagEbm { -1 },
+               bag,
+               initScores,
+               pBoosterCore->GetValidationSet()->GetCountSamples(),
+               pBoosterCore->GetValidationSet()->GetGradientsAndHessiansPointer(),
+               nullptr // for boosting do not pre-multiply the gradients by the weight
+            );
+         }
       }
    }
 
@@ -378,33 +380,20 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
    }
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
-      EBM_ASSERT(nullptr == pBoosterCore->GetBestModel());
-
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
 
-      // if there are 0 classes, then there must be zero samples, but our caller can still specify 0 != cBins below
-      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetTrainingSet()->GetCountSamples());
-      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetValidationSet()->GetCountSamples());
-
       LOG_0(Trace_Info, "Exited GetBestTermScores no scores");
       return Error_None;
    }
-   // if pBoosterCore->GetBestModel() is nullptr, then either:
-   //    1) m_cTerms was 0, but we checked above that iTerm was less than cTerms
-   //    2) If m_cClasses was either 1 or 0, but we checked for this above too
    EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
-
-   // if pBoosterCore->GetTerms() is nullptr, then m_cTerms was 0, but we checked above that 
-   // iTerm was less than cTerms
    EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
+
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
 
    size_t cTensorScores = pTerm->GetCountTensorBins();
    if(size_t { 0 } == cTensorScores) {
-      EBM_ASSERT(nullptr == pBoosterCore->GetBestModel()[iTerm]);
-
       // if one of the dimensions has zero bins then the tensor has zero tensor bins and there is nothing to do
       LOG_0(Trace_Warning, "WARNING GetBestTermScores feature with zero bins");
       return Error_None;
@@ -471,33 +460,20 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
    }
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
-      EBM_ASSERT(nullptr == pBoosterCore->GetCurrentModel());
-
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
 
-      // if there are 0 classes, then there must be zero samples, but our caller can still specify 0 != cBins below
-      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetTrainingSet()->GetCountSamples());
-      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetValidationSet()->GetCountSamples());
-
       LOG_0(Trace_Info, "Exited GetCurrentTermScores no scores");
       return Error_None;
    }
-   // if pBoosterCore->GetCurrentModel() is nullptr, then either:
-   //    1) m_cTerms was 0, but we checked above that iTerm was less than cTerms
-   //    2) If m_cClasses was either 1 or 0, but we checked for this above too
    EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel());
-
-   // if pBoosterCore->GetTerms() is nullptr, then m_cTerms was 0, but we checked above that 
-   // iTerm was less than cTerms
    EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
+
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
 
    size_t cTensorScores = pTerm->GetCountTensorBins();
    if(size_t { 0 } == cTensorScores) {
-      EBM_ASSERT(nullptr == pBoosterCore->GetCurrentModel()[iTerm]);
-
       // if one of the dimensions has zero bins then the tensor has zero tensor bins and there is nothing to do
       LOG_0(Trace_Warning, "WARNING GetCurrentTermScores feature with zero bins");
       return Error_None;

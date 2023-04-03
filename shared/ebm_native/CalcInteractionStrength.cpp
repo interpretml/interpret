@@ -161,22 +161,22 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    size_t cDimensions = static_cast<size_t>(countDimensions);
 
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
-   const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
-   EBM_ASSERT(nullptr != pDataSet);
 
-   if(size_t { 0 } == pDataSet->GetCountSamples()) {
-      // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
-      LOG_0(Trace_Info, "INFO CalcInteractionStrength zero samples");
+   const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
+   if(ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses) {
+      LOG_0(Trace_Info, "INFO CalcInteractionStrength target with 1 class perfectly predicts the target");
       if(nullptr != avgInteractionStrengthOut) {
          *avgInteractionStrengthOut = 0.0;
       }
       return Error_None;
    }
 
-   const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
-   EBM_ASSERT(ptrdiff_t { 0 } != cClasses); // cClasses cannot be zero if there is 1 or more samples
-   if(ptrdiff_t { 1 } == cClasses) {
-      LOG_0(Trace_Info, "INFO CalcInteractionStrength target with 1 class perfectly predicts the target");
+   const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
+   EBM_ASSERT(nullptr != pDataSet);
+
+   if(size_t { 0 } == pDataSet->GetCountSamples()) {
+      // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
+      LOG_0(Trace_Info, "INFO CalcInteractionStrength zero samples");
       if(nullptr != avgInteractionStrengthOut) {
          *avgInteractionStrengthOut = 0.0;
       }

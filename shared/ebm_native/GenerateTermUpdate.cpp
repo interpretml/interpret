@@ -750,13 +750,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
 
    if(ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses) {
-      EBM_ASSERT(nullptr == pBoosterShell->GetTermUpdate());
-      EBM_ASSERT(nullptr == pBoosterShell->GetInnerTermUpdate());
-
-      // if there are 0 classes, then there must be zero samples, but our caller can still specify 0 != cBins below
-      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetTrainingSet()->GetCountSamples());
-      EBM_ASSERT(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() || 0 == pBoosterCore->GetValidationSet()->GetCountSamples());
-
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  
       // The term scores are a tensor with zero length array logits, which means for our representation that we have 
       // zero items in the array total. Since we can predit the output with 100% accuracy, our gain will be 0.
