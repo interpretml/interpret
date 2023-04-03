@@ -91,7 +91,7 @@ class BoosterCore final {
       m_aValidationWeights(nullptr),
       m_apCurrentTermTensors(nullptr),
       m_apBestTermTensors(nullptr),
-      m_bestModelMetric(0),
+      m_bestModelMetric(std::numeric_limits<double>::infinity()),
       m_cBytesFastBins(0),
       m_cBytesBigBins(0),
       m_cBytesSplitPositions(0),

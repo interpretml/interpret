@@ -264,12 +264,6 @@ ErrorEbm BoosterCore::Create(
       return Error_IllegalParamVal;
    }
 
-   ptrdiff_t cClasses;
-   if(nullptr == GetDataSetSharedTarget(pDataSetShared, 0, &cClasses)) {
-      LOG_0(Trace_Warning, "WARNING BoosterCore::Create cClasses cannot fit into ptrdiff_t");
-      return Error_IllegalParamVal;
-   }
-
    size_t cTrainingSamples;
    size_t cValidationSamples;
    error = Unbag(cSamples, aBag, &cTrainingSamples, &cValidationSamples);
@@ -341,10 +335,12 @@ ErrorEbm BoosterCore::Create(
    }
    LOG_0(Trace_Info, "BoosterCore::Create done feature processing");
 
-   const bool bClassification = IsClassification(cClasses);
-
    EBM_ASSERT(nullptr == pBoosterCore->m_apCurrentTermTensors);
    EBM_ASSERT(nullptr == pBoosterCore->m_apBestTermTensors);
+
+   size_t cFastBinsMax = 0;
+   size_t cBigBinsMax = 0;
+   size_t cSingleDimensionBinsMax = 0;
 
    LOG_0(Trace_Info, "BoosterCore::Create starting feature group processing");
    if(0 != cTerms) {
@@ -354,10 +350,6 @@ ErrorEbm BoosterCore::Create(
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create 0 != m_cTerms && nullptr == m_apTerms");
          return Error_OutOfMemory;
       }
-
-      size_t cFastBinsMax = 0;
-      size_t cBigBinsMax = 0;
-      size_t cSingleDimensionBinsMax = 0;
 
       const IntEbm * piTermFeature = aiTermFeatures;
       size_t iTerm = 0;
@@ -507,88 +499,77 @@ ErrorEbm BoosterCore::Create(
 
          ++iTerm;
       } while(iTerm < cTerms);
+   }
+   LOG_0(Trace_Info, "BoosterCore::Create finished feature group processing");
 
-      if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
-         const size_t cScores = GetCountScores(cClasses);
-
-         if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || 
-            IsOverflowBinSize<FloatBig>(bClassification, cScores))
-         {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
-            return Error_OutOfMemory;
-         }
-
-         const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
-         if(IsMultiplyError(cBytesPerFastBin, cFastBinsMax)) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerFastBin, cFastBinsMax)");
-            return Error_OutOfMemory;
-         }
-         pBoosterCore->m_cBytesFastBins = cBytesPerFastBin * cFastBinsMax;
-
-         const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
-         if(IsMultiplyError(cBytesPerBigBin, cBigBinsMax)) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerBigBin, cBigBinsMax)");
-            return Error_OutOfMemory;
-         }
-         pBoosterCore->m_cBytesBigBins = cBytesPerBigBin * cBigBinsMax;
-
-         if(0 != cSingleDimensionBinsMax) {
-            if(IsOverflowTreeNodeSize(bClassification, cScores) ||
-               IsOverflowSplitPositionSize(bClassification, cScores)) 
-            {
-               LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin tracking size overflow");
-               return Error_OutOfMemory;
-            }
-
-            const size_t cSingleDimensionSplitsMax = cSingleDimensionBinsMax - 1;
-            const size_t cBytesPerSplitPosition = GetSplitPositionSize(bClassification, cScores);
-            if(IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)) {
-               LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)");
-               return Error_OutOfMemory;
-            }
-            // TODO : someday add equal gain multidimensional randomized picking.  I think for that we should generate
-            //        random numbers as we find equal gains, so we won't need this memory if we do that
-            pBoosterCore->m_cBytesSplitPositions = cBytesPerSplitPosition * cSingleDimensionSplitsMax;
-
-
-            // If we have N bins, then we can have at most N - 1 splits.
-            // At maximum if all splits are made, then we'll have a tree with N - 1 nodes.
-            // Each node will contain a the total gradient sums of their left and right sides
-            // Each of the N bins will also have a leaf in the tree, which will also consume a TreeNode structure
-            // because each split needs to preserve the gradient sums of its left and right sides, which in this
-            // case are individual bins.
-            // So, in total we consume N + N - 1 TreeNodes
-         
-            if(IsAddError(cSingleDimensionSplitsMax, cSingleDimensionBinsMax)) {
-               LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cSingleDimensionSplitsMax, cSingleDimensionBinsMax)");
-               return Error_OutOfMemory;
-            }
-            const size_t cTreeNodes = cSingleDimensionSplitsMax + cSingleDimensionBinsMax;
-
-            const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
-            if(IsMultiplyError(cBytesPerTreeNode, cTreeNodes)) {
-               LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerTreeNode, cTreeNodes)");
-               return Error_OutOfMemory;
-            }
-            pBoosterCore->m_cBytesTreeNodes = cTreeNodes * cBytesPerTreeNode;
-         } else {
-            EBM_ASSERT(0 == pBoosterCore->m_cBytesSplitPositions);
-            EBM_ASSERT(0 == pBoosterCore->m_cBytesTreeNodes);
-         }
-
-         error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apCurrentTermTensors);
+   EBM_ASSERT(nullptr == pBoosterCore->m_apInnerBags);
+   if(0 != cTrainingSamples) {
+      FloatFast * aWeights = nullptr;
+      if(0 != cWeights) {
+         error = ExtractWeights(
+            pDataSetShared,
+            BagEbm { 1 },
+            aBag, 
+            cTrainingSamples,
+            &aWeights
+         );
          if(Error_None != error) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == m_apCurrentTermTensors");
-            return error;
-         }
-         error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apBestTermTensors);
-         if(Error_None != error) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == m_apBestTermTensors");
+            // error already logged
             return error;
          }
       }
+      pBoosterCore->m_cInnerBags = cInnerBags;
+      // TODO: we could steal the aWeights in GenerateInnerBags for flat sampling sets
+      error = InnerBag::GenerateInnerBags(
+         rng,
+         cTrainingSamples,
+         aWeights, 
+         cInnerBags,
+         &pBoosterCore->m_apInnerBags
+      );
+      free(aWeights);
+      if(UNLIKELY(Error_None != error)) {
+         // already logged
+         return error;
+      }
    }
-   LOG_0(Trace_Info, "BoosterCore::Create finished feature group processing");
+
+   EBM_ASSERT(nullptr == pBoosterCore->m_aValidationWeights);
+   pBoosterCore->m_validationWeightTotal = static_cast<FloatBig>(cValidationSamples);
+   if(0 != cWeights && 0 != cValidationSamples) {
+      error = ExtractWeights(
+         pDataSetShared,
+         BagEbm { -1 },
+         aBag, 
+         cValidationSamples,
+         &pBoosterCore->m_aValidationWeights
+      );
+      if(Error_None != error) {
+         // error already logged
+         return error;
+      }
+      if(nullptr != pBoosterCore->m_aValidationWeights) {
+         const FloatBig total = AddPositiveFloatsSafeBig(cValidationSamples, pBoosterCore->m_aValidationWeights);
+         if(std::isnan(total) || std::isinf(total) || total <= 0) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create std::isnan(total) || std::isinf(total) || total <= 0");
+            return Error_UserParamVal;
+         }
+         // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
+         // to zero though so check it after checking for negative
+         EBM_ASSERT(0 != total);
+         pBoosterCore->m_validationWeightTotal = total;
+      }
+   }
+
+
+   ptrdiff_t cClasses;
+   if(nullptr == GetDataSetSharedTarget(pDataSetShared, 0, &cClasses)) {
+      LOG_0(Trace_Warning, "WARNING BoosterCore::Create cClasses cannot fit into ptrdiff_t");
+      return Error_IllegalParamVal;
+   }
+   pBoosterCore->m_cClasses = cClasses;
+
+   const bool bClassification = IsClassification(cClasses);
 
    static const char g_sMse[] = "mse";
    static const char g_sLogLoss[] = "log_loss";
@@ -600,6 +581,88 @@ ErrorEbm BoosterCore::Create(
    if (Error_None != error) {
       // already logged
       return error;
+   }
+
+   if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
+      const size_t cScores = GetCountScores(cClasses);
+
+      if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || 
+         IsOverflowBinSize<FloatBig>(bClassification, cScores))
+      {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
+         return Error_OutOfMemory;
+      }
+
+      const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
+      if(IsMultiplyError(cBytesPerFastBin, cFastBinsMax)) {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerFastBin, cFastBinsMax)");
+         return Error_OutOfMemory;
+      }
+      pBoosterCore->m_cBytesFastBins = cBytesPerFastBin * cFastBinsMax;
+
+      const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
+      if(IsMultiplyError(cBytesPerBigBin, cBigBinsMax)) {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerBigBin, cBigBinsMax)");
+         return Error_OutOfMemory;
+      }
+      pBoosterCore->m_cBytesBigBins = cBytesPerBigBin * cBigBinsMax;
+
+      if(0 != cSingleDimensionBinsMax) {
+         if(IsOverflowTreeNodeSize(bClassification, cScores) ||
+            IsOverflowSplitPositionSize(bClassification, cScores)) 
+         {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin tracking size overflow");
+            return Error_OutOfMemory;
+         }
+
+         const size_t cSingleDimensionSplitsMax = cSingleDimensionBinsMax - 1;
+         const size_t cBytesPerSplitPosition = GetSplitPositionSize(bClassification, cScores);
+         if(IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)");
+            return Error_OutOfMemory;
+         }
+         // TODO : someday add equal gain multidimensional randomized picking.  I think for that we should generate
+         //        random numbers as we find equal gains, so we won't need this memory if we do that
+         pBoosterCore->m_cBytesSplitPositions = cBytesPerSplitPosition * cSingleDimensionSplitsMax;
+
+
+         // If we have N bins, then we can have at most N - 1 splits.
+         // At maximum if all splits are made, then we'll have a tree with N - 1 nodes.
+         // Each node will contain a the total gradient sums of their left and right sides
+         // Each of the N bins will also have a leaf in the tree, which will also consume a TreeNode structure
+         // because each split needs to preserve the gradient sums of its left and right sides, which in this
+         // case are individual bins.
+         // So, in total we consume N + N - 1 TreeNodes
+         
+         if(IsAddError(cSingleDimensionSplitsMax, cSingleDimensionBinsMax)) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cSingleDimensionSplitsMax, cSingleDimensionBinsMax)");
+            return Error_OutOfMemory;
+         }
+         const size_t cTreeNodes = cSingleDimensionSplitsMax + cSingleDimensionBinsMax;
+
+         const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
+         if(IsMultiplyError(cBytesPerTreeNode, cTreeNodes)) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerTreeNode, cTreeNodes)");
+            return Error_OutOfMemory;
+         }
+         pBoosterCore->m_cBytesTreeNodes = cTreeNodes * cBytesPerTreeNode;
+      } else {
+         EBM_ASSERT(0 == pBoosterCore->m_cBytesSplitPositions);
+         EBM_ASSERT(0 == pBoosterCore->m_cBytesTreeNodes);
+      }
+
+      if(0 != cTerms) {
+         error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apCurrentTermTensors);
+         if(Error_None != error) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == m_apCurrentTermTensors");
+            return error;
+         }
+         error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apBestTermTensors);
+         if(Error_None != error) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == m_apBestTermTensors");
+            return error;
+         }
+      }
    }
 
    error = pBoosterCore->m_trainingSet.Initialize(
@@ -643,68 +706,6 @@ ErrorEbm BoosterCore::Create(
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create m_validationSet.Initialize");
       return error;
    }
-
-   EBM_ASSERT(nullptr == pBoosterCore->m_apInnerBags);
-   if(0 != cTrainingSamples) {
-      FloatFast * aWeights = nullptr;
-      if(0 != cWeights) {
-         error = ExtractWeights(
-            pDataSetShared,
-            BagEbm { 1 },
-            aBag, 
-            cTrainingSamples,
-            &aWeights
-         );
-         if(Error_None != error) {
-            // error already logged
-            return error;
-         }
-      }
-      pBoosterCore->m_cInnerBags = cInnerBags;
-      // TODO: we could steal the aWeights in GenerateInnerBags for flat sampling sets
-      error = InnerBag::GenerateInnerBags(
-         rng,
-         pBoosterCore->m_trainingSet.GetCountSamples(), 
-         aWeights, 
-         cInnerBags,
-         &pBoosterCore->m_apInnerBags
-      );
-      free(aWeights);
-      if(UNLIKELY(Error_None != error)) {
-         // already logged
-         return error;
-      }
-   }
-
-   EBM_ASSERT(nullptr == pBoosterCore->m_aValidationWeights);
-   pBoosterCore->m_validationWeightTotal = static_cast<FloatBig>(cValidationSamples);
-   if(0 != cWeights && 0 != cValidationSamples) {
-      error = ExtractWeights(
-         pDataSetShared,
-         BagEbm { -1 },
-         aBag, 
-         cValidationSamples,
-         &pBoosterCore->m_aValidationWeights
-      );
-      if(Error_None != error) {
-         // error already logged
-         return error;
-      }
-      if(nullptr != pBoosterCore->m_aValidationWeights) {
-         const FloatBig total = AddPositiveFloatsSafeBig(cValidationSamples, pBoosterCore->m_aValidationWeights);
-         if(std::isnan(total) || std::isinf(total) || total <= 0) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create std::isnan(total) || std::isinf(total) || total <= 0");
-            return Error_UserParamVal;
-         }
-         // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
-         // to zero though so check it after checking for negative
-         EBM_ASSERT(0 != total);
-         pBoosterCore->m_validationWeightTotal = total;
-      }
-   }
-
-   pBoosterCore->m_cClasses = cClasses;
-   pBoosterCore->m_bestModelMetric = std::numeric_limits<double>::infinity();
 
    LOG_0(Trace_Info, "Exited BoosterCore::Create");
    return Error_None;
