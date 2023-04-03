@@ -10,9 +10,7 @@
 
 template<typename TFloat>
 struct LogLossMulticlassLoss final : public MulticlassLoss {
-   static constexpr bool k_bMse = false;
-   LOSS_CLASS_CONSTANTS_BOILERPLATE(true)
-   LOSS_CLASS_VIRTUAL_BOILERPLATE(LogLossMulticlassLoss)
+   LOSS_CLASS_CONSTANTS_BOILERPLATE(LogLossMulticlassLoss, true)
 
    inline LogLossMulticlassLoss(const Config & config) {
       if(1 == config.cOutputs) {
@@ -27,6 +25,12 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
 
    inline double GetFinalMultiplier() const noexcept {
       return 1.0;
+   }
+
+   inline TFloat CalculateHessian(TFloat target, TFloat prediction) const noexcept {
+      UNUSED(target);
+      UNUSED(prediction);
+      static_assert(false, "This function is here to signal that this loss has a hessian, but it will not be called.");
    }
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>

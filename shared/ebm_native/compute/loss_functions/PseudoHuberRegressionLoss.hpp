@@ -9,7 +9,6 @@
 // TFloat could be double, float, or some SIMD intrinsic type
 template<typename TFloat>
 struct PseudoHuberRegressionLoss final : public RegressionLoss {
-   static constexpr bool k_bMse = false;
    LOSS_CLASS_BOILERPLATE(PseudoHuberRegressionLoss, true)
 
    TFloat m_deltaInverted;

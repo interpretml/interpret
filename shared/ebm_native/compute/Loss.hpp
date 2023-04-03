@@ -358,7 +358,7 @@ protected:
       static_assert(std::is_same<decltype(multiplier), double>::value, "this->GetFinalMultiplier() should return a double");
       pLossWrapperOut->m_updateMultiple = multiplier;
       pLossWrapperOut->m_bLossHasHessian = HasCalculateHessianFunction<TLoss, TFloat>() ? EBM_TRUE : EBM_FALSE;
-      pLossWrapperOut->m_bSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies = EBM_FALSE;
+      pLossWrapperOut->m_bMse = TLoss::k_bMse ? EBM_TRUE : EBM_FALSE;
 
       pLossWrapperOut->m_pLoss = this;
    }
@@ -470,26 +470,11 @@ protected:
 };
 
 
-#define LOSS_CLASS_BOILERPLATE(__EBM_TYPE, isVectorized) \
-   LOSS_CLASS_CONSTANTS_BOILERPLATE(isVectorized) \
-   LOSS_CLASS_TEMPLATE_BOILERPLATE \
-   LOSS_CLASS_VIRTUAL_BOILERPLATE(__EBM_TYPE)
-
 // TODO: use the isVectorized static constexpr to control construction of the Loss structs
-#define LOSS_CLASS_CONSTANTS_BOILERPLATE(isVectorized) \
+#define LOSS_CLASS_CONSTANTS_BOILERPLATE(__EBM_TYPE, isVectorized) \
    public: \
-      static constexpr bool k_bVectorized = (isVectorized);
-
-#define LOSS_CLASS_TEMPLATE_BOILERPLATE \
-   public: \
-      template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight> \
-      GPU_DEVICE void InteriorApplyUpdateTemplated(ApplyUpdateBridge * const pData) const { \
-         Loss::InteriorApplyUpdate<typename std::remove_pointer<decltype(this)>::type, TFloat, \
-            cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData); \
-      }
-
-#define LOSS_CLASS_VIRTUAL_BOILERPLATE(__EBM_TYPE) \
-   public: \
+      static constexpr bool k_bMse = false; \
+      static constexpr bool k_bVectorized = (isVectorized); \
       static ErrorEbm ApplyUpdate(const Loss * const pThis, ApplyUpdateBridge * const pData) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->LossApplyUpdate<const __EBM_TYPE<TFloat>, TFloat>(pData); \
       } \
@@ -499,6 +484,18 @@ protected:
             "*Loss types mismatch"); \
          LossFillWrapper<typename std::remove_pointer<decltype(this)>::type, TFloat>(pWrapperOut); \
       }
+
+#define LOSS_CLASS_TEMPLATE_BOILERPLATE \
+   public: \
+      template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight> \
+      GPU_DEVICE void InteriorApplyUpdateTemplated(ApplyUpdateBridge * const pData) const { \
+         Loss::InteriorApplyUpdate<typename std::remove_pointer<decltype(this)>::type, TFloat, \
+            cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData); \
+      }
+
+#define LOSS_CLASS_BOILERPLATE(__EBM_TYPE, isVectorized) \
+   LOSS_CLASS_CONSTANTS_BOILERPLATE(__EBM_TYPE, isVectorized) \
+   LOSS_CLASS_TEMPLATE_BOILERPLATE
 
 } // DEFINED_ZONE_NAME
 

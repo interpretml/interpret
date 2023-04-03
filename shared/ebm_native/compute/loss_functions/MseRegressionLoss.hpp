@@ -10,9 +10,15 @@
 
 template<typename TFloat>
 struct MseRegressionLoss final : public RegressionLoss {
+public:
    static constexpr bool k_bMse = true;
-   LOSS_CLASS_CONSTANTS_BOILERPLATE(true)
-   LOSS_CLASS_VIRTUAL_BOILERPLATE(MseRegressionLoss)
+   static constexpr bool k_bVectorized = true;
+   static ErrorEbm ApplyUpdate(const Loss * const pThis, ApplyUpdateBridge * const pData) {
+      return (static_cast<const MseRegressionLoss<TFloat> *>(pThis))->LossApplyUpdate<const MseRegressionLoss<TFloat>, TFloat>(pData);
+   }
+   void FillWrapper(void * const pWrapperOut) noexcept {
+      LossFillWrapper<MseRegressionLoss, TFloat>(pWrapperOut);
+   }
 
    inline MseRegressionLoss(const Config & config) {
       if(1 != config.cOutputs) {
