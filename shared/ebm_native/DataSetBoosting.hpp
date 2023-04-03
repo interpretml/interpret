@@ -48,7 +48,7 @@ public:
    void Destruct();
 
    ErrorEbm Initialize(
-      const ptrdiff_t cClasses,
+      const size_t cScores,
       const bool bAllocateGradients,
       const bool bAllocateHessians,
       const bool bAllocateSampleScores,

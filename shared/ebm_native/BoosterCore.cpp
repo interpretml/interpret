@@ -661,11 +661,11 @@ ErrorEbm BoosterCore::Create(
       }
 
       error = pBoosterCore->m_trainingSet.Initialize(
-         cClasses,
+         cScores,
          true,
-         bClassification,
-         bClassification,
-         bClassification,
+         pBoosterCore->m_loss.m_bLossHasHessian,
+         !pBoosterCore->m_loss.m_bMse,
+         !pBoosterCore->m_loss.m_bMse,
          pDataSetShared,
          cSamples,
          BagEbm { 1 },
@@ -681,11 +681,11 @@ ErrorEbm BoosterCore::Create(
       }
 
       error = pBoosterCore->m_validationSet.Initialize(
-         cClasses,
-         !bClassification,
+         cScores,
+         pBoosterCore->m_loss.m_bMse,
          false,
-         bClassification,
-         bClassification,
+         !pBoosterCore->m_loss.m_bMse,
+         !pBoosterCore->m_loss.m_bMse,
          pDataSetShared,
          cSamples,
          BagEbm { -1 },

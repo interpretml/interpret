@@ -226,7 +226,8 @@ ErrorEbm InteractionCore::Create(
       }
 
       error = pRet->m_dataFrame.Initialize(
-         bClassification,
+         cScores,
+         pRet->m_loss.m_bLossHasHessian,
          pDataSetShared,
          cSamples,
          aBag,

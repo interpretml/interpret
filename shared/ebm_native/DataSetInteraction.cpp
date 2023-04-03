@@ -30,22 +30,17 @@ extern ErrorEbm ExtractWeights(
 );
 
 INLINE_RELEASE_UNTEMPLATED static ErrorEbm ConstructGradientsAndHessians(
-   const ptrdiff_t cClasses,
+   const size_t cScores,
    const bool bAllocateHessians,
    const size_t cSetSamples,
    FloatFast ** paGradientsAndHessiansOut
 ) {
    LOG_0(Trace_Info, "Entered ConstructGradientsAndHessians");
 
-   // cClasses can only be zero if there are zero samples and we shouldn't get here
-   EBM_ASSERT(0 != cClasses);
-   EBM_ASSERT(1 != cClasses);
+   EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(1 <= cSetSamples);
    EBM_ASSERT(nullptr != paGradientsAndHessiansOut);
    EBM_ASSERT(nullptr == *paGradientsAndHessiansOut);
-
-   const size_t cScores = GetCountScores(cClasses);
-   EBM_ASSERT(1 <= cScores);
 
    const size_t cStorageItems = bAllocateHessians ? size_t { 2 } : size_t { 1 };
    if(IsMultiplyError(sizeof(FloatFast), cScores, cStorageItems, cSetSamples)) {
@@ -271,6 +266,7 @@ void DataSetInteraction::Destruct() {
 }
 
 ErrorEbm DataSetInteraction::Initialize(
+   const size_t cScores,
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
    const size_t cSharedSamples,
@@ -319,16 +315,8 @@ ErrorEbm DataSetInteraction::Initialize(
          }
       }
 
-      ptrdiff_t cClasses;
-      // we previously called GetDataSetSharedTarget and got back non-null result, so it should do that again
-      GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
-
-      // if there are 0 or 1 classes, then with reduction there should be zero scores and the caller should disable
-      EBM_ASSERT(0 != cClasses);
-      EBM_ASSERT(1 != cClasses);
-
       error = ConstructGradientsAndHessians(
-         cClasses,
+         cScores,
          bAllocateHessians,
          cSetSamples,
          &m_aGradientsAndHessians

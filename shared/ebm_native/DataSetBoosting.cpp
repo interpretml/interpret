@@ -468,7 +468,7 @@ free_all:
 WARNING_POP
 
 ErrorEbm DataSetBoosting::Initialize(
-   const ptrdiff_t cClasses,
+   const size_t cScores,
    const bool bAllocateGradients,
    const bool bAllocateHessians,
    const bool bAllocateSampleScores,
@@ -494,13 +494,7 @@ ErrorEbm DataSetBoosting::Initialize(
    LOG_0(Trace_Info, "Entered DataSetBoosting::Initialize");
 
    if(0 != cSetSamples) {
-      const size_t cScores = GetCountScores(cClasses);
-
       if(bAllocateGradients) {
-         // if there are 0 or 1 classes, then with reduction there should be zero scores and the caller should disable
-         EBM_ASSERT(0 != cClasses);
-         EBM_ASSERT(1 != cClasses);
-
          FloatFast * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSetSamples, cScores);
          if(nullptr == aGradientsAndHessians) {
             LOG_0(Trace_Warning, "WARNING Exited DataSetBoosting::Initialize nullptr == aGradientsAndHessians");
@@ -511,10 +505,6 @@ ErrorEbm DataSetBoosting::Initialize(
          EBM_ASSERT(!bAllocateHessians);
       }
       if(bAllocateSampleScores) {
-         // if there are 0 or 1 classes, then with reduction there should be zero scores and the caller should disable
-         EBM_ASSERT(0 != cClasses);
-         EBM_ASSERT(1 != cClasses);
-
          FloatFast * const aSampleScores = ConstructSampleScores(
             cScores, 
             direction, 

@@ -50,6 +50,7 @@ public:
    }
 
    ErrorEbm Initialize(
+      const size_t cScores,
       const bool bAllocateHessians,
       const unsigned char * const pDataSetShared,
       const size_t cSharedSamples,
