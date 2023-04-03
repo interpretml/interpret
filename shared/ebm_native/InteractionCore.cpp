@@ -226,8 +226,7 @@ ErrorEbm InteractionCore::Create(
       }
 
       error = pRet->m_dataFrame.Initialize(
-         ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses,  // regression, binary, multiclass
-         ptrdiff_t { 1 } < cClasses,  // binary, multiclass
+         bClassification,
          pDataSetShared,
          cSamples,
          aBag,

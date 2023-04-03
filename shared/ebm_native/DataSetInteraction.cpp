@@ -271,7 +271,6 @@ void DataSetInteraction::Destruct() {
 }
 
 ErrorEbm DataSetInteraction::Initialize(
-   const bool bAllocateGradients,
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
    const size_t cSharedSamples,
@@ -320,27 +319,23 @@ ErrorEbm DataSetInteraction::Initialize(
          }
       }
 
-      if(bAllocateGradients) {
-         ptrdiff_t cClasses;
-         // we previously called GetDataSetSharedTarget and got back non-null result, so it should do that again
-         GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
+      ptrdiff_t cClasses;
+      // we previously called GetDataSetSharedTarget and got back non-null result, so it should do that again
+      GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
 
-         // if there are 0 or 1 classes, then with reduction there should be zero scores and the caller should disable
-         EBM_ASSERT(0 != cClasses);
-         EBM_ASSERT(1 != cClasses);
+      // if there are 0 or 1 classes, then with reduction there should be zero scores and the caller should disable
+      EBM_ASSERT(0 != cClasses);
+      EBM_ASSERT(1 != cClasses);
 
-         error = ConstructGradientsAndHessians(
-            cClasses,
-            bAllocateHessians,
-            cSetSamples,
-            &m_aGradientsAndHessians
-         );
-         if(Error_None != error) {
-            // we should have already logged the failure
-            return error;
-         }
-      } else {
-         EBM_ASSERT(!bAllocateHessians);
+      error = ConstructGradientsAndHessians(
+         cClasses,
+         bAllocateHessians,
+         cSetSamples,
+         &m_aGradientsAndHessians
+      );
+      if(Error_None != error) {
+         // we should have already logged the failure
+         return error;
       }
 
       if(0 != cFeatures) {

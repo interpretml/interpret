@@ -662,9 +662,9 @@ ErrorEbm BoosterCore::Create(
 
       error = pBoosterCore->m_trainingSet.Initialize(
          cClasses,
-         ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses, // regression, binary, multiclass
-         ptrdiff_t { 1 } < cClasses, // binary, multiclass
-         ptrdiff_t { 1 } < cClasses, // binary, multiclass
+         true,
+         bClassification,
+         bClassification,
          bClassification,
          pDataSetShared,
          cSamples,
@@ -684,7 +684,7 @@ ErrorEbm BoosterCore::Create(
          cClasses,
          !bClassification,
          false,
-         ptrdiff_t { 1 } < cClasses, // binary, multiclass
+         bClassification,
          bClassification,
          pDataSetShared,
          cSamples,
