@@ -30,7 +30,8 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
    inline TFloat CalculateHessian(TFloat target, TFloat prediction) const noexcept {
       UNUSED(target);
       UNUSED(prediction);
-      static_assert(false, "This function is here to signal that this loss has a hessian, but it will not be called.");
+
+      // This function is here to signal that this loss has a hessian, but it will not be called
    }
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
