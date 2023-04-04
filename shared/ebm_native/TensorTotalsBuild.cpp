@@ -143,14 +143,14 @@ namespace DEFINED_ZONE_NAME {
 // TODO: build a pair and triple specific version of this function.  For pairs we can get ride of the pPrevious and just use the actual cell at (-1,-1) from our current cell, and we can use two loops with everything in memory [look at code above from before we incoporated the previous totals].  Triples would also benefit from pulling things out since we have low iterations of the inner loop and we can access indicies directly without additional add/subtract/bit operations.  Beyond triples, the combinatorial choices start to explode, so we should probably use this general N-dimensional code.
 // TODO: after we build pair and triple specific versions of this function, we don't need to have a compiler cCompilerDimensions, since the compiler won't really be able to simpify the loops that are exploding in dimensionality
 // TODO: sort our N-dimensional groups at initialization so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!  After we determine the splits, we can undo the re-ordering for splitting the tensor, which has just a few cells, so will be efficient
-template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
+template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions>
 class TensorTotalsBuildInternal final {
 public:
 
    TensorTotalsBuildInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(
-      const ptrdiff_t cRuntimeClasses,
+      const size_t cRuntimeScores,
       const size_t cRuntimeRealDimensions,
       const size_t * const acBins,
       BinBase * aAuxiliaryBinsBase,
@@ -160,30 +160,28 @@ public:
       , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      static constexpr bool bClassification = IsClassification(cCompilerClasses);
-      static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
+      static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
       struct FastTotalState {
-         Bin<FloatBig, bClassification, cCompilerScores> * m_pDimensionalCur;
-         Bin<FloatBig, bClassification, cCompilerScores> * m_pDimensionalWrap;
-         Bin<FloatBig, bClassification, cCompilerScores> * m_pDimensionalFirst;
+         Bin<FloatBig, bHessian, cArrayScores> * m_pDimensionalCur;
+         Bin<FloatBig, bHessian, cArrayScores> * m_pDimensionalWrap;
+         Bin<FloatBig, bHessian, cArrayScores> * m_pDimensionalFirst;
          size_t m_iCur;
          size_t m_cBins;
       };
 
       LOG_0(Trace_Verbose, "Entered BuildFastTotals");
 
-      auto * pAuxiliaryBin = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
+      auto * pAuxiliaryBin = aAuxiliaryBinsBase->Specialize<FloatBig, bHessian, cArrayScores>();
 
-      auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
+      auto * const aBins = aBinsBase->Specialize<FloatBig, bHessian, cArrayScores>();
 
       const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
       EBM_ASSERT(1 <= cRealDimensions);
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
-      const size_t cScores = GetCountScores(cClasses);
-      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
+      const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
+      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bHessian, cScores)); // we're accessing allocated memory
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
 
       FastTotalState fastTotalState[k_cDimensionsMax];
       FastTotalState * pFastTotalStateInitialize = fastTotalState;
@@ -237,9 +235,9 @@ public:
 
 #ifndef NDEBUG
 
-      auto * const pDebugBin = static_cast<Bin<FloatBig, bClassification, cCompilerScores> *>(malloc(cBytesPerBin));
+      auto * const pDebugBin = static_cast<Bin<FloatBig, bHessian, cArrayScores> *>(malloc(cBytesPerBin));
 
-      auto * aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
+      auto * aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bHessian, cArrayScores>();
 
 #endif //NDEBUG
 
@@ -287,8 +285,8 @@ public:
                aiStart[iDebugDimension] = 0;
                aiLast[iDebugDimension] = fastTotalState[iDebugDimension].m_iCur;
             }
-            TensorTotalsSumDebugSlow<bClassification>(
-               cClasses,
+            TensorTotalsSumDebugSlow<bHessian>(
+               cScores,
                cRealDimensions,
                aiStart,
                aiLast,
@@ -334,14 +332,14 @@ public:
    }
 };
 
-template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensionsPossible>
+template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensionsPossible>
 class TensorTotalsBuildDimensions final {
 public:
 
    TensorTotalsBuildDimensions() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      const ptrdiff_t cRuntimeClasses,
+      const size_t cRuntimeScores,
       const size_t cRealDimensions,
       const size_t * const acBins,
       BinBase * aAuxiliaryBinsBase,
@@ -357,8 +355,8 @@ public:
       EBM_ASSERT(1 <= cRealDimensions);
       EBM_ASSERT(cRealDimensions <= k_cDimensionsMax);
       if(cCompilerDimensionsPossible == cRealDimensions) {
-         TensorTotalsBuildInternal<cCompilerClasses, cCompilerDimensionsPossible>::Func(
-            cRuntimeClasses,
+         TensorTotalsBuildInternal<bHessian, cCompilerScores, cCompilerDimensionsPossible>::Func(
+            cRuntimeScores,
             cRealDimensions,
             acBins,
             aAuxiliaryBinsBase,
@@ -369,8 +367,8 @@ public:
 #endif // NDEBUG
          );
       } else {
-         TensorTotalsBuildDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(
-            cRuntimeClasses,
+         TensorTotalsBuildDimensions<bHessian, cCompilerScores, cCompilerDimensionsPossible + 1>::Func(
+            cRuntimeScores,
             cRealDimensions,
             acBins,
             aAuxiliaryBinsBase,
@@ -384,14 +382,14 @@ public:
    }
 };
 
-template<ptrdiff_t cCompilerClasses>
-class TensorTotalsBuildDimensions<cCompilerClasses, k_cCompilerOptimizedCountDimensionsMax + 1> final {
+template<bool bHessian, size_t cCompilerScores>
+class TensorTotalsBuildDimensions<bHessian, cCompilerScores, k_cCompilerOptimizedCountDimensionsMax + 1> final {
 public:
 
    TensorTotalsBuildDimensions() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      const ptrdiff_t cRuntimeClasses,
+      const size_t cRuntimeScores,
       const size_t cRealDimensions,
       const size_t * const acBins,
       BinBase * aAuxiliaryBinsBase,
@@ -403,8 +401,8 @@ public:
    ) {
       EBM_ASSERT(1 <= cRealDimensions);
       EBM_ASSERT(cRealDimensions <= k_cDimensionsMax);
-      TensorTotalsBuildInternal<cCompilerClasses, k_dynamicDimensions>::Func(
-         cRuntimeClasses,
+      TensorTotalsBuildInternal<bHessian, cCompilerScores, k_dynamicDimensions>::Func(
+         cRuntimeScores,
          cRealDimensions,
          acBins,
          aAuxiliaryBinsBase,
@@ -417,14 +415,14 @@ public:
    }
 };
 
-template<ptrdiff_t cPossibleClasses>
+template<bool bHessian, size_t cPossibleScores>
 class TensorTotalsBuildTarget final {
 public:
 
    TensorTotalsBuildTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      const ptrdiff_t cRuntimeClasses,
+      const size_t cRuntimeScores,
       const size_t cRealDimensions,
       const size_t * const acBins,
       BinBase * aAuxiliaryBinsBase,
@@ -434,15 +432,9 @@ public:
       , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
-      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
-
-      EBM_ASSERT(IsClassification(cRuntimeClasses));
-      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
-
-      if(cPossibleClasses == cRuntimeClasses) {
-         TensorTotalsBuildDimensions<cPossibleClasses, 2>::Func(
-            cRuntimeClasses,
+      if(cPossibleScores == cRuntimeScores) {
+         TensorTotalsBuildDimensions<bHessian, cPossibleScores, 2>::Func(
+            cRuntimeScores,
             cRealDimensions,
             acBins,
             aAuxiliaryBinsBase,
@@ -453,8 +445,8 @@ public:
 #endif // NDEBUG
          );
       } else {
-         TensorTotalsBuildTarget<cPossibleClasses + 1>::Func(
-            cRuntimeClasses,
+         TensorTotalsBuildTarget<bHessian, cPossibleScores + 1>::Func(
+            cRuntimeScores,
             cRealDimensions,
             acBins,
             aAuxiliaryBinsBase,
@@ -468,14 +460,14 @@ public:
    }
 };
 
-template<>
-class TensorTotalsBuildTarget<k_cCompilerClassesMax + 1> final {
+template<bool bHessian>
+class TensorTotalsBuildTarget<bHessian, k_cCompilerScoresMax + 1> final {
 public:
 
    TensorTotalsBuildTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      const ptrdiff_t cRuntimeClasses,
+      const size_t cRuntimeScores,
       const size_t cRealDimensions,
       const size_t * const acBins,
       BinBase * aAuxiliaryBinsBase,
@@ -485,13 +477,8 @@ public:
       , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
-
-      EBM_ASSERT(IsClassification(cRuntimeClasses));
-      EBM_ASSERT(k_cCompilerClassesMax < cRuntimeClasses);
-
-      TensorTotalsBuildDimensions<k_dynamicClassification, 2>::Func(
-         cRuntimeClasses,
+      TensorTotalsBuildDimensions<bHessian, k_dynamicScores, 2>::Func(
+         cRuntimeScores,
          cRealDimensions,
          acBins,
          aAuxiliaryBinsBase,
@@ -505,7 +492,8 @@ public:
 };
 
 extern void TensorTotalsBuild(
-   const ptrdiff_t cClasses,
+   const bool bHessian,
+   const size_t cScores,
    const size_t cRealDimensions,
    const size_t * const acBins,
    BinBase * aAuxiliaryBinsBase,
@@ -515,31 +503,61 @@ extern void TensorTotalsBuild(
    , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
-   if(IsClassification(cClasses)) {
-      TensorTotalsBuildTarget<2>::Func(
-         cClasses,
-         cRealDimensions,
-         acBins,
-         aAuxiliaryBinsBase,
-         aBinsBase
+   EBM_ASSERT(1 <= cScores);
+   if(bHessian) {
+      if(size_t { 1 } != cScores) {
+         // muticlass
+         TensorTotalsBuildTarget<true, k_cCompilerScoresStart>::Func(
+            cScores,
+            cRealDimensions,
+            acBins,
+            aAuxiliaryBinsBase,
+            aBinsBase
 #ifndef NDEBUG
-         , aDebugCopyBinsBase
-         , pBinsEndDebug
+            , aDebugCopyBinsBase
+            , pBinsEndDebug
 #endif // NDEBUG
-      );
+         );
+      } else {
+         TensorTotalsBuildDimensions<true, k_oneScore, 2>::Func(
+            k_oneScore,
+            cRealDimensions,
+            acBins,
+            aAuxiliaryBinsBase,
+            aBinsBase
+#ifndef NDEBUG
+            , aDebugCopyBinsBase
+            , pBinsEndDebug
+#endif // NDEBUG
+         );
+      }
    } else {
-      EBM_ASSERT(IsRegression(cClasses));
-      TensorTotalsBuildDimensions<k_regression, 2>::Func(
-         cClasses,
-         cRealDimensions,
-         acBins,
-         aAuxiliaryBinsBase,
-         aBinsBase
+      if(size_t { 1 } != cScores) {
+         // Odd: gradient multiclass. Allow it, but do not optimize for it
+         TensorTotalsBuildInternal<false, k_dynamicScores, k_dynamicDimensions>::Func(
+            cScores,
+            cRealDimensions,
+            acBins,
+            aAuxiliaryBinsBase,
+            aBinsBase
 #ifndef NDEBUG
-         , aDebugCopyBinsBase
-         , pBinsEndDebug
+            , aDebugCopyBinsBase
+            , pBinsEndDebug
 #endif // NDEBUG
-      );
+         );
+      } else {
+         TensorTotalsBuildDimensions<false, k_oneScore, 2>::Func(
+            k_oneScore,
+            cRealDimensions,
+            acBins,
+            aAuxiliaryBinsBase,
+            aBinsBase
+#ifndef NDEBUG
+            , aDebugCopyBinsBase
+            , pBinsEndDebug
+#endif // NDEBUG
+         );
+      }
    }
 }
 

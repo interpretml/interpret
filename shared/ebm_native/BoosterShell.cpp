@@ -240,7 +240,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       return Error_OutOfMemory;
    }
 
-   // TODO: move this into the BoosterShell::Create function
    error = pBoosterShell->FillAllocations();
    if(Error_None != error) {
       BoosterShell::Free(pBoosterShell);
@@ -249,7 +248,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
 
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
    if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
-      if(IsClassification(cClasses)) {
+      if(!pBoosterCore->IsMse()) {
+         // check for 0 training samples
          if(!pBoosterCore->GetTrainingSet()->IsGradientsAndHessiansNull()) {
             error = pBoosterCore->InitializeBoosterGradientsAndHessians(
                pBoosterShell->GetMulticlassMidwayTemp(),
@@ -261,6 +261,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
             }
          }
       } else {
+         // check for 0 training samples
          if(!pBoosterCore->GetTrainingSet()->IsGradientsAndHessiansNull()) {
             InitializeMSEGradientsAndHessians(
                static_cast<const unsigned char *>(dataSet),
@@ -272,6 +273,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
                nullptr // for boosting do not pre-multiply the gradients by the weight
             );
          }
+         // check for 0 validation samples
          if(!pBoosterCore->GetValidationSet()->IsGradientsAndHessiansNull()) {
             InitializeMSEGradientsAndHessians(
                static_cast<const unsigned char *>(dataSet),

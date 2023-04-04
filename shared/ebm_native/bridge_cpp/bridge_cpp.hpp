@@ -49,6 +49,10 @@ inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) noexcept
 #endif // EXPAND_BINARY_LOGITS
 }
 
+inline constexpr static size_t GetArrayScores(const size_t cScores) noexcept {
+   return k_dynamicScores == cScores ? size_t { 1 } : cScores;
+}
+
 #define GET_COUNT_SCORES(MACRO_cCompilerScores, MACRO_cRuntimeScores) \
    (k_dynamicScores == (MACRO_cCompilerScores) ? (MACRO_cRuntimeScores) : \
    (MACRO_cCompilerScores))
@@ -106,7 +110,9 @@ static constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is
 static constexpr ptrdiff_t k_cItemsPerBitPackDynamic = ptrdiff_t { 0 };
 
 struct BinSumsBoostingBridge {
-   ptrdiff_t m_cClasses;
+   BoolEbm m_bHessian;
+   size_t m_cScores;
+
    ptrdiff_t m_cPack;
 
    size_t m_cSamples;
@@ -124,7 +130,8 @@ struct BinSumsBoostingBridge {
 };
 
 struct BinSumsInteractionBridge {
-   ptrdiff_t m_cClasses;
+   BoolEbm m_bHessian;
+   size_t m_cScores;
 
    size_t m_cSamples;
    const FloatFast * m_aGradientsAndHessians;

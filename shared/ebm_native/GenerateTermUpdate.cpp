@@ -35,7 +35,8 @@ namespace DEFINED_ZONE_NAME {
 extern ErrorEbm BinSumsBoosting(BinSumsBoostingBridge * const pParams);
 
 extern void TensorTotalsBuild(
-   const ptrdiff_t cClasses,
+   const bool bHessian,
+   const size_t cScores,
    const size_t cRealDimensions,
    const size_t * const acBins,
    BinBase * aAuxiliaryBinsBase,
@@ -90,12 +91,10 @@ static ErrorEbm BoostZeroDimensional(
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   const bool bClassification = IsClassification(cClasses);
-
    const size_t cScores = GetCountScores(cClasses);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster
-   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster
+   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores);
 
    BinBase * const pFastBin = pBoosterShell->GetBoostingFastBinsTemp();
    EBM_ASSERT(nullptr != pFastBin);
@@ -103,7 +102,8 @@ static ErrorEbm BoostZeroDimensional(
    pFastBin->ZeroMem(cBytesPerFastBin);
 
    BinSumsBoostingBridge params;
-   params.m_cClasses = cClasses;
+   params.m_bHessian = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
+   params.m_cScores = cScores;
    params.m_cPack = k_cItemsPerBitPackNone;
    params.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
    params.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
@@ -123,8 +123,8 @@ static ErrorEbm BoostZeroDimensional(
    EBM_ASSERT(nullptr != pBigBin);
 
 #ifndef NDEBUG
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
    pBoosterShell->SetDebugBigBinsEnd(IndexBin(pBigBin, cBytesPerBigBin));
 #endif // NDEBUG
 
@@ -139,7 +139,7 @@ static ErrorEbm BoostZeroDimensional(
 
    Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
    FloatFast * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
-   if(bClassification) {
+   if(pBoosterCore->IsHessian()) {
       const auto * const pBin = pBigBin->Specialize<FloatBig, true>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (BoostFlags_GradientSums & flags)) {
@@ -157,7 +157,6 @@ static ErrorEbm BoostZeroDimensional(
          }
       }
    } else {
-      EBM_ASSERT(IsRegression(cClasses));
       const auto * const pBin = pBigBin->Specialize<FloatBig, false>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (BoostFlags_GradientSums & flags)) {
@@ -208,11 +207,10 @@ static ErrorEbm BoostSingleDimensional(
    EBM_ASSERT(0 == pBoosterCore->GetTerms()[iTerm]->GetCountAuxillaryBins());
 
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   const bool bClassification = IsClassification(cClasses);
    const size_t cScores = GetCountScores(cClasses);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster
-   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster
+   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores);
    EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cBins));
 
    BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
@@ -221,7 +219,8 @@ static ErrorEbm BoostSingleDimensional(
    aFastBins->ZeroMem(cBytesPerFastBin, cBins);
 
    BinSumsBoostingBridge params;
-   params.m_cClasses = cClasses;
+   params.m_bHessian = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
+   params.m_cScores = cScores;
    params.m_cPack = pBoosterCore->GetTerms()[iTerm]->GetTermBitPack();
    params.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
    params.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
@@ -242,8 +241,8 @@ static ErrorEbm BoostSingleDimensional(
    EBM_ASSERT(nullptr != aBigBins);
 
 #ifndef NDEBUG
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
    EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cBins));
    pBoosterShell->SetDebugBigBinsEnd(IndexBin(aBigBins, cBytesPerBigBin * cBins));
 #endif // NDEBUG
@@ -316,11 +315,10 @@ static ErrorEbm BoostMultiDimensional(
    } while(ppFeaturesEnd != ppFeature);
 
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   const bool bClassification = IsClassification(cClasses);
    const size_t cScores = GetCountScores(cClasses);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster 
-   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
+   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores);
    EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTensorBins));
 
    BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
@@ -329,7 +327,8 @@ static ErrorEbm BoostMultiDimensional(
    aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
 
    BinSumsBoostingBridge params;
-   params.m_cClasses = cClasses;
+   params.m_bHessian = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
+   params.m_cScores = cScores;
    params.m_cPack = pBoosterCore->GetTerms()[iTerm]->GetTermBitPack();
    params.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
    params.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
@@ -348,8 +347,8 @@ static ErrorEbm BoostMultiDimensional(
 
    const size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
 
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
@@ -393,7 +392,8 @@ static ErrorEbm BoostMultiDimensional(
    BinBase * aAuxiliaryBins = IndexBin(aBigBins, cBytesPerBigBin * cTensorBins);
 
    TensorTotalsBuild(
-      cClasses,
+      pBoosterCore->IsHessian(),
+      cScores,
       pTerm->GetCountRealDimensions(),
       acBins,
       aAuxiliaryBins,
@@ -567,11 +567,10 @@ static ErrorEbm BoostRandom(
    EBM_ASSERT(1 <= cTotalBins);
 
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   const bool bClassification = IsClassification(cClasses);
    const size_t cScores = GetCountScores(cClasses);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we check in CreateBooster 
-   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
+   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores);
 
    BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
    EBM_ASSERT(nullptr != aFastBins);
@@ -580,7 +579,8 @@ static ErrorEbm BoostRandom(
    aFastBins->ZeroMem(cBytesPerFastBin, cTotalBins);
 
    BinSumsBoostingBridge params;
-   params.m_cClasses = cClasses;
+   params.m_bHessian = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
+   params.m_cScores = cScores;
    params.m_cPack = pBoosterCore->GetTerms()[iTerm]->GetTermBitPack();
    params.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
    params.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
@@ -601,8 +601,8 @@ static ErrorEbm BoostRandom(
    EBM_ASSERT(nullptr != aBigBins);
 
 #ifndef NDEBUG
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we check in CreateBooster 
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
    EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTotalBins));
    pBoosterShell->SetDebugBigBinsEnd(IndexBin(aBigBins, cBytesPerBigBin * cTotalBins));
 #endif // NDEBUG
@@ -990,8 +990,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       bool bBad;
       // we need to divide by the number of sampling sets that we constructed this from.
       // We also need to slow down our growth so that the more relevant Features get a chance to grow first so we multiply by a user defined learning rate
-      bool bClassification = IsClassification(cClasses);
-      if(bClassification) {
+      if(IsClassification(cClasses)) {
 #ifdef EXPAND_BINARY_LOGITS
          static constexpr bool bExpandBinaryLogits = true;
 #else // EXPAND_BINARY_LOGITS

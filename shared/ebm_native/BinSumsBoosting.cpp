@@ -23,23 +23,21 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack, bool bWeight, bool bReplication>
+template<bool bHessian, size_t cCompilerScores, ptrdiff_t compilerBitPack, bool bWeight, bool bReplication>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
    static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
-   static constexpr bool bClassification = IsClassification(cCompilerClasses);
-   static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
+   static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
-   const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pParams->m_cClasses);
-   const size_t cScores = GetCountScores(cClasses);
+   const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
 
-   auto * const aBins = pParams->m_aFastBins->Specialize<FloatFast, bClassification, cCompilerScores>();
+   auto * const aBins = pParams->m_aFastBins->Specialize<FloatFast, bHessian, cArrayScores>();
    EBM_ASSERT(nullptr != aBins);
 
    const size_t cSamples = pParams->m_cSamples;
    EBM_ASSERT(1 <= cSamples);
 
    const FloatFast * pGradientAndHessian = pParams->m_aGradientsAndHessians;
-   const FloatFast * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
+   const FloatFast * const pGradientsAndHessiansEnd = pGradientAndHessian + (bHessian ? 2 : 1) * cScores * cSamples;
 
    size_t cBytesPerBin;
    size_t cBitsPerItemMax;
@@ -48,13 +46,13 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
    size_t maskBits;
    const StorageDataType * pInputData;
 
-   Bin<FloatFast, bClassification, cCompilerScores> * pBin;
+   Bin<FloatFast, bHessian, cArrayScores> * pBin;
 
    if(bCompilerZeroDimensional) {
       pBin = aBins;
    } else {
-      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
-      cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
+      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bHessian, cScores)); // we're accessing allocated memory
+      cBytesPerBin = GetBinSize<FloatFast>(bHessian, cScores);
 
       const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pParams->m_cPack);
       EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
@@ -149,7 +147,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
          size_t iScore = 0;
          do {
             auto * const pGradientPair = &aGradientPair[iScore];
-            FloatFast gradient = bClassification ? pGradientAndHessian[iScore << 1] : pGradientAndHessian[iScore];
+            FloatFast gradient = bHessian ? pGradientAndHessian[iScore << 1] : pGradientAndHessian[iScore];
 #ifndef NDEBUG
             gradientTotalDebug += gradient;
 #endif // NDEBUG
@@ -157,7 +155,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
                gradient *= weight;
             }
             pGradientPair->m_sumGradients += gradient;
-            if(bClassification) {
+            if(bHessian) {
                FloatFast hessian = pGradientAndHessian[(iScore << 1) + 1];
                if(bWeight) {
                   hessian *= weight;
@@ -166,10 +164,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
             }
             ++iScore;
          } while(cScores != iScore);
-         pGradientAndHessian += bClassification ? cScores << 1 : cScores;
-
-         EBM_ASSERT(!bClassification || ptrdiff_t { 2 } == cClasses && !bExpandBinaryLogits ||
-            -k_epsilonGradient < gradientTotalDebug && gradientTotalDebug < k_epsilonGradient);
+         pGradientAndHessian += bHessian ? cScores << 1 : cScores;
 
          if(bCompilerZeroDimensional) {
             if(pGradientsAndHessiansEnd == pGradientAndHessian) {
@@ -198,17 +193,17 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
 }
 
 
-template<ptrdiff_t cCompilerClasses, ptrdiff_t compilerBitPack>
+template<bool bHessian, size_t cCompilerScores, ptrdiff_t compilerBitPack>
 INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptions(BinSumsBoostingBridge * const pParams) {
    if(nullptr != pParams->m_aWeights) {
       static constexpr bool bWeight = true;
 
       if(nullptr != pParams->m_pCountOccurrences) {
          static constexpr bool bReplication = true;
-         return BinSumsBoostingInternal<cCompilerClasses, compilerBitPack, bWeight, bReplication>(pParams);
+         return BinSumsBoostingInternal<bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
       } else {
          static constexpr bool bReplication = false;
-         return BinSumsBoostingInternal<cCompilerClasses, compilerBitPack, bWeight, bReplication>(pParams);
+         return BinSumsBoostingInternal<bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
       }
    } else {
       static constexpr bool bWeight = false;
@@ -217,50 +212,60 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptions(BinSumsBoostingBridge * co
       EBM_ASSERT(nullptr == pParams->m_pCountOccurrences);
       static constexpr bool bReplication = false;
 
-      return BinSumsBoostingInternal<cCompilerClasses, compilerBitPack, bWeight, bReplication>(pParams);
+      return BinSumsBoostingInternal<bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
    }
 }
 
 
-template<ptrdiff_t cCompilerClasses>
+template<bool bHessian, size_t cCompilerScores>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BitPack(BinSumsBoostingBridge * const pParams) {
    if(k_cItemsPerBitPackNone != pParams->m_cPack) {
-      return FinalOptions<cCompilerClasses, k_cItemsPerBitPackDynamic>(pParams);
+      return FinalOptions<bHessian, cCompilerScores, k_cItemsPerBitPackDynamic>(pParams);
    } else {
       // this needs to be special cased because otherwise we would inject comparisons into the dynamic version
-      return FinalOptions<cCompilerClasses, k_cItemsPerBitPackNone>(pParams);
+      return FinalOptions<bHessian, cCompilerScores, k_cItemsPerBitPackNone>(pParams);
    }
 }
 
 
-template<ptrdiff_t cPossibleClasses>
+template<bool bHessian, size_t cPossibleScores>
 struct CountClasses final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsBoostingBridge * const pParams) {
-      if(cPossibleClasses == pParams->m_cClasses) {
-         return BitPack<cPossibleClasses>(pParams);
+      if(cPossibleScores == pParams->m_cScores) {
+         return BitPack<bHessian, cPossibleScores>(pParams);
       } else {
-         return CountClasses<cPossibleClasses + 1>::Func(pParams);
+         return CountClasses<bHessian, cPossibleScores + 1>::Func(pParams);
       }
    }
 };
-template<>
-struct CountClasses<k_cCompilerClassesMax + 1> final {
+template<bool bHessian>
+struct CountClasses<bHessian, k_cCompilerScoresMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsBoostingBridge * const pParams) {
-      return BitPack<k_dynamicClassification>(pParams);
+      return BitPack<bHessian, k_dynamicScores>(pParams);
    }
 };
 
 
 extern ErrorEbm BinSumsBoosting(BinSumsBoostingBridge * const pParams) {
-   ErrorEbm error;
-
    LOG_0(Trace_Verbose, "Entered BinSumsBoosting");
 
-   if(IsClassification(pParams->m_cClasses)) {
-      error = CountClasses<2>::Func(pParams);
+   ErrorEbm error;
+
+   EBM_ASSERT(1 <= pParams->m_cScores);
+   if(EBM_FALSE != pParams->m_bHessian) {
+      if(size_t { 1 } != pParams->m_cScores) {
+         // muticlass
+         error = CountClasses<true, k_cCompilerScoresStart>::Func(pParams);
+      } else {
+         error = BitPack<true, k_oneScore>(pParams);
+      }
    } else {
-      EBM_ASSERT(IsRegression(pParams->m_cClasses));
-      error = BitPack<k_regression>(pParams);
+      if(size_t { 1 } != pParams->m_cScores) {
+         // Odd: gradient multiclass. Allow it, but do not optimize for it
+         error = BitPack<false, k_dynamicScores>(pParams);
+      } else {
+         error = BitPack<false, k_oneScore>(pParams);
+      }
    }
 
    LOG_0(Trace_Verbose, "Exited BinSumsBoosting");

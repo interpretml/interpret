@@ -569,12 +569,11 @@ ErrorEbm BoosterCore::Create(
    // which means that we do not write anything to our upper level callers, and we don't need a bunch of things
    // since they have zero memory allocated to them. Having 0 classes means there are also 0 samples.
    if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
-      const bool bClassification = IsClassification(cClasses);
       const size_t cScores = GetCountScores(cClasses);
 
       static const char g_sMse[] = "mse";
       static const char g_sLogLoss[] = "log_loss";
-      const char * const sLoss = bClassification ? g_sLogLoss : g_sMse;
+      const char * const sLoss = IsClassification(cClasses) ? g_sLogLoss : g_sMse;
 
       Config config;
       config.cOutputs = cScores;
@@ -584,21 +583,23 @@ ErrorEbm BoosterCore::Create(
          return error;
       }
 
-      if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || 
-         IsOverflowBinSize<FloatBig>(bClassification, cScores))
+      const bool bHessian = pBoosterCore->IsHessian();
+
+      if(IsOverflowBinSize<FloatFast>(bHessian, cScores) ||
+         IsOverflowBinSize<FloatBig>(bHessian, cScores))
       {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
          return Error_OutOfMemory;
       }
 
-      const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
+      const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bHessian, cScores);
       if(IsMultiplyError(cBytesPerFastBin, cFastBinsMax)) {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerFastBin, cFastBinsMax)");
          return Error_OutOfMemory;
       }
       pBoosterCore->m_cBytesFastBins = cBytesPerFastBin * cFastBinsMax;
 
-      const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
+      const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bHessian, cScores);
       if(IsMultiplyError(cBytesPerBigBin, cBigBinsMax)) {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerBigBin, cBigBinsMax)");
          return Error_OutOfMemory;
@@ -606,15 +607,15 @@ ErrorEbm BoosterCore::Create(
       pBoosterCore->m_cBytesBigBins = cBytesPerBigBin * cBigBinsMax;
 
       if(0 != cSingleDimensionBinsMax) {
-         if(IsOverflowTreeNodeSize(bClassification, cScores) ||
-            IsOverflowSplitPositionSize(bClassification, cScores)) 
+         if(IsOverflowTreeNodeSize(bHessian, cScores) ||
+            IsOverflowSplitPositionSize(bHessian, cScores))
          {
             LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin tracking size overflow");
             return Error_OutOfMemory;
          }
 
          const size_t cSingleDimensionSplitsMax = cSingleDimensionBinsMax - 1;
-         const size_t cBytesPerSplitPosition = GetSplitPositionSize(bClassification, cScores);
+         const size_t cBytesPerSplitPosition = GetSplitPositionSize(bHessian, cScores);
          if(IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)) {
             LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)");
             return Error_OutOfMemory;
@@ -638,7 +639,7 @@ ErrorEbm BoosterCore::Create(
          }
          const size_t cTreeNodes = cSingleDimensionSplitsMax + cSingleDimensionBinsMax;
 
-         const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
+         const size_t cBytesPerTreeNode = GetTreeNodeSize(bHessian, cScores);
          if(IsMultiplyError(cBytesPerTreeNode, cTreeNodes)) {
             LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerTreeNode, cTreeNodes)");
             return Error_OutOfMemory;
@@ -663,9 +664,9 @@ ErrorEbm BoosterCore::Create(
       error = pBoosterCore->m_trainingSet.Initialize(
          cScores,
          true,
-         pBoosterCore->m_loss.m_bLossHasHessian,
-         !pBoosterCore->m_loss.m_bMse,
-         !pBoosterCore->m_loss.m_bMse,
+         bHessian,
+         !pBoosterCore->IsMse(),
+         !pBoosterCore->IsMse(),
          pDataSetShared,
          cSamples,
          BagEbm { 1 },
@@ -682,10 +683,10 @@ ErrorEbm BoosterCore::Create(
 
       error = pBoosterCore->m_validationSet.Initialize(
          cScores,
-         pBoosterCore->m_loss.m_bMse,
+         pBoosterCore->IsMse(),
          false,
-         !pBoosterCore->m_loss.m_bMse,
-         !pBoosterCore->m_loss.m_bMse,
+         !pBoosterCore->IsMse(),
+         !pBoosterCore->IsMse(),
          pDataSetShared,
          cSamples,
          BagEbm { -1 },

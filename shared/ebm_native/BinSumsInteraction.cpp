@@ -52,22 +52,20 @@ namespace DEFINED_ZONE_NAME {
 //  - allow the system to process all the data via CPU (which means it can be inside a single dataset) and compare this result to the result
 //    of using the SIMD code pipeline.  Maybe we can simulate all the same access 
 
-template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions, bool bWeight>
+template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams) {
-   static constexpr bool bClassification = IsClassification(cCompilerClasses);
-   static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
+   static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
-   const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pParams->m_cClasses);
-   const size_t cScores = GetCountScores(cClasses);
+   const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
 
-   auto * const aBins = pParams->m_aFastBins->Specialize<FloatFast, bClassification, cCompilerScores>();
+   auto * const aBins = pParams->m_aFastBins->Specialize<FloatFast, bHessian, cArrayScores>();
    EBM_ASSERT(nullptr != aBins);
 
    const size_t cSamples = pParams->m_cSamples;
    EBM_ASSERT(1 <= cSamples);
 
    const FloatFast * pGradientAndHessian = pParams->m_aGradientsAndHessians;
-   const FloatFast * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
+   const FloatFast * const pGradientsAndHessiansEnd = pGradientAndHessian + (bHessian ? 2 : 1) * cScores * cSamples;
 
    struct DimensionalData {
       ptrdiff_t m_cShift;
@@ -117,8 +115,8 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
    DimensionalData * const aDimensionalDataShifted = &aDimensionalData[1];
    const size_t cRealDimensionsMinusOne = cRealDimensions - 1;
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
-   const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bHessian, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatFast>(bHessian, cScores);
 
    const FloatFast * pWeight;
    if(bWeight) {
@@ -197,7 +195,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
          } while(cRealDimensionsMinusOne != iDimension);
       }
 
-      auto * const pBin = reinterpret_cast<Bin<FloatFast, bClassification, cCompilerScores> *>(pRawBin);
+      auto * const pBin = reinterpret_cast<Bin<FloatFast, bHessian, cArrayScores> *>(pRawBin);
       ASSERT_BIN_OK(cBytesPerBin, pBin, pParams->m_pDebugFastBinsEnd);
 
       pBin->SetCountSamples(pBin->GetCountSamples() + size_t { 1 });
@@ -219,17 +217,17 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
       size_t iScore = 0;
       do {
          auto * const pGradientPair = &aGradientPair[iScore];
-         const FloatFast gradient = bClassification ? pGradientAndHessian[iScore << 1] : pGradientAndHessian[iScore];
+         const FloatFast gradient = bHessian ? pGradientAndHessian[iScore << 1] : pGradientAndHessian[iScore];
          // DO NOT MULTIPLY gradient BY WEIGHT. WE PRE-MULTIPLIED WHEN WE ALLOCATED pGradientAndHessian
          pGradientPair->m_sumGradients += gradient;
-         if(bClassification) {
+         if(bHessian) {
             const FloatFast hessian = pGradientAndHessian[(iScore << 1) + 1];
             // DO NOT MULTIPLY hessian BY WEIGHT. WE PRE-MULTIPLIED WHEN WE ALLOCATED pGradientAndHessian
             pGradientPair->SetHess(pGradientPair->GetHess() + hessian);
          }
          ++iScore;
       } while(cScores != iScore);
-      pGradientAndHessian += bClassification ? cScores << 1 : cScores;
+      pGradientAndHessian += bHessian ? cScores << 1 : cScores;
    }
 done:;
 
@@ -243,50 +241,50 @@ done:;
 }
 
 
-template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
+template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions>
 INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptions(BinSumsInteractionBridge * const pParams) {
    if(nullptr != pParams->m_aWeights) {
       static constexpr bool bWeight = true;
-      return BinSumsInteractionInternal<cCompilerClasses, cCompilerDimensions, bWeight>(pParams);
+      return BinSumsInteractionInternal<bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
    } else {
       static constexpr bool bWeight = false;
-      return BinSumsInteractionInternal<cCompilerClasses, cCompilerDimensions, bWeight>(pParams);
+      return BinSumsInteractionInternal<bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
    }
 }
 
 
-template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensionsPossible>
+template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensionsPossible>
 struct CountDimensions final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
       if(cCompilerDimensionsPossible == pParams->m_cRuntimeRealDimensions) {
-         return FinalOptions<cCompilerClasses, cCompilerDimensionsPossible>(pParams);
+         return FinalOptions<bHessian, cCompilerScores, cCompilerDimensionsPossible>(pParams);
       } else {
-         return CountDimensions<cCompilerClasses, cCompilerDimensionsPossible + 1>::Func(pParams);
+         return CountDimensions<bHessian, cCompilerScores, cCompilerDimensionsPossible + 1>::Func(pParams);
       }
    }
 };
-template<ptrdiff_t cCompilerClasses>
-struct CountDimensions<cCompilerClasses, k_cCompilerOptimizedCountDimensionsMax + 1> final {
+template<bool bHessian, size_t cCompilerScores>
+struct CountDimensions<bHessian, cCompilerScores, k_cCompilerOptimizedCountDimensionsMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
-      return FinalOptions<cCompilerClasses, k_dynamicDimensions>(pParams);
+      return FinalOptions<bHessian, cCompilerScores, k_dynamicDimensions>(pParams);
    }
 };
 
 
-template<ptrdiff_t cPossibleClasses>
+template<bool bHessian, size_t cPossibleScores>
 struct CountClasses final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
-      if(cPossibleClasses == pParams->m_cClasses) {
-         return CountDimensions<cPossibleClasses, 1>::Func(pParams);
+      if(cPossibleScores == pParams->m_cScores) {
+         return CountDimensions<bHessian, cPossibleScores, 1>::Func(pParams);
       } else {
-         return CountClasses<cPossibleClasses + 1>::Func(pParams);
+         return CountClasses<bHessian, cPossibleScores + 1>::Func(pParams);
       }
    }
 };
-template<>
-struct CountClasses<k_cCompilerClassesMax + 1> final {
+template<bool bHessian>
+struct CountClasses<bHessian, k_cCompilerScoresMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
-      return CountDimensions<k_dynamicClassification, 1>::Func(pParams);
+      return CountDimensions<bHessian, k_dynamicScores, 1>::Func(pParams);
    }
 };
 
@@ -296,11 +294,21 @@ extern ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pParams) {
 
    ErrorEbm error;
 
-   if(IsClassification(pParams->m_cClasses)) {
-      error = CountClasses<2>::Func(pParams);
+   EBM_ASSERT(1 <= pParams->m_cScores);
+   if(EBM_FALSE != pParams->m_bHessian) {
+      if(size_t { 1 } != pParams->m_cScores) {
+         // muticlass
+         error = CountClasses<true, k_cCompilerScoresStart>::Func(pParams);
+      } else {
+         error = CountDimensions<true, k_oneScore, 1>::Func(pParams);
+      }
    } else {
-      EBM_ASSERT(IsRegression(pParams->m_cClasses));
-      error = CountDimensions<k_regression, 1>::Func(pParams);
+      if(size_t { 1 } != pParams->m_cScores) {
+         // Odd: gradient multiclass. Allow it, but do not optimize for it
+         error = FinalOptions<false, k_dynamicScores, k_dynamicDimensions>(pParams);
+      } else {
+         error = CountDimensions<false, k_oneScore, 1>::Func(pParams);
+      }
    }
 
    LOG_0(Trace_Verbose, "Exited BinSumsInteraction");

@@ -205,12 +205,11 @@ ErrorEbm InteractionCore::Create(
    pRet->m_cClasses = cClasses;
 
    if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
-      const bool bClassification = IsClassification(cClasses);
       const size_t cScores = GetCountScores(cClasses);
 
       static const char g_sMse[] = "mse";
       static const char g_sLogLoss[] = "log_loss";
-      const char* const sLoss = bClassification ? g_sLogLoss : g_sMse;
+      const char* const sLoss = IsClassification(cClasses) ? g_sLogLoss : g_sMse;
 
       Config config;
       config.cOutputs = cScores;
@@ -220,14 +219,16 @@ ErrorEbm InteractionCore::Create(
          return error;
       }
 
-      if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)) {
+      const bool bHessian = pRet->IsHessian();
+
+      if(IsOverflowBinSize<FloatFast>(bHessian, cScores) || IsOverflowBinSize<FloatBig>(bHessian, cScores)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsOverflowBinSize overflow");
          return Error_OutOfMemory;
       }
 
       error = pRet->m_dataFrame.Initialize(
          cScores,
-         pRet->m_loss.m_bLossHasHessian,
+         bHessian,
          pDataSetShared,
          cSamples,
          aBag,

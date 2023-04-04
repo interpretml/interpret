@@ -29,7 +29,8 @@ namespace DEFINED_ZONE_NAME {
 extern ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pBinSumsInteraction);
 
 extern void TensorTotalsBuild(
-   const ptrdiff_t cClasses,
+   const bool bHessian,
+   const size_t cScores,
    const size_t cRealDimensions,
    const size_t * const acBins,
    BinBase * aAuxiliaryBinsBase,
@@ -263,11 +264,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       return Error_None;
    }
 
-   const bool bClassification = IsClassification(cClasses);
    const size_t cScores = GetCountScores(cClasses);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // checked in CreateInteractionDetector
-   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pInteractionCore->IsHessian(), cScores)); // checked in CreateInteractionDetector
+   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pInteractionCore->IsHessian(), cScores);
    if(IsMultiplyError(cBytesPerFastBin, cTensorBins)) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTensorBins)");
       return Error_OutOfMemory;
@@ -288,7 +288,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
    binSums.m_cRuntimeRealDimensions = cDimensions;
 
-   binSums.m_cClasses = pInteractionCore->GetCountClasses();
+   binSums.m_bHessian = pInteractionCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
+   binSums.m_cScores = cScores;
 
    binSums.m_cSamples = pDataSet->GetCountSamples();
    binSums.m_aGradientsAndHessians = pDataSet->GetGradientsAndHessiansPointer();
@@ -310,8 +311,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    }
    const size_t cTotalBigBins = cTensorBins + cAuxillaryBins;
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // checked in CreateInteractionDetector
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pInteractionCore->IsHessian(), cScores)); // checked in CreateInteractionDetector
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pInteractionCore->IsHessian(), cScores);
    if(IsMultiplyError(cBytesPerBigBin, cTotalBigBins)) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTotalBigBins)");
       return Error_OutOfMemory;
@@ -355,7 +356,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    aAuxiliaryBins->ZeroMem(cBytesPerBigBin, cAuxillaryBins);
 
    TensorTotalsBuild(
-      cClasses,
+      pInteractionCore->IsHessian(),
+      cScores,
       cDimensions,
       binSums.m_acBins,
       aAuxiliaryBins,

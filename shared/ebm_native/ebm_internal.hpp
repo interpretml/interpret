@@ -75,6 +75,9 @@ static constexpr FloatBig k_epsilonNegativeGainAllowed = FloatBig { -1e-7 };
 static constexpr ptrdiff_t k_cCompilerClassesMax = 8;
 static constexpr ptrdiff_t k_cCompilerClassesStart = 3;
 
+static constexpr size_t k_cCompilerScoresMax = 8;
+static constexpr size_t k_cCompilerScoresStart = 3;
+
 static_assert(
    2 <= k_cCompilerClassesMax,
    "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would "

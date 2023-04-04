@@ -27,20 +27,19 @@ struct TensorSumDimension {
 
 #ifndef NDEBUG
 
-template<bool bClassification>
+template<bool bHessian>
 void TensorTotalsSumDebugSlow(
-   const ptrdiff_t cClasses,
+   const size_t cScores,
    const size_t cRealDimensions,
    const size_t * const aiStart,
    const size_t * const aiLast,
    const size_t * const acBins,
-   const Bin<FloatBig, bClassification> * const aBins,
-   Bin<FloatBig, bClassification> & binOut
+   const Bin<FloatBig, bHessian> * const aBins,
+   Bin<FloatBig, bHessian> & binOut
 ) {
-   const size_t cScores = GetCountScores(cClasses);
    // we've allocated this, so it should fit
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores));
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bHessian, cScores));
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
 
    EBM_ASSERT(1 <= cRealDimensions); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
@@ -104,19 +103,18 @@ void TensorTotalsSumDebugSlow(
    }
 }
 
-template<bool bClassification>
+template<bool bHessian>
 void TensorTotalsCompareDebug(
-   const ptrdiff_t cClasses,
+   const size_t cScores,
    const size_t cRealDimensions,
    const TensorSumDimension * const aDimensions,
    const size_t directionVector,
-   const Bin<FloatBig, bClassification> * const aBins,
-   const Bin<FloatBig, bClassification> & bin,
-   const GradientPair<FloatBig, bClassification> * const aGradientPairs
+   const Bin<FloatBig, bHessian> * const aBins,
+   const Bin<FloatBig, bHessian> & bin,
+   const GradientPair<FloatBig, bHessian> * const aGradientPairs
 ) {
-   const size_t cScores = GetCountScores(cClasses);
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bHessian, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
 
    size_t acBins[k_cDimensionsMax];
    size_t aiStart[k_cDimensionsMax];
@@ -142,11 +140,11 @@ void TensorTotalsCompareDebug(
       ++iDimension;
    } while(cRealDimensions != iDimension);
 
-   auto * const pComparison2 = static_cast<Bin<FloatBig, bClassification> *>(malloc(cBytesPerBin));
+   auto * const pComparison2 = static_cast<Bin<FloatBig, bHessian> *>(malloc(cBytesPerBin));
    if(nullptr != pComparison2) {
       // if we can't obtain the memory, then don't do the comparison and exit
-      TensorTotalsSumDebugSlow<bClassification>(
-         cClasses,
+      TensorTotalsSumDebugSlow<bHessian>(
+         cScores,
          cRealDimensions,
          aiStart,
          aiLast,
@@ -193,15 +191,15 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
       size_t m_cLast;
    };
 
-   static constexpr bool bClassification = IsClassification(cCompilerClasses);
+   static constexpr bool bHessian = IsClassification(cCompilerClasses);
    static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
 
    static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
    const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
    const size_t cScores = GetCountScores(cClasses);
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bHessian, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
 
    EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
    EBM_ASSERT(cRealDimensions <= k_cDimensionsMax);
@@ -227,7 +225,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
 
          ++iDimension;
       } while(LIKELY(cRealDimensions != iDimension));
-      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bClassification, cCompilerScores> *>(pStartingBin);
+      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bHessian, cCompilerScores> *>(pStartingBin);
       ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
       binOut.Copy(cScores, *pBin, pBin->GetGradientPairs(), aGradientPairsOut);
       return;
@@ -305,7 +303,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
          ++pTotalsDimensionLoop;
       } while(LIKELY(pTotalsDimensionEnd != pTotalsDimensionLoop));
 
-      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bClassification, cCompilerScores> *>(pRawBin);
+      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bHessian, cCompilerScores> *>(pRawBin);
 
       // TODO: for pairs and tripples and anything else that we want to make special case code for we can
       // avoid this unpredictable branch, which would be very helpful
@@ -321,8 +319,8 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
 
 #ifndef NDEBUG
    if(nullptr != aDebugCopyBins) {
-      TensorTotalsCompareDebug<bClassification>(
-         cClasses,
+      TensorTotalsCompareDebug<bHessian>(
+         cScores,
          cRealDimensions,
          aDimensions,
          directionVector,

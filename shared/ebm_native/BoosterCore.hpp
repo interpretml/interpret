@@ -202,6 +202,14 @@ public:
    inline ErrorEbm LossApplyUpdate(ApplyUpdateBridge * const pData) {
       return (*m_loss.m_pApplyUpdateC)(&m_loss, pData);
    }
+
+   inline bool IsMse() {
+      return EBM_FALSE != m_loss.m_bMse;
+   }
+
+   inline bool IsHessian() {
+      return EBM_FALSE != m_loss.m_bLossHasHessian;
+   }
 };
 
 } // DEFINED_ZONE_NAME
