@@ -628,25 +628,25 @@ extern void TensorTotalsBuild(
 //            aiStart[1] = 0;
 //            aiLast[0] = iBin1;
 //            aiLast[1] = iBin2;
-//            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBins, aiStart, aiLast, pTotalsLowLow);
+//            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(cRuntimeScores, pTerm, aBins, aiStart, aiLast, pTotalsLowLow);
 //
 //            aiStart[0] = iBin1 + 1;
 //            aiStart[1] = 0;
 //            aiLast[0] = cBinsDimension1 - 1;
 //            aiLast[1] = iBin2;
-//            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBins, aiStart, aiLast, pTotalsHighLow);
+//            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(cRuntimeScores, pTerm, aBins, aiStart, aiLast, pTotalsHighLow);
 //
 //            aiStart[0] = 0;
 //            aiStart[1] = iBin2 + 1;
 //            aiLast[0] = iBin1;
 //            aiLast[1] = cBinsDimension2 - 1;
-//            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBins, aiStart, aiLast, pTotalsLowHigh);
+//            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(cRuntimeScores, pTerm, aBins, aiStart, aiLast, pTotalsLowHigh);
 //
 //            aiStart[0] = iBin1 + 1;
 //            aiStart[1] = iBin2 + 1;
 //            aiLast[0] = cBinsDimension1 - 1;
 //            aiLast[1] = cBinsDimension2 - 1;
-//            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(cRuntimeClasses, pTerm, aBins, aiStart, aiLast, pTotalsHighHigh);
+//            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(cRuntimeScores, pTerm, aBins, aiStart, aiLast, pTotalsHighHigh);
 //
 //            // LOW LOW
 //            pTotalsTarget->Zero(cRuntimeClasses);

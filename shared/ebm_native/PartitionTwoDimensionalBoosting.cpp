@@ -27,30 +27,26 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
+template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions>
 static FloatBig SweepMultiDimensional(
-   const ptrdiff_t cRuntimeClasses,
+   const size_t cRuntimeScores,
    const size_t cRuntimeRealDimensions,
    const size_t * const aiPoint,
    const size_t * const acBins,
    const size_t directionVectorLow,
    const size_t iDimensionSweep,
-   const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aBins,
+   const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const aBins,
    const size_t cSamplesLeafMin,
-   Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const pBinBestAndTemp,
+   Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const pBinBestAndTemp,
    size_t * const piBestSplit
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
+   , const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const aDebugCopyBins
    , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
-   static constexpr bool bClassification = IsClassification(cCompilerClasses);
-   static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
-
-   const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
-   const size_t cScores = GetCountScores(cClasses);
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
+   const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bHessian, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
 
    const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
    EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
@@ -79,11 +75,11 @@ static FloatBig SweepMultiDimensional(
    auto * const p_DO_NOT_USE_DIRECTLY_High = IndexBin(pBinBestAndTemp, cBytesPerBin * 3);
    ASSERT_BIN_OK(cBytesPerBin, p_DO_NOT_USE_DIRECTLY_High, pBinsEndDebug);
 
-   Bin<FloatBig, bClassification, cCompilerScores> binLow;
-   Bin<FloatBig, bClassification, cCompilerScores> binHigh;
+   Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> binLow;
+   Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> binHigh;
 
    // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
-   static constexpr bool bUseStackMemory = k_dynamicClassification != cCompilerClasses;
+   static constexpr bool bUseStackMemory = k_dynamicScores != cCompilerScores;
    auto * const aGradientPairsLow = bUseStackMemory ? binLow.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_Low->GetGradientPairs();
    auto * const aGradientPairsHigh = bUseStackMemory ? binHigh.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_High->GetGradientPairs();
 
@@ -94,8 +90,8 @@ static FloatBig SweepMultiDimensional(
    do {
       aDimensions[iDimensionSweep].m_iPoint = iBin;
       EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-      TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
-         cRuntimeClasses,
+      TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(
+         cRuntimeScores,
          cRealDimensions,
          aDimensions,
          directionVectorLow,
@@ -109,8 +105,8 @@ static FloatBig SweepMultiDimensional(
       );
       if(LIKELY(cSamplesLeafMin <= binLow.GetCountSamples())) {
          EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-         TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
-            cRuntimeClasses,
+         TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(
+            cRuntimeScores,
             cRealDimensions,
             aDimensions,
             directionVectorHigh,
@@ -133,7 +129,7 @@ static FloatBig SweepMultiDimensional(
                // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-               static constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
+               static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
                
                const FloatBig gain1 = EbmStats::CalcPartialGain(
                   aGradientPairsLow[iScore].m_sumGradients, bUseLogitBoost ? aGradientPairsLow[iScore].GetHess() : binLow.GetWeight());
@@ -177,7 +173,7 @@ static FloatBig SweepMultiDimensional(
    return bestGain;
 }
 
-template<ptrdiff_t cCompilerClasses>
+template<bool bHessian, size_t cCompilerScores>
 class PartitionTwoDimensionalBoostingInternal final {
 public:
 
@@ -196,27 +192,22 @@ public:
       , const BinBase * const aDebugCopyBinsBase
 #endif // NDEBUG
    ) {
-      static constexpr bool bClassification = IsClassification(cCompilerClasses);
-      static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
       static constexpr size_t cCompilerDimensions = 2;
 
       ErrorEbm error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bClassification, cCompilerScores>();
+      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
       Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
+      const size_t cRuntimeScores = GetCountScores(pBoosterCore->GetCountClasses());
+      const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
-
-      const size_t cScores = GetCountScores(cClasses);
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
-
-      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
+      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
 
 #ifndef NDEBUG
-      const auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
+      const auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
 #endif // NDEBUG
 
       size_t aiStart[k_cDimensionsMax];
@@ -276,8 +267,8 @@ public:
          size_t splitSecond1LowBest;
          auto * pTotals2LowLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 4);
          auto * pTotals2LowHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 5);
-         const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses, cCompilerDimensions>(
-            cRuntimeClasses,
+         const FloatBig gain1 = SweepMultiDimensional<bHessian, cCompilerScores, cCompilerDimensions>(
+            cRuntimeScores,
             pTerm->GetCountRealDimensions(),
             aiStart,
             acBins,
@@ -299,8 +290,8 @@ public:
             size_t splitSecond1HighBest;
             auto * pTotals2HighLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 8);
             auto * pTotals2HighHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 9);
-            const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses, cCompilerDimensions>(
-               cRuntimeClasses,
+            const FloatBig gain2 = SweepMultiDimensional<bHessian, cCompilerScores, cCompilerDimensions>(
+               cRuntimeScores,
                pTerm->GetCountRealDimensions(),
                aiStart,
                acBins,
@@ -367,8 +358,8 @@ public:
          size_t splitSecond2LowBest;
          auto * pTotals1LowLowBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 16);
          auto * pTotals1LowHighBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 17);
-         const FloatBig gain1 = SweepMultiDimensional<cCompilerClasses, cCompilerDimensions>(
-            cRuntimeClasses,
+         const FloatBig gain1 = SweepMultiDimensional<bHessian, cCompilerScores, cCompilerDimensions>(
+            cRuntimeScores,
             pTerm->GetCountRealDimensions(),
             aiStart,
             acBins,
@@ -390,8 +381,8 @@ public:
             size_t splitSecond2HighBest;
             auto * pTotals1HighLowBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 20);
             auto * pTotals1HighHighBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 21);
-            const FloatBig gain2 = SweepMultiDimensional<cCompilerClasses, cCompilerDimensions>(
-               cRuntimeClasses,
+            const FloatBig gain2 = SweepMultiDimensional<bHessian, cCompilerScores, cCompilerDimensions>(
+               cRuntimeScores,
                pTerm->GetCountRealDimensions(),
                aiStart,
                acBins,
@@ -473,7 +464,7 @@ public:
                // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-               static constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
+               static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
                const FloatBig gain1 = EbmStats::CalcPartialGain(
                   pGradientPairTotal[iScore].m_sumGradients,
                   bUseLogitBoost ? pGradientPairTotal[iScore].GetHess() : weightAll
@@ -554,7 +545,7 @@ public:
                         FloatBig predictionHighLow;
                         FloatBig predictionHighHigh;
 
-                        if(bClassification) {
+                        if(bHessian) {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals2LowLowBest[iScore].m_sumGradients,
                               pGradientPairTotals2LowLowBest[iScore].GetHess()
@@ -572,7 +563,6 @@ public:
                               pGradientPairTotals2HighHighBest[iScore].GetHess()
                            );
                         } else {
-                           EBM_ASSERT(IsRegression(cCompilerClasses));
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals2LowLowBest[iScore].m_sumGradients,
                               pTotals2LowLowBest->GetWeight()
@@ -680,7 +670,7 @@ public:
                         FloatBig predictionHighLow;
                         FloatBig predictionHighHigh;
 
-                        if(bClassification) {
+                        if(bHessian) {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals1LowLowBest[iScore].m_sumGradients,
                               pGradientPairTotals1LowLowBest[iScore].GetHess()
@@ -698,7 +688,6 @@ public:
                               pGradientPairTotals1HighHighBest[iScore].GetHess()
                            );
                         } else {
-                           EBM_ASSERT(IsRegression(cCompilerClasses));
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
                               pGradientPairTotals1LowLowBest[iScore].m_sumGradients,
                               pTotals1LowLowBest->GetWeight()
@@ -771,13 +760,12 @@ public:
 
       for(size_t iScore = 0; iScore < cScores; ++iScore) {
          FloatBig update;
-         if(bClassification) {
+         if(bHessian) {
             update = EbmStats::ComputeSinglePartitionUpdate(
                pGradientPairTotal[iScore].m_sumGradients,
                pGradientPairTotal[iScore].GetHess()
             );
          } else {
-            EBM_ASSERT(IsRegression(cCompilerClasses));
             update = EbmStats::ComputeSinglePartitionUpdate(
                pGradientPairTotal[iScore].m_sumGradients,
                weightAll
@@ -792,7 +780,7 @@ public:
    WARNING_POP
 };
 
-template<ptrdiff_t cPossibleClasses>
+template<bool bHessian, size_t cPossibleScores>
 class PartitionTwoDimensionalBoostingTarget final {
 public:
 
@@ -809,16 +797,9 @@ public:
       , const BinBase * const aDebugCopyBinsBase
 #endif // NDEBUG
    ) {
-      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
-      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
-
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
-      EBM_ASSERT(IsClassification(cRuntimeClasses));
-      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
-
-      if(cPossibleClasses == cRuntimeClasses) {
-         return PartitionTwoDimensionalBoostingInternal<cPossibleClasses>::Func(
+      if(cPossibleScores == GetCountScores(pBoosterCore->GetCountClasses())) {
+         return PartitionTwoDimensionalBoostingInternal<bHessian, cPossibleScores>::Func(
             pBoosterShell,
             pTerm,
             acBins,
@@ -830,7 +811,7 @@ public:
 #endif // NDEBUG
          );
       } else {
-         return PartitionTwoDimensionalBoostingTarget<cPossibleClasses + 1>::Func(
+         return PartitionTwoDimensionalBoostingTarget<bHessian, cPossibleScores + 1>::Func(
             pBoosterShell,
             pTerm,
             acBins,
@@ -845,8 +826,8 @@ public:
    }
 };
 
-template<>
-class PartitionTwoDimensionalBoostingTarget<k_cCompilerClassesMax + 1> final {
+template<bool bHessian>
+class PartitionTwoDimensionalBoostingTarget<bHessian, k_cCompilerScoresMax + 1> final {
 public:
 
    PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
@@ -862,12 +843,7 @@ public:
       , const BinBase * const aDebugCopyBinsBase
 #endif // NDEBUG
    ) {
-      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
-
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
-      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
-
-      return PartitionTwoDimensionalBoostingInternal<k_dynamicClassification>::Func(
+      return PartitionTwoDimensionalBoostingInternal<bHessian, k_dynamicScores>::Func(
          pBoosterShell,
          pTerm,
          acBins,
@@ -893,33 +869,63 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(
 #endif // NDEBUG
 ) {
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
+   const ptrdiff_t cRuntimeScores = GetCountScores(pBoosterCore->GetCountClasses());
 
-   if(IsClassification(cRuntimeClasses)) {
-      return PartitionTwoDimensionalBoostingTarget<2>::Func(
-         pBoosterShell,
-         pTerm,
-         acBins,
-         cSamplesLeafMin,
-         aAuxiliaryBinsBase,
-         pTotalGain
+   EBM_ASSERT(1 <= cRuntimeScores);
+   if(pBoosterCore->IsHessian()) {
+      if(size_t { 1 } != cRuntimeScores) {
+         // muticlass
+         return PartitionTwoDimensionalBoostingTarget<true, k_cCompilerScoresStart>::Func(
+            pBoosterShell,
+            pTerm,
+            acBins,
+            cSamplesLeafMin,
+            aAuxiliaryBinsBase,
+            pTotalGain
 #ifndef NDEBUG
-         , aDebugCopyBinsBase
+            , aDebugCopyBinsBase
 #endif // NDEBUG
-      );
+         );
+      } else {
+         return PartitionTwoDimensionalBoostingInternal<true, k_oneScore>::Func(
+            pBoosterShell,
+            pTerm,
+            acBins,
+            cSamplesLeafMin,
+            aAuxiliaryBinsBase,
+            pTotalGain
+#ifndef NDEBUG
+            , aDebugCopyBinsBase
+#endif // NDEBUG
+         );
+      }
    } else {
-      EBM_ASSERT(IsRegression(cRuntimeClasses));
-      return PartitionTwoDimensionalBoostingInternal<k_regression>::Func(
-         pBoosterShell,
-         pTerm,
-         acBins,
-         cSamplesLeafMin,
-         aAuxiliaryBinsBase,
-         pTotalGain
+      if(size_t { 1 } != cRuntimeScores) {
+         // Odd: gradient multiclass. Allow it, but do not optimize for it
+         return PartitionTwoDimensionalBoostingInternal<false, k_dynamicScores>::Func(
+            pBoosterShell,
+            pTerm,
+            acBins,
+            cSamplesLeafMin,
+            aAuxiliaryBinsBase,
+            pTotalGain
 #ifndef NDEBUG
-         , aDebugCopyBinsBase
+            , aDebugCopyBinsBase
 #endif // NDEBUG
-      );
+         );
+      } else {
+         return PartitionTwoDimensionalBoostingInternal<false, k_oneScore>::Func(
+            pBoosterShell,
+            pTerm,
+            acBins,
+            cSamplesLeafMin,
+            aAuxiliaryBinsBase,
+            pTotalGain
+#ifndef NDEBUG
+            , aDebugCopyBinsBase
+#endif // NDEBUG
+         );
+      }
    }
 }
 

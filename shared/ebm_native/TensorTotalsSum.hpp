@@ -160,17 +160,17 @@ void TensorTotalsCompareDebug(
 
 #endif // NDEBUG
 
-template<ptrdiff_t cCompilerClasses>
+template<bool bHessian, size_t cCompilerScores>
 INLINE_ALWAYS static void TensorTotalsSumMulti(
-   const ptrdiff_t cRuntimeClasses,
+   const size_t cRuntimeScores,
    const size_t cRealDimensions,
    const TensorSumDimension * const aDimensions,
    const size_t directionVector,
-   const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aBins,
-   Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> & binOut,
-   GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
+   const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const aBins,
+   Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> & binOut,
+   GradientPair<FloatBig, bHessian> * const aGradientPairsOut
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
+   , const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const aDebugCopyBins
    , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -191,13 +191,9 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
       size_t m_cLast;
    };
 
-   static constexpr bool bHessian = IsClassification(cCompilerClasses);
-   static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
-
    static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
-   const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, cRuntimeClasses);
-   const size_t cScores = GetCountScores(cClasses);
+   const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bHessian, cScores)); // we're accessing allocated memory
    const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
 
@@ -225,7 +221,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
 
          ++iDimension;
       } while(LIKELY(cRealDimensions != iDimension));
-      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bHessian, cCompilerScores> *>(pStartingBin);
+      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> *>(pStartingBin);
       ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
       binOut.Copy(cScores, *pBin, pBin->GetGradientPairs(), aGradientPairsOut);
       return;
@@ -303,7 +299,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
          ++pTotalsDimensionLoop;
       } while(LIKELY(pTotalsDimensionEnd != pTotalsDimensionLoop));
 
-      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bHessian, cCompilerScores> *>(pRawBin);
+      const auto * const pBin = reinterpret_cast<const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> *>(pRawBin);
 
       // TODO: for pairs and tripples and anything else that we want to make special case code for we can
       // avoid this unpredictable branch, which would be very helpful
@@ -332,22 +328,22 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
 #endif // NDEBUG
 }
 
-template<ptrdiff_t cCompilerClasses>
+template<bool bHessian, size_t cCompilerScores>
 INLINE_ALWAYS static void TensorTotalsSumTripple(
-   const ptrdiff_t cRuntimeClasses,
+   const size_t cRuntimeScores,
    const TensorSumDimension * const aDimensions,
    const size_t directionVector,
-   const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aBins,
-   Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> & binOut,
-   GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
+   const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const aBins,
+   Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> & binOut,
+   GradientPair<FloatBig, bHessian> * const aGradientPairsOut
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
+   , const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const aDebugCopyBins
    , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
    // TODO: make a tripple specific version of this function
-   TensorTotalsSumMulti<cCompilerClasses>(
-      cRuntimeClasses,
+   TensorTotalsSumMulti<bHessian, cCompilerScores>(
+      cRuntimeScores,
       3,
       aDimensions,
       directionVector,
@@ -361,16 +357,16 @@ INLINE_ALWAYS static void TensorTotalsSumTripple(
    );
 }
 
-template<ptrdiff_t cCompilerClasses>
+template<bool bHessian, size_t cCompilerScores>
 INLINE_ALWAYS static void TensorTotalsSumPair(
-   const ptrdiff_t cRuntimeClasses,
+   const size_t cRuntimeScores,
    const TensorSumDimension * const aDimensions,
    const size_t directionVector,
-   const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aBins,
-   Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> & binOut,
-   GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
+   const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const aBins,
+   Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> & binOut,
+   GradientPair<FloatBig, bHessian> * const aGradientPairsOut
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
+   , const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const aDebugCopyBins
    , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -379,8 +375,8 @@ INLINE_ALWAYS static void TensorTotalsSumPair(
    //       (low, low), (low, high), (high, low), (high, high) and then just use the bin demaned by the 
    //       directionVector.  Our algorithm below works well for higher dimensions where this blows up quickly
    //       but doing it the way below really randomizes memory accesses.
-   TensorTotalsSumMulti<cCompilerClasses>(
-      cRuntimeClasses,
+   TensorTotalsSumMulti<bHessian, cCompilerScores>(
+      cRuntimeScores,
       2,
       aDimensions,
       directionVector,
@@ -394,17 +390,17 @@ INLINE_ALWAYS static void TensorTotalsSumPair(
    );
 }
 
-template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
+template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions>
 INLINE_ALWAYS static void TensorTotalsSum(
-   const ptrdiff_t cRuntimeClasses,
+   const size_t cRuntimeScores,
    const size_t cRuntimeRealDimensions,
    const TensorSumDimension * const aDimensions,
    const size_t directionVector,
-   const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aBins,
-   Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> & binOut,
-   GradientPair<FloatBig, IsClassification(cCompilerClasses)> * const aGradientPairsOut
+   const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const aBins,
+   Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> & binOut,
+   GradientPair<FloatBig, bHessian> * const aGradientPairsOut
 #ifndef NDEBUG
-   , const Bin<FloatBig, IsClassification(cCompilerClasses), GetCountScores(cCompilerClasses)> * const aDebugCopyBins
+   , const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const aDebugCopyBins
    , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -412,8 +408,8 @@ INLINE_ALWAYS static void TensorTotalsSum(
    static constexpr bool bTripple = (3 == cCompilerDimensions);
    if(bPair) {
       EBM_ASSERT(2 == cRuntimeRealDimensions);
-      TensorTotalsSumPair<cCompilerClasses>(
-         cRuntimeClasses,
+      TensorTotalsSumPair<bHessian, cCompilerScores>(
+         cRuntimeScores,
          aDimensions,
          directionVector,
          aBins,
@@ -426,8 +422,8 @@ INLINE_ALWAYS static void TensorTotalsSum(
       );
    } else if(bTripple) {
       EBM_ASSERT(3 == cRuntimeRealDimensions);
-      TensorTotalsSumTripple<cCompilerClasses>(
-         cRuntimeClasses,
+      TensorTotalsSumTripple<bHessian, cCompilerScores>(
+         cRuntimeScores,
          aDimensions,
          directionVector,
          aBins,
@@ -440,8 +436,8 @@ INLINE_ALWAYS static void TensorTotalsSum(
       );
    } else {
       EBM_ASSERT(2 != cRuntimeRealDimensions && 3 != cRuntimeRealDimensions);
-      TensorTotalsSumMulti<cCompilerClasses>(
-         cRuntimeClasses,
+      TensorTotalsSumMulti<bHessian, cCompilerScores>(
+         cRuntimeScores,
          cRuntimeRealDimensions,
          aDimensions,
          directionVector,

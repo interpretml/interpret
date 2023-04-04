@@ -21,7 +21,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<ptrdiff_t cCompilerClasses>
+template<bool bHessian, size_t cCompilerScores>
 class PartitionTwoDimensionalInteractionInternal final {
 public:
 
@@ -40,21 +40,17 @@ public:
       , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      static constexpr bool bClassification = IsClassification(cCompilerClasses);
-      static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
       static constexpr size_t cCompilerDimensions = 2;
 
-      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
-      auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
+      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aBins = aBinsBase->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
 
 #ifndef NDEBUG
-      auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bClassification, cCompilerScores>();
+      auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
 #endif // NDEBUG
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pInteractionCore->GetCountClasses());
-
-      const size_t cScores = GetCountScores(cClasses);
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
+      const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pInteractionCore->GetCountClasses()));
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
 
       const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
       EBM_ASSERT(k_dynamicDimensions == cCompilerDimensions || cCompilerDimensions == cRuntimeRealDimensions);
@@ -76,13 +72,13 @@ public:
       auto * const p_DO_NOT_USE_DIRECTLY_11 = IndexBin(aAuxiliaryBins, cBytesPerBin * 3);
       ASSERT_BIN_OK(cBytesPerBin, p_DO_NOT_USE_DIRECTLY_11, pBinsEndDebug);
 
-      Bin<FloatBig, bClassification, cCompilerScores> bin00;
-      Bin<FloatBig, bClassification, cCompilerScores> bin01;
-      Bin<FloatBig, bClassification, cCompilerScores> bin10;
-      Bin<FloatBig, bClassification, cCompilerScores> bin11;
+      Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> bin00;
+      Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> bin01;
+      Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> bin10;
+      Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> bin11;
 
       // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
-      static constexpr bool bUseStackMemory = k_dynamicClassification != cCompilerClasses;
+      static constexpr bool bUseStackMemory = k_dynamicScores != cCompilerScores;
       auto * const aGradientPairs00 = bUseStackMemory ? bin00.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_00->GetGradientPairs();
       auto * const aGradientPairs01 = bUseStackMemory ? bin01.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_01->GetGradientPairs();
       auto * const aGradientPairs10 = bUseStackMemory ? bin10.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_10->GetGradientPairs();
@@ -104,8 +100,8 @@ public:
          aDimensions[1].m_iPoint = 0;
          do {
             EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-            TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
-               cClasses,
+            TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(
+               cScores,
                cRealDimensions,
                aDimensions,
                0x00,
@@ -119,8 +115,8 @@ public:
             );
             if(LIKELY(cSamplesLeafMin <= bin00.GetCountSamples())) {
                EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-               TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
-                  cClasses,
+               TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(
+                  cScores,
                   cRealDimensions,
                   aDimensions,
                   0x01,
@@ -134,8 +130,8 @@ public:
                );
                if(LIKELY(cSamplesLeafMin <= bin01.GetCountSamples())) {
                   EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-                  TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
-                     cClasses,
+                  TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(
+                     cScores,
                      cRealDimensions,
                      aDimensions,
                      0x02,
@@ -149,8 +145,8 @@ public:
                   );
                   if(LIKELY(cSamplesLeafMin <= bin10.GetCountSamples())) {
                      EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-                     TensorTotalsSum<cCompilerClasses, cCompilerDimensions>(
-                        cClasses,
+                     TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(
+                        cScores,
                         cRealDimensions,
                         aDimensions,
                         0x03,
@@ -172,7 +168,7 @@ public:
                            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
                            // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-                           static constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
+                           static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
 
                            // n = numerator (sum_gradients), d = denominator (sum_hessians or weight)
 
@@ -344,7 +340,7 @@ public:
             // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-            static constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
+            static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
             bestGain -= EbmStats::CalcPartialGain(
                aGradientPairs[iScore].m_sumGradients,
                bUseLogitBoost ? aGradientPairs[iScore].GetHess() : weightAll
@@ -373,7 +369,7 @@ public:
    }
 };
 
-template<ptrdiff_t cPossibleClasses>
+template<bool bHessian, size_t cPossibleScores>
 class PartitionTwoDimensionalInteractionTarget final {
 public:
 
@@ -392,15 +388,8 @@ public:
       , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
-      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
-
-      const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
-      EBM_ASSERT(IsClassification(cRuntimeClasses));
-      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
-
-      if(cPossibleClasses == cRuntimeClasses) {
-         return PartitionTwoDimensionalInteractionInternal<cPossibleClasses>::Func(
+      if(cPossibleScores == GetCountScores(pInteractionCore->GetCountClasses())) {
+         return PartitionTwoDimensionalInteractionInternal<bHessian, cPossibleScores>::Func(
             pInteractionCore,
             cRealDimensions,
             acBins,
@@ -414,7 +403,7 @@ public:
 #endif // NDEBUG
          );
       } else {
-         return PartitionTwoDimensionalInteractionTarget<cPossibleClasses + 1>::Func(
+         return PartitionTwoDimensionalInteractionTarget<bHessian, cPossibleScores + 1>::Func(
             pInteractionCore,
             cRealDimensions,
             acBins,
@@ -431,8 +420,8 @@ public:
    }
 };
 
-template<>
-class PartitionTwoDimensionalInteractionTarget<k_cCompilerClassesMax + 1> final {
+template<bool bHessian>
+class PartitionTwoDimensionalInteractionTarget<bHessian, k_cCompilerScoresMax + 1> final {
 public:
 
    PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
@@ -450,12 +439,7 @@ public:
       , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
-
-      EBM_ASSERT(IsClassification(pInteractionCore->GetCountClasses()));
-      EBM_ASSERT(k_cCompilerClassesMax < pInteractionCore->GetCountClasses());
-
-      return PartitionTwoDimensionalInteractionInternal<k_dynamicClassification>::Func(
+      return PartitionTwoDimensionalInteractionInternal<bHessian, k_dynamicScores>::Func(
          pInteractionCore,
          cRealDimensions,
          acBins,
@@ -484,37 +468,71 @@ extern double PartitionTwoDimensionalInteraction(
    , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
-   const ptrdiff_t cRuntimeClasses = pInteractionCore->GetCountClasses();
+   const ptrdiff_t cRuntimeScores = GetCountScores(pInteractionCore->GetCountClasses());
 
-   if(IsClassification(cRuntimeClasses)) {
-      return PartitionTwoDimensionalInteractionTarget<2>::Func(
-         pInteractionCore,
-         cRealDimensions,
-         acBins,
-         flags,
-         cSamplesLeafMin,
-         aAuxiliaryBinsBase,
-         aBinsBase
+   EBM_ASSERT(1 <= cRuntimeScores);
+   if(pInteractionCore->IsHessian()) {
+      if(size_t { 1 } != cRuntimeScores) {
+         // muticlass
+         return PartitionTwoDimensionalInteractionTarget<true, k_cCompilerScoresStart>::Func(
+            pInteractionCore,
+            cRealDimensions,
+            acBins,
+            flags,
+            cSamplesLeafMin,
+            aAuxiliaryBinsBase,
+            aBinsBase
 #ifndef NDEBUG
-         , aDebugCopyBinsBase
-         , pBinsEndDebug
+            , aDebugCopyBinsBase
+            , pBinsEndDebug
 #endif // NDEBUG
-      );
+         );
+      } else {
+         return PartitionTwoDimensionalInteractionInternal<true, k_oneScore>::Func(
+            pInteractionCore,
+            cRealDimensions,
+            acBins,
+            flags,
+            cSamplesLeafMin,
+            aAuxiliaryBinsBase,
+            aBinsBase
+#ifndef NDEBUG
+            , aDebugCopyBinsBase
+            , pBinsEndDebug
+#endif // NDEBUG
+         );
+      }
    } else {
-      EBM_ASSERT(IsRegression(cRuntimeClasses));
-      return PartitionTwoDimensionalInteractionInternal<k_regression>::Func(
-         pInteractionCore,
-         cRealDimensions,
-         acBins,
-         flags,
-         cSamplesLeafMin,
-         aAuxiliaryBinsBase,
-         aBinsBase
+      if(size_t { 1 } != cRuntimeScores) {
+         // Odd: gradient multiclass. Allow it, but do not optimize for it
+         return PartitionTwoDimensionalInteractionInternal<false, k_dynamicScores>::Func(
+            pInteractionCore,
+            cRealDimensions,
+            acBins,
+            flags,
+            cSamplesLeafMin,
+            aAuxiliaryBinsBase,
+            aBinsBase
 #ifndef NDEBUG
-         , aDebugCopyBinsBase
-         , pBinsEndDebug
+            , aDebugCopyBinsBase
+            , pBinsEndDebug
 #endif // NDEBUG
-      );
+         );
+      } else {
+         return PartitionTwoDimensionalInteractionInternal<false, k_oneScore>::Func(
+            pInteractionCore,
+            cRealDimensions,
+            acBins,
+            flags,
+            cSamplesLeafMin,
+            aAuxiliaryBinsBase,
+            aBinsBase
+#ifndef NDEBUG
+            , aDebugCopyBinsBase
+            , pBinsEndDebug
+#endif // NDEBUG
+         );
+      }
    }
 }
 
