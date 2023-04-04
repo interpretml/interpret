@@ -877,22 +877,26 @@ SEXP GetBestTermScores_R(SEXP boosterHandleWrapped, SEXP indexTerm) {
       error("GetBestTermScores_R pBoosterCore->GetCountTerms() <= static_cast<size_t>(iTerm)");
    }
 
-   size_t cTensorScores = GetCountScores(pBoosterCore->GetCountClasses());
-   const Term * const pTerm = pBoosterCore->GetTerms()[static_cast<size_t>(iTerm)];
-   const size_t cDimensions = pTerm->GetCountDimensions();
-   if(0 != cDimensions) {
-      const FeatureBoosting * const * ppFeature = pTerm->GetFeatures();
-      const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature[cDimensions];
-      do {
-         const FeatureBoosting * const pFeature = *ppFeature;
-         const size_t cBins = pFeature->GetCountBins();
-         EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         cTensorScores *= cBins;
-         ++ppFeature;
-      } while(ppFeaturesEnd != ppFeature);
-   }
-   if(IsConvertError<R_xlen_t>(cTensorScores)) {
-      error("GetBestTermScores_R IsConvertError<R_xlen_t>(cTensorScores)");
+   size_t cTensorScores = 0;
+   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
+   if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
+      cTensorScores = GetCountScores(cClasses);
+      const Term * const pTerm = pBoosterCore->GetTerms()[static_cast<size_t>(iTerm)];
+      const size_t cDimensions = pTerm->GetCountDimensions();
+      if(0 != cDimensions) {
+         const FeatureBoosting * const * ppFeature = pTerm->GetFeatures();
+         const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature[cDimensions];
+         do {
+            const FeatureBoosting * const pFeature = *ppFeature;
+            const size_t cBins = pFeature->GetCountBins();
+            EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+            cTensorScores *= cBins;
+            ++ppFeature;
+         } while(ppFeaturesEnd != ppFeature);
+      }
+      if(IsConvertError<R_xlen_t>(cTensorScores)) {
+         error("GetBestTermScores_R IsConvertError<R_xlen_t>(cTensorScores)");
+      }
    }
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cTensorScores)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cTensorScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
@@ -927,22 +931,26 @@ SEXP GetCurrentTermScores_R(SEXP boosterHandleWrapped, SEXP indexTerm) {
       error("GetCurrentTermScores_R pBoosterCore->GetCountTerms() <= static_cast<size_t>(iTerm)");
    }
 
-   size_t cTensorScores = GetCountScores(pBoosterCore->GetCountClasses());
-   const Term * const pTerm = pBoosterCore->GetTerms()[static_cast<size_t>(iTerm)];
-   const size_t cDimensions = pTerm->GetCountDimensions();
-   if(0 != cDimensions) {
-      const FeatureBoosting * const * ppFeature = pTerm->GetFeatures();
-      const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature[cDimensions];
-      do {
-         const FeatureBoosting * const pFeature = *ppFeature;
-         const size_t cBins = pFeature->GetCountBins();
-         EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         cTensorScores *= cBins;
-         ++ppFeature;
-      } while(ppFeaturesEnd != ppFeature);
-   }
-   if(IsConvertError<R_xlen_t>(cTensorScores)) {
-      error("GetCurrentTermScores_R IsConvertError<R_xlen_t>(cTensorScores)");
+   size_t cTensorScores = 0;
+   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
+   if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
+      cTensorScores = GetCountScores(cClasses);
+      const Term * const pTerm = pBoosterCore->GetTerms()[static_cast<size_t>(iTerm)];
+      const size_t cDimensions = pTerm->GetCountDimensions();
+      if(0 != cDimensions) {
+         const FeatureBoosting * const * ppFeature = pTerm->GetFeatures();
+         const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature[cDimensions];
+         do {
+            const FeatureBoosting * const pFeature = *ppFeature;
+            const size_t cBins = pFeature->GetCountBins();
+            EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+            cTensorScores *= cBins;
+            ++ppFeature;
+         } while(ppFeaturesEnd != ppFeature);
+      }
+      if(IsConvertError<R_xlen_t>(cTensorScores)) {
+         error("GetCurrentTermScores_R IsConvertError<R_xlen_t>(cTensorScores)");
+      }
    }
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cTensorScores)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cTensorScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
