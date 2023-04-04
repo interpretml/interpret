@@ -27,7 +27,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<ptrdiff_t cCompilerClasses>
+template<bool bHessian, size_t cCompilerScores>
 class PartitionRandomBoostingInternal final {
 public:
 
@@ -43,9 +43,6 @@ public:
    ) {
       // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
-      static constexpr bool bClassification = IsClassification(cCompilerClasses);
-      static constexpr size_t cCompilerScores = GetCountScores(cCompilerClasses);
-
       // TODO: add a new random_rety option that will retry random splitting for N times and select the one with the best gain
       // TODO: accept the minimum number of items in a split and then refuse to allow the split if we violate it, or
       //       provide a soft trigger that generates 10 random ones and selects the one that violates the least
@@ -57,13 +54,11 @@ public:
       ErrorEbm error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-      const ptrdiff_t cClasses = GET_COUNT_CLASSES(cCompilerClasses, pBoosterCore->GetCountClasses());
+      const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pBoosterCore->GetCountClasses()));
+      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bHessian, cScores)); // we're accessing allocated memory
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
 
-      const size_t cScores = GetCountScores(cClasses);
-      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
-
-      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bClassification, cCompilerScores>();
+      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
 
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
@@ -359,7 +354,7 @@ public:
 
       // put the histograms right after our slice array
       auto * const aCollapsedBins =
-         reinterpret_cast<Bin<FloatBig, bClassification, cCompilerScores> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
+         reinterpret_cast<Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
 
       aCollapsedBins->ZeroMem(cBytesCollapsedTensor3);
       const auto * const pCollapsedBinEnd = IndexBin(aCollapsedBins, cBytesCollapsedTensor3);
@@ -548,13 +543,12 @@ public:
                auto * const pGradientPair = pCollapsedBin2->GetGradientPairs();
                for(size_t iScore = 0; iScore < cScores; ++iScore) {
                   FloatBig updateScore;
-                  if(bClassification) {
+                  if(bHessian) {
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
                         pGradientPair[iScore].m_sumGradients,
                         pGradientPair[iScore].GetHess()
                      );
                   } else {
-                     EBM_ASSERT(IsRegression(cCompilerClasses));
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
                         pGradientPair[iScore].m_sumGradients,
                         pCollapsedBin2->GetWeight()
@@ -574,7 +568,7 @@ public:
    }
 };
 
-template<ptrdiff_t cPossibleClasses>
+template<bool bHessian, size_t cPossibleScores>
 class PartitionRandomBoostingTarget final {
 public:
 
@@ -588,16 +582,9 @@ public:
       const IntEbm * const aLeavesMax,
       double * const pTotalGain
    ) {
-      static_assert(IsClassification(cPossibleClasses), "cPossibleClasses needs to be a classification");
-      static_assert(cPossibleClasses <= k_cCompilerClassesMax, "We can't have this many items in a data pack.");
-
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
-      EBM_ASSERT(IsClassification(cRuntimeClasses));
-      EBM_ASSERT(cRuntimeClasses <= k_cCompilerClassesMax);
-
-      if(cPossibleClasses == cRuntimeClasses) {
-         return PartitionRandomBoostingInternal<cPossibleClasses>::Func(
+      if(cPossibleScores == GetCountScores(pBoosterCore->GetCountClasses())) {
+         return PartitionRandomBoostingInternal<bHessian, cPossibleScores>::Func(
             pRng,
             pBoosterShell,
             pTerm,
@@ -606,7 +593,7 @@ public:
             pTotalGain
          );
       } else {
-         return PartitionRandomBoostingTarget<cPossibleClasses + 1>::Func(
+         return PartitionRandomBoostingTarget<bHessian, cPossibleScores + 1>::Func(
             pRng,
             pBoosterShell,
             pTerm,
@@ -618,8 +605,8 @@ public:
    }
 };
 
-template<>
-class PartitionRandomBoostingTarget<k_cCompilerClassesMax + 1> final {
+template<bool bHessian>
+class PartitionRandomBoostingTarget<bHessian, k_cCompilerScoresMax + 1> final {
 public:
 
    PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
@@ -632,12 +619,7 @@ public:
       const IntEbm * const aLeavesMax,
       double * const pTotalGain
    ) {
-      static_assert(IsClassification(k_cCompilerClassesMax), "k_cCompilerClassesMax needs to be a classification");
-
-      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetCountClasses()));
-      EBM_ASSERT(k_cCompilerClassesMax < pBoosterShell->GetBoosterCore()->GetCountClasses());
-
-      return PartitionRandomBoostingInternal<k_dynamicClassification>::Func(
+      return PartitionRandomBoostingInternal<bHessian, k_dynamicScores>::Func(
          pRng,
          pBoosterShell,
          pTerm,
@@ -657,27 +639,51 @@ extern ErrorEbm PartitionRandomBoosting(
    double * const pTotalGain
 ) {
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
+   const ptrdiff_t cRuntimeScores = GetCountScores(pBoosterCore->GetCountClasses());
 
-   if(IsClassification(cRuntimeClasses)) {
-      return PartitionRandomBoostingTarget<2>::Func(
-         pRng,
-         pBoosterShell,
-         pTerm,
-         flags,
-         aLeavesMax,
-         pTotalGain
-      );
+   EBM_ASSERT(1 <= cRuntimeScores);
+   if(pBoosterCore->IsHessian()) {
+      if(size_t { 1 } != cRuntimeScores) {
+         // muticlass
+         return PartitionRandomBoostingTarget<true, k_cCompilerScoresStart>::Func(
+            pRng,
+            pBoosterShell,
+            pTerm,
+            flags,
+            aLeavesMax,
+            pTotalGain
+         );
+      } else {
+         return PartitionRandomBoostingInternal<true, k_oneScore>::Func(
+            pRng,
+            pBoosterShell,
+            pTerm,
+            flags,
+            aLeavesMax,
+            pTotalGain
+         );
+      }
    } else {
-      EBM_ASSERT(IsRegression(cRuntimeClasses));
-      return PartitionRandomBoostingInternal<k_regression>::Func(
-         pRng,
-         pBoosterShell,
-         pTerm,
-         flags,
-         aLeavesMax,
-         pTotalGain
-      );
+      if(size_t { 1 } != cRuntimeScores) {
+         // Odd: gradient multiclass. Allow it, but do not optimize for it
+         return PartitionRandomBoostingInternal<false, k_dynamicScores>::Func(
+            pRng,
+            pBoosterShell,
+            pTerm,
+            flags,
+            aLeavesMax,
+            pTotalGain
+         );
+      } else {
+         return PartitionRandomBoostingInternal<false, k_oneScore>::Func(
+            pRng,
+            pBoosterShell,
+            pTerm,
+            flags,
+            aLeavesMax,
+            pTotalGain
+         );
+      }
    }
 }
 
