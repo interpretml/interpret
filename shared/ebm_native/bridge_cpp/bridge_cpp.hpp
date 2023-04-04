@@ -19,7 +19,6 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 static constexpr ptrdiff_t k_regression = -1;
-static constexpr ptrdiff_t k_dynamicClassification = 0;
 static constexpr size_t k_oneScore = 1;
 static constexpr size_t k_dynamicScores = 0;
 inline constexpr static bool IsRegression(const ptrdiff_t cClasses) noexcept {
@@ -53,19 +52,15 @@ inline constexpr static size_t GetArrayScores(const size_t cScores) noexcept {
    return k_dynamicScores == cScores ? size_t { 1 } : cScores;
 }
 
-#define GET_COUNT_SCORES(MACRO_cCompilerScores, MACRO_cRuntimeScores) \
-   (k_dynamicScores == (MACRO_cCompilerScores) ? (MACRO_cRuntimeScores) : \
-   (MACRO_cCompilerScores))
-
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
 // The caller can put pTargetFeature->m_cBins inside the macro call and it will be optimize away if it isn't necessary
 // having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in
 // places where you couldn't do so with variable loop iterations
-#define GET_COUNT_CLASSES(MACRO_cCompilerClasses, MACRO_cRuntimeClasses) \
-   (k_dynamicClassification == (MACRO_cCompilerClasses) ? (MACRO_cRuntimeClasses) : \
-   (MACRO_cCompilerClasses))
+#define GET_COUNT_SCORES(MACRO_cCompilerScores, MACRO_cRuntimeScores) \
+   (k_dynamicScores == (MACRO_cCompilerScores) ? (MACRO_cRuntimeScores) : \
+   (MACRO_cCompilerScores))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed

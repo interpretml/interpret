@@ -9,7 +9,7 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
-#include "ebm_internal.hpp" // k_cCompilerClassesMax
+#include "ebm_internal.hpp"
 
 #include "Term.hpp"
 #include "InnerBag.hpp"

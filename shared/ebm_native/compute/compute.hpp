@@ -26,7 +26,7 @@ namespace DEFINED_ZONE_NAME {
 #define GPU_BOTH
 #endif
 
-// there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerClassesMax value.  The bottleneck seems to be 
+// there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerScoresMax value.  The bottleneck seems to be 
 // that setting it too high increases compile time and module size
 // this is how much the runtime speeds up if you compile it with hard coded vector sizes
 // 200 => 2.65%

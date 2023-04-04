@@ -70,18 +70,8 @@ static constexpr FloatBig k_epsilonNegativeGainAllowed = FloatBig { -1e-7 };
 // 4   => 8.31%
 // TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the 
 //   runtime looped version of our code
-
-// TODO: remove these?
-static constexpr ptrdiff_t k_cCompilerClassesMax = 8;
-static constexpr ptrdiff_t k_cCompilerClassesStart = 3;
-
 static constexpr size_t k_cCompilerScoresMax = 8;
 static constexpr size_t k_cCompilerScoresStart = 3;
-
-static_assert(
-   2 <= k_cCompilerClassesMax,
-   "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would "
-   "output model files with two values instead of our special case 1");
 
 static constexpr size_t k_cCompilerOptimizedCountDimensionsMax = 3;
 
@@ -90,7 +80,6 @@ static_assert(1 <= k_cCompilerOptimizedCountDimensionsMax,
 static_assert(k_cCompilerOptimizedCountDimensionsMax <= k_cDimensionsMax,
    "k_cCompilerOptimizedCountDimensionsMax cannot be larger than the maximum number of dimensions.");
 
-// TODO: remove this?
 static constexpr size_t k_dynamicDimensions = 0;
 
 static constexpr bool k_bUseLogitboost = false;

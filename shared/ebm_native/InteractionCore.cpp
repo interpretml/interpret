@@ -259,7 +259,6 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       EBM_ASSERT(nullptr != aTargetsFrom); // we previously called GetDataSetSharedTarget and got back a non-null result
       EBM_ASSERT(0 != cClasses); // no gradients if 0 == cClasses
       EBM_ASSERT(1 != cClasses); // no gradients if 1 == cClasses
-      EBM_ASSERT(IsClassification(cClasses));
       const size_t cScores = GetCountScores(cClasses);
       if(IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)");
@@ -392,7 +391,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       }
 
       ApplyUpdateBridge data;
-      data.m_cScores = GetCountScores(cClasses);
+      data.m_cScores = cScores;
       data.m_cPack = k_cItemsPerBitPackNone;
       data.m_bHessianNeeded = EBM_TRUE;
       data.m_bCalcMetric = false;
