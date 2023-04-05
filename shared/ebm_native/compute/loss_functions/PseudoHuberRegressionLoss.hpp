@@ -6,12 +6,14 @@
 
 // DO NOT INCLUDE ANY FILES IN THIS FILE. THEY WILL NOT BE ZONED PROPERLY
 
-// TFloat could be double, float, or some SIMD intrinsic type
+// TFloat is a datatype that could hold inside a double, float, or some SIMD intrinsic type.
+// See sse2_32.cpp, cuda_32.cpp, and cpu_64.cpp as examples.
 template<typename TFloat>
 struct PseudoHuberRegressionLoss final : public RegressionLoss {
    LOSS_CLASS_BOILERPLATE(PseudoHuberRegressionLoss, true)
 
    TFloat m_deltaInverted;
+   TFloat m_deltaSquared;
 
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in loss_registrations.hpp
    inline PseudoHuberRegressionLoss(const Config & config, double delta) {
@@ -23,11 +25,16 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
          throw ParamValOutOfRangeException();
       }
 
-      double deltaInverted = 1.0 / delta;
+      const double deltaSquared = delta * delta;
+      if(std::isinf(deltaSquared)) {
+         throw ParamValOutOfRangeException();
+      }
+      m_deltaSquared = deltaSquared;
+
+      const double deltaInverted = 1.0 / delta;
       if(std::isinf(deltaInverted)) {
          throw ParamValOutOfRangeException();
       }
-
       m_deltaInverted = deltaInverted;
    }
 
@@ -43,22 +50,45 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
       return score;
    }
 
-   GPU_DEVICE inline TFloat CalculateGradient(TFloat target, TFloat prediction) const noexcept {
-      TFloat residualNegative = prediction - target;
-      TFloat residualNegativeFraction = residualNegative * m_deltaInverted;
-      TFloat calc = 1.0 + residualNegativeFraction * residualNegativeFraction;
+   GPU_DEVICE inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
+      TFloat error = prediction - target;
+      TFloat errorFraction = error * m_deltaInverted;
+      TFloat calc = errorFraction * errorFraction + 1.0;
       TFloat sqrtCalc = calc.Sqrt();
       // the calculations above are shared with the hessian, so the compiler should combine them.
-      return residualNegative / sqrtCalc;
+      gradient = error / sqrtCalc;
    }
 
-   // if the loss function doesn't have a second derivative, then delete the CalculateHessian function.
-   GPU_DEVICE inline TFloat CalculateHessian(TFloat target, TFloat prediction) const noexcept {
-      TFloat residualNegative = prediction - target;
-      TFloat residualNegativeFraction = residualNegative * m_deltaInverted;
-      TFloat calc = 1.0 + residualNegativeFraction * residualNegativeFraction;
+   GPU_DEVICE inline void CalcGradMetric(TFloat prediction, TFloat target, TFloat & gradient, TFloat & metric) const noexcept {
+      TFloat error = prediction - target;
+      TFloat errorFraction = error * m_deltaInverted;
+      TFloat calc = errorFraction * errorFraction + 1.0;
       TFloat sqrtCalc = calc.Sqrt();
       // the calculations above are shared with the hessian, so the compiler should combine them.
-      return 1.0 / (calc * sqrtCalc);
+      gradient = error / sqrtCalc;
+      metric = m_deltaSquared * (sqrtCalc - 1.0);
+   }
+
+   // If the loss function doesn't have a second derivative, then delete CalcGradHess.
+   GPU_DEVICE inline void CalcGradHess(TFloat prediction, TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
+      TFloat error = prediction - target;
+      TFloat errorFraction = error * m_deltaInverted;
+      TFloat calc = errorFraction * errorFraction + 1.0;
+      TFloat sqrtCalc = calc.Sqrt();
+      // the calculations above are shared with the hessian, so the compiler should combine them.
+      gradient = error / sqrtCalc;
+      hessian = 1.0 / (calc * sqrtCalc);
+   }
+
+   // If the loss function doesn't have a second derivative, then delete CalcGradHessMetric.
+   GPU_DEVICE inline void CalcGradHessMetric(TFloat prediction, TFloat target, TFloat & gradient, TFloat & hessian, TFloat & metric) const noexcept {
+      TFloat error = prediction - target;
+      TFloat errorFraction = error * m_deltaInverted;
+      TFloat calc = errorFraction * errorFraction + 1.0;
+      TFloat sqrtCalc = calc.Sqrt();
+      // the calculations above are shared with the hessian, so the compiler should combine them.
+      gradient = error / sqrtCalc;
+      hessian = 1.0 / (calc * sqrtCalc);
+      metric = m_deltaSquared * (sqrtCalc - 1.0);
    }
 };

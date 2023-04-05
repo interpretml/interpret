@@ -285,38 +285,27 @@ struct Loss : public Registrable {
 
    template<class TLoss, typename TFloat>
    struct HasCalculateHessianFunctionInternal {
-      // use SFINAE to find out if the target class has the function with the correct signature
-      struct TrueStruct {
-      };
-      struct FalseStruct {
-      };
+      // use SFINAE to determine if TLoss has the function CalcGradHessMetric with the correct signature
 
-      // under SFINAE, this first version of the NotInvokedCheck function disappears if it fails due to the lack of 
-      // the CalculateHessian function with the correct parameters.  It would be better to use a more general
-      // version that only looks for the function name, but I don't know if that's possible without taking a pointer
-      // to the function, which we don't want to do since our function is meant to be 100% inline, and taking
-      // a pointer might create a second non-inlined copy of the function with some compilers.  I think
-      // burrying the inline function inside a decltype will prevent it's materialization.
-      //
-      // use float as the calling type on purpose since any of our Simd types should convert up from a float and
-      // we shouldn't get compiler warnings for upgrades on the float type to doubles
+      template<typename T>
+      static auto check(T * p) -> decltype(
+         p->CalcGradHessMetric(
+            std::declval<TFloat>(), std::declval<TFloat>(),
+            std::declval<TFloat &>(), std::declval<TFloat &>(),
+            std::declval<TFloat &>()), std::true_type()
+         );
 
-      template<class TCheck>
-      static TrueStruct NotInvokedCheck(TCheck const * pCheck,
-         typename std::enable_if<
-         std::is_same<TFloat, decltype(pCheck->CalculateHessian(TFloat { 0 }, TFloat { 0 }))>::value
-         >::type * = nullptr);
-      static FalseStruct NotInvokedCheck(...);
-      static constexpr bool value = std::is_same<TrueStruct, 
-         decltype(HasCalculateHessianFunctionInternal::NotInvokedCheck(static_cast<typename std::remove_reference<TLoss>::type *>(nullptr)))
-         >::value;
+      static std::false_type check(...);
+
+      using type = decltype(check(static_cast<typename std::remove_reference<TLoss>::type *>(nullptr)));
+      static constexpr bool value = type::value;
    };
 
 protected:
 
    template<typename TLoss, typename TFloat>
    constexpr static bool HasCalculateHessianFunction() {
-      // use SFINAE to find out if our Loss class has the function CalculateHessian with the correct signature
+      // use SFINAE to determine if TLoss has the function CalcGradHessMetric with the correct signature
       return HasCalculateHessianFunctionInternal<TLoss, TFloat>::value;
    }
 

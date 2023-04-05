@@ -27,11 +27,36 @@ struct LogLossBinaryLoss final : public BinaryLoss {
       return 1.0;
    }
 
-   inline TFloat CalculateHessian(TFloat target, TFloat prediction) const noexcept {
-      UNUSED(target);
+   inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
+      // This function is here to signal the loss class abilities, but it will not be called
       UNUSED(prediction);
+      UNUSED(target);
+      UNUSED(gradient);
+   }
 
-      // This function is here to signal that this loss has a hessian, but it will not be called
+   inline void CalcGradMetric(TFloat prediction, TFloat target, TFloat & gradient, TFloat & metric) const noexcept {
+      // This function is here to signal the loss class abilities, but it will not be called
+      UNUSED(prediction);
+      UNUSED(target);
+      UNUSED(gradient);
+      UNUSED(metric);
+   }
+
+   inline void CalcGradHess(TFloat prediction, TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
+      // This function is here to signal the loss class abilities, but it will not be called
+      UNUSED(prediction);
+      UNUSED(target);
+      UNUSED(gradient);
+      UNUSED(hessian);
+   }
+
+   inline void CalcGradHessMetric(TFloat prediction, TFloat target, TFloat & gradient, TFloat & hessian, TFloat & metric) const noexcept {
+      // This function is here to signal the loss class abilities, but it will not be called
+      UNUSED(prediction);
+      UNUSED(target);
+      UNUSED(gradient);
+      UNUSED(hessian);
+      UNUSED(metric);
    }
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>

@@ -34,6 +34,21 @@ public:
       return 1.0;
    }
 
+   inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
+      // This function is here to signal the loss class abilities, but it will not be called
+      UNUSED(prediction);
+      UNUSED(target);
+      UNUSED(gradient);
+   }
+
+   inline void CalcGradMetric(TFloat prediction, TFloat target, TFloat & gradient, TFloat & metric) const noexcept {
+      // This function is here to signal the loss class abilities, but it will not be called
+      UNUSED(prediction);
+      UNUSED(target);
+      UNUSED(gradient);
+      UNUSED(metric);
+   }
+
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE void InteriorApplyUpdateTemplated(ApplyUpdateBridge * const pData) const {
       static_assert(bKeepGradHess, "for MSE regression we should always keep the gradients");
