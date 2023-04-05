@@ -141,6 +141,20 @@ struct Sse_32_Float final {
       _mm_store_ps(a, m_data);
    }
 
+   template<typename Func>
+   inline Sse_32_Float ApplyFunction(Func func) const noexcept {
+      alignas(16) T aTemp[cPack];
+      SaveAligned(aTemp);
+
+      for(int i = 0; i < cPack; ++i) {
+         aTemp[i] = func(aTemp[i]);
+      }
+
+      Sse_32_Float result;
+      result.LoadAligned(aTemp);
+      return result;
+   }
+
    inline bool IsAnyEqual(const Sse_32_Float & other) const noexcept {
       return !!_mm_movemask_ps(_mm_cmpeq_ps(m_data, other.m_data));
    }
@@ -155,34 +169,31 @@ struct Sse_32_Float final {
    }
 
    inline Sse_32_Float Sqrt() const noexcept {
-      // TODO: consider making a fast approximation of this
+      // TODO: make a fast approximation of this
       return Sse_32_Float(_mm_sqrt_ss(m_data));
    }
 
    inline Sse_32_Float Exp() const noexcept {
-      alignas(16) T aTemp[cPack];
-      SaveAligned(aTemp);
-
-      for(int i = 0; i < cPack; ++i) {
-         aTemp[i] = std::exp(aTemp[i]);
-      }
-
-      Sse_32_Float result;
-      result.LoadAligned(aTemp);
-      return result;
+      // TODO: make a fast approximation of this
+      return ApplyFunction([](T x) { return std::exp(x); });
    }
 
    inline Sse_32_Float Log() const noexcept {
+      // TODO: make a fast approximation of this
+      return ApplyFunction([](T x) { return std::log(x); });
+   }
+
+   inline T Sum() const noexcept {
+      // TODO: this could be written to be more efficient
+
       alignas(16) T aTemp[cPack];
       SaveAligned(aTemp);
 
+      T sum = 0.0;
       for(int i = 0; i < cPack; ++i) {
-         aTemp[i] = std::log(aTemp[i]);
+         sum += aTemp[i];
       }
-
-      Sse_32_Float result;
-      result.LoadAligned(aTemp);
-      return result;
+      return sum;
    }
 
    template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>

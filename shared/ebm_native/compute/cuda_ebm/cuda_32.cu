@@ -148,6 +148,12 @@ struct Cuda_32_Float final {
       *a = m_data;
    }
 
+   template<typename Func>
+   GPU_BOTH inline Cuda_32_Float ApplyFunction(Func func) const noexcept {
+      // this function is more useful for a SIMD operator where it applies func() to all packed items
+      return Cuda_32_Float(func(m_data));
+   }
+
    GPU_BOTH inline bool IsAnyEqual(const Cuda_32_Float & other) const noexcept {
       return m_data == other.m_data;
    }
@@ -170,6 +176,10 @@ struct Cuda_32_Float final {
 
    GPU_BOTH inline Cuda_32_Float Log() const noexcept {
       return Cuda_32_Float(logf(m_data));
+   }
+
+   inline T Sum() const noexcept {
+      return m_data;
    }
 
    template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>

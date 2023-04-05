@@ -136,6 +136,12 @@ struct Cpu_64_Float final {
       *a = m_data;
    }
 
+   template<typename Func>
+   inline Cpu_64_Float ApplyFunction(Func func) const noexcept {
+      // this function is more useful for a SIMD operator where it applies func() to all packed items
+      return Cpu_64_Float(func(m_data));
+   }
+
    inline bool IsAnyEqual(const Cpu_64_Float & other) const noexcept {
       return m_data == other.m_data;
    }
@@ -158,6 +164,10 @@ struct Cpu_64_Float final {
 
    inline Cpu_64_Float Log() const noexcept {
       return Cpu_64_Float(std::log(m_data));
+   }
+
+   inline T Sum() const noexcept {
+      return m_data;
    }
 
    template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
