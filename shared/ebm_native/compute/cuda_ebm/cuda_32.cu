@@ -34,70 +34,142 @@ GPU_GLOBAL void TestGpuAdd(const Loss * const pLoss, const int * const pVal1, co
 //   pResult[iGpuThread] = static_cast<int>(static_cast<float>(pLossSpecific->CalculateGradient(static_cast<float>(pVal1[iGpuThread]), static_cast<float>(pVal2[iGpuThread]))));
 }
 
-struct Cuda_32_Operators final {
+struct Cuda_32_Int final {
+   static constexpr int cPack = 1;
+   using T = uint32_t;
+
+   GPU_BOTH inline Cuda_32_Int(const uint32_t val) noexcept : m_data(val) {
+   }
+
+private:
+   uint32_t m_data;
+};
+static_assert(std::is_standard_layout<Cuda_32_Int>::value,
+   "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+#if !(defined(__GNUC__) && __GNUC__ < 5)
+static_assert(std::is_trivially_copyable<Cuda_32_Int>::value,
+   "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+#endif // !(defined(__GNUC__) && __GNUC__ < 5)
+
+
+struct Cuda_32_Float final {
    // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__SINGLE.html#group__CUDA__MATH__SINGLE
    // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__DOUBLE.html#group__CUDA__MATH__DOUBLE
 
-   static constexpr size_t countPackedItems = 1; // the number of Unpacked items in a Packed structure
-   typedef float Unpacked;
-   typedef float Packed;
+   static constexpr int cPack = 1;
+   using T = float;
+   using TInt = Cuda_32_Int;
 
-private:
+   WARNING_PUSH
+   ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
+   GPU_BOTH inline Cuda_32_Float() noexcept {
+   }
+   WARNING_POP
 
-   Packed m_data;
+   GPU_BOTH Cuda_32_Float(const Cuda_32_Float & other) noexcept = default; // preserve POD status
+   GPU_BOTH Cuda_32_Float & operator=(const Cuda_32_Float &) noexcept = default; // preserve POD status
 
-public:
-
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators() noexcept {
+   GPU_BOTH inline Cuda_32_Float(const double val) noexcept : m_data { static_cast<T>(val) } {
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators(const float data) noexcept : m_data(static_cast<Unpacked>(data)) {
+   GPU_BOTH inline Cuda_32_Float & operator= (const double val) noexcept {
+      m_data = static_cast<T>(val);
+      return *this;
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators(const double data) noexcept : m_data(static_cast<Unpacked>(data)) {
+
+   GPU_BOTH inline Cuda_32_Float operator+() const noexcept {
+      return *this;
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators(const int data) noexcept : m_data(static_cast<Unpacked>(data)) {
+   GPU_BOTH inline Cuda_32_Float operator-() const noexcept {
+      return Cuda_32_Float(-m_data);
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators operator+ (const Cuda_32_Operators & other) const noexcept {
-      return Cuda_32_Operators(m_data + other.m_data);
+
+   GPU_BOTH inline Cuda_32_Float operator+ (const Cuda_32_Float & other) const noexcept {
+      return Cuda_32_Float(m_data + other.m_data);
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators operator- (const Cuda_32_Operators & other) const noexcept {
-      return Cuda_32_Operators(m_data - other.m_data);
+   GPU_BOTH inline Cuda_32_Float operator- (const Cuda_32_Float & other) const noexcept {
+      return Cuda_32_Float(m_data - other.m_data);
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators operator* (const Cuda_32_Operators & other) const noexcept {
-      return Cuda_32_Operators(m_data * other.m_data);
+   GPU_BOTH inline Cuda_32_Float operator* (const Cuda_32_Float & other) const noexcept {
+      return Cuda_32_Float(m_data * other.m_data);
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators operator/ (const Cuda_32_Operators & other) const noexcept {
-      return Cuda_32_Operators(m_data / other.m_data);
+   GPU_BOTH inline Cuda_32_Float operator/ (const Cuda_32_Float & other) const noexcept {
+      return Cuda_32_Float(m_data / other.m_data);
    }
 
-   GPU_BOTH INLINE_ALWAYS bool IsAnyEqual(const Cuda_32_Operators & other) const noexcept {
+   GPU_BOTH inline Cuda_32_Float & operator+= (const Cuda_32_Float & other) noexcept {
+      *this = (*this) + other;
+      return *this;
+   }
+
+   GPU_BOTH inline Cuda_32_Float & operator-= (const Cuda_32_Float & other) noexcept {
+      *this = (*this) - other;
+      return *this;
+   }
+
+   GPU_BOTH inline Cuda_32_Float & operator*= (const Cuda_32_Float & other) noexcept {
+      *this = (*this) * other;
+      return *this;
+   }
+
+   GPU_BOTH inline Cuda_32_Float & operator/= (const Cuda_32_Float & other) noexcept {
+      *this = (*this) / other;
+      return *this;
+   }
+
+
+   GPU_BOTH friend inline Cuda_32_Float operator+ (const double val, const Cuda_32_Float & other) noexcept {
+      return Cuda_32_Float(val) + other;
+   }
+
+   GPU_BOTH friend inline Cuda_32_Float operator- (const double val, const Cuda_32_Float & other) noexcept {
+      return Cuda_32_Float(val) - other;
+   }
+
+   GPU_BOTH friend inline Cuda_32_Float operator* (const double val, const Cuda_32_Float & other) noexcept {
+      return Cuda_32_Float(val) * other;
+   }
+
+   GPU_BOTH friend inline Cuda_32_Float operator/ (const double val, const Cuda_32_Float & other) noexcept {
+      return Cuda_32_Float(val) / other;
+   }
+
+   GPU_BOTH inline void LoadAligned(const T * const a) noexcept {
+      m_data = *a;
+   }
+
+   GPU_BOTH inline void SaveAligned(T * const a) const noexcept {
+      *a = m_data;
+   }
+
+   GPU_BOTH inline bool IsAnyEqual(const Cuda_32_Float & other) const noexcept {
       return m_data == other.m_data;
    }
 
-   GPU_BOTH INLINE_ALWAYS operator float() const noexcept {
-      return m_data;
-   }
-
-   GPU_BOTH INLINE_ALWAYS operator double() const noexcept {
-      return m_data;
-   }
-
-   GPU_BOTH INLINE_ALWAYS bool IsAnyInf() const noexcept {
+   GPU_BOTH inline bool IsAnyInf() const noexcept {
       return isinf(m_data);
    }
 
-   GPU_BOTH INLINE_ALWAYS bool IsAnyNaN() const noexcept {
+   GPU_BOTH inline bool IsAnyNaN() const noexcept {
       return isnan(m_data);
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators Sqrt() const noexcept {
-      return Cuda_32_Operators(sqrtf(m_data));
+   GPU_BOTH inline Cuda_32_Float Sqrt() const noexcept {
+      return Cuda_32_Float(sqrtf(m_data));
+   }
+
+   GPU_BOTH inline Cuda_32_Float Exp() const noexcept {
+      return Cuda_32_Float(expf(m_data));
+   }
+
+   GPU_BOTH inline Cuda_32_Float Log() const noexcept {
+      return Cuda_32_Float(logf(m_data));
    }
 
    template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
@@ -222,16 +294,20 @@ public:
 
       return bExitError ? Error_UnexpectedInternal : Error_None;
    }
+
+private:
+
+   float m_data;
 };
-static_assert(std::is_standard_layout<Cuda_32_Operators>::value &&
-   std::is_trivially_copyable<Cuda_32_Operators>::value,
+static_assert(std::is_standard_layout<Cuda_32_Float>::value &&
+   std::is_trivially_copyable<Cuda_32_Float>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 // FIRST, define the RegisterLoss function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions
 template<template <typename> class TRegistrable, typename... Args>
 INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterLoss(const char * const sRegistrationName, const Args...args) {
-   return Register<TRegistrable, Cuda_32_Operators>(sRegistrationName, args...);
+   return Register<TRegistrable, Cuda_32_Float>(sRegistrationName, args...);
 }
 
 // now include all our special loss registrations which will use the RegisterLoss function we defined above!

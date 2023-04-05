@@ -26,72 +26,138 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-struct Cpu_64_Operators final {
-   static constexpr size_t countPackedItems = 1; // the number of Unpacked items in a Packed structure
-   typedef double Unpacked;
-   typedef double Packed;
+struct Cpu_64_Int final {
+   static constexpr int cPack = 1;
+   using T = uint64_t;
+
+   inline Cpu_64_Int(const uint64_t val) noexcept : m_data(val) {
+   }
 
 private:
+   uint64_t m_data;
+};
+static_assert(std::is_standard_layout<Cpu_64_Int>::value,
+   "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+#if !(defined(__GNUC__) && __GNUC__ < 5)
+static_assert(std::is_trivially_copyable<Cpu_64_Int>::value,
+   "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+#endif // !(defined(__GNUC__) && __GNUC__ < 5)
 
-   Packed m_data;
-
-public:
+struct Cpu_64_Float final {
+   static constexpr int cPack = 1;
+   using T = double;
+   using TInt = Cpu_64_Int;
 
    WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
-   INLINE_ALWAYS Cpu_64_Operators() noexcept {
+   inline Cpu_64_Float() noexcept {
    }
    WARNING_POP
 
-   INLINE_ALWAYS Cpu_64_Operators(const float data) noexcept : m_data(static_cast<Unpacked>(data)) {
+   Cpu_64_Float(const Cpu_64_Float & other) noexcept = default; // preserve POD status
+   Cpu_64_Float & operator=(const Cpu_64_Float &) noexcept = default; // preserve POD status
+
+   inline Cpu_64_Float(const double val) noexcept : m_data { val } {
    }
 
-   INLINE_ALWAYS Cpu_64_Operators(const double data) noexcept : m_data(static_cast<Unpacked>(data)) {
+   inline Cpu_64_Float & operator= (const double val) noexcept {
+      m_data = val;
+      return *this;
    }
 
-   INLINE_ALWAYS Cpu_64_Operators(const int data) noexcept : m_data(static_cast<Unpacked>(data)) {
+
+   inline Cpu_64_Float operator+() const noexcept {
+      return *this;
    }
 
-   INLINE_ALWAYS Cpu_64_Operators operator+ (const Cpu_64_Operators & other) const noexcept {
-      return Cpu_64_Operators(m_data + other.m_data);
+   inline Cpu_64_Float operator-() const noexcept {
+      return Cpu_64_Float(-m_data);
    }
 
-   INLINE_ALWAYS Cpu_64_Operators operator- (const Cpu_64_Operators & other) const noexcept {
-      return Cpu_64_Operators(m_data - other.m_data);
+
+   inline Cpu_64_Float operator+ (const Cpu_64_Float & other) const noexcept {
+      return Cpu_64_Float(m_data + other.m_data);
    }
 
-   INLINE_ALWAYS Cpu_64_Operators operator* (const Cpu_64_Operators & other) const noexcept {
-      return Cpu_64_Operators(m_data * other.m_data);
+   inline Cpu_64_Float operator- (const Cpu_64_Float & other) const noexcept {
+      return Cpu_64_Float(m_data - other.m_data);
    }
 
-   INLINE_ALWAYS Cpu_64_Operators operator/ (const Cpu_64_Operators & other) const noexcept {
-      return Cpu_64_Operators(m_data / other.m_data);
+   inline Cpu_64_Float operator* (const Cpu_64_Float & other) const noexcept {
+      return Cpu_64_Float(m_data * other.m_data);
    }
 
-   INLINE_ALWAYS bool IsAnyEqual(const Cpu_64_Operators & other) const noexcept {
+   inline Cpu_64_Float operator/ (const Cpu_64_Float & other) const noexcept {
+      return Cpu_64_Float(m_data / other.m_data);
+   }
+
+   inline Cpu_64_Float & operator+= (const Cpu_64_Float & other) noexcept {
+      *this = (*this) + other;
+      return *this;
+   }
+
+   inline Cpu_64_Float & operator-= (const Cpu_64_Float & other) noexcept {
+      *this = (*this) - other;
+      return *this;
+   }
+
+   inline Cpu_64_Float & operator*= (const Cpu_64_Float & other) noexcept {
+      *this = (*this) * other;
+      return *this;
+   }
+
+   inline Cpu_64_Float & operator/= (const Cpu_64_Float & other) noexcept {
+      *this = (*this) / other;
+      return *this;
+   }
+
+
+   friend inline Cpu_64_Float operator+ (const double val, const Cpu_64_Float & other) noexcept {
+      return Cpu_64_Float(val) + other;
+   }
+
+   friend inline Cpu_64_Float operator- (const double val, const Cpu_64_Float & other) noexcept {
+      return Cpu_64_Float(val) - other;
+   }
+
+   friend inline Cpu_64_Float operator* (const double val, const Cpu_64_Float & other) noexcept {
+      return Cpu_64_Float(val) * other;
+   }
+
+   friend inline Cpu_64_Float operator/ (const double val, const Cpu_64_Float & other) noexcept {
+      return Cpu_64_Float(val) / other;
+   }
+
+   inline void LoadAligned(const T * const a) noexcept {
+      m_data = *a;
+   }
+
+   inline void SaveAligned(T * const a) const noexcept {
+      *a = m_data;
+   }
+
+   inline bool IsAnyEqual(const Cpu_64_Float & other) const noexcept {
       return m_data == other.m_data;
    }
 
-   INLINE_ALWAYS bool IsAnyInf() const noexcept {
+   inline bool IsAnyInf() const noexcept {
       return std::isinf(m_data);
    }
 
-   INLINE_ALWAYS bool IsAnyNaN() const noexcept {
+   inline bool IsAnyNaN() const noexcept {
       return std::isnan(m_data);
    }
 
-   INLINE_ALWAYS Cpu_64_Operators Sqrt() const noexcept {
-      return Cpu_64_Operators(std::sqrt(m_data));
+   inline Cpu_64_Float Sqrt() const noexcept {
+      return Cpu_64_Float(std::sqrt(m_data));
    }
 
-   INLINE_ALWAYS Unpacked GetUnpacked(const size_t indexPack) const noexcept {
-      UNUSED(indexPack);
-      return m_data; // we only have 1 packed item
+   inline Cpu_64_Float Exp() const noexcept {
+      return Cpu_64_Float(std::exp(m_data));
    }
 
-   INLINE_ALWAYS void SetUnpacked(const size_t indexPack, const Unpacked data) noexcept {
-      UNUSED(indexPack);
-      m_data = data; // we only have 1 packed item
+   inline Cpu_64_Float Log() const noexcept {
+      return Cpu_64_Float(std::log(m_data));
    }
 
    template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
@@ -100,19 +166,24 @@ public:
       ExecuteApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pLoss, pData);
       return Error_None;
    }
+
+private:
+
+   double m_data;
 };
-static_assert(std::is_standard_layout<Cpu_64_Operators>::value,
+static_assert(std::is_standard_layout<Cpu_64_Float>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 #if !(defined(__GNUC__) && __GNUC__ < 5)
-static_assert(std::is_trivially_copyable<Cpu_64_Operators>::value,
+static_assert(std::is_trivially_copyable<Cpu_64_Float>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 #endif // !(defined(__GNUC__) && __GNUC__ < 5)
+
 
 // FIRST, define the RegisterLoss function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions
 template<template <typename> class TRegistrable, typename... Args>
 INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterLoss(const char * const sRegistrationName, const Args...args) {
-   return Register<TRegistrable, Cpu_64_Operators>(sRegistrationName, args...);
+   return Register<TRegistrable, Cpu_64_Float>(sRegistrationName, args...);
 }
 
 // now include all our special loss registrations which will use the RegisterLoss function we defined above!
