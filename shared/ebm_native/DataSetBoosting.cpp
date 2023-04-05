@@ -113,7 +113,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
 }
 WARNING_POP
 
-INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
+INLINE_RELEASE_UNTEMPLATED static void * ConstructTargetData(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
    const BagEbm * const aBag,
@@ -127,67 +127,119 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
 
    ptrdiff_t cClasses;
    const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
-   EBM_ASSERT(1 <= cClasses); // this should be classification, and 0 < cSetSamples
    EBM_ASSERT(nullptr != aTargets); // we previously called GetDataSetSharedTarget and got back non-null result
 
-   const size_t countClasses = static_cast<size_t>(cClasses);
-
-   if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
-      return nullptr;
-   }
-   StorageDataType * const aTargetData = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
-   if(nullptr == aTargetData) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == aTargetData");
-      return nullptr;
-   }
-
    const BagEbm * pSampleReplication = aBag;
-   const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargets);
-   StorageDataType * pTargetTo = aTargetData;
-   StorageDataType * pTargetToEnd = aTargetData + cSetSamples;
    const bool isLoopTraining = BagEbm { 0 } < direction;
    EBM_ASSERT(nullptr != aBag || isLoopTraining); // if aBag is nullptr then we have no validation samples
-   do {
-      BagEbm replication = 1;
-      if(nullptr != pSampleReplication) {
-         bool isItemTraining;
-         do {
-            do {
-               replication = *pSampleReplication;
-               ++pSampleReplication;
-               ++pTargetFrom;
-            } while(BagEbm { 0 } == replication);
-            isItemTraining = BagEbm { 0 } < replication;
-         } while(isLoopTraining != isItemTraining);
-         --pTargetFrom;
-      }
-      const SharedStorageDataType data = *pTargetFrom;
-      ++pTargetFrom;
-      EBM_ASSERT(!IsConvertError<size_t>(data));
-      if(IsConvertError<StorageDataType>(data)) {
-         // this shouldn't be possible since we previously checked that we could convert our target,
-         // so if this is failing then we'll be larger than the maximum number of classes
-         LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
-         free(aTargetData);
-         return nullptr;
-      }
-      const StorageDataType iData = static_cast<StorageDataType>(data);
-      if(countClasses <= static_cast<size_t>(iData)) {
-         LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData target value larger than number of classes");
-         free(aTargetData);
-         return nullptr;
-      }
-      do {
-         EBM_ASSERT(pTargetTo < aTargetData + cSetSamples);
-         *pTargetTo = iData;
-         ++pTargetTo;
-         replication -= direction;
-      } while(BagEbm { 0 } != replication);
-   } while(pTargetToEnd != pTargetTo);
 
-   LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
-   return aTargetData;
+   if(IsClassification(cClasses)) {
+      const size_t countClasses = static_cast<size_t>(cClasses);
+
+      if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
+         return nullptr;
+      }
+      StorageDataType * const aTargetData = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
+      if(nullptr == aTargetData) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == aTargetData");
+         return nullptr;
+      }
+
+      const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargets);
+      StorageDataType * pTargetTo = aTargetData;
+      StorageDataType * pTargetToEnd = aTargetData + cSetSamples;
+      do {
+         BagEbm replication = 1;
+         if(nullptr != pSampleReplication) {
+            bool isItemTraining;
+            do {
+               do {
+                  replication = *pSampleReplication;
+                  ++pSampleReplication;
+                  ++pTargetFrom;
+               } while(BagEbm { 0 } == replication);
+               isItemTraining = BagEbm { 0 } < replication;
+            } while(isLoopTraining != isItemTraining);
+            --pTargetFrom;
+         }
+         const SharedStorageDataType data = *pTargetFrom;
+         ++pTargetFrom;
+         EBM_ASSERT(!IsConvertError<size_t>(data));
+         if(IsConvertError<StorageDataType>(data)) {
+            // this shouldn't be possible since we previously checked that we could convert our target,
+            // so if this is failing then we'll be larger than the maximum number of classes
+            LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
+            free(aTargetData);
+            return nullptr;
+         }
+         const StorageDataType iData = static_cast<StorageDataType>(data);
+         if(countClasses <= static_cast<size_t>(iData)) {
+            LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData target value larger than number of classes");
+            free(aTargetData);
+            return nullptr;
+         }
+         do {
+            EBM_ASSERT(pTargetTo < aTargetData + cSetSamples);
+            *pTargetTo = iData;
+            ++pTargetTo;
+            replication -= direction;
+         } while(BagEbm { 0 } != replication);
+      } while(pTargetToEnd != pTargetTo);
+
+      LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
+      return aTargetData;
+   } else {
+      if(IsMultiplyError(sizeof(FloatFast), cSetSamples)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(FloatFast), cSetSamples)");
+         return nullptr;
+      }
+      FloatFast * const aTargetData = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSetSamples));
+      if(nullptr == aTargetData) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == aTargetData");
+         return nullptr;
+      }
+
+      const FloatFast * pTargetFrom = static_cast<const FloatFast *>(aTargets);
+      FloatFast * pTargetTo = aTargetData;
+      FloatFast * pTargetToEnd = aTargetData + cSetSamples;
+      do {
+         BagEbm replication = 1;
+         if(nullptr != pSampleReplication) {
+            bool isItemTraining;
+            do {
+               do {
+                  replication = *pSampleReplication;
+                  ++pSampleReplication;
+                  ++pTargetFrom;
+               } while(BagEbm { 0 } == replication);
+               isItemTraining = BagEbm { 0 } < replication;
+            } while(isLoopTraining != isItemTraining);
+            --pTargetFrom;
+         }
+         const FloatFast data = *pTargetFrom;
+         ++pTargetFrom;
+
+         // TODO : our caller should handle NaN *pTargetFrom values, which means that the target is missing, which means we should delete that sample 
+         //   from the input data
+
+         // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
+         // There is no need to check it here since we already have graceful detection later for other reasons.
+
+         // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
+         //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
+
+         do {
+            EBM_ASSERT(pTargetTo < aTargetData + cSetSamples);
+            *pTargetTo = data;
+            ++pTargetTo;
+            replication -= direction;
+         } while(BagEbm { 0 } != replication);
+      } while(pTargetToEnd != pTargetTo);
+
+      LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
+      return aTargetData;
+   }
 }
 
 struct InputDataPointerAndCountBins {
@@ -519,7 +571,7 @@ ErrorEbm DataSetBoosting::Initialize(
          m_aSampleScores = aSampleScores;
       }
       if(bAllocateTargetData) {
-         StorageDataType * const aTargetData = ConstructTargetData(
+         void * const aTargetData = ConstructTargetData(
             pDataSetShared,
             direction,
             aBag,

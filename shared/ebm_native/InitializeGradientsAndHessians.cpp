@@ -47,12 +47,13 @@ extern void InitializeMSEGradientsAndHessians(
    const FloatFast * pWeight = aWeight; // has been expanded to match the length of our output (aGradientAndHessian)
 
    const BagEbm * pSampleReplication = aBag;
+   const bool isLoopTraining = BagEbm { 0 } < direction;
+   EBM_ASSERT(nullptr != aBag || isLoopTraining); // if pSampleReplication is nullptr then we have no validation samples
+
    const FloatFast * pTargetData = static_cast<const FloatFast *>(aTargets);
    const double * pInitScore = aInitScores;
    FloatFast * pGradientAndHessian = aGradientAndHessian;
    const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples;
-   const bool isLoopTraining = BagEbm { 0 } < direction;
-   EBM_ASSERT(nullptr != aBag || isLoopTraining); // if pSampleReplication is nullptr then we have no validation samples
    do {
       BagEbm replication = 1;
       size_t cInitAdvances = 1;

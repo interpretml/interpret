@@ -134,7 +134,7 @@ ErrorEbm InteractionCore::Create(
          return Error_OutOfMemory;
       }
       pRet->m_cFeatures = cFeatures;
-      FeatureInteraction * const aFeatures = 
+      FeatureInteraction * const aFeatures =
          static_cast<FeatureInteraction *>(malloc(sizeof(FeatureInteraction) * cFeatures));
       if(nullptr == aFeatures) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate nullptr == aFeatures");
@@ -209,12 +209,12 @@ ErrorEbm InteractionCore::Create(
 
       static const char g_sMse[] = "mse";
       static const char g_sLogLoss[] = "log_loss";
-      const char* const sLoss = IsClassification(cClasses) ? g_sLogLoss : g_sMse;
+      const char * const sLoss = IsClassification(cClasses) ? g_sLogLoss : g_sMse;
 
       Config config;
       config.cOutputs = cScores;
       error = GetLoss(&config, sLoss, &pRet->m_loss);
-      if (Error_None != error) {
+      if(Error_None != error) {
          // already logged
          return error;
       }

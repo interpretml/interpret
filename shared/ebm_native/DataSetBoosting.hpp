@@ -24,7 +24,7 @@ class Term;
 class DataSetBoosting final {
    FloatFast * m_aGradientsAndHessians;
    FloatFast * m_aSampleScores;
-   StorageDataType * m_aTargetData;
+   void * m_aTargetData;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
    size_t m_cTerms;
@@ -78,7 +78,7 @@ public:
    inline FloatFast * GetSampleScores() {
       return m_aSampleScores;
    }
-   inline const StorageDataType * GetTargetDataPointer() const {
+   inline const void * GetTargetDataPointer() const {
       return m_aTargetData;
    }
    inline const StorageDataType * GetInputDataPointer(const size_t iTerm) const {
