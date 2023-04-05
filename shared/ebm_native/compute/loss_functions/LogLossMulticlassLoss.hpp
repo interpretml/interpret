@@ -23,7 +23,11 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
       }
    }
 
-   inline double GetFinalMultiplier() const noexcept {
+   inline double GradientMultiple() const noexcept {
+      return 1.0;
+   }
+
+   inline double HessianMultiple() const noexcept {
       return 1.0;
    }
 

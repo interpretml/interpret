@@ -354,9 +354,13 @@ protected:
 
       pFunctionPointers->m_pApplyUpdateCpp = &TLoss::ApplyUpdate;
 
-      auto multiplier = (static_cast<TLoss *>(this))->GetFinalMultiplier();
-      static_assert(std::is_same<decltype(multiplier), double>::value, "this->GetFinalMultiplier() should return a double");
-      pLossWrapperOut->m_updateMultiple = multiplier;
+      auto gradientMultiple = (static_cast<TLoss *>(this))->GradientMultiple();
+      static_assert(std::is_same<decltype(gradientMultiple), double>::value, "this->GradientMultiple() should return a double");
+      auto hessianMultiple = (static_cast<TLoss *>(this))->HessianMultiple();
+      static_assert(std::is_same<decltype(hessianMultiple), double>::value, "this->HessianMultiple() should return a double");
+
+      pLossWrapperOut->m_gradientMultiple = gradientMultiple;
+      pLossWrapperOut->m_hessianMultiple = hessianMultiple;
       pLossWrapperOut->m_bLossHasHessian = HasCalculateHessianFunction<TLoss, TFloat>() ? EBM_TRUE : EBM_FALSE;
       pLossWrapperOut->m_bMse = TLoss::k_bMse ? EBM_TRUE : EBM_FALSE;
 

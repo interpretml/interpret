@@ -57,7 +57,9 @@ struct LossWrapper {
    // and it cannot be empty either since empty structures are not compliant in all C compilers
    // https://stackoverflow.com/questions/755305/empty-structure-in-c?rq=1
    void * m_pLoss;
-   double m_updateMultiple;
+   // TODO: we're not using m_gradientMultiple & m_hessianMultiple yet!
+   double m_gradientMultiple;
+   double m_hessianMultiple;
    BoolEbm m_bLossHasHessian;
    BoolEbm m_bMse;
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface

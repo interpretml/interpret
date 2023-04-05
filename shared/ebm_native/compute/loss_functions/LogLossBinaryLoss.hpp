@@ -19,7 +19,11 @@ struct LogLossBinaryLoss final : public BinaryLoss {
       }
    }
 
-   inline double GetFinalMultiplier() const noexcept {
+   inline double GradientMultiple() const noexcept {
+      return 1.0;
+   }
+
+   inline double HessianMultiple() const noexcept {
       return 1.0;
    }
 

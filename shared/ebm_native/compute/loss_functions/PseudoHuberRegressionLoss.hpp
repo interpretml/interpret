@@ -14,24 +14,28 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
    TFloat m_deltaInverted;
 
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in loss_registrations.hpp
-   inline PseudoHuberRegressionLoss(const Config & config, TFloat delta) {
+   inline PseudoHuberRegressionLoss(const Config & config, double delta) {
       if(1 != config.cOutputs) {
          throw ParamMismatchWithConfigException();
       }
 
-      if(delta.IsAnyEqual(TFloat(0)) || delta.IsAnyNaN() || delta.IsAnyInf()) {
+      if(delta == 0.0 || std::isnan(delta) || std::isinf(delta)) {
          throw ParamValOutOfRangeException();
       }
 
-      TFloat deltaInverted = TFloat(1) / delta;
-      if(deltaInverted.IsAnyInf()) {
+      double deltaInverted = 1.0 / delta;
+      if(std::isinf(deltaInverted)) {
          throw ParamValOutOfRangeException();
       }
 
       m_deltaInverted = deltaInverted;
    }
 
-   inline double GetFinalMultiplier() const noexcept {
+   inline double GradientMultiple() const noexcept {
+      return 1.0;
+   }
+
+   inline double HessianMultiple() const noexcept {
       return 1.0;
    }
 
@@ -42,7 +46,7 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
    GPU_DEVICE inline TFloat CalculateGradient(TFloat target, TFloat prediction) const noexcept {
       TFloat residualNegative = prediction - target;
       TFloat residualNegativeFraction = residualNegative * m_deltaInverted;
-      TFloat calc = TFloat(1) + residualNegativeFraction * residualNegativeFraction;
+      TFloat calc = 1.0 + residualNegativeFraction * residualNegativeFraction;
       TFloat sqrtCalc = calc.Sqrt();
       // the calculations above are shared with the hessian, so the compiler should combine them.
       return residualNegative / sqrtCalc;
@@ -52,9 +56,9 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
    GPU_DEVICE inline TFloat CalculateHessian(TFloat target, TFloat prediction) const noexcept {
       TFloat residualNegative = prediction - target;
       TFloat residualNegativeFraction = residualNegative * m_deltaInverted;
-      TFloat calc = TFloat(1) + residualNegativeFraction * residualNegativeFraction;
+      TFloat calc = 1.0 + residualNegativeFraction * residualNegativeFraction;
       TFloat sqrtCalc = calc.Sqrt();
       // the calculations above are shared with the hessian, so the compiler should combine them.
-      return TFloat(1) / (calc * sqrtCalc);
+      return 1.0 / (calc * sqrtCalc);
    }
 };
