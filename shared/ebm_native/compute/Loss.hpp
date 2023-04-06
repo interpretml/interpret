@@ -167,7 +167,7 @@ struct Loss : public Registrable {
    };
    template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED ErrorEbm BitPackPostApplyUpdate(ApplyUpdateBridge * const pData) const {
-      return AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss, TFloat>()>::ApplyUpdate(this, pData);
+      return AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, HasHessian<TLoss, TFloat>()>::ApplyUpdate(this, pData);
    }
 
    template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
@@ -429,24 +429,24 @@ struct Loss : public Registrable {
 
 
    template<class TLoss, typename TFloat>
-   struct HasCalculateHessianFunctionInternal {
+   struct HasHessianInternal {
       // use SFINAE to determine if TLoss has the function CalcGradientHessian with the correct signature
 
       template<typename T>
-      static auto check(T * p) -> decltype(p->CalcGradientHessian(std::declval<TFloat>(), std::declval<TFloat>()), std::true_type());
+      static auto check(T * p) -> decltype(p->CalcGradientHessian(TFloat { 0 }, TFloat { 0 }), std::true_type());
 
       static std::false_type check(...);
 
-      using type = decltype(check(static_cast<typename std::remove_reference<TLoss>::type *>(nullptr)));
-      static constexpr bool value = type::value;
+      using internal_type = decltype(check(static_cast<typename std::remove_reference<TLoss>::type *>(nullptr)));
+      static constexpr bool value = internal_type::value;
    };
 
 protected:
 
    template<typename TLoss, typename TFloat>
-   constexpr static bool HasCalculateHessianFunction() {
+   constexpr static bool HasHessian() {
       // use SFINAE to determine if TLoss has the function CalcGradientHessian with the correct signature
-      return HasCalculateHessianFunctionInternal<TLoss, TFloat>::value;
+      return HasHessianInternal<TLoss, TFloat>::value;
    }
 
    template<typename TLoss>
@@ -490,7 +490,7 @@ protected:
 
       pLossWrapperOut->m_gradientMultiple = gradientMultiple;
       pLossWrapperOut->m_hessianMultiple = hessianMultiple;
-      pLossWrapperOut->m_bLossHasHessian = HasCalculateHessianFunction<TLoss, TFloat>() ? EBM_TRUE : EBM_FALSE;
+      pLossWrapperOut->m_bLossHasHessian = HasHessian<TLoss, TFloat>() ? EBM_TRUE : EBM_FALSE;
       pLossWrapperOut->m_bMse = TLoss::k_bMse ? EBM_TRUE : EBM_FALSE;
 
       pLossWrapperOut->m_pLoss = this;
