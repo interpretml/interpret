@@ -27,6 +27,13 @@ struct LogLossBinaryLoss final : public BinaryLoss {
       return 1.0;
    }
 
+   inline void CalcMetric(TFloat prediction, TFloat target, TFloat & metric) const noexcept {
+      // This function is here to signal the loss class abilities, but it will not be called
+      UNUSED(prediction);
+      UNUSED(target);
+      UNUSED(metric);
+   }
+
    inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
       // This function is here to signal the loss class abilities, but it will not be called
       UNUSED(prediction);
@@ -64,11 +71,11 @@ struct LogLossBinaryLoss final : public BinaryLoss {
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
-      const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
+      const FloatFast * const aUpdateTensorScores = reinterpret_cast<const FloatFast *>(pData->m_aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
 
-      FloatFast * pSampleScore = pData->m_aSampleScores;
+      FloatFast * pSampleScore = reinterpret_cast<FloatFast *>(pData->m_aSampleScores);
       const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples;
 
       size_t cBitsPerItemMax;
@@ -103,12 +110,12 @@ struct LogLossBinaryLoss final : public BinaryLoss {
 
       FloatFast * pGradientAndHessian;
       if(bKeepGradHess) {
-         pGradientAndHessian = pData->m_aGradientsAndHessians;
+         pGradientAndHessian = reinterpret_cast<FloatFast *>(pData->m_aGradientsAndHessians);
       }
 
       const FloatFast * pWeight;
       if(bWeight) {
-         pWeight = pData->m_aWeights;
+         pWeight = reinterpret_cast<const FloatFast *>(pData->m_aWeights);
       }
 
       FloatFast sumLogLoss;

@@ -30,15 +30,15 @@ struct ApplyUpdateBridge {
 
    BoolEbm m_bHessianNeeded;
 
-   bool m_bCalcMetric;
-   FloatFast * m_aMulticlassMidwayTemp;
-   const FloatFast * m_aUpdateTensorScores;
+   bool m_bCalcMetric; // TODO: should this be BoolEbm?
+   void * m_aMulticlassMidwayTemp;
+   const void * m_aUpdateTensorScores;
    size_t m_cSamples;
    const StorageDataType * m_aPacked;
    const void * m_aTargets;
-   const FloatFast * m_aWeights;
-   FloatFast * m_aSampleScores;
-   FloatFast * m_aGradientsAndHessians;
+   const void * m_aWeights;
+   void * m_aSampleScores;
+   void * m_aGradientsAndHessians;
 
    double m_metricOut;
 };

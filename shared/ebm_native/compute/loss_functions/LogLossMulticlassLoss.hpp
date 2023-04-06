@@ -31,6 +31,13 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
       return 1.0;
    }
 
+   inline void CalcMetric(TFloat prediction, TFloat target, TFloat & metric) const noexcept {
+      // This function is here to signal the loss class abilities, but it will not be called
+      UNUSED(prediction);
+      UNUSED(target);
+      UNUSED(metric);
+   }
+
    inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
       // This function is here to signal the loss class abilities, but it will not be called
       UNUSED(prediction);
@@ -74,7 +81,7 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
       FloatFast * aExps;
       if(bGetExp) {
          if(bDynamic) {
-            aExps = pData->m_aMulticlassMidwayTemp;
+            aExps = reinterpret_cast<FloatFast *>(pData->m_aMulticlassMidwayTemp);
          } else {
             aExps = aLocalExpVector;
          }
@@ -82,11 +89,11 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
 
-      const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
+      const FloatFast * const aUpdateTensorScores = reinterpret_cast<const FloatFast *>(pData->m_aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
 
-      FloatFast * pSampleScore = pData->m_aSampleScores;
+      FloatFast * pSampleScore = reinterpret_cast<FloatFast *>(pData->m_aSampleScores);
       const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples * cScores;
 
       size_t cBitsPerItemMax;
@@ -122,12 +129,12 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
 
       FloatFast * pGradientAndHessian;
       if(bKeepGradHess) {
-         pGradientAndHessian = pData->m_aGradientsAndHessians;
+         pGradientAndHessian = reinterpret_cast<FloatFast *>(pData->m_aGradientsAndHessians);
       }
 
       const FloatFast * pWeight;
       if(bWeight) {
-         pWeight = pData->m_aWeights;
+         pWeight = reinterpret_cast<const FloatFast *>(pData->m_aWeights);
       }
 
       FloatFast sumLogLoss;

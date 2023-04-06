@@ -173,10 +173,161 @@ struct Loss : public Registrable {
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    struct Shared <TLoss, TFloat, k_oneScore, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight> final {
       GPU_DEVICE static void ApplyUpdate(const TLoss * const pLoss, ApplyUpdateBridge * const pData) {
-         UNUSED(pLoss);
-         UNUSED(pData);
+         static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
+         static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
-         ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
+         const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
+
+         const size_t cSamples = pData->m_cSamples;
+
+         typename TFloat::T * pSampleScore = reinterpret_cast<typename TFloat::T *>(pData->m_aSampleScores);
+         const typename TFloat::T * const pSampleScoresEnd = pSampleScore + cSamples;
+
+         size_t cBitsPerItemMax;
+         ptrdiff_t cShift;
+         ptrdiff_t cShiftReset;
+         size_t maskBits;
+         const StorageDataType * pInputData;
+
+         alignas(16) typename TFloat::T updateScores[TFloat::cPack];
+         TFloat updateScore;
+
+         if(bCompilerZeroDimensional) {
+            const typename TFloat::T singleScore = aUpdateTensorScores[0];
+            for(int i = 0; i < TFloat::cPack; ++i) {
+               updateScores[i] = singleScore;
+            }
+            updateScore.LoadAligned(updateScores);
+         } else {
+            const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
+
+            const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
+
+            cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
+
+            cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
+            cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
+
+            maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
+
+            pInputData = pData->m_aPacked;
+         }
+
+         const typename TFloat::T * pTargetData;
+         if(bGetTarget) {
+            pTargetData = reinterpret_cast<const typename TFloat::T *>(pData->m_aTargets);
+         }
+
+         typename TFloat::T * pGradientAndHessian;
+         if(bKeepGradHess) {
+            pGradientAndHessian = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians);
+         }
+
+         const typename TFloat::T * pWeight;
+         if(bWeight) {
+            pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
+         }
+
+         TFloat sumMetric;
+         if(bCalcMetric) {
+            sumMetric = 0.0;
+         }
+         do {
+            alignas(16) StorageDataType iTensorBinCombined[TFloat::cPack];
+            if(!bCompilerZeroDimensional) {
+               // we store the already multiplied dimensional value in *pInputData
+               for(int i = 0; i < TFloat::cPack; ++i) {
+                  iTensorBinCombined[i] = pInputData[i];
+               }
+               pInputData += TFloat::cPack;
+            }
+            while(true) {
+               if(!bCompilerZeroDimensional) {
+                  // in later versions of SIMD there are scatter/gather intrinsics that do this in one operation
+                  for(int i = 0; i < TFloat::cPack; ++i) {
+                     const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined[i] >> cShift) & maskBits;
+                     updateScores[i] = aUpdateTensorScores[iTensorBin];
+                  }
+                  updateScore.LoadAligned(updateScores);
+               }
+
+               TFloat target;
+               if(bGetTarget) {
+                  target.LoadAligned(pTargetData);
+                  pTargetData += TFloat::cPack;
+               }
+
+               TFloat sampleScore;
+               sampleScore.LoadAligned(pSampleScore);
+               sampleScore += updateScore;
+               sampleScore.SaveAligned(pSampleScore);
+               pSampleScore += TFloat::cPack;
+
+               TFloat weight;
+               if(bWeight) {
+                  weight.LoadAligned(pWeight);
+                  pWeight += TFloat::cPack;
+               }
+
+               TFloat prediction;
+               if(bGetTarget) {
+                  prediction = pLoss->InverseLinkFunction(sampleScore);
+               }
+
+               if(bKeepGradHess) {
+                  TFloat gradient;
+                  TFloat hessian;
+                  if(bHessian) {
+                     pLoss->CalcGradHess(prediction, target, gradient, hessian);
+                  } else {
+                     pLoss->CalcGrad(prediction, target, gradient);
+                  }
+                  if(bWeight) {
+                     // This is only used during the initialization of interaction detection. For boosting
+                     // we currently multiply by the weight during bin summation instead since we use the weight
+                     // there to include the inner bagging counts of occurences.
+                     // Whether this multiplication happens or not is controlled by the caller by passing in the
+                     // weight array or not.
+                     gradient *= weight;
+                     hessian *= weight;
+                  }
+                  gradient.SaveAligned(pGradientAndHessian);
+                  pGradientAndHessian += TFloat::cPack;
+                  if(bHessian) {
+                     hessian.SaveAligned(pGradientAndHessian);
+                     pGradientAndHessian += TFloat::cPack;
+                  }
+               }
+
+               if(bCalcMetric) {
+                  TFloat metric;
+                  pLoss->CalcMetric(prediction, target, metric);
+                  if(bWeight) {
+                     metric *= weight;
+                  }
+                  sumMetric += metric;
+               }
+
+               if(bCompilerZeroDimensional) {
+                  if(pSampleScoresEnd == pSampleScore) {
+                     break;
+                  }
+               } else {
+                  cShift -= cBitsPerItemMax;
+                  if(cShift < 0) {
+                     break;
+                  }
+               }
+            }
+            if(bCompilerZeroDimensional) {
+               break;
+            }
+            cShift = cShiftReset;
+         } while(pSampleScoresEnd != pSampleScore);
+
+         if(bCalcMetric) {
+            pData->m_metricOut = static_cast<double>(sumMetric.Sum());
+         }
       }
    };
 
@@ -185,43 +336,39 @@ struct Loss : public Registrable {
       return TFloat::template ApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(this, pData);
    }
 
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<!TLoss::k_bMse, TLoss>::type* = nullptr>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<!TLoss::k_bMse, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm FinalOptions(ApplyUpdateBridge * const pData) const {
-      if (nullptr != pData->m_aGradientsAndHessians) {
+      if(nullptr != pData->m_aGradientsAndHessians) {
          static constexpr bool bKeepGradHess = true;
 
          // if we are updating the gradients then we are doing training and do not need to calculate the metric
          EBM_ASSERT(!pData->m_bCalcMetric);
          static constexpr bool bCalcMetric = false;
 
-         if (nullptr != pData->m_aWeights) {
+         if(nullptr != pData->m_aWeights) {
             static constexpr bool bWeight = true;
 
             // this branch will only be taking during interaction initialization
 
             return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
-         }
-         else {
+         } else {
             static constexpr bool bWeight = false;
             return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
          }
-      }
-      else {
+      } else {
          static constexpr bool bKeepGradHess = false;
 
-         if (pData->m_bCalcMetric) {
+         if(pData->m_bCalcMetric) {
             static constexpr bool bCalcMetric = true;
 
-            if (nullptr != pData->m_aWeights) {
+            if(nullptr != pData->m_aWeights) {
                static constexpr bool bWeight = true;
                return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
-            }
-            else {
+            } else {
                static constexpr bool bWeight = false;
                return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
             }
-         }
-         else {
+         } else {
             static constexpr bool bCalcMetric = false;
 
             // currently this branch is not taken, but if would be if we wanted to allow in the future
@@ -236,24 +383,22 @@ struct Loss : public Registrable {
       }
    }
 
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<TLoss::k_bMse, TLoss>::type* = nullptr>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<TLoss::k_bMse, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm FinalOptions(ApplyUpdateBridge * const pData) const {
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
       static constexpr bool bKeepGradHess = true;
 
-      if (pData->m_bCalcMetric) {
+      if(pData->m_bCalcMetric) {
          static constexpr bool bCalcMetric = true;
 
-         if (nullptr != pData->m_aWeights) {
+         if(nullptr != pData->m_aWeights) {
             static constexpr bool bWeight = true;
             return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
-         }
-         else {
+         } else {
             static constexpr bool bWeight = false;
             return CallbackTFloat<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
          }
-      }
-      else {
+      } else {
          static constexpr bool bCalcMetric = false;
 
          EBM_ASSERT(nullptr == pData->m_aWeights);
@@ -362,7 +507,7 @@ protected:
 public:
 
    static ErrorEbm CreateLoss(
-      const REGISTER_LOSSES_FUNCTION registerLossesFunction, 
+      const REGISTER_LOSSES_FUNCTION registerLossesFunction,
       const Config * const pConfig,
       const char * const sLoss,
       const char * const sLossEnd,

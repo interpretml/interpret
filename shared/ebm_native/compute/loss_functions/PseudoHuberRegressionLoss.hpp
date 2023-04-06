@@ -50,12 +50,19 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
       return score;
    }
 
+   GPU_DEVICE inline void CalcMetric(TFloat prediction, TFloat target, TFloat & metric) const noexcept {
+      TFloat error = prediction - target;
+      TFloat errorFraction = error * m_deltaInverted;
+      TFloat calc = errorFraction * errorFraction + 1.0;
+      TFloat sqrtCalc = calc.Sqrt();
+      metric = m_deltaSquared * (sqrtCalc - 1.0);
+   }
+
    GPU_DEVICE inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
       TFloat sqrtCalc = calc.Sqrt();
-      // the calculations above are shared with the hessian, so the compiler should combine them.
       gradient = error / sqrtCalc;
    }
 
@@ -64,7 +71,6 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
       TFloat sqrtCalc = calc.Sqrt();
-      // the calculations above are shared with the hessian, so the compiler should combine them.
       gradient = error / sqrtCalc;
       metric = m_deltaSquared * (sqrtCalc - 1.0);
    }
@@ -75,7 +81,6 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
       TFloat sqrtCalc = calc.Sqrt();
-      // the calculations above are shared with the hessian, so the compiler should combine them.
       gradient = error / sqrtCalc;
       hessian = 1.0 / (calc * sqrtCalc);
    }
@@ -86,7 +91,6 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
       TFloat sqrtCalc = calc.Sqrt();
-      // the calculations above are shared with the hessian, so the compiler should combine them.
       gradient = error / sqrtCalc;
       hessian = 1.0 / (calc * sqrtCalc);
       metric = m_deltaSquared * (sqrtCalc - 1.0);

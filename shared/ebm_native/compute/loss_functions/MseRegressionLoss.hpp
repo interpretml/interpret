@@ -34,6 +34,13 @@ public:
       return 1.0;
    }
 
+   inline void CalcMetric(TFloat prediction, TFloat target, TFloat & metric) const noexcept {
+      // This function is here to signal the loss class abilities, but it will not be called
+      UNUSED(prediction);
+      UNUSED(target);
+      UNUSED(metric);
+   }
+
    inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
       // This function is here to signal the loss class abilities, but it will not be called
       UNUSED(prediction);
@@ -55,11 +62,11 @@ public:
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
 
-      const FloatFast * const aUpdateTensorScores = pData->m_aUpdateTensorScores;
+      const FloatFast * const aUpdateTensorScores = reinterpret_cast<const FloatFast *>(pData->m_aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
 
-      FloatFast * pGradient = pData->m_aGradientsAndHessians; // no hessians for regression
+      FloatFast * pGradient = reinterpret_cast<FloatFast *>(pData->m_aGradientsAndHessians); // no hessians for regression
       const FloatFast * const pGradientsEnd = pGradient + cSamples;
 
       size_t cBitsPerItemMax;
@@ -89,7 +96,7 @@ public:
 
       const FloatFast * pWeight;
       if(bWeight) {
-         pWeight = pData->m_aWeights;
+         pWeight = reinterpret_cast<const FloatFast *>(pData->m_aWeights);
       }
 
       FloatFast sumSquareError;
