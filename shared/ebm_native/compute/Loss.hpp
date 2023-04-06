@@ -131,30 +131,30 @@ private:
    // part of our template blowup issue of having N * M starting point templates where N is the number
    // of scores and M is the number of bit packs.  If we use 8 * 16 that's already 128 copies of the
    // templated function at this point and more later.  Reducing this to just 16 is very very helpful.
-   template<typename TLoss, typename TFloat, typename std::enable_if<!TLoss::IsMultiScore, TLoss>::type * = nullptr>
+   template<typename TLoss, typename TFloat, typename std::enable_if<!TLoss::IsMultiScore, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm TypeApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
-         return BitPackPostApplyUpdate<TLoss, TFloat, k_oneScore, k_cItemsPerBitPackNone>(pData);
+         return HessianApplyUpdate<TLoss, TFloat, k_oneScore, k_cItemsPerBitPackNone>(pData);
       } else {
          return BitPack<TLoss, TFloat, k_oneScore, k_cItemsPerBitPackMax>::Func(this, pData);
       }
    }
-   template<typename TLoss, typename TFloat, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, TLoss>::type * = nullptr>
+   template<typename TLoss, typename TFloat, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm TypeApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
-         return BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackNone>(pData);
+         return HessianApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackNone>(pData);
       } else {
          // if our inner loop is dynamic scores, then the compiler won't do a full unwind of the bit pack
          // loop, so just short circuit it to using dynamic
-         return BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackDynamic>(pData);
+         return HessianApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackDynamic>(pData);
       }
    }
-   template<typename TLoss, typename TFloat, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, TLoss>::type * = nullptr>
+   template<typename TLoss, typename TFloat, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm TypeApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
-         return BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackNone>(pData);
+         return HessianApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackNone>(pData);
       } else {
          return CountScores<TLoss, TFloat, (k_cCompilerScoresMax < k_cCompilerScoresStart ? k_dynamicScores : k_cCompilerScoresStart)>::Func(this, pData);
       }
@@ -165,7 +165,7 @@ private:
    struct CountScores final {
       INLINE_ALWAYS static ErrorEbm Func(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
          if(cCompilerScores == pData->m_cScores) {
-            return pLoss->BitPackPostApplyUpdate<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackDynamic>(pData);
+            return pLoss->HessianApplyUpdate<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackDynamic>(pData);
          } else {
             return CountScores<TLoss, TFloat, k_cCompilerScoresMax == cCompilerScores ? k_dynamicScores : cCompilerScores + 1>::Func(pLoss, pData);
          }
@@ -174,7 +174,7 @@ private:
    template<typename TLoss, typename TFloat>
    struct CountScores<TLoss, TFloat, k_dynamicScores> final {
       INLINE_ALWAYS static ErrorEbm Func(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         return pLoss->BitPackPostApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackDynamic>(pData);
+         return pLoss->HessianApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackDynamic>(pData);
       }
    };
 
@@ -185,7 +185,7 @@ private:
    struct BitPack final {
       INLINE_ALWAYS static ErrorEbm Func(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
          if(cCompilerPack == pData->m_cPack) {
-            return pLoss->BitPackPostApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack>(pData);
+            return pLoss->HessianApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack>(pData);
          } else {
             return BitPack<TLoss, TFloat, cCompilerScores, GetNextBitPack(cCompilerPack)>::Func(pLoss, pData);
          }
@@ -194,39 +194,27 @@ private:
    template<typename TLoss, typename TFloat, size_t cCompilerScores>
    struct BitPack<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackLast> final {
       INLINE_ALWAYS static ErrorEbm Func(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         return pLoss->BitPackPostApplyUpdate<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackLast>(pData);
+         return pLoss->HessianApplyUpdate<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackLast>(pData);
       }
    };
 
 
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack>
-   INLINE_RELEASE_TEMPLATED ErrorEbm BitPackPostApplyUpdate(ApplyUpdateBridge * const pData) const {
-      return AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, HasHessian<TLoss, TFloat>()>::ApplyUpdate(this, pData);
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, typename std::enable_if<HasHessian<TLoss, TFloat>(), void>::type * = nullptr>
+   INLINE_RELEASE_TEMPLATED ErrorEbm HessianApplyUpdate(ApplyUpdateBridge * const pData) const {
+      if(pData->m_bHessianNeeded) {
+         return OptionsApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, true>(pData);
+      } else {
+         return OptionsApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pData);
+      }
+   }
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, typename std::enable_if<!HasHessian<TLoss, TFloat>(), void>::type * = nullptr>
+   INLINE_RELEASE_TEMPLATED ErrorEbm HessianApplyUpdate(ApplyUpdateBridge * const pData) const {
+      return OptionsApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pData);
    }
 
 
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   struct AttachHessian;
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack>
-   struct AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, true> final {
-      INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         if(pData->m_bHessianNeeded) {
-            return pLoss->FinalOptions<TLoss, TFloat, cCompilerScores, cCompilerPack, true>(pData);
-         } else {
-            return pLoss->FinalOptions<TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pData);
-         }
-      }
-   };
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack>
-   struct AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, false> final {
-      INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         return pLoss->FinalOptions<TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pData);
-      }
-   };
-
-
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<!TLoss::k_bMse, TLoss>::type * = nullptr>
-   INLINE_RELEASE_TEMPLATED ErrorEbm FinalOptions(ApplyUpdateBridge * const pData) const {
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<!TLoss::k_bMse, void>::type * = nullptr>
+   INLINE_RELEASE_TEMPLATED ErrorEbm OptionsApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(nullptr != pData->m_aGradientsAndHessians) {
          static constexpr bool bKeepGradHess = true;
 
@@ -271,9 +259,8 @@ private:
          }
       }
    }
-
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<TLoss::k_bMse, TLoss>::type * = nullptr>
-   INLINE_RELEASE_TEMPLATED ErrorEbm FinalOptions(ApplyUpdateBridge * const pData) const {
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<TLoss::k_bMse, void>::type * = nullptr>
+   INLINE_RELEASE_TEMPLATED ErrorEbm OptionsApplyUpdate(ApplyUpdateBridge * const pData) const {
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
       static constexpr bool bKeepGradHess = true;
 
