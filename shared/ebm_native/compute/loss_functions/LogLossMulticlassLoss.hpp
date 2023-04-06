@@ -31,22 +31,22 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
       return 1.0;
    }
 
-   inline TFloat CalcMetric(TFloat score, TFloat target) const noexcept {
-      // This function is here to signal the loss class abilities, but it will not be called
-      UNUSED(score);
+   inline TFloat CalcMetric(TFloat prediction, TFloat target) const noexcept {
+      // This function is here to signal the LogLossMulticlassLoss class abilities, but it will not be called
+      UNUSED(prediction);
       UNUSED(target);
    }
 
-   inline void CalcGrad(TFloat score, TFloat target, TFloat & gradient) const noexcept {
-      // This function is here to signal the loss class abilities, but it will not be called
-      UNUSED(score);
+   inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
+      // This function is here to signal the LogLossMulticlassLoss class abilities, but it will not be called
+      UNUSED(prediction);
       UNUSED(target);
       UNUSED(gradient);
    }
 
-   inline void CalcGradHess(TFloat score, TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
-      // This function is here to signal the loss class abilities, but it will not be called
-      UNUSED(score);
+   inline void CalcGradHess(TFloat prediction, TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
+      // This function is here to signal the LogLossMulticlassLoss class abilities, but it will not be called
+      UNUSED(prediction);
       UNUSED(target);
       UNUSED(gradient);
       UNUSED(hessian);

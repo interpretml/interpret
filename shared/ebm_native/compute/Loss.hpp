@@ -247,13 +247,18 @@ struct Loss : public Registrable {
                pWeight += TFloat::cPack;
             }
 
+            TFloat prediction;
+            if(bGetTarget) {
+               prediction = pLoss->InverseLinkFunction(sampleScore);
+            }
+
             if(bKeepGradHess) {
                TFloat gradient;
                TFloat hessian;
                if(bHessian) {
-                  pLoss->CalcGradHess(sampleScore, target, gradient, hessian);
+                  pLoss->CalcGradHess(prediction, target, gradient, hessian);
                } else {
-                  pLoss->CalcGrad(sampleScore, target, gradient);
+                  pLoss->CalcGrad(prediction, target, gradient);
                }
                if(bWeight) {
                   // This is only used during the initialization of interaction detection. For boosting
@@ -273,7 +278,7 @@ struct Loss : public Registrable {
             }
 
             if(bCalcMetric) {
-               TFloat metric = pLoss->CalcMetric(sampleScore, target);
+               TFloat metric = pLoss->CalcMetric(prediction, target);
                if(bWeight) {
                   metric *= weight;
                }

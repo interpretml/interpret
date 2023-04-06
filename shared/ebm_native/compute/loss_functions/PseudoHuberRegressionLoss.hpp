@@ -46,9 +46,12 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
       return 1.0;
    }
 
-   GPU_DEVICE inline TFloat CalcMetric(TFloat score, TFloat target) const noexcept {
-      TFloat prediction = score; // identity link
+   GPU_DEVICE inline TFloat InverseLinkFunction(TFloat score) const noexcept {
+      // identity link
+      return score;
+   }
 
+   GPU_DEVICE inline TFloat CalcMetric(TFloat prediction, TFloat target) const noexcept {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
@@ -56,9 +59,7 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
       return m_deltaSquared * (sqrtCalc - 1.0);
    }
 
-   GPU_DEVICE inline void CalcGrad(TFloat score, TFloat target, TFloat & gradient) const noexcept {
-      TFloat prediction = score; // identity link
-
+   GPU_DEVICE inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
@@ -67,9 +68,7 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
    }
 
    // If the loss function doesn't have a second derivative, then delete the CalcGradHess function.
-   GPU_DEVICE inline void CalcGradHess(TFloat score, TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
-      TFloat prediction = score; // identity link
-
+   GPU_DEVICE inline void CalcGradHess(TFloat prediction, TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
