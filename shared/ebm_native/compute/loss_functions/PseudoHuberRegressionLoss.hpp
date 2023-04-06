@@ -10,7 +10,7 @@
 // See sse2_32.cpp, cuda_32.cpp, and cpu_64.cpp as examples.
 template<typename TFloat>
 struct PseudoHuberRegressionLoss final : public RegressionLoss {
-   LOSS_CLASS_BOILERPLATE(PseudoHuberRegressionLoss, true)
+   LOSS_BOILERPLATE(PseudoHuberRegressionLoss)
 
    TFloat m_deltaInverted;
    TFloat m_deltaSquared;

@@ -148,182 +148,159 @@ struct Loss : public Registrable {
       return AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss, TFloat>()>::ApplyUpdate(this, pData);
    }
 
-   template<typename TLoss, bool bHessian>
-   struct ApplyHessian;
-   template<typename TLoss>
-   struct ApplyHessian<TLoss, true> final {
-      GPU_DEVICE INLINE_ALWAYS static void Func() {
-      }
-   };
-   template<typename TLoss>
-   struct ApplyHessian<TLoss, false> final {
-      GPU_DEVICE INLINE_ALWAYS static void Func() {
-      }
-   };
-
    template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
-   struct Shared final {
-      GPU_DEVICE static void ApplyUpdate(const TLoss * const pLoss, ApplyUpdateBridge * const pData) {
-         UNUSED(pLoss);
-         UNUSED(pData);
+   GPU_DEVICE static void ApplyUpdateBody(const TLoss * const pLoss, ApplyUpdateBridge * const pData) {
+      static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
+      static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
+      static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
-         ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
+      const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
+
+      const size_t cSamples = pData->m_cSamples;
+
+      typename TFloat::T * pSampleScore = reinterpret_cast<typename TFloat::T *>(pData->m_aSampleScores);
+      const typename TFloat::T * const pSampleScoresEnd = pSampleScore + cSamples;
+
+      size_t cBitsPerItemMax;
+      ptrdiff_t cShift;
+      ptrdiff_t cShiftReset;
+      size_t maskBits;
+      const StorageDataType * pInputData;
+
+      alignas(16) typename TFloat::T updateScores[TFloat::cPack];
+      TFloat updateScore;
+
+      if(bCompilerZeroDimensional) {
+         const typename TFloat::T singleScore = aUpdateTensorScores[0];
+         for(int i = 0; i < TFloat::cPack; ++i) {
+            updateScores[i] = singleScore;
+         }
+         updateScore.LoadAligned(updateScores);
+      } else {
+         const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
+
+         const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
+
+         cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
+
+         cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
+         cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
+
+         maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
+
+         pInputData = pData->m_aPacked;
       }
-   };
-   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
-   struct Shared <TLoss, TFloat, k_oneScore, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight> final {
-      GPU_DEVICE static void ApplyUpdate(const TLoss * const pLoss, ApplyUpdateBridge * const pData) {
-         static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
-         static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
-         const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
+      const typename TFloat::T * pTargetData;
+      if(bGetTarget) {
+         pTargetData = reinterpret_cast<const typename TFloat::T *>(pData->m_aTargets);
+      }
 
-         const size_t cSamples = pData->m_cSamples;
+      typename TFloat::T * pGradientAndHessian;
+      if(bKeepGradHess) {
+         pGradientAndHessian = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians);
+      }
 
-         typename TFloat::T * pSampleScore = reinterpret_cast<typename TFloat::T *>(pData->m_aSampleScores);
-         const typename TFloat::T * const pSampleScoresEnd = pSampleScore + cSamples;
+      const typename TFloat::T * pWeight;
+      if(bWeight) {
+         pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
+      }
 
-         size_t cBitsPerItemMax;
-         ptrdiff_t cShift;
-         ptrdiff_t cShiftReset;
-         size_t maskBits;
-         const StorageDataType * pInputData;
-
-         alignas(16) typename TFloat::T updateScores[TFloat::cPack];
-         TFloat updateScore;
-
-         if(bCompilerZeroDimensional) {
-            const typename TFloat::T singleScore = aUpdateTensorScores[0];
+      TFloat sumMetric;
+      if(bCalcMetric) {
+         sumMetric = 0.0;
+      }
+      do {
+         alignas(16) StorageDataType iTensorBinCombined[TFloat::cPack];
+         if(!bCompilerZeroDimensional) {
+            // we store the already multiplied dimensional value in *pInputData
             for(int i = 0; i < TFloat::cPack; ++i) {
-               updateScores[i] = singleScore;
+               iTensorBinCombined[i] = pInputData[i];
             }
-            updateScore.LoadAligned(updateScores);
-         } else {
-            const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
-
-            const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
-
-            cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
-
-            cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
-            cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
-
-            maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
-
-            pInputData = pData->m_aPacked;
+            pInputData += TFloat::cPack;
          }
-
-         const typename TFloat::T * pTargetData;
-         if(bGetTarget) {
-            pTargetData = reinterpret_cast<const typename TFloat::T *>(pData->m_aTargets);
-         }
-
-         typename TFloat::T * pGradientAndHessian;
-         if(bKeepGradHess) {
-            pGradientAndHessian = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians);
-         }
-
-         const typename TFloat::T * pWeight;
-         if(bWeight) {
-            pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
-         }
-
-         TFloat sumMetric;
-         if(bCalcMetric) {
-            sumMetric = 0.0;
-         }
-         do {
-            alignas(16) StorageDataType iTensorBinCombined[TFloat::cPack];
+         while(true) {
             if(!bCompilerZeroDimensional) {
-               // we store the already multiplied dimensional value in *pInputData
+               // in later versions of SIMD there are scatter/gather intrinsics that do this in one operation
                for(int i = 0; i < TFloat::cPack; ++i) {
-                  iTensorBinCombined[i] = pInputData[i];
+                  const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined[i] >> cShift) & maskBits;
+                  updateScores[i] = aUpdateTensorScores[iTensorBin];
                }
-               pInputData += TFloat::cPack;
+               updateScore.LoadAligned(updateScores);
             }
-            while(true) {
-               if(!bCompilerZeroDimensional) {
-                  // in later versions of SIMD there are scatter/gather intrinsics that do this in one operation
-                  for(int i = 0; i < TFloat::cPack; ++i) {
-                     const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined[i] >> cShift) & maskBits;
-                     updateScores[i] = aUpdateTensorScores[iTensorBin];
-                  }
-                  updateScore.LoadAligned(updateScores);
-               }
 
-               TFloat target;
-               if(bGetTarget) {
-                  target.LoadAligned(pTargetData);
-                  pTargetData += TFloat::cPack;
-               }
+            TFloat target;
+            if(bGetTarget) {
+               target.LoadAligned(pTargetData);
+               pTargetData += TFloat::cPack;
+            }
 
-               TFloat sampleScore;
-               sampleScore.LoadAligned(pSampleScore);
-               sampleScore += updateScore;
-               sampleScore.SaveAligned(pSampleScore);
-               pSampleScore += TFloat::cPack;
+            TFloat sampleScore;
+            sampleScore.LoadAligned(pSampleScore);
+            sampleScore += updateScore;
+            sampleScore.SaveAligned(pSampleScore);
+            pSampleScore += TFloat::cPack;
 
-               TFloat weight;
-               if(bWeight) {
-                  weight.LoadAligned(pWeight);
-                  pWeight += TFloat::cPack;
-               }
+            TFloat weight;
+            if(bWeight) {
+               weight.LoadAligned(pWeight);
+               pWeight += TFloat::cPack;
+            }
 
-               if(bKeepGradHess) {
-                  TFloat gradient;
-                  TFloat hessian;
-                  if(bHessian) {
-                     pLoss->CalcGradHess(sampleScore, target, gradient, hessian);
-                  } else {
-                     pLoss->CalcGrad(sampleScore, target, gradient);
-                  }
-                  if(bWeight) {
-                     // This is only used during the initialization of interaction detection. For boosting
-                     // we currently multiply by the weight during bin summation instead since we use the weight
-                     // there to include the inner bagging counts of occurences.
-                     // Whether this multiplication happens or not is controlled by the caller by passing in the
-                     // weight array or not.
-                     gradient *= weight;
-                     hessian *= weight;
-                  }
-                  gradient.SaveAligned(pGradientAndHessian);
-                  pGradientAndHessian += TFloat::cPack;
-                  if(bHessian) {
-                     hessian.SaveAligned(pGradientAndHessian);
-                     pGradientAndHessian += TFloat::cPack;
-                  }
-               }
-
-               if(bCalcMetric) {
-                  TFloat metric = pLoss->CalcMetric(sampleScore, target);
-                  if(bWeight) {
-                     metric *= weight;
-                  }
-                  sumMetric += metric;
-               }
-
-               if(bCompilerZeroDimensional) {
-                  if(pSampleScoresEnd == pSampleScore) {
-                     break;
-                  }
+            if(bKeepGradHess) {
+               TFloat gradient;
+               TFloat hessian;
+               if(bHessian) {
+                  pLoss->CalcGradHess(sampleScore, target, gradient, hessian);
                } else {
-                  cShift -= cBitsPerItemMax;
-                  if(cShift < 0) {
-                     break;
-                  }
+                  pLoss->CalcGrad(sampleScore, target, gradient);
+               }
+               if(bWeight) {
+                  // This is only used during the initialization of interaction detection. For boosting
+                  // we currently multiply by the weight during bin summation instead since we use the weight
+                  // there to include the inner bagging counts of occurences.
+                  // Whether this multiplication happens or not is controlled by the caller by passing in the
+                  // weight array or not.
+                  gradient *= weight;
+                  hessian *= weight;
+               }
+               gradient.SaveAligned(pGradientAndHessian);
+               pGradientAndHessian += TFloat::cPack;
+               if(bHessian) {
+                  hessian.SaveAligned(pGradientAndHessian);
+                  pGradientAndHessian += TFloat::cPack;
                }
             }
-            if(bCompilerZeroDimensional) {
-               break;
-            }
-            cShift = cShiftReset;
-         } while(pSampleScoresEnd != pSampleScore);
 
-         if(bCalcMetric) {
-            pData->m_metricOut = static_cast<double>(sumMetric.Sum());
+            if(bCalcMetric) {
+               TFloat metric = pLoss->CalcMetric(sampleScore, target);
+               if(bWeight) {
+                  metric *= weight;
+               }
+               sumMetric += metric;
+            }
+
+            if(bCompilerZeroDimensional) {
+               if(pSampleScoresEnd == pSampleScore) {
+                  break;
+               }
+            } else {
+               cShift -= cBitsPerItemMax;
+               if(cShift < 0) {
+                  break;
+               }
+            }
          }
+         if(bCompilerZeroDimensional) {
+            break;
+         }
+         cShift = cShiftReset;
+      } while(pSampleScoresEnd != pSampleScore);
+
+      if(bCalcMetric) {
+         pData->m_metricOut = static_cast<double>(sumMetric.Sum());
       }
-   };
+   }
 
    template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    INLINE_RELEASE_TEMPLATED ErrorEbm CallbackTFloat(ApplyUpdateBridge * const pData) const {
@@ -457,7 +434,7 @@ protected:
    template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE INLINE_RELEASE_TEMPLATED void InteriorApplyUpdate(ApplyUpdateBridge * const pData) const {
       const TLoss * const pLossSpecific = static_cast<const TLoss *>(this);
-      Shared<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>::ApplyUpdate(pLossSpecific, pData);
+      ApplyUpdateBody<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pLossSpecific, pData);
    }
 
    template<typename TLoss, typename TFloat>
@@ -597,11 +574,9 @@ protected:
 };
 
 
-// TODO: use the isVectorized static constexpr to control construction of the Loss structs
-#define LOSS_CLASS_CONSTANTS_BOILERPLATE(__EBM_TYPE, isVectorized) \
+#define LOSS_CONSTANTS_BOILERPLATE(__EBM_TYPE) \
    public: \
       static constexpr bool k_bMse = false; \
-      static constexpr bool k_bVectorized = (isVectorized); \
       static ErrorEbm ApplyUpdate(const Loss * const pThis, ApplyUpdateBridge * const pData) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->LossApplyUpdate<const __EBM_TYPE<TFloat>, TFloat>(pData); \
       } \
@@ -612,7 +587,7 @@ protected:
          LossFillWrapper<typename std::remove_pointer<decltype(this)>::type, TFloat>(pWrapperOut); \
       }
 
-#define LOSS_CLASS_TEMPLATE_BOILERPLATE \
+#define LOSS_TEMPLATE_BOILERPLATE \
    public: \
       template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight> \
       GPU_DEVICE void InteriorApplyUpdateTemplated(ApplyUpdateBridge * const pData) const { \
@@ -620,9 +595,9 @@ protected:
             cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData); \
       }
 
-#define LOSS_CLASS_BOILERPLATE(__EBM_TYPE, isVectorized) \
-   LOSS_CLASS_CONSTANTS_BOILERPLATE(__EBM_TYPE, isVectorized) \
-   LOSS_CLASS_TEMPLATE_BOILERPLATE
+#define LOSS_BOILERPLATE(__EBM_TYPE) \
+   LOSS_CONSTANTS_BOILERPLATE(__EBM_TYPE) \
+   LOSS_TEMPLATE_BOILERPLATE
 
 } // DEFINED_ZONE_NAME
 

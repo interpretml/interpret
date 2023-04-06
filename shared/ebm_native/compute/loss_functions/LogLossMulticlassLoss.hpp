@@ -10,7 +10,7 @@
 
 template<typename TFloat>
 struct LogLossMulticlassLoss final : public MulticlassLoss {
-   LOSS_CLASS_CONSTANTS_BOILERPLATE(LogLossMulticlassLoss, true)
+   LOSS_CONSTANTS_BOILERPLATE(LogLossMulticlassLoss)
 
    inline LogLossMulticlassLoss(const Config & config) {
       if(1 == config.cOutputs) {

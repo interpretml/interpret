@@ -10,7 +10,7 @@
 
 template<typename TFloat>
 struct LogLossBinaryLoss final : public BinaryLoss {
-   LOSS_CLASS_CONSTANTS_BOILERPLATE(LogLossBinaryLoss, true)
+   LOSS_CONSTANTS_BOILERPLATE(LogLossBinaryLoss)
 
    inline LogLossBinaryLoss(const Config & config) {
       if(1 != config.cOutputs) {

@@ -66,8 +66,8 @@ struct Cuda_32_Float final {
    }
    WARNING_POP
 
-   GPU_BOTH Cuda_32_Float(const Cuda_32_Float & other) noexcept = default; // preserve POD status
-   GPU_BOTH Cuda_32_Float & operator=(const Cuda_32_Float &) noexcept = default; // preserve POD status
+   Cuda_32_Float(const Cuda_32_Float & other) noexcept = default; // preserve POD status
+   Cuda_32_Float & operator=(const Cuda_32_Float &) noexcept = default; // preserve POD status
 
    GPU_BOTH inline Cuda_32_Float(const double val) noexcept : m_data { static_cast<T>(val) } {
    }
@@ -178,7 +178,7 @@ struct Cuda_32_Float final {
       return Cuda_32_Float(logf(m_data));
    }
 
-   inline T Sum() const noexcept {
+   GPU_BOTH inline T Sum() const noexcept {
       return m_data;
    }
 
