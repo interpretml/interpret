@@ -54,11 +54,33 @@ struct MulticlassMultitaskLoss;
 struct RegressionMultitaskLoss;
 
 
+template<typename TFloat>
+class GradientHessian {
+public:
+   GPU_DEVICE inline GradientHessian(const TFloat gradient, const TFloat hessian) : m_gradient(gradient), m_hessian(hessian) {
+   }
+
+   GPU_DEVICE inline TFloat GetGradient() const noexcept { return m_gradient; }
+   GPU_DEVICE inline TFloat GetHessian() const noexcept { return m_hessian; }
+
+private:
+
+   TFloat m_gradient;
+   TFloat m_hessian;
+};
+
+template<typename TFloat>
+GPU_DEVICE inline GradientHessian<TFloat> MakeGradientHessian(const TFloat gradient, const TFloat hessian) {
+   return GradientHessian<TFloat>(gradient, hessian);
+}
+
+
 template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
 GPU_GLOBAL static void ExecuteApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
    const TLoss * const pLossSpecific = static_cast<const TLoss *>(pLoss);
    pLossSpecific->template InteriorApplyUpdateTemplated<cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
 }
+
 
 struct Registrable {
    // TODO: move this into its own file once we create Metric classes that are also Registrable
@@ -256,9 +278,11 @@ struct Loss : public Registrable {
                TFloat gradient;
                TFloat hessian;
                if(bHessian) {
-                  pLoss->CalcGradientHessian(prediction, target, gradient, hessian);
+                  const GradientHessian<TFloat> gradientHessian = pLoss->CalcGradientHessian(prediction, target);
+                  gradient = gradientHessian.GetGradient();
+                  hessian = gradientHessian.GetHessian();
                } else {
-                  pLoss->CalcGradient(prediction, target, gradient);
+                  gradient = pLoss->CalcGradient(prediction, target);
                }
                if(bWeight) {
                   // This is only used during the initialization of interaction detection. For boosting
@@ -409,7 +433,7 @@ struct Loss : public Registrable {
       // use SFINAE to determine if TLoss has the function CalcGradientHessian with the correct signature
 
       template<typename T>
-      static auto check(T * p) -> decltype(p->CalcGradientHessian(std::declval<TFloat>(), std::declval<TFloat>(),std::declval<TFloat &>(), std::declval<TFloat &>()), std::true_type());
+      static auto check(T * p) -> decltype(p->CalcGradientHessian(std::declval<TFloat>(), std::declval<TFloat>()), std::true_type());
 
       static std::false_type check(...);
 

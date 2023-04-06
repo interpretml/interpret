@@ -21,18 +21,18 @@ struct PseudoHuberRegressionLoss : RegressionLoss {
          throw ParamMismatchWithConfigException();
       }
 
-      if(delta == 0.0 || isnan(delta) || isinf(delta)) {
+      if(delta == 0.0 || std::isnan(delta) || std::isinf(delta)) {
          throw ParamValOutOfRangeException();
       }
 
       const double deltaSquared = delta * delta;
-      if(isinf(deltaSquared)) {
+      if(std::isinf(deltaSquared)) {
          throw ParamValOutOfRangeException();
       }
       m_deltaSquared = deltaSquared;
 
       const double deltaInverted = 1.0 / delta;
-      if(isinf(deltaInverted)) {
+      if(std::isinf(deltaInverted)) {
          throw ParamValOutOfRangeException();
       }
       m_deltaInverted = deltaInverted;
@@ -56,24 +56,27 @@ struct PseudoHuberRegressionLoss : RegressionLoss {
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
       TFloat sqrtCalc = calc.Sqrt();
-      return m_deltaSquared * (sqrtCalc - 1.0);
+      TFloat metric = m_deltaSquared * (sqrtCalc - 1.0);
+      return metric;
    }
 
-   GPU_DEVICE inline void CalcGradient(const TFloat prediction, const TFloat target, TFloat & gradient) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
       TFloat sqrtCalc = calc.Sqrt();
-      gradient = error / sqrtCalc;
+      TFloat gradient = error / sqrtCalc;
+      return gradient;
    }
 
    // If the loss function doesn't have a second derivative, then delete the CalcGradientHessian function.
-   GPU_DEVICE inline void CalcGradientHessian(const TFloat prediction, const TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
       TFloat sqrtCalc = calc.Sqrt();
-      gradient = error / sqrtCalc;
-      hessian = 1.0 / (calc * sqrtCalc);
+      TFloat gradient = error / sqrtCalc;
+      TFloat hessian = 1.0 / (calc * sqrtCalc);
+      return MakeGradientHessian(gradient, hessian);
    }
 };

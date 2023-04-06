@@ -31,19 +31,18 @@ struct LogLossBinaryLoss final : public BinaryLoss {
       UNUSED(target);
    }
 
-   inline void CalcGradient(const TFloat prediction, const TFloat target, TFloat & gradient) const noexcept {
+   inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
       // This function is here to signal the LogLossBinaryLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
-      UNUSED(gradient);
+      return 0.0;
    }
 
-   inline void CalcGradientHessian(const TFloat prediction, const TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
+   inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
       // This function is here to signal the LogLossBinaryLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
-      UNUSED(gradient);
-      UNUSED(hessian);
+      return MakeGradientHessian(0.0, 0.0);
    }
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>

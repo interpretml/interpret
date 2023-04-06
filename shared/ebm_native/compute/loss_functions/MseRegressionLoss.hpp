@@ -37,12 +37,13 @@ public:
       UNUSED(target);
    }
 
-   inline void CalcGradient(const TFloat prediction, const TFloat target, TFloat & gradient) const noexcept {
+   inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
       // This function is here to signal the MseRegressionLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
-      UNUSED(gradient);
+      return 0.0;
    }
+
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE void InteriorApplyUpdateTemplated(ApplyUpdateBridge * const pData) const {
