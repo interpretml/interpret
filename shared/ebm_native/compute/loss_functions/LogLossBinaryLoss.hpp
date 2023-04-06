@@ -27,43 +27,25 @@ struct LogLossBinaryLoss final : public BinaryLoss {
       return 1.0;
    }
 
-   inline void CalcMetric(TFloat prediction, TFloat target, TFloat & metric) const noexcept {
+   inline TFloat CalcMetric(TFloat score, TFloat target) const noexcept {
       // This function is here to signal the loss class abilities, but it will not be called
-      UNUSED(prediction);
+      UNUSED(score);
       UNUSED(target);
-      UNUSED(metric);
    }
 
-   inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
+   inline void CalcGrad(TFloat score, TFloat target, TFloat & gradient) const noexcept {
       // This function is here to signal the loss class abilities, but it will not be called
-      UNUSED(prediction);
-      UNUSED(target);
-      UNUSED(gradient);
-   }
-
-   inline void CalcGradMetric(TFloat prediction, TFloat target, TFloat & gradient, TFloat & metric) const noexcept {
-      // This function is here to signal the loss class abilities, but it will not be called
-      UNUSED(prediction);
+      UNUSED(score);
       UNUSED(target);
       UNUSED(gradient);
-      UNUSED(metric);
    }
 
-   inline void CalcGradHess(TFloat prediction, TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
+   inline void CalcGradHess(TFloat score, TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
       // This function is here to signal the loss class abilities, but it will not be called
-      UNUSED(prediction);
+      UNUSED(score);
       UNUSED(target);
       UNUSED(gradient);
       UNUSED(hessian);
-   }
-
-   inline void CalcGradHessMetric(TFloat prediction, TFloat target, TFloat & gradient, TFloat & hessian, TFloat & metric) const noexcept {
-      // This function is here to signal the loss class abilities, but it will not be called
-      UNUSED(prediction);
-      UNUSED(target);
-      UNUSED(gradient);
-      UNUSED(hessian);
-      UNUSED(metric);
    }
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>

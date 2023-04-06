@@ -46,53 +46,35 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
       return 1.0;
    }
 
-   GPU_DEVICE inline TFloat InverseLinkFunction(TFloat score) const noexcept {
-      return score;
-   }
+   GPU_DEVICE inline TFloat CalcMetric(TFloat score, TFloat target) const noexcept {
+      TFloat prediction = score; // identity link
 
-   GPU_DEVICE inline void CalcMetric(TFloat prediction, TFloat target, TFloat & metric) const noexcept {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
       TFloat sqrtCalc = calc.Sqrt();
-      metric = m_deltaSquared * (sqrtCalc - 1.0);
+      return m_deltaSquared * (sqrtCalc - 1.0);
    }
 
-   GPU_DEVICE inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
-      TFloat error = prediction - target;
-      TFloat errorFraction = error * m_deltaInverted;
-      TFloat calc = errorFraction * errorFraction + 1.0;
-      TFloat sqrtCalc = calc.Sqrt();
-      gradient = error / sqrtCalc;
-   }
+   GPU_DEVICE inline void CalcGrad(TFloat score, TFloat target, TFloat & gradient) const noexcept {
+      TFloat prediction = score; // identity link
 
-   GPU_DEVICE inline void CalcGradMetric(TFloat prediction, TFloat target, TFloat & gradient, TFloat & metric) const noexcept {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
       TFloat sqrtCalc = calc.Sqrt();
       gradient = error / sqrtCalc;
-      metric = m_deltaSquared * (sqrtCalc - 1.0);
    }
 
-   // If the loss function doesn't have a second derivative, then delete CalcGradHess.
-   GPU_DEVICE inline void CalcGradHess(TFloat prediction, TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
+   // If the loss function doesn't have a second derivative, then delete the CalcGradHess function.
+   GPU_DEVICE inline void CalcGradHess(TFloat score, TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
+      TFloat prediction = score; // identity link
+
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
       TFloat sqrtCalc = calc.Sqrt();
       gradient = error / sqrtCalc;
       hessian = 1.0 / (calc * sqrtCalc);
-   }
-
-   // If the loss function doesn't have a second derivative, then delete CalcGradHessMetric.
-   GPU_DEVICE inline void CalcGradHessMetric(TFloat prediction, TFloat target, TFloat & gradient, TFloat & hessian, TFloat & metric) const noexcept {
-      TFloat error = prediction - target;
-      TFloat errorFraction = error * m_deltaInverted;
-      TFloat calc = errorFraction * errorFraction + 1.0;
-      TFloat sqrtCalc = calc.Sqrt();
-      gradient = error / sqrtCalc;
-      hessian = 1.0 / (calc * sqrtCalc);
-      metric = m_deltaSquared * (sqrtCalc - 1.0);
    }
 };
