@@ -10,11 +10,11 @@ template<typename TFloat>
 struct MseRegressionLoss final : public RegressionLoss {
 public:
    static constexpr bool k_bMse = true;
-   static ErrorEbm ApplyUpdate(const Loss * const pThis, ApplyUpdateBridge * const pData) {
-      return (static_cast<const MseRegressionLoss<TFloat> *>(pThis))->LossApplyUpdate<const MseRegressionLoss<TFloat>, TFloat>(pData);
+   static ErrorEbm StaticApplyUpdate(const Loss * const pThis, ApplyUpdateBridge * const pData) {
+      return (static_cast<const MseRegressionLoss<TFloat> *>(pThis))->ParentApplyUpdate<const MseRegressionLoss<TFloat>, TFloat>(pData);
    }
    void FillWrapper(void * const pWrapperOut) noexcept {
-      LossFillWrapper<MseRegressionLoss, TFloat>(pWrapperOut);
+      FillLossWrapper<MseRegressionLoss, TFloat>(pWrapperOut);
    }
 
    inline MseRegressionLoss(const Config & config) {
@@ -31,13 +31,13 @@ public:
       return 1.0;
    }
 
-   inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
       // This function is here to signal the MseRegressionLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
    }
 
-   inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
       // This function is here to signal the MseRegressionLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
@@ -46,7 +46,7 @@ public:
 
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
-   GPU_DEVICE void InteriorApplyUpdateTemplated(ApplyUpdateBridge * const pData) const {
+   GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(bKeepGradHess, "for MSE regression we should always keep the gradients");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;

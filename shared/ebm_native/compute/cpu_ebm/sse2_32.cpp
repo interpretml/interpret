@@ -39,12 +39,8 @@ struct Sse_32_Int final {
 private:
    __m128i m_data;
 };
-static_assert(std::is_standard_layout<Sse_32_Int>::value,
+static_assert(std::is_standard_layout<Sse_32_Int>::value && std::is_trivially_copyable<Sse_32_Int>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
-#if !(defined(__GNUC__) && __GNUC__ < 5)
-static_assert(std::is_trivially_copyable<Sse_32_Int>::value,
-   "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
-#endif // !(defined(__GNUC__) && __GNUC__ < 5)
 
 struct Sse_32_Float final {
    static constexpr int cPack = 4;
@@ -197,9 +193,9 @@ struct Sse_32_Float final {
    }
 
    template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
-   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
+   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
-      ExecuteApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pLoss, pData);
+      RemoteApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pLoss, pData);
       return Error_None;
    }
 
@@ -210,12 +206,8 @@ private:
 
    __m128 m_data;
 };
-static_assert(std::is_standard_layout<Sse_32_Float>::value,
+static_assert(std::is_standard_layout<Sse_32_Float>::value && std::is_trivially_copyable<Sse_32_Float>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
-#if !(defined(__GNUC__) && __GNUC__ < 5)
-static_assert(std::is_trivially_copyable<Sse_32_Float>::value,
-   "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
-#endif // !(defined(__GNUC__) && __GNUC__ < 5)
 
 // FIRST, define the RegisterLoss function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions

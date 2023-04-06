@@ -29,20 +29,20 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
       return 1.0;
    }
 
-   inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
       // This function is here to signal the LogLossMulticlassLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
    }
 
-   inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
       // This function is here to signal the LogLossMulticlassLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
       return 0.0;
    }
 
-   inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
       // This function is here to signal the LogLossMulticlassLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
@@ -50,7 +50,7 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
    }
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
-   GPU_DEVICE void InteriorApplyUpdateTemplated(ApplyUpdateBridge * const pData) const {
+   GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static constexpr bool bDynamic = k_dynamicScores == cCompilerScores;
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetExp = bCalcMetric || bKeepGradHess;

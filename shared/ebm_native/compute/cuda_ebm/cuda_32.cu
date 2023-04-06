@@ -44,12 +44,8 @@ struct Cuda_32_Int final {
 private:
    uint32_t m_data;
 };
-static_assert(std::is_standard_layout<Cuda_32_Int>::value,
+static_assert(std::is_standard_layout<Cuda_32_Int>::value && std::is_trivially_copyable<Cuda_32_Int>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
-#if !(defined(__GNUC__) && __GNUC__ < 5)
-static_assert(std::is_trivially_copyable<Cuda_32_Int>::value,
-   "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
-#endif // !(defined(__GNUC__) && __GNUC__ < 5)
 
 
 struct Cuda_32_Float final {
@@ -183,7 +179,7 @@ struct Cuda_32_Float final {
    }
 
    template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
-   INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) noexcept {
+   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) noexcept {
       static constexpr size_t k_cItems = 5;
 
       bool bExitError = true;
@@ -192,8 +188,7 @@ struct Cuda_32_Float final {
       const int aVal2[k_cItems] = { 100, 200, 300, 400, 500 };
       int aResult[k_cItems];
 
-      static_assert(std::is_standard_layout<TLoss>::value &&
-         std::is_trivially_copyable<TLoss>::value,
+      static_assert(std::is_standard_layout<TLoss>::value && std::is_trivially_copyable<TLoss>::value,
          "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
       int * aDeviceVal1 = nullptr;
@@ -244,7 +239,7 @@ struct Cuda_32_Float final {
       }
 
       TestGpuAdd<TLoss><<<1, k_cItems>>>(static_cast<Loss *>(pDeviceLoss), aDeviceVal1, aDeviceVal2, aDeviceResult);
-      ExecuteApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight><<<1, k_cItems>>>(pLoss, pData);
+      RemoteApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight><<<1, k_cItems>>>(pLoss, pData);
 
       error = cudaGetLastError();
       if(cudaSuccess != error) {
@@ -309,8 +304,7 @@ private:
 
    float m_data;
 };
-static_assert(std::is_standard_layout<Cuda_32_Float>::value &&
-   std::is_trivially_copyable<Cuda_32_Float>::value,
+static_assert(std::is_standard_layout<Cuda_32_Float>::value && std::is_trivially_copyable<Cuda_32_Float>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 // FIRST, define the RegisterLoss function that we'll be calling from our registrations.  This is a static 
