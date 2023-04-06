@@ -21,7 +21,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<typename TFloat, bool bClassification, size_t cCompilerScores = 1>
+template<typename TFloat, bool bHessian, size_t cCompilerScores = 1>
 struct Bin;
 
 struct BinBase {
@@ -30,13 +30,13 @@ struct BinBase {
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   template<typename TFloat, bool bClassification, size_t cCompilerScores = 1>
-   inline Bin<TFloat, bClassification, cCompilerScores> * Specialize() {
-      return static_cast<Bin<TFloat, bClassification, cCompilerScores> *>(this);
+   template<typename TFloat, bool bHessian, size_t cCompilerScores = 1>
+   inline Bin<TFloat, bHessian, cCompilerScores> * Specialize() {
+      return static_cast<Bin<TFloat, bHessian, cCompilerScores> *>(this);
    }
-   template<typename TFloat, bool bClassification, size_t cCompilerScores = 1>
-   inline const Bin<TFloat, bClassification, cCompilerScores> * Specialize() const {
-      return static_cast<const Bin<TFloat, bClassification, cCompilerScores> *>(this);
+   template<typename TFloat, bool bHessian, size_t cCompilerScores = 1>
+   inline const Bin<TFloat, bHessian, cCompilerScores> * Specialize() const {
+      return static_cast<const Bin<TFloat, bHessian, cCompilerScores> *>(this);
    }
 
    inline void ZeroMem(const size_t cBytesPerBin, const size_t cBins = 1, const size_t iBin = 0) {
@@ -63,11 +63,11 @@ static_assert(std::is_pod<BinBase>::value,
 
 
 template<typename TFloat>
-static bool IsOverflowBinSize(const bool bClassification, const size_t cScores);
+static bool IsOverflowBinSize(const bool bHessian, const size_t cScores);
 template<typename TFloat>
-static size_t GetBinSize(const bool bClassification, const size_t cScores);
+static size_t GetBinSize(const bool bHessian, const size_t cScores);
 
-template<typename TFloat, bool bClassification, size_t cCompilerScores>
+template<typename TFloat, bool bHessian, size_t cCompilerScores>
 struct Bin final : BinBase {
    template<typename> friend bool IsOverflowBinSize(const bool, const size_t);
    template<typename> friend size_t GetBinSize(const bool, const size_t);
@@ -78,7 +78,7 @@ private:
    TFloat m_weight;
 
    // IMPORTANT: m_aGradientPairs must be in the last position for the struct hack and this must be standard layout
-   GradientPair<TFloat, bClassification> m_aGradientPairs[cCompilerScores];
+   GradientPair<TFloat, bHessian> m_aGradientPairs[cCompilerScores];
 
 public:
 
@@ -101,25 +101,25 @@ public:
       m_weight = weight;
    }
 
-   inline const GradientPair<TFloat, bClassification> * GetGradientPairs() const {
+   inline const GradientPair<TFloat, bHessian> * GetGradientPairs() const {
       return ArrayToPointer(m_aGradientPairs);
    }
-   inline GradientPair<TFloat, bClassification> * GetGradientPairs() {
+   inline GradientPair<TFloat, bHessian> * GetGradientPairs() {
       return ArrayToPointer(m_aGradientPairs);
    }
 
-   inline const Bin<TFloat, bClassification, 1> * Downgrade() const {
-      return reinterpret_cast<const Bin<TFloat, bClassification, 1> *>(this);
+   inline const Bin<TFloat, bHessian, 1> * Downgrade() const {
+      return reinterpret_cast<const Bin<TFloat, bHessian, 1> *>(this);
    }
-   inline Bin<TFloat, bClassification, 1> * Downgrade() {
-      return reinterpret_cast<Bin<TFloat, bClassification, 1> *>(this);
+   inline Bin<TFloat, bHessian, 1> * Downgrade() {
+      return reinterpret_cast<Bin<TFloat, bHessian, 1> *>(this);
    }
 
    inline void Add(
       const size_t cScores,
       const Bin & other,
-      const GradientPair<TFloat, bClassification> * const aOtherGradientPairs,
-      GradientPair<TFloat, bClassification> * const aThisGradientPairs
+      const GradientPair<TFloat, bHessian> * const aOtherGradientPairs,
+      GradientPair<TFloat, bHessian> * const aThisGradientPairs
    ) {
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
       EBM_ASSERT(cScores != cCompilerScores || aOtherGradientPairs == other.GetGradientPairs());
@@ -138,7 +138,7 @@ public:
    inline void Add(
       const size_t cScores,
       const Bin & other,
-      const GradientPair<TFloat, bClassification> * const aOtherGradientPairs
+      const GradientPair<TFloat, bHessian> * const aOtherGradientPairs
    ) {
       Add(cScores, other, aOtherGradientPairs, GetGradientPairs());
    }
@@ -149,8 +149,8 @@ public:
    inline void Subtract(
       const size_t cScores,
       const Bin & other,
-      const GradientPair<TFloat, bClassification> * const aOtherGradientPairs,
-      GradientPair<TFloat, bClassification> * const aThisGradientPairs
+      const GradientPair<TFloat, bHessian> * const aOtherGradientPairs,
+      GradientPair<TFloat, bHessian> * const aThisGradientPairs
    ) {
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
       EBM_ASSERT(cScores != cCompilerScores || aOtherGradientPairs == other.GetGradientPairs());
@@ -169,7 +169,7 @@ public:
    inline void Subtract(
       const size_t cScores,
       const Bin & other,
-      const GradientPair<TFloat, bClassification> * const aOtherGradientPairs
+      const GradientPair<TFloat, bHessian> * const aOtherGradientPairs
    ) {
       Subtract(cScores, other, aOtherGradientPairs, GetGradientPairs());
    }
@@ -180,8 +180,8 @@ public:
    inline void Copy(
       const size_t cScores,
       const Bin & other,
-      const GradientPair<TFloat, bClassification> * const aOtherGradientPairs,
-      GradientPair<TFloat, bClassification> * const aThisGradientPairs
+      const GradientPair<TFloat, bHessian> * const aOtherGradientPairs,
+      GradientPair<TFloat, bHessian> * const aThisGradientPairs
    ) {
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
       EBM_ASSERT(cScores != cCompilerScores || aOtherGradientPairs == other.GetGradientPairs());
@@ -200,7 +200,7 @@ public:
    inline void Copy(
       const size_t cScores,
       const Bin & other,
-      const GradientPair<TFloat, bClassification> * const aOtherGradientPairs
+      const GradientPair<TFloat, bHessian> * const aOtherGradientPairs
    ) {
       Copy(cScores, other, aOtherGradientPairs, GetGradientPairs());
    }
@@ -210,7 +210,7 @@ public:
 
    inline void Zero(
       const size_t cScores,
-      GradientPair<TFloat, bClassification> * const aThisGradientPairs
+      GradientPair<TFloat, bHessian> * const aThisGradientPairs
    ) {
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
       EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == GetGradientPairs());
@@ -225,7 +225,7 @@ public:
 
    inline void AssertZero(
       const size_t cScores,
-      const GradientPair<TFloat, bClassification> * const aThisGradientPairs
+      const GradientPair<TFloat, bHessian> * const aThisGradientPairs
    ) const {
       UNUSED(cScores);
       UNUSED(aThisGradientPairs);
@@ -263,15 +263,15 @@ static_assert(std::is_pod<Bin<double, false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<typename TFloat>
-inline static bool IsOverflowBinSize(const bool bClassification, const size_t cScores) {
-   const size_t cBytesPerGradientPair = GetGradientPairSize<TFloat>(bClassification);
+inline static bool IsOverflowBinSize(const bool bHessian, const size_t cScores) {
+   const size_t cBytesPerGradientPair = GetGradientPairSize<TFloat>(bHessian);
 
    if(UNLIKELY(IsMultiplyError(cBytesPerGradientPair, cScores))) {
       return true;
    }
 
    size_t cBytesBinComponent;
-   if(bClassification) {
+   if(bHessian) {
       typedef Bin<TFloat, true> OffsetType;
       cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
    } else {
@@ -287,15 +287,15 @@ inline static bool IsOverflowBinSize(const bool bClassification, const size_t cS
 }
 
 template<typename TFloat>
-inline static size_t GetBinSize(const bool bClassification, const size_t cScores) {
+inline static size_t GetBinSize(const bool bHessian, const size_t cScores) {
    // TODO: someday try out bin sizes that are a power of two.  This would allow us to use a shift when using bins
    //       instead of using multiplications.  In that version return the number of bits to shift here to make it easy
    //       to get either the shift required for indexing OR the number of bytes (shift 1 << num_bits)
 
-   const size_t cBytesPerGradientPair = GetGradientPairSize<TFloat>(bClassification);
+   const size_t cBytesPerGradientPair = GetGradientPairSize<TFloat>(bHessian);
 
    size_t cBytesBinComponent;
-   if(bClassification) {
+   if(bHessian) {
       typedef Bin<TFloat, true> OffsetType;
       cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
    } else {
@@ -306,17 +306,17 @@ inline static size_t GetBinSize(const bool bClassification, const size_t cScores
    return cBytesBinComponent + cBytesPerGradientPair * cScores;
 }
 
-template<typename TFloat, bool bClassification, size_t cCompilerScores>
-inline static Bin<TFloat, bClassification, cCompilerScores> * IndexBin(
-   Bin<TFloat, bClassification, cCompilerScores> * const aBins,
+template<typename TFloat, bool bHessian, size_t cCompilerScores>
+inline static Bin<TFloat, bHessian, cCompilerScores> * IndexBin(
+   Bin<TFloat, bHessian, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
    return IndexByte(aBins, iByte);
 }
 
-template<typename TFloat, bool bClassification, size_t cCompilerScores>
-inline static const Bin<TFloat, bClassification, cCompilerScores> * IndexBin(
-   const Bin<TFloat, bClassification, cCompilerScores> * const aBins,
+template<typename TFloat, bool bHessian, size_t cCompilerScores>
+inline static const Bin<TFloat, bHessian, cCompilerScores> * IndexBin(
+   const Bin<TFloat, bHessian, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
    return IndexByte(aBins, iByte);
@@ -330,26 +330,26 @@ inline static const BinBase * IndexBin(const BinBase * const aBins, const size_t
    return IndexByte(aBins, iByte);
 }
 
-template<typename TFloat, bool bClassification, size_t cCompilerScores>
-inline static const Bin<TFloat, bClassification, cCompilerScores> * NegativeIndexBin(
-   const Bin<TFloat, bClassification, cCompilerScores> * const aBins,
+template<typename TFloat, bool bHessian, size_t cCompilerScores>
+inline static const Bin<TFloat, bHessian, cCompilerScores> * NegativeIndexBin(
+   const Bin<TFloat, bHessian, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
    return NegativeIndexByte(aBins, iByte);
 }
 
-template<typename TFloat, bool bClassification, size_t cCompilerScores>
-inline static Bin<TFloat, bClassification, cCompilerScores> * NegativeIndexBin(
-   Bin<TFloat, bClassification, cCompilerScores> * const aBins,
+template<typename TFloat, bool bHessian, size_t cCompilerScores>
+inline static Bin<TFloat, bHessian, cCompilerScores> * NegativeIndexBin(
+   Bin<TFloat, bHessian, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
    return NegativeIndexByte(aBins, iByte);
 }
 
-template<typename TFloat, bool bClassification, size_t cCompilerScores>
+template<typename TFloat, bool bHessian, size_t cCompilerScores>
 inline static size_t CountBins(
-   const Bin<TFloat, bClassification, cCompilerScores> * const pBinHigh,
-   const Bin<TFloat, bClassification, cCompilerScores> * const pBinLow,
+   const Bin<TFloat, bHessian, cCompilerScores> * const pBinHigh,
+   const Bin<TFloat, bHessian, cCompilerScores> * const pBinLow,
    const size_t cBytesPerBin
 ) {
    const size_t cBytesDiff = CountBytes(pBinHigh, pBinLow);

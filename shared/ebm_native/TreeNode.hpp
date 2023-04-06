@@ -21,10 +21,10 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-static bool IsOverflowTreeNodeSize(const bool bClassification, const size_t cScores);
-static size_t GetTreeNodeSize(const bool bClassification, const size_t cScores);
+static bool IsOverflowTreeNodeSize(const bool bHessian, const size_t cScores);
+static size_t GetTreeNodeSize(const bool bHessian, const size_t cScores);
 
-template<bool bClassification, size_t cCompilerScores = 1>
+template<bool bHessian, size_t cCompilerScores = 1>
 struct TreeNode final {
    friend bool IsOverflowTreeNodeSize(const bool, const size_t);
    friend size_t GetTreeNodeSize(const bool, const size_t);
@@ -35,20 +35,20 @@ struct TreeNode final {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
 
-   inline const Bin<FloatBig, bClassification, cCompilerScores> * BEFORE_GetBinFirst() const {
+   inline const Bin<FloatBig, bHessian, cCompilerScores> * BEFORE_GetBinFirst() const {
       EBM_ASSERT(0 == m_debugProgressionStage);
       return m_UNION.m_beforeGainCalc.m_pBinFirst;
    }
-   inline void BEFORE_SetBinFirst(const Bin<FloatBig, bClassification, cCompilerScores> * const pBinFirst) {
+   inline void BEFORE_SetBinFirst(const Bin<FloatBig, bHessian, cCompilerScores> * const pBinFirst) {
       EBM_ASSERT(0 == m_debugProgressionStage);
       m_UNION.m_beforeGainCalc.m_pBinFirst = pBinFirst;
    }
 
-   inline const Bin<FloatBig, bClassification, cCompilerScores> * BEFORE_GetBinLast() const {
+   inline const Bin<FloatBig, bHessian, cCompilerScores> * BEFORE_GetBinLast() const {
       EBM_ASSERT(0 == m_debugProgressionStage);
-      return reinterpret_cast<const Bin<FloatBig, bClassification, cCompilerScores> *>(pBinLastOrChildren);
+      return reinterpret_cast<const Bin<FloatBig, bHessian, cCompilerScores> *>(pBinLastOrChildren);
    }
-   inline void BEFORE_SetBinLast(const Bin<FloatBig, bClassification, cCompilerScores> * const pBinLast) {
+   inline void BEFORE_SetBinLast(const Bin<FloatBig, bHessian, cCompilerScores> * const pBinLast) {
       EBM_ASSERT(0 == m_debugProgressionStage);
       // we aren't going to modify pBinLast, but we're storing it in a shared pointer, so remove the const for now
       pBinLastOrChildren = const_cast<void *>(static_cast<const void *>(pBinLast));
@@ -153,26 +153,26 @@ struct TreeNode final {
       return m_bin.GetWeight();
    }
 
-   inline const GradientPair<FloatBig, bClassification> * GetGradientPairs() const {
+   inline const GradientPair<FloatBig, bHessian> * GetGradientPairs() const {
       return m_bin.GetGradientPairs();
    }
-   inline GradientPair<FloatBig, bClassification> * GetGradientPairs() {
+   inline GradientPair<FloatBig, bHessian> * GetGradientPairs() {
       return m_bin.GetGradientPairs();
    }
 
-   inline const Bin<FloatBig, bClassification, cCompilerScores> * GetBin() const {
+   inline const Bin<FloatBig, bHessian, cCompilerScores> * GetBin() const {
       return &m_bin;
    }
-   inline Bin<FloatBig, bClassification, cCompilerScores> * GetBin() {
+   inline Bin<FloatBig, bHessian, cCompilerScores> * GetBin() {
       return &m_bin;
    }
 
    template<size_t cNewCompilerScores>
-   inline TreeNode<bClassification, cNewCompilerScores> * Upgrade() {
-      return reinterpret_cast<TreeNode<bClassification, cNewCompilerScores> *>(this);
+   inline TreeNode<bHessian, cNewCompilerScores> * Upgrade() {
+      return reinterpret_cast<TreeNode<bHessian, cNewCompilerScores> *>(this);
    }
-   inline TreeNode<bClassification, 1> * Downgrade() {
-      return reinterpret_cast<TreeNode<bClassification, 1> *>(this);
+   inline TreeNode<bHessian, 1> * Downgrade() {
+      return reinterpret_cast<TreeNode<bHessian, 1> *>(this);
    }
 
 
@@ -186,7 +186,7 @@ struct TreeNode final {
 private:
 
    struct BeforeGainCalc final {
-      const Bin<FloatBig, bClassification, cCompilerScores> * m_pBinFirst;
+      const Bin<FloatBig, bHessian, cCompilerScores> * m_pBinFirst;
    };
 
    struct AfterGainCalc final {
@@ -211,7 +211,7 @@ private:
    TreeNodeUnion m_UNION;
 
    // IMPORTANT: m_bin must be in the last position for the struct hack and this must be standard layout
-   Bin<FloatBig, bClassification, cCompilerScores> m_bin;
+   Bin<FloatBig, bHessian, cCompilerScores> m_bin;
 };
 static_assert(std::is_standard_layout<TreeNode<true>>::value && std::is_standard_layout<TreeNode<false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -220,12 +220,12 @@ static_assert(std::is_trivial<TreeNode<true>>::value && std::is_trivial<TreeNode
 static_assert(std::is_pod<TreeNode<true>>::value && std::is_pod<TreeNode<false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-inline static bool IsOverflowTreeNodeSize(const bool bClassification, const size_t cScores) {
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // check this before calling us
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
+inline static bool IsOverflowTreeNodeSize(const bool bHessian, const size_t cScores) {
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bHessian, cScores)); // check this before calling us
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
 
    size_t cBytesTreeNodeComponent;
-   if(bClassification) {
+   if(bHessian) {
       typedef TreeNode<true> OffsetType;
       cBytesTreeNodeComponent = offsetof(OffsetType, m_bin);
    } else {
@@ -240,11 +240,11 @@ inline static bool IsOverflowTreeNodeSize(const bool bClassification, const size
    return false;
 }
 
-inline static size_t GetTreeNodeSize(const bool bClassification, const size_t cScores) {
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
+inline static size_t GetTreeNodeSize(const bool bHessian, const size_t cScores) {
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
 
    size_t cBytesTreeNodeComponent;
-   if(bClassification) {
+   if(bHessian) {
       typedef TreeNode<true> OffsetType;
       cBytesTreeNodeComponent = offsetof(OffsetType, m_bin);
    } else {
@@ -255,32 +255,32 @@ inline static size_t GetTreeNodeSize(const bool bClassification, const size_t cS
    return cBytesTreeNodeComponent + cBytesPerBin;
 }
 
-template<bool bClassification, size_t cCompilerScores>
-inline static TreeNode<bClassification, cCompilerScores> * IndexTreeNode(
-   TreeNode<bClassification, cCompilerScores> * const pTreeNode,
+template<bool bHessian, size_t cCompilerScores>
+inline static TreeNode<bHessian, cCompilerScores> * IndexTreeNode(
+   TreeNode<bHessian, cCompilerScores> * const pTreeNode,
    const size_t iByte
 ) {
    return IndexByte(pTreeNode, iByte);
 }
 
-template<bool bClassification, size_t cCompilerScores>
-inline static const TreeNode<bClassification, cCompilerScores> * IndexTreeNode(
-   const TreeNode<bClassification, cCompilerScores> * const pTreeNode,
+template<bool bHessian, size_t cCompilerScores>
+inline static const TreeNode<bHessian, cCompilerScores> * IndexTreeNode(
+   const TreeNode<bHessian, cCompilerScores> * const pTreeNode,
    const size_t iByte
 ) {
    return IndexByte(pTreeNode, iByte);
 }
 
-template<bool bClassification, size_t cCompilerScores>
-inline static TreeNode<bClassification, cCompilerScores> * GetLeftNode(
-   TreeNode<bClassification, cCompilerScores> * const pChildren
+template<bool bHessian, size_t cCompilerScores>
+inline static TreeNode<bHessian, cCompilerScores> * GetLeftNode(
+   TreeNode<bHessian, cCompilerScores> * const pChildren
 ) {
    return pChildren;
 }
 
-template<bool bClassification, size_t cCompilerScores>
-inline static TreeNode<bClassification, cCompilerScores> * GetRightNode(
-   TreeNode<bClassification, cCompilerScores> * const pChildren,
+template<bool bHessian, size_t cCompilerScores>
+inline static TreeNode<bHessian, cCompilerScores> * GetRightNode(
+   TreeNode<bHessian, cCompilerScores> * const pChildren,
    const size_t cBytesPerTreeNode
 ) {
    return IndexTreeNode(pChildren, cBytesPerTreeNode);

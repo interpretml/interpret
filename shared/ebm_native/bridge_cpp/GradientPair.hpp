@@ -37,7 +37,7 @@ static_assert(std::is_standard_layout<FloatAndInt<double>>::value && std::is_tri
 static_assert(sizeof(FloatAndInt<float>) == sizeof(float), "FloatAndInt<float> and float must be the same size");
 static_assert(sizeof(FloatAndInt<double>) == sizeof(double), "FloatAndInt<double> and double must be the same size");
 
-template<typename TFloat, bool bClassification>
+template<typename TFloat, bool bHessian>
 struct GradientPair;
 
 template<typename TFloat>
@@ -170,9 +170,9 @@ static_assert(std::is_trivial<GradientPair<float, false>>::value,
 static_assert(std::is_pod<GradientPair<float, false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-template<typename TFloat, bool bClassification>
+template<typename TFloat, bool bHessian>
 inline static void ZeroGradientPairs(
-   GradientPair<TFloat, bClassification> * const aGradientPairs, 
+   GradientPair<TFloat, bHessian> * const aGradientPairs, 
    const size_t cScores
 ) {
    EBM_ASSERT(1 <= cScores);
@@ -184,8 +184,8 @@ inline static void ZeroGradientPairs(
 }
 
 template<typename TFloat>
-inline static size_t GetGradientPairSize(const bool bClassification) {
-   if(bClassification) {
+inline static size_t GetGradientPairSize(const bool bHessian) {
+   if(bHessian) {
       return sizeof(GradientPair<TFloat, true>);
    } else {
       return sizeof(GradientPair<TFloat, false>);

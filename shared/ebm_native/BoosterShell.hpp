@@ -23,10 +23,10 @@ class Tensor;
 struct BinBase;
 class BoosterCore;
 
-template<bool bClassification, size_t cCompilerScores>
+template<bool bHessian, size_t cCompilerScores>
 struct SplitPosition;
 
-template<bool bClassification, size_t cCompilerScores>
+template<bool bHessian, size_t cCompilerScores>
 struct TreeNode;
 
 class BoosterShell final {
@@ -135,14 +135,14 @@ public:
       return m_aMulticlassMidwayTemp;
    }
 
-   template<bool bClassification, size_t cCompilerScores = 1>
-   INLINE_ALWAYS TreeNode<bClassification, cCompilerScores> * GetTreeNodesTemp() {
-      return static_cast<TreeNode<bClassification, cCompilerScores> *>(m_aTreeNodesTemp);
+   template<bool bHessian, size_t cCompilerScores = 1>
+   INLINE_ALWAYS TreeNode<bHessian, cCompilerScores> * GetTreeNodesTemp() {
+      return static_cast<TreeNode<bHessian, cCompilerScores> *>(m_aTreeNodesTemp);
    }
 
-   template<bool bClassification, size_t cCompilerScores = 1>
-   INLINE_ALWAYS SplitPosition<bClassification, cCompilerScores> * GetSplitPositionsTemp() {
-      return static_cast<SplitPosition<bClassification, cCompilerScores> *>(m_aSplitPositionsTemp);
+   template<bool bHessian, size_t cCompilerScores = 1>
+   INLINE_ALWAYS SplitPosition<bHessian, cCompilerScores> * GetSplitPositionsTemp() {
+      return static_cast<SplitPosition<bHessian, cCompilerScores> *>(m_aSplitPositionsTemp);
    }
 
 
