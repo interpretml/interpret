@@ -4,35 +4,35 @@
 
 // !! To add a new loss/objective function in C++ follow the steps at the top of the "loss_registrations.hpp" file !!
 
-// DO NOT INCLUDE ANY FILES IN THIS FILE. THEY WILL NOT BE ZONED PROPERLY
+// DO NOT INCLUDE FILES IN THIS FILE. They will not be zoned properly. Include files go into the operator *.cpp files.
 
 // TFloat is a datatype that could hold inside a double, float, or some SIMD intrinsic type.
-// See sse2_32.cpp, cuda_32.cpp, and cpu_64.cpp as examples.
+// See sse2_32.cpp, cuda_32.cpp, and cpu_64.cpp as examples where TFloat operators are defined.
 template<typename TFloat>
-struct PseudoHuberRegressionLoss final : public RegressionLoss {
+struct PseudoHuberRegressionLoss : RegressionLoss {
    LOSS_BOILERPLATE(PseudoHuberRegressionLoss)
 
    TFloat m_deltaInverted;
    TFloat m_deltaSquared;
 
-   // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in loss_registrations.hpp
-   inline PseudoHuberRegressionLoss(const Config & config, double delta) {
-      if(1 != config.cOutputs) {
+   // The constructor parameters following config must match the RegisterLoss parameters in loss_registrations.hpp
+   inline PseudoHuberRegressionLoss(const Config & config, const double delta) {
+      if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }
 
-      if(delta == 0.0 || std::isnan(delta) || std::isinf(delta)) {
+      if(delta == 0.0 || isnan(delta) || isinf(delta)) {
          throw ParamValOutOfRangeException();
       }
 
       const double deltaSquared = delta * delta;
-      if(std::isinf(deltaSquared)) {
+      if(isinf(deltaSquared)) {
          throw ParamValOutOfRangeException();
       }
       m_deltaSquared = deltaSquared;
 
       const double deltaInverted = 1.0 / delta;
-      if(std::isinf(deltaInverted)) {
+      if(isinf(deltaInverted)) {
          throw ParamValOutOfRangeException();
       }
       m_deltaInverted = deltaInverted;
@@ -46,12 +46,12 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
       return 1.0;
    }
 
-   GPU_DEVICE inline TFloat InverseLinkFunction(TFloat score) const noexcept {
-      // identity link
+   GPU_DEVICE inline TFloat InverseLinkFunction(const TFloat score) const noexcept {
+      // pseudo_huber uses an identity link function
       return score;
    }
 
-   GPU_DEVICE inline TFloat CalcMetric(TFloat prediction, TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
@@ -59,7 +59,7 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
       return m_deltaSquared * (sqrtCalc - 1.0);
    }
 
-   GPU_DEVICE inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
+   GPU_DEVICE inline void CalcGradient(const TFloat prediction, const TFloat target, TFloat & gradient) const noexcept {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
@@ -67,8 +67,8 @@ struct PseudoHuberRegressionLoss final : public RegressionLoss {
       gradient = error / sqrtCalc;
    }
 
-   // If the loss function doesn't have a second derivative, then delete the CalcGradHess function.
-   GPU_DEVICE inline void CalcGradHess(TFloat prediction, TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
+   // If the loss function doesn't have a second derivative, then delete the CalcGradientHessian function.
+   GPU_DEVICE inline void CalcGradientHessian(const TFloat prediction, const TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;

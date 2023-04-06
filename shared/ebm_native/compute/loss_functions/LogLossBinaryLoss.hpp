@@ -6,8 +6,6 @@
 
 // Do not use this file as a reference for other loss functions. LogLoss is special.
 
-// DO NOT INCLUDE ANY FILES IN THIS FILE. THEY WILL NOT BE ZONED PROPERLY
-
 template<typename TFloat>
 struct LogLossBinaryLoss final : public BinaryLoss {
    LOSS_CONSTANTS_BOILERPLATE(LogLossBinaryLoss)
@@ -27,20 +25,20 @@ struct LogLossBinaryLoss final : public BinaryLoss {
       return 1.0;
    }
 
-   inline TFloat CalcMetric(TFloat prediction, TFloat target) const noexcept {
+   inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
       // This function is here to signal the LogLossBinaryLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
    }
 
-   inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
+   inline void CalcGradient(const TFloat prediction, const TFloat target, TFloat & gradient) const noexcept {
       // This function is here to signal the LogLossBinaryLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
       UNUSED(gradient);
    }
 
-   inline void CalcGradHess(TFloat prediction, TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
+   inline void CalcGradientHessian(const TFloat prediction, const TFloat target, TFloat & gradient, TFloat & hessian) const noexcept {
       // This function is here to signal the LogLossBinaryLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);

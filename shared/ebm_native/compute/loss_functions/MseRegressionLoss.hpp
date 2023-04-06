@@ -6,13 +6,10 @@
 
 // Do not use this file as a reference for other loss functions. MSE is special.
 
-// DO NOT INCLUDE ANY FILES IN THIS FILE. THEY WILL NOT BE ZONED PROPERLY
-
 template<typename TFloat>
 struct MseRegressionLoss final : public RegressionLoss {
 public:
    static constexpr bool k_bMse = true;
-   static constexpr bool k_bVectorized = true;
    static ErrorEbm ApplyUpdate(const Loss * const pThis, ApplyUpdateBridge * const pData) {
       return (static_cast<const MseRegressionLoss<TFloat> *>(pThis))->LossApplyUpdate<const MseRegressionLoss<TFloat>, TFloat>(pData);
    }
@@ -34,13 +31,13 @@ public:
       return 1.0;
    }
 
-   inline TFloat CalcMetric(TFloat prediction, TFloat target) const noexcept {
+   inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
       // This function is here to signal the MseRegressionLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
    }
 
-   inline void CalcGrad(TFloat prediction, TFloat target, TFloat & gradient) const noexcept {
+   inline void CalcGradient(const TFloat prediction, const TFloat target, TFloat & gradient) const noexcept {
       // This function is here to signal the MseRegressionLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);

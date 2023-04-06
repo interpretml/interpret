@@ -256,9 +256,9 @@ struct Loss : public Registrable {
                TFloat gradient;
                TFloat hessian;
                if(bHessian) {
-                  pLoss->CalcGradHess(prediction, target, gradient, hessian);
+                  pLoss->CalcGradientHessian(prediction, target, gradient, hessian);
                } else {
-                  pLoss->CalcGrad(prediction, target, gradient);
+                  pLoss->CalcGradient(prediction, target, gradient);
                }
                if(bWeight) {
                   // This is only used during the initialization of interaction detection. For boosting
@@ -406,10 +406,10 @@ struct Loss : public Registrable {
 
    template<class TLoss, typename TFloat>
    struct HasCalculateHessianFunctionInternal {
-      // use SFINAE to determine if TLoss has the function CalcGradHess with the correct signature
+      // use SFINAE to determine if TLoss has the function CalcGradientHessian with the correct signature
 
       template<typename T>
-      static auto check(T * p) -> decltype(p->CalcGradHess(std::declval<TFloat>(), std::declval<TFloat>(),std::declval<TFloat &>(), std::declval<TFloat &>()), std::true_type());
+      static auto check(T * p) -> decltype(p->CalcGradientHessian(std::declval<TFloat>(), std::declval<TFloat>(),std::declval<TFloat &>(), std::declval<TFloat &>()), std::true_type());
 
       static std::false_type check(...);
 
@@ -421,7 +421,7 @@ protected:
 
    template<typename TLoss, typename TFloat>
    constexpr static bool HasCalculateHessianFunction() {
-      // use SFINAE to determine if TLoss has the function CalcGradHess with the correct signature
+      // use SFINAE to determine if TLoss has the function CalcGradientHessian with the correct signature
       return HasCalculateHessianFunctionInternal<TLoss, TFloat>::value;
    }
 
