@@ -303,7 +303,7 @@ class EBMModel(BaseEstimator):
         # Trees
         min_samples_leaf=2,
         max_leaves=3,
-        # objective,
+        objective=None,
         # Overall
         n_jobs=-2,
         random_state=42,
@@ -344,6 +344,7 @@ class EBMModel(BaseEstimator):
             self.min_samples_leaf = min_samples_leaf
 
         self.max_leaves = max_leaves
+        self.objective = objective
 
         self.n_jobs = n_jobs
         self.random_state = random_state
@@ -807,6 +808,7 @@ class EBMModel(BaseEstimator):
                         noise_scale_boosting,
                         bin_data_weights,
                         rngs[idx],
+                        self.objective,
                         None,
                     )
                 )
@@ -919,6 +921,7 @@ class EBMModel(BaseEstimator):
                                 Native.InteractionFlags_Default,
                                 max_cardinality,
                                 min_samples_leaf,
+                                self.objective,
                                 None,
                             )
                         )
@@ -1012,6 +1015,7 @@ class EBMModel(BaseEstimator):
                             noise_scale_boosting,
                             bin_data_weights,
                             rngs[idx],
+                            self.objective,
                             None,
                         )
                     )
@@ -2111,7 +2115,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         # Trees
         min_samples_leaf: Optional[int] = 2,
         max_leaves: int = 3,
-        # objective,
+        objective: str =None,
         # Overall
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = 42,
@@ -2134,6 +2138,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             early_stopping_tolerance=early_stopping_tolerance,
             min_samples_leaf=min_samples_leaf,
             max_leaves=max_leaves,
+            objective=objective,
             n_jobs=n_jobs,
             random_state=random_state,
         )
@@ -2431,7 +2436,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Trees
         min_samples_leaf: Optional[int] = 2,
         max_leaves: int = 3,
-        # objective,
+        objective: str=None,
         # Overall
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = 42,
@@ -2454,6 +2459,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             early_stopping_tolerance=early_stopping_tolerance,
             min_samples_leaf=min_samples_leaf,
             max_leaves=max_leaves,
+            objective=objective,
             n_jobs=n_jobs,
             random_state=random_state,
         )
@@ -2656,7 +2662,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         max_rounds: Optional[int] = 300,
         # Trees
         max_leaves: int = 3,
-        # objective,
+        objective: str=None,
         # Overall
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = None,
@@ -2687,6 +2693,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             early_stopping_tolerance=0.0,
             min_samples_leaf=0,
             max_leaves=max_leaves,
+            objective=objective,
             n_jobs=n_jobs,
             random_state=random_state,
             epsilon=epsilon,
@@ -2920,7 +2927,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         max_rounds: Optional[int] = 300,
         # Trees
         max_leaves: int = 3,
-        # objective,
+        objective: str=None,
         # Overall
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = None,
@@ -2953,6 +2960,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             early_stopping_tolerance=0.0,
             min_samples_leaf=0,
             max_leaves=max_leaves,
+            objective=objective,
             n_jobs=n_jobs,
             random_state=random_state,
             epsilon=epsilon,

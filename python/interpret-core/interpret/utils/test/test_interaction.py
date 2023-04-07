@@ -307,7 +307,7 @@ def test_impure_interaction_is_zero():
             y,
             min_samples_leaf=1,
             sample_weight=sample_weight,
-            objective="regression",
+            objective="mse",
         )
     )
     assert ranked_strengths[(0, 1)] == 0.0

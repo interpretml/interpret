@@ -973,6 +973,8 @@ class Native:
             ct.c_void_p,
             # int64_t countInnerBags
             ct.c_int64,
+            # char * objective
+            ct.c_char_p,
             # double * experimentalParams
             ct.c_void_p,
             # BoosterHandle * boosterHandleOut
@@ -1071,6 +1073,8 @@ class Native:
             ct.c_void_p,
             # double * initScores
             ct.c_void_p,
+            # char * objective
+            ct.c_char_p,
             # double * experimentalParams
             ct.c_void_p,
             # InteractionHandle * interactionHandleOut
@@ -1114,6 +1118,7 @@ class Booster(AbstractContextManager):
         term_features,
         n_inner_bags,
         rng,
+        objective,
         experimental_params,
     ):
         """Initializes internal wrapper for EBM C code.
@@ -1137,6 +1142,7 @@ class Booster(AbstractContextManager):
         self.term_features = term_features
         self.n_inner_bags = n_inner_bags
         self.rng = rng
+        self.objective = objective
         self.experimental_params = experimental_params
 
         # start off with an invalid _term_idx
@@ -1213,6 +1219,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(dimension_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
+            None if self.objective is None else ct.c_char_p(self.objective.encode('ascii')),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(booster_handle),
         )
@@ -1525,6 +1532,7 @@ class InteractionDetector(AbstractContextManager):
         dataset,
         bag,
         init_scores,
+        objective,
         experimental_params,
     ):
         """Initializes internal wrapper for EBM C code.
@@ -1543,6 +1551,7 @@ class InteractionDetector(AbstractContextManager):
         self.dataset = dataset
         self.bag = bag
         self.init_scores = init_scores
+        self.objective = objective
         self.experimental_params = experimental_params
 
     def __enter__(self):
@@ -1590,6 +1599,7 @@ class InteractionDetector(AbstractContextManager):
             Native._make_pointer(
                 self.init_scores, np.float64, 2 if 1 < n_class_scores else 1, True
             ),
+            None if self.objective is None else ct.c_char_p(self.objective.encode('ascii')),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(interaction_handle),
         )

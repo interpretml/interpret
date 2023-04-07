@@ -1222,6 +1222,7 @@ class EBMUtils:
         noise_scale,
         bin_weights,
         rng,
+        objective,
         experimental_params=None,
     ):
         episode_index = 0
@@ -1232,6 +1233,7 @@ class EBMUtils:
             term_features,
             n_inner_bags,
             rng,
+            objective,
             experimental_params,
         ) as booster:
             # the first round is alwasy cyclic since we need to get the initial gains

@@ -61,6 +61,7 @@ void InteractionCore::Free(InteractionCore * const pInteractionCore) {
 ErrorEbm InteractionCore::Create(
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
+   const char * const sObjective,
    const double * const experimentalParams,
    InteractionCore ** const ppInteractionCoreOut
 ) {
@@ -207,11 +208,9 @@ ErrorEbm InteractionCore::Create(
    if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
       const size_t cScores = GetCountScores(cClasses);
 
-      const char * const sLoss = nullptr;
-
       Config config;
       config.cOutputs = cScores;
-      error = GetLoss(IsClassification(cClasses), &config, sLoss, &pRet->m_loss);
+      error = GetLoss(IsClassification(cClasses), &config, sObjective, &pRet->m_loss);
       if(Error_None != error) {
          // already logged
          return error;

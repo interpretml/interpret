@@ -191,6 +191,7 @@ public:
       const unsigned char * const pDataSetShared,
       const BagEbm * const aBag,
       const double * const aInitScores,
+      const char * const sObjective,
       BoosterCore ** const ppBoosterCoreOut
    );
 

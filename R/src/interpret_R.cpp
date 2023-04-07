@@ -747,6 +747,7 @@ SEXP CreateBooster_R(
       aiTermFeatures,
       cInnerBags,
       nullptr,
+      nullptr,
       &boosterHandle
    );
    if(Error_None != err || nullptr == boosterHandle) {
@@ -1033,6 +1034,7 @@ SEXP CreateInteractionDetector_R(SEXP dataSetWrapped, SEXP bag, SEXP initScores)
       pDataSet,
       aBag,
       aInitScores,
+      nullptr,
       nullptr,
       &interactionHandle
    );

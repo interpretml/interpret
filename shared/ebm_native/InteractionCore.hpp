@@ -90,6 +90,7 @@ public:
    static ErrorEbm Create(
       const unsigned char * const pDataSetShared,
       const BagEbm * const aBag,
+      const char * const sObjective,
       const double * const experimentalParams,
       InteractionCore ** const ppInteractionCoreOut
    );

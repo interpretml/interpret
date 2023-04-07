@@ -37,12 +37,13 @@ def _get_ranked_interactions(
     interaction_flags,
     max_cardinality,
     min_samples_leaf,
+    objective, 
     experimental_params=None,
     n_output_interactions=0,
 ):
     interaction_strengths = []
     with InteractionDetector(
-        dataset, bag, init_scores, experimental_params
+        dataset, bag, init_scores, objective, experimental_params
     ) as interaction_detector:
         for feature_idxs in iter_term_features:
             if tuple(sorted(feature_idxs)) in exclude:
@@ -93,7 +94,7 @@ def measure_interactions(
         feature_types: List of feature types, for example "continuous" or "nominal"
         max_interaction_bins: Max number of bins per interaction terms
         min_samples_leaf: Minimum number of samples for tree splits used when calculating gain
-        objective: 'regression' (RMSE) or 'classification' (log loss) or None for auto. More objectives to come
+        objective: 'mse' (regression) or 'log_loss' (classification) or None for auto. More objectives to come
     Returns:
         List containing a tuple of feature indices for the terms and interaction strengths,
             e.g. [((1, 2), 0.134), ((3, 7), 0.0842)].  Ordered by decreasing interaction strengths.
@@ -113,9 +114,9 @@ def measure_interactions(
         raise ValueError(msg)
 
     is_classification = None
-    if objective in ["classification"]:
+    if objective in ["log_loss"]:
         is_classification = True
-    elif objective in ["regression"]:
+    elif objective in ["mse"]:
         is_classification = False
 
     classes = None
@@ -260,6 +261,7 @@ def measure_interactions(
         interaction_flags=Native.InteractionFlags_Pure,
         max_cardinality=max_cardinality,
         min_samples_leaf=min_samples_leaf,
+        objective=objective,
         experimental_params=None,
         n_output_interactions=n_output_interactions,
     )

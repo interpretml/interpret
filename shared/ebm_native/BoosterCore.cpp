@@ -188,6 +188,7 @@ ErrorEbm BoosterCore::Create(
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
    const double * const aInitScores,
+   const char * const sObjective,
    BoosterCore ** const ppBoosterCoreOut
 ) {
    // experimentalParams isn't used by default.  It's meant to provide an easy way for python or other higher
@@ -571,11 +572,9 @@ ErrorEbm BoosterCore::Create(
    if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
       const size_t cScores = GetCountScores(cClasses);
 
-      const char * const sLoss = nullptr;
-
       Config config;
       config.cOutputs = cScores;
-      error = GetLoss(IsClassification(cClasses), &config, sLoss, &pBoosterCore->m_loss);
+      error = GetLoss(IsClassification(cClasses), &config, sObjective, &pBoosterCore->m_loss);
       if (Error_None != error) {
          // already logged
          return error;

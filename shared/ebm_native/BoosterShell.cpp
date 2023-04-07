@@ -149,6 +149,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    const IntEbm * dimensionCounts,
    const IntEbm * featureIndexes,
    IntEbm countInnerBags,
+   const char * objective,
    const double * experimentalParams,
    BoosterHandle * boosterHandleOut
 ) {
@@ -163,6 +164,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       "dimensionCounts=%p, "
       "featureIndexes=%p, "
       "countInnerBags=%" IntEbmPrintf ", "
+      "objective=%p, "
       "experimentalParams=%p, "
       "boosterHandleOut=%p"
       ,
@@ -174,6 +176,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       static_cast<const void *>(dimensionCounts),
       static_cast<const void *>(featureIndexes),
       countInnerBags,
+      static_cast<const void *>(objective), // do not print the string for security reasons
       static_cast<const void *>(experimentalParams),
       static_cast<const void *>(boosterHandleOut)
    );
@@ -226,6 +229,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       static_cast<const unsigned char *>(dataSet),
       bag,
       initScores,
+      objective,
       &pBoosterCore
    );
    if(UNLIKELY(Error_None != error)) {

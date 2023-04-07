@@ -359,6 +359,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    const IntEbm * dimensionCounts,
    const IntEbm * featureIndexes,
    IntEbm countInnerBags,
+   const char * objective,
    const double * experimentalParams,
    BoosterHandle * boosterHandleOut
 );
@@ -415,6 +416,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    const BagEbm * bag,
    // TODO: add a baseScore parameter here for symmetry with CreateBooster
    const double * initScores, // only samples with non-zeros in the bag are included
+   const char * objective,
    const double * experimentalParams,
    InteractionHandle * interactionHandleOut
 );

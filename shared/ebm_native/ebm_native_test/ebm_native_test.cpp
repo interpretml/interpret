@@ -635,6 +635,7 @@ void TestApi::InitializeBoosting(const IntEbm countInnerBags) {
       0 == m_featureIndexes.size() ? nullptr : &m_featureIndexes[0],
       countInnerBags,
       nullptr,
+      nullptr,
       &m_boosterHandle
    );
 
@@ -1013,6 +1014,7 @@ void TestApi::InitializeInteraction() {
       pDataSet,
       0 == bag.size() ? nullptr : &bag[0],
       0 == m_interactionInitScores.size() ? nullptr : &m_interactionInitScores[0],
+      nullptr,
       nullptr,
       &m_interactionHandle
    );

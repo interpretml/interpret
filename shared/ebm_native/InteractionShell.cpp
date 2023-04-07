@@ -129,6 +129,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
    const BagEbm * bag,
    const double * initScores, // only samples with non-zeros in the bag are included
+   const char * objective,
    const double * experimentalParams,
    InteractionHandle * interactionHandleOut
 ) {
@@ -136,12 +137,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       "dataSet=%p, "
       "bag=%p, "
       "initScores=%p, "
+      "objective=%p, "
       "experimentalParams=%p, "
       "interactionHandleOut=%p"
       ,
       static_cast<const void *>(dataSet),
       static_cast<const void *>(bag),
       static_cast<const void *>(initScores),
+      static_cast<const void *>(objective), // do not print the string for security reasons
       static_cast<const void *>(experimentalParams),
       static_cast<const void *>(interactionHandleOut)
    );
@@ -163,6 +166,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    error = InteractionCore::Create(
       static_cast<const unsigned char *>(dataSet),
       bag,
+      objective,
       experimentalParams,
       &pInteractionCore
    );
