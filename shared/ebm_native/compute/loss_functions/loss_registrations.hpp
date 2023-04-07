@@ -22,6 +22,7 @@
 //   6) Enjoy your new Loss function, and send us a PR on Github if you think others would benefit.
 
 // Add new "*Loss.h" include files here:
+#include "ExampleRegressionLoss.hpp"
 #include "PseudoHuberRegressionLoss.hpp"
 #include "MseRegressionLoss.hpp"
 #include "LogLossBinaryLoss.hpp"
@@ -31,6 +32,7 @@
 static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
    // IMPORTANT: the parameter types listed here must match the parameters types in your Loss class constructor
    return {
+      RegisterLoss<ExampleRegressionLoss>("example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
       RegisterLoss<PseudoHuberRegressionLoss>("pseudo_huber", FloatParam("delta", 1.0)),
       RegisterLoss<MseRegressionLoss>("mse"),
       RegisterLoss<LogLossBinaryLoss>("log_loss"),

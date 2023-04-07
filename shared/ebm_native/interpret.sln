@@ -89,6 +89,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "loss_functions", "loss_func
 		compute\loss_functions\CrossEntropyBinaryLoss.hpp = compute\loss_functions\CrossEntropyBinaryLoss.hpp
 		compute\loss_functions\CrossEntropyMulticlassLoss.hpp = compute\loss_functions\CrossEntropyMulticlassLoss.hpp
 		compute\loss_functions\CrossEntropyMulticlassMultitaskLoss.hpp = compute\loss_functions\CrossEntropyMulticlassMultitaskLoss.hpp
+		compute\loss_functions\ExampleRegressionLoss.hpp = compute\loss_functions\ExampleRegressionLoss.hpp
 		compute\loss_functions\LogLossBinaryLoss.hpp = compute\loss_functions\LogLossBinaryLoss.hpp
 		compute\loss_functions\LogLossBinaryMultitaskLoss.hpp = compute\loss_functions\LogLossBinaryMultitaskLoss.hpp
 		compute\loss_functions\LogLossMulticlassLoss.hpp = compute\loss_functions\LogLossMulticlassLoss.hpp
