@@ -60,16 +60,29 @@ class GradientHessian {
    TFloat m_hessian;
 
 public:
-
-   GPU_DEVICE inline GradientHessian(const TFloat gradient, const TFloat hessian) : m_gradient(gradient), m_hessian(hessian) {
+   template<typename T1, typename T2>
+   GPU_DEVICE inline GradientHessian(const T1 gradient, const T2 hessian) : 
+      m_gradient(TFloat(gradient)), 
+      m_hessian(TFloat(hessian)) {
    }
 
    GPU_DEVICE inline TFloat GetGradient() const noexcept { return m_gradient; }
    GPU_DEVICE inline TFloat GetHessian() const noexcept { return m_hessian; }
 };
-
 template<typename TFloat>
 GPU_DEVICE inline GradientHessian<TFloat> MakeGradientHessian(const TFloat gradient, const TFloat hessian) {
+   return GradientHessian<TFloat>(gradient, hessian);
+}
+template<typename TFloat>
+GPU_DEVICE inline GradientHessian<TFloat> MakeGradientHessian(const TFloat gradient, const double hessian) {
+   return GradientHessian<TFloat>(gradient, hessian);
+}
+template<typename TFloat>
+GPU_DEVICE inline GradientHessian<TFloat> MakeGradientHessian(const double gradient, const TFloat hessian) {
+   return GradientHessian<TFloat>(gradient, hessian);
+}
+template<typename TFloat>
+GPU_DEVICE inline GradientHessian<TFloat> MakeGradientHessian(const double gradient, const double hessian) {
    return GradientHessian<TFloat>(gradient, hessian);
 }
 
