@@ -1997,6 +1997,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Minimum number of samples allowed in the leaves.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
+    objective : str, default="log_loss"
+        The objective to optimize.
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
@@ -2115,7 +2117,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         # Trees
         min_samples_leaf: Optional[int] = 2,
         max_leaves: int = 3,
-        objective: str =None,
+        objective: str = "log_loss",
         # Overall
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = 42,
@@ -2319,6 +2321,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Minimum number of samples allowed in the leaves.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
+    objective : str, default="mse"
+        The objective to optimize.
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
@@ -2436,7 +2440,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Trees
         min_samples_leaf: Optional[int] = 2,
         max_leaves: int = 3,
-        objective: str=None,
+        objective: str = "mse",
         # Overall
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = 42,
@@ -2552,6 +2556,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         Total number of boosting rounds with n_terms boosting steps per round.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
+    objective : str, default="log_loss"
+        The objective to optimize.
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
@@ -2662,7 +2668,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         max_rounds: Optional[int] = 300,
         # Trees
         max_leaves: int = 3,
-        objective: str=None,
+        objective: str = "log_loss",
         # Overall
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = None,
@@ -2807,6 +2813,8 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Total number of boosting rounds with n_terms boosting steps per round.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
+    objective : str, default="mse"
+        The objective to optimize.
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
@@ -2927,7 +2935,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         max_rounds: Optional[int] = 300,
         # Trees
         max_leaves: int = 3,
-        objective: str=None,
+        objective: str = "mse",
         # Overall
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = None,

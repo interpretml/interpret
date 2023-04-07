@@ -1219,7 +1219,9 @@ class Booster(AbstractContextManager):
             Native._make_pointer(dimension_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
-            None if self.objective is None else ct.c_char_p(self.objective.encode('ascii')),
+            None
+            if self.objective is None
+            else ct.c_char_p(self.objective.encode("ascii")),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(booster_handle),
         )
@@ -1599,7 +1601,9 @@ class InteractionDetector(AbstractContextManager):
             Native._make_pointer(
                 self.init_scores, np.float64, 2 if 1 < n_class_scores else 1, True
             ),
-            None if self.objective is None else ct.c_char_p(self.objective.encode('ascii')),
+            None
+            if self.objective is None
+            else ct.c_char_p(self.objective.encode("ascii")),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(interaction_handle),
         )

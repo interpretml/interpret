@@ -37,7 +37,7 @@ def _get_ranked_interactions(
     interaction_flags,
     max_cardinality,
     min_samples_leaf,
-    objective, 
+    objective,
     experimental_params=None,
     n_output_interactions=0,
 ):
