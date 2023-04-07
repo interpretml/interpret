@@ -42,7 +42,7 @@ struct LogLossBinaryLoss final : public BinaryLoss {
       // This function is here to signal the LogLossBinaryLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
-      return MakeGradientHessian(0.0, 0.0);
+      return GradientHessian<TFloat>(0.0, 0.0);
    }
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
