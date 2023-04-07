@@ -23,15 +23,6 @@ extern const char * SkipWhitespace(const char * s) {
    return s;
 }
 
-extern const char * SkipEndWhitespaceWhenGuaranteedNonWhitespace(const char * sEnd) {
-   char oneChar;
-   do {
-      --sEnd;
-      oneChar = *sEnd;
-   } while(0x20 == oneChar || (0x9 <= oneChar && oneChar <= 0xd));
-   return sEnd + 1;
-}
-
 extern const char * ConvertStringToFloat(
    const char * const s, 
    double * const pResultOut
@@ -63,17 +54,11 @@ extern const char * IsStringEqualsCaseInsensitive(
    const char * sMain, 
    const char * sLabel
 ) {
-   // amazingly, C++ doesn't seem to provide a case insensive string comparer
-   // this function skips inital whitespaces and trailing whitespaces
    // this function returns nullptr if there is no match, otherwise it returns a pointer to the 
-   // first non-whitespace character
+   // first non-whitespace character following a successfully equal comparison
 
    char mainChar = *sMain;
-   while(0x20 == mainChar || (0x9 <= mainChar && mainChar <= 0xd)) {
-      // skip whitespace
-      ++sMain;
-      mainChar = *sMain;
-   }
+   EBM_ASSERT(0x20 != mainChar && (mainChar < 0x9 || 0xd < mainChar));
    char labelChar = *sLabel;
    while('\0' != labelChar) {
       if('A' <= mainChar && mainChar <= 'Z') {

@@ -119,8 +119,7 @@ protected:
       EBM_ASSERT(nullptr != sRegistrationEnd);
       EBM_ASSERT(sRegistration <= sRegistrationEnd); // sRegistration contains the part after the tag now
       EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
-      EBM_ASSERT(!(0x20 == *(sRegistrationEnd - 1) || (0x9 <= *(sRegistrationEnd - 1) && *(sRegistrationEnd - 1) <= 0xd)));
-      EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd || 0x20 == *sRegistrationEnd || (0x9 <= *sRegistrationEnd && *sRegistrationEnd <= 0xd));
+      EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd);
 
       typename TParam::ParamType paramVal = param.GetDefaultVal();
       while(true) {
@@ -132,27 +131,28 @@ protected:
 
                // before this point we could have been seeing a longer version of our proposed tag
                // eg: the given tag was "something_else=" but our tag was "something="
-               sRegistration = sNext + 1;
+               sRegistration = SkipWhitespace(sNext + 1);
                sRegistration = ConvertStringToRegistrationType(sRegistration, &paramVal);
                if(nullptr == sRegistration) {
                   throw ParamValMalformedException();
                }
-               if(sRegistrationEnd <= sRegistration) {
-                  // if there are trailing spaces we can blow past the sRegistrationEnd which has spaces removed
+               if(sRegistrationEnd == sRegistration) {
                   break;
                }
                if(k_paramSeparator != *sRegistration) {
                   throw ParamValMalformedException();
                }
-               ++sRegistration;
+               sRegistration = SkipWhitespace(sRegistration + 1);
                continue;
+            } else {
+               throw ParamValMalformedException();
             }
          }
          sRegistration = strchr(sRegistration, k_paramSeparator);
          if(nullptr == sRegistration || sRegistrationEnd <= sRegistration) {
             break;
          }
-         ++sRegistration;
+         sRegistration = SkipWhitespace(sRegistration + 1);
       }
       return paramVal;
    }

@@ -169,7 +169,6 @@ typedef double FloatFast;
 static const char k_registrationSeparator = ',';
 
 extern const char * SkipWhitespace(const char * s);
-extern const char * SkipEndWhitespaceWhenGuaranteedNonWhitespace(const char * sEnd);
 extern const char * ConvertStringToFloat(
    const char * const s,
    double * const pResultOut

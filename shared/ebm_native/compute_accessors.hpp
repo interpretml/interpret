@@ -9,7 +9,7 @@
 
 #include "ebm_native.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // SkipEndWhitespaceWhenGuaranteedNonWhitespace
+#include "common_c.h"
 #include "bridge_c.h" // CreateLoss_*
 #include "zones.h"
 
@@ -19,6 +19,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetLoss(
+   const bool bClassification,
    const Config * const pConfig,
    const char * sLoss,
    LossWrapper * const pLossWrapperOut
@@ -28,16 +29,17 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetLoss(
    EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
    EBM_ASSERT(nullptr == pLossWrapperOut->m_pFunctionPointersCpp);
 
+   static const char g_sMse[] = "mse";
+   static const char g_sLogLoss[] = "log_loss";
+
    if(nullptr == sLoss) {
-      // TODO: in the future use a default
-      return Error_LossUnknown;
+      sLoss = bClassification ? g_sLogLoss : g_sMse;
    }
    sLoss = SkipWhitespace(sLoss);
    if('\0' == *sLoss) {
-      // TODO: in the future use a default
-      return Error_LossUnknown;
+      sLoss = bClassification ? g_sLogLoss : g_sMse;
    }
-   const char * const sLossEnd = SkipEndWhitespaceWhenGuaranteedNonWhitespace(sLoss + strlen(sLoss));
+   const char * const sLossEnd = sLoss + strlen(sLoss);
 
    ErrorEbm error;
 
@@ -62,15 +64,13 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetMetrics(
    }
    while(true) {
       sMetric = SkipWhitespace(sMetric);
-      const char * sMetricSeparator = strchr(sMetric, k_registrationSeparator);
-      if(nullptr == sMetricSeparator) {
+      const char * sMetricEnd = strchr(sMetric, k_registrationSeparator);
+      if(nullptr == sMetricEnd) {
          // find the null terminator then
-         sMetricSeparator = sMetric + strlen(sMetric);
+         sMetricEnd = sMetric + strlen(sMetric);
       }
-      if(sMetricSeparator != sMetric) {
+      if(sMetricEnd != sMetric) {
          // we allow empty registrations like ",,,something_legal,,,  something_else  , " since the intent is clear
-
-         const char * const sMetricEnd = SkipEndWhitespaceWhenGuaranteedNonWhitespace(sMetricSeparator);
          ErrorEbm error;
 
          error = CreateMetric_Cpu_64(pConfig, sMetric, sMetricEnd);
@@ -82,12 +82,12 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetMetrics(
          //       some kind of list of them
          return error;
       }
-      if('\0' == *sMetricSeparator) {
+      if('\0' == *sMetricEnd) {
          return Error_None;
       }
-      EBM_ASSERT(k_registrationSeparator == *sMetricSeparator);
+      EBM_ASSERT(k_registrationSeparator == *sMetricEnd);
 
-      sMetric = sMetricSeparator + 1;
+      sMetric = sMetricEnd + 1;
    }
 }
 

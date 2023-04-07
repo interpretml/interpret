@@ -207,13 +207,11 @@ ErrorEbm InteractionCore::Create(
    if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
       const size_t cScores = GetCountScores(cClasses);
 
-      static const char g_sMse[] = "mse";
-      static const char g_sLogLoss[] = "log_loss";
-      const char * const sLoss = IsClassification(cClasses) ? g_sLogLoss : g_sMse;
+      const char * const sLoss = nullptr;
 
       Config config;
       config.cOutputs = cScores;
-      error = GetLoss(&config, sLoss, &pRet->m_loss);
+      error = GetLoss(IsClassification(cClasses), &config, sLoss, &pRet->m_loss);
       if(Error_None != error) {
          // already logged
          return error;

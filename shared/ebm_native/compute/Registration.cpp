@@ -87,8 +87,7 @@ bool Registration::CreateRegistrable(
    EBM_ASSERT(sRegistration < sRegistrationEnd); // empty string not allowed
    EBM_ASSERT('\0' != *sRegistration);
    EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
-   EBM_ASSERT(!(0x20 == *(sRegistrationEnd - 1) || (0x9 <= *(sRegistrationEnd - 1) && *(sRegistrationEnd - 1) <= 0xd)));
-   EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd || 0x20 == *sRegistrationEnd || (0x9 <= *sRegistrationEnd && *sRegistrationEnd <= 0xd));
+   EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd);
    EBM_ASSERT(nullptr != pWrapperOut);
 
    LOG_0(Trace_Info, "Entered Registrable::CreateRegistrable");
@@ -118,8 +117,7 @@ void Registration::FinalCheckParams(
    EBM_ASSERT(nullptr != sRegistrationEnd);
    EBM_ASSERT(sRegistration <= sRegistrationEnd); // sRegistration contains the part after the tag now
    EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
-   EBM_ASSERT(!(0x20 == *(sRegistrationEnd - 1) || (0x9 <= *(sRegistrationEnd - 1) && *(sRegistrationEnd - 1) <= 0xd)));
-   EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd || 0x20 == *sRegistrationEnd || (0x9 <= *sRegistrationEnd && *sRegistrationEnd <= 0xd));
+   EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd);
 
    // cUsedParams will have been filled by the time we reach this point since all the calls to UnpackParam
    // are guaranteed to have occured before we get called.
@@ -136,7 +134,7 @@ void Registration::FinalCheckParams(
          ++sRegistration; // get past the ';' character
       }
       EBM_ASSERT(sRegistration <= sRegistrationEnd);
-      if(sRegistrationEnd <= sRegistration) {
+      if(sRegistrationEnd == sRegistration) {
          break;
       }
       --cRemainingParams; // this will underflow if we're missing a param, but underflow for unsigned is legal
@@ -163,14 +161,14 @@ const char * Registration::CheckRegistrationName(
    EBM_ASSERT(sRegistration < sRegistrationEnd); // empty string not allowed
    EBM_ASSERT('\0' != *sRegistration);
    EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
-   EBM_ASSERT(!(0x20 == *(sRegistrationEnd - 1) || (0x9 <= *(sRegistrationEnd - 1) && *(sRegistrationEnd - 1) <= 0xd)));
-   EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd || 0x20 == *sRegistrationEnd || (0x9 <= *sRegistrationEnd && *sRegistrationEnd <= 0xd));
+   EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd);
 
    sRegistration = IsStringEqualsCaseInsensitive(sRegistration, m_sRegistrationName);
    if(nullptr == sRegistration) {
       // we are not the specified registration function
       return nullptr;
    }
+   EBM_ASSERT(sRegistration <= sRegistrationEnd);
    if(sRegistrationEnd != sRegistration) {
       if(k_typeTerminator != *sRegistration) {
          // we are not the specified objective, but the objective could still be something with a longer string
@@ -179,7 +177,6 @@ const char * Registration::CheckRegistrationName(
       }
       sRegistration = SkipWhitespace(sRegistration + 1);
    }
-   EBM_ASSERT(sRegistration <= sRegistrationEnd);
    return sRegistration;
 }
 

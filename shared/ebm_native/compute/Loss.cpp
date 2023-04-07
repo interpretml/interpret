@@ -33,8 +33,7 @@ ErrorEbm Loss::CreateLoss(
    EBM_ASSERT(sLoss < sLossEnd); // empty string not allowed
    EBM_ASSERT('\0' != *sLoss);
    EBM_ASSERT(!(0x20 == *sLoss || (0x9 <= *sLoss && *sLoss <= 0xd)));
-   EBM_ASSERT(!(0x20 == *(sLossEnd - 1) || (0x9 <= *(sLossEnd - 1) && *(sLossEnd - 1) <= 0xd)));
-   EBM_ASSERT('\0' == *sLossEnd || 0x20 == *sLossEnd || (0x9 <= *sLossEnd && *sLossEnd <= 0xd));
+   EBM_ASSERT('\0' == *sLossEnd);
    EBM_ASSERT(nullptr != pLossWrapperOut);
    EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
    EBM_ASSERT(nullptr == pLossWrapperOut->m_pFunctionPointersCpp);
