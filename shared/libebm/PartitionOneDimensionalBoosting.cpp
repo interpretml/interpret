@@ -125,8 +125,7 @@ static ErrorEbm Flatten(
    }
 
    const BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t cRuntimeClasses = pBoosterCore->GetCountClasses();
-   const size_t cScores = GetCountScores(cRuntimeClasses);
+   const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
 
    // we checked during init that cScores * cBins can be allocated, so cSplits + 1 must work too
    EBM_ASSERT(!IsMultiplyError(cScores, cSplits + size_t { 1 }));
@@ -729,7 +728,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
    ErrorEbm error;
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t cRuntimeScores = GetCountScores(pBoosterCore->GetCountClasses());
+   const size_t cRuntimeScores = GetCountScores(pBoosterCore->GetCountClasses());
 
    EBM_ASSERT(1 <= cRuntimeScores);
    if(pBoosterCore->IsHessian()) {

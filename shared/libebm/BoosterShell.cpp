@@ -250,8 +250,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       return error;
    }
 
-   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
+   if(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() && ptrdiff_t { 1 } != pBoosterCore->GetCountClasses()) {
       if(!pBoosterCore->IsMse()) {
          // check for 0 training samples
          if(!pBoosterCore->GetTrainingSet()->IsGradientsAndHessiansNull()) {

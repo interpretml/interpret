@@ -869,7 +869,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(
 #endif // NDEBUG
 ) {
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t cRuntimeScores = GetCountScores(pBoosterCore->GetCountClasses());
+   const size_t cRuntimeScores = GetCountScores(pBoosterCore->GetCountClasses());
 
    EBM_ASSERT(1 <= cRuntimeScores);
    if(pBoosterCore->IsHessian()) {

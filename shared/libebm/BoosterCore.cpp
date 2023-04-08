@@ -707,8 +707,9 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
    FloatFast * const aMulticlassMidwayTemp,
    FloatFast * const aUpdateScores
 ) {
-#ifndef NDEBUG
    const size_t cScores = GetCountScores(GetCountClasses());
+
+#ifndef NDEBUG
    // we should be initted to zero
    for(size_t iScore = 0; iScore < cScores; ++iScore) {
       EBM_ASSERT(0 == aUpdateScores[iScore]);
@@ -716,7 +717,7 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
 #endif // NDEBUG
 
    ApplyUpdateBridge data;
-   data.m_cScores = GetCountScores(GetCountClasses());
+   data.m_cScores = cScores;
    data.m_cPack = k_cItemsPerBitPackNone;
    data.m_bHessianNeeded = EBM_TRUE;
    data.m_bCalcMetric = false;

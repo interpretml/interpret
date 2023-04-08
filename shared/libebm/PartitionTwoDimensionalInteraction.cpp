@@ -468,7 +468,7 @@ extern double PartitionTwoDimensionalInteraction(
    , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
-   const ptrdiff_t cRuntimeScores = GetCountScores(pInteractionCore->GetCountClasses());
+   const size_t cRuntimeScores = GetCountScores(pInteractionCore->GetCountClasses());
 
    EBM_ASSERT(1 <= cRuntimeScores);
    if(pInteractionCore->IsHessian()) {

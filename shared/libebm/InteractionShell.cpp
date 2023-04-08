@@ -184,8 +184,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       return Error_OutOfMemory;
    }
 
-   const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
-   if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
+   if(ptrdiff_t { 0 } != pInteractionCore->GetCountClasses() && ptrdiff_t { 1 } != pInteractionCore->GetCountClasses()) {
       if(!pInteractionCore->IsMse()) {
          error = pInteractionCore->InitializeInteractionGradientsAndHessians(
             static_cast<const unsigned char *>(dataSet),

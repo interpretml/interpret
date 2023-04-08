@@ -90,8 +90,7 @@ static ErrorEbm BoostZeroDimensional(
    ErrorEbm error;
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   const size_t cScores = GetCountScores(cClasses);
+   const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
 
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster
    const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores);
@@ -206,8 +205,7 @@ static ErrorEbm BoostSingleDimensional(
    EBM_ASSERT(cBins == pBoosterCore->GetTerms()[iTerm]->GetCountTensorBins());
    EBM_ASSERT(0 == pBoosterCore->GetTerms()[iTerm]->GetCountAuxillaryBins());
 
-   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   const size_t cScores = GetCountScores(cClasses);
+   const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
 
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster
    const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores);
@@ -314,8 +312,7 @@ static ErrorEbm BoostMultiDimensional(
       ++ppFeature;
    } while(ppFeaturesEnd != ppFeature);
 
-   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   const size_t cScores = GetCountScores(cClasses);
+   const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
 
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
    const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores);
@@ -566,8 +563,7 @@ static ErrorEbm BoostRandom(
    const size_t cTotalBins = pTerm->GetCountTensorBins();
    EBM_ASSERT(1 <= cTotalBins);
 
-   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   const size_t cScores = GetCountScores(cClasses);
+   const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
 
    EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
    const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores);
