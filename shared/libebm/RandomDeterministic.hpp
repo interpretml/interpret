@@ -9,7 +9,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <type_traits>
 
-#include "ebm_native.h" // SeedEbm
+#include "libebm.h" // SeedEbm
 #include "logging.h" // EBM_ASSERT
 #include "common_c.h" // INLINE_ALWAYS
 #include "zones.h"

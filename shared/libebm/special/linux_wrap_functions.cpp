@@ -8,10 +8,10 @@
 // the C runtime libraries (libm.so and libc.so) can't be statically linked, or at least it's not advisable
 // we therefore want to ensure that we only use older versions of the functions in GLIBC
 //
-// If we run the command: objdump -T lib_ebm_native_linux_x64.so | grep GLIBC_
+// If we run the command: objdump -T libebm_linux_x64.so | grep GLIBC_
 // we see the following entry:
 // 0000000000000000      DF *UND*  0000000000000000  GLIBC_2.14  memcpy
-// We can also see this information in the "Version References" section of the disassembly of lib_ebm_native*.s that 
+// We can also see this information in the "Version References" section of the disassembly of libebm*.s that 
 // build.sh optionally generates. We put that file into the artifacts of the Azure build pipeline.
 // 
 // The version 2.14 for memcpy has been a problem for some of our CentOS users.

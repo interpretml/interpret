@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="ebm_native_test.cpp">
+    <ClCompile Include="libebm_test.cpp">
       <Filter>non_tests</Filter>
     </ClCompile>
     <ClCompile Include="precompiled_header_test.cpp">
@@ -21,7 +21,7 @@
     <ClCompile Include="dataset_shared_test.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ebm_native_test.hpp">
+    <ClInclude Include="libebm_test.hpp">
       <Filter>non_tests</Filter>
     </ClInclude>
     <ClInclude Include="precompiled_header_test.hpp">
@@ -32,10 +32,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="ebm_native_test.bat">
+    <None Include="libebm_test.bat">
       <Filter>non_tests</Filter>
     </None>
-    <None Include="ebm_native_test.sh">
+    <None Include="libebm_test.sh">
       <Filter>non_tests</Filter>
     </None>
   </ItemGroup>

@@ -4,7 +4,7 @@
 
 #include "precompiled_header_cpp.hpp"
 
-#include "ebm_native.h" // EBM_API_BODY
+#include "libebm.h" // EBM_API_BODY
 #include "logging.h" // LOG_
 #include "zones.h"
 

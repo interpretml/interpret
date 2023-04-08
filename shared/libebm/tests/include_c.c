@@ -3,9 +3,9 @@
 // Author: Paul Koch <code@koch.ninja>
 
 // this just tests that our include file is C compatible
-#include "ebm_native.h"
+#include "libebm.h"
 
-// include this AFTER ebm_native.h to test that ebm_native.h can stand alone
+// include this AFTER libebm.h to test that libebm.h can stand alone
 #include <stdio.h>
 
 static void EBM_CALLING_CONVENTION LogCallback(TraceEbm traceLevel, const char * message) {

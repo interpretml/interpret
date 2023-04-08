@@ -10,7 +10,7 @@
 #include <vector>
 #include <queue>
 
-#include "ebm_native.h" // ErrorEbm
+#include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 

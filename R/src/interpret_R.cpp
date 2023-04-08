@@ -7,7 +7,7 @@
 #include <cstring> // memcpy, strcmp
 #include <algorithm> // std::min, std::max
 
-#include "ebm_native.h"
+#include "libebm.h"
 #include "logging.h"
 #include "zones.h"
 

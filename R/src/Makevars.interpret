@@ -1,11 +1,11 @@
-# Makevars and Makevars.interpret need to be identical files, except the NATIVEDIR variable which indicates where to get the ebm_native C++ files
+# Makevars and Makevars.interpret need to be identical files, except the NATIVEDIR variable which indicates where to get the libebm C++ files
 # Makevars needs to be named that exactly because it will get loaded from devtools::install_github and devtools will want it to be that name.  When being installed from devtools, we can refer to .cpp and .h files wherever they are in the repo, so we use the NATIVEDIR to point to them
 # Makevars.interpret is the CRAN version of Makevars.  When the interpret_*.tar.gz is created the Makevars.interpret file gets copied as Makevars into the R building directory
 
-NATIVEDIR=./ebm_native
+NATIVEDIR=./libebm
 
 CXX_STD = CXX17
-PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -I$(NATIVEDIR)/common_c -I$(NATIVEDIR)/common_cpp -I$(NATIVEDIR)/bridge_c -I$(NATIVEDIR)/bridge_cpp -I$(NATIVEDIR)/compute -I$(NATIVEDIR)/compute/loss_functions -I$(NATIVEDIR)/compute/metrics -I$(NATIVEDIR)/compute/cpu_ebm -DEBM_NATIVE_R -DZONE_R
+PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -I$(NATIVEDIR)/common_c -I$(NATIVEDIR)/common_cpp -I$(NATIVEDIR)/bridge_c -I$(NATIVEDIR)/bridge_cpp -I$(NATIVEDIR)/compute -I$(NATIVEDIR)/compute/loss_functions -I$(NATIVEDIR)/compute/metrics -I$(NATIVEDIR)/compute/cpu_ebm -DLIBEBM_R -DZONE_R
 # TODO test adding the g++/clang flags to PKG_CXXFLAGS.  I think -g0 and -O3 won't work though since the R compile flags already include -g and -O2:
 PKG_CXXFLAGS=$(CXX_VISIBILITY) 
 

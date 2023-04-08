@@ -5,7 +5,7 @@
 #ifndef BRIDGE_CPP_HPP
 #define BRIDGE_CPP_HPP
 
-#include "ebm_native.h" // bridge_c.h depends on ebm_native.h and we probably will eventually too
+#include "libebm.h" // bridge_c.h depends on libebm.h and we probably will eventually too
 #include "logging.h"
 #include "bridge_c.h" // StorageDataType
 #include "zones.h"

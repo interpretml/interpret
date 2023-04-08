@@ -13,7 +13,7 @@
 #include <set> // std::set
 #include <string.h> // strchr, memmove
 
-#include "ebm_native.h" // EBM_API_BODY
+#include "libebm.h" // EBM_API_BODY
 #include "logging.h" // EBM_ASSERT
 #include "common_c.h" // LIKELY
 #include "zones.h"

@@ -64,7 +64,7 @@
     <ClInclude Include="TensorTotalsSum.hpp" />
     <ClInclude Include="TreeNode.hpp" />
     <ClInclude Include="SplitPosition.hpp" />
-    <ClInclude Include="inc\ebm_native.h">
+    <ClInclude Include="inc\libebm.h">
       <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="bridge_c\bridge_c.h">
@@ -102,11 +102,11 @@
     <ClInclude Include="ebm_stats.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="ebm_native_exports.def" />
+    <None Include="libebm_exports.def" />
     <None Include="CODING_STYLE.md" />
     <None Include="IMPORTANT.md" />
     <None Include="include_ordering.txt" />
-    <None Include="ebm_native_exports.txt" />
+    <None Include="libebm_exports.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="inc">

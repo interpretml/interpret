@@ -9,7 +9,7 @@
 - benchmark the current code and compare to a previous release
 
 - IMPORTANT: check that the linux shared library is manylinux:
-  - in azure-pipelines, under the published artifacts, under asm-x64-ubuntu-*, open lib_ebm_native_linux_x64.s
+  - in azure-pipelines, under the published artifacts, under asm-x64-ubuntu-*, open libebm_linux_x64.s
   - look for the section "Version References"
   - if there is anything above GLIBC_2.5 (GLIBC_2.4 is ok), then we probably want to add a wrapper
 

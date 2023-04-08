@@ -8,7 +8,7 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // InteractionHandle
+#include "libebm.h" // InteractionHandle
 #include "logging.h" // LOG_0
 #include "zones.h"
 

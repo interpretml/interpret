@@ -56,9 +56,9 @@ file.copy(from = file.path(root_path, "src", "interpret_R.cpp"), to = file.path(
 file.copy(from = file.path(root_path, "src", "interpret-win.def"), to = file.path(dest_path, "src", "interpret-win.def"))
 file.copy(from = file.path(root_path, "src", "Makevars.interpret"), to = file.path(dest_path, "src", "Makevars"))
 
-# src/ebm_native directory (non-R C++ files)
-native_path <- file.path(root_path, "..", "shared", "ebm_native")
-cxx_path <- file.path(dest_path, "src", "ebm_native")
+# src/libebm directory (non-R C++ files)
+native_path <- file.path(root_path, "..", "shared", "libebm")
+cxx_path <- file.path(dest_path, "src", "libebm")
 copy_code(native_path, cxx_path)
 copy_code(file.path(native_path, "inc"), file.path(cxx_path, "inc"))
 copy_code(file.path(native_path, "common_c"), file.path(cxx_path, "common_c"))

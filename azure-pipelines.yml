@@ -62,7 +62,7 @@ jobs:
   - task: PublishBuildArtifacts@1
     inputs:
       pathtoPublish: staging
-      artifactName: ebm_native-$(image.name)
+      artifactName: libebm-$(image.name)
     displayName: 'Publish native shared library'
   - task: PublishBuildArtifacts@1
     condition: or(startsWith(variables['image.name'], 'ubuntu'), startsWith(variables['image.name'], 'macOS'))
@@ -230,14 +230,14 @@ jobs:
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/lib_ebm_native_*_x64*'
+      contents: '**/libebm_*_x64*'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Copy x64 native library to python lib directory'
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/lib_ebm_native_*_arm*'
+      contents: '**/libebm_*_arm*'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Copy arm native library to python lib directory'
@@ -290,7 +290,7 @@ jobs:
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/lib_ebm_native_*'
+      contents: '**/libebm_*'
       targetFolder: 'staging'
       flattenFolders: true
     displayName: 'Copy native library to staging directory'
@@ -301,15 +301,15 @@ jobs:
       script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
     displayName: 'Download CUDA installer'
   - script: |
-      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -existing_debug_64 -existing_release_64
+      /bin/sh ./shared/libebm/tests/libebm_test.sh -existing_debug_64 -existing_release_64
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'mac test_native'
   - script: |
-      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -debug_32 -release_32 -existing_debug_64 -existing_release_64 -no_valgrind
+      /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_32 -release_32 -existing_debug_64 -existing_release_64 -no_valgrind
     condition: and(startsWith(variables['image.name'], 'ubuntu'), ne(variables['Build.Reason'], 'Schedule'))
     displayName: 'linux test_native (CI)'
   - script: |
-      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -debug_32 -release_32 -existing_debug_64 -existing_release_64
+      /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_32 -release_32 -existing_debug_64 -existing_release_64
     condition: and(startsWith(variables['image.name'], 'ubuntu'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: 'linux test_native (Schedule)'
   - script: |
@@ -322,7 +322,7 @@ jobs:
         ECHO cuda_11.2.2_win10_network.exe FAILED
         EXIT /B 201
       )
-      .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline
+      .\shared\libebm\tests\libebm_test.bat -pipeline
     condition: and(startsWith(variables['image.name'], 'windows'), ne(variables['Build.Reason'], 'Schedule'))
     displayName: 'win test_native (CI)'
   - script: |
@@ -335,7 +335,7 @@ jobs:
         ECHO cuda_11.2.2_win10_network.exe FAILED
         EXIT /B 201
       )
-      .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline -analysis
+      .\shared\libebm\tests\libebm_test.bat -pipeline -analysis
     condition: and(startsWith(variables['image.name'], 'windows'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: 'win test_native (Schedule)'
   - task: ComponentGovernanceComponentDetection@0
@@ -430,7 +430,7 @@ jobs:
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/lib_ebm_native_*'
+      contents: '**/libebm_*'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Copy native library to python lib directory'

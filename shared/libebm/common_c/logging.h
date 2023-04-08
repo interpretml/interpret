@@ -7,7 +7,7 @@
 
 #include <assert.h>
 
-#include "ebm_native.h" // TraceEbm
+#include "libebm.h" // TraceEbm
 
 #ifdef __cplusplus
 extern "C" {

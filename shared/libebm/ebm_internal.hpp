@@ -13,7 +13,7 @@
 #include <assert.h> // base assert
 #include <string.h> // strcpy
 
-#include "ebm_native.h"
+#include "libebm.h"
 #include "logging.h" // EBM_ASSERT
 #include "common_c.h"
 #include "bridge_c.h"

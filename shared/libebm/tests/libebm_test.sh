@@ -5,13 +5,13 @@
 
 # Periodically check the valgrind results on the build server by going to:
 # https://dev.azure.com/ms/interpret/_build?definitionId=293&_a=summary
-# By clicking on the build of interest, then "Test ebm_native Linux", then "View raw log"
+# By clicking on the build of interest, then "Test libebm Linux", then "View raw log"
 # We normally have 2 "still reachable" blocks from the Testing executable.
 #
 # We run the clang-tidy and Visual Studio static analysis tools on the build server.  Warnings do not stop the build, 
 # so these need to be inspected to catch static analysis issues.  The results can be viewed in the build logs here:
 # https://dev.azure.com/ms/interpret/_build?definitionId=293&_a=summary
-# By clicking on the build of interest, then "Build ebm_native Windows", then "View raw log"
+# By clicking on the build of interest, then "Build libebm Windows", then "View raw log"
 #
 # Ideally we'd prefer to have static analysis running on all OSes, but we can probably just rely on our
 # build system to handle this aspect since adding it in multiple places adds complexity to this build script.
@@ -29,7 +29,7 @@
 #     analysis tools to run on the build system, but they won't run in typical builds in Visual Studio, which
 #     would slow down our builds.
 #   - If you want to enable these static checks on build in Visual Studio, go to:
-#     "Solution Explorer" -> right click the project "ebm_native" -> "Properties" -> "Code Analysis"
+#     "Solution Explorer" -> right click the project "libebm" -> "Properties" -> "Code Analysis"
 #     From there you can enable "Clang-Tidy" and "Enable Code Analysis on Build"
 #   - You also for free see the Visual Studio static analysis in the "Error List" window if you have
 #     "Build + IntelliSense" selected in the drop down window with that option.
@@ -69,7 +69,7 @@
 # - ';' character -> which can be used to run new shell commands in some scripts
 # - control characters (ASCII 1-31)
 # - UTF-8 characters
-# - try the following stress test case (works on windows):     ./-in ter;_Pr`e't/shared/ebm_native/-ha rd;_Fi`l'e.cpp
+# - try the following stress test case (works on windows):     ./-in ter;_Pr`e't/shared/libebm/-ha rd;_Fi`l'e.cpp
 # We also cannot use the following safely:
 # - find exec with the \; ending since it eats the return codes of our compiler, which we really really want!
 # - raw "exec" without re-shelling the result
@@ -338,7 +338,7 @@ is_asm=0
 script_path_initial=`dirname -- "$0"`
 # the space after the '= ' character is required
 script_path_unsanitized=`CDPATH= cd -- "$script_path_initial" && pwd -P`
-if [ ! -f "$script_path_unsanitized/ebm_native_test.sh" ] ; then
+if [ ! -f "$script_path_unsanitized/libebm_test.sh" ] ; then
    # there are all kinds of reasons why we might not have gotten the script path in $0.  It's more of a convention
    # than a requirement to have either the full path or even the script itself.  There are far more complicated
    # scripts out there that attempt to use various shell specific workarounds, like BASH_SOURCE[0] to best solve
@@ -356,7 +356,7 @@ staging_path_sanitized=`sanitize "$staging_path_unsanitized"`
 src_path_unsanitized="$script_path_unsanitized"
 src_path_sanitized=`sanitize "$src_path_unsanitized"`
 
-bin_file="ebm_native_test"
+bin_file="libebm_test"
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
 both_args=""
@@ -382,7 +382,7 @@ link_args=""
 os_type=`uname`
 
 if [ "$os_type" = "Linux" ]; then
-   # "readelf -d <lib_filename.so>" should show library rpath:    $ORIGIN/    OR    ${ORIGIN}/    for Linux so that the console app will find the ebm_native library in the same directory as the app: https://stackoverflow.com/questions/6288206/lookup-failure-when-linking-using-rpath-and-origin
+   # "readelf -d <lib_filename.so>" should show library rpath:    $ORIGIN/    OR    ${ORIGIN}/    for Linux so that the console app will find the libebm library in the same directory as the app: https://stackoverflow.com/questions/6288206/lookup-failure-when-linking-using-rpath-and-origin
    # the -l<library> parameter for some reason adds a lib at the start and .so at the end
 
    c_compiler=gcc
@@ -413,11 +413,11 @@ if [ "$os_type" = "Linux" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling ebm_native_test with $c_compiler/$cpp_compiler for Linux debug|x64"
-      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/x64/ebm_native_test"
-      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x64/ebm_native_test"
-      lib_file_body="_ebm_native_linux_x64_debug"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_test_debug_linux_x64_build_log.txt"
+      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for Linux debug|x64"
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/x64/libebm_test"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x64/libebm_test"
+      lib_file_body="ebm_linux_x64_debug"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_debug_linux_x64_build_log.txt"
       both_args_extra="-m64 -O1"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -465,11 +465,11 @@ if [ "$os_type" = "Linux" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling ebm_native_test with $c_compiler/$cpp_compiler for Linux release|x64"
-      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/x64/ebm_native_test"
-      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x64/ebm_native_test"
-      lib_file_body="_ebm_native_linux_x64"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_test_release_linux_x64_build_log.txt"
+      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for Linux release|x64"
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/x64/libebm_test"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x64/libebm_test"
+      lib_file_body="ebm_linux_x64"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_linux_x64_build_log.txt"
       both_args_extra="-m64 -DNDEBUG -O1"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -517,11 +517,11 @@ if [ "$os_type" = "Linux" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling ebm_native_test with $c_compiler/$cpp_compiler for Linux debug|x86"
-      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/x86/ebm_native_test"
-      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x86/ebm_native_test"
-      lib_file_body="_ebm_native_linux_x86_debug"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_test_debug_linux_x86_build_log.txt"
+      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for Linux debug|x86"
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/x86/libebm_test"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x86/libebm_test"
+      lib_file_body="ebm_linux_x86_debug"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_debug_linux_x86_build_log.txt"
       both_args_extra="-msse2 -mfpmath=sse -m32 -O1"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -562,11 +562,11 @@ if [ "$os_type" = "Linux" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling ebm_native_test with $c_compiler/$cpp_compiler for Linux release|x86"
-      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/x86/ebm_native_test"
-      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x86/ebm_native_test"
-      lib_file_body="_ebm_native_linux_x86"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_test_release_linux_x86_build_log.txt"
+      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for Linux release|x86"
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/x86/libebm_test"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x86/libebm_test"
+      lib_file_body="ebm_linux_x86"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_linux_x86_build_log.txt"
       both_args_extra="-msse2 -mfpmath=sse -m32 -DNDEBUG -O1"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -629,11 +629,11 @@ elif [ "$os_type" = "Darwin" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling ebm_native_test with $c_compiler/$cpp_compiler for macOS debug|x64"
-      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/debug/mac/x64/ebm_native_test"
-      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/x64/ebm_native_test"
-      lib_file_body="_ebm_native_mac_x64_debug"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_test_debug_mac_x64_build_log.txt"
+      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for macOS debug|x64"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/debug/mac/x64/libebm_test"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/x64/libebm_test"
+      lib_file_body="ebm_mac_x64_debug"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_debug_mac_x64_build_log.txt"
       both_args_extra="-march=core2 -target x86_64-apple-macos10.12 -m64 -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -675,11 +675,11 @@ elif [ "$os_type" = "Darwin" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling ebm_native_test with $c_compiler/$cpp_compiler for macOS release|x64"
-      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/x64/ebm_native_test"
-      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/x64/ebm_native_test"
-      lib_file_body="_ebm_native_mac_x64"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_test_release_mac_x64_build_log.txt"
+      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for macOS release|x64"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/x64/libebm_test"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/x64/libebm_test"
+      lib_file_body="ebm_mac_x64"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_mac_x64_build_log.txt"
       both_args_extra="-march=core2 -target x86_64-apple-macos10.12 -m64 -DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -721,11 +721,11 @@ elif [ "$os_type" = "Darwin" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling ebm_native_test with $c_compiler/$cpp_compiler for macOS debug|arm"
-      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/debug/mac/arm/ebm_native_test"
-      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/arm/ebm_native_test"
-      lib_file_body="_ebm_native_mac_arm_debug"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_test_debug_mac_arm_build_log.txt"
+      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for macOS debug|arm"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/debug/mac/arm/libebm_test"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/arm/libebm_test"
+      lib_file_body="ebm_mac_arm_debug"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_debug_mac_arm_build_log.txt"
       both_args_extra="-target arm64-apple-macos11 -m64 -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -767,11 +767,11 @@ elif [ "$os_type" = "Darwin" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling ebm_native_test with $c_compiler/$cpp_compiler for macOS release|arm"
-      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/arm/ebm_native_test"
-      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/arm/ebm_native_test"
-      lib_file_body="_ebm_native_mac_arm"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_test_release_mac_arm_build_log.txt"
+      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for macOS release|arm"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/arm/libebm_test"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/arm/libebm_test"
+      lib_file_body="ebm_mac_arm"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_mac_arm_build_log.txt"
       both_args_extra="-target arm64-apple-macos11 -m64 -DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"

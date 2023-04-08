@@ -9,7 +9,7 @@
 #include <limits> // numeric_limits
 #include <string.h> // memcpy
 
-#include "ebm_native.h" // EBM_API_BODY
+#include "libebm.h" // EBM_API_BODY
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 

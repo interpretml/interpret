@@ -10,7 +10,7 @@
 #include <functional> // std::function
 #include <memory>
 
-#include "ebm_native.h"
+#include "libebm.h"
 #include "logging.h" // EBM_ASSERT
 #include "common_c.h" // INLINE_ALWAYS
 #include "bridge_c.h" // Config

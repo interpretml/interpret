@@ -8,7 +8,7 @@
 #include <limits> // std::numeric_limits
 #include <string.h> // strchr, memmove, memcpy
 
-#include "ebm_native.h"
+#include "libebm.h"
 #include "logging.h" // EBM_ASSERT
 #include "common_c.h" // LIKELY
 #include "zones.h"

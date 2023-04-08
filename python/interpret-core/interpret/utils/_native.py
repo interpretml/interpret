@@ -576,7 +576,7 @@ class Native:
             and is_64_bit
         ):  # pragma: no cover
             return os.path.join(
-                package_path, "lib", "lib_ebm_native_linux_x64{0}.so".format(debug_str)
+                package_path, "lib", "libebm_linux_x64{0}.so".format(debug_str)
             )
         elif (
             platform.system() == "Windows"
@@ -584,7 +584,7 @@ class Native:
             and is_64_bit
         ):  # pragma: no cover
             return os.path.join(
-                package_path, "lib", "lib_ebm_native_win_x64{0}.dll".format(debug_str)
+                package_path, "lib", "libebm_win_x64{0}.dll".format(debug_str)
             )
         elif (
             platform.system() == "Darwin"
@@ -592,7 +592,7 @@ class Native:
             and is_64_bit
         ):  # pragma: no cover
             return os.path.join(
-                package_path, "lib", "lib_ebm_native_mac_x64{0}.dylib".format(debug_str)
+                package_path, "lib", "libebm_mac_x64{0}.dylib".format(debug_str)
             )
         elif (
             platform.system() == "Darwin"
@@ -600,7 +600,7 @@ class Native:
             and is_64_bit
         ):  # pragma: no cover
             return os.path.join(
-                package_path, "lib", "lib_ebm_native_mac_arm{0}.dylib".format(debug_str)
+                package_path, "lib", "libebm_mac_arm{0}.dylib".format(debug_str)
             )
         else:  # pragma: no cover
             msg = "System {0}, platform {1}, bitsize {2} not supported for EBM".format(

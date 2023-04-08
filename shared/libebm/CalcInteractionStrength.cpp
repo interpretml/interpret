@@ -8,7 +8,7 @@
 #include <limits> // numeric_limits
 #include <string.h> // memcpy
 
-#include "ebm_native.h" // ErrorEbm
+#include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
 #include "common_c.h" // FloatBig
 #include "zones.h"

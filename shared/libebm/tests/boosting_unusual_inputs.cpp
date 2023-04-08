@@ -4,8 +4,8 @@
 
 #include "precompiled_header_test.hpp"
 
-#include "ebm_native.h"
-#include "ebm_native_test.hpp"
+#include "libebm.h"
+#include "libebm_test.hpp"
 
 static constexpr TestPriority k_filePriority = TestPriority::BoostingUnusualInputs;
 

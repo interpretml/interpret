@@ -9,7 +9,7 @@
 #include <cmath>
 #include <immintrin.h> // SIMD.  Do not include in precompiled_header_cpp.hpp!
 
-#include "ebm_native.h"
+#include "libebm.h"
 #include "logging.h"
 #include "common_c.h"
 #include "bridge_c.h"

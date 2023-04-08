@@ -5,7 +5,7 @@
 #ifndef ZONED_BRIDGE_CPP_FUNCTIONS_HPP
 #define ZONED_BRIDGE_CPP_FUNCTIONS_HPP
 
-#include "ebm_native.h" // ErrorEbm
+#include "libebm.h" // ErrorEbm
 #include "zones.h"
 
 struct ApplyUpdateBridge;

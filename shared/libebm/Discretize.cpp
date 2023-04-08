@@ -11,7 +11,7 @@
 #include <limits> // std::numeric_limits
 #include <string.h> // memcpy
 
-#include "ebm_native.h"
+#include "libebm.h"
 #include "logging.h"
 #include "common_c.h" // LIKELY
 #include "zones.h"

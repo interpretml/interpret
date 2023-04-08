@@ -10,7 +10,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <memory> // shared_ptr, unique_ptr
 
-#include "ebm_native.h" // ErrorEbm
+#include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
 #include "common_c.h" // INLINE_ALWAYS
 #include "zones.h"

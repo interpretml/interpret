@@ -232,15 +232,15 @@ copy_asm_files() {
 }
 
 if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
-   code_path="./shared/ebm_native"
+   code_path="./shared/libebm"
    tmp_path="./tmp/mk"
 
    os_type=`uname`
-   # TODO: change this to accept lib_ebm_native_local.so or lib_ebm_native_local.dylib to allow for weird architectures build using sdists
+   # TODO: change this to accept libebm_local.so or libebm_local.dylib to allow for weird architectures build using sdists
    if [ "$os_type" = "Linux" ]; then
-      final_binary="./python/interpret-core/interpret/lib/lib_ebm_native_linux_x64.so"
+      final_binary="./python/interpret-core/interpret/lib/libebm_linux_x64.so"
    elif [ "$os_type" = "Darwin" ]; then
-      final_binary="./python/interpret-core/interpret/lib/lib_ebm_native_mac_x64.dylib"
+      final_binary="./python/interpret-core/interpret/lib/libebm_mac_x64.dylib"
    else
       printf "%s\n" "OS $os_type not recognized.  We support clang/clang++ on macOS and gcc/g++ on Linux"
       exit 1
@@ -251,7 +251,7 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    mkdir ./python/interpret-core/interpret
    mkdir ./python/interpret-core/interpret/lib
 
-   extras="-DEBM_NATIVE_EXPORTS -DNDEBUG -I$code_path/inc -I$code_path/common_c -I$code_path/common_cpp -I$code_path/bridge_c -I$code_path/bridge_cpp -I$code_path -I$code_path/compute -I$code_path/compute/loss_functions -I$code_path/compute/metrics"
+   extras="-DLIBEBM_EXPORTS -DNDEBUG -I$code_path/inc -I$code_path/common_c -I$code_path/common_cpp -I$code_path/bridge_c -I$code_path/bridge_cpp -I$code_path -I$code_path/compute -I$code_path/compute/loss_functions -I$code_path/compute/metrics"
 
    mkdir ./tmp
    mkdir ./tmp/mk
@@ -401,7 +401,7 @@ root_path_unsanitized="$script_path_unsanitized"
 tmp_path_unsanitized="$root_path_unsanitized/tmp"
 python_lib_unsanitized="$root_path_unsanitized/python/interpret-core/interpret/lib"
 staging_path_unsanitized="$root_path_unsanitized/staging"
-src_path_unsanitized="$root_path_unsanitized/shared/ebm_native"
+src_path_unsanitized="$root_path_unsanitized/shared/libebm"
 src_path_sanitized=`sanitize "$src_path_unsanitized"`
 
 
@@ -421,7 +421,7 @@ both_args="$both_args -fno-math-errno -fno-trapping-math"
 # TODO: check no-plt compiler option
 both_args="$both_args -fpic"
 both_args="$both_args -pthread"
-both_args="$both_args -DEBM_NATIVE_EXPORTS"
+both_args="$both_args -DLIBEBM_EXPORTS"
 if [ $is_extra_debugging -ne 0 ]; then 
    both_args="$both_args -g"
 fi
@@ -465,7 +465,7 @@ if [ "$os_type" = "Linux" ]; then
    both_args="$both_args -march=core2"
 
    # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-   link_args="$link_args -Wl,--version-script=$src_path_sanitized/ebm_native_exports.txt"
+   link_args="$link_args -Wl,--version-script=$src_path_sanitized/libebm_exports.txt"
    link_args="$link_args -Wl,--exclude-libs,ALL"
    link_args="$link_args -Wl,-z,relro,-z,now"
    link_args="$link_args -Wl,-O2"
@@ -489,11 +489,11 @@ if [ "$os_type" = "Linux" ]; then
    if [ $release_64 -eq 1 ]; then
       ########################## Linux release|x64
 
-      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for Linux release|x64"
-      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/x64/ebm_native"
-      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x64/ebm_native"
-      bin_file="lib_ebm_native_linux_x64.so"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_release_linux_x64_build_log.txt"
+      printf "%s\n" "Compiling libebm with $c_compiler/$cpp_compiler for Linux release|x64"
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/x64/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x64/libebm"
+      bin_file="libebm_linux_x64.so"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_linux_x64_build_log.txt"
       both_args_extra="-m64 -DNDEBUG -O3 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=log2,--wrap=pow"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -520,11 +520,11 @@ if [ "$os_type" = "Linux" ]; then
    if [ $debug_64 -eq 1 ]; then
       ########################## Linux debug|x64
 
-      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for Linux debug|x64"
-      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/x64/ebm_native"
-      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x64/ebm_native"
-      bin_file="lib_ebm_native_linux_x64_debug.so"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_debug_linux_x64_build_log.txt"
+      printf "%s\n" "Compiling libebm with $c_compiler/$cpp_compiler for Linux debug|x64"
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/x64/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x64/libebm"
+      bin_file="libebm_linux_x64_debug.so"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_debug_linux_x64_build_log.txt"
       both_args_extra="-m64 -O1 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=log2,--wrap=pow"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -550,11 +550,11 @@ if [ "$os_type" = "Linux" ]; then
    if [ $release_32 -eq 1 ]; then
       ########################## Linux release|x86
 
-      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for Linux release|x86"
-      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/x86/ebm_native"
-      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x86/ebm_native"
-      bin_file="lib_ebm_native_linux_x86.so"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_release_linux_x86_build_log.txt"
+      printf "%s\n" "Compiling libebm with $c_compiler/$cpp_compiler for Linux release|x86"
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/x86/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x86/libebm"
+      bin_file="libebm_linux_x86.so"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_linux_x86_build_log.txt"
       both_args_extra="-msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -581,11 +581,11 @@ if [ "$os_type" = "Linux" ]; then
    if [ $debug_32 -eq 1 ]; then
       ########################## Linux debug|x86
 
-      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for Linux debug|x86"
-      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/x86/ebm_native"
-      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x86/ebm_native"
-      bin_file="lib_ebm_native_linux_x86_debug.so"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_debug_linux_x86_build_log.txt"
+      printf "%s\n" "Compiling libebm with $c_compiler/$cpp_compiler for Linux debug|x86"
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/x86/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x86/libebm"
+      bin_file="libebm_linux_x86_debug.so"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_debug_linux_x86_build_log.txt"
       both_args_extra="-msse2 -mfpmath=sse -m32 -O1"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -640,11 +640,11 @@ elif [ "$os_type" = "Darwin" ]; then
    if [ $release_64 -eq 1 ]; then
       ########################## macOS release|x64
 
-      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for macOS release|x64"
-      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/x64/ebm_native"
-      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/x64/ebm_native"
-      bin_file="lib_ebm_native_mac_x64.dylib"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_release_mac_x64_build_log.txt"
+      printf "%s\n" "Compiling libebm with $c_compiler/$cpp_compiler for macOS release|x64"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/x64/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/x64/libebm"
+      bin_file="libebm_mac_x64.dylib"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_mac_x64_build_log.txt"
       both_args_extra="-march=core2 -target x86_64-apple-macos10.12 -m64 -DNDEBUG -O3"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -670,11 +670,11 @@ elif [ "$os_type" = "Darwin" ]; then
    if [ $debug_64 -eq 1 ]; then
       ########################## macOS debug|x64
 
-      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for macOS debug|x64"
-      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/debug/mac/x64/ebm_native"
-      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/x64/ebm_native"
-      bin_file="lib_ebm_native_mac_x64_debug.dylib"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_debug_mac_x64_build_log.txt"
+      printf "%s\n" "Compiling libebm with $c_compiler/$cpp_compiler for macOS debug|x64"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/debug/mac/x64/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/x64/libebm"
+      bin_file="libebm_mac_x64_debug.dylib"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_debug_mac_x64_build_log.txt"
       both_args_extra="-march=core2 -target x86_64-apple-macos10.12 -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -699,11 +699,11 @@ elif [ "$os_type" = "Darwin" ]; then
    if [ $release_arm -eq 1 ]; then
       ########################## macOS release|arm
 
-      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for macOS release|arm"
-      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/arm/ebm_native"
-      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/arm/ebm_native"
-      bin_file="lib_ebm_native_mac_arm.dylib"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_release_mac_arm_build_log.txt"
+      printf "%s\n" "Compiling libebm with $c_compiler/$cpp_compiler for macOS release|arm"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/arm/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/arm/libebm"
+      bin_file="libebm_mac_arm.dylib"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_mac_arm_build_log.txt"
       both_args_extra="-target arm64-apple-macos11 -m64 -DNDEBUG -O3"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
@@ -728,11 +728,11 @@ elif [ "$os_type" = "Darwin" ]; then
    if [ $debug_arm -eq 1 ]; then
       ########################## macOS debug|arm
 
-      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for macOS debug|arm"
-      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/debug/mac/arm/ebm_native"
-      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/arm/ebm_native"
-      bin_file="lib_ebm_native_mac_arm_debug.dylib"
-      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_debug_mac_arm_build_log.txt"
+      printf "%s\n" "Compiling libebm with $c_compiler/$cpp_compiler for macOS debug|arm"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/debug/mac/arm/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/arm/libebm"
+      bin_file="libebm_mac_arm_debug.dylib"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_debug_mac_arm_build_log.txt"
       both_args_extra="-target arm64-apple-macos11 -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"

@@ -5,7 +5,7 @@
 #ifndef ZONED_BRIDGE_C_FUNCTIONS_H
 #define ZONED_BRIDGE_C_FUNCTIONS_H
 
-#include "ebm_native.h" // ErrorEbm
+#include "libebm.h" // ErrorEbm
 #include "bridge_c.h" // INTERNAL_IMPORT_EXPORT_INCLUDE
 #include "zones.h" // MAKE_ZONED_C_FUNCTION_NAME
 

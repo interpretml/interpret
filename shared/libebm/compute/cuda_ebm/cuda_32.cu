@@ -7,7 +7,7 @@
 
 #include <type_traits>
 
-#include "ebm_native.h"
+#include "libebm.h"
 #include "logging.h"
 #include "common_c.h"
 #include "bridge_c.h"

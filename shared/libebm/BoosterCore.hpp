@@ -10,7 +10,7 @@
 #include <limits> // numeric_limits
 #include <atomic>
 
-#include "ebm_native.h" // ErrorEbm
+#include "libebm.h" // ErrorEbm
 #include "common_c.h" // ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
 #include "bridge_c.h" // LossWrapper
 #include "zones.h"

@@ -7,7 +7,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // UIntEbm
+#include "libebm.h" // UIntEbm
 #include "bridge_c.h" // FloatFast
 #include "zones.h"
 

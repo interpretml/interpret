@@ -8,7 +8,7 @@
 #include <vector>
 #include <algorithm>
 
-#include "ebm_native.h" // ErrorEbm
+#include "libebm.h" // ErrorEbm
 #include "bridge_c.h" // INTERNAL_IMPORT_EXPORT_BODY
 #include "zones.h"
 

@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <ebm@koch.ninja>
 
-#ifndef EBM_NATIVE_TEST_HPP
-#define EBM_NATIVE_TEST_HPP
+#ifndef LIBEBM_TEST_HPP
+#define LIBEBM_TEST_HPP
 
 #include <stddef.h> // ptrdiff, size_t
 #include <limits> // std::numeric_limits
@@ -12,7 +12,7 @@
 #include <vector> // std::vector
 #include <assert.h> // assert
 
-#include "ebm_native.h" // IntEbm
+#include "libebm.h" // IntEbm
 
 #define UNUSED(x) (void)(x)
 #define EBM_ASSERT(x) assert(x)
@@ -418,4 +418,4 @@ void DisplayCuts(
    double maxFeatureVal
 );
 
-#endif // EBM_NATIVE_TEST_HPP
+#endif // LIBEBM_TEST_HPP

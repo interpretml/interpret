@@ -39,8 +39,8 @@
 #include <assert.h>
 #include <string.h>
 
-#include "ebm_native.h"
-#include "ebm_native_test.hpp"
+#include "libebm.h"
+#include "libebm_test.hpp"
 
 #ifdef _MSC_VER
 // we want to be able to put breakpoints in the FAILED function below, so in release mode turn off optimizations

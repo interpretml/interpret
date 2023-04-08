@@ -15,7 +15,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <random>
 
-#include "ebm_native.h"
+#include "libebm.h"
 #include "logging.h"
 #include "zones.h"
 

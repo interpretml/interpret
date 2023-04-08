@@ -10,7 +10,7 @@
 #include <limits> // numeric_limits
 #include <atomic>
 
-#include "ebm_native.h" // ErrorEbm
+#include "libebm.h" // ErrorEbm
 #include "zones.h"
 
 #include "DataSetInteraction.hpp"

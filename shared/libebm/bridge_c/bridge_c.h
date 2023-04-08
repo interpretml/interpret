@@ -7,7 +7,7 @@
 
 #include <stdlib.h> // free
 
-#include "ebm_native.h" // ErrorEbm, BoolEbm, etc..
+#include "libebm.h" // ErrorEbm, BoolEbm, etc..
 
 #include "common_c.h"
 

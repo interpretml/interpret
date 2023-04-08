@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef EBM_NATIVE_H
-#define EBM_NATIVE_H
+#ifndef LIBEBM_H
+#define LIBEBM_H
 
 #include <inttypes.h> // Fixed sized integer types and printf strings. The C99 standard says it includes stdint.h
 
@@ -22,33 +22,33 @@ extern "C" {
 
 #define EBM_API_INCLUDE extern
 
-#ifdef EBM_NATIVE_R
+#ifdef LIBEBM_R
 // R has it's own way of exporting functions. We export R specific functionality via the R_init_interpret function
 #define EBM_API_BODY EBM_EXTERN_C
-#else // EBM_NATIVE_R
+#else // LIBEBM_R
 #define EBM_API_BODY EBM_EXTERN_C __attribute__ ((visibility ("default")))
-#endif // EBM_NATIVE_R
+#endif // LIBEBM_R
 
 #define EBM_CALLING_CONVENTION
 
 #elif defined(_MSC_VER) // compiler type
 
-#ifdef EBM_NATIVE_R 
+#ifdef LIBEBM_R 
 // R has it's own way of exporting functions. We export R specific functionality via the R_init_interpret function
 #define EBM_API_INCLUDE extern
 #define EBM_API_BODY EBM_EXTERN_C
-#else // EBM_NATIVE_R
+#else // LIBEBM_R
 
-#ifdef EBM_NATIVE_EXPORTS
+#ifdef LIBEBM_EXPORTS
 // we use a .def file in Visual Studio because we can remove the C name mangling, unlike __declspec(dllexport)
 #define EBM_API_INCLUDE extern
 #define EBM_API_BODY EBM_EXTERN_C
-#else // EBM_NATIVE_EXPORTS
+#else // LIBEBM_EXPORTS
 // __declspec(dllimport) is optional, but it allows the compiler to make the code more efficient when imported
 #define EBM_API_INCLUDE extern __declspec(dllimport)
-#endif // EBM_NATIVE_EXPORTS
+#endif // LIBEBM_EXPORTS
 
-#endif // EBM_NATIVE_R
+#endif // LIBEBM_R
 
 #ifdef _WIN64
 // _WIN32 is defined during 64-bit compilations, so use _WIN64
@@ -437,4 +437,4 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 } // extern "C"
 #endif // __cplusplus
 
-#endif  // EBM_NATIVE_H
+#endif  // LIBEBM_H
