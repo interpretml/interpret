@@ -10,6 +10,7 @@ template<typename TFloat>
 struct MseRegressionLoss final : public RegressionLoss {
 public:
    static constexpr bool k_bMse = true;
+   static constexpr LinkEbm k_linkFunction = Link_identity;
    static ErrorEbm StaticApplyUpdate(const Loss * const pThis, ApplyUpdateBridge * const pData) {
       return (static_cast<const MseRegressionLoss<TFloat> *>(pThis))->ParentApplyUpdate<const MseRegressionLoss<TFloat>, TFloat>(pData);
    }

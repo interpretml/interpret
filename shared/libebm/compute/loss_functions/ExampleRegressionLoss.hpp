@@ -8,7 +8,7 @@
 // See sse2_32.cpp, cpu_64.cpp, and cuda_32.cu as examples where TFloat operators are defined.
 template<typename TFloat>
 struct ExampleRegressionLoss : RegressionLoss {
-   LOSS_BOILERPLATE(ExampleRegressionLoss)
+   LOSS_BOILERPLATE(ExampleRegressionLoss, Link_identity)
 
    TFloat m_param0;
    TFloat m_param1;

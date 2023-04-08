@@ -495,6 +495,7 @@ protected:
       pLossWrapperOut->m_hessianMultiple = hessianMultiple;
       pLossWrapperOut->m_bLossHasHessian = HasHessian<TLoss, TFloat>() ? EBM_TRUE : EBM_FALSE;
       pLossWrapperOut->m_bMse = TLoss::k_bMse ? EBM_TRUE : EBM_FALSE;
+      pLossWrapperOut->m_linkFunction = TLoss::k_linkFunction;
 
       pLossWrapperOut->m_pLoss = this;
    }
@@ -602,9 +603,10 @@ protected:
 };
 
 
-#define LOSS_CONSTANTS_BOILERPLATE(__EBM_TYPE) \
+#define LOSS_CONSTANTS_BOILERPLATE(__EBM_TYPE, __LINK_FUNCTION) \
    public: \
       static constexpr bool k_bMse = false; \
+      static constexpr LinkEbm k_linkFunction = (__LINK_FUNCTION); \
       static ErrorEbm StaticApplyUpdate(const Loss * const pThis, ApplyUpdateBridge * const pData) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->ParentApplyUpdate<const __EBM_TYPE<TFloat>, TFloat>(pData); \
       } \
@@ -623,8 +625,8 @@ protected:
             cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData); \
       }
 
-#define LOSS_BOILERPLATE(__EBM_TYPE) \
-   LOSS_CONSTANTS_BOILERPLATE(__EBM_TYPE) \
+#define LOSS_BOILERPLATE(__EBM_TYPE, __LINK_FUNCTION) \
+   LOSS_CONSTANTS_BOILERPLATE(__EBM_TYPE, __LINK_FUNCTION) \
    LOSS_TEMPLATE_BOILERPLATE
 
 } // DEFINED_ZONE_NAME

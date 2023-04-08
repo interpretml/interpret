@@ -8,7 +8,7 @@
 
 template<typename TFloat>
 struct LogLossMulticlassLoss final : public MulticlassLoss {
-   LOSS_CONSTANTS_BOILERPLATE(LogLossMulticlassLoss)
+   LOSS_CONSTANTS_BOILERPLATE(LogLossMulticlassLoss, Link_logit)
 
    inline LogLossMulticlassLoss(const Config & config) {
       if(1 == config.cOutputs) {

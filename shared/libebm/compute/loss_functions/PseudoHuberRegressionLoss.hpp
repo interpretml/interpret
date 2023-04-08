@@ -10,7 +10,7 @@
 // See sse2_32.cpp, cuda_32.cpp, and cpu_64.cpp as examples where TFloat operators are defined.
 template<typename TFloat>
 struct PseudoHuberRegressionLoss : RegressionLoss {
-   LOSS_BOILERPLATE(PseudoHuberRegressionLoss)
+   LOSS_BOILERPLATE(PseudoHuberRegressionLoss, Link_identity)
 
    TFloat m_deltaInverted;
    TFloat m_deltaSquared;
