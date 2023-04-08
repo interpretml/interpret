@@ -104,6 +104,8 @@ typedef int32_t InteractionFlags;
 // printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
 typedef uint32_t UInteractionFlags;
 #define UInteractionFlagsPrintf PRIx32
+typedef int32_t LinkEbm;
+#define LinkEbmPrintf PRId32
 
 typedef struct _BoosterHandle {
    uint32_t handleVerification; // should be 10995 if ok. Do not use size_t since that requires an additional header.
@@ -118,6 +120,7 @@ typedef struct _InteractionHandle {
 #define BOOST_FLAGS_CAST(val)                      (STATIC_CAST(BoostFlags, (val)))
 #define INTERACTION_FLAGS_CAST(val)                (STATIC_CAST(InteractionFlags, (val)))
 #define TRACE_CAST(val)                            (STATIC_CAST(TraceEbm, (val)))
+#define LINK_CAST(val)                             (STATIC_CAST(LinkEbm, (val)))
 
 // TODO: look through our code for places where SAFE_FLOAT64_AS_INT64_MAX or FLOAT64_TO_INT64_MAX would be useful
 
@@ -182,6 +185,20 @@ typedef struct _InteractionHandle {
 #define Trace_Info                                 (TRACE_CAST(3))
 // All messages logged. Useful for tracing execution in detail. Might log too much detail for production systems.
 #define Trace_Verbose                              (TRACE_CAST(4))
+
+// https://www.sagepub.com/sites/default/files/upm-binaries/21121_Chapter_15.pdf
+// https://www.rdocumentation.org/packages/VGAM/versions/1.1-8/topics/Links
+#define Link_custom                                (LINK_CAST(0))
+#define Link_identity                              (LINK_CAST(1))  // Linear regression
+#define Link_logit                                 (LINK_CAST(2))  // Logistic regression
+#define Link_probit                                (LINK_CAST(3))  // Probit regression
+#define Link_log                                   (LINK_CAST(4))  // Poisson regression
+#define Link_inverse                               (LINK_CAST(5))  // Gamma regression
+#define Link_inverse_square                        (LINK_CAST(6))  // Inverse Gaussian regression
+#define Link_cauchit                               (LINK_CAST(7))  // Cauchit regression
+#define Link_cloglog                               (LINK_CAST(8))  // Complementary log-log regression
+#define Link_loglog                                (LINK_CAST(9))  // Log-log regression
+#define Link_sqrt                                  (LINK_CAST(10)) // Square root regression
 
 // All our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void (EBM_CALLING_CONVENTION * LogCallbackFunction)(TraceEbm traceLevel, const char * message);
