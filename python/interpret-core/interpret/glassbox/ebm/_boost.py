@@ -1,8 +1,6 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-# TODO: Test EBMUtils
-
 from math import ceil, floor, isnan, isinf, exp, log
 from ...utils._native import Native, Booster
 

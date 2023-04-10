@@ -7,14 +7,14 @@ from typing import Optional, List, Tuple, Sequence, Dict, Mapping, Union
 from itertools import count
 
 from ...utils import gen_perf_dicts
-from .utils import EBMUtils
+from .utils import make_bag, jsonify_item, jsonify_lists
 from ._boost import boost
 from .utils import (
-    _process_terms,
-    _order_terms,
-    _remove_unused_higher_bins,
-    _generate_term_names,
-    _generate_term_types,
+    process_terms,
+    order_terms,
+    remove_unused_higher_bins,
+    generate_term_names,
+    generate_term_types,
 )
 from ...utils._histogram import (
     make_all_histogram_edges,
@@ -722,7 +722,7 @@ class EBMModel(BaseEstimator):
             # we do not need used_seeds if the rng is None, but it does not hurt anything
             used_seeds.add(seed)
 
-            bag = EBMUtils.make_bag(
+            bag = make_bag(
                 y,
                 self.validation_size,
                 bagged_rng,
@@ -1044,7 +1044,7 @@ class EBMModel(BaseEstimator):
 
         breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
 
-        _remove_unused_higher_bins(term_features, bins)
+        remove_unused_higher_bins(term_features, bins)
         # removing the higher order terms might allow us to eliminate some extra bins now that couldn't before
         _deduplicate_bins(bins)
 
@@ -1053,7 +1053,7 @@ class EBMModel(BaseEstimator):
             for idx in range(len(term_features))
         )
 
-        term_features, bagged_scores = _order_terms(term_features, bagged_scores)
+        term_features, bagged_scores = order_terms(term_features, bagged_scores)
 
         if is_differential_privacy:
             # for now we only support mains for DP models
@@ -1074,11 +1074,11 @@ class EBMModel(BaseEstimator):
                 term_features,
             )
 
-        term_scores, standard_deviations, intercept, bagged_scores = _process_terms(
+        term_scores, standard_deviations, intercept, bagged_scores = process_terms(
             n_classes, bagged_scores, bin_weights, bag_weights
         )
 
-        term_names = _generate_term_names(feature_names_in, term_features)
+        term_names = generate_term_names(feature_names_in, term_features)
 
         # dependent attributes (can be re-derrived after serialization)
         self.n_features_in_ = n_features_in  # scikit-learn specified name
@@ -1168,10 +1168,10 @@ class EBMModel(BaseEstimator):
             if 3 <= level:
                 min_target = getattr(self, "min_target_", None)
                 if min_target is not None and not isnan(min_target):
-                    output["min_target"] = EBMUtils.jsonify_item(min_target)
+                    output["min_target"] = jsonify_item(min_target)
                 max_target = getattr(self, "max_target_", None)
                 if max_target is not None and not isnan(max_target):
-                    output["max_target"] = EBMUtils.jsonify_item(max_target)
+                    output["max_target"] = jsonify_item(max_target)
             output["link_function"] = "identity"
         outputs.append(output)
         j["outputs"] = outputs
@@ -1181,21 +1181,21 @@ class EBMModel(BaseEstimator):
             # RegressorMixin, but in other scenarios where we want to support things like multi-output it would be
             # easier if the regression intercept were handled identically to classification, so put it in an array
             # for our JSON format to harmonize the cross-language representation
-            j["intercept"] = [EBMUtils.jsonify_item(self.intercept_)]
+            j["intercept"] = [jsonify_item(self.intercept_)]
         else:
-            j["intercept"] = EBMUtils.jsonify_lists(self.intercept_.tolist())
+            j["intercept"] = jsonify_lists(self.intercept_.tolist())
 
         if 3 <= level:
             noise_scale_binning = getattr(self, "noise_scale_binning_", None)
             if noise_scale_binning is not None:
-                j["noise_scale_binning"] = EBMUtils.jsonify_item(noise_scale_binning)
+                j["noise_scale_binning"] = jsonify_item(noise_scale_binning)
             noise_scale_boosting = getattr(self, "noise_scale_boosting_", None)
             if noise_scale_boosting is not None:
-                j["noise_scale_boosting"] = EBMUtils.jsonify_item(noise_scale_boosting)
+                j["noise_scale_boosting"] = jsonify_item(noise_scale_boosting)
         if 2 <= level:
             bag_weights = getattr(self, "bag_weights_", None)
             if bag_weights is not None:
-                j["bag_weights"] = EBMUtils.jsonify_lists(bag_weights.tolist())
+                j["bag_weights"] = jsonify_lists(bag_weights.tolist())
         if 3 <= level:
             breakpoint_iteration = getattr(self, "breakpoint_iteration_", None)
             if breakpoint_iteration is not None:
@@ -1324,10 +1324,10 @@ class EBMModel(BaseEstimator):
                     if feature_bounds is not None:
                         feature_min = feature_bounds[i, 0]
                         if not isnan(feature_min):
-                            feature["min"] = EBMUtils.jsonify_item(feature_min)
+                            feature["min"] = jsonify_item(feature_min)
                         feature_max = feature_bounds[i, 1]
                         if not isnan(feature_max):
-                            feature["max"] = EBMUtils.jsonify_item(feature_max)
+                            feature["max"] = jsonify_item(feature_max)
                     if histogram_weights is not None:
                         feature_histogram_weights = histogram_weights[i]
                         if feature_histogram_weights is not None:
@@ -1348,25 +1348,21 @@ class EBMModel(BaseEstimator):
                 self.feature_names_in_[feature_idx]
                 for feature_idx in self.term_features_[term_idx]
             ]
-            term["scores"] = EBMUtils.jsonify_lists(
-                self.term_scores_[term_idx].tolist()
-            )
+            term["scores"] = jsonify_lists(self.term_scores_[term_idx].tolist())
             if 1 <= level:
                 if standard_deviations_all is not None:
                     standard_deviations = standard_deviations_all[term_idx]
                     if standard_deviations is not None:
-                        term["standard_deviations"] = EBMUtils.jsonify_lists(
+                        term["standard_deviations"] = jsonify_lists(
                             standard_deviations.tolist()
                         )
             if 2 <= level:
                 if bagged_scores_all is not None:
                     bagged_scores = bagged_scores_all[term_idx]
                     if bagged_scores is not None:
-                        term["bagged_scores"] = EBMUtils.jsonify_lists(
-                            bagged_scores.tolist()
-                        )
+                        term["bagged_scores"] = jsonify_lists(bagged_scores.tolist())
             if 1 <= level:
-                term["bin_weights"] = EBMUtils.jsonify_lists(
+                term["bin_weights"] = jsonify_lists(
                     self.bin_weights_[term_idx].tolist()
                 )
 
@@ -1518,7 +1514,7 @@ class EBMModel(BaseEstimator):
             )
 
         term_names = self.term_names_
-        term_types = _generate_term_types(self.feature_types_in_, self.term_features_)
+        term_types = generate_term_types(self.feature_types_in_, self.term_features_)
 
         native = Native.get_native_singleton()
 
@@ -1771,7 +1767,7 @@ class EBMModel(BaseEstimator):
         )
 
         term_names = self.term_names_
-        term_types = _generate_term_types(self.feature_types_in_, self.term_features_)
+        term_types = generate_term_types(self.feature_types_in_, self.term_features_)
 
         data_dicts = []
         perf_list = []

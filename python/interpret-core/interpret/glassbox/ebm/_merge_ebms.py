@@ -1,17 +1,15 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-# TODO: Test EBMUtils
-
 from math import ceil, floor, isnan, isinf, exp, log
 from ...utils._native import Native, Booster
 from ...utils._binning import _deduplicate_bins
 from .utils import (
-    _remove_unused_higher_bins,
-    _order_terms,
-    _generate_term_names,
-    _process_terms,
-    _convert_categorical_to_continuous,
+    remove_unused_higher_bins,
+    order_terms,
+    generate_term_names,
+    process_terms,
+    convert_categorical_to_continuous,
 )
 
 # from scipy.special import expit
@@ -464,7 +462,7 @@ def merge_ebms(models):
                                 mapping,
                                 converted_min,
                                 converted_max,
-                            ) = _convert_categorical_to_continuous(bins_in_model)
+                            ) = convert_categorical_to_continuous(bins_in_model)
                             model_bins[model_idx] = converted_bins
 
                             old_min = old_bounds[model_idx][feature_idx][0]
@@ -585,7 +583,7 @@ def merge_ebms(models):
         fg_dicts.append(dict(zip(fg_sorted, count())))
         all_fg.update(fg_sorted)
 
-    sorted_fgs = _order_terms(list(all_fg))
+    sorted_fgs = order_terms(list(all_fg))
 
     # TODO: in the future we might at this point try and figure out the most
     #       common feature ordering within the feature groups.  Take the mode first
@@ -708,17 +706,15 @@ def merge_ebms(models):
         ebm.standard_deviations_,
         ebm.intercept_,
         ebm.bagged_scores_,
-    ) = _process_terms(
-        n_classes, ebm.bagged_scores_, ebm.bin_weights_, ebm.bag_weights_
-    )
+    ) = process_terms(n_classes, ebm.bagged_scores_, ebm.bin_weights_, ebm.bag_weights_)
 
     # TODO: we might be able to do these operations earlier
-    _remove_unused_higher_bins(ebm.term_features_, ebm.bins_)
+    remove_unused_higher_bins(ebm.term_features_, ebm.bins_)
     # removing the higher order terms might allow us to eliminate some extra bins now that couldn't before
     _deduplicate_bins(ebm.bins_)
 
     # dependent attributes (can be re-derrived after serialization)
     ebm.n_features_in_ = len(ebm.bins_)  # scikit-learn specified name
-    ebm.term_names_ = _generate_term_names(ebm.feature_names_in_, ebm.term_features_)
+    ebm.term_names_ = generate_term_names(ebm.feature_names_in_, ebm.term_features_)
 
     return ebm

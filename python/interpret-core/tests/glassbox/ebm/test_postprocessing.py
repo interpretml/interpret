@@ -21,7 +21,6 @@ from interpret.glassbox import (
     ExplainableBoostingRegressor,
     ExplainableBoostingClassifier,
 )
-from interpret.glassbox.ebm.utils import EBMUtils
 from interpret.glassbox.ebm import merge_ebms
 
 import numpy as np

@@ -1,7 +1,7 @@
 from math import ceil, floor
 from interpret.glassbox.ebm.utils import (
-    EBMUtils,
-    _convert_categorical_to_continuous,
+    make_bag,
+    convert_categorical_to_continuous,
     _create_proportional_tensor,
 )
 from ...tutils import synthetic_regression, adult_classification
@@ -24,7 +24,7 @@ def test_make_bag_regression():
 
     test_size = 0.20
 
-    X_train, X_val, y_train, y_val, w_train, w_val, _, _ = EBMUtils.make_bag(
+    X_train, X_val, y_train, y_val, w_train, w_val, _, _ = make_bag(
         X, y, w, test_size=test_size, random_state=1, is_classification=False
     )
 
@@ -58,7 +58,7 @@ def test_make_bag_classification():
 
     test_size = 0.20
 
-    X_train, X_val, y_train, y_val, w_train, w_val, _, _ = EBMUtils.make_bag(
+    X_train, X_val, y_train, y_val, w_train, w_val, _, _ = make_bag(
         X, y, w, test_size=test_size, random_state=1, is_classification=True
     )
 
@@ -101,7 +101,7 @@ def test_make_bag_classification():
 
 
 def test_convert_categorical_to_continuous_easy():
-    cuts, mapping, old_min, old_max = _convert_categorical_to_continuous(
+    cuts, mapping, old_min, old_max = convert_categorical_to_continuous(
         {"10": 1, "20": 2, "30": 3}
     )
     assert len(cuts) == 2
@@ -113,7 +113,7 @@ def test_convert_categorical_to_continuous_easy():
 
 
 def test_convert_categorical_to_continuous_overlap():
-    cuts, mapping, old_min, old_max = _convert_categorical_to_continuous(
+    cuts, mapping, old_min, old_max = convert_categorical_to_continuous(
         {"10": 1, "+5": 1, "40": 4, "abc": 2, "20": 2, "25": 1, "30": 3, "35": 3}
     )
     assert len(cuts) == 2
@@ -125,7 +125,7 @@ def test_convert_categorical_to_continuous_overlap():
 
 
 def test_convert_categorical_to_continuous_identical():
-    cuts, mapping, old_min, old_max = _convert_categorical_to_continuous(
+    cuts, mapping, old_min, old_max = convert_categorical_to_continuous(
         {"10": 1, "+20": 2, "  20  ": 3, "30": 4}
     )
     assert len(cuts) == 2

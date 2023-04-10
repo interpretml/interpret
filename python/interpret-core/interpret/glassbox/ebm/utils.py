@@ -1,8 +1,6 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-# TODO: Test EBMUtils
-
 from math import ceil, floor, isnan, isinf, exp, log
 from ...utils._native import Native, Booster
 from ...utils._binning import _deduplicate_bins
@@ -63,7 +61,7 @@ def _weighted_std(a, axis, weights):
     return np.sqrt(variance)
 
 
-def _convert_categorical_to_continuous(categories):
+def convert_categorical_to_continuous(categories):
     # we do automagic detection of feature types by default, and sometimes a feature which
     # was really continuous might have most of it's data as one or two values.  An example would
     # be a feature that we have "0" and "1" in the training data, but "-0.1" and "3.1" are also
@@ -205,7 +203,7 @@ def _create_proportional_tensor(axis_weights):
     return tensor.reshape(shape)
 
 
-def _process_terms(n_classes, bagged_scores, bin_weights, bag_weights):
+def process_terms(n_classes, bagged_scores, bin_weights, bag_weights):
     term_scores = []
     standard_deviations = []
     new_bagged_scores = []
@@ -293,18 +291,18 @@ def _process_terms(n_classes, bagged_scores, bin_weights, bag_weights):
     return term_scores, standard_deviations, intercept, new_bagged_scores
 
 
-def _generate_term_names(feature_names, term_features):
+def generate_term_names(feature_names, term_features):
     return [" & ".join(feature_names[i] for i in grp) for grp in term_features]
 
 
-def _generate_term_types(feature_types, term_features):
+def generate_term_types(feature_types, term_features):
     return [
         feature_types[grp[0]] if len(grp) == 1 else "interaction"
         for grp in term_features
     ]
 
 
-def _order_terms(term_features, *args):
+def order_terms(term_features, *args):
     keys = (
         [len(feature_idxs)] + sorted(feature_idxs) for feature_idxs in term_features
     )
@@ -314,7 +312,7 @@ def _order_terms(term_features, *args):
     return ret if 2 <= len(ret) else ret[0]
 
 
-def _remove_unused_higher_bins(term_features, bins):
+def remove_unused_higher_bins(term_features, bins):
     # many features are not used in pairs, so we can simplify the model
     # by removing the extra higher interaction level bins
 
@@ -329,128 +327,120 @@ def _remove_unused_higher_bins(term_features, bins):
         del bin_levels[max_level:]
 
 
-# TODO: Clean up
-class EBMUtils:
-    # NOTE: Interval / cut conversions are future work. Not registered for code coverage.
-    @staticmethod
-    def convert_to_intervals(cuts):  # pragma: no cover
-        cuts = np.array(cuts, dtype=np.float64)
+def convert_to_intervals(cuts):  # pragma: no cover
+    cuts = np.array(cuts, dtype=np.float64)
 
-        if np.isnan(cuts).any():
-            raise Exception("cuts cannot contain nan")
+    if np.isnan(cuts).any():
+        raise Exception("cuts cannot contain nan")
 
-        if np.isinf(cuts).any():
-            raise Exception("cuts cannot contain infinity")
+    if np.isinf(cuts).any():
+        raise Exception("cuts cannot contain infinity")
 
-        smaller = np.insert(cuts, 0, -np.inf)
-        larger = np.append(cuts, np.inf)
-        intervals = list(zip(smaller, larger))
+    smaller = np.insert(cuts, 0, -np.inf)
+    larger = np.append(cuts, np.inf)
+    intervals = list(zip(smaller, larger))
 
-        if any(x[1] <= x[0] for x in intervals):
-            raise Exception("cuts must contain increasing values")
+    if any(x[1] <= x[0] for x in intervals):
+        raise Exception("cuts must contain increasing values")
 
-        return intervals
+    return intervals
 
-    @staticmethod
-    def convert_to_cuts(intervals):  # pragma: no cover
-        if len(intervals) == 0:
-            raise Exception("intervals must have at least one interval")
 
-        if any(len(x) != 2 for x in intervals):
-            raise Exception("intervals must be a list of tuples")
+def convert_to_cuts(intervals):  # pragma: no cover
+    if len(intervals) == 0:
+        raise Exception("intervals must have at least one interval")
 
-        if intervals[0][0] != -np.inf:
-            raise Exception("intervals must start from -inf")
+    if any(len(x) != 2 for x in intervals):
+        raise Exception("intervals must be a list of tuples")
 
-        if intervals[-1][-1] != np.inf:
-            raise Exception("intervals must end with inf")
+    if intervals[0][0] != -np.inf:
+        raise Exception("intervals must start from -inf")
 
-        cuts = [x[0] for x in intervals[1:]]
-        cuts_verify = [x[1] for x in intervals[:-1]]
+    if intervals[-1][-1] != np.inf:
+        raise Exception("intervals must end with inf")
 
-        if np.isnan(cuts).any():
-            raise Exception("intervals cannot contain NaN")
+    cuts = [x[0] for x in intervals[1:]]
+    cuts_verify = [x[1] for x in intervals[:-1]]
 
-        if any(x[0] != x[1] for x in zip(cuts, cuts_verify)):
-            raise Exception("intervals must contain adjacent sections")
+    if np.isnan(cuts).any():
+        raise Exception("intervals cannot contain NaN")
 
-        if any(higher <= lower for lower, higher in zip(cuts, cuts[1:])):
-            raise Exception("intervals must contain increasing sections")
+    if any(x[0] != x[1] for x in zip(cuts, cuts_verify)):
+        raise Exception("intervals must contain adjacent sections")
 
-        return cuts
+    if any(higher <= lower for lower, higher in zip(cuts, cuts[1:])):
+        raise Exception("intervals must contain increasing sections")
 
-    @staticmethod
-    def make_bag(y, test_size, rng, is_stratified):
-        # all test/train splits should be done with this function to ensure that
-        # if we re-generate the train/test splits that they are generated exactly
-        # the same as before
+    return cuts
 
-        if test_size == 0:
-            return None
-        elif test_size > 0:
-            n_samples = len(y)
-            n_test_samples = 0
 
-            if test_size >= 1:
-                if test_size % 1:
-                    raise Exception(
-                        "If test_size >= 1, test_size should be a whole number."
-                    )
-                n_test_samples = test_size
-            else:
-                n_test_samples = ceil(n_samples * test_size)
+def make_bag(y, test_size, rng, is_stratified):
+    # all test/train splits should be done with this function to ensure that
+    # if we re-generate the train/test splits that they are generated exactly
+    # the same as before
 
-            n_train_samples = n_samples - n_test_samples
-            native = Native.get_native_singleton()
+    if test_size == 0:
+        return None
+    elif test_size > 0:
+        n_samples = len(y)
+        n_test_samples = 0
 
-            # Adapt test size if too small relative to number of classes
-            if is_stratified:
-                n_classes = len(set(y))
-                if n_test_samples < n_classes:  # pragma: no cover
-                    warnings.warn(
-                        "Too few samples per class, adapting test size to guarantee 1 sample per class."
-                    )
-                    n_test_samples = n_classes
-                    n_train_samples = n_samples - n_test_samples
-
-                return native.sample_without_replacement_stratified(
-                    rng, n_classes, n_train_samples, n_test_samples, y
+        if test_size >= 1:
+            if test_size % 1:
+                raise Exception(
+                    "If test_size >= 1, test_size should be a whole number."
                 )
-            else:
-                return native.sample_without_replacement(
-                    rng, n_train_samples, n_test_samples
+            n_test_samples = test_size
+        else:
+            n_test_samples = ceil(n_samples * test_size)
+
+        n_train_samples = n_samples - n_test_samples
+        native = Native.get_native_singleton()
+
+        # Adapt test size if too small relative to number of classes
+        if is_stratified:
+            n_classes = len(set(y))
+            if n_test_samples < n_classes:  # pragma: no cover
+                warnings.warn(
+                    "Too few samples per class, adapting test size to guarantee 1 sample per class."
                 )
-        else:  # pragma: no cover
-            raise Exception("test_size must be a positive numeric value.")
+                n_test_samples = n_classes
+                n_train_samples = n_samples - n_test_samples
 
-    @staticmethod
-    def jsonify_lists(vals):
-        if len(vals) != 0:
-            if type(vals[0]) is float:
-                for idx, val in enumerate(vals):
-                    # JSON doesn't have NaN, or infinities, but javaScript has these, so use javaScript strings
-                    if isnan(val):
-                        vals[idx] = "NaN"  # this is what JavaScript outputs for 0/0
-                    elif val == np.inf:
-                        vals[
-                            idx
-                        ] = "Infinity"  # this is what JavaScript outputs for 1/0
-                    elif val == -np.inf:
-                        vals[
-                            idx
-                        ] = "-Infinity"  # this is what JavaScript outputs for -1/0
-            else:
-                for nested in vals:
-                    EBMUtils.jsonify_lists(nested)
-        return vals  # we modify in place, but return it just for easy access
+            return native.sample_without_replacement_stratified(
+                rng, n_classes, n_train_samples, n_test_samples, y
+            )
+        else:
+            return native.sample_without_replacement(
+                rng, n_train_samples, n_test_samples
+            )
+    else:  # pragma: no cover
+        raise Exception("test_size must be a positive numeric value.")
 
-    @staticmethod
-    def jsonify_item(val):
-        # JSON doesn't have NaN, or infinities, but javaScript has these, so use javaScript strings
-        if isnan(val):
-            val = "NaN"  # this is what JavaScript outputs for 0/0
-        elif val == np.inf:
-            val = "Infinity"  # this is what JavaScript outputs for 1/0
-        elif val == -np.inf:
-            val = "-Infinity"  # this is what JavaScript outputs for -1/0
-        return val
+
+def jsonify_lists(vals):
+    if len(vals) != 0:
+        if type(vals[0]) is float:
+            for idx, val in enumerate(vals):
+                # JSON doesn't have NaN, or infinities, but javaScript has these, so use javaScript strings
+                if isnan(val):
+                    vals[idx] = "NaN"  # this is what JavaScript outputs for 0/0
+                elif val == np.inf:
+                    vals[idx] = "Infinity"  # this is what JavaScript outputs for 1/0
+                elif val == -np.inf:
+                    vals[idx] = "-Infinity"  # this is what JavaScript outputs for -1/0
+        else:
+            for nested in vals:
+                jsonify_lists(nested)
+    return vals  # we modify in place, but return it just for easy access
+
+
+def jsonify_item(val):
+    # JSON doesn't have NaN, or infinities, but javaScript has these, so use javaScript strings
+    if isnan(val):
+        val = "NaN"  # this is what JavaScript outputs for 0/0
+    elif val == np.inf:
+        val = "Infinity"  # this is what JavaScript outputs for 1/0
+    elif val == -np.inf:
+        val = "-Infinity"  # this is what JavaScript outputs for -1/0
+    return val
