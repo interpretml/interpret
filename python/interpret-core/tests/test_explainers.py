@@ -3,8 +3,8 @@
 
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
-from interpret.test.utils import synthetic_classification, get_all_explainers
-from interpret.test.utils import assert_valid_explanation, assert_valid_model_explainer
+from .tutils import synthetic_classification, get_all_explainers
+from .tutils import assert_valid_explanation, assert_valid_model_explainer
 
 # from interpret.blackbox import PermutationImportance
 

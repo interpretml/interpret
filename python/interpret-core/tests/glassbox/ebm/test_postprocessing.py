@@ -5,7 +5,7 @@ import pytest
 
 from interpret.glassbox.ebm.postprocessing import multiclass_postprocess_RESTORE_THIS
 
-from interpret.test.utils import (
+from ...tutils import (
     synthetic_multiclass,
     synthetic_classification,
     adult_classification,

@@ -7,7 +7,7 @@ from interpret.glassbox import (
     ExplainableBoostingRegressor,
     ExplainableBoostingClassifier,
 )
-from interpret.test.utils import (
+from ....tutils import (
     synthetic_multiclass,
     synthetic_classification,
     synthetic_regression,

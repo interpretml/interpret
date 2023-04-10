@@ -4,7 +4,7 @@ from interpret.glassbox.ebm.utils import (
     _convert_categorical_to_continuous,
     _create_proportional_tensor,
 )
-from interpret.test.utils import synthetic_regression, adult_classification
+from ...tutils import synthetic_regression, adult_classification
 
 import numpy as np
 import pytest

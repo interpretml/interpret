@@ -1,23 +1,23 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..data import ClassHistogram, Marginal
-from ..perf import ROC, PR, RegressionPerf
+from interpret.data import ClassHistogram, Marginal
+from interpret.perf import ROC, PR, RegressionPerf
 
-from ..blackbox import LimeTabular
-from ..blackbox import ShapKernel
-from ..blackbox import MorrisSensitivity
-from ..blackbox import PartialDependence
+from interpret.blackbox import LimeTabular
+from interpret.blackbox import ShapKernel
+from interpret.blackbox import MorrisSensitivity
+from interpret.blackbox import PartialDependence
 
 # from ..blackbox import PermutationImportance
 
-from ..greybox import TreeInterpreter
-from ..greybox import ShapTree
+from interpret.greybox import TreeInterpreter
+from interpret.greybox import ShapTree
 
-from ..glassbox import LogisticRegression, LinearRegression
-from ..glassbox import ClassificationTree, RegressionTree
-from ..glassbox import DecisionListClassifier
-from ..glassbox import ExplainableBoostingClassifier, ExplainableBoostingRegressor
+from interpret.glassbox import LogisticRegression, LinearRegression
+from interpret.glassbox import ClassificationTree, RegressionTree
+from interpret.glassbox import DecisionListClassifier
+from interpret.glassbox import ExplainableBoostingClassifier, ExplainableBoostingRegressor
 
 import pandas as pd
 import numpy as np

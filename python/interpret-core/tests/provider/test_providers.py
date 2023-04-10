@@ -10,7 +10,7 @@ from interpret.provider import (
 )
 import pytest
 
-from interpret.test.utils import synthetic_classification
+from ..tutils import synthetic_classification
 from interpret.glassbox import LogisticRegression
 
 

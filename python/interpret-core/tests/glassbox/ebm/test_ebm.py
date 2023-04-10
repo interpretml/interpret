@@ -5,13 +5,13 @@
 # TODO PK add a test with a real regression dataset
 # TODO PK add a test with more than 1 multiclass interaction
 
-from interpret.test.utils import (
+from ...tutils import (
     synthetic_multiclass,
     synthetic_classification,
     adult_classification,
     iris_classification,
 )
-from interpret.test.utils import synthetic_regression
+from ...tutils import synthetic_regression
 from interpret.glassbox import (
     ExplainableBoostingRegressor,
     ExplainableBoostingClassifier,

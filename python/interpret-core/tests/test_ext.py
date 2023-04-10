@@ -3,8 +3,8 @@
 
 from six import raise_from
 
-from .utils import assert_valid_explanation
-from .utils import synthetic_classification
+from .tutils import assert_valid_explanation
+from .tutils import synthetic_classification
 
 from interpret.glassbox import LogisticRegression
 

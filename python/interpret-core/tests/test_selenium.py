@@ -1,7 +1,7 @@
 import pytest
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
-from interpret.test.utils import synthetic_classification, get_all_explainers
+from .tutils import synthetic_classification, get_all_explainers
 
 # from interpret.blackbox import PermutationImportance
 from interpret.visual.interactive import set_show_addr, shutdown_show_server, show_link

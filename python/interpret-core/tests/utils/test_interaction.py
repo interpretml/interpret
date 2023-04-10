@@ -5,7 +5,7 @@ from math import isclose
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.dummy import DummyClassifier
 
-from interpret.test.utils import (
+from ..tutils import (
     synthetic_regression,
     synthetic_classification,
     synthetic_multiclass,

@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 from interpret.glassbox import LogisticRegression
-from interpret.test.utils import synthetic_classification
+from .tutils import synthetic_classification
 
 
 # TODO: Harden these tests later to check content from data method.
