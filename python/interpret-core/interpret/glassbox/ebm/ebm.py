@@ -10,11 +10,13 @@ from ...utils import gen_perf_dicts
 from .utils import EBMUtils
 from .utils import (
     _process_terms,
-    make_all_histogram_edges,
     _order_terms,
     _remove_unused_higher_bins,
     _generate_term_names,
     _generate_term_types,
+)
+from ...utils._histogram import (
+    make_all_histogram_edges,
 )
 from ...utils._binning import (
     preclean_X,

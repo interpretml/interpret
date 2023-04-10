@@ -77,6 +77,7 @@
     <Compile Include="interpret\provider\__init__.py" />
     <Compile Include="interpret\utils\all.py" />
     <Compile Include="interpret\utils\environment.py" />
+    <Compile Include="interpret\utils\_histogram.py" />
     <Compile Include="interpret\utils\_interaction.py" />
     <Compile Include="interpret\utils\shap.py" />
     <Compile Include="interpret\utils\_binning.py" />
