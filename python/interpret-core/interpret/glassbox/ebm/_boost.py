@@ -15,8 +15,6 @@ from itertools import islice, count, chain
 
 import heapq
 
-from .postprocessing import multiclass_postprocess
-
 import logging
 
 _log = logging.getLogger(__name__)

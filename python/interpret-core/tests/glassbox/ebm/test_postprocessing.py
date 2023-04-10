@@ -3,7 +3,7 @@
 
 import pytest
 
-from interpret.glassbox.ebm.postprocessing import multiclass_postprocess_RESTORE_THIS
+from interpret.glassbox.ebm._multiclass import multiclass_postprocess_RESTORE_THIS
 
 from ...tutils import (
     synthetic_multiclass,

@@ -56,7 +56,7 @@
     <Compile Include="interpret\glassbox\decisiontree.py" />
     <Compile Include="interpret\glassbox\ebm\bin.py" />
     <Compile Include="interpret\glassbox\ebm\ebm.py" />
-    <Compile Include="interpret\glassbox\ebm\postprocessing.py" />
+    <Compile Include="interpret\glassbox\ebm\_multiclass.py" />
     <Compile Include="interpret\glassbox\ebm\research\group_importance.py" />
     <Compile Include="interpret\glassbox\ebm\research\purify.py" />
     <Compile Include="interpret\glassbox\ebm\research\__init__.py" />
