@@ -3,9 +3,11 @@
 
 import numpy as np
 from interpret.glassbox.ebm.research.purify import (
-    purify_row,
-    purify_col,
-    purify_once,
+    _purify_row,
+    _purify_col,
+    _purify_once,
+)
+from interpret.glassbox.ebm.research import (
     purify,
 )
 
@@ -20,7 +22,7 @@ def test_purify_row():
     raw_mat = np.array([np.array([0, 0]), np.array([0, 0])], dtype=np.float64)
     raw_marg = np.array([0, 0], dtype=np.float64)
     densities = np.ones_like(raw_mat)
-    pure_mat, pure_marg = purify_row(raw_mat.copy(), raw_marg.copy(), densities, 0)
+    pure_mat, pure_marg = _purify_row(raw_mat.copy(), raw_marg.copy(), densities, 0)
     assert np.all(np.isclose(pure_mat, raw_mat, atol=1e-10))
     assert np.all(np.isclose(pure_marg, raw_marg, atol=1e-10))
 
@@ -29,7 +31,7 @@ def test_purify_row():
     raw_marg = np.random.uniform(-1, 1, size=(n_rows, 1))
     densities = np.random.uniform(0, 1, size=raw_mat.shape)
     for i in range(n_rows):
-        pure_mat, pure_marg = purify_row(raw_mat.copy(), raw_marg.copy(), densities, i)
+        pure_mat, pure_marg = _purify_row(raw_mat.copy(), raw_marg.copy(), densities, i)
         assert np.abs(np.average(pure_mat[i, :], weights=densities[i, :])) < 1e-10
         assert np.all(
             np.isclose(
@@ -46,7 +48,7 @@ def test_purify_col():
     raw_mat = np.array([np.array([0, 0]), np.array([0, 0])], dtype=np.float64)
     raw_marg = np.array([0, 0], dtype=np.float64)
     densities = np.ones_like(raw_mat)
-    pure_mat, pure_marg = purify_col(raw_mat.copy(), raw_marg.copy(), densities, 0)
+    pure_mat, pure_marg = _purify_col(raw_mat.copy(), raw_marg.copy(), densities, 0)
     assert np.all(np.isclose(pure_mat, raw_mat, atol=1e-10))
     assert np.all(np.isclose(pure_marg, raw_marg, atol=1e-10))
 
@@ -55,7 +57,7 @@ def test_purify_col():
     raw_marg = np.random.uniform(-1, 1, size=(n_cols, 1))
     densities = np.random.uniform(0, 1, size=raw_mat.shape)
     for j in range(n_cols):
-        pure_mat, pure_marg = purify_col(raw_mat.copy(), raw_marg.copy(), densities, j)
+        pure_mat, pure_marg = _purify_col(raw_mat.copy(), raw_marg.copy(), densities, j)
         assert np.abs(np.average(pure_mat[:, j], weights=densities[:, j])) < 1e-10
         assert np.all(
             np.isclose(

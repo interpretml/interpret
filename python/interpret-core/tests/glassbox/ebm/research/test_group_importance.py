@@ -13,8 +13,10 @@ from ....tutils import (
     synthetic_regression,
 )
 from interpret.glassbox.ebm.research.group_importance import (
-    compute_group_importance,
     _get_group_name,
+)
+from interpret.glassbox.ebm.research import (
+    compute_group_importance,
     append_group_importance,
     get_group_and_individual_importances,
     get_individual_importances,

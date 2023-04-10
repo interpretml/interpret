@@ -16,7 +16,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def purify_row(mat, marg, densities, i):
+def _purify_row(mat, marg, densities, i):
     # Purify such that row i has mean 0.
     try:
         _mean = np.average(mat[i, :], weights=densities[i, :])
@@ -27,7 +27,7 @@ def purify_row(mat, marg, densities, i):
     return mat, marg
 
 
-def purify_col(mat, marg, densities, j):
+def _purify_col(mat, marg, densities, j):
     # Purify such that column j has mean 0.
     try:
         _mean = np.average(mat[:, j], weights=densities[:, j])
@@ -38,7 +38,7 @@ def purify_col(mat, marg, densities, j):
     return mat, marg
 
 
-def purify_once(mat, densities=None, m1=None, m2=None, randomize=False):
+def _purify_once(mat, densities=None, m1=None, m2=None, randomize=False):
     # Purify ecah row and column of the matrix mat.
     if densities is None:
         densities = np.ones_like(mat)
@@ -57,23 +57,23 @@ def purify_once(mat, densities=None, m1=None, m2=None, randomize=False):
             if np.random.binomial(1, 0.5) and len(nonzero_rows) > 0:
                 i = np.random.choice(list(nonzero_rows))  # todo: maybe slow
                 nonzero_rows.remove(i)
-                mat, m1 = purify_row(mat, m1, densities, i)
+                mat, m1 = _purify_row(mat, m1, densities, i)
             elif len(nonzero_cols) > 0:
                 j = np.random.choice(list(nonzero_cols))
                 nonzero_cols.remove(j)
-                mat, m2 = purify_col(mat, m2, densities, j)
+                mat, m2 = _purify_col(mat, m2, densities, j)
 
     # Fix each row mean
     for i in range(mat.shape[0]):
-        mat, m1 = purify_row(mat, m1, densities, i)
+        mat, m1 = _purify_row(mat, m1, densities, i)
     # Fix each col mean
     for j in range(mat.shape[1]):
-        mat, m2 = purify_col(mat, m2, densities, j)
+        mat, m2 = _purify_col(mat, m2, densities, j)
 
     return np.squeeze(m1), np.squeeze(m2), mat
 
 
-def calc_row_means(mat, densities):
+def _calc_row_means(mat, densities):
     means = []
     for i in range(mat.shape[0]):
         try:
@@ -83,7 +83,7 @@ def calc_row_means(mat, densities):
     return means
 
 
-def calc_col_means(mat, densities):
+def _calc_col_means(mat, densities):
     means = []
     for j in range(mat.shape[1]):
         try:
@@ -102,18 +102,18 @@ def purify(mat, densities=None, verbose=False, tol=1e-6, randomize=False):
     if densities is None:  # Use a uniform density
         densities = np.ones_like(mat)
     i = 1
-    m1, m2, mat = purify_once(mat, densities)
-    row_means = calc_row_means(mat, densities)
-    col_means = calc_col_means(mat, densities)
+    m1, m2, mat = _purify_once(mat, densities)
+    row_means = _calc_row_means(mat, densities)
+    col_means = _calc_col_means(mat, densities)
     max_row = np.max(np.abs(row_means))
     max_col = np.max(np.abs(col_means))
     while max_row > tol or max_col > tol:
         i += 1
         if verbose:  # pragma: no cover
             log.info(i, max_row, max_col)
-        m1, m2, mat = purify_once(mat, densities, m1, m2, randomize)
-        row_means = calc_row_means(mat, densities)
-        col_means = calc_col_means(mat, densities)
+        m1, m2, mat = _purify_once(mat, densities, m1, m2, randomize)
+        row_means = _calc_row_means(mat, densities)
+        col_means = _calc_col_means(mat, densities)
         max_row = np.max(np.abs(row_means))
         max_col = np.max(np.abs(col_means))
     # Center m1 and m2
