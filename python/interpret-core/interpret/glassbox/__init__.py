@@ -4,5 +4,5 @@
 from .decisiontree import ClassificationTree, RegressionTree  # noqa: F401
 from .linear import LogisticRegression, LinearRegression  # noqa: F401
 from .skoperules import DecisionListClassifier  # noqa: F401
-from .ebm.ebm import ExplainableBoostingClassifier  # noqa: F401
-from .ebm.ebm import ExplainableBoostingRegressor  # noqa: F401
+from .ebm._ebm import ExplainableBoostingClassifier  # noqa: F401
+from .ebm._ebm import ExplainableBoostingRegressor  # noqa: F401
