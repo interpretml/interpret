@@ -12,7 +12,7 @@ from ....tutils import (
     synthetic_classification,
     synthetic_regression,
 )
-from interpret.glassbox.ebm.research.group_importance import (
+from interpret.glassbox.ebm.research._group_importance import (
     _get_group_name,
 )
 from interpret.glassbox.ebm.research import (

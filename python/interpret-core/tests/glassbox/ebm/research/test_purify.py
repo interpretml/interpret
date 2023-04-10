@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 import numpy as np
-from interpret.glassbox.ebm.research.purify import (
+from interpret.glassbox.ebm.research._purify import (
     _purify_row,
     _purify_col,
     _purify_once,
