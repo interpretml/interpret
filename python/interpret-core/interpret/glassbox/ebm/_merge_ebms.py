@@ -4,7 +4,7 @@
 from math import ceil, floor, isnan, isinf, exp, log
 from ...utils._native import Native, Booster
 from ...utils._binning import _deduplicate_bins
-from .utils import (
+from ._utils import (
     remove_unused_higher_bins,
     order_terms,
     generate_term_names,

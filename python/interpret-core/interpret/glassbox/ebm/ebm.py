@@ -7,9 +7,11 @@ from typing import Optional, List, Tuple, Sequence, Dict, Mapping, Union
 from itertools import count
 
 from ...utils import gen_perf_dicts
-from .utils import make_bag, jsonify_item, jsonify_lists
 from ._boost import boost
-from .utils import (
+from ._utils import (
+    make_bag,
+    jsonify_item,
+    jsonify_lists,
     process_terms,
     order_terms,
     remove_unused_higher_bins,
