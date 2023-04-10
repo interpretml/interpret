@@ -60,6 +60,7 @@
     <Compile Include="interpret\glassbox\ebm\research\group_importance.py" />
     <Compile Include="interpret\glassbox\ebm\research\purify.py" />
     <Compile Include="interpret\glassbox\ebm\research\__init__.py" />
+    <Compile Include="interpret\glassbox\ebm\_tensor.py" />
     <Compile Include="interpret\glassbox\ebm\_utils.py" />
     <Compile Include="interpret\glassbox\ebm\_boost.py" />
     <Compile Include="interpret\glassbox\ebm\_merge_ebms.py" />

@@ -32,14 +32,16 @@ from ...utils._binning import (
     normalize_initial_seed,
 )
 from .bin import (
+    eval_terms,
     ebm_decision_function,
     ebm_decision_function_and_explain,
+    make_bin_weights,
+)
+from ._tensor import (
     make_boosting_weights,
     after_boosting,
     remove_last,
-    make_bin_weights,
     trim_tensor,
-    eval_terms,
 )
 from ...utils._native import Native
 from ...api.base import ExplainerMixin

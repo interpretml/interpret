@@ -5,6 +5,8 @@ from math import ceil, floor, isnan, isinf, exp, log
 from ...utils._native import Native, Booster
 from ...utils._binning import _deduplicate_bins
 
+from ._tensor import restore_missing_value_zeros
+
 # from scipy.special import expit
 from sklearn.utils.extmath import softmax
 from sklearn.model_selection import train_test_split
@@ -21,38 +23,6 @@ from ._multiclass import multiclass_postprocess
 import logging
 
 _log = logging.getLogger(__name__)
-
-
-def _zero_tensor(tensor, zero_low=None, zero_high=None):
-    entire_tensor = [slice(None) for _ in range(tensor.ndim)]
-    if zero_low is not None:
-        for dimension_idx, is_zero in enumerate(zero_low):
-            if is_zero:
-                dim_slices = entire_tensor.copy()
-                dim_slices[dimension_idx] = 0
-                tensor[tuple(dim_slices)] = 0
-    if zero_high is not None:
-        for dimension_idx, is_zero in enumerate(zero_high):
-            if is_zero:
-                dim_slices = entire_tensor.copy()
-                dim_slices[dimension_idx] = -1
-                tensor[tuple(dim_slices)] = 0
-
-
-def _restore_missing_value_zeros2(tensor, weights):
-    n_dimensions = weights.ndim
-    entire_tensor = [slice(None)] * n_dimensions
-    lower = []
-    higher = []
-    for dimension_idx in range(n_dimensions):
-        dim_slices = entire_tensor.copy()
-        dim_slices[dimension_idx] = 0
-        total_sum = np.sum(weights[tuple(dim_slices)])
-        lower.append(True if total_sum == 0 else False)
-        dim_slices[dimension_idx] = -1
-        total_sum = np.sum(weights[tuple(dim_slices)])
-        higher.append(True if total_sum == 0 else False)
-    _zero_tensor(tensor, lower, higher)
 
 
 def _weighted_std(a, axis, weights):
@@ -214,7 +184,7 @@ def process_terms(n_classes, bagged_scores, bin_weights, bag_weights):
         for tensor in score_tensors:
             tensor_copy = tensor.copy()
             if n_classes != 1:
-                _restore_missing_value_zeros2(tensor_copy, weights)
+                restore_missing_value_zeros(tensor_copy, weights)
             tensor_bags.append(tensor_copy)
         score_tensors = np.array(
             tensor_bags, np.float64
@@ -282,7 +252,7 @@ def process_terms(n_classes, bagged_scores, bin_weights, bag_weights):
 
         for scores, weights in zip(term_scores, bin_weights):
             # set these to zero again since zero-centering them causes the missing/unknown to shift away from zero
-            _restore_missing_value_zeros2(scores, weights)
+            restore_missing_value_zeros(scores, weights)
 
         if n_classes < 0:
             # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
