@@ -224,7 +224,7 @@ setup(
         "sdist": SDistCommand,
         "build": BuildCommand,
     },
-    packages=find_packages(exclude=['tests', 'tests.*']),
+    packages=find_packages(exclude=["tests", "tests.*"]),
     package_data=package_data,
     classifiers=[
         "Programming Language :: Python",

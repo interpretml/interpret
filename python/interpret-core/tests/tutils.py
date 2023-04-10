@@ -17,7 +17,10 @@ from interpret.greybox import ShapTree
 from interpret.glassbox import LogisticRegression, LinearRegression
 from interpret.glassbox import ClassificationTree, RegressionTree
 from interpret.glassbox import DecisionListClassifier
-from interpret.glassbox import ExplainableBoostingClassifier, ExplainableBoostingRegressor
+from interpret.glassbox import (
+    ExplainableBoostingClassifier,
+    ExplainableBoostingRegressor,
+)
 
 import pandas as pd
 import numpy as np

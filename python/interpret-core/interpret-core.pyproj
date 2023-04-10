@@ -22,13 +22,13 @@
     <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="interpret\pytest.ini" />
     <Content Include="interpret\visual\assets\favicon.ico" />
     <Content Include="interpret\visual\assets\udash.css" />
     <Content Include="interpret\visual\assets\udash.js" />
     <Content Include="js\package.json" />
     <Content Include="js\src\index.js" />
     <Content Include="js\webpack.config.js" />
+    <Content Include="pytest.ini" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="conftest.py" />
@@ -61,6 +61,7 @@
     <Compile Include="interpret\glassbox\ebm\research\purify.py" />
     <Compile Include="interpret\glassbox\ebm\research\__init__.py" />
     <Compile Include="interpret\glassbox\ebm\utils.py" />
+    <Compile Include="interpret\glassbox\ebm\_merge_ebms.py" />
     <Compile Include="interpret\glassbox\ebm\__init__.py" />
     <Compile Include="interpret\glassbox\linear.py" />
     <Compile Include="interpret\glassbox\skoperules.py" />
