@@ -55,7 +55,6 @@ package_data = {
         "visual/assets/udash.css",
         "visual/assets/udash.js",
         "visual/assets/favicon.ico",
-        "pytest.ini",
     ]
 }
 sklearn_dep = "scikit-learn>=0.18.1"
