@@ -54,7 +54,7 @@
     <Compile Include="interpret\ext\provider\__init__.py" />
     <Compile Include="interpret\ext\__init__.py" />
     <Compile Include="interpret\glassbox\decisiontree.py" />
-    <Compile Include="interpret\glassbox\ebm\bin.py" />
+    <Compile Include="interpret\glassbox\ebm\_bin.py" />
     <Compile Include="interpret\glassbox\ebm\ebm.py" />
     <Compile Include="interpret\glassbox\ebm\_multiclass.py" />
     <Compile Include="interpret\glassbox\ebm\research\group_importance.py" />

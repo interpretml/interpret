@@ -31,7 +31,7 @@ from ...utils._binning import (
     _deduplicate_bins,
     normalize_initial_seed,
 )
-from .bin import (
+from ._bin import (
     eval_terms,
     ebm_decision_function,
     ebm_decision_function_and_explain,
