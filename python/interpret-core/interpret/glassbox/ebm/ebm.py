@@ -8,6 +8,7 @@ from itertools import count
 
 from ...utils import gen_perf_dicts
 from .utils import EBMUtils
+from ._boost import boost
 from .utils import (
     _process_terms,
     _order_terms,
@@ -815,7 +816,7 @@ class EBMModel(BaseEstimator):
                     )
                 )
 
-            results = provider.parallel(EBMUtils.cyclic_gradient_boost, parallel_args)
+            results = provider.parallel(boost, parallel_args)
 
             # let python reclaim the dataset memory via reference counting
             del parallel_args  # parallel_args holds references to dataset, so must be deleted
@@ -1022,9 +1023,7 @@ class EBMModel(BaseEstimator):
                         )
                     )
 
-                results = provider.parallel(
-                    EBMUtils.cyclic_gradient_boost, parallel_args
-                )
+                results = provider.parallel(boost, parallel_args)
 
                 # allow python to reclaim these big memory items via reference counting
                 del parallel_args  # this holds references to dataset, scores_bags, and bags

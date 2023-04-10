@@ -61,6 +61,7 @@
     <Compile Include="interpret\glassbox\ebm\research\purify.py" />
     <Compile Include="interpret\glassbox\ebm\research\__init__.py" />
     <Compile Include="interpret\glassbox\ebm\utils.py" />
+    <Compile Include="interpret\glassbox\ebm\_boost.py" />
     <Compile Include="interpret\glassbox\ebm\_merge_ebms.py" />
     <Compile Include="interpret\glassbox\ebm\__init__.py" />
     <Compile Include="interpret\glassbox\linear.py" />
