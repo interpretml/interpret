@@ -53,7 +53,7 @@
     <Compile Include="src\interpret\ext\perf\__init__.py" />
     <Compile Include="src\interpret\ext\provider\__init__.py" />
     <Compile Include="src\interpret\ext\__init__.py" />
-    <Compile Include="src\interpret\glassbox\decisiontree.py" />
+    <Compile Include="src\interpret\glassbox\_decisiontree.py" />
     <Compile Include="src\interpret\glassbox\ebm\_bin.py" />
     <Compile Include="src\interpret\glassbox\ebm\_ebm.py" />
     <Compile Include="src\interpret\glassbox\ebm\_multiclass.py" />
@@ -65,8 +65,8 @@
     <Compile Include="src\interpret\glassbox\ebm\_boost.py" />
     <Compile Include="src\interpret\glassbox\ebm\_merge_ebms.py" />
     <Compile Include="src\interpret\glassbox\ebm\__init__.py" />
-    <Compile Include="src\interpret\glassbox\linear.py" />
-    <Compile Include="src\interpret\glassbox\skoperules.py" />
+    <Compile Include="src\interpret\glassbox\_linear.py" />
+    <Compile Include="src\interpret\glassbox\_skoperules.py" />
     <Compile Include="src\interpret\glassbox\__init__.py" />
     <Compile Include="src\interpret\greybox\shaptree.py" />
     <Compile Include="src\interpret\greybox\treeinterpreter.py" />

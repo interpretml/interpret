@@ -442,7 +442,7 @@ jobs:
   - script: |
       python -m pip install --upgrade pip setuptools wheel
       FOR %%A IN ($(System.ArtifactsDirectory)\bdist\interpret_core-*.whl) DO SET "install_file=%%A"
-      python -m pip install "%install_file%[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]"
+      python -m pip install "%install_file%"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
     displayName: 'Install interpret-core package with requirements (win)'
     condition: startsWith(variables['image.name'], 'windows')
   - script: |
