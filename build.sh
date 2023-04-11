@@ -238,9 +238,9 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    os_type=`uname`
    # TODO: change this to accept libebm_local.so or libebm_local.dylib to allow for weird architectures build using sdists
    if [ "$os_type" = "Linux" ]; then
-      final_binary="./python/interpret-core/interpret/lib/libebm_linux_x64.so"
+      final_binary="./python/interpret-core/src/interpret/lib/libebm_linux_x64.so"
    elif [ "$os_type" = "Darwin" ]; then
-      final_binary="./python/interpret-core/interpret/lib/libebm_mac_x64.dylib"
+      final_binary="./python/interpret-core/src/interpret/lib/libebm_mac_x64.dylib"
    else
       printf "%s\n" "OS $os_type not recognized.  We support clang/clang++ on macOS and gcc/g++ on Linux"
       exit 1
@@ -248,8 +248,9 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
 
    mkdir ./python
    mkdir ./python/interpret-core
-   mkdir ./python/interpret-core/interpret
-   mkdir ./python/interpret-core/interpret/lib
+   mkdir ./python/interpret-core/src
+   mkdir ./python/interpret-core/src/interpret
+   mkdir ./python/interpret-core/src/interpret/lib
 
    extras="-DLIBEBM_EXPORTS -DNDEBUG -I$code_path/inc -I$code_path/common_c -I$code_path/common_cpp -I$code_path/bridge_c -I$code_path/bridge_cpp -I$code_path -I$code_path/compute -I$code_path/compute/loss_functions -I$code_path/compute/metrics"
 
@@ -399,7 +400,7 @@ fi
 
 root_path_unsanitized="$script_path_unsanitized"
 tmp_path_unsanitized="$root_path_unsanitized/tmp"
-python_lib_unsanitized="$root_path_unsanitized/python/interpret-core/interpret/lib"
+python_lib_unsanitized="$root_path_unsanitized/python/interpret-core/src/interpret/lib"
 staging_path_unsanitized="$root_path_unsanitized/staging"
 src_path_unsanitized="$root_path_unsanitized/shared/libebm"
 src_path_sanitized=`sanitize "$src_path_unsanitized"`

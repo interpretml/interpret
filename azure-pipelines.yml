@@ -231,21 +231,21 @@ jobs:
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/libebm_*_x64*'
-      targetFolder: 'python/interpret-core/interpret/lib'
+      targetFolder: 'python/interpret-core/src/interpret/lib'
       flattenFolders: true
     displayName: 'Copy x64 native library to python lib directory'
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/libebm_*_arm*'
-      targetFolder: 'python/interpret-core/interpret/lib'
+      targetFolder: 'python/interpret-core/src/interpret/lib'
       flattenFolders: true
     displayName: 'Copy arm native library to python lib directory'
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/interpret-inline.js'
-      targetFolder: 'python/interpret-core/interpret/lib'
+      targetFolder: 'python/interpret-core/src/interpret/lib'
       flattenFolders: true
     displayName: 'Copy interpret-inline.js to python lib directory'
   - script: python setup.py bdist_wheel -d ../../staging
@@ -264,7 +264,7 @@ jobs:
   - task: PublishBuildArtifacts@1
     inputs:
       pathtoPublish: '$(Build.ArtifactStagingDirectory)/bdist'
-      artifactName: 'wheel'
+      artifactName: 'bdist'
     displayName: 'Publish bdist python package'
 
 - job: 'test_native'
@@ -423,41 +423,36 @@ jobs:
   variables:
     runCodesignValidationInjection: false
   steps:
-  - task: DownloadBuildArtifacts@0
+  - task: DownloadPipelineArtifact@2
     inputs:
-      buildType: 'current'
-      downloadType: 'specific'
-  - task: CopyFiles@2
-    inputs:
-      sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/libebm_*'
-      targetFolder: 'python/interpret-core/interpret/lib'
-      flattenFolders: true
-    displayName: 'Copy native library to python lib directory'
-  - task: CopyFiles@2
-    inputs:
-      sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/interpret-inline.js'
-      targetFolder: 'python/interpret-core/interpret/lib'
-      flattenFolders: true
-    displayName: 'Copy interpret-inline.js to python lib directory'
+      artifactName: 'bdist'
+      itemPattern: 'bdist/interpret_core-*.whl'
+      targetPath: '$(System.ArtifactsDirectory)/bdist'
   - task: UsePythonVersion@0
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
-  - script: python -m pip install --upgrade pip setuptools wheel
-    displayName: 'Install tools'
-  - script: python -m pip install -e .[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
-    workingDirectory: python/interpret-core
-    displayName: 'Install interpret-core package with requirements'
+  - script: |
+      python -m pip install --upgrade pip setuptools wheel
+      cd $(System.ArtifactsDirectory)/bdist
+      install_file=$(echo interpret_core-*.whl)
+      python -m pip install "$install_file"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
+    displayName: 'Install interpret-core package with requirements (linux/mac)'
+    condition: not(startsWith(variables['image.name'], 'windows'))
+  - script: |
+      python -m pip install --upgrade pip setuptools wheel
+      FOR %%A IN ($(System.ArtifactsDirectory)\bdist\interpret_core-*.whl) DO SET "install_file=%%A"
+      python -m pip install "%install_file%[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]"
+    displayName: 'Install interpret-core package with requirements (win)'
+    condition: startsWith(variables['image.name'], 'windows')
   - script: |
       set PATH=%PATH%;%GeckoWebDriver%
-      python -m pytest -vv -n auto --runslow --runselenium --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+      python -m pytest -vv -n auto --runslow --runselenium --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: python/interpret-core
     condition: and(startsWith(variables['image.name'], 'windows'), or(eq(variables['Build.Reason'], 'Schedule'), in(variables['Build.SourceBranch'], 'refs/heads/master')))
     displayName: 'pytest (win AND (scheduled OR master))'
   - script: |
-      python -m pytest -vv -n auto --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+      python -m pytest -vv -n auto --runslow --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: python/interpret-core
     condition: not(and(startsWith(variables['image.name'], 'windows'), or(eq(variables['Build.Reason'], 'Schedule'), in(variables['Build.SourceBranch'], 'refs/heads/master'))))
     displayName: 'pytest (rest)'

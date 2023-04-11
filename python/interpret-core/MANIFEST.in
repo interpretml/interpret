@@ -1,10 +1,15 @@
 graft symbolic
 graft js
+graft src
+graft tests
+
 prune symbolic/python
 prune symbolic/staging
 prune symbolic/tmp
 prune js/node_modules
 
-prune interpret/lib
+prune interpret/src/lib
 
 global-exclude *.py[cod] __pycache__/* *.so *.dylib node_modules
+
+recursive-exclude src/interpret_core.egg-info *
