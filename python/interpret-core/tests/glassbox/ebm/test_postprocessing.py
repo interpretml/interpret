@@ -3,7 +3,7 @@
 
 import pytest
 
-from interpret.glassbox.ebm._multiclass import multiclass_postprocess_RESTORE_THIS
+from interpret.glassbox._ebm._multiclass import multiclass_postprocess_RESTORE_THIS
 
 from ...tutils import (
     synthetic_multiclass,
@@ -21,7 +21,7 @@ from interpret.glassbox import (
     ExplainableBoostingRegressor,
     ExplainableBoostingClassifier,
 )
-from interpret.glassbox.ebm import merge_ebms
+from interpret.glassbox import merge_ebms
 
 import numpy as np
 

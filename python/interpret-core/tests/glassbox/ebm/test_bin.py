@@ -5,7 +5,7 @@ import pytest
 import numpy as np
 import math
 
-from interpret.glassbox.ebm._bin import (
+from interpret.glassbox._ebm._bin import (
     eval_terms,
     make_bin_weights,
     ebm_decision_function,

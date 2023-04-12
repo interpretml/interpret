@@ -1,5 +1,5 @@
 from math import ceil, floor
-from interpret.glassbox.ebm._utils import (
+from interpret.glassbox._ebm._utils import (
     make_bag,
     convert_categorical_to_continuous,
     _create_proportional_tensor,
