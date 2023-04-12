@@ -3,7 +3,6 @@
 
 from math import ceil, floor, isnan, isinf, exp, log
 from ...utils._native import Native, Booster
-from ...utils._binning import _deduplicate_bins
 from ._utils import (
     remove_unused_higher_bins,
     order_terms,
@@ -11,6 +10,7 @@ from ._utils import (
     process_terms,
     convert_categorical_to_continuous,
 )
+from ...utils._preprocessor import deduplicate_bins
 
 # from scipy.special import expit
 from sklearn.utils.extmath import softmax
@@ -480,7 +480,7 @@ def merge_ebms(models):
             new_leveled_bins.append(merged_bins)
         new_bins.append(new_leveled_bins)
     ebm.feature_types_in_ = new_feature_types
-    _deduplicate_bins(new_bins)
+    deduplicate_bins(new_bins)
     ebm.bins_ = new_bins
 
     feature_names_merged = [None] * n_features
@@ -709,7 +709,7 @@ def merge_ebms(models):
     # TODO: we might be able to do these operations earlier
     remove_unused_higher_bins(ebm.term_features_, ebm.bins_)
     # removing the higher order terms might allow us to eliminate some extra bins now that couldn't before
-    _deduplicate_bins(ebm.bins_)
+    deduplicate_bins(ebm.bins_)
 
     # dependent attributes (can be re-derrived after serialization)
     ebm.n_features_in_ = len(ebm.bins_)  # scikit-learn specified name

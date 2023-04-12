@@ -25,12 +25,11 @@ from ...utils._binning import (
     preclean_X,
     clean_dimensions,
     typify_classification,
-    construct_bins,
     bin_native_by_dimension,
     unify_data,
-    _deduplicate_bins,
     normalize_initial_seed,
 )
+from ...utils._preprocessor import construct_bins, deduplicate_bins
 from ._bin import (
     eval_terms,
     ebm_decision_function,
@@ -1050,7 +1049,7 @@ class EBMModel(BaseEstimator):
 
         remove_unused_higher_bins(term_features, bins)
         # removing the higher order terms might allow us to eliminate some extra bins now that couldn't before
-        _deduplicate_bins(bins)
+        deduplicate_bins(bins)
 
         bagged_scores = (
             np.array([model[idx] for model in models], np.float64)

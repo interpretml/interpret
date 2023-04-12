@@ -18,7 +18,7 @@ _none_ndarray = np.array(None)
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
     # called under: predict
 
-    # prior to calling this function, call _deduplicate_bins which will eliminate extra work in this function
+    # prior to calling this function, call deduplicate_bins which will eliminate extra work in this function
 
     # this generator function returns data in whatever order it thinks is most efficient.  Normally for
     # mains it returns them in order, but pairs will be returned as their data completes and they can

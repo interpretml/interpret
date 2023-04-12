@@ -3,7 +3,6 @@
 
 from math import ceil, floor, isnan, isinf, exp, log
 from ...utils._native import Native, Booster
-from ...utils._binning import _deduplicate_bins
 
 from ._tensor import restore_missing_value_zeros
 

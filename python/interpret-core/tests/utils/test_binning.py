@@ -9,12 +9,13 @@ import scipy as sp
 
 from itertools import repeat, chain
 
+from interpret.utils._preprocessor import construct_bins, deduplicate_bins
+
 from interpret.utils._binning import *
 from interpret.utils._binning import (
     _process_column_initial,
     _encode_categorical_existing,
     _process_continuous,
-    _deduplicate_bins,
 )
 
 
@@ -3810,7 +3811,7 @@ def test_deduplicate_bins():
         ],
     ]
 
-    _deduplicate_bins(bins)
+    deduplicate_bins(bins)
 
     assert len(bins[0]) == 3
     assert id(bins[0][0]) != id(bins[0][1])
