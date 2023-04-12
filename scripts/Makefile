@@ -56,7 +56,7 @@ prepare-docker:
 
 clean:
 	-$(RMDIR) "$(ROOTDIR)/staging"
-	-$(RMDIR) "$(ROOTDIR)/python/interpret-core/interpret/lib"
+	-$(RMDIR) "$(ROOTDIR)/python/interpret-core/interpret/src/lib"
 	-$(RMDIR) "$(ROOTDIR)/python/interpret-core/js/dist"
 	-$(DOCKER) volume rm $(DOCKER_VOL_NAME)
 	-$(DOCKER) image rm $(DOCKER_IMG_NAME)
@@ -84,8 +84,8 @@ build-python:
 build-javascript:
 	cd $(ROOTDIR)/python/interpret-core/js && $(NPM) install
 	cd $(ROOTDIR)/python/interpret-core/js && $(NPM) run build-prod
-	-$(MKDIR_P) "$(ROOTDIR)/python/interpret-core/interpret/lib"
-	cd $(ROOTDIR)/python/interpret-core/js/dist && $(COPY) "interpret-inline.js" "$(ROOTDIR)/python/interpret-core/interpret/lib/"
+	-$(MKDIR_P) "$(ROOTDIR)/python/interpret-core/interpret/src/lib"
+	cd $(ROOTDIR)/python/interpret-core/js/dist && $(COPY) "interpret-inline.js" "$(ROOTDIR)/python/interpret-core/interpret/src/lib/"
 
 build-native:
 	$(BUILD_NATIVE)
@@ -93,7 +93,7 @@ build-native:
 test: test-native test-javascript test-python
 
 test-python:
-	cd $(ROOTDIR)/python/interpret-core && $(PYTHON) -m pytest -vv -n auto --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+	cd $(ROOTDIR)/python/interpret-core && $(PYTHON) -m pytest -vv -n auto --runslow --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
 
 test-javascript:
 	@echo JavaScript tests are not available.
