@@ -51,7 +51,7 @@ from ...utils import (
     gen_global_selector,
     gen_local_selector,
 )
-from ...utils._interaction import _get_ranked_interactions
+from ...utils._interaction import rank_interactions
 from ...utils._privacy import (
     validate_eps_delta,
     calc_classic_noise_multi,
@@ -933,7 +933,7 @@ class EBMModel(BaseEstimator):
                         )
 
                     bagged_ranked_interaction = provider.parallel(
-                        _get_ranked_interactions, parallel_args
+                        rank_interactions, parallel_args
                     )
 
                     # this holds references to dataset, bags, and scores_bags which we want python to reclaim later

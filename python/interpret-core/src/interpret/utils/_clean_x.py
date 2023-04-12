@@ -1427,8 +1427,6 @@ def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
     return feature_names_in
 
 
-
-
 def _reshape_X(X, min_cols, n_samples, sample_source):
     if (
         X.ndim == 0 or X.shape[0] == 0
