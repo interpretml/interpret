@@ -9,7 +9,7 @@ import numpy as np
 from ..utils._binning import (
     preclean_X,
 )
-from ..utils._unify import unify_data
+from ..utils._unify_data import unify_data
 
 
 class ShapTree(ExplainerMixin):

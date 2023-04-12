@@ -25,7 +25,7 @@ from ..utils._binning import (
     clean_dimensions,
     typify_classification,
 )
-from ..utils._unify import unify_data
+from ..utils._unify_data import unify_data
 
 
 import logging

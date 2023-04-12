@@ -27,7 +27,7 @@ from ...utils._binning import (
     clean_dimensions,
     typify_classification,
 )
-from ...utils._unify import unify_data
+from ...utils._unify_data import unify_data
 
 from ...utils._preprocessor import construct_bins, deduplicate_bins
 from ...utils._compressed_dataset import bin_native_by_dimension

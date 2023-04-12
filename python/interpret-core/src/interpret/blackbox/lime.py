@@ -14,7 +14,8 @@ from ..utils._binning import (
     clean_dimensions,
     typify_classification,
 )
-from ..utils._unify import determine_classes, unify_predict_fn, unify_data
+from ..utils._unify import determine_classes, unify_predict_fn
+from ..utils._unify_data import unify_data
 
 
 # TODO: Make kwargs explicit.

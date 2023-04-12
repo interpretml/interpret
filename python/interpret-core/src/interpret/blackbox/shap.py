@@ -9,7 +9,8 @@ import numpy as np
 from ..utils._binning import (
     preclean_X,
 )
-from ..utils._unify import determine_classes, unify_predict_fn, unify_data
+from ..utils._unify import determine_classes, unify_predict_fn
+from ..utils._unify_data import unify_data
 
 
 class ShapKernel(ExplainerMixin):
