@@ -17,12 +17,9 @@ from itertools import combinations
 from sklearn.utils.multiclass import type_of_target
 from sklearn.base import is_classifier, is_regressor
 
-from ._binning import (
-    preclean_X,
-    clean_dimensions,
-    typify_classification,
-    clean_init_score,
-)
+from ._binning import preclean_X
+from ._clean_simple import clean_dimensions, typify_classification, clean_init_score
+
 from ._preprocessor import construct_bins
 from ._native import Native, InteractionDetector
 from ._compressed_dataset import bin_native_by_dimension

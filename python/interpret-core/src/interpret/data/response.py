@@ -7,11 +7,9 @@ from ..utils import gen_name_from_class, gen_global_selector
 import numpy as np
 from scipy.stats import pearsonr
 
-from ..utils._binning import (
-    preclean_X,
-    clean_dimensions,
-    typify_classification,
-)
+from ..utils._binning import preclean_X
+from ..utils._clean_simple import clean_dimensions, typify_classification
+
 from ..utils._unify_data import unify_data
 
 

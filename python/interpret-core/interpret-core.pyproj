@@ -79,6 +79,7 @@
     <Compile Include="src\interpret\provider\__init__.py" />
     <Compile Include="src\interpret\utils\all.py" />
     <Compile Include="src\interpret\utils\environment.py" />
+    <Compile Include="src\interpret\utils\_clean_simple.py" />
     <Compile Include="src\interpret\utils\_compressed_dataset.py" />
     <Compile Include="src\interpret\utils\_histogram.py" />
     <Compile Include="src\interpret\utils\_interaction.py" />

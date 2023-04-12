@@ -22,11 +22,9 @@ from ...utils._histogram import (
     make_all_histogram_edges,
 )
 from ...utils._seed import normalize_initial_seed
-from ...utils._binning import (
-    preclean_X,
-    clean_dimensions,
-    typify_classification,
-)
+from ...utils._binning import preclean_X
+from ...utils._clean_simple import clean_dimensions, typify_classification
+
 from ...utils._unify_data import unify_data
 
 from ...utils._preprocessor import construct_bins, deduplicate_bins

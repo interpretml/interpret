@@ -16,7 +16,8 @@ from sklearn.base import is_classifier, is_regressor
 
 import logging
 
-from ._binning import unify_columns, clean_dimensions, preclean_X, unify_feature_names
+from ._binning import unify_columns, preclean_X, unify_feature_names
+from ._clean_simple import clean_dimensions
 from ._seed import normalize_initial_seed, increment_seed
 
 _log = logging.getLogger(__name__)

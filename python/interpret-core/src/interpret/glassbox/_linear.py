@@ -14,11 +14,9 @@ from sklearn.base import ClassifierMixin, RegressorMixin
 from sklearn.linear_model import LogisticRegression as SKLogistic
 from sklearn.linear_model import LinearRegression as SKLinear
 
-from ..utils._binning import (
-    preclean_X,
-    clean_dimensions,
-    typify_classification,
-)
+from ..utils._binning import preclean_X
+from ..utils._clean_simple import clean_dimensions, typify_classification
+
 from ..utils._unify_data import unify_data
 
 

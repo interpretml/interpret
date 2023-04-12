@@ -6,11 +6,9 @@ from ..api.templates import FeatureValueExplanation
 from ..utils import gen_name_from_class, gen_perf_dicts, gen_local_selector
 
 import numpy as np
-from ..utils._binning import (
-    preclean_X,
-    clean_dimensions,
-    typify_classification,
-)
+from ..utils._binning import preclean_X
+from ..utils._clean_simple import clean_dimensions, typify_classification
+
 from ..utils._unify_predict import determine_classes, unify_predict_fn
 from ..utils._unify_data import unify_data
 

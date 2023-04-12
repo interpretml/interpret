@@ -20,11 +20,9 @@ from sklearn.tree import _tree
 from copy import deepcopy
 
 
-from ..utils._binning import (
-    preclean_X,
-    clean_dimensions,
-    typify_classification,
-)
+from ..utils._binning import preclean_X
+from ..utils._clean_simple import clean_dimensions, typify_classification
+
 from ..utils._unify_data import unify_data
 
 

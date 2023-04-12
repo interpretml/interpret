@@ -18,7 +18,7 @@ import logging
 
 _log = logging.getLogger(__name__)
 
-from ._binning import clean_dimensions
+from ._clean_simple import clean_dimensions
 
 try:
     import pandas as pd
