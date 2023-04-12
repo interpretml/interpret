@@ -17,6 +17,7 @@ from interpret.utils._binning import (
     _encode_categorical_existing,
     _process_continuous,
 )
+from interpret.utils._compressed_dataset import bin_native, bin_native_by_dimension
 
 
 def test_clean_dimensions_2d():

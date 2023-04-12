@@ -22,10 +22,10 @@ from ._binning import (
     clean_dimensions,
     typify_classification,
     clean_init_score,
-    bin_native_by_dimension,
 )
 from ._preprocessor import construct_bins
 from ._native import Native, InteractionDetector
+from ._compressed_dataset import bin_native_by_dimension
 
 
 def _get_ranked_interactions(
