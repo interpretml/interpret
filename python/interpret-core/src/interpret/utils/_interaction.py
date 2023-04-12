@@ -17,7 +17,7 @@ from itertools import combinations
 from sklearn.utils.multiclass import type_of_target
 from sklearn.base import is_classifier, is_regressor
 
-from ._binning import preclean_X
+from ._clean_x import preclean_X
 from ._clean_simple import clean_dimensions, typify_classification, clean_init_score
 
 from ._preprocessor import construct_bins

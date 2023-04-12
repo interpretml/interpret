@@ -7,7 +7,7 @@ from ..utils import gen_name_from_class
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
 
-from ..utils._binning import preclean_X
+from ..utils._clean_x import preclean_X
 from ..utils._clean_simple import clean_dimensions
 
 from ..utils._unify_predict import determine_classes, unify_predict_fn

@@ -6,9 +6,7 @@ from interpret.utils.shap import shap_explain_local
 from interpret.api.base import ExplainerMixin
 
 import numpy as np
-from ..utils._binning import (
-    preclean_X,
-)
+from ..utils._clean_x import preclean_X
 from ..utils._unify_data import unify_data
 
 

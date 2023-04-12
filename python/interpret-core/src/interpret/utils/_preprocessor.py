@@ -16,7 +16,7 @@ from sklearn.base import is_classifier, is_regressor
 
 import logging
 
-from ._binning import unify_columns, preclean_X, unify_feature_names
+from ._clean_x import unify_columns, preclean_X, unify_feature_names
 from ._clean_simple import clean_dimensions
 from ._seed import normalize_initial_seed, increment_seed
 

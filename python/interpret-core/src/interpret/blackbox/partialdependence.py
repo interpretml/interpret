@@ -6,9 +6,7 @@ import numpy as np
 import warnings
 from ..utils import gen_name_from_class, gen_global_selector
 
-from ..utils._binning import (
-    preclean_X,
-)
+from ..utils._clean_x import preclean_X
 from ..utils._unify_predict import determine_classes, unify_predict_fn
 from ..utils._unify_data import unify_data
 

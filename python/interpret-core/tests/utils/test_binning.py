@@ -11,9 +11,11 @@ from itertools import repeat, chain
 
 from interpret.utils._preprocessor import construct_bins, deduplicate_bins
 
-from interpret.utils._binning import *
 from interpret.utils._clean_simple import clean_dimensions
-from interpret.utils._binning import (
+from interpret.utils._clean_x import (
+    preclean_X, 
+    unify_feature_names, 
+    unify_columns, 
     _process_column_initial,
     _encode_categorical_existing,
     _process_continuous,

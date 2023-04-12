@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import re
 
-from ..utils._binning import preclean_X
+from ..utils._clean_x import preclean_X
 from ..utils._clean_simple import clean_dimensions, typify_classification
 
 from ..utils._unify_data import unify_data

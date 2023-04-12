@@ -8,7 +8,7 @@ from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import precision_recall_curve, average_precision_score
 
 import numpy as np
-from ..utils._binning import preclean_X
+from ..utils._clean_x import preclean_X
 from ..utils._clean_simple import clean_dimensions, typify_classification
 
 from ..utils._unify_predict import determine_classes, unify_predict_fn

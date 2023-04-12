@@ -9,7 +9,7 @@ import logging
 _log = logging.getLogger(__name__)
 
 from ...utils._native import Native
-from ...utils._binning import unify_columns
+from ...utils._clean_x import unify_columns
 
 _none_list = [None]
 _none_ndarray = np.array(None)

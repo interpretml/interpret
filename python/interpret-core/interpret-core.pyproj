@@ -84,7 +84,7 @@
     <Compile Include="src\interpret\utils\_histogram.py" />
     <Compile Include="src\interpret\utils\_interaction.py" />
     <Compile Include="src\interpret\utils\shap.py" />
-    <Compile Include="src\interpret\utils\_binning.py" />
+    <Compile Include="src\interpret\utils\_clean_x.py" />
     <Compile Include="src\interpret\utils\_native.py" />
     <Compile Include="src\interpret\utils\_preprocessor.py" />
     <Compile Include="src\interpret\utils\_privacy.py" />

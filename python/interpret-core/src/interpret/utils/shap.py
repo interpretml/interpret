@@ -6,7 +6,7 @@ from . import gen_name_from_class, gen_perf_dicts, gen_local_selector
 
 import numpy as np
 
-from ..utils._binning import preclean_X
+from ..utils._clean_x import preclean_X
 from ..utils._clean_simple import clean_dimensions, typify_classification
 
 from ..utils._unify_predict import determine_classes, unify_predict_fn

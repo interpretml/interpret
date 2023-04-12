@@ -6,9 +6,7 @@ from ..api.base import ExplainerMixin
 import warnings
 
 import numpy as np
-from ..utils._binning import (
-    preclean_X,
-)
+from ..utils._clean_x import preclean_X
 from ..utils._unify_predict import determine_classes, unify_predict_fn
 from ..utils._unify_data import unify_data
 

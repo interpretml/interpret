@@ -35,7 +35,7 @@ except ImportError:
     _scipy_installed = False
 
 from ._native import Native
-from ._binning import unify_columns
+from ._clean_x import unify_columns
 
 
 def bin_native(

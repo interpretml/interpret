@@ -47,6 +47,7 @@ def _remove_extra_dimensions(arr):
     # reshape returns a view
     return arr.reshape(shape)
 
+
 def clean_dimensions(data, param_name):
     # called under: fit
 
@@ -358,5 +359,3 @@ def clean_init_score(init_score, n_samples, X_unclean):
             raise ValueError(msg)
     init_score = init_score.astype(np.float64, copy=False)
     return init_score
-
-

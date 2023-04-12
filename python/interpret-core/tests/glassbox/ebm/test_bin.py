@@ -10,7 +10,7 @@ from interpret.glassbox._ebm._bin import (
     make_bin_weights,
     ebm_decision_function,
 )
-from interpret.utils._binning import preclean_X
+from interpret.utils._clean_x import preclean_X
 
 
 def test_eval_terms():

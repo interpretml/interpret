@@ -18,7 +18,7 @@ import logging
 
 _log = logging.getLogger(__name__)
 
-from ._binning import unify_columns, unify_feature_names
+from ._clean_x import unify_columns, unify_feature_names
 
 _none_list = [None]
 
