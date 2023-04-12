@@ -56,7 +56,7 @@ prepare-docker:
 
 clean:
 	-$(RMDIR) "$(ROOTDIR)/staging"
-	-$(RMDIR) "$(ROOTDIR)/python/interpret-core/interpret/src/lib"
+	-$(RMDIR) "$(ROOTDIR)/python/interpret-core/src/interpret/lib"
 	-$(RMDIR) "$(ROOTDIR)/python/interpret-core/js/dist"
 	-$(DOCKER) volume rm $(DOCKER_VOL_NAME)
 	-$(DOCKER) image rm $(DOCKER_IMG_NAME)
@@ -84,8 +84,8 @@ build-python:
 build-javascript:
 	cd $(ROOTDIR)/python/interpret-core/js && $(NPM) install
 	cd $(ROOTDIR)/python/interpret-core/js && $(NPM) run build-prod
-	-$(MKDIR_P) "$(ROOTDIR)/python/interpret-core/interpret/src/lib"
-	cd $(ROOTDIR)/python/interpret-core/js/dist && $(COPY) "interpret-inline.js" "$(ROOTDIR)/python/interpret-core/interpret/src/lib/"
+	-$(MKDIR_P) "$(ROOTDIR)/python/interpret-core/src/interpret/lib"
+	cd $(ROOTDIR)/python/interpret-core/js/dist && $(COPY) "interpret-inline.js" "$(ROOTDIR)/python/interpret-core/src/interpret/lib/"
 
 build-native:
 	$(BUILD_NATIVE)
