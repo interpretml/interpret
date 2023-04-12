@@ -21,13 +21,13 @@ from ._utils import (
 from ...utils._histogram import (
     make_all_histogram_edges,
 )
+from ...utils._seed import normalize_initial_seed
 from ...utils._binning import (
     preclean_X,
     clean_dimensions,
     typify_classification,
     bin_native_by_dimension,
     unify_data,
-    normalize_initial_seed,
 )
 from ...utils._preprocessor import construct_bins, deduplicate_bins
 from ._bin import (

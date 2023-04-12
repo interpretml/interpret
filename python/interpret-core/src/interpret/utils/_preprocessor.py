@@ -16,7 +16,9 @@ from sklearn.base import is_classifier, is_regressor
 
 import logging
 
-from ._binning import unify_columns, clean_dimensions, preclean_X, increment_seed, unify_feature_names, normalize_initial_seed
+from ._binning import unify_columns, clean_dimensions, preclean_X, unify_feature_names
+from ._seed import normalize_initial_seed, increment_seed
+
 _log = logging.getLogger(__name__)
 
 from ._native import Native
@@ -29,6 +31,7 @@ from ._privacy import (
 )
 
 _none_list = [None]
+
 
 def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bin):
     # called under: fit
@@ -69,6 +72,7 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
         raise ValueError(msg)
 
     return cuts
+
 
 class EBMPreprocessor(BaseEstimator, TransformerMixin):
     """Transformer that preprocesses data to be ready before EBM."""
