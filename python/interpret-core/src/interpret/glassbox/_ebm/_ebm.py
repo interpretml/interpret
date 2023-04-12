@@ -51,7 +51,7 @@ from ...utils import (
     gen_global_selector,
     gen_local_selector,
 )
-from ...utils._interaction import rank_interactions
+from ...utils._rank_interactions import rank_interactions
 from ...utils._privacy import (
     validate_eps_delta,
     calc_classic_noise_multi,

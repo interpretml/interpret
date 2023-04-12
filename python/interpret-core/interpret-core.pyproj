@@ -82,7 +82,7 @@
     <Compile Include="src\interpret\utils\_clean_simple.py" />
     <Compile Include="src\interpret\utils\_compressed_dataset.py" />
     <Compile Include="src\interpret\utils\_histogram.py" />
-    <Compile Include="src\interpret\utils\_interaction.py" />
+    <Compile Include="src\interpret\utils\_rank_interactions.py" />
     <Compile Include="src\interpret\utils\shap.py" />
     <Compile Include="src\interpret\utils\_clean_x.py" />
     <Compile Include="src\interpret\utils\_measure_interactions.py" />

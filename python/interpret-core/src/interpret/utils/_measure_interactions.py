@@ -24,7 +24,7 @@ from ._preprocessor import construct_bins
 from ._native import Native, InteractionDetector
 from ._compressed_dataset import bin_native_by_dimension
 
-from ._interaction import rank_interactions
+from ._rank_interactions import rank_interactions
 
 
 def measure_interactions(
