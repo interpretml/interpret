@@ -8,10 +8,8 @@ from ..utils import gen_name_from_class, gen_global_selector
 
 from ..utils._binning import (
     preclean_X,
-    determine_classes,
-    unify_predict_fn,
-    unify_data,
 )
+from ..utils._unify import determine_classes, unify_predict_fn, unify_data
 
 
 def _unique_grid_points(values):

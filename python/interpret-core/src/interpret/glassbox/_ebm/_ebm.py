@@ -26,8 +26,9 @@ from ...utils._binning import (
     preclean_X,
     clean_dimensions,
     typify_classification,
-    unify_data,
 )
+from ...utils._unify import unify_data
+
 from ...utils._preprocessor import construct_bins, deduplicate_bins
 from ...utils._compressed_dataset import bin_native_by_dimension
 

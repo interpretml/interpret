@@ -20,10 +20,10 @@ import re
 
 from ..utils._binning import (
     preclean_X,
-    unify_data,
     clean_dimensions,
     typify_classification,
 )
+from ..utils._unify import unify_data
 
 import logging
 

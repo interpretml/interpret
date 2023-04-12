@@ -8,12 +8,10 @@ import numpy as np
 
 from ..utils._binning import (
     preclean_X,
-    determine_classes,
-    unify_predict_fn,
-    unify_data,
     clean_dimensions,
     typify_classification,
 )
+from ..utils._unify import determine_classes, unify_predict_fn, unify_data
 
 
 def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):

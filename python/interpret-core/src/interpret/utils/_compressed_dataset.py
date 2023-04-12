@@ -14,6 +14,8 @@ from sklearn.base import (
 from sklearn.utils.validation import check_is_fitted
 from sklearn.base import is_classifier, is_regressor
 
+_none_ndarray = np.array(None)
+
 import logging
 
 _log = logging.getLogger(__name__)

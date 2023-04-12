@@ -10,10 +10,8 @@ import numpy as np
 
 from ..utils._binning import (
     preclean_X,
-    determine_classes,
-    unify_predict_fn,
-    unify_data,
 )
+from ..utils._unify import determine_classes, unify_predict_fn, unify_data
 
 
 # TODO: move this to a more general location where other blackbox methods can access it

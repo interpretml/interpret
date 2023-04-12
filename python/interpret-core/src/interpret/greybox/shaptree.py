@@ -8,8 +8,8 @@ from interpret.api.base import ExplainerMixin
 import numpy as np
 from ..utils._binning import (
     preclean_X,
-    unify_data,
 )
+from ..utils._unify import unify_data
 
 
 class ShapTree(ExplainerMixin):
