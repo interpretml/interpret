@@ -1,11 +1,15 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from abc import ABC, abstractmethod
+import abc
+
+# TODO: instead of having interpret.api.base, it would probably be easier to just have a single base.py file
+#      in the root directory parallel to develop.py called base.py and also put the templates.py file contents in
+#      there
 
 
 # TODO v.3 PK Possibly rename explainer types to (blackbox, glassbox, greybox)
-class ExplainerMixin(ABC):
+class ExplainerMixin(abc.ABC):
     """An object that computes explanations.
         This is a contract required for InterpretML.
 
@@ -17,17 +21,17 @@ class ExplainerMixin(ABC):
     """
 
     @property
-    @abstractmethod
+    @abc.abstractmethod
     def available_explanations(self):
         pass  # pragma: no cover
 
     @property
-    @abstractmethod
+    @abc.abstractmethod
     def explainer_type(self):
         pass  # pragma: no cover
 
 
-class ExplanationMixin(ABC):
+class ExplanationMixin(abc.ABC):
     """The result of calling explain_* from an Explainer. Responsible for providing data and/or visualization.
         This is a contract required for InterpretML.
 
@@ -42,11 +46,11 @@ class ExplanationMixin(ABC):
     """
 
     @property
-    @abstractmethod
+    @abc.abstractmethod
     def explanation_type(self):
         pass  # pragma: no cover
 
-    @abstractmethod
+    @abc.abstractmethod
     def data(self, key=None):
         """Provides specific explanation data.
 
@@ -57,7 +61,7 @@ class ExplanationMixin(ABC):
         """
         pass  # pragma: no cover
 
-    @abstractmethod
+    @abc.abstractmethod
     def visualize(self, key=None):
         """Provides interactive visualizations.
 
