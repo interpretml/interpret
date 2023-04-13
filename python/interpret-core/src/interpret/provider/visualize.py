@@ -4,7 +4,7 @@
 from abc import ABC, abstractmethod
 import logging
 
-from ..utils.environment import EnvironmentDetector, is_cloud_env, ENV_DETECTED
+from ._environment import EnvironmentDetector, is_cloud_env, ENV_DETECTED
 from warnings import warn
 
 from ..version import __version__

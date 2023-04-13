@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from interpret.utils.environment import EnvironmentDetector
+from interpret.provider._environment import EnvironmentDetector
 
 
 def test_environment_detector():
