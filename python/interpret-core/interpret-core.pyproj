@@ -40,7 +40,7 @@
     <Compile Include="src\interpret\blackbox\_sensitivity.py" />
     <Compile Include="src\interpret\blackbox\_shap.py" />
     <Compile Include="src\interpret\blackbox\__init__.py" />
-    <Compile Include="src\interpret\data\response.py" />
+    <Compile Include="src\interpret\data\_response.py" />
     <Compile Include="src\interpret\data\__init__.py" />
     <Compile Include="src\interpret\develop.py" />
     <Compile Include="src\interpret\ext\blackbox\__init__.py" />
