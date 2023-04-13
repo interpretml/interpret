@@ -231,21 +231,21 @@ jobs:
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/libebm_*_x64*'
-      targetFolder: 'python/interpret-core/src/interpret/lib'
+      targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Copy x64 native library to python lib directory'
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/libebm_*_arm*'
-      targetFolder: 'python/interpret-core/src/interpret/lib'
+      targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Copy arm native library to python lib directory'
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/interpret-inline.js'
-      targetFolder: 'python/interpret-core/src/interpret/lib'
+      targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Copy interpret-inline.js to python lib directory'
   - script: python setup.py bdist_wheel -d ../../staging
@@ -447,13 +447,11 @@ jobs:
     condition: startsWith(variables['image.name'], 'windows')
   - script: |
       set PATH=%PATH%;%GeckoWebDriver%
-      python -m pytest -vv -n auto --runslow --runselenium --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
-    workingDirectory: python/interpret-core
+      python -m pytest --pyargs interpret -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
     condition: and(startsWith(variables['image.name'], 'windows'), or(eq(variables['Build.Reason'], 'Schedule'), in(variables['Build.SourceBranch'], 'refs/heads/master')))
     displayName: 'pytest (win AND (scheduled OR master))'
   - script: |
-      python -m pytest -vv -n auto --runslow --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
-    workingDirectory: python/interpret-core
+      python -m pytest --pyargs interpret -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
     condition: not(and(startsWith(variables['image.name'], 'windows'), or(eq(variables['Build.Reason'], 'Schedule'), in(variables['Build.SourceBranch'], 'refs/heads/master'))))
     displayName: 'pytest (rest)'
   - task: PublishTestResults@2

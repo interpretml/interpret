@@ -146,9 +146,9 @@ def build_libebm():
         subprocess.check_call(["/bin/sh", build_script], cwd=sym_path)
 
     source_dir = os.path.join(
-        sym_path, "python", "interpret-core", "src", "interpret", "lib"
+        sym_path, "python", "interpret-core", "interpret", "lib"
     )
-    target_dir = os.path.join(script_path, "src", "interpret", "lib")
+    target_dir = os.path.join(script_path, "interpret", "lib")
     os.makedirs(target_dir, exist_ok=True)
     file_names = os.listdir(source_dir)
     for file_name in file_names:
@@ -166,7 +166,7 @@ def build_vis():
 
     js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
     js_bundle_dest = os.path.join(
-        script_path, "src", "interpret", "lib", "interpret-inline.js"
+        script_path, "interpret", "lib", "interpret-inline.js"
     )
     os.makedirs(os.path.dirname(js_bundle_dest), exist_ok=True)
     shutil.copyfile(js_bundle_src, js_bundle_dest)
@@ -189,7 +189,7 @@ class BuildCommand(build):
             build_libebm()
 
         js_bundle_dest = os.path.join(
-            script_path, "src", "interpret", "lib", "interpret-inline.js"
+            script_path, "interpret", "lib", "interpret-inline.js"
         )
         if not os.path.exists(js_bundle_dest):
             # this will trigger from github source or during conda building
@@ -226,8 +226,7 @@ setup(
         "sdist": SDistCommand,
         "build": BuildCommand,
     },
-    packages=find_packages("src"),
-    package_dir={"": "src"},
+    packages=find_packages(),
     package_data=package_data,
     classifiers=[
         "Programming Language :: Python",

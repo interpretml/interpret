@@ -1,3 +1,2 @@
 [run]
-source = src
 omit = *test*
