@@ -7,7 +7,7 @@ import logging
 from ._environment import EnvironmentDetector, is_cloud_env, ENV_DETECTED
 from warnings import warn
 
-from ..version import __version__
+from .. import __version__
 
 JS_URL = "https://unpkg.com/@interpretml/interpret-inline@{}/dist/interpret-inline.js".format(
     __version__

@@ -93,7 +93,6 @@
     <Compile Include="src\interpret\utils\_unify_predict.py" />
     <Compile Include="src\interpret\utils\_unify_data.py" />
     <Compile Include="src\interpret\utils\__init__.py" />
-    <Compile Include="src\interpret\version.py" />
     <Compile Include="src\interpret\visual\dashboard.py" />
     <Compile Include="src\interpret\visual\inline.py" />
     <Compile Include="src\interpret\visual\interactive.py" />

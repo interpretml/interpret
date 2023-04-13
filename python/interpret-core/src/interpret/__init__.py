@@ -1,11 +1,13 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+# NOTE: Version is replaced by a regex script.
+__version__ = "0.3.2"
+
 # Set default logging handler
 from logging import NullHandler, getLogger
 
 # Export functions
-from .version import __version__  # noqa: F401
 from .visual.interactive import (  # noqa: F401
     show,
     show_link,
