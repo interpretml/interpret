@@ -71,8 +71,8 @@
     <Compile Include="src\interpret\greybox\_shaptree.py" />
     <Compile Include="src\interpret\greybox\_treeinterpreter.py" />
     <Compile Include="src\interpret\greybox\__init__.py" />
-    <Compile Include="src\interpret\perf\curve.py" />
-    <Compile Include="src\interpret\perf\regression.py" />
+    <Compile Include="src\interpret\perf\_curve.py" />
+    <Compile Include="src\interpret\perf\_regression.py" />
     <Compile Include="src\interpret\perf\__init__.py" />
     <Compile Include="src\interpret\provider\compute.py" />
     <Compile Include="src\interpret\provider\visualize.py" />
