@@ -3,7 +3,7 @@
 
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
-from ..utils import gen_name_from_class, gen_perf_dicts, gen_local_selector
+from ..utils._explanation import gen_name_from_class, gen_perf_dicts, gen_local_selector
 
 import numpy as np
 from ..utils._clean_x import preclean_X

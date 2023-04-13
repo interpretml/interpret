@@ -4,8 +4,8 @@
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
 
-from ..utils import gen_name_from_class, gen_local_selector
-from ..utils import gen_perf_dicts
+from ..utils._explanation import gen_name_from_class, gen_local_selector
+from ..utils._explanation import gen_perf_dicts
 import warnings
 
 import numpy as np

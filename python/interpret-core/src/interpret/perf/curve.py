@@ -3,7 +3,7 @@
 
 from itertools import count
 from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils import gen_name_from_class
+from ..utils._explanation import gen_name_from_class
 from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import precision_recall_curve, average_precision_score
 

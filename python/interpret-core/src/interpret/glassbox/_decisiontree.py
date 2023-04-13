@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils import (
+from ..utils._explanation import (
     gen_name_from_class,
     gen_local_selector,
     gen_global_selector,

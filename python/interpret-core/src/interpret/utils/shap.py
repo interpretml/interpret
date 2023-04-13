@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 from ..api.templates import FeatureValueExplanation
-from . import gen_name_from_class, gen_perf_dicts, gen_local_selector
+from ._explanation import gen_name_from_class, gen_perf_dicts, gen_local_selector
 
 import numpy as np
 

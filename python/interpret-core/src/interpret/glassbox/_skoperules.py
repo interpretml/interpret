@@ -6,7 +6,7 @@ from sklearn.base import ClassifierMixin
 from sklearn.utils.validation import check_is_fitted
 
 from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils import (
+from ..utils._explanation import (
     gen_name_from_class,
     gen_global_selector,
     gen_local_selector,

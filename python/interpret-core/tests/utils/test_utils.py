@@ -4,7 +4,7 @@
 import pytest
 import numpy as np
 import pandas as pd
-from interpret.utils import gen_name_from_class
+from interpret.utils._explanation import gen_name_from_class
 
 
 @pytest.fixture

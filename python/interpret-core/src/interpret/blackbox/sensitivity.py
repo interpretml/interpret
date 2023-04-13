@@ -3,7 +3,7 @@
 
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
-from ..utils import gen_name_from_class, gen_global_selector
+from ..utils._explanation import gen_name_from_class, gen_global_selector
 
 from abc import ABC, abstractmethod
 import numpy as np

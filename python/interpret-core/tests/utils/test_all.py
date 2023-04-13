@@ -1,4 +1,4 @@
-from interpret.utils import gen_perf_dicts
+from interpret.utils._explanation import gen_perf_dicts
 
 import numpy as np
 

@@ -6,7 +6,7 @@ from typing import Optional, List, Tuple, Sequence, Dict, Mapping, Union
 
 from itertools import count
 
-from ...utils import gen_perf_dicts
+from ...utils._explanation import gen_perf_dicts
 from ._boost import boost
 from ._utils import (
     make_bag,
@@ -46,7 +46,7 @@ from ...utils._native import Native
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
-from ...utils import (
+from ...utils._explanation import (
     gen_name_from_class,
     gen_global_selector,
     gen_local_selector,
