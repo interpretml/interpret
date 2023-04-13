@@ -68,8 +68,8 @@
     <Compile Include="src\interpret\glassbox\_linear.py" />
     <Compile Include="src\interpret\glassbox\_skoperules.py" />
     <Compile Include="src\interpret\glassbox\__init__.py" />
-    <Compile Include="src\interpret\greybox\shaptree.py" />
-    <Compile Include="src\interpret\greybox\treeinterpreter.py" />
+    <Compile Include="src\interpret\greybox\_shaptree.py" />
+    <Compile Include="src\interpret\greybox\_treeinterpreter.py" />
     <Compile Include="src\interpret\greybox\__init__.py" />
     <Compile Include="src\interpret\perf\curve.py" />
     <Compile Include="src\interpret\perf\regression.py" />
