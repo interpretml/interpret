@@ -19,8 +19,8 @@ log = logging.getLogger(__name__)
 interpret_help_link = "https://interpret.ml/docs/ebm.html"
 synapse_help_link = "https://aka.ms/synapse-ebm"
 
-this = sys.modules[__name__]
-this.jupyter_initialized = False
+_current_module = sys.modules[__name__]
+_current_module.jupyter_initialized = False
 
 
 def _build_error_frame(msg):
@@ -244,8 +244,8 @@ def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=
     ):
         display(HTML(init_js + body_js))
     else:  # Fallthrough assumes we are in an IPython environment at a minimum.
-        if not this.jupyter_initialized:
-            this.jupyter_initialized = True
+        if not _current_module.jupyter_initialized:
+            _current_module.jupyter_initialized = True
             display(HTML(init_js + body_js))
         else:
             display(HTML(body_js))

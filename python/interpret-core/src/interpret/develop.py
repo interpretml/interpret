@@ -3,8 +3,8 @@
 
 import sys
 
-this = sys.modules[__name__]
-this.is_debug_mode = False
+_current_module = sys.modules[__name__]
+_current_module.is_debug_mode = False
 
 
 def print_debug_info(file=None):
@@ -17,7 +17,6 @@ def print_debug_info(file=None):
         None
     """
     import json
-    import sys
 
     debug_dict = debug_info()
     if file is None:
@@ -59,11 +58,12 @@ def dynamic_system_info():
         cpu_freq = psutil.cpu_freq()
         virtual_memory = psutil.virtual_memory()._asdict()
         virtual_memory = {
-            k: sizeof_fmt(v) if k != "percent" else v for k, v in virtual_memory.items()
+            k: _sizeof_fmt(v) if k != "percent" else v
+            for k, v in virtual_memory.items()
         }
         swap_memory = psutil.swap_memory()._asdict()
         swap_memory = {
-            k: sizeof_fmt(v) if k != "percent" else v for k, v in swap_memory.items()
+            k: _sizeof_fmt(v) if k != "percent" else v for k, v in swap_memory.items()
         }
 
         system_info = {
@@ -103,14 +103,14 @@ def static_system_info():
         "platform.version": platform.version(),
         "psutil.logical_cpu_count": psutil.cpu_count(logical=True),
         "psutil.physical_cpu_count": psutil.cpu_count(logical=False),
-        "psutil.virtual_memory.total": sizeof_fmt(psutil.virtual_memory().total),
-        "psutil.swap_memory.total": sizeof_fmt(psutil.swap_memory().total),
+        "psutil.virtual_memory.total": _sizeof_fmt(psutil.virtual_memory().total),
+        "psutil.swap_memory.total": _sizeof_fmt(psutil.swap_memory().total),
     }
 
     return system_info
 
 
-def sizeof_fmt(num, suffix="B"):
+def _sizeof_fmt(num, suffix="B"):
     """Returns bytes in human readable form. Taken from below link:
     https://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
 
@@ -144,10 +144,10 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
     from .utils._native import Native
 
     # Exit fast on second call.
-    if this.is_debug_mode:
+    if _current_module.is_debug_mode:
         raise Exception("Cannot call debug_mode more than once in the same session.")
     else:
-        this.is_debug_mode = True
+        _current_module.is_debug_mode = True
 
     # Register log
     handler = register_log(log_filename, log_level)
@@ -177,7 +177,6 @@ def register_log(filename, level="DEBUG"):
     """
     import logging
     import logging.handlers
-    import sys
 
     if filename is sys.stderr or filename is sys.stdout:
         handler = logging.StreamHandler(stream=filename)
@@ -194,13 +193,3 @@ def register_log(filename, level="DEBUG"):
     root.addHandler(handler)
 
     return handler
-
-
-if __name__ == "__main__":  # pragma: no cover
-    import pytest
-    import os
-
-    register_log("test-log.txt")
-
-    script_path = os.path.dirname(os.path.abspath(__file__))
-    pytest.main(["--rootdir={0}".format(script_path), script_path])

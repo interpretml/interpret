@@ -7,10 +7,10 @@ from ..provider import AutoVisualizeProvider, PreserveProvider, DashProvider
 
 log = logging.getLogger(__name__)
 
-this = sys.modules[__name__]
+_current_module = sys.modules[__name__]
 
-this._preserve_provider = None
-this.visualize_provider = None
+_current_module._preserve_provider = None
+_current_module.visualize_provider = None
 
 
 def get_visualize_provider():
@@ -19,7 +19,7 @@ def get_visualize_provider():
     Returns:
         Visualization provider.
     """
-    return this.visualize_provider
+    return _current_module.visualize_provider
 
 
 def set_visualize_provider(provider):
@@ -30,7 +30,7 @@ def set_visualize_provider(provider):
     """
     has_render_method = hasattr(provider, "render")
     if provider is None or has_render_method:
-        this.visualize_provider = provider
+        _current_module.visualize_provider = provider
     else:  # pragma: no cover
         raise ValueError(
             "Object of type {} is not a visualize provider.".format(type(provider))
@@ -56,10 +56,10 @@ def get_show_addr():
     Returns:
         Address tuple (ip, port).
     """
-    if isinstance(this.visualize_provider, DashProvider):
+    if isinstance(_current_module.visualize_provider, DashProvider):
         addr = (
-            this.visualize_provider.app_runner.ip,
-            this.visualize_provider.app_runner.port,
+            _current_module.visualize_provider.app_runner.ip,
+            _current_module.visualize_provider.app_runner.port,
         )
         return addr
     else:
@@ -72,8 +72,8 @@ def shutdown_show_server():
     Returns:
         True if show server has stopped.
     """
-    if isinstance(this.visualize_provider, DashProvider):
-        return this.visualize_provider.app_runner.stop()
+    if isinstance(_current_module.visualize_provider, DashProvider):
+        return _current_module.visualize_provider.app_runner.stop()
 
     return True  # pragma: no cover
 
@@ -86,9 +86,9 @@ def status_show_server():
     """
     status_dict = {}
 
-    if isinstance(this.visualize_provider, DashProvider):
+    if isinstance(_current_module.visualize_provider, DashProvider):
         status_dict["app_runner_exists"] = True
-        status_dict.update(this.visualize_provider.app_runner.status())
+        status_dict.update(_current_module.visualize_provider.app_runner.status())
     else:
         status_dict["app_runner_exists"] = False
 
@@ -108,13 +108,13 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
     """
 
     # If the user uses old methods such as init_show_server, we do an immediate override to the visualization provider.
-    if isinstance(this.visualize_provider, DashProvider):
+    if isinstance(_current_module.visualize_provider, DashProvider):
         log.info("Stopping previous dash provider")
         shutdown_show_server()
 
     log.info(
         "Replacing visualize provider: {} with {}".format(
-            type(this.visualize_provider), type(DashProvider)
+            type(_current_module.visualize_provider), type(DashProvider)
         )
     )
     set_visualize_provider(
@@ -122,11 +122,11 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
             addr=addr, base_url=base_url, use_relative_links=use_relative_links
         )
     )
-    this.visualize_provider.idempotent_start()
+    _current_module.visualize_provider.idempotent_start()
 
     addr = (
-        this.visualize_provider.app_runner.ip,
-        this.visualize_provider.app_runner.port,
+        _current_module.visualize_provider.app_runner.ip,
+        _current_module.visualize_provider.app_runner.port,
     )
     log.info("Running dash provider at {}".format(addr))
 
@@ -162,11 +162,11 @@ def show(explanation, key=-1, **kwargs):
         key = _get_integer_key(key, explanation)
 
         # Set default render if needed
-        if this.visualize_provider is None:
-            this.visualize_provider = AutoVisualizeProvider()
+        if _current_module.visualize_provider is None:
+            _current_module.visualize_provider = AutoVisualizeProvider()
 
         # Render
-        this.visualize_provider.render(explanation, key=key, **kwargs)
+        _current_module.visualize_provider.render(explanation, key=key, **kwargs)
     except Exception as e:  # pragma: no cover
         log.error(e, exc_info=True)
         raise e
@@ -189,14 +189,18 @@ def show_link(explanation, share_tables=None):
     """
 
     # Initialize server if needed
-    if not isinstance(this.visualize_provider, DashProvider):  # pragma: no cover
+    if not isinstance(
+        _current_module.visualize_provider, DashProvider
+    ):  # pragma: no cover
         init_show_server()
 
     # Register
-    this.visualize_provider.app_runner.register(explanation, share_tables=share_tables)
+    _current_module.visualize_provider.app_runner.register(
+        explanation, share_tables=share_tables
+    )
 
     try:
-        url = this.visualize_provider.app_runner.display_link(explanation)
+        url = _current_module.visualize_provider.app_runner.display_link(explanation)
         return url
     except Exception as e:  # pragma: no cover
         log.error(e, exc_info=True)
@@ -221,14 +225,14 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
     Returns:
         None.
     """
-    if this._preserve_provider is None:
-        this._preserve_provider = PreserveProvider()
+    if _current_module._preserve_provider is None:
+        _current_module._preserve_provider = PreserveProvider()
 
     try:
         # Get explanation key
         key = _get_integer_key(selector_key, explanation)
 
-        this._preserve_provider.render(
+        _current_module._preserve_provider.render(
             explanation, key=key, file_name=file_name, **kwargs
         )
         return None
