@@ -1,6 +1,6 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
-from ..utils.shap import shap_explain_local
+from ..utils._shap_common import shap_explain_local
 
 from ..api.base import ExplainerMixin
 import warnings
