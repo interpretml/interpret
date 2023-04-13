@@ -4,8 +4,9 @@
 # NOTE: Version is replaced by a regex script.
 __version__ = "0.3.2"
 
-# Set default logging handler
-from logging import NullHandler, getLogger
+import logging
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 # Export functions
 from .visual.interactive import (  # noqa: F401
@@ -20,5 +21,3 @@ from .visual.interactive import init_show_server  # noqa: F401
 from .visual.interactive import status_show_server  # noqa: F401
 from .visual.interactive import set_visualize_provider  # noqa: F401
 from .visual.interactive import get_visualize_provider  # noqa: F401
-
-getLogger(__name__).addHandler(NullHandler())
