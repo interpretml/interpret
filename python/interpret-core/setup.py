@@ -145,9 +145,7 @@ def build_libebm():
         build_script = os.path.join(sym_path, "build.sh")
         subprocess.check_call(["/bin/sh", build_script], cwd=sym_path)
 
-    source_dir = os.path.join(
-        sym_path, "python", "interpret-core", "interpret", "lib"
-    )
+    source_dir = os.path.join(sym_path, "python", "interpret-core", "interpret", "lib")
     target_dir = os.path.join(script_path, "interpret", "lib")
     os.makedirs(target_dir, exist_ok=True)
     file_names = os.listdir(source_dir)
