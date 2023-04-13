@@ -45,7 +45,7 @@ from ._tensor import (
 from ...utils._native import Native
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
-from ...provider.compute import JobLibProvider
+from ...provider import JobLibProvider
 from ...utils._explanation import (
     gen_name_from_class,
     gen_global_selector,

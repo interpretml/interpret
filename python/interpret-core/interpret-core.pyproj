@@ -74,8 +74,8 @@
     <Compile Include="src\interpret\perf\_curve.py" />
     <Compile Include="src\interpret\perf\_regression.py" />
     <Compile Include="src\interpret\perf\__init__.py" />
-    <Compile Include="src\interpret\provider\compute.py" />
-    <Compile Include="src\interpret\provider\visualize.py" />
+    <Compile Include="src\interpret\provider\_compute.py" />
+    <Compile Include="src\interpret\provider\_visualize.py" />
     <Compile Include="src\interpret\provider\_environment.py" />
     <Compile Include="src\interpret\provider\__init__.py" />
     <Compile Include="src\interpret\utils\_explanation.py" />
