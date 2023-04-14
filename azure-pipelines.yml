@@ -432,42 +432,42 @@ jobs:
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
+  # we copy the tests to a new location to test the installed package rather than the source files
   - script: |
       python -m pip install --upgrade pip setuptools wheel
       FOR %%A IN ($(System.ArtifactsDirectory)\bdist\interpret_core-*.whl) DO SET "install_file=%%A"
       python -m pip install "%install_file%"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
       set PATH=%PATH%;%GeckoWebDriver%
-      mkdir "%TEMP%\t1"
-      mkdir "%TEMP%\t1\t2"
-      xcopy /E "$(Build.SourcesDirectory)\python\interpret-core\tests\*" "%TEMP%\t1\t2\"
-      cd /D "%TEMP%\t1\t2"
-      python -m pytest
+      mkdir "$(Agent.TempDirectory)\t1"
+      mkdir "$(Agent.TempDirectory)\t1\t2"
+      xcopy /E "$(Build.SourcesDirectory)\python\interpret-core\tests\*" "$(Agent.TempDirectory)\t1\t2\"
+      cd /D "$(Agent.TempDirectory)\t1\t2"
+      python -m pytest -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'pytest (win)'
+  # we copy the tests to a new location to test the installed package rather than the source files
   - script: |
       python -m pip install --upgrade pip setuptools wheel
       cd $(System.ArtifactsDirectory)/bdist
       install_file=$(echo interpret_core-*.whl)
       python -m pip install "$install_file"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
-      TEMP_TEST_DIR=$(mktemp -d)
-      mkdir "${TEMP_TEST_DIR}/t1"
-      mkdir "${TEMP_TEST_DIR}/t1/t2"
-      cp -r "$(Build.SourcesDirectory)/python/interpret-core/tests/" "${TEMP_TEST_DIR}/t1/t2/"
-      cd "${TEMP_TEST_DIR}/t1/t2"
-      python -m pytest
+      mkdir -p "$(Agent.TempDirectory)/t1/t2"
+      cp -r "$(Build.SourcesDirectory)/python/interpret-core/tests/" "$(Agent.TempDirectory)/t1/t2/"
+      cd "$(Agent.TempDirectory)/t1/t2"
+      python -m pytest -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
     condition: not(startsWith(variables['image.name'], 'windows'))
     displayName: 'pytest (non-win)'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
-      testResultsFiles: '**/test-*.xml'
+      testResultsFiles: '$(Agent.TempDirectory)/t1/t2/junit/test-results.xml'
       testRunTitle: 'Publish test results for Python $(python.version) at $(image.name)'
     displayName: 'Publish test results'
   - task: PublishCodeCoverageResults@1
     inputs:
       codeCoverageTool: Cobertura
-      summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
-      # reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
+      summaryFileLocation: '$(Agent.TempDirectory)/t1/t2/coverage.xml'
+      # reportDirectory: '$(Agent.TempDirectory)/t1/t2/**/htmlcov'
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Publish test coverage results'
 

@@ -193,3 +193,15 @@ def register_log(filename, level="DEBUG"):
     root.addHandler(handler)
 
     return handler
+
+
+if __name__ == "__main__":  # pragma: no cover
+    import pytest
+    import os
+
+    register_log("test-log.txt")
+
+    script_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "tests"
+    )
+    pytest.main(["--rootdir={0}".format(script_path), script_path])
