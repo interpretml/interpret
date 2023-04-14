@@ -434,26 +434,29 @@ jobs:
       architecture: 'x64'
   - script: |
       python -m pip install --upgrade pip setuptools wheel
+      FOR %%A IN ($(System.ArtifactsDirectory)\bdist\interpret_core-*.whl) DO SET "install_file=%%A"
+      python -m pip install "%install_file%"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
+      set PATH=%PATH%;%GeckoWebDriver%
+      mkdir "%TEMP%\t1"
+      mkdir "%TEMP%\t1\t2"
+      xcopy /E "$(Build.SourcesDirectory)\python\interpret-core\tests\*" "%TEMP%\t1\t2\"
+      cd /D "%TEMP%\t1\t2"
+      python -m pytest
+    condition: startsWith(variables['image.name'], 'windows')
+    displayName: 'pytest (win)'
+  - script: |
+      python -m pip install --upgrade pip setuptools wheel
       cd $(System.ArtifactsDirectory)/bdist
       install_file=$(echo interpret_core-*.whl)
       python -m pip install "$install_file"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
-    displayName: 'Install interpret-core package with requirements (linux/mac)'
+      TEMP_TEST_DIR=$(mktemp -d)
+      mkdir "${TEMP_TEST_DIR}/t1"
+      mkdir "${TEMP_TEST_DIR}/t1/t2"
+      cp -r "$(Build.SourcesDirectory)/python/interpret-core/tests/" "${TEMP_TEST_DIR}/t1/t2/"
+      cd "${TEMP_TEST_DIR}/t1/t2"
+      python -m pytest
     condition: not(startsWith(variables['image.name'], 'windows'))
-  - script: |
-      python -m pip install --upgrade pip setuptools wheel
-      FOR %%A IN ($(System.ArtifactsDirectory)\bdist\interpret_core-*.whl) DO SET "install_file=%%A"
-      python -m pip install "%install_file%"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
-    displayName: 'Install interpret-core package with requirements (win)'
-    condition: startsWith(variables['image.name'], 'windows')
-  - script: |
-      set PATH=%PATH%;%GeckoWebDriver%
-      python -m pytest --pyargs interpret -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
-    condition: and(startsWith(variables['image.name'], 'windows'), or(eq(variables['Build.Reason'], 'Schedule'), in(variables['Build.SourceBranch'], 'refs/heads/master')))
-    displayName: 'pytest (win AND (scheduled OR master))'
-  - script: |
-      python -m pytest --pyargs interpret -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
-    condition: not(and(startsWith(variables['image.name'], 'windows'), or(eq(variables['Build.Reason'], 'Schedule'), in(variables['Build.SourceBranch'], 'refs/heads/master'))))
-    displayName: 'pytest (rest)'
+    displayName: 'pytest (non-win)'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
