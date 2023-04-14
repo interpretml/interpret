@@ -1,5 +1,6 @@
 graft symbolic
 graft js
+graft tests
 
 prune symbolic/python
 prune symbolic/staging

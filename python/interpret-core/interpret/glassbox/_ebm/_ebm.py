@@ -15,6 +15,7 @@ from ._utils import (
     process_terms,
     order_terms,
     remove_unused_higher_bins,
+    deduplicate_bins,
     generate_term_names,
     generate_term_types,
 )
@@ -27,7 +28,7 @@ from ...utils._clean_simple import clean_dimensions, typify_classification
 
 from ...utils._unify_data import unify_data
 
-from ...utils._preprocessor import construct_bins, deduplicate_bins
+from ...utils._preprocessor import construct_bins
 from ...utils._compressed_dataset import bin_native_by_dimension
 
 from ._bin import (

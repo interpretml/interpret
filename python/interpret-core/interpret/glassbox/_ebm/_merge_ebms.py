@@ -9,8 +9,8 @@ from ._utils import (
     generate_term_names,
     process_terms,
     convert_categorical_to_continuous,
+    deduplicate_bins,
 )
-from ...utils._preprocessor import deduplicate_bins
 
 # from scipy.special import expit
 from sklearn.utils.extmath import softmax
