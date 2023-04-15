@@ -25,7 +25,7 @@ from ..utils._unify_data import unify_data
 
 import logging
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 _BASE_FEATURE_NAME = "__C__"
 
@@ -108,7 +108,7 @@ class RulesExplanation(ExplanationMixin):
         # Handle everything else as invalid
         else:  # pragma: no cover
             msg = "Not suppported: {0}, {1}".format(self.explanation_type, key)
-            log.error(msg)
+            _log.error(msg)
             raise Exception(msg)
 
 
@@ -157,11 +157,11 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
             msg = "y must be 1 dimensional"
-            log.error(msg)
+            _log.error(msg)
             raise ValueError(msg)
         if len(y) == 0:
             msg = "y cannot have 0 samples"
-            log.error(msg)
+            _log.error(msg)
             raise ValueError(msg)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))

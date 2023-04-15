@@ -12,7 +12,7 @@ from numbers import Number
 
 import logging
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 COLORS = ["#1f77b4", "#ff7f0e", "#808080"]
 
@@ -102,7 +102,7 @@ def plot_continuous_bar(
     # x_max = max(x_vals)
 
     if y_hi is None or multiclass:
-        log.warning(
+        _log.warning(
             "Argument show_error is set to true, but there are no bounds in the data."
         )
         show_error = False

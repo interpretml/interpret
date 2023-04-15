@@ -11,7 +11,7 @@ import struct
 import logging
 from contextlib import AbstractContextManager
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 
 class Native:
@@ -44,7 +44,7 @@ class Native:
     @staticmethod
     def get_native_singleton(is_debug=False):
         if Native._native is None:
-            log.info("EBM lib loading.")
+            _log.info("EBM lib loading.")
             native = Native()
             native._initialize(is_debug=is_debug)
             Native._native = native
@@ -126,13 +126,13 @@ class Native:
                 message = message.decode("ascii")
 
                 if trace_level == self._Trace_Error:
-                    log.error(message)
+                    _log.error(message)
                 elif trace_level == self._Trace_Warning:
-                    log.warning(message)
+                    _log.warning(message)
                 elif trace_level == self._Trace_Info:
-                    log.info(message)
+                    _log.info(message)
                 elif trace_level == self._Trace_Verbose:
-                    log.debug(message)
+                    _log.debug(message)
             except:  # noqa: E722
                 # we're being called from C, so we can't raise exceptions
                 pass
@@ -179,7 +179,7 @@ class Native:
 
         if random_state < -2147483648 or 2147483647 < random_state:
             msg = f'random_state of "{random_state}" must be cleaned to be a 32-bit signed integer before calling create_rng'
-            log.error(msg)
+            _log.error(msg)
             raise Exception(msg)
 
         n_bytes = self._unsafe.MeasureRNG()
@@ -569,7 +569,9 @@ class Native:
         package_path = os.path.join(script_path, "..")
 
         debug_str = "_debug" if debug else ""
-        log.info("Loading native on {0} | debug = {1}".format(platform.system(), debug))
+        _log.info(
+            "Loading native on {0} | debug = {1}".format(platform.system(), debug)
+        )
         if (
             platform.system() == "Linux"
             and platform.machine() == "x86_64"
@@ -606,7 +608,7 @@ class Native:
             msg = "System {0}, platform {1}, bitsize {2} not supported for EBM".format(
                 platform.system(), platform.machine(), bitsize
             )
-            log.error(msg)
+            _log.error(msg)
             raise Exception(msg)
 
     def _initialize(self, is_debug):
@@ -1149,7 +1151,7 @@ class Booster(AbstractContextManager):
         self._term_idx = -1
 
     def __enter__(self):
-        log.info("Booster allocation start")
+        _log.info("Booster allocation start")
 
         dimension_counts = np.empty(len(self.term_features), ct.c_int64)
         feature_indexes = []
@@ -1230,7 +1232,7 @@ class Booster(AbstractContextManager):
 
         self._booster_handle = booster_handle.value
 
-        log.info("Booster allocation end")
+        _log.info("Booster allocation end")
         return self
 
     def __exit__(self, *args):
@@ -1238,7 +1240,7 @@ class Booster(AbstractContextManager):
 
     def close(self):
         """Deallocates C objects used to boost EBM."""
-        log.info("Deallocation boosting start")
+        _log.info("Deallocation boosting start")
 
         booster_handle = getattr(self, "_booster_handle", None)
         if booster_handle:
@@ -1246,7 +1248,7 @@ class Booster(AbstractContextManager):
             self._booster_handle = None
             native._unsafe.FreeBooster(booster_handle)
 
-        log.info("Deallocation boosting end")
+        _log.info("Deallocation boosting end")
 
     def generate_term_update(
         self,
@@ -1270,7 +1272,7 @@ class Booster(AbstractContextManager):
             gain for the generated boosting step.
         """
 
-        # log.debug("Boosting step start")
+        # _log.debug("Boosting step start")
 
         self._term_idx = -1
 
@@ -1295,7 +1297,7 @@ class Booster(AbstractContextManager):
 
         self._term_idx = term_idx
 
-        # log.debug("Boosting step end")
+        # _log.debug("Boosting step end")
         return avg_gain.value
 
     def apply_term_update(self):
@@ -1306,7 +1308,7 @@ class Booster(AbstractContextManager):
         Returns:
             Validation loss for the boosting step.
         """
-        # log.debug("Boosting step start")
+        # _log.debug("Boosting step start")
 
         self._term_idx = -1
 
@@ -1320,7 +1322,7 @@ class Booster(AbstractContextManager):
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "ApplyTermUpdate")
 
-        # log.debug("Boosting step end")
+        # _log.debug("Boosting step end")
         return avg_validation_metric.value
 
     def get_best_model(self):
@@ -1557,7 +1559,7 @@ class InteractionDetector(AbstractContextManager):
         self.experimental_params = experimental_params
 
     def __enter__(self):
-        log.info("Allocation interaction start")
+        _log.info("Allocation interaction start")
 
         native = Native.get_native_singleton()
 
@@ -1612,7 +1614,7 @@ class InteractionDetector(AbstractContextManager):
 
         self._interaction_handle = interaction_handle.value
 
-        log.info("Allocation interaction end")
+        _log.info("Allocation interaction end")
         return self
 
     def __exit__(self, *args):
@@ -1620,7 +1622,7 @@ class InteractionDetector(AbstractContextManager):
 
     def close(self):
         """Deallocates C objects used to determine interactions in EBM."""
-        log.info("Deallocation interaction start")
+        _log.info("Deallocation interaction start")
 
         interaction_handle = getattr(self, "_interaction_handle", None)
         if interaction_handle:
@@ -1628,13 +1630,13 @@ class InteractionDetector(AbstractContextManager):
             self._interaction_handle = None
             native._unsafe.FreeInteractionDetector(interaction_handle)
 
-        log.info("Deallocation interaction end")
+        _log.info("Deallocation interaction end")
 
     def calc_interaction_strength(
         self, feature_idxs, interaction_flags, max_cardinality, min_samples_leaf
     ):
         """Provides strength for an feature interaction. Higher is better."""
-        log.info("Fast interaction strength start")
+        _log.info("Fast interaction strength start")
 
         native = Native.get_native_singleton()
 
@@ -1651,5 +1653,5 @@ class InteractionDetector(AbstractContextManager):
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "CalcInteractionStrength")
 
-        log.info("Fast interaction strength end")
+        _log.info("Fast interaction strength end")
         return strength.value

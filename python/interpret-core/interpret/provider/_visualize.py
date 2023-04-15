@@ -12,7 +12,7 @@ JS_URL = "https://unpkg.com/@interpretml/interpret-inline@{}/dist/interpret-inli
     __version__
 )
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 
 class VisualizeProvider(ABC):
@@ -37,13 +37,13 @@ class AutoVisualizeProvider(VisualizeProvider):
 
         # NOTE: This is tested manually per release. Ignoring for coverage.
         if self.in_cloud_env == ENV_DETECTED.CLOUD:  # pragma: no cover
-            log.info("Detected cloud environment.")
+            _log.info("Detected cloud environment.")
             self.provider = InlineProvider(detected_envs=detected_envs, js_url=JS_URL)
         elif "docker-dev-mode" in detected_envs:
-            log.info("Operating in docker development mode.")
+            _log.info("Operating in docker development mode.")
             self.provider = InlineProvider(detected_envs=detected_envs)
         elif self.in_cloud_env == ENV_DETECTED.BOTH_CLOUD_AND_NON_CLOUD:
-            log.info("Detected both cloud and non cloud environment.")
+            _log.info("Detected both cloud and non cloud environment.")
             # val = input("Type 'C' if you want to choose Cloud environment or 'NC' for Non Cloud Environment :")
             val = "C"
             if val == "C":
@@ -56,7 +56,7 @@ class AutoVisualizeProvider(VisualizeProvider):
                 else:
                     self.provider = DashProvider.from_address()
         else:  # ENV_DETECTED.NON_CLOUD
-            log.info("Detected non-cloud environment.")
+            _log.info("Detected non-cloud environment.")
             if self.app_runner:
                 self.provider = DashProvider(self.app_runner)
             else:
@@ -114,7 +114,7 @@ class PreserveProvider(VisualizeProvider):
                     explanation_name, selector_key
                 )
             )
-            log.error(msg)
+            _log.error(msg)
             if file_name is None:
                 render_html(msg)
             else:
@@ -141,7 +141,7 @@ class PreserveProvider(VisualizeProvider):
             msg = "Preserving dash components is currently not supported."
             if file_name is None:
                 render_html(msg)
-            log.error(msg)
+            _log.error(msg)
             return False
         else:  # pragma: no cover
             msg = "Visualization cannot be preserved for type: {0}.".format(
@@ -149,7 +149,7 @@ class PreserveProvider(VisualizeProvider):
             )
             if file_name is None:
                 render_html(msg)
-            log.error(msg)
+            _log.error(msg)
             return False
 
         return True

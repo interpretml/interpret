@@ -28,7 +28,7 @@ from ..utils._unify_data import unify_data
 
 import logging
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 COLORS = ["#1f77b4", "#ff7f0e", "#808080", "#3a729b", "#ff420e"]
 
@@ -180,7 +180,7 @@ class TreeExplanation(ExplanationMixin):
             return component
         else:  # pragma: no cover
             msg = "Cannot handle type {0}".format(self.explanation_type)
-            log.error(msg)
+            _log.error(msg)
             raise Exception(msg)
 
     def _weight_edges(self, edges, decision_nodes):

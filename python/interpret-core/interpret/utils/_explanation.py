@@ -6,10 +6,6 @@ from itertools import count
 import numpy as np
 import pandas as pd
 
-import logging
-
-log = logging.getLogger(__name__)
-
 
 def gen_perf_dicts(scores, y, is_classification, classes=None):
     # TODO: rename from scores to something else: predicted & make predicted best_predicted

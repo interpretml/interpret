@@ -8,7 +8,7 @@ from warnings import warn
 import traceback
 
 
-module_logger = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 
 # TODO: More checks for explainer validation, specifically on spec for explainer/explanation when instantiated.
@@ -40,11 +40,11 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
           before it is registered.
     """
     for entrypoint in pkg_resources.iter_entry_points(extension_key):
-        module_logger.debug("processing entrypoint {}".format(extension_key))
+        _log.debug("processing entrypoint {}".format(extension_key))
         try:
             extension_class_name = entrypoint.name
             extension_class = entrypoint.load()
-            module_logger.debug(
+            _log.debug(
                 "loading entrypoint key {} with name {} with object {}".format(
                     extension_key, extension_class_name, extension_class
                 )
@@ -69,6 +69,6 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
                 entrypoint,
                 "".join(traceback.format_exception(type(e), e, e.__traceback__)),
             )
-            module_logger.warning(msg)
+            _log.warning(msg)
 
             warn(msg)

@@ -17,7 +17,7 @@ from string import Template
 
 import logging
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.logger.disabled = True
@@ -48,17 +48,17 @@ class AppRunner:
             for _ in range(max_attempts):
                 if self._local_port_available(port, rais=False):
                     self.port = port
-                    log.info("Found open port: {0}".format(port))
+                    _log.info("Found open port: {0}".format(port))
                     break
                 else:  # pragma: no cover
-                    log.info("Port already in use: {0}".format(port))
+                    _log.info("Port already in use: {0}".format(port))
                     port = random.randint(7002, 7999)
 
             else:  # pragma: no cover
                 msg = """Could not find open port.
                 Consider calling `interpret.set_show_addr(("127.0.0.1", 7001))` first.
                 """
-                log.error(msg)
+                _log.error(msg)
                 raise RuntimeError(msg)
         else:
             self.ip = addr[0]
@@ -93,20 +93,20 @@ class AppRunner:
         if self._thread is None:
             return True
 
-        log.info("Triggering shutdown")
+        _log.info("Triggering shutdown")
         try:
             path = _build_path("shutdown")
             url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
             r = requests.post(url)
-            log.debug(r)
+            _log.debug(r)
         except requests.exceptions.RequestException as e:  # pragma: no cover
-            log.info("Dashboard stop failed: {0}".format(e))
+            _log.info("Dashboard stop failed: {0}".format(e))
             return False
 
         if self._thread is not None:
             self._thread.join(timeout=5.0)
             if self._thread.is_alive():
-                log.error("Thread still alive despite shutdown called.")
+                _log.error("Thread still alive despite shutdown called.")
                 return False
 
             self._thread = None
@@ -123,13 +123,13 @@ class AppRunner:
             self.app.config["server"] = server
             server.serve_forever()
         except Exception as e:  # pragma: no cover
-            log.error(e, exc_info=True)
+            _log.error(e, exc_info=True)
 
     def _obj_id(self, obj):
         return str(id(obj))
 
     def start(self):
-        log.info("Running app runner on: {0}:{1}".format(self.ip, self.port))
+        _log.info("Running app runner on: {0}:{1}".format(self.ip, self.port))
 
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
@@ -141,10 +141,10 @@ class AppRunner:
             path = _build_path("")
             url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
             requests.get(url)
-            log.info("Dashboard ping succeeded")
+            _log.info("Dashboard ping succeeded")
             return True
         except requests.exceptions.RequestException as e:  # pragma: no cover
-            log.info("Dashboard ping failed: {0}".format(e))
+            _log.info("Dashboard ping failed: {0}".format(e))
             return False
 
     def status(self):
@@ -177,7 +177,7 @@ class AppRunner:
         )
 
         url = "{0}{1}".format(start_url, path)
-        log.info("Display URL: {0}".format(url))
+        _log.info("Display URL: {0}".format(url))
 
         return url
 
@@ -226,7 +226,7 @@ class DispatcherApp:
     def register(self, ctx, share_tables=None):
         ctx_id = self.obj_id(ctx)
         if ctx_id not in self.pool:
-            log.info("Creating App Entry: {0}".format(ctx_id))
+            _log.info("Creating App Entry: {0}".format(ctx_id))
             ctx_path = (
                 "/{0}/".format(ctx_id)
                 if self.base_url is None
@@ -244,30 +244,30 @@ class DispatcherApp:
 
             self.pool[ctx_id] = app.server
         else:
-            log.debug("App Entry found: {0}".format(ctx_id))
+            _log.debug("App Entry found: {0}".format(ctx_id))
 
     def __call__(self, environ, start_response):
         path_info = environ.get("PATH_INFO", "")
         script_name = environ.get("SCRIPT_NAME", "")
-        log.debug("PATH INFO  : {0}".format(path_info))
-        log.debug("SCRIPT NAME: {0}".format(script_name))
+        _log.debug("PATH INFO  : {0}".format(path_info))
+        _log.debug("SCRIPT NAME: {0}".format(script_name))
 
         try:
             if path_info == self.root_path:
-                log.info("Root path requested.")
+                _log.info("Root path requested.")
                 start_response("200 OK", [("content-type", "text/html")])
                 content = self._root_content()
                 return [content.encode("utf-8")]
 
             if path_info == self.shutdown_path:
-                log.info("Shutting down.")
+                _log.info("Shutting down.")
                 server = self.config["server"]
                 server.stop()
                 start_response("200 OK", [("content-type", "text/html")])
                 return ["Shutdown".encode("utf-8")]
 
             if path_info == self.favicon_path:
-                log.info("Favicon requested.")
+                _log.info("Favicon requested.")
 
                 start_response("200 OK", [("content-type", "image/x-icon")])
                 with open(self.favicon_res, "rb") as handler:
@@ -276,17 +276,17 @@ class DispatcherApp:
             match = re.search(self.app_pattern, path_info)
             if match is None or self.pool.get(match.group(1), None) is None:
                 msg = "URL not supported: {0}".format(path_info)
-                log.error(msg)
+                _log.error(msg)
                 start_response("400 BAD REQUEST ERROR", [("content-type", "text/html")])
                 return [msg.encode("utf-8")]
 
             ctx_id = match.group(1)
-            log.info("Routing request: {0}".format(ctx_id))
+            _log.info("Routing request: {0}".format(ctx_id))
             app = self.pool[ctx_id]
             if self.base_url and not environ["PATH_INFO"].startswith(
                 "/{0}".format(self.base_url)
             ):
-                log.info("No base url in path. Rewrite to include in path.")
+                _log.info("No base url in path. Rewrite to include in path.")
                 environ["PATH_INFO"] = "/{0}{1}".format(
                     self.base_url, environ["PATH_INFO"]
                 )
@@ -294,7 +294,7 @@ class DispatcherApp:
             return app(environ, start_response)
 
         except Exception as e:  # pragma: no cover
-            log.error(e, exc_info=True)
+            _log.error(e, exc_info=True)
             try:
                 start_response(
                     "500 INTERNAL SERVER ERROR", [("Content-Type", "text/plain")]

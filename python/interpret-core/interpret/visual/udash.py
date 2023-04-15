@@ -16,7 +16,7 @@ from plotly import graph_objs as go
 
 import logging
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 
 # Constants
@@ -83,7 +83,7 @@ def generate_app_mini(
     Returns:
         The dash app itself.
     """
-    log.info("Generating mini dash")
+    _log.info("Generating mini dash")
 
     # Initialize
     app = UDash(
@@ -183,17 +183,17 @@ def generate_app_mini(
 
     @server.errorhandler(Exception)
     def handle_error(e):  # pragma: no cover
-        log.error(e, exc_info=True)
+        _log.error(e, exc_info=True)
         return "Internal Server Error caught by udash. See logs if available.", 500
 
-    log.info("Generated mini dash")
+    _log.info("Generated mini dash")
     return app
 
 
 def gen_overall_plot(exp, model_idx):
     figure = exp.visualize(key=None)
     if figure is None:
-        log.info("No overall plot to display: {0}|{1}".format(model_idx, exp.name))
+        _log.info("No overall plot to display: {0}|{1}".format(model_idx, exp.name))
         # Provide default 'no overall' graph
         figure = r"""
                 <style>
@@ -250,7 +250,7 @@ def gen_overall_plot(exp, model_idx):
         output_graph.id = "overall-graph-{0}".format(model_idx)
     else:  # pragma: no cover
         _type = type(figure)
-        log.warning("Visualization type not supported: {0}".format(_type))
+        _log.warning("Visualization type not supported: {0}".format(_type))
         raise Exception("Not supported visualization type: {0}".format(_type))
 
     name = exp.name
@@ -304,7 +304,7 @@ def gen_plot(exp, picker, model_idx, counter):
         output_graph.id = "graph-{0}-{1}".format(model_idx, counter)
     else:  # pragma: no cover
         _type = type(figure)
-        log.warning("Visualization type not supported: {0}".format(_type))
+        _log.warning("Visualization type not supported: {0}".format(_type))
         raise Exception("Not supported visualization type: {0}".format(_type))
 
     idx_str = str(picker)
@@ -333,7 +333,7 @@ def generate_app_full(  # noqa: C901
         The dash app itself.
     """
 
-    log.info("Generating full dash")
+    _log.info("Generating full dash")
 
     # Initialize
     app = UDash(
@@ -474,7 +474,7 @@ The explanations available are split into tabs, each covering an aspect of the p
         return html.Div(cards)
 
     def gen_tab(explanation_type):
-        log.debug("Generating tab: {0}".format(explanation_type))
+        _log.debug("Generating tab: {0}".format(explanation_type))
         ctx = app.ctx
         options = app.options
         data_options = [
@@ -512,7 +512,7 @@ The explanations available are split into tabs, each covering an aspect of the p
             children=shared_value,
             className="hdn",
         )
-        log.debug("Tab {0} is_shared: {1}".format(explanation_type, shared_value))
+        _log.debug("Tab {0} is_shared: {1}".format(explanation_type, shared_value))
         return html.Div(
             [
                 html.Div(
@@ -547,7 +547,7 @@ The explanations available are split into tabs, each covering an aspect of the p
 
     def register_pane_cb(explanation_type):
         def output_callback(value, is_shared):
-            log.debug(
+            _log.debug(
                 "Registering pane: {0}|{1}|{2}".format(
                     explanation_type, value, is_shared
                 )
@@ -614,7 +614,7 @@ The explanations available are split into tabs, each covering an aspect of the p
                         )
                     )
                 else:
-                    log.info(
+                    _log.info(
                         "No df provided in pane cb for model idx: {0}".format(model_idx)
                     )
                     components.append(
@@ -666,11 +666,11 @@ The explanations available are split into tabs, each covering an aspect of the p
     def register_update_plots_cb(pane_idx):
         def output_callback(model_idx, instance_idx):
             if pane_idx >= len(model_idx):  # pragma: no cover
-                log.warning(
+                _log.warning(
                     "Pane index {} larger than selected explanations.".format(pane_idx)
                 )
                 return None
-            log.debug(
+            _log.debug(
                 "Updating plots: {0}|{1}|{2}".format(pane_idx, model_idx, instance_idx)
             )
             return gen_plots_container(model_idx[pane_idx], instance_idx)
@@ -680,11 +680,11 @@ The explanations available are split into tabs, each covering an aspect of the p
     def register_update_overall_plot_cb(pane_idx):
         def output_callback(model_idx, empty):
             if pane_idx >= len(model_idx):  # pragma: no cover
-                log.warning(
+                _log.warning(
                     "Pane index {} larger than selected explanations.".format(pane_idx)
                 )
                 return None
-            log.debug("Updating overall plots: {0}".format(model_idx))
+            _log.debug("Updating overall plots: {0}".format(model_idx))
             return gen_overall_plot_container(model_idx[pane_idx])
 
         return output_callback
@@ -757,7 +757,7 @@ The explanations available are split into tabs, each covering an aspect of the p
             )(register_update_idx_cb())
 
     def gen_share_table_container(model_idxs, explanation_type):
-        log.debug(
+        _log.debug(
             "Generating shared table container: {0}|{1}".format(
                 model_idxs, explanation_type
             )
@@ -801,7 +801,7 @@ The explanations available are split into tabs, each covering an aspect of the p
         if model_idx is None or not picker_idx:
             return None
 
-        log.debug("Generating plots: {0}|{1}".format(model_idx, picker_idx))
+        _log.debug("Generating plots: {0}|{1}".format(model_idx, picker_idx))
 
         ctx = app.ctx
         exp = ctx[model_idx][0]
@@ -815,7 +815,7 @@ The explanations available are split into tabs, each covering an aspect of the p
         return html.Div(output)
 
     def gen_overall_plot_container(model_idx):
-        log.debug("Generating overall plots: {0}".format(model_idx))
+        _log.debug("Generating overall plots: {0}".format(model_idx))
 
         ctx = app.ctx
         exp = ctx[model_idx][0]
@@ -826,7 +826,7 @@ The explanations available are split into tabs, each covering an aspect of the p
 
     @server.errorhandler(Exception)
     def handle_error(e):  # pragma: no cover
-        log.error(e, exc_info=True)
+        _log.error(e, exc_info=True)
         return "Internal Server Error caught by udash. See logs if available.", 500
 
     @app.callback(Output("data-tab", "children"), [Input("tabs", "value")])
@@ -859,7 +859,7 @@ The explanations available are split into tabs, each covering an aspect of the p
             return None
         return gen_tab(tab)
 
-    log.info("Generated full dash")
+    _log.info("Generated full dash")
     return app
 
 
@@ -915,7 +915,7 @@ def generate_app(
     new_options = options.copy()
     share_tables = new_options["share_tables"]
     supported_types = ["data", "perf", "global", "local"]
-    log.debug("PRE shared_tables: {0}".format(share_tables))
+    _log.debug("PRE shared_tables: {0}".format(share_tables))
     if share_tables is None:
         # TODO: Revisit when we support custom tabs from users.
         shared_frames = {supported_type: True for supported_type in supported_types}
@@ -937,7 +937,7 @@ def generate_app(
         raise Exception("share_tables option must be True|False|None or dict.")
 
     new_options["share_tables"] = shared_frames
-    log.debug("POST shared_tables: {0}".format(shared_frames))
+    _log.debug("POST shared_tables: {0}".format(shared_frames))
 
     app.ctx = new_ctx
     app.options = new_options

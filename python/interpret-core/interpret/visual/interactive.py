@@ -5,7 +5,7 @@ import sys
 import logging
 from ..provider import AutoVisualizeProvider, PreserveProvider, DashProvider
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 _current_module = sys.modules[__name__]
 
@@ -109,10 +109,10 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
 
     # If the user uses old methods such as init_show_server, we do an immediate override to the visualization provider.
     if isinstance(_current_module.visualize_provider, DashProvider):
-        log.info("Stopping previous dash provider")
+        _log.info("Stopping previous dash provider")
         shutdown_show_server()
 
-    log.info(
+    _log.info(
         "Replacing visualize provider: {} with {}".format(
             type(_current_module.visualize_provider), type(DashProvider)
         )
@@ -128,7 +128,7 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
         _current_module.visualize_provider.app_runner.ip,
         _current_module.visualize_provider.app_runner.port,
     )
-    log.info("Running dash provider at {}".format(addr))
+    _log.info("Running dash provider at {}".format(addr))
 
     return None
 
@@ -168,7 +168,7 @@ def show(explanation, key=-1, **kwargs):
         # Render
         _current_module.visualize_provider.render(explanation, key=key, **kwargs)
     except Exception as e:  # pragma: no cover
-        log.error(e, exc_info=True)
+        _log.error(e, exc_info=True)
         raise e
 
     return None
@@ -203,7 +203,7 @@ def show_link(explanation, share_tables=None):
         url = _current_module.visualize_provider.app_runner.display_link(explanation)
         return url
     except Exception as e:  # pragma: no cover
-        log.error(e, exc_info=True)
+        _log.error(e, exc_info=True)
         raise e
 
 
@@ -237,5 +237,5 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
         )
         return None
     except Exception as e:  # pragma: no cover
-        log.error(e, exc_info=True)
+        _log.error(e, exc_info=True)
         raise e

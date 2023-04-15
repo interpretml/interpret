@@ -15,7 +15,7 @@ import base64
 
 import logging
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 interpret_help_link = "https://interpret.ml/docs/ebm.html"
 synapse_help_link = "https://aka.ms/synapse-ebm"
 
@@ -85,7 +85,7 @@ def _build_viz_figure(visualization, detected_envs=None):
         #       all Dash component visualizations are being replaced with D3 soon.
         _type = "html"
         msg = "This visualization is not yet supported in the cloud environment."
-        log.debug("Visualization type cannot render: {}".format(type(visualization)))
+        _log.debug("Visualization type cannot render: {}".format(type(visualization)))
         figure = _build_error_frame(msg)
 
     return {"type": _type, "figure": figure, "help": help}
@@ -213,7 +213,7 @@ def _render_databricks(js):  # pragma: no cover
 
         if not found:
             msg = "Could not find DataBrick's displayHTML function"
-            log.error(msg)
+            _log.error(msg)
             raise RuntimeError(msg)
 
     _render_databricks.displayHTML(js)

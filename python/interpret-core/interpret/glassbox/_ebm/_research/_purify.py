@@ -11,9 +11,6 @@
 # https://arxiv.org/abs/1911.04974
 
 import numpy as np
-import logging
-
-log = logging.getLogger(__name__)
 
 
 def _purify_row(mat, marg, densities, i):
@@ -109,8 +106,6 @@ def purify(mat, densities=None, verbose=False, tol=1e-6, randomize=False):
     max_col = np.max(np.abs(col_means))
     while max_row > tol or max_col > tol:
         i += 1
-        if verbose:  # pragma: no cover
-            log.info(i, max_row, max_col)
         m1, m2, mat = _purify_once(mat, densities, m1, m2, randomize)
         row_means = _calc_row_means(mat, densities)
         col_means = _calc_col_means(mat, densities)
