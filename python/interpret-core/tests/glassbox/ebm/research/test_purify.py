@@ -5,7 +5,6 @@ import numpy as np
 from interpret.glassbox._ebm._research._purify import (
     _purify_row,
     _purify_col,
-    _purify_once,
 )
 from interpret.glassbox._ebm._research import (
     purify,

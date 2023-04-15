@@ -86,13 +86,13 @@ def measure_interactions(
     if is_classifier(init_score):
         # all scikit-learn classification models need to expose self.classes_
         classes = init_score.classes_
-        if not is_classification:
+        if is_classification is False:
             raise ValueError(
                 "objective is for regresion but the init_score is a classification model"
             )
         is_classification = True
     elif is_regressor(init_score):
-        if is_classification:
+        if is_classification is True:
             raise ValueError(
                 "objective is for classification but the init_score is a regression model"
             )
@@ -103,7 +103,7 @@ def measure_interactions(
         init_score = clean_init_score(init_score, len(y), X)
         if init_score.ndim == 2:
             # it must be multiclass, or mono-classification
-            if not is_classification:
+            if is_classification is False:
                 raise ValueError(
                     "objective is for regresion but the init_score is for a multiclass model"
                 )

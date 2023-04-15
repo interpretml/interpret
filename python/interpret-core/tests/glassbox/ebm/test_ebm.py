@@ -71,7 +71,6 @@ def test_unknown_multiclass_category():
     y_train = data["train"]["y"]
 
     X_test = data["test"]["X"]
-    y_test = data["test"]["y"]
 
     # Add categorical feature
     X_train["cat_feature"] = [
@@ -98,7 +97,6 @@ def test_unknown_binary_category():
     X_tr = data["train"]["X"]
     y_tr = data["train"]["y"]
     X_te = data["test"]["X"]
-    y_te = data["test"]["y"]
 
     ebm = ExplainableBoostingClassifier(
         n_jobs=2, outer_bags=2, interactions=[[0, 13], [1, 2], [13, 3]]
@@ -224,14 +222,13 @@ def test_ebm_tripple():
     y_train = data["train"]["y"]
 
     X_test = data["test"]["X"]
-    y_test = data["test"]["y"]
 
     # iris is multiclass, but for now pretend this is a regression problem
     clf = ExplainableBoostingRegressor(
         interactions=[(0, 1, 2), (0, 1, 3), (1, 2, 3), (0, 1)]
     )
     clf.fit(X_train, y_train)
-    scores = clf.predict(X_test)
+    clf.predict(X_test)
     valid_ebm(clf)
 
 
@@ -298,8 +295,8 @@ def test_ebm_only_missing():
     clf = ExplainableBoostingClassifier(n_jobs=1)
     clf.fit(X, y)
     clf.predict(X)
-    global_exp = clf.explain_global()
-    local_exp = clf.explain_local(X, y)
+    clf.explain_global()
+    clf.explain_local(X, y)
 
 
 def test_ebm_synthetic_singleclass_classification():

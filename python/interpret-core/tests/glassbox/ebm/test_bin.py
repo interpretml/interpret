@@ -1,7 +1,6 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import pytest
 import numpy as np
 import math
 

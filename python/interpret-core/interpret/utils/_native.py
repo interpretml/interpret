@@ -133,7 +133,7 @@ class Native:
                     log.info(message)
                 elif trace_level == self._Trace_Verbose:
                     log.debug(message)
-            except:  # pragma: no cover
+            except:  # noqa: E722
                 # we're being called from C, so we can't raise exceptions
                 pass
 
