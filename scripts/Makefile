@@ -57,7 +57,7 @@ prepare-docker:
 clean:
 	-$(RMDIR) "$(ROOTDIR)/staging"
 	-$(RMDIR) "$(ROOTDIR)/python/interpret-core/interpret/lib"
-	-$(RMDIR) "$(ROOTDIR)/python/interpret-core/js/dist"
+	-$(RMDIR) "$(ROOTDIR)/shared/vis/dist"
 	-$(DOCKER) volume rm $(DOCKER_VOL_NAME)
 	-$(DOCKER) image rm $(DOCKER_IMG_NAME)
 
@@ -82,10 +82,11 @@ build-python:
 	cd $(ROOTDIR)/python/interpret && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/staging
 
 build-javascript:
-	cd $(ROOTDIR)/python/interpret-core/js && $(NPM) install
-	cd $(ROOTDIR)/python/interpret-core/js && $(NPM) run build-prod
+	cd $(ROOTDIR)/shared/vis && $(NPM) install
+	cd $(ROOTDIR)/shared/vis && $(NPM) run build-prod
 	-$(MKDIR_P) "$(ROOTDIR)/python/interpret-core/interpret/lib"
-	cd $(ROOTDIR)/python/interpret-core/js/dist && $(COPY) "interpret-inline.js" "$(ROOTDIR)/python/interpret-core/interpret/lib/"
+	cd $(ROOTDIR)/shared/vis/dist && $(COPY) "interpret-inline.js" "$(ROOTDIR)/python/interpret-core/interpret/lib/"
+	cd $(ROOTDIR)/shared/vis/dist && $(COPY) "interpret-inline.js.LICENSE.txt" "$(ROOTDIR)/python/interpret-core/interpret/lib/"
 
 build-native:
 	$(BUILD_NATIVE)

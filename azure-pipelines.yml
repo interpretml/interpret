@@ -86,14 +86,20 @@ jobs:
     runCodesignValidationInjection: false
   steps:
   - script: npm install && npm run build-prod
-    workingDirectory: 'python/interpret-core/js'
+    workingDirectory: 'shared/vis'
     displayName: 'bld_vis'
   - task: CopyFiles@2
     inputs:
-      sourceFolder: 'python/interpret-core/js/dist'
+      sourceFolder: 'shared/vis/dist'
       contents: 'interpret-inline.js'
       targetFolder: '$(Build.ArtifactStagingDirectory)/vis'
     displayName: 'Copy interpret-inline.js library'
+  - task: CopyFiles@2
+    inputs:
+      sourceFolder: 'shared/vis/dist'
+      contents: 'interpret-inline.js.LICENSE.txt'
+      targetFolder: '$(Build.ArtifactStagingDirectory)/vis'
+    displayName: 'Copy interpret-inline.js.LICENSE.txt'
   - task: PublishBuildArtifacts@1
     inputs:
       pathtoPublish: $(Build.ArtifactStagingDirectory)/vis
@@ -107,11 +113,11 @@ jobs:
     runCodesignValidationInjection: false
   steps:
   - script: npm install && npm run build-prod && npm pack
-    workingDirectory: 'python/interpret-core/js'
+    workingDirectory: 'shared/vis'
     displayName: 'bld_npm_package'
   - task: CopyFiles@2
     inputs:
-      sourceFolder: 'python/interpret-core/js'
+      sourceFolder: 'shared/vis'
       contents: '*.tgz'
       targetFolder: '$(Build.ArtifactStagingDirectory)/npm'
     displayName: 'Copy npm package'
@@ -248,6 +254,13 @@ jobs:
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Copy interpret-inline.js to python lib directory'
+  - task: CopyFiles@2
+    inputs:
+      sourceFolder: '$(System.ArtifactsDirectory)'
+      contents: '**/interpret-inline.js.LICENSE.txt'
+      targetFolder: 'python/interpret-core/interpret/lib'
+      flattenFolders: true
+    displayName: 'Copy interpret-inline.js.LICENSE.txt to python lib directory'
   - script: python setup.py bdist_wheel -d ../../staging
     workingDirectory: 'python/interpret-core'
     displayName: 'interpret-core bld_bdist_package'

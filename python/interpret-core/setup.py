@@ -159,7 +159,7 @@ def build_vis():
     script_path = os.path.dirname(os.path.abspath(__file__))
 
     # JavaScript compile
-    js_path = os.path.join(script_path, "js")
+    js_path = os.path.join(script_path, "..", "..", "shared", "vis")
     subprocess.run("npm install && npm run build-prod", cwd=js_path, shell=True)
 
     js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
@@ -168,6 +168,12 @@ def build_vis():
     )
     os.makedirs(os.path.dirname(js_bundle_dest), exist_ok=True)
     shutil.copyfile(js_bundle_src, js_bundle_dest)
+
+    js_bundle_src_lic = os.path.join(js_path, "dist", "interpret-inline.js.LICENSE.txt")
+    js_bundle_dest_lic = os.path.join(
+        script_path, "interpret", "lib", "interpret-inline.js.LICENSE.txt"
+    )
+    shutil.copyfile(js_bundle_src_lic, js_bundle_dest_lic)
 
 
 class BuildCommand(build):

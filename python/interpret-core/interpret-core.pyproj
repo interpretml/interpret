@@ -27,9 +27,6 @@
     <Content Include="interpret\visual\assets\favicon.ico" />
     <Content Include="interpret\visual\assets\udash.css" />
     <Content Include="interpret\visual\assets\udash.js" />
-    <Content Include="js\package.json" />
-    <Content Include="js\src\index.js" />
-    <Content Include="js\webpack.config.js" />
     <Content Include="MANIFEST.in" />
   </ItemGroup>
   <ItemGroup>
@@ -169,8 +166,6 @@
     <Folder Include="interpret\utils" />
     <Folder Include="interpret\visual" />
     <Folder Include="interpret\visual\assets" />
-    <Folder Include="js" />
-    <Folder Include="js\src" />
     <Folder Include="tests\" />
     <Folder Include="tests\api\" />
     <Folder Include="tests\blackbox\" />
