@@ -368,8 +368,9 @@ class EBMModel(BaseEstimator):
 
             if random_state is not None:
                 warn(
-                    f"Privacy violation: using a fixed random_state of {random_state} will cause deterministic noise additions."
-                    "This capability is only for debugging/testing. Set random_state to None to remove this warning."
+                    f"Privacy violation: using a fixed random_state of {random_state} "
+                    "will cause deterministic noise additions. This capability is only "
+                    "for debugging/testing. Set random_state to None to remove this warning."
                 )
 
     def fit(self, X, y, sample_weight=None):  # noqa: C901
@@ -566,8 +567,10 @@ class EBMModel(BaseEstimator):
                 # having it here is a check that the clipping was not overlooked.
                 if is_privacy_warning:
                     warn(
-                        "Possible privacy violation: assuming min/max values for target are public info."
-                        "Pass in privacy_target_min and privacy_target_max with known public values to avoid this warning."
+                        "Possible privacy violation: assuming min/max values for "
+                        "target are public info. Pass in privacy_target_min and "
+                        "privacy_target_max with known public values to avoid "
+                        "this warning."
                     )
 
                 if is_clipping:
@@ -992,7 +995,9 @@ class EBMModel(BaseEstimator):
 
                     if 2 < max_dimensions:
                         warn(
-                            "Interactions with 3 or more terms are not graphed in global explanations. Local explanations are still available and exact."
+                            "Interactions with 3 or more terms are not graphed in "
+                            "global explanations. Local explanations are still "
+                            "available and exact."
                         )
 
                 parallel_args = []
@@ -1699,7 +1704,8 @@ class EBMModel(BaseEstimator):
                 data_dicts.append(data_dict)
             else:  # pragma: no cover
                 warn(
-                    f"Dropping feature {term_names[term_idx]} from explanation since we can't graph more than 2 dimensions."
+                    f"Dropping feature {term_names[term_idx]} from explanation "
+                    "since we can't graph more than 2 dimensions."
                 )
 
         importances = self.term_importances()

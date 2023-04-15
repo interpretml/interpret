@@ -1,22 +1,9 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import math
-from collections import Counter
-from itertools import count, repeat, groupby
-from warnings import warn
-import numpy as np
-import numpy.ma as ma
-from sklearn.base import (
-    BaseEstimator,
-    TransformerMixin,
-)
-from sklearn.utils.validation import check_is_fitted
-from sklearn.base import is_classifier, is_regressor
-
 import logging
 
-_log = logging.getLogger(__name__)
+from sklearn.base import is_classifier, is_regressor
 
 from ._clean_simple import clean_dimensions
 
@@ -26,6 +13,8 @@ try:
     _pandas_installed = True
 except ImportError:
     _pandas_installed = False
+
+_log = logging.getLogger(__name__)
 
 
 def determine_classes(model, data, n_samples):
@@ -41,7 +30,7 @@ def determine_classes(model, data, n_samples):
         preds = clean_dimensions(model(data), "model")
         if n_samples == 1:  # then the sample dimension would have been eliminated
             if preds.ndim != 1:
-                msg = f"model.predict_proba(data) returned inconsistent number of dimensions"
+                msg = "model.predict_proba(data) returned inconsistent number of dimensions"
                 _log.error(msg)
                 raise ValueError(msg)
             n_classes = preds.shape[0]
@@ -50,7 +39,7 @@ def determine_classes(model, data, n_samples):
                 # we have at least 2 samples, so this means classes was an empty dimension
                 n_classes = 0
             elif preds.shape[0] != n_samples:
-                msg = f"model.predict_proba(data) returned inconsistent number of samples compared to data"
+                msg = "model.predict_proba(data) returned inconsistent number of samples compared to data"
                 _log.error(msg)
                 raise ValueError(msg)
             elif preds.ndim == 1:
@@ -67,18 +56,18 @@ def determine_classes(model, data, n_samples):
         model = model.predict
         preds = clean_dimensions(model(data), "model")
         if preds.ndim != 1:
-            msg = f"model.predict(data) must have only 1 dimension"
+            msg = "model.predict(data) must have only 1 dimension"
             _log.error(msg)
             raise ValueError(msg)
         elif preds.shape[0] != n_samples:
-            msg = f"model.predict(data) returned inconsistent number of samples compared to data"
+            msg = "model.predict(data) returned inconsistent number of samples compared to data"
             _log.error(msg)
             raise ValueError(msg)
     else:
         preds = clean_dimensions(model(data), "model")
         if n_samples == 1:  # then the sample dimension would have been eliminated
             if preds.ndim != 1:
-                msg = f"model(data) has an inconsistent number of samples compared to data"
+                msg = "model(data) has an inconsistent number of samples compared to data"
                 _log.error(msg)
                 raise ValueError(msg)
             elif preds.shape[0] != 1:
@@ -92,7 +81,7 @@ def determine_classes(model, data, n_samples):
                 # we have at least 2 samples, so this means classes was an empty dimension
                 n_classes = 0
             elif preds.shape[0] != n_samples:
-                msg = f"model(data) has an inconsistent number of samples compared to data"
+                msg = "model(data) has an inconsistent number of samples compared to data"
                 _log.error(msg)
                 raise ValueError(msg)
             elif preds.ndim == 1:

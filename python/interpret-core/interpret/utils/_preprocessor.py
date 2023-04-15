@@ -1,26 +1,21 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import logging
 import math
-from collections import Counter
 from itertools import count, repeat, groupby
 from warnings import warn
+
 import numpy as np
-import numpy.ma as ma
 from sklearn.base import (
     BaseEstimator,
     TransformerMixin,
 )
 from sklearn.utils.validation import check_is_fitted
-from sklearn.base import is_classifier, is_regressor
-
-import logging
 
 from ._clean_x import unify_columns, preclean_X, unify_feature_names
 from ._clean_simple import clean_dimensions
 from ._seed import normalize_initial_seed, increment_seed
-
-_log = logging.getLogger(__name__)
 
 from ._native import Native
 from ._privacy import (
@@ -31,6 +26,7 @@ from ._privacy import (
     private_categorical_binning,
 )
 
+_log = logging.getLogger(__name__)
 _none_list = [None]
 
 
@@ -527,7 +523,6 @@ def construct_bins(
     privacy_bounds=None,
 ):
     is_mains = True
-    native = Native.get_native_singleton()
     for max_bins in max_bins_leveled:
         preprocessor = EBMPreprocessor(
             feature_names_given,

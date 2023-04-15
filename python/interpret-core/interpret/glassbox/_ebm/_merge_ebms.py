@@ -1,8 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from math import ceil, floor, isnan, isinf, exp, log
-from ...utils._native import Native, Booster
+from math import isnan
 from ._utils import (
     remove_unused_higher_bins,
     order_terms,
@@ -12,16 +11,9 @@ from ._utils import (
     deduplicate_bins,
 )
 
-# from scipy.special import expit
-from sklearn.utils.extmath import softmax
-from sklearn.model_selection import train_test_split
-from sklearn.base import is_classifier
-import numbers
 import numpy as np
 import warnings
-from itertools import islice, count, chain
-
-import heapq
+from itertools import count, chain
 
 import logging
 
@@ -162,25 +154,29 @@ def _harmonize_tensor(
             for new_idx_minus_one, old_idx in enumerate(lookup):
                 if new_idx_minus_one == 0:
                     new_low = new_bounds[feature_idx, 0]
-                    # TODO: if nan OR out of bounds from the cuts, estimate it.  If -inf or +inf, change it to min/max for float
+                    # TODO: if nan OR out of bounds from the cuts, estimate it.
+                    # If -inf or +inf, change it to min/max for float
                 else:
                     new_low = new_feature_bins[new_idx_minus_one - 1]
 
                 if len(new_feature_bins) <= new_idx_minus_one:
                     new_high = new_bounds[feature_idx, 1]
-                    # TODO: if nan OR out of bounds from the cuts, estimate it.  If -inf or +inf, change it to min/max for float
+                    # TODO: if nan OR out of bounds from the cuts, estimate it.
+                    # If -inf or +inf, change it to min/max for float
                 else:
                     new_high = new_feature_bins[new_idx_minus_one]
 
                 if old_idx == 1:
                     old_low = old_bounds[feature_idx, 0]
-                    # TODO: if nan OR out of bounds from the cuts, estimate it.  If -inf or +inf, change it to min/max for float
+                    # TODO: if nan OR out of bounds from the cuts, estimate it.
+                    # If -inf or +inf, change it to min/max for float
                 else:
                     old_low = old_feature_bins[old_idx - 2]
 
                 if len(old_feature_bins) < old_idx:
                     old_high = old_bounds[feature_idx, 1]
-                    # TODO: if nan OR out of bounds from the cuts, estimate it.  If -inf or +inf, change it to min/max for float
+                    # TODO: if nan OR out of bounds from the cuts, estimate it.
+                    # If -inf or +inf, change it to min/max for float
                 else:
                     old_high = old_feature_bins[old_idx - 1]
 
@@ -296,31 +292,31 @@ def merge_ebms(models):
             and "DPExplainableBoostingClassifier" in type_names
         ):
             ebm_type = model_types[type_names.index("ExplainableBoostingClassifier")]
-            is_classifier = True
-            is_private = False
+            is_classification = True
+            is_dp = False
         elif (
             "ExplainableBoostingRegressor" in type_names
             and "DPExplainableBoostingRegressor" in type_names
         ):
             ebm_type = model_types[type_names.index("ExplainableBoostingRegressor")]
-            is_classifier = False
-            is_private = False
+            is_classification = False
+            is_dp = False
         else:
             raise Exception("Inconsistent model types attempting to be merged.")
     elif len(model_types) == 1:
         ebm_type = model_types[0]
         if ebm_type.__name__ == "ExplainableBoostingClassifier":
-            is_classifier = True
-            is_private = False
+            is_classification = True
+            is_dp = False
         elif ebm_type.__name__ == "DPExplainableBoostingClassifier":
-            is_classifier = True
-            is_private = True
+            is_classification = True
+            is_dp = True
         elif ebm_type.__name__ == "ExplainableBoostingRegressor":
-            is_classifier = False
-            is_private = False
+            is_classification = False
+            is_dp = False
         elif ebm_type.__name__ == "DPExplainableBoostingRegressor":
-            is_classifier = False
-            is_private = True
+            is_classification = False
+            is_dp = True
         else:
             raise Exception(
                 f"Invalid EBM model type {ebm_type.__name__} attempting to be merged."
@@ -514,7 +510,7 @@ def merge_ebms(models):
                     list(zip(min_feature_vals, max_feature_vals)), np.float64
                 )
 
-    if not is_private:
+    if not is_dp:
         if all(
             hasattr(model, "histogram_weights_") and hasattr(model, "feature_bounds_")
             for model in models
@@ -526,7 +522,7 @@ def merge_ebms(models):
                 # they reduce the RMSE of the integer counts from the ideal floating point counts.
                 pass
 
-    if is_classifier:
+    if is_classification:
         ebm.classes_ = models[0].classes_.copy()
         if any(not np.array_equal(ebm.classes_, model.classes_) for model in models):
             # pragma: no cover

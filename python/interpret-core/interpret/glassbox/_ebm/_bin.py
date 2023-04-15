@@ -1,15 +1,15 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from itertools import count
-import numpy as np
-
 import logging
 
-_log = logging.getLogger(__name__)
+import numpy as np
 
 from ...utils._native import Native
 from ...utils._clean_x import unify_columns
+
+_log = logging.getLogger(__name__)
+
 
 _none_list = [None]
 _none_ndarray = np.array(None)

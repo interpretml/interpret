@@ -1,21 +1,14 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from math import ceil, floor, isnan, isinf, exp, log
-from ...utils._native import Native, Booster
+from math import ceil, isnan, isinf, exp, log
+from ...utils._native import Native
 
 from ._tensor import restore_missing_value_zeros
 
-# from scipy.special import expit
-from sklearn.utils.extmath import softmax
-from sklearn.model_selection import train_test_split
-from sklearn.base import is_classifier
-import numbers
 import numpy as np
 import warnings
-from itertools import islice, count, chain
-
-import heapq
+from itertools import islice
 
 from ._multiclass import multiclass_postprocess
 
@@ -319,7 +312,7 @@ def deduplicate_bins(bins):
             if highest_key != key:
                 highest_key = key
                 highest_idx = level_idx
-        del bin_levels[highest_idx + 1 :]
+        del bin_levels[highest_idx + 1:]
 
 
 def convert_to_intervals(cuts):  # pragma: no cover

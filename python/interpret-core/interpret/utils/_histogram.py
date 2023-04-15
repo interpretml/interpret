@@ -1,10 +1,14 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from math import ceil, floor, isnan, isinf, exp, log
+from math import isnan
+import logging
+
 import numpy as np
 
 from ._native import Native
+
+_log = logging.getLogger(__name__)
 
 
 def _make_histogram_edges(min_feature_val, max_feature_val, histogram_weights):

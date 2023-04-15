@@ -3,7 +3,6 @@
 
 from ..api.base import ExplainerMixin, ExplanationMixin
 import numpy as np
-import warnings
 from ..utils._explanation import gen_name_from_class, gen_global_selector
 
 from ..utils._clean_x import preclean_X
@@ -76,9 +75,11 @@ def _gen_pdp(
 
 
 class PartialDependence(ExplainerMixin):
-    """Partial dependence plots as defined in Friedman's paper on "Greedy function approximation: a gradient boosting machine".
+    """Partial dependence plots as defined in Friedman's paper on
+    "Greedy function approximation: a gradient boosting machine".
 
-    Friedman, Jerome H. "Greedy function approximation: a gradient boosting machine." Annals of statistics (2001): 1189-1232.
+    Friedman, Jerome H. "Greedy function approximation: a gradient boosting machine."
+    Annals of statistics (2001): 1189-1232.
     """
 
     available_explanations = ["global"]

@@ -1,6 +1,8 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+from math import floor
+
 
 def normalize_initial_seed(seed):
     # We want cross-language seeds, so we cannot use 64-bit integers since those are not supported

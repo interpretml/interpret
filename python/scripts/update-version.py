@@ -19,7 +19,7 @@ if __name__ == '__main__':
     script_path = os.path.dirname(os.path.abspath(__file__))
     interpret_core_setup = os.path.join(script_path, "..", "interpret-core", "setup.py")
     interpret_setup = os.path.join(script_path, "..", "interpret", "setup.py")
-    interpret_core_version = os.path.join(script_path, "..", "interpret-core", "interpret", "version.py")
+    interpret_core_version = os.path.join(script_path, "..", "interpret-core", "interpret", "_version.py")
     interpret_inline_version = os.path.join(script_path, "..", "..", "shared", "vis", "package.json")
     targets = [
         (interpret_core_setup, 'version = "{}"'),

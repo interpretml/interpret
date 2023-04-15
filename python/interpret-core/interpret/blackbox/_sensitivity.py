@@ -45,7 +45,8 @@ class MorrisSensitivity(ExplainerMixin):
     """Method of Morris for analyzing blackbox systems.
     If using this please cite the package owners as can be found here: https://github.com/SALib/SALib
 
-    Morris, Max D. "Factorial sampling plans for preliminary computational experiments." Technometrics 33.2 (1991): 161-174.
+    Morris, Max D. "Factorial sampling plans for preliminary computational experiments."
+    Technometrics 33.2 (1991): 161-174.
     """
 
     available_explanations = ["global"]

@@ -9,20 +9,9 @@ of the interaction of all pairs of features in a dataset.
 [1] https://www.cs.cornell.edu/~yinlou/papers/lou-kdd13.pdf
 """
 
-from itertools import count
-import numpy as np
 import heapq
-from itertools import combinations
 
-from sklearn.utils.multiclass import type_of_target
-from sklearn.base import is_classifier, is_regressor
-
-from ._clean_x import preclean_X
-from ._clean_simple import clean_dimensions, typify_classification, clean_init_score
-
-from ._preprocessor import construct_bins
-from ._native import Native, InteractionDetector
-from ._compressed_dataset import bin_native_by_dimension
+from ._native import InteractionDetector
 
 
 def rank_interactions(

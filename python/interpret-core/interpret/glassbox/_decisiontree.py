@@ -487,9 +487,9 @@ class BaseShallowDecisionTree:
             if feature == _tree.TREE_UNDEFINED:
                 feature = None
                 threshold = None
-                value = [list(map(int, l)) for l in tree_.value[i].tolist()]
+                value = [list(map(int, x)) for x in tree_.value[i].tolist()]
             else:
-                value = [list(map(int, l)) for l in tree_.value[i].tolist()]
+                value = [list(map(int, x)) for x in tree_.value[i].tolist()]
                 if feature_names is not None:
                     feature = feature_names[feature]
 

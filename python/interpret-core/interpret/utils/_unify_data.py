@@ -1,24 +1,14 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import math
-from collections import Counter
-from itertools import count, repeat, groupby
-from warnings import warn
+from itertools import repeat
 import numpy as np
-import numpy.ma as ma
-from sklearn.base import (
-    BaseEstimator,
-    TransformerMixin,
-)
-from sklearn.utils.validation import check_is_fitted
-from sklearn.base import is_classifier, is_regressor
 
 import logging
 
-_log = logging.getLogger(__name__)
-
 from ._clean_x import unify_columns, unify_feature_names
+
+_log = logging.getLogger(__name__)
 
 _none_list = [None]
 
@@ -74,7 +64,7 @@ def unify_data(
                 raise ValueError(msg)
 
             if not missing_data_allowed and np.isnan(X_col).any():
-                msg = f"X cannot contain missing values"
+                msg = "X cannot contain missing values"
                 _log.error(msg)
                 raise ValueError(msg)
 
@@ -87,7 +77,7 @@ def unify_data(
                 raise ValueError(msg)
 
             if not missing_data_allowed and np.count_nonzero(X_col) != len(X_col):
-                msg = f"X cannot contain missing values"
+                msg = "X cannot contain missing values"
                 _log.error(msg)
                 raise ValueError(msg)
 

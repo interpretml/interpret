@@ -36,7 +36,8 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
     Attributes:
         current_module: The module itself where extension classes should be added.
         extension_key: The identifier as string for the entry_points to register within the current_module.
-        extension_class_validator: A function(class) -> bool, that checks the class for correctness before it is registered.
+        extension_class_validator: A function(class) -> bool, that checks the class for correctness
+          before it is registered.
     """
     for entrypoint in pkg_resources.iter_entry_points(extension_key):
         module_logger.debug("processing entrypoint {}".format(extension_key))

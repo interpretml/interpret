@@ -1,41 +1,15 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import math
-from collections import Counter
-from itertools import count, repeat, groupby
-from warnings import warn
-import numpy as np
-import numpy.ma as ma
-from sklearn.base import (
-    BaseEstimator,
-    TransformerMixin,
-)
-from sklearn.utils.validation import check_is_fitted
-from sklearn.base import is_classifier, is_regressor
-
-_none_ndarray = np.array(None)
-
 import logging
 
-_log = logging.getLogger(__name__)
-
-try:
-    import pandas as pd
-
-    _pandas_installed = True
-except ImportError:
-    _pandas_installed = False
-
-try:
-    import scipy as sp
-
-    _scipy_installed = True
-except ImportError:
-    _scipy_installed = False
+import numpy as np
 
 from ._native import Native
 from ._clean_x import unify_columns
+
+_log = logging.getLogger(__name__)
+_none_ndarray = np.array(None)
 
 
 def bin_native(

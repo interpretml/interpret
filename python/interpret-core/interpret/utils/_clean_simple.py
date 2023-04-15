@@ -1,17 +1,8 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import math
-from collections import Counter
-from itertools import count, repeat, groupby
-from warnings import warn
 import numpy as np
 import numpy.ma as ma
-from sklearn.base import (
-    BaseEstimator,
-    TransformerMixin,
-)
-from sklearn.utils.validation import check_is_fitted
 from sklearn.base import is_classifier, is_regressor
 
 import logging
@@ -31,6 +22,10 @@ try:
     _scipy_installed = True
 except ImportError:
     _scipy_installed = False
+
+
+_none_list = [None]
+_none_ndarray = np.array(None)
 
 
 def _remove_extra_dimensions(arr):
@@ -277,7 +272,7 @@ def clean_init_score(init_score, n_samples, X_unclean):
             probs = clean_dimensions(init_score.predict_proba(X_unclean), "init_score")
             if n_samples == 1:  # then the sample dimension would have been eliminated
                 if probs.ndim != 1:
-                    msg = f"init_score.predict_proba(X) returned inconsistent number of dimensions"
+                    msg = "init_score.predict_proba(X) returned inconsistent number of dimensions"
                     _log.error(msg)
                     raise ValueError(msg)
                 if probs.shape[0] <= 1:  # 0 or 1 means 1 class
@@ -290,7 +285,7 @@ def clean_init_score(init_score, n_samples, X_unclean):
                     # having any dimension as zero length probably means 1 class, so treat it that way
                     return np.empty((n_samples, 0), np.float64)
                 if probs.shape[0] != n_samples:
-                    msg = f"init_score.predict_proba(X) returned inconsistent number of samples compared to y"
+                    msg = "init_score.predict_proba(X) returned inconsistent number of samples compared to y"
                     _log.error(msg)
                     raise ValueError(msg)
                 if probs.ndim == 1:
@@ -310,7 +305,7 @@ def clean_init_score(init_score, n_samples, X_unclean):
             )
             if n_samples == 1:  # then the sample dimension would have been eliminated
                 if init_score.ndim != 1:
-                    msg = f"init_score.decision_function(X) returned inconsistent number of dimensions"
+                    msg = "init_score.decision_function(X) returned inconsistent number of dimensions"
                     _log.error(msg)
                     raise ValueError(msg)
                 if init_score.shape[0] != 1:
@@ -320,7 +315,7 @@ def clean_init_score(init_score, n_samples, X_unclean):
                     # must be a 1 class problem
                     return np.empty((n_samples, 0), np.float64)
                 if init_score.shape[0] != n_samples:
-                    msg = f"init_score.decision_function(X) returned inconsistent number of samples compared to y"
+                    msg = "init_score.decision_function(X) returned inconsistent number of samples compared to y"
                     _log.error(msg)
                     raise ValueError(msg)
             init_score = init_score.astype(np.float64, copy=False)
@@ -328,11 +323,11 @@ def clean_init_score(init_score, n_samples, X_unclean):
     elif is_regressor(init_score):
         init_score = clean_dimensions(init_score.predict(X_unclean), "init_score")
         if init_score.ndim != 1:
-            msg = f"init_score.predict(X) must have only 1 dimension"
+            msg = "init_score.predict(X) must have only 1 dimension"
             _log.error(msg)
             raise ValueError(msg)
         if init_score.shape[0] != n_samples:
-            msg = f"init_score.predict(X) returned inconsistent number of samples compared to y"
+            msg = "init_score.predict(X) returned inconsistent number of samples compared to y"
             _log.error(msg)
             raise ValueError(msg)
         init_score = init_score.astype(np.float64, copy=False)
@@ -344,7 +339,7 @@ def clean_init_score(init_score, n_samples, X_unclean):
     init_score = clean_dimensions(init_score, "init_score")
     if n_samples == 1:  # then the sample dimension would have been eliminated
         if init_score.ndim != 1:
-            msg = f"init_score has an inconsistent number of samples compared to y"
+            msg = "init_score has an inconsistent number of samples compared to y"
             _log.error(msg)
             raise ValueError(msg)
         if init_score.shape[0] != 1:
@@ -354,7 +349,7 @@ def clean_init_score(init_score, n_samples, X_unclean):
             # must be a 1 class problem
             return np.empty((n_samples, 0), np.float64)
         if init_score.shape[0] != n_samples:
-            msg = f"init_score has an inconsistent number of samples compared to y"
+            msg = "init_score has an inconsistent number of samples compared to y"
             _log.error(msg)
             raise ValueError(msg)
     init_score = init_score.astype(np.float64, copy=False)

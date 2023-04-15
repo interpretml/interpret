@@ -3,7 +3,6 @@
 from ..utils._shap_common import shap_explain_local
 
 from ..api.base import ExplainerMixin
-import warnings
 
 import numpy as np
 from ..utils._clean_x import preclean_X

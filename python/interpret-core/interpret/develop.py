@@ -32,7 +32,8 @@ def debug_info():
     Returns:
         A dictionary that contains debug info across the interpret package.
     """
-    from . import __version__, status_show_server
+    from ._version import __version__
+    from .visual.interactive import status_show_server
 
     debug_dict = {}
     debug_dict["interpret.__version__"] = __version__

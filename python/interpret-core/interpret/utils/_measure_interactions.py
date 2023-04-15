@@ -9,9 +9,10 @@ of the interaction of all pairs of features in a dataset.
 [1] https://www.cs.cornell.edu/~yinlou/papers/lou-kdd13.pdf
 """
 
+import logging
+
 from itertools import count
 import numpy as np
-import heapq
 from itertools import combinations
 
 from sklearn.utils.multiclass import type_of_target
@@ -21,10 +22,12 @@ from ._clean_x import preclean_X
 from ._clean_simple import clean_dimensions, typify_classification, clean_init_score
 
 from ._preprocessor import construct_bins
-from ._native import Native, InteractionDetector
+from ._native import Native
 from ._compressed_dataset import bin_native_by_dimension
 
 from ._rank_interactions import rank_interactions
+
+_log = logging.getLogger(__name__)
 
 
 def measure_interactions(
@@ -83,13 +86,13 @@ def measure_interactions(
     if is_classifier(init_score):
         # all scikit-learn classification models need to expose self.classes_
         classes = init_score.classes_
-        if is_classification == False:
+        if not is_classification:
             raise ValueError(
                 "objective is for regresion but the init_score is a classification model"
             )
         is_classification = True
     elif is_regressor(init_score):
-        if is_classification == True:
+        if is_classification:
             raise ValueError(
                 "objective is for classification but the init_score is a regression model"
             )
@@ -100,7 +103,7 @@ def measure_interactions(
         init_score = clean_init_score(init_score, len(y), X)
         if init_score.ndim == 2:
             # it must be multiclass, or mono-classification
-            if is_classification == False:
+            if not is_classification:
                 raise ValueError(
                     "objective is for regresion but the init_score is for a multiclass model"
                 )

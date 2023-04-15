@@ -1,18 +1,10 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import math
 from collections import Counter
-from itertools import count, repeat, groupby
-from warnings import warn
+from itertools import count
 import numpy as np
 import numpy.ma as ma
-from sklearn.base import (
-    BaseEstimator,
-    TransformerMixin,
-)
-from sklearn.utils.validation import check_is_fitted
-from sklearn.base import is_classifier, is_regressor
 
 import logging
 
@@ -32,14 +24,6 @@ try:
 except ImportError:
     _scipy_installed = False
 
-from ._native import Native
-from ._privacy import (
-    validate_eps_delta,
-    calc_classic_noise_multi,
-    calc_gdp_noise_multi,
-    private_numeric_binning,
-    private_categorical_binning,
-)
 
 # BIG TODO LIST:
 # - review this entire bin.py file
@@ -364,8 +348,9 @@ def _densify_object_ndarray(X_col):
         try:
             return X_col.astype(np.int64)
         except OverflowError:
-            # we must have a big number that can only be represented by np.uint64 AND also signed integers mixed together
-            # if we do X_col.astype(np.uint64), it will silently convert negative integers to unsigned!
+            # we must have a big number that can only be represented by np.uint64
+            # AND also signed integers mixed together if we do X_col.astype(np.uint64),
+            # it will silently convert negative integers to unsigned!
 
             # TODO : should this be np.float64 with a check for big integers
             return X_col.astype(np.unicode_)
@@ -603,7 +588,8 @@ def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, process
     elif processing is None or processing == "auto":
         pass
     elif processing == "nominal_prevalence" or processing == "nominal_alphabetical":
-        # TODO: we could instead handle this by re-ordering the pandas pd_categories.  Someone might want to construct it quickly but then override the pd_categories
+        # TODO: we could instead handle this by re-ordering the pandas pd_categories.
+        # Someone might want to construct it quickly but then override the pd_categories
         msg = f"{processing} type invalid for pandas.CategoricalDtype"
         _log.error(msg)
         raise ValueError(msg)
@@ -684,7 +670,7 @@ def _encode_pandas_categorical_existing(X_col, pd_categories, categories):
             return X_col, None
     else:
         mapping_cmp = np.arange(1, len(categories) + 1, dtype=np.int64)
-        if np.array_equal(mapping[0 : len(mapping_cmp)], mapping_cmp):
+        if np.array_equal(mapping[0:len(mapping_cmp)], mapping_cmp):
             unknowns = len(categories) <= X_col
             bad = np.full(len(X_col), None, dtype=np.object_)
             bad[unknowns] = pd_categories[X_col[unknowns]]
@@ -736,7 +722,7 @@ def _process_continuous(X_col, nonmissings):
             floats = np.zeros(n_samples, dtype=np.float64)
             for idx in range(n_samples):
                 one_item_array = X_col[
-                    idx : idx + 1
+                    idx:idx + 1
                 ]  # slice one item at a time keeping as an np.ndarray
                 try:
                     # use .astype(..) instead of float(..) to ensure identical conversion results
@@ -873,7 +859,8 @@ def _process_ndarray(X_col, nonmissings, categories, processing, min_unique_cont
             raise TypeError(msg)
 
         if n_continuous == n_items:
-            # if n_items == 0 then it must be continuous since we can have zero cut points, but not zero ordinal categories
+            # if n_items == 0 then it must be continuous since we
+            # can have zero cut points, but not zero ordinal categories
             X_col, bad = _process_continuous(X_col, nonmissings)
             return "continuous", X_col, None, bad
         elif n_ordinals == n_items:
@@ -1453,7 +1440,7 @@ def _reshape_X(X, min_cols, n_samples, sample_source):
     elif min_cols <= X.shape[0]:
         return X.reshape((1, X.shape[0]))
     else:
-        msg = f"X is 1 dimensional"
+        msg = "X is 1 dimensional"
         _log.error(msg)
         raise ValueError(msg)
 

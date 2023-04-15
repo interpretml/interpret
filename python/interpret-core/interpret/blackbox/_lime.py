@@ -6,7 +6,6 @@ from ..api.templates import FeatureValueExplanation
 
 from ..utils._explanation import gen_name_from_class, gen_local_selector
 from ..utils._explanation import gen_perf_dicts
-import warnings
 
 import numpy as np
 from ..utils._clean_x import preclean_X
@@ -19,7 +18,8 @@ from ..utils._unify_data import unify_data
 # TODO: Make kwargs explicit.
 class LimeTabular(ExplainerMixin):
     """Exposes LIME tabular explainer from lime package, in interpret API form.
-    If using this please cite the original authors as can be found here: https://github.com/marcotcr/lime/blob/master/citation.bib
+    If using this please cite the original authors as can be found here:
+    https://github.com/marcotcr/lime/blob/master/citation.bib
     """
 
     available_explanations = ["local"]

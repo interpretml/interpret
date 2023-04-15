@@ -108,6 +108,23 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cuda_ebm", "compute\cuda_eb
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "no_cuda_ebm", "compute\no_cuda_ebm\no_cuda_ebm.vcxproj", "{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "vis", "vis", "{CBBC34D4-01A5-4787-91B0-3883C8F406BD}"
+	ProjectSection(SolutionItems) = preProject
+		..\vis\.babelrc = ..\vis\.babelrc
+		..\vis\.eslintrc.json = ..\vis\.eslintrc.json
+		..\vis\.gitignore = ..\vis\.gitignore
+		..\vis\package-lock.json = ..\vis\package-lock.json
+		..\vis\package.json = ..\vis\package.json
+		..\vis\README.md = ..\vis\README.md
+		..\vis\webpack.config.js = ..\vis\webpack.config.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{46F44B3D-A29F-4D68-97A3-62EE1E96DE54}"
+	ProjectSection(SolutionItems) = preProject
+		..\vis\src\index.js = ..\vis\src\index.js
+		..\vis\src\styles.scss = ..\vis\src\styles.scss
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -182,6 +199,7 @@ Global
 		{43E23DAD-B0D6-4148-B12A-F58560778CB3} = {5B3DB96E-A28F-4032-8E41-C6D2E408FC72}
 		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A} = {5B3DB96E-A28F-4032-8E41-C6D2E408FC72}
 		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B} = {5B3DB96E-A28F-4032-8E41-C6D2E408FC72}
+		{46F44B3D-A29F-4D68-97A3-62EE1E96DE54} = {CBBC34D4-01A5-4787-91B0-3883C8F406BD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A1DD85D3-F373-45AE-B998-4F7E1ADF40DC}

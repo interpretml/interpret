@@ -97,6 +97,7 @@
     <Compile Include="interpret\visual\plot.py" />
     <Compile Include="interpret\visual\udash.py" />
     <Compile Include="interpret\visual\__init__.py" />
+    <Compile Include="interpret\_version.py" />
     <Compile Include="interpret\__init__.py" />
     <Compile Include="setup.py" />
     <Compile Include="tests\api\test_base.py" />

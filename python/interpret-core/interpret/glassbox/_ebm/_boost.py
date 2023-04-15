@@ -1,17 +1,9 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from math import ceil, floor, isnan, isinf, exp, log
 from ...utils._native import Native, Booster
 
-# from scipy.special import expit
-from sklearn.utils.extmath import softmax
-from sklearn.model_selection import train_test_split
-from sklearn.base import is_classifier
-import numbers
 import numpy as np
-import warnings
-from itertools import islice, count, chain
 
 import heapq
 
