@@ -1,27 +1,12 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import pytest
-
 from interpret.glassbox._ebm._multiclass import multiclass_postprocess_RESTORE_THIS
 
-from ...tutils import (
-    synthetic_multiclass,
-    synthetic_classification,
-    adult_classification,
-    iris_classification,
-)
+from ...tutils import adult_classification, iris_classification
 
-from sklearn.model_selection import (
-    cross_validate,
-    StratifiedShuffleSplit,
-    train_test_split,
-)
-from interpret.glassbox import (
-    ExplainableBoostingRegressor,
-    ExplainableBoostingClassifier,
-)
-from interpret.glassbox import merge_ebms
+from sklearn.model_selection import train_test_split
+from interpret.glassbox import ExplainableBoostingClassifier, merge_ebms
 
 import numpy as np
 

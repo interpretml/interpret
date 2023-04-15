@@ -316,7 +316,7 @@ def test_ebm_synthetic_singleclass_classification():
     predicts = clf.predict(X)
     assert predicts.ndim == 1
     assert predicts.shape[0] == len(y)
-    assert (predicts == False).all()
+    assert not np.any(predicts)
 
     scores = clf.decision_function(X)
     assert scores.ndim == 1
@@ -337,7 +337,7 @@ def test_ebm_synthetic_singleclass_classification():
     predicts, explanations = clf.predict_and_contrib(X, output="labels")
     assert predicts.ndim == 1
     assert predicts.shape[0] == len(y)
-    assert (predicts == False).all()
+    assert not predicts.any()
 
 
 @pytest.mark.visual
@@ -540,7 +540,7 @@ def test_ebm_sample_weight():
     y_train = data["train"]["y"]
 
     X_test = data["test"]["X"][:, [0, 1]]
-    y_test = data["test"]["y"]
+    data["test"]["y"]
 
     w_train = np.ones_like(y_train)
     w_train[0] = 10
@@ -648,7 +648,7 @@ def test_dp_ebm_adult():
     clf = DPExplainableBoostingClassifier(epsilon=1)
     n_splits = 3
     ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
-    res = cross_validate(
+    cross_validate(
         clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
     )
 
@@ -886,7 +886,7 @@ def test_json_classification():
 
     clf.bin_weights_[0] = np.delete(clf.bin_weights_[0], 1)
 
-    json_text = clf._to_json(properties="all")
+    clf._to_json(properties="all")
 
 
 def test_json_multiclass():
@@ -899,7 +899,7 @@ def test_json_multiclass():
         max_bins=10, feature_types=feature_types, interactions=0
     )
     clf.fit(X, y)
-    json_text = clf._to_json(properties="all")
+    clf._to_json(properties="all")
 
 
 def test_json_regression():
@@ -915,7 +915,7 @@ def test_json_regression():
         interactions=[(1, 2), (2, 3)],
     )
     clf.fit(X, y)
-    json_text = clf._to_json(properties="all")
+    clf._to_json(properties="all")
 
 
 def test_json_dp_classification():
@@ -929,7 +929,7 @@ def test_json_dp_classification():
     clf.term_scores_[0][0] = np.nan
     clf.term_scores_[0][1] = np.inf
     clf.term_scores_[0][2] = -np.inf
-    json_text = clf._to_json(properties="all")
+    clf._to_json(properties="all")
 
 
 def test_json_dp_regression():
@@ -940,7 +940,7 @@ def test_json_dp_regression():
     feature_types[0] = "nominal"
     clf = DPExplainableBoostingRegressor(max_bins=5, feature_types=feature_types)
     clf.fit(X, y)
-    json_text = clf._to_json(properties="all")
+    clf._to_json(properties="all")
 
 
 def test_exclude_explicit():

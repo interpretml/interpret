@@ -670,7 +670,7 @@ def _encode_pandas_categorical_existing(X_col, pd_categories, categories):
             return X_col, None
     else:
         mapping_cmp = np.arange(1, len(categories) + 1, dtype=np.int64)
-        if np.array_equal(mapping[0:len(mapping_cmp)], mapping_cmp):
+        if np.array_equal(mapping[0 : len(mapping_cmp)], mapping_cmp):
             unknowns = len(categories) <= X_col
             bad = np.full(len(X_col), None, dtype=np.object_)
             bad[unknowns] = pd_categories[X_col[unknowns]]
@@ -722,7 +722,7 @@ def _process_continuous(X_col, nonmissings):
             floats = np.zeros(n_samples, dtype=np.float64)
             for idx in range(n_samples):
                 one_item_array = X_col[
-                    idx:idx + 1
+                    idx : idx + 1
                 ]  # slice one item at a time keeping as an np.ndarray
                 try:
                     # use .astype(..) instead of float(..) to ensure identical conversion results

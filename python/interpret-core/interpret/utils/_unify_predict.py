@@ -67,7 +67,9 @@ def determine_classes(model, data, n_samples):
         preds = clean_dimensions(model(data), "model")
         if n_samples == 1:  # then the sample dimension would have been eliminated
             if preds.ndim != 1:
-                msg = "model(data) has an inconsistent number of samples compared to data"
+                msg = (
+                    "model(data) has an inconsistent number of samples compared to data"
+                )
                 _log.error(msg)
                 raise ValueError(msg)
             elif preds.shape[0] != 1:
@@ -81,7 +83,9 @@ def determine_classes(model, data, n_samples):
                 # we have at least 2 samples, so this means classes was an empty dimension
                 n_classes = 0
             elif preds.shape[0] != n_samples:
-                msg = "model(data) has an inconsistent number of samples compared to data"
+                msg = (
+                    "model(data) has an inconsistent number of samples compared to data"
+                )
                 _log.error(msg)
                 raise ValueError(msg)
             elif preds.ndim == 1:

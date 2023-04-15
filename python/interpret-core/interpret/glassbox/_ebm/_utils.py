@@ -312,7 +312,7 @@ def deduplicate_bins(bins):
             if highest_key != key:
                 highest_key = key
                 highest_idx = level_idx
-        del bin_levels[highest_idx + 1:]
+        del bin_levels[highest_idx + 1 :]
 
 
 def convert_to_intervals(cuts):  # pragma: no cover

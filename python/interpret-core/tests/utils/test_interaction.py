@@ -58,7 +58,6 @@ def test_init_multiclass_model():
     y = data["full"]["y"]
 
     classes, y = np.unique(y, return_inverse=True)
-    n_classes = len(classes)
 
     lr = LogisticRegression(solver="lbfgs", multi_class="auto")
     lr.fit(X, y)
@@ -112,7 +111,6 @@ def test_init_multiclass_dummy_model():
     y = data["full"]["y"]
 
     classes, y = np.unique(y, return_inverse=True)
-    n_classes = len(classes)
 
     lr = DummyClassifier()  # has no decision_function only predict_proba
     lr.fit(X, y)

@@ -240,10 +240,6 @@ def test_all_explainers_selenium(all_explanations, job_id):
     # Run full app checks
     for explanation in explanations:
         for share_tables in [True, False]:
-            # NOTE: Suspected loading issue around cytoscape. Investigate later.
-            if isinstance(explanation, TreeExplanation):
-                continue
-
             explanations = duplicate_explanations(explanation, 2)
             goto_full_url(explanations, share_tables=share_tables)
             goto_full_tab(explanations[0].explanation_type)

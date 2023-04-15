@@ -10,7 +10,7 @@ from interpret.visual.interactive import (
 from interpret.visual.interactive import show, init_show_server, preserve
 from interpret.visual import interactive
 from .tutils import synthetic_classification
-from interpret.glassbox import LogisticRegression, DecisionListClassifier
+from interpret.glassbox import LogisticRegression
 from interpret import show_link
 
 import requests

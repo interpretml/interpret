@@ -5,7 +5,6 @@
 
 import plotly.graph_objects as go
 from interpret.visual.inline import _build_viz_figure
-import pytest
 
 
 def test_build_viz_figure():

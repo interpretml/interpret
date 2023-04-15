@@ -7,12 +7,12 @@ import numpy.ma as ma
 import pandas as pd
 import scipy as sp
 
-from itertools import repeat, chain
+from itertools import count, repeat, chain
 
 from interpret.utils._preprocessor import construct_bins
 from interpret.glassbox._ebm._utils import deduplicate_bins
 
-from interpret.utils._clean_simple import clean_dimensions
+from interpret.utils._clean_simple import clean_dimensions, typify_classification
 from interpret.utils._clean_x import (
     preclean_X,
     unify_feature_names,
@@ -466,7 +466,7 @@ def check_numpy_throws(dtype_src, val1, val2):
     assert n_samples == 2
     feature_names_in = unify_feature_names(X)
     try:
-        X_cols = list(
+        list(
             unify_columns(
                 X,
                 zip(range(len(feature_names_in)), repeat(None)),
@@ -476,7 +476,7 @@ def check_numpy_throws(dtype_src, val1, val2):
             )
         )
         assert False
-    except:
+    except:  # noqa: E722
         pass
 
 
@@ -1897,16 +1897,16 @@ def test_unify_columns_str_throw():
     try:
         X, n_samples = preclean_X(X, None, None)
         assert False
-    except:
+    except:  # noqa: E722
         pass
     try:
         feature_names_in = unify_feature_names(X)
         assert False
-    except:
+    except:  # noqa: E722
         pass
     try:
         feature_names_in = ["ANYTHING"]
-        X_cols = list(
+        list(
             unify_columns(
                 X,
                 zip(range(len(feature_names_in)), repeat(None)),
@@ -1916,7 +1916,7 @@ def test_unify_columns_str_throw():
             )
         )
         assert False
-    except:
+    except:  # noqa: E722
         pass
 
 
@@ -1925,16 +1925,16 @@ def test_unify_columns_int_throw():
     try:
         X, n_samples = preclean_X(X, None, None)
         assert False
-    except:
+    except:  # noqa: E722
         pass
     try:
         feature_names_in = unify_feature_names(X)
         assert False
-    except:
+    except:  # noqa: E722
         pass
     try:
         feature_names_in = ["ANYTHING"]
-        X_cols = list(
+        list(
             unify_columns(
                 X,
                 zip(range(len(feature_names_in)), repeat(None)),
@@ -1944,7 +1944,7 @@ def test_unify_columns_int_throw():
             )
         )
         assert False
-    except:
+    except:  # noqa: E722
         pass
 
 
@@ -1956,11 +1956,11 @@ def test_unify_columns_duplicate_colnames_throw():
     try:
         feature_names_in = unify_feature_names(X)
         assert False
-    except:
+    except:  # noqa: E722
         pass
     try:
         feature_names_in = ["ANYTHING"]
-        X_cols = list(
+        list(
             unify_columns(
                 X,
                 zip(range(len(feature_names_in)), repeat(None)),
@@ -1970,7 +1970,7 @@ def test_unify_columns_duplicate_colnames_throw():
             )
         )
         assert False
-    except:
+    except:  # noqa: E722
         pass
 
 
