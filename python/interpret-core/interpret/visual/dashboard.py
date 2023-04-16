@@ -6,7 +6,7 @@ import re
 import requests
 import threading
 import os
-from . import udash
+from . import _udash
 
 from gevent.pywsgi import WSGIServer
 from flask import Flask
@@ -19,6 +19,12 @@ import logging
 
 _log = logging.getLogger(__name__)
 
+# TODO: app is a global variable, but doesn't seem to be read anywhere. It
+#       isn't accessed in any of our other submodules, and I don't think it is
+#       meant to be public. We write it in this submodule, but it looks like that
+#       write could have easily have been to a local variable within that function.
+#       Either this is creating some required side effects (perhaps the disabling 
+#       of the logger), or we can remove it.
 app = Flask(__name__)
 app.logger.disabled = True
 
@@ -232,7 +238,7 @@ class DispatcherApp:
                 if self.base_url is None
                 else "/{0}/{1}/".format(self.base_url, ctx_id)
             )
-            app = udash.generate_app(
+            app = _udash.generate_app(
                 ctx,
                 {"share_tables": share_tables},
                 # url_base_pathname=ctx_path,

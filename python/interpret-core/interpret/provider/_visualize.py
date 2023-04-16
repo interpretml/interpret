@@ -229,7 +229,7 @@ class InlineProvider(VisualizeProvider):
         self.js_url = js_url
 
     def render(self, explanation, key=-1, **kwargs):
-        from ..visual.inline import render
+        from ..visual._inline import render
 
         render(
             explanation,

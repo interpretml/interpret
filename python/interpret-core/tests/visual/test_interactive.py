@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from interpret.visual.interactive import set_visualize_provider, get_visualize_provider
+from interpret import set_visualize_provider, get_visualize_provider
 from interpret.provider import PreserveProvider
 
 

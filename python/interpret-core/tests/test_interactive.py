@@ -1,14 +1,13 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from interpret.visual.interactive import (
+from interpret import (
     set_show_addr,
     get_show_addr,
     shutdown_show_server,
     status_show_server,
 )
-from interpret.visual.interactive import show, init_show_server, preserve
-from interpret.visual import interactive
+from interpret import show, init_show_server, preserve, get_visualize_provider
 from .tutils import synthetic_classification
 from interpret.glassbox import LogisticRegression
 from interpret import show_link
@@ -115,7 +114,7 @@ def test_init_show_server(explanation):
     show(explanation)
 
     # Assert that the address and url are passed to Dash
-    provider = interactive.visualize_provider
+    provider = get_visualize_provider()
     assert provider.app_runner.port == port
     assert provider.app_runner.base_url == base_url
 

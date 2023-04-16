@@ -3,7 +3,7 @@
 
 from ._version import __version__  # noqa: F401
 
-from .visual.interactive import (  # noqa: F401
+from .visual._interactive import (  # noqa: F401
     show,
     show_link,
     set_show_addr,
