@@ -603,7 +603,7 @@ We also build on top of many great packages. Please check them out!
 # Papers that use or compare EBMs
 
 
-- [Model Interpretability in Credit Insurance](https://www.repository.utl.pt/bitstream/10400.5/27507/1/DM-AC-2023.pdf)
+- [Model Interpretability in Credit Insurance](http://hdl.handle.net/10400.5/27507)
 - [Federated Boosted Decision Trees with Differential Privacy](https://arxiv.org/pdf/2210.02910.pdf)
 - [GAM(E) CHANGER OR NOT? AN EVALUATION OF INTERPRETABLE MACHINE LEARNING MODELS](https://arxiv.org/pdf/2204.09123.pdf)
 - [GAM Coach: Towards Interactive and User-centered Algorithmic Recourse](https://arxiv.org/pdf/2302.14165.pdf)
