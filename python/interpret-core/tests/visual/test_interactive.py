@@ -14,7 +14,7 @@ from interpret import (
     get_visualize_provider,
     set_visualize_provider,
 )
-from .tutils import synthetic_classification
+from ..tutils import synthetic_classification
 from interpret.glassbox import LogisticRegression
 from interpret import show_link
 
