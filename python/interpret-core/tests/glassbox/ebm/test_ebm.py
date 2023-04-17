@@ -10,6 +10,7 @@ from ...tutils import (
     synthetic_classification,
     adult_classification,
     iris_classification,
+    smoke_test_explanations,
 )
 from ...tutils import synthetic_regression
 from interpret.glassbox import (
@@ -44,24 +45,6 @@ def valid_ebm(ebm):
     for term_scores in ebm.term_scores_:
         all_finite = np.isfinite(term_scores).all()
         assert all_finite
-
-
-def _smoke_test_explanations(global_exp, local_exp, port):
-    from interpret import preserve, show, shutdown_show_server, set_show_addr
-
-    set_show_addr(("127.0.0.1", port))
-
-    # Smoke test: should run without crashing.
-    preserve(global_exp)
-    preserve(local_exp)
-    show(global_exp)
-    show(local_exp)
-
-    # Check all features for global (including interactions).
-    for selector_key in global_exp.selector[global_exp.selector.columns[0]]:
-        preserve(global_exp, selector_key)
-
-    shutdown_show_server()
 
 
 @pytest.mark.slow
@@ -384,7 +367,7 @@ def test_ebm_uniform():
     global_exp = clf.explain_global()
     local_exp = clf.explain_local(X_te[:5, :], y_te[:5])
 
-    _smoke_test_explanations(global_exp, local_exp, 6000)
+    smoke_test_explanations(global_exp, local_exp, 6000)
 
 
 @pytest.mark.visual
@@ -408,7 +391,7 @@ def test_ebm_uniform_multiclass():
     global_exp = clf.explain_global()
     local_exp = clf.explain_local(X_test, y_test)
 
-    _smoke_test_explanations(global_exp, local_exp, 6001)
+    smoke_test_explanations(global_exp, local_exp, 6001)
 
 
 @pytest.mark.visual
@@ -448,7 +431,7 @@ def test_ebm_adult():
     global_exp = clf.explain_global()
     local_exp = clf.explain_local(X_te[:5, :], y_te[:5])
 
-    _smoke_test_explanations(global_exp, local_exp, 6000)
+    smoke_test_explanations(global_exp, local_exp, 6000)
 
 
 def test_ebm_predict_and_contrib_proba():
@@ -594,7 +577,7 @@ def test_ebm_iris():
     global_exp = clf.explain_global()
     local_exp = clf.explain_local(X_test, y_test)
 
-    _smoke_test_explanations(global_exp, local_exp, 6001)
+    smoke_test_explanations(global_exp, local_exp, 6001)
 
 
 @pytest.mark.visual
@@ -616,7 +599,7 @@ def test_ebm_sparse():
     assert accuracy_score(y, clf.predict(X)) >= 0.8
     global_exp = clf.explain_global()
     local_exp = clf.explain_local(X, y)
-    _smoke_test_explanations(global_exp, local_exp, 6002)
+    smoke_test_explanations(global_exp, local_exp, 6002)
 
 
 @pytest.mark.slow
@@ -669,7 +652,7 @@ def test_dp_ebm_adult():
     global_exp = clf.explain_global()
     local_exp = clf.explain_local(X_te[:5, :], y_te[:5])
 
-    _smoke_test_explanations(global_exp, local_exp, 6000)
+    smoke_test_explanations(global_exp, local_exp, 6000)
 
 
 def test_dp_ebm_synthetic_regression():

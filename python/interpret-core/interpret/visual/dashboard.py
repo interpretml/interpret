@@ -23,7 +23,7 @@ _log = logging.getLogger(__name__)
 #       isn't accessed in any of our other submodules, and I don't think it is
 #       meant to be public. We write it in this submodule, but it looks like that
 #       write could have easily have been to a local variable within that function.
-#       Either this is creating some required side effects (perhaps the disabling 
+#       Either this is creating some required side effects (perhaps the disabling
 #       of the logger), or we can remove it.
 app = Flask(__name__)
 app.logger.disabled = True

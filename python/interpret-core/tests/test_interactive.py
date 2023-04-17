@@ -7,7 +7,13 @@ from interpret import (
     shutdown_show_server,
     status_show_server,
 )
-from interpret import show, init_show_server, preserve, get_visualize_provider
+from interpret import (
+    show,
+    init_show_server,
+    preserve,
+    get_visualize_provider,
+    set_visualize_provider,
+)
 from .tutils import synthetic_classification
 from interpret.glassbox import LogisticRegression
 from interpret import show_link
@@ -16,6 +22,19 @@ import requests
 import os
 import tempfile
 import pytest
+
+from interpret.provider import PreserveProvider
+
+
+def test_provider_properties():
+    provider = PreserveProvider()
+    old_provider = get_visualize_provider()
+
+    set_visualize_provider(provider)
+    assert get_visualize_provider() == provider
+
+    set_visualize_provider(old_provider)
+    assert get_visualize_provider() == old_provider
 
 
 @pytest.fixture(scope="module")

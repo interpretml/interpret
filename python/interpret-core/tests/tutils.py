@@ -274,3 +274,21 @@ def assert_valid_explanation(explanation):
     if has_specific:
         assert valid_data_dict(explanation.data(0))
         assert valid_visualization(explanation.visualize(0))
+
+
+def smoke_test_explanations(global_exp, local_exp, port):
+    from interpret import preserve, show, shutdown_show_server, set_show_addr
+
+    set_show_addr(("127.0.0.1", port))
+
+    # Smoke test: should run without crashing.
+    preserve(global_exp)
+    preserve(local_exp)
+    show(global_exp)
+    show(local_exp)
+
+    # Check all features for global (including interactions).
+    for selector_key in global_exp.selector[global_exp.selector.columns[0]]:
+        preserve(global_exp, selector_key)
+
+    shutdown_show_server()

@@ -1,18 +1,14 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import pytest
 import numpy as np
 import numpy.ma as ma
 import pandas as pd
 import scipy as sp
 
-from itertools import count, repeat, chain
+from itertools import repeat
 
-from interpret.utils._preprocessor import construct_bins
-from interpret.glassbox._ebm._utils import deduplicate_bins
 
-from interpret.utils._clean_simple import clean_dimensions, typify_classification
 from interpret.utils._clean_x import (
     preclean_X,
     unify_feature_names,
@@ -21,27 +17,6 @@ from interpret.utils._clean_x import (
     _encode_categorical_existing,
     _process_continuous,
 )
-from interpret.utils._compressed_dataset import bin_native, bin_native_by_dimension
-
-
-def test_clean_dimensions_2d():
-    init_score = [
-        [[[((x,) for x in [1, 2])]]],
-        [3, 4],
-        (np.array([5, 6]),),
-        np.array([[[(7,), (8,)]]]),
-    ]
-    init_score = clean_dimensions(init_score, "init_score")
-    init_score = init_score.astype(np.float64, copy=False)
-    assert init_score.shape == (4, 2)
-    assert init_score[0, 0] == 1
-    assert init_score[0, 1] == 2
-    assert init_score[1, 0] == 3
-    assert init_score[1, 1] == 4
-    assert init_score[2, 0] == 5
-    assert init_score[2, 1] == 6
-    assert init_score[3, 0] == 7
-    assert init_score[3, 1] == 8
 
 
 class StringHolder:
@@ -3718,112 +3693,3 @@ def test_unify_columns_ma_objects():
     assert np.isnan(X_cols[0][1][4])
     assert X_cols[0][1][5] == 3
     assert np.isnan(X_cols[0][1][6])
-
-
-@pytest.mark.skip(reason="skip this until we have support for missing values")
-def test_bin_native():
-    X = np.array(
-        [["a", 1, np.nan], ["b", 2, 7], ["a", 2, 8], [None, 3, 9]], dtype=np.object_
-    )
-    feature_names_given = ["f1", 99, "f3"]
-    feature_types_given = ["nominal", "nominal", "continuous"]
-    y = np.array(["a", 99, 99, "b"])
-    sample_weight = np.array([0.5, 1.1, 0.1, 0.5])
-
-    y = clean_dimensions(y, "y")
-    assert y.ndim == 1
-
-    y = typify_classification(y)
-    classes, y = np.unique(y, return_inverse=True)
-    n_classes = len(classes)
-
-    sample_weight = clean_dimensions(sample_weight, "sample_weight")
-    assert sample_weight.ndim == 1
-    sample_weight = sample_weight.astype(np.float64, copy=False)
-
-    X, n_samples = preclean_X(X, None, None)
-
-    (
-        feature_names_in,
-        feature_types_in,
-        bins,
-        bin_weights,
-        feature_bounds,
-        histogram_weights,
-        missing_val_counts,
-        unique_val_counts,
-        noise_scale_binning,
-    ) = construct_bins(
-        X, y, sample_weight, feature_names_given, feature_types_given, [256, 5, 3]
-    )
-    assert feature_names_in is not None
-    assert feature_types_in is not None
-    assert bins is not None
-    assert bin_weights is not None
-    assert feature_bounds is not None
-    assert histogram_weights is not None
-    assert missing_val_counts is not None
-    assert unique_val_counts is not None
-
-    feature_idxs_origin = (
-        range(len(feature_names_given))
-        if feature_types_given is None
-        else [
-            feature_idx
-            for feature_idx, feature_type in zip(count(), feature_types_given)
-            if feature_type != "ignore"
-        ]
-    )
-    feature_idxs = []
-    bins_iter = []
-    for feature_idx, n_dimensions in chain(
-        zip(feature_idxs_origin, repeat(1)),
-        zip(feature_idxs_origin, repeat(2)),
-        zip(feature_idxs_origin, repeat(3)),
-    ):
-        bin_levels = bins[feature_idx]
-        feature_bins = bin_levels[
-            -1 if len(bin_levels) < n_dimensions else n_dimensions - 1
-        ]
-        feature_idxs.append(feature_idx)
-        bins_iter.append(feature_bins)
-
-    shared_dataset = bin_native(
-        n_classes,
-        feature_idxs,
-        bins_iter,
-        X,
-        y,
-        sample_weight,
-        feature_names_in,
-        feature_types_in,
-    )
-    assert shared_dataset is not None
-
-    shared_dataset = bin_native_by_dimension(
-        n_classes, 1, bins, X, y, sample_weight, feature_names_in, feature_types_in
-    )
-    assert shared_dataset is not None
-
-
-def test_deduplicate_bins():
-    bins = [
-        [{"a": 1, "b": 2}, {"a": 2, "b": 1}, {"b": 2, "a": 1}, {"b": 2, "a": 1}],
-        [
-            np.array([1, 2, 3], dtype=np.float64),
-            np.array([1, 3, 2], dtype=np.float64),
-            np.array([1, 2, 3], dtype=np.float64),
-        ],
-    ]
-
-    deduplicate_bins(bins)
-
-    assert len(bins[0]) == 3
-    assert id(bins[0][0]) != id(bins[0][1])
-    assert id(bins[0][0]) == id(bins[0][2])
-    assert id(bins[0][1]) != id(bins[0][2])
-
-    assert len(bins[1]) == 3
-    assert id(bins[1][0]) != id(bins[1][1])
-    assert id(bins[1][0]) == id(bins[1][2])
-    assert id(bins[1][1]) != id(bins[1][2])

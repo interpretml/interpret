@@ -1,4 +1,4 @@
-from interpret.utils._explanation import gen_perf_dicts
+from interpret.utils._explanation import gen_perf_dicts, gen_name_from_class
 
 import numpy as np
 
@@ -36,3 +36,13 @@ def test_gen_perf_dicts_classification():
         assert di["predicted"] == expected_predicted[i]
         assert di["actual_score"] == expected_actual_score[i]
         assert di["predicted_score"] == expected_predicted_score[i]
+
+
+def test_that_names_generated():
+    class SomeClass:
+        pass
+
+    some_class = SomeClass()
+
+    name = gen_name_from_class(some_class)
+    assert name == "SomeClass_0"

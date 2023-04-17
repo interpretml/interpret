@@ -1054,7 +1054,6 @@ class EBMModel(BaseEstimator):
         breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
 
         remove_unused_higher_bins(term_features, bins)
-        # removing the higher order terms might allow us to eliminate some extra bins now that couldn't before
         deduplicate_bins(bins)
 
         bagged_scores = (

@@ -3,11 +3,35 @@ from interpret.glassbox._ebm._utils import (
     make_bag,
     convert_categorical_to_continuous,
     _create_proportional_tensor,
+    deduplicate_bins,
 )
 from ...tutils import synthetic_regression, adult_classification
 
 import numpy as np
 import pytest
+
+
+def test_deduplicate_bins():
+    bins = [
+        [{"a": 1, "b": 2}, {"a": 2, "b": 1}, {"b": 2, "a": 1}, {"b": 2, "a": 1}],
+        [
+            np.array([1, 2, 3], dtype=np.float64),
+            np.array([1, 3, 2], dtype=np.float64),
+            np.array([1, 2, 3], dtype=np.float64),
+        ],
+    ]
+
+    deduplicate_bins(bins)
+
+    assert len(bins[0]) == 3
+    assert id(bins[0][0]) != id(bins[0][1])
+    assert id(bins[0][0]) == id(bins[0][2])
+    assert id(bins[0][1]) != id(bins[0][2])
+
+    assert len(bins[1]) == 3
+    assert id(bins[1][0]) != id(bins[1][1])
+    assert id(bins[1][0]) == id(bins[1][2])
+    assert id(bins[1][1]) != id(bins[1][2])
 
 
 @pytest.mark.skip(reason="make_bag test needs to be updated")

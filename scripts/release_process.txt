@@ -17,8 +17,8 @@
   - R/DESCRIPTION (also update the date!)
   - python/interpret/setup.py
   - python/interpret-core/setup.py
-  - python/interpret-core/js/package.json
-  - python/interpret-core/interpret/version.py
+  - python/interpret-core/interpret/_version.py
+  - shared/vis/package.json
 - update the CHANGELOG.md file
 
 - download the following into a separate directory. From azure-pipelines, in "published artifacts":
