@@ -67,6 +67,8 @@ from warnings import warn
 
 from sklearn.base import is_classifier  # type: ignore
 from sklearn.utils.validation import check_is_fitted  # type: ignore
+from sklearn.isotonic import IsotonicRegression
+
 import heapq
 import operator
 
@@ -1135,7 +1137,7 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def _to_inner_jsonable(self, properties="interpretable"):
+    def _to_inner_jsonable(self, properties="all"):
         """Converts the inner model to a JSONable representation.
 
         Args:
@@ -1379,7 +1381,7 @@ class EBMModel(BaseEstimator):
 
         return j
 
-    def _to_outer_jsonable(self, properties="interpretable"):
+    def _to_outer_jsonable(self, properties="all"):
         """Converts the outer model to a JSONable representation.
 
         Args:
@@ -1444,7 +1446,7 @@ class EBMModel(BaseEstimator):
 
         return outer
 
-    def _to_json(self, properties="interpretable"):
+    def _to_json(self, properties="all"):
         """Converts the model to a JSON representation.
 
         Args:
@@ -1500,8 +1502,12 @@ class EBMModel(BaseEstimator):
         lower_bound = np.inf
         upper_bound = -np.inf
         for scores, errors in zip(self.term_scores_, self.standard_deviations_):
-            lower_bound = min(lower_bound, np.min(scores - errors))
-            upper_bound = max(upper_bound, np.max(scores + errors))
+            if errors is None:
+                lower_bound = min(lower_bound, np.min(scores))
+                upper_bound = max(upper_bound, np.max(scores))
+            else:
+                lower_bound = min(lower_bound, np.min(scores - errors))
+                upper_bound = max(upper_bound, np.max(scores + errors))
 
         bounds = (lower_bound, upper_bound)
 
@@ -1514,12 +1520,15 @@ class EBMModel(BaseEstimator):
             mod_term_scores[term_idx] = trim_tensor(
                 mod_term_scores[term_idx], trim_low=[True] * len(feature_idxs)
             )
-            mod_standard_deviations[term_idx] = trim_tensor(
-                mod_standard_deviations[term_idx], trim_low=[True] * len(feature_idxs)
-            )
-            mod_weights[term_idx] = trim_tensor(
-                mod_weights[term_idx], trim_low=[True] * len(feature_idxs)
-            )
+            if mod_standard_deviations[term_idx] is not None:
+                mod_standard_deviations[term_idx] = trim_tensor(
+                    mod_standard_deviations[term_idx],
+                    trim_low=[True] * len(feature_idxs),
+                )
+            if mod_weights[term_idx] is not None:
+                mod_weights[term_idx] = trim_tensor(
+                    mod_weights[term_idx], trim_low=[True] * len(feature_idxs)
+                )
 
         term_names = self.term_names_
         term_types = generate_term_types(self.feature_types_in_, self.term_features_)
@@ -1592,8 +1601,8 @@ class EBMModel(BaseEstimator):
                         densities = list(mod_weights[term_idx])
 
                 scores = list(model_graph)
-                upper_bounds = list(model_graph + errors)
-                lower_bounds = list(model_graph - errors)
+                upper_bounds = None if errors is None else list(model_graph + errors)
+                lower_bounds = None if errors is None else list(model_graph - errors)
                 density_dict = {
                     "names": names,
                     "scores": densities,
@@ -1615,8 +1624,8 @@ class EBMModel(BaseEstimator):
                     "names": bin_labels,
                     "scores": model_graph,
                     "scores_range": bounds,
-                    "upper_bounds": model_graph + errors,
-                    "lower_bounds": model_graph - errors,
+                    "upper_bounds": None if errors is None else model_graph + errors,
+                    "lower_bounds": None if errors is None else model_graph - errors,
                     "density": {
                         "names": names,
                         "scores": densities,
@@ -1939,6 +1948,84 @@ class EBMModel(BaseEstimator):
             )
         else:
             raise ValueError(f"Unrecognized importance_type: {importance_type}")
+
+    def monotonize(self, term, increasing="auto"):
+        """Adjusts a term to be monotone using isotonic regression.
+
+        Args:
+            term: Index or name of continuous univariate term to apply monotone constraints
+            increasing: 'auto' or bool. 'auto' decides direction based on Spearman correlation estimate.
+
+        Returns:
+            Itself.
+        """
+
+        check_is_fitted(self, "has_fitted_")
+
+        if is_classifier(self) and 2 < len(self.classes_):
+            msg = "monotonize not supported for multiclass"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        if isinstance(term, str):
+            term = self.term_names_.index(term)
+
+        features = self.term_features_[term]
+        if 2 <= len(features):
+            msg = "monotonize only works on univariate feature terms"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        feature_idx = features[0]
+
+        if self.feature_types_in_[feature_idx] not in ["continuous", "ordinal"]:
+            msg = "monotonize only supported on ordered feature types"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        if increasing is None:
+            increasing = "auto"
+        elif increasing not in ["auto", True, False]:
+            msg = "increasing must be 'auto', True, or False"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        # copy any fields we overwrite in case someone has a shalow copy of self
+        term_scores = self.term_scores_.copy()
+        scores = term_scores[feature_idx].copy()
+
+        # the missing and unknown bins are not part of the continuous range
+        y = scores[1:-1]
+        x = np.arange(len(y), dtype=np.int64)
+
+        weights = self.bin_weights_[feature_idx][1:-1]
+
+        # Fit isotonic regression weighted by training data bin counts
+        ir = IsotonicRegression(out_of_bounds="clip", increasing=increasing)
+        y = ir.fit_transform(x, y, sample_weight=weights)
+
+        # re-center y. Throw away the intercept changes since the monotonize
+        # operation shouldn't be allowed to change the overall model intercept
+        y -= np.average(y, weights=weights)
+
+        scores[1:-1] = y
+        term_scores[feature_idx] = scores
+        self.term_scores_ = term_scores
+
+        bagged_scores = self.bagged_scores_.copy()
+        standard_deviations = self.standard_deviations_.copy()
+
+        # TODO: in the future we can apply monotonize to the individual outer bags in bagged_scores_
+        #       and then re-compute standard_deviations_ and term_scores_ from the monotonized bagged scores.
+        #       but first we need to do some testing to figure out if this gives a worse result than applying
+        #       IsotonicRegression to the final model which should be more regularized
+        bagged_scores[feature_idx] = None
+        standard_deviations[feature_idx] = None
+
+        self.bagged_scores_ = bagged_scores
+        self.standard_deviations_ = standard_deviations
+
+        return self
 
 
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):

@@ -97,15 +97,21 @@ def after_boosting(term_features, tensors, feature_bin_weights):
 def remove_last(tensors, term_bin_weights):
     new_tensors = []
     for idx, tensor, weights in zip(count(), tensors, term_bin_weights):
-        n_dimensions = weights.ndim
-        entire_tensor = [slice(None)] * n_dimensions
-        higher = []
-        for dimension_idx in range(n_dimensions):
-            dim_slices = entire_tensor.copy()
-            dim_slices[dimension_idx] = -1
-            total_sum = np.sum(weights[tuple(dim_slices)])
-            higher.append(True if total_sum == 0 else False)
-        new_tensors.append(trim_tensor(tensor, None, higher))
+        if tensor is None:
+            result = None
+        elif weights is None:
+            result = tensor
+        else:
+            n_dimensions = weights.ndim
+            entire_tensor = [slice(None)] * n_dimensions
+            higher = []
+            for dimension_idx in range(n_dimensions):
+                dim_slices = entire_tensor.copy()
+                dim_slices[dimension_idx] = -1
+                total_sum = np.sum(weights[tuple(dim_slices)])
+                higher.append(True if total_sum == 0 else False)
+            result = trim_tensor(tensor, None, higher)
+        new_tensors.append(result)
     return new_tensors
 
 

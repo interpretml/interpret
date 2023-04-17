@@ -48,6 +48,29 @@ def valid_ebm(ebm):
 
 
 @pytest.mark.slow
+def test_monotonize():
+    data = synthetic_classification()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingClassifier()
+    clf.fit(X, y)
+
+    intercept = clf.intercept_
+    clf.monotonize(0, increasing=True)
+    clf.monotonize(1, increasing=False)
+    clf.monotonize(2, increasing="auto")
+
+    valid_ebm(clf)
+
+    assert np.all(np.diff(clf.term_features_[0]) >= 0)
+    assert np.all(np.diff(clf.term_features_[1]) <= 0)
+    diff = np.diff(clf.term_features_[2])
+    assert np.all(diff >= 0) or np.all(diff <= 0)
+    assert intercept == clf.intercept_
+
+
+@pytest.mark.slow
 def test_unknown_multiclass_category():
     data = iris_classification()
     X_train = data["train"]["X"]
