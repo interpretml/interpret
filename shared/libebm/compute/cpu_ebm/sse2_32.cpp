@@ -137,10 +137,10 @@ struct Sse_32_Float final {
       _mm_store_ps(a, m_data);
    }
 
-   template<typename Func>
-   inline Sse_32_Float ApplyFunction(Func func) const noexcept {
+   template<typename TFunc>
+   friend inline Sse_32_Float ApplyFunction(const Sse_32_Float & val, const TFunc & func) noexcept {
       alignas(16) T aTemp[cPack];
-      SaveAligned(aTemp);
+      val.SaveAligned(aTemp);
 
       for(int i = 0; i < cPack; ++i) {
          aTemp[i] = func(aTemp[i]);
@@ -151,47 +151,40 @@ struct Sse_32_Float final {
       return result;
    }
 
-   inline bool IsAnyEqual(const Sse_32_Float & other) const noexcept {
-      return !!_mm_movemask_ps(_mm_cmpeq_ps(m_data, other.m_data));
-   }
-   
-   inline bool IsAnyLessThan(const Sse_32_Float & other) const noexcept {
-      return !!_mm_movemask_ps(_mm_cmplt_ps(m_data, other.m_data));
-   }
-
-   inline bool IsAnyGreaterThan(const Sse_32_Float & other) const noexcept {
-      return !!_mm_movemask_ps(_mm_cmpgt_ps(m_data, other.m_data));
+   friend inline Sse_32_Float IfGreater(const Sse_32_Float & cmp1, const Sse_32_Float & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept {
+      __m128 mask = _mm_cmpgt_ps(cmp1.m_data, cmp2.m_data);
+      __m128 maskedTrue = _mm_and_ps(mask, trueVal.m_data);
+      __m128 maskedFalse = _mm_andnot_ps(mask, falseVal.m_data);
+      return Sse_32_Float(_mm_or_ps(maskedTrue, maskedFalse));
    }
 
-   inline bool IsAnyInf() const noexcept {
-      return !!_mm_movemask_ps(_mm_cmpeq_ps(_mm_andnot_ps(_mm_set1_ps(T { -0.0 }), m_data), _mm_set1_ps(std::numeric_limits<T>::infinity())));
+   friend inline Sse_32_Float IfLess(const Sse_32_Float & cmp1, const Sse_32_Float & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept {
+      __m128 mask = _mm_cmplt_ps(cmp1.m_data, cmp2.m_data);
+      __m128 maskedTrue = _mm_and_ps(mask, trueVal.m_data);
+      __m128 maskedFalse = _mm_andnot_ps(mask, falseVal.m_data);
+      return Sse_32_Float(_mm_or_ps(maskedTrue, maskedFalse));
    }
 
-   inline bool IsAnyNaN() const noexcept {
-      // use the fact that a != a  always yields false, except when both are NaN in IEEE 754 where it's true
-      return !!_mm_movemask_ps(_mm_cmpneq_ps(m_data, m_data));
-   }
-
-   inline Sse_32_Float Sqrt() const noexcept {
+   friend inline Sse_32_Float Sqrt(const Sse_32_Float & val) noexcept {
       // TODO: make a fast approximation of this
-      return Sse_32_Float(_mm_sqrt_ss(m_data));
+      return Sse_32_Float(_mm_sqrt_ss(val.m_data));
    }
 
-   inline Sse_32_Float Exp() const noexcept {
+   friend inline Sse_32_Float Exp(const Sse_32_Float & val) noexcept {
       // TODO: make a fast approximation of this
-      return ApplyFunction([](T x) { return std::exp(x); });
+      return ApplyFunction(val, [](T x) { return std::exp(x); });
    }
 
-   inline Sse_32_Float Log() const noexcept {
+   friend inline Sse_32_Float Log(const Sse_32_Float & val) noexcept {
       // TODO: make a fast approximation of this
-      return ApplyFunction([](T x) { return std::log(x); });
+      return ApplyFunction(val, [](T x) { return std::log(x); });
    }
 
-   inline T Sum() const noexcept {
+   friend inline T Sum(const Sse_32_Float & val) noexcept {
       // TODO: this could be written to be more efficient
 
       alignas(16) T aTemp[cPack];
-      SaveAligned(aTemp);
+      val.SaveAligned(aTemp);
 
       T sum = 0.0;
       for(int i = 0; i < cPack; ++i) {
@@ -201,7 +194,7 @@ struct Sse_32_Float final {
    }
 
    template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
-   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
+   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) noexcept {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
       RemoteApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pLoss, pData);
       return Error_None;

@@ -464,7 +464,7 @@ protected:
       } while(pSampleScoresEnd != pSampleScore);
 
       if(bCalcMetric) {
-         pData->m_metricOut = static_cast<double>(sumMetric.Sum());
+         pData->m_metricOut = static_cast<double>(Sum(sumMetric));
       }
    }
 

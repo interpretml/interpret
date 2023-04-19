@@ -14,15 +14,11 @@ struct PoissonRegressionL2Loss : RegressionLoss {
 
    TFloat m_maxDeltaStep;
    // The constructor parameters following config must match the RegisterLoss parameters in loss_registrations.hpp
-   inline PoissonRegressionL2Loss(const Config & config, const double delta) {
+   inline PoissonRegressionL2Loss(const Config & config, const double maxDeltaStep) {
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }
-      if(delta == 0.0 || std::isnan(delta) || std::isinf(delta)) {
-         throw ParamValOutOfRangeException();
-      }
-      const double maxDeltaStep = delta;
-      if(std::isinf(maxDeltaStep)) {
+      if(maxDeltaStep == 0.0 || std::isnan(maxDeltaStep) || std::isinf(maxDeltaStep)) {
          throw ParamValOutOfRangeException();
       }
       m_maxDeltaStep = maxDeltaStep;
@@ -39,7 +35,7 @@ struct PoissonRegressionL2Loss : RegressionLoss {
 
    GPU_DEVICE inline TFloat InverseLinkFunction(const TFloat score) const noexcept {
       // Poisson regression uses a log link function
-      return score.Exp();
+      return Exp(score);
    }
    //Different GBM Implementations
    // https://github.com/h2oai/h2o-3/blob/master/h2o-core/src/main/java/hex/DistributionFactory.java
@@ -47,12 +43,9 @@ struct PoissonRegressionL2Loss : RegressionLoss {
    //
    GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
       const TFloat epsilon = static_cast<TFloat>(1e-8);
-      if (target.IsAnyLessThan(epsilon)) {
-         return 2 * (prediction - target);
-      } else { 
-         TFloat metric = -2 * (target * (prediction / target).Log() - (prediction - target));
-         return metric;
-      }
+      const TFloat trueVal = 2 * (prediction - target);
+      const TFloat falseVal = -2 * (target * Log(prediction / target) - (prediction - target));
+      return IfLess(target, epsilon, trueVal, falseVal);
    }
 
    GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {

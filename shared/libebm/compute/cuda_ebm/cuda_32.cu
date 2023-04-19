@@ -144,39 +144,36 @@ struct Cuda_32_Float final {
       *a = m_data;
    }
 
-   template<typename Func>
-   GPU_BOTH inline Cuda_32_Float ApplyFunction(Func func) const noexcept {
+   template<typename TFunc>
+   GPU_BOTH friend inline Cuda_32_Float ApplyFunction(const Cuda_32_Float & val, const TFunc & func) noexcept {
       // this function is more useful for a SIMD operator where it applies func() to all packed items
-      return Cuda_32_Float(func(m_data));
+      return Cuda_32_Float(func(val.m_data));
    }
 
-   GPU_BOTH inline bool IsAnyEqual(const Cuda_32_Float & other) const noexcept {
-      return m_data == other.m_data;
+   GPU_BOTH friend inline Cuda_32_Float IfGreater(const Cuda_32_Float & cmp1, const Cuda_32_Float & cmp2, const Cuda_32_Float & trueVal, const Cuda_32_Float & falseVal) noexcept {
+      return cmp1.m_data > cmp2.m_data ? trueVal : falseVal;
    }
 
-   GPU_BOTH inline bool IsAnyInf() const noexcept {
-      return isinf(m_data);
+   GPU_BOTH friend inline Cuda_32_Float IfLess(const Cuda_32_Float & cmp1, const Cuda_32_Float & cmp2, const Cuda_32_Float & trueVal, const Cuda_32_Float & falseVal) noexcept {
+      return cmp1.m_data < cmp2.m_data ? trueVal : falseVal;
    }
 
-   GPU_BOTH inline bool IsAnyNaN() const noexcept {
-      return isnan(m_data);
+   GPU_BOTH friend inline Cuda_32_Float Sqrt(const Cuda_32_Float & val) noexcept {
+      return Cuda_32_Float(sqrtf(val.m_data));
    }
 
-   GPU_BOTH inline Cuda_32_Float Sqrt() const noexcept {
-      return Cuda_32_Float(sqrtf(m_data));
+   GPU_BOTH friend inline Cuda_32_Float Exp(const Cuda_32_Float & val) noexcept {
+      return Cuda_32_Float(expf(val.m_data));
    }
 
-   GPU_BOTH inline Cuda_32_Float Exp() const noexcept {
-      return Cuda_32_Float(expf(m_data));
+   GPU_BOTH friend inline Cuda_32_Float Log(const Cuda_32_Float & val) noexcept {
+      return Cuda_32_Float(logf(val.m_data));
    }
 
-   GPU_BOTH inline Cuda_32_Float Log() const noexcept {
-      return Cuda_32_Float(logf(m_data));
+   GPU_BOTH friend inline T Sum(const Cuda_32_Float & val) noexcept {
+      return val.m_data;
    }
 
-   GPU_BOTH inline T Sum() const noexcept {
-      return m_data;
-   }
 
    template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) noexcept {

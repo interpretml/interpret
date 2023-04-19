@@ -132,50 +132,38 @@ struct Cpu_64_Float final {
       *a = m_data;
    }
 
-   template<typename Func>
-   inline Cpu_64_Float ApplyFunction(Func func) const noexcept {
+   template<typename TFunc>
+   friend inline Cpu_64_Float ApplyFunction(const Cpu_64_Float & val, const TFunc & func) noexcept {
       // this function is more useful for a SIMD operator where it applies func() to all packed items
-      return Cpu_64_Float(func(m_data));
+      return Cpu_64_Float(func(val.m_data));
    }
 
-   inline bool IsAnyEqual(const Cpu_64_Float & other) const noexcept {
-      return m_data == other.m_data;
+   friend inline Cpu_64_Float IfGreater(const Cpu_64_Float & cmp1, const Cpu_64_Float & cmp2, const Cpu_64_Float & trueVal, const Cpu_64_Float & falseVal) noexcept {
+      return cmp1.m_data > cmp2.m_data ? trueVal : falseVal;
    }
 
-   inline bool IsAnyLessThan(const Cpu_64_Float & other) const noexcept {
-      return m_data < other.m_data;
+   friend inline Cpu_64_Float IfLess(const Cpu_64_Float & cmp1, const Cpu_64_Float & cmp2, const Cpu_64_Float & trueVal, const Cpu_64_Float & falseVal) noexcept {
+      return cmp1.m_data < cmp2.m_data ? trueVal : falseVal;
    }
 
-   inline bool IsAnyGreaterThan(const Cpu_64_Float & other) const noexcept {
-      return m_data > other.m_data;
-   }
-   
-   inline bool IsAnyInf() const noexcept {
-      return std::isinf(m_data);
+   friend inline Cpu_64_Float Sqrt(const Cpu_64_Float & val) noexcept {
+      return Cpu_64_Float(std::sqrt(val.m_data));
    }
 
-   inline bool IsAnyNaN() const noexcept {
-      return std::isnan(m_data);
+   friend inline Cpu_64_Float Exp(const Cpu_64_Float & val) noexcept {
+      return Cpu_64_Float(std::exp(val.m_data));
    }
 
-   inline Cpu_64_Float Sqrt() const noexcept {
-      return Cpu_64_Float(std::sqrt(m_data));
+   friend inline Cpu_64_Float Log(const Cpu_64_Float & val) noexcept {
+      return Cpu_64_Float(std::log(val.m_data));
    }
 
-   inline Cpu_64_Float Exp() const noexcept {
-      return Cpu_64_Float(std::exp(m_data));
-   }
-
-   inline Cpu_64_Float Log() const noexcept {
-      return Cpu_64_Float(std::log(m_data));
-   }
-
-   inline T Sum() const noexcept {
-      return m_data;
+   friend inline T Sum(const Cpu_64_Float & val) noexcept {
+      return val.m_data;
    }
 
    template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
-   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
+   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) noexcept {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
       RemoteApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pLoss, pData);
       return Error_None;

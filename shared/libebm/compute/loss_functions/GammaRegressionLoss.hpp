@@ -29,11 +29,11 @@ struct GammaRegressionLoss : RegressionLoss {
 
    GPU_DEVICE inline TFloat InverseLinkFunction(const TFloat score) const noexcept {
       // Gamma regression uses a log link function
-      return score.Exp();
+      return Exp(score);
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
-      TFloat metric =  2 * ((target - prediction)/prediction - (target / prediction).Log());
+      TFloat metric =  2 * ((target - prediction)/prediction - Log(target / prediction));
       return metric;
    }
 

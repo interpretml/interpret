@@ -55,7 +55,7 @@ struct PseudoHuberRegressionLoss : RegressionLoss {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
-      TFloat sqrtCalc = calc.Sqrt();
+      TFloat sqrtCalc = Sqrt(calc);
       TFloat metric = m_deltaSquared * (sqrtCalc - 1.0);
       return metric;
    }
@@ -64,7 +64,7 @@ struct PseudoHuberRegressionLoss : RegressionLoss {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
-      TFloat sqrtCalc = calc.Sqrt();
+      TFloat sqrtCalc = Sqrt(calc);
       TFloat gradient = error / sqrtCalc;
       return gradient;
    }
@@ -74,7 +74,7 @@ struct PseudoHuberRegressionLoss : RegressionLoss {
       TFloat error = prediction - target;
       TFloat errorFraction = error * m_deltaInverted;
       TFloat calc = errorFraction * errorFraction + 1.0;
-      TFloat sqrtCalc = calc.Sqrt();
+      TFloat sqrtCalc = Sqrt(calc);
       TFloat gradient = error / sqrtCalc;
       TFloat hessian = 1.0 / (calc * sqrtCalc);
       return MakeGradientHessian(gradient, hessian);

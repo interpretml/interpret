@@ -29,7 +29,7 @@ struct MseLogLinkRegressionLoss : RegressionLoss {
 
    GPU_DEVICE inline TFloat InverseLinkFunction(const TFloat score) const noexcept {
       // Poisson regression uses a log link function
-      return score.Exp();
+      return Exp(score);
    }
    //Different GBM Implementations
    GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {

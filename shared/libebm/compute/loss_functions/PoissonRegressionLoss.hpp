@@ -29,7 +29,7 @@ struct PoissonRegressionLoss : RegressionLoss {
 
    GPU_DEVICE inline TFloat InverseLinkFunction(const TFloat score) const noexcept {
       // Poisson regression uses a log link function
-      return score.Exp();
+      return Exp(score);
    }
    //Different GBM Implementations
    // https://github.com/h2oai/h2o-3/blob/master/h2o-core/src/main/java/hex/DistributionFactory.java
@@ -37,12 +37,9 @@ struct PoissonRegressionLoss : RegressionLoss {
    //
    GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
       const TFloat epsilon = static_cast<TFloat>(1e-8);
-      if (target.IsAnyLessThan(epsilon)) {
-         return 2 * (prediction - target);
-      } else { 
-         TFloat metric = -2 * (target * (prediction / target).Log() - (prediction - target));
-         return metric;
-      }
+      const TFloat trueVal = 2 * (prediction - target);
+      const TFloat falseVal = -2 * (target * Log(prediction / target) - (prediction - target));
+      return IfLess(target, epsilon, trueVal, falseVal);
    }
 
    GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
