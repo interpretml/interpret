@@ -29,7 +29,6 @@
 #include "LogLossBinaryLoss.hpp"
 #include "LogLossMulticlassLoss.hpp"
 #include "PoissonRegressionLoss.hpp"
-#include "PoissonRegressionL2Loss.hpp"
 #include "GammaRegressionLoss.hpp"
 
 // Add new *Loss type registrations to this list:
@@ -42,8 +41,7 @@ static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
       RegisterLoss<MseLogLinkRegressionLoss>("mse_log"),
       RegisterLoss<LogLossBinaryLoss>("log_loss"),
       RegisterLoss<LogLossMulticlassLoss>("log_loss"),
-      RegisterLoss<PoissonRegressionLoss>("poisson_loss"),
-      RegisterLoss<PoissonRegressionL2Loss>("poisson_l2_loss",FloatParam("delta", 0.7)),
+      RegisterLoss<PoissonRegressionLoss>("poisson_loss", FloatParam("max_delta_step", 0.7)),
       RegisterLoss<GammaRegressionLoss>("gamma_loss"),
 
       // TODO: add an "example" loss here and adapt the instructions above to handle it

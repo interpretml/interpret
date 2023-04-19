@@ -12,11 +12,20 @@ template<typename TFloat>
 struct PoissonRegressionLoss : RegressionLoss {
    LOSS_BOILERPLATE(PoissonRegressionLoss, Link_log)
 
+   TFloat m_maxDeltaStepExp;
    // The constructor parameters following config must match the RegisterLoss parameters in loss_registrations.hpp
-   inline PoissonRegressionLoss(const Config & config) {
+   inline PoissonRegressionLoss(const Config & config, const double maxDeltaStep) {
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }
+      if(std::isnan(maxDeltaStep) || maxDeltaStep <= 0.0 || std::isinf(maxDeltaStep)) {
+         throw ParamValOutOfRangeException();
+      }
+      const double maxDeltaStepExp = std::exp(maxDeltaStep);
+      if(std::isinf(maxDeltaStepExp)) {
+         throw ParamValOutOfRangeException();
+      }
+      m_maxDeltaStepExp = maxDeltaStepExp;
    }
 
    inline double GradientMultiple() const noexcept {
@@ -50,7 +59,8 @@ struct PoissonRegressionLoss : RegressionLoss {
    // If the loss function doesn't have a second derivative, then delete the CalcGradientHessian function.
    GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
       TFloat gradient = prediction - target;
-      TFloat hessian = prediction;
+      // TODO: move m_maxDeltaStepExp into the HessianMultiple since it's a constant after the constructor
+      TFloat hessian = prediction * m_maxDeltaStepExp;
       return MakeGradientHessian(gradient, hessian);
    }
 };

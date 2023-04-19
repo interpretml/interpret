@@ -21,7 +21,7 @@ struct PseudoHuberRegressionLoss : RegressionLoss {
          throw ParamMismatchWithConfigException();
       }
 
-      if(delta == 0.0 || std::isnan(delta) || std::isinf(delta)) {
+      if(std::isnan(delta) || delta <= 0.0 || std::isinf(delta)) {
          throw ParamValOutOfRangeException();
       }
 
