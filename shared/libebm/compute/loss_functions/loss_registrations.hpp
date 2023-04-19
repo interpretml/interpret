@@ -25,8 +25,12 @@
 #include "ExampleRegressionLoss.hpp"
 #include "PseudoHuberRegressionLoss.hpp"
 #include "MseRegressionLoss.hpp"
+#include "MseLogLinkRegressionLoss.hpp"
 #include "LogLossBinaryLoss.hpp"
 #include "LogLossMulticlassLoss.hpp"
+#include "PoissonRegressionLoss.hpp"
+#include "PoissonRegressionL2Loss.hpp"
+#include "GammaRegressionLoss.hpp"
 
 // Add new *Loss type registrations to this list:
 static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
@@ -35,8 +39,13 @@ static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
       RegisterLoss<ExampleRegressionLoss>("example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
       RegisterLoss<PseudoHuberRegressionLoss>("pseudo_huber", FloatParam("delta", 1.0)),
       RegisterLoss<MseRegressionLoss>("mse"),
+      RegisterLoss<MseLogLinkRegressionLoss>("mse_log"),
       RegisterLoss<LogLossBinaryLoss>("log_loss"),
       RegisterLoss<LogLossMulticlassLoss>("log_loss"),
+      RegisterLoss<PoissonRegressionLoss>("poisson_loss"),
+      RegisterLoss<PoissonRegressionL2Loss>("poisson_l2_loss",FloatParam("delta", 0.7)),
+      RegisterLoss<GammaRegressionLoss>("gamma_loss"),
+
       // TODO: add an "example" loss here and adapt the instructions above to handle it
    };
 }

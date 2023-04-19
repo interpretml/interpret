@@ -2560,7 +2560,14 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             n_jobs=n_jobs,
             random_state=random_state,
         )
-
+    def inv_link(self, y_pred):
+        if self.objective in ["mse","pseudo_huber"]:
+            return y_pred
+        elif self.objective in ["poisson_loss","poisson_l2_loss","gamma_loss","mse_log"]:
+            return np.exp(y_pred)
+        else:
+            raise ValueError("Unsupported loss function: {}".format(self.objective))
+    
     def predict(self, X):
         """Predicts on provided samples.
 
@@ -2574,7 +2581,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
-        return ebm_decision_function(
+        scores = ebm_decision_function(
             X,
             n_samples,
             self.feature_names_in_,
@@ -2584,6 +2591,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.term_scores_,
             self.term_features_,
         )
+        return self.inv_link(scores)
 
     def predict_and_contrib(self, X):
         """Predicts on provided samples, returning predictions and explanations for each sample.
