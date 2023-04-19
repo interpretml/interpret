@@ -142,6 +142,14 @@ struct Cpu_64_Float final {
       return m_data == other.m_data;
    }
 
+   inline bool IsAnyLessThan(const Cpu_64_Float & other) const noexcept {
+      return m_data < other.m_data;
+   }
+
+   inline bool IsAnyGreaterThan(const Cpu_64_Float & other) const noexcept {
+      return m_data > other.m_data;
+   }
+   
    inline bool IsAnyInf() const noexcept {
       return std::isinf(m_data);
    }

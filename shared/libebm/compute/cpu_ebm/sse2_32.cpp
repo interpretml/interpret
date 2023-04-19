@@ -154,6 +154,14 @@ struct Sse_32_Float final {
    inline bool IsAnyEqual(const Sse_32_Float & other) const noexcept {
       return !!_mm_movemask_ps(_mm_cmpeq_ps(m_data, other.m_data));
    }
+   
+   inline bool IsAnyLessThan(const Sse_32_Float & other) const noexcept {
+      return !!_mm_movemask_ps(_mm_cmplt_ps(m_data, other.m_data));
+   }
+
+   inline bool IsAnyGreaterThan(const Sse_32_Float & other) const noexcept {
+      return !!_mm_movemask_ps(_mm_cmpgt_ps(m_data, other.m_data));
+   }
 
    inline bool IsAnyInf() const noexcept {
       return !!_mm_movemask_ps(_mm_cmpeq_ps(_mm_andnot_ps(_mm_set1_ps(T { -0.0 }), m_data), _mm_set1_ps(std::numeric_limits<T>::infinity())));
