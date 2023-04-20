@@ -35,6 +35,7 @@ EXPORTS
   SampleWithoutReplacementStratified
   DetermineLinkFunction
   GetLinkFunctionString
+  GetModelType
   CreateBooster
   CreateBoosterView
   FreeBooster

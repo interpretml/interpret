@@ -17,8 +17,8 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
-   BoolEbm isClassification, 
-   const char * objective, 
+   BoolEbm isClassification,
+   const char * objective,
    LinkEbm * linkOut,
    double * linkParamOut
 ) {
@@ -51,7 +51,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
 
 EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionString(LinkEbm link) {
    static const char g_sERROR[] = "ERROR";
-   static const char g_sCustom[] = "custom";
+
+   static const char g_sCustomRegression[] = "custom_regression";
+   static const char g_sCustomClassification[] = "custom_classification";
+   static const char g_sCustomRanking[] = "custom_ranking";
    static const char g_sPower[] = "power";
    static const char g_sLogit[] = "logit";
    static const char g_sProbit[] = "probit";
@@ -65,8 +68,12 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionString(LinkEbm l
    static const char g_sSqrt[] = "sqrt";
 
    switch(link) {
-   case Link_custom:
-      return g_sCustom;
+   case Link_custom_regression:
+      return g_sCustomRegression;
+   case Link_custom_classification:
+      return g_sCustomClassification;
+   case Link_custom_ranking:
+      return g_sCustomRanking;
    case Link_power:
       return g_sPower;
    case Link_logit:
@@ -91,6 +98,41 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionString(LinkEbm l
       return g_sSqrt;
    default:
       return g_sERROR;
+   }
+}
+
+EBM_API_BODY ModelType EBM_CALLING_CONVENTION GetModelType(LinkEbm link) {
+   switch(link) {
+   case Link_custom_regression:
+      return ModelType_Regression;
+   case Link_custom_classification:
+      return ModelType_GeneralClassification;
+   case Link_custom_ranking:
+      return ModelType_Ranking;
+   case Link_power:
+      return ModelType_Regression;
+   case Link_logit:
+      return ModelType_GeneralClassification;
+   case Link_probit:
+      return ModelType_GeneralClassification;
+   case Link_cloglog:
+      return ModelType_GeneralClassification;
+   case Link_loglog:
+      return ModelType_GeneralClassification;
+   case Link_cauchit:
+      return ModelType_GeneralClassification;
+   case Link_identity:
+      return ModelType_Regression;
+   case Link_log:
+      return ModelType_Regression;
+   case Link_inverse:
+      return ModelType_Regression;
+   case Link_inverse_square:
+      return ModelType_Regression;
+   case Link_sqrt:
+      return ModelType_Regression;
+   default:
+      return ModelType_Unknown;
    }
 }
 

@@ -106,6 +106,8 @@ typedef uint32_t UInteractionFlags;
 #define UInteractionFlagsPrintf PRIx32
 typedef int32_t LinkEbm;
 #define LinkEbmPrintf PRId32
+typedef int64_t ModelType;
+#define ModelTypePrintf PRId64
 
 typedef struct _BoosterHandle {
    uint32_t handleVerification; // should be 10995 if ok. Do not use size_t since that requires an additional header.
@@ -121,6 +123,7 @@ typedef struct _InteractionHandle {
 #define INTERACTION_FLAGS_CAST(val)                (STATIC_CAST(InteractionFlags, (val)))
 #define TRACE_CAST(val)                            (STATIC_CAST(TraceEbm, (val)))
 #define LINK_CAST(val)                             (STATIC_CAST(LinkEbm, (val)))
+#define MODEL_TYPE_CAST(val)                       (STATIC_CAST(ModelType, (val)))
 
 // TODO: look through our code for places where SAFE_FLOAT64_AS_INT64_MAX or FLOAT64_TO_INT64_MAX would be useful
 
@@ -189,21 +192,32 @@ typedef struct _InteractionHandle {
 // https://www.sagepub.com/sites/default/files/upm-binaries/21121_Chapter_15.pdf
 // https://www.rdocumentation.org/packages/VGAM/versions/1.1-8/topics/Links
 #define Link_ERROR                                 (LINK_CAST(0))
-// uses link parameter
-#define Link_custom                                (LINK_CAST(1))
-#define Link_power                                 (LINK_CAST(2))  // Tweedie regression
+// uses link param potentially
+#define Link_custom_regression                     (LINK_CAST(1))
+#define Link_custom_classification                 (LINK_CAST(2))
+#define Link_custom_ranking                        (LINK_CAST(3))
+#define Link_power                                 (LINK_CAST(4))  // Tweedie regression
 // classification
-#define Link_logit                                 (LINK_CAST(3))  // Logistic regression
-#define Link_probit                                (LINK_CAST(4))  // Probit regression
-#define Link_cloglog                               (LINK_CAST(5))  // Complementary log-log regression
-#define Link_loglog                                (LINK_CAST(6))  // Log-log regression
-#define Link_cauchit                               (LINK_CAST(7))  // Cauchit regression
+#define Link_logit                                 (LINK_CAST(5))  // Logistic regression
+#define Link_probit                                (LINK_CAST(6))  // Probit regression
+#define Link_cloglog                               (LINK_CAST(7))  // Complementary log-log regression
+#define Link_loglog                                (LINK_CAST(8))  // Log-log regression
+#define Link_cauchit                               (LINK_CAST(9))  // Cauchit regression
 // regression
-#define Link_identity                              (LINK_CAST(8))  // Linear regression
-#define Link_log                                   (LINK_CAST(9))  // Poisson regression
-#define Link_inverse                               (LINK_CAST(10)) // Gamma regression
-#define Link_inverse_square                        (LINK_CAST(11)) // Inverse Gaussian regression
-#define Link_sqrt                                  (LINK_CAST(12)) // Square root regression
+#define Link_identity                              (LINK_CAST(10))  // Linear regression
+#define Link_log                                   (LINK_CAST(11))  // Poisson regression
+#define Link_inverse                               (LINK_CAST(12)) // Gamma regression
+#define Link_inverse_square                        (LINK_CAST(13)) // Inverse Gaussian regression
+#define Link_sqrt                                  (LINK_CAST(14)) // Square root regression
+
+#define ModelType_Ranking                          (MODEL_TYPE_CAST(-4))
+#define ModelType_Regression                       (MODEL_TYPE_CAST(-3))
+#define ModelType_Unknown                          (MODEL_TYPE_CAST(-2))
+#define ModelType_MulticlassUnspecified            (MODEL_TYPE_CAST(-1)) // multiclass, but unknown number of classes
+#define ModelType_GeneralClassification            (MODEL_TYPE_CAST(0))  // classification with unspecified # classes
+#define ModelType_MonoClassification               (MODEL_TYPE_CAST(1))  // degenerate case of predicting 1 class
+#define ModelType_BinaryClassification             (MODEL_TYPE_CAST(2))  // 2 classes
+#define ModelType_Multiclass                       (MODEL_TYPE_CAST(3))  // 3+ classes (the value is the # of classes)
 
 // All our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void (EBM_CALLING_CONVENTION * LogCallbackFunction)(TraceEbm traceLevel, const char * message);
@@ -378,6 +392,9 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    double * linkParamOut
 );
 EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetLinkFunctionString(
+   LinkEbm link
+);
+EBM_API_INCLUDE ModelType EBM_CALLING_CONVENTION GetModelType(
    LinkEbm link
 );
 
