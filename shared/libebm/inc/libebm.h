@@ -210,14 +210,14 @@ typedef struct _InteractionHandle {
 #define Link_inverse_square                        (LINK_CAST(13)) // Inverse Gaussian regression
 #define Link_sqrt                                  (LINK_CAST(14)) // Square root regression
 
-#define ModelType_Ranking                          (MODEL_TYPE_CAST(-4))
-#define ModelType_Regression                       (MODEL_TYPE_CAST(-3))
-#define ModelType_Unknown                          (MODEL_TYPE_CAST(-2))
+#define ModelType_Unknown                          (MODEL_TYPE_CAST(-4))
+#define ModelType_Ranking                          (MODEL_TYPE_CAST(-3))
+#define ModelType_Regression                       (MODEL_TYPE_CAST(-2))
 #define ModelType_MulticlassUnspecified            (MODEL_TYPE_CAST(-1)) // multiclass, but unknown number of classes
 #define ModelType_GeneralClassification            (MODEL_TYPE_CAST(0))  // classification with unspecified # classes
 #define ModelType_MonoClassification               (MODEL_TYPE_CAST(1))  // degenerate case of predicting 1 class
 #define ModelType_BinaryClassification             (MODEL_TYPE_CAST(2))  // 2 classes
-#define ModelType_Multiclass                       (MODEL_TYPE_CAST(3))  // 3+ classes (the value is the # of classes)
+#define ModelType_MulticlassPlus                   (MODEL_TYPE_CAST(3))  // 3+ classes (the value is the # of classes)
 
 // All our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void (EBM_CALLING_CONVENTION * LogCallbackFunction)(TraceEbm traceLevel, const char * message);

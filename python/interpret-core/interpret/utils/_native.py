@@ -26,6 +26,16 @@ class Native:
     InteractionFlags_Default = 0x00000000
     InteractionFlags_Pure = 0x00000001
 
+    # ModelType
+    ModelType_Unknown = -4
+    ModelType_Ranking = -3
+    ModelType_Regression = -2
+    ModelType_MulticlassUnspecified = -1
+    ModelType_GeneralClassification = 0
+    ModelType_MonoClassification = 1
+    ModelType_BinaryClassification = 2
+    ModelType_MulticlassPlus = 3
+
     # TraceLevel
     _Trace_Off = 0
     _Trace_Error = 1
@@ -549,7 +559,7 @@ class Native:
 
         return_code = self._unsafe.DetermineLinkFunction(
             is_classification,
-            None if objective is None else ct.c_char_p(objective.encode("ascii")),
+            None if objective is None else objective.encode("ascii"),
             ct.byref(link),
             ct.byref(link_param),
         )
@@ -561,6 +571,25 @@ class Native:
             self._unsafe.GetLinkFunctionString(link.value).decode("ascii"),
             link_param.value,
         )
+
+    def get_model_type(self, link):
+        if link is None:
+            msg = "link must be set to a non-None value"
+            _log.error(msg)
+            raise Exception(msg)
+
+        link_int = self._unsafe.GetLinkFunctionInt(link.encode("ascii"))
+        model_type = self._unsafe.GetModelType(link_int)
+        if model_type == Native.ModelType_Ranking:
+            return "ranking"
+        elif model_type == Native.ModelType_Regression:
+            return "regression"
+        elif Native.ModelType_MulticlassUnspecified <= model_type:
+            return "classification"
+        else:
+            msg = f"unrecognized link function type: {link}"
+            _log.error(msg)
+            raise Exception(msg)
 
     @staticmethod
     def _get_ebm_lib_path(debug=False):
@@ -995,6 +1024,18 @@ class Native:
         ]
         self._unsafe.GetLinkFunctionString.restype = ct.c_char_p
 
+        self._unsafe.GetLinkFunctionInt.argtypes = [
+            # const char * link
+            ct.c_char_p,
+        ]
+        self._unsafe.GetLinkFunctionInt.restype = ct.c_int32
+
+        self._unsafe.GetModelType.argtypes = [
+            # int32_t link
+            ct.c_int32,
+        ]
+        self._unsafe.GetModelType.restype = ct.c_int64
+
         self._unsafe.CreateBooster.argtypes = [
             # void * rng
             ct.c_void_p,
@@ -1258,9 +1299,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(dimension_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
-            None
-            if self.objective is None
-            else ct.c_char_p(self.objective.encode("ascii")),
+            None if self.objective is None else self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(booster_handle),
         )
@@ -1640,9 +1679,7 @@ class InteractionDetector(AbstractContextManager):
             Native._make_pointer(
                 self.init_scores, np.float64, 2 if 1 < n_class_scores else 1, True
             ),
-            None
-            if self.objective is None
-            else ct.c_char_p(self.objective.encode("ascii")),
+            None if self.objective is None else self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(interaction_handle),
         )
