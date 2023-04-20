@@ -7,6 +7,8 @@
 
 #include <string.h>
 
+#include "libebm.h" // BoolEbm
+
 #ifdef __cplusplus
 extern "C" {
 #define EBM_NOEXCEPT noexcept
@@ -169,14 +171,10 @@ typedef double FloatFast;
 static const char k_registrationSeparator = ',';
 
 extern const char * SkipWhitespace(const char * s);
-extern const char * ConvertStringToFloat(
-   const char * const s,
-   double * const pResultOut
-);
-extern const char * IsStringEqualsCaseInsensitive(
-   const char * sMain,
-   const char * sLabel
-);
+extern const char * ConvertStringToFloat(const char * const s, double * const pResultOut);
+extern const char * IsStringEqualsCaseInsensitive(const char * sMain, const char * sLabel);
+extern BoolEbm IsStringEqualsForgiving(const char * sMain, const char * sLabel);
+
 
 // TODO: use k_cFloatSumLimit in more places (in the histogram generation!!)
 //

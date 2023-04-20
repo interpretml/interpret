@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 
+#include "libebm.h" // BoolEbm
 #include "logging.h"
 #include "common_c.h"
 
@@ -23,10 +24,7 @@ extern const char * SkipWhitespace(const char * s) {
    return s;
 }
 
-extern const char * ConvertStringToFloat(
-   const char * const s, 
-   double * const pResultOut
-) {
+extern const char * ConvertStringToFloat(const char * const s, double * const pResultOut) {
    // we skip beginning whitespaces (strtod guarantees this)
    // unlike strtod, we also skip trailing whitespaces
 
@@ -50,10 +48,7 @@ extern const char * ConvertStringToFloat(
    return SkipWhitespace(sNext);
 }
 
-extern const char * IsStringEqualsCaseInsensitive(
-   const char * sMain, 
-   const char * sLabel
-) {
+extern const char * IsStringEqualsCaseInsensitive(const char * sMain, const char * sLabel) {
    // this function returns nullptr if there is no match, otherwise it returns a pointer to the 
    // first non-whitespace character following a successfully equal comparison
 
@@ -84,6 +79,14 @@ extern const char * IsStringEqualsCaseInsensitive(
       mainChar = *sMain;
    }
    return sMain;
+}
+
+extern BoolEbm IsStringEqualsForgiving(const char * sMain, const char * sLabel) {
+   sMain = IsStringEqualsCaseInsensitive(sMain, sLabel);
+   if('\0' == *sMain) {
+      return EBM_TRUE;
+   }
+   return EBM_FALSE;
 }
 
 #ifdef __cplusplus

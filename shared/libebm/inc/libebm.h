@@ -394,6 +394,9 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
 EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetLinkFunctionString(
    LinkEbm link
 );
+EBM_API_INCLUDE LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(
+   const char * link
+);
 EBM_API_INCLUDE ModelType EBM_CALLING_CONVENTION GetModelType(
    LinkEbm link
 );

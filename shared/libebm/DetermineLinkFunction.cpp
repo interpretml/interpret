@@ -49,24 +49,24 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    return Error_None;
 }
 
+static const char g_sERROR[] = "ERROR";
+
+static const char g_sCustomRegression[] = "custom_regression";
+static const char g_sCustomClassification[] = "custom_classification";
+static const char g_sCustomRanking[] = "custom_ranking";
+static const char g_sPower[] = "power";
+static const char g_sLogit[] = "logit";
+static const char g_sProbit[] = "probit";
+static const char g_sCloglog[] = "cloglog";
+static const char g_sLoglog[] = "loglog";
+static const char g_sCauchit[] = "cauchit";
+static const char g_sIdentity[] = "identity";
+static const char g_sLog[] = "log";
+static const char g_sInverse[] = "inverse";
+static const char g_sInverseSquare[] = "inverse_square";
+static const char g_sSqrt[] = "sqrt";
+
 EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionString(LinkEbm link) {
-   static const char g_sERROR[] = "ERROR";
-
-   static const char g_sCustomRegression[] = "custom_regression";
-   static const char g_sCustomClassification[] = "custom_classification";
-   static const char g_sCustomRanking[] = "custom_ranking";
-   static const char g_sPower[] = "power";
-   static const char g_sLogit[] = "logit";
-   static const char g_sProbit[] = "probit";
-   static const char g_sCloglog[] = "cloglog";
-   static const char g_sLoglog[] = "loglog";
-   static const char g_sCauchit[] = "cauchit";
-   static const char g_sIdentity[] = "identity";
-   static const char g_sLog[] = "log";
-   static const char g_sInverse[] = "inverse";
-   static const char g_sInverseSquare[] = "inverse_square";
-   static const char g_sSqrt[] = "sqrt";
-
    switch(link) {
    case Link_custom_regression:
       return g_sCustomRegression;
@@ -99,6 +99,41 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionString(LinkEbm l
    default:
       return g_sERROR;
    }
+}
+
+EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char * link) {
+   link = SkipWhitespace(link);
+
+   if(IsStringEqualsForgiving(link, g_sCustomRegression))
+      return Link_custom_regression;
+   if(IsStringEqualsForgiving(link, g_sCustomClassification))
+      return Link_custom_classification;
+   if(IsStringEqualsForgiving(link, g_sCustomRanking))
+      return Link_custom_ranking;
+   if(IsStringEqualsForgiving(link, g_sPower))
+      return Link_power;
+   if(IsStringEqualsForgiving(link, g_sLogit))
+      return Link_logit;
+   if(IsStringEqualsForgiving(link, g_sProbit))
+      return Link_probit;
+   if(IsStringEqualsForgiving(link, g_sCloglog))
+      return Link_cloglog;
+   if(IsStringEqualsForgiving(link, g_sLoglog))
+      return Link_loglog;
+   if(IsStringEqualsForgiving(link, g_sCauchit))
+      return Link_cauchit;
+   if(IsStringEqualsForgiving(link, g_sIdentity))
+      return Link_identity;
+   if(IsStringEqualsForgiving(link, g_sLog))
+      return Link_log;
+   if(IsStringEqualsForgiving(link, g_sInverse))
+      return Link_inverse;
+   if(IsStringEqualsForgiving(link, g_sInverseSquare))
+      return Link_inverse_square;
+   if(IsStringEqualsForgiving(link, g_sSqrt))
+      return Link_sqrt;
+
+   return Link_ERROR;
 }
 
 EBM_API_BODY ModelType EBM_CALLING_CONVENTION GetModelType(LinkEbm link) {
