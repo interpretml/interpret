@@ -332,6 +332,20 @@ def merge_ebms(models):
         raise Exception("All models must be fitted.")
     ebm.has_fitted_ = True
 
+    link = models[0].link_
+    if any(model.link_ != link for model in models):
+        raise Exception("Models with different link functions cannot be merged")
+    ebm.link_ = link
+
+    link_param = models[0].link_param_
+    if isnan(link_param):
+        if not all(isnan(model.link_param_) for model in models):
+            raise Exception("Models with different link param values cannot be merged")
+    else:
+        if any(model.link_param_ != link_param for model in models):
+            raise Exception("Models with different link param values cannot be merged")
+    ebm.link_param_ = link_param
+
     # self.bins_ is the only feature based attribute that we absolutely require
     n_features = len(models[0].bins_)
 

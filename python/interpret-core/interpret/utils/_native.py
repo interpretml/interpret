@@ -543,6 +543,25 @@ class Native:
 
         return bag
 
+    def determine_link(self, is_classification, objective):
+        link = ct.c_int32(0)
+        link_param = ct.c_double(np.nan)
+
+        return_code = self._unsafe.DetermineLinkFunction(
+            is_classification,
+            None if objective is None else ct.c_char_p(objective.encode("ascii")),
+            ct.byref(link),
+            ct.byref(link_param),
+        )
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "DetermineLinkFunction")
+
+        return (
+            self._unsafe.GetLinkFunctionString(link.value).decode("ascii"),
+            link_param.value,
+        )
+
     @staticmethod
     def _get_ebm_lib_path(debug=False):
         """Returns filepath of core EBM library.
@@ -957,6 +976,24 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.SampleWithoutReplacementStratified.restype = ct.c_int32
+
+        self._unsafe.DetermineLinkFunction.argtypes = [
+            # int32_t isClassification
+            ct.c_int32,
+            # char * objective
+            ct.c_char_p,
+            # int32_t * linkOut
+            ct.c_void_p,
+            # double * linkParamOut
+            ct.c_void_p,
+        ]
+        self._unsafe.DetermineLinkFunction.restype = ct.c_int32
+
+        self._unsafe.GetLinkFunctionString.argtypes = [
+            # int32_t link
+            ct.c_int32,
+        ]
+        self._unsafe.GetLinkFunctionString.restype = ct.c_char_p
 
         self._unsafe.CreateBooster.argtypes = [
             # void * rng
