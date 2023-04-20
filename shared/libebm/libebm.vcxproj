@@ -343,6 +343,7 @@ EXIT /B 0
     <ClCompile Include="CutUniform.cpp" />
     <ClCompile Include="CutWinsorized.cpp" />
     <ClCompile Include="BoosterShell.cpp" />
+    <ClCompile Include="DetermineLinkFunction.cpp" />
     <ClCompile Include="random.cpp" />
     <ClCompile Include="InteractionShell.cpp" />
     <ClCompile Include="CalcInteractionStrength.cpp" />

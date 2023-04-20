@@ -188,17 +188,22 @@ typedef struct _InteractionHandle {
 
 // https://www.sagepub.com/sites/default/files/upm-binaries/21121_Chapter_15.pdf
 // https://www.rdocumentation.org/packages/VGAM/versions/1.1-8/topics/Links
-#define Link_custom                                (LINK_CAST(0))
-#define Link_identity                              (LINK_CAST(1))  // Linear regression
-#define Link_logit                                 (LINK_CAST(2))  // Logistic regression
-#define Link_probit                                (LINK_CAST(3))  // Probit regression
-#define Link_log                                   (LINK_CAST(4))  // Poisson regression
-#define Link_inverse                               (LINK_CAST(5))  // Gamma regression
-#define Link_inverse_square                        (LINK_CAST(6))  // Inverse Gaussian regression
+#define Link_ERROR                                 (LINK_CAST(0))
+// uses link parameter
+#define Link_custom                                (LINK_CAST(1))
+#define Link_power                                 (LINK_CAST(2))  // Tweedie regression
+// classification
+#define Link_logit                                 (LINK_CAST(3))  // Logistic regression
+#define Link_probit                                (LINK_CAST(4))  // Probit regression
+#define Link_cloglog                               (LINK_CAST(5))  // Complementary log-log regression
+#define Link_loglog                                (LINK_CAST(6))  // Log-log regression
 #define Link_cauchit                               (LINK_CAST(7))  // Cauchit regression
-#define Link_cloglog                               (LINK_CAST(8))  // Complementary log-log regression
-#define Link_loglog                                (LINK_CAST(9))  // Log-log regression
-#define Link_sqrt                                  (LINK_CAST(10)) // Square root regression
+// regression
+#define Link_identity                              (LINK_CAST(8))  // Linear regression
+#define Link_log                                   (LINK_CAST(9))  // Poisson regression
+#define Link_inverse                               (LINK_CAST(10)) // Gamma regression
+#define Link_inverse_square                        (LINK_CAST(11)) // Inverse Gaussian regression
+#define Link_sqrt                                  (LINK_CAST(12)) // Square root regression
 
 // All our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void (EBM_CALLING_CONVENTION * LogCallbackFunction)(TraceEbm traceLevel, const char * message);
@@ -364,6 +369,16 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratifi
    IntEbm countValidationSamples,
    const IntEbm * targets,
    BagEbm * bagOut
+);
+
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
+   BoolEbm isClassification,
+   const char * objective,
+   LinkEbm * linkOut,
+   double * linkParamOut
+);
+EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetLinkFunctionString(
+   LinkEbm link
 );
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(

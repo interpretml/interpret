@@ -23,14 +23,14 @@ static const char g_sLoggingParamError[] = "Error in vsnprintf parameters for lo
 TraceEbm g_traceLevel = Trace_Off;
 static LogCallbackFunction g_pLogCallbackFunction = NULL;
 
-static const char g_sTraceOff[] = "OFF";
-static const char g_sTraceError[] = "ERROR";
-static const char g_sTraceWarning[] = "WARNING";
-static const char g_sTraceInfo[] = "INFO";
-static const char g_sTraceVerbose[] = "VERBOSE";
-static const char g_sTraceIllegal[] = "ILLEGAL";
-
 EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm traceLevel) {
+   static const char g_sTraceOff[] = "OFF";
+   static const char g_sTraceError[] = "ERROR";
+   static const char g_sTraceWarning[] = "WARNING";
+   static const char g_sTraceInfo[] = "INFO";
+   static const char g_sTraceVerbose[] = "VERBOSE";
+   static const char g_sTraceIllegal[] = "ILLEGAL";
+
    switch(traceLevel) {
    case Trace_Off:
       return g_sTraceOff;

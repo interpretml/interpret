@@ -28,6 +28,10 @@ struct PoissonRegressionLoss : RegressionLoss {
       m_maxDeltaStepExp = maxDeltaStepExp;
    }
 
+   inline double LinkParam() const noexcept {
+      return std::numeric_limits<double>::quiet_NaN();
+   }
+
    inline double GradientMultiple() const noexcept {
       return 1.0;
    }

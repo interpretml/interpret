@@ -33,6 +33,8 @@ EXPORTS
   ExtractTargetClasses
   SampleWithoutReplacement
   SampleWithoutReplacementStratified
+  DetermineLinkFunction
+  GetLinkFunctionString
   CreateBooster
   CreateBoosterView
   FreeBooster

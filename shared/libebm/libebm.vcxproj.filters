@@ -46,6 +46,7 @@
       <Filter>common_c</Filter>
     </ClCompile>
     <ClCompile Include="random.cpp" />
+    <ClCompile Include="DetermineLinkFunction.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InteractionShell.hpp" />

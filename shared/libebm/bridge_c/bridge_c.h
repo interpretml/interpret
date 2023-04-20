@@ -57,12 +57,15 @@ struct LossWrapper {
    // and it cannot be empty either since empty structures are not compliant in all C compilers
    // https://stackoverflow.com/questions/755305/empty-structure-in-c?rq=1
    void * m_pLoss;
+
+   LinkEbm m_linkFunction;
+   double m_linkParam;
+
    // TODO: we're not using m_gradientMultiple & m_hessianMultiple yet!
    double m_gradientMultiple;
    double m_hessianMultiple;
    BoolEbm m_bLossHasHessian;
    BoolEbm m_bMse;
-   LinkEbm m_linkFunction; // TODO: expose this in python.  Also, make a LinkString interface that turns these constants into a string so that the caller doesn't need to have the mapping list
 
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface
    void * m_pFunctionPointersCpp;

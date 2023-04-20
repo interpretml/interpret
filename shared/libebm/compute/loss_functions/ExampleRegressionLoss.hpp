@@ -23,6 +23,10 @@ struct ExampleRegressionLoss : RegressionLoss {
       m_param1 = param1;
    }
 
+   inline double LinkParam() const noexcept {
+      return std::numeric_limits<double>::quiet_NaN();
+   }
+
    inline double GradientMultiple() const noexcept {
       return 1.0;
    }

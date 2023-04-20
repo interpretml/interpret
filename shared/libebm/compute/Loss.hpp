@@ -486,6 +486,12 @@ protected:
 
       pFunctionPointers->m_pApplyUpdateCpp = &TLoss::StaticApplyUpdate;
 
+      pLossWrapperOut->m_linkFunction = TLoss::k_linkFunction;
+
+      auto linkParam = (static_cast<TLoss *>(this))->LinkParam();
+      static_assert(std::is_same<decltype(linkParam), double>::value, "this->LinkParam() should return a double");
+      pLossWrapperOut->m_linkParam = linkParam;
+
       auto gradientMultiple = (static_cast<TLoss *>(this))->GradientMultiple();
       static_assert(std::is_same<decltype(gradientMultiple), double>::value, "this->GradientMultiple() should return a double");
       auto hessianMultiple = (static_cast<TLoss *>(this))->HessianMultiple();
@@ -495,7 +501,6 @@ protected:
       pLossWrapperOut->m_hessianMultiple = hessianMultiple;
       pLossWrapperOut->m_bLossHasHessian = HasHessian<TLoss, TFloat>() ? EBM_TRUE : EBM_FALSE;
       pLossWrapperOut->m_bMse = TLoss::k_bMse ? EBM_TRUE : EBM_FALSE;
-      pLossWrapperOut->m_linkFunction = TLoss::k_linkFunction;
 
       pLossWrapperOut->m_pLoss = this;
    }

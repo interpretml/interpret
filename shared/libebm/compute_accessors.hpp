@@ -13,6 +13,8 @@
 #include "bridge_c.h" // CreateLoss_*
 #include "zones.h"
 
+#include "common_cpp.hpp" // INLINE_RELEASE_UNTEMPLATED
+
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
