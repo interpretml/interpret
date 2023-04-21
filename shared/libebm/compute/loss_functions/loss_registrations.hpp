@@ -24,7 +24,7 @@
 // Add new "*Loss.h" include files here:
 #include "ExampleRegressionLoss.hpp"
 #include "PseudoHuberRegressionLoss.hpp"
-#include "MseRegressionLoss.hpp"
+#include "RmseRegressionLoss.hpp"
 #include "MseLogLinkRegressionLoss.hpp"
 #include "LogLossBinaryLoss.hpp"
 #include "LogLossMulticlassLoss.hpp"
