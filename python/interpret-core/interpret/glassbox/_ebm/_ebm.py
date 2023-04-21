@@ -529,7 +529,7 @@ class EBMModel(BaseEstimator):
             max_target = y.max()
             n_classes = -1
             if objective is None or objective.isspace():
-                objective = "mse"
+                objective = "rmse"
 
         if sample_weight is not None:
             sample_weight = clean_dimensions(sample_weight, "sample_weight")
@@ -2439,7 +2439,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Minimum number of samples allowed in the leaves.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
-    objective : str, default="mse"
+    objective : str, default="rmse"
         The objective to optimize.
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
@@ -2558,7 +2558,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Trees
         min_samples_leaf: Optional[int] = 2,
         max_leaves: int = 3,
-        objective: str = "mse",
+        objective: str = "rmse",
         # Overall
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = 42,
@@ -2930,7 +2930,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Total number of boosting rounds with n_terms boosting steps per round.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
-    objective : str, default="mse"
+    objective : str, default="rmse"
         The objective to optimize.
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
@@ -3052,7 +3052,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         max_rounds: Optional[int] = 300,
         # Trees
         max_leaves: int = 3,
-        objective: str = "mse",
+        objective: str = "rmse",
         # Overall
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = None,

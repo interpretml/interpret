@@ -226,7 +226,7 @@ private:
    }
 
 
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<!TLoss::k_bMse, void>::type * = nullptr>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<!TLoss::k_bRmse, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm OptionsApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(nullptr != pData->m_aGradientsAndHessians) {
          static constexpr bool bKeepGradHess = true;
@@ -272,7 +272,7 @@ private:
          }
       }
    }
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<TLoss::k_bMse, void>::type * = nullptr>
+   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<TLoss::k_bRmse, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm OptionsApplyUpdate(ApplyUpdateBridge * const pData) const {
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
       static constexpr bool bKeepGradHess = true;
@@ -500,7 +500,7 @@ protected:
       pLossWrapperOut->m_gradientMultiple = gradientMultiple;
       pLossWrapperOut->m_hessianMultiple = hessianMultiple;
       pLossWrapperOut->m_bLossHasHessian = HasHessian<TLoss, TFloat>() ? EBM_TRUE : EBM_FALSE;
-      pLossWrapperOut->m_bMse = TLoss::k_bMse ? EBM_TRUE : EBM_FALSE;
+      pLossWrapperOut->m_bRmse = TLoss::k_bRmse ? EBM_TRUE : EBM_FALSE;
 
       pLossWrapperOut->m_pLoss = this;
    }
@@ -610,7 +610,7 @@ protected:
 
 #define LOSS_CONSTANTS_BOILERPLATE(__EBM_TYPE, __LINK_FUNCTION) \
    public: \
-      static constexpr bool k_bMse = false; \
+      static constexpr bool k_bRmse = false; \
       static constexpr LinkEbm k_linkFunction = (__LINK_FUNCTION); \
       static ErrorEbm StaticApplyUpdate(const Loss * const pThis, ApplyUpdateBridge * const pData) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->ParentApplyUpdate<const __EBM_TYPE<TFloat>, TFloat>(pData); \

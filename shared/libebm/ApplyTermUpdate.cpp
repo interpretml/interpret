@@ -202,7 +202,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       EBM_ASSERT(!std::isnan(validationMetricAvg)); // NaNs can happen, but we should have cleaned them up
       EBM_ASSERT(0.0 <= validationMetricAvg); // negatives can happen, but we should have cleaned them up
 
-      // validationMetricAvg is either logloss (classification) or mean squared error (mse) (regression).  
+      // validationMetricAvg is either logloss (classification) or root mean squared error (rmse) (regression).  
       // In either case we want to minimize it.
       if(LIKELY(validationMetricAvg < pBoosterCore->GetBestModelMetric())) {
          // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot

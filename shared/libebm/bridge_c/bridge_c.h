@@ -65,7 +65,7 @@ struct LossWrapper {
    double m_gradientMultiple;
    double m_hessianMultiple;
    BoolEbm m_bLossHasHessian;
-   BoolEbm m_bMse;
+   BoolEbm m_bRmse;
 
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface
    void * m_pFunctionPointersCpp;

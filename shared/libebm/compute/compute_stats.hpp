@@ -453,10 +453,10 @@ namespace EbmStats {
       return hessian;
    }
 
-   GPU_DEVICE INLINE_ALWAYS static FloatFast ComputeGradientRegressionMSEFromOriginalGradient(const FloatFast originalGradient) {
+   GPU_DEVICE INLINE_ALWAYS static FloatFast ComputeGradientRegressionRmseFromOriginalGradient(const FloatFast originalGradient) {
       // this function IS performance critical as it's called on every sample
 
-      // for MSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
+      // for RMSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
       // to keep the original scores when computing the gradient updates, so we only need the previous gradient
 
       // originalGradient can be +-infinity, or NaN.  See note in ComputeSinglePartitionUpdate
@@ -773,7 +773,7 @@ namespace EbmStats {
    GPU_DEVICE INLINE_ALWAYS static FloatFast ComputeSingleSampleSquaredErrorRegressionFromGradient(const FloatFast gradient) {
       // this IS a performance critical function.  It gets called per validation sample!
 
-      // for MSE, the gradient is the error and we square it
+      // for RMSE, the gradient is the error and we square it
 
       // gradient can be +-infinity, or NaN.  See note in ComputeSinglePartitionUpdate
 

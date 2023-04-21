@@ -37,7 +37,7 @@ static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
    return {
       RegisterLoss<ExampleRegressionLoss>("example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
       RegisterLoss<PseudoHuberRegressionLoss>("pseudo_huber", FloatParam("delta", 1.0)),
-      RegisterLoss<MseRegressionLoss>("mse"),
+      RegisterLoss<RmseRegressionLoss>("rmse"),
       RegisterLoss<MseLogLinkRegressionLoss>("mse_log"),
       RegisterLoss<LogLossBinaryLoss>("log_loss"),
       RegisterLoss<LogLossMulticlassLoss>("log_loss"),

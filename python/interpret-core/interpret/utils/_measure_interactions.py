@@ -57,7 +57,7 @@ def measure_interactions(
         feature_types: List of feature types, for example "continuous" or "nominal"
         max_interaction_bins: Max number of bins per interaction terms
         min_samples_leaf: Minimum number of samples for tree splits used when calculating gain
-        objective: 'mse' (regression) or 'log_loss' (classification) or None for auto. More objectives to come
+        objective: 'rmse' (regression) or 'log_loss' (classification) or None for auto. More objectives to come
     Returns:
         List containing a tuple of feature indices for the terms and interaction strengths,
             e.g. [((1, 2), 0.134), ((3, 7), 0.0842)].  Ordered by decreasing interaction strengths.
@@ -158,7 +158,7 @@ def measure_interactions(
         y = y.astype(np.float64, copy=False)
         n_classes = -1
         if objective is None:
-            objective = "mse"
+            objective = "rmse"
 
     if init_score is not None:
         if n_classes == 2 or n_classes == -1:

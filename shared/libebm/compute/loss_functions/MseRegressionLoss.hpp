@@ -4,21 +4,21 @@
 
 // !! To add a new loss/objective function in C++ follow the steps at the top of the "loss_registrations.hpp" file !!
 
-// Do not use this file as a reference for other loss functions. MSE is special.
+// Do not use this file as a reference for other loss functions. RMSE is special.
 
 template<typename TFloat>
-struct MseRegressionLoss final : public RegressionLoss {
+struct RmseRegressionLoss final : public RegressionLoss {
 public:
-   static constexpr bool k_bMse = true;
+   static constexpr bool k_bRmse = true;
    static constexpr LinkEbm k_linkFunction = Link_identity;
    static ErrorEbm StaticApplyUpdate(const Loss * const pThis, ApplyUpdateBridge * const pData) {
-      return (static_cast<const MseRegressionLoss<TFloat> *>(pThis))->ParentApplyUpdate<const MseRegressionLoss<TFloat>, TFloat>(pData);
+      return (static_cast<const RmseRegressionLoss<TFloat> *>(pThis))->ParentApplyUpdate<const RmseRegressionLoss<TFloat>, TFloat>(pData);
    }
    void FillWrapper(void * const pWrapperOut) noexcept {
-      FillLossWrapper<MseRegressionLoss, TFloat>(pWrapperOut);
+      FillLossWrapper<RmseRegressionLoss, TFloat>(pWrapperOut);
    }
 
-   inline MseRegressionLoss(const Config & config) {
+   inline RmseRegressionLoss(const Config & config) {
       if(1 != config.cOutputs) {
          throw ParamMismatchWithConfigException();
       }
@@ -37,13 +37,13 @@ public:
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
-      // This function is here to signal the MseRegressionLoss class abilities, but it will not be called
+      // This function is here to signal the RmseRegressionLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
    }
 
    GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
-      // This function is here to signal the MseRegressionLoss class abilities, but it will not be called
+      // This function is here to signal the RmseRegressionLoss class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
       return 0.0;
@@ -52,7 +52,7 @@ public:
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
-      static_assert(bKeepGradHess, "for MSE regression we should always keep the gradients");
+      static_assert(bKeepGradHess, "for RMSE regression we should always keep the gradients");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
 
@@ -110,13 +110,13 @@ public:
                updateScore = aUpdateTensorScores[iTensorBin];
             }
 
-            // for MSE regression we cannot put the weight into the gradient like we could with other objectives
+            // for RMSE regression we cannot put the weight into the gradient like we could with other objectives
             // for regression or for classification because we only preserve the gradient and to calculate the
             // square error we need the original gradient and not the weight multiplied gradient... well we could
             // do it but it would require a division. A better way would be to have two FloatFast arrays: a 
             // non-weight adjusted one and a weight adjusted one for when inner bags are used
             // NOTE: For interactions we can and do put the weight into the gradient because we never update it
-            const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient) + updateScore;
+            const FloatFast gradient = EbmStats::ComputeGradientRegressionRmseFromOriginalGradient(*pGradient) + updateScore;
             *pGradient = gradient;
             ++pGradient;
 

@@ -549,7 +549,7 @@ void TestApi::InitializeBoosting(const IntEbm countInnerBags) {
       exit(1);
    }
 
-   const char * const sObjective = IsClassification(m_cClasses) ? "log_loss" : "mse";
+   const char * const sObjective = IsClassification(m_cClasses) ? "log_loss" : "rmse";
 
    const size_t cScores = GetCountScores(m_cClasses);
    const size_t cFeatures = m_featureBinCounts.size();
@@ -967,7 +967,7 @@ void TestApi::InitializeInteraction() {
       exit(1);
    }
 
-   const char * const sObjective = IsClassification(m_cClasses) ? "log_loss" : "mse";
+   const char * const sObjective = IsClassification(m_cClasses) ? "log_loss" : "rmse";
 
    const size_t cScores = GetCountScores(m_cClasses);
    const size_t cFeatures = m_featureBinCounts.size();

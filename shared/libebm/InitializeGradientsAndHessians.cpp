@@ -22,7 +22,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void InitializeMSEGradientsAndHessians(
+extern void InitializeRmseGradientsAndHessians(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
    const BagEbm * const aBag,
@@ -31,14 +31,14 @@ extern void InitializeMSEGradientsAndHessians(
    FloatFast * const aGradientAndHessian,
    const FloatFast * const aWeight
 ) {
-   // MSE regression is super super special in that we do not need to keep the scores and we can just use gradients
+   // RMSE regression is super super special in that we do not need to keep the scores and we can just use gradients
 
    ptrdiff_t cRuntimeClasses;
    const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses);
    EBM_ASSERT(nullptr != aTargets); // we previously called GetDataSetSharedTarget and got back non-null result
    EBM_ASSERT(IsRegression(cRuntimeClasses));
 
-   LOG_0(Trace_Info, "Entered InitializeMSEGradientsAndHessians");
+   LOG_0(Trace_Info, "Entered InitializeRmseGradientsAndHessians");
 
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
    EBM_ASSERT(1 <= cSetSamples);
@@ -88,7 +88,7 @@ extern void InitializeMSEGradientsAndHessians(
 
       // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
       //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
-      FloatFast gradient = EbmStats::ComputeGradientRegressionMSEInit(initScore, data);
+      FloatFast gradient = EbmStats::ComputeGradientRegressionRmseInit(initScore, data);
 
       if(nullptr != pWeight) {
          // This is only used during the initialization of interaction detection. For boosting
@@ -108,7 +108,7 @@ extern void InitializeMSEGradientsAndHessians(
       } while(BagEbm { 0 } != replication);
    } while(pGradientAndHessianEnd != pGradientAndHessian);
 
-   LOG_0(Trace_Info, "Exited InitializeMSEGradientsAndHessians");
+   LOG_0(Trace_Info, "Exited InitializeRmseGradientsAndHessians");
 }
 
 } // DEFINED_ZONE_NAME

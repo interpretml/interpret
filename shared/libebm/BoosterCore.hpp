@@ -204,8 +204,8 @@ public:
       return (*m_loss.m_pApplyUpdateC)(&m_loss, pData);
    }
 
-   inline bool IsMse() {
-      return EBM_FALSE != m_loss.m_bMse;
+   inline bool IsRmse() {
+      return EBM_FALSE != m_loss.m_bRmse;
    }
 
    inline bool IsHessian() {

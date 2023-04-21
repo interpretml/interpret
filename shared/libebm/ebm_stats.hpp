@@ -476,10 +476,10 @@ namespace EbmStats {
       return sumGradient;
    }
 
-   INLINE_ALWAYS static FloatFast ComputeGradientRegressionMSEInit(const FloatFast sampleScore, const FloatFast target) {
+   INLINE_ALWAYS static FloatFast ComputeGradientRegressionRmseInit(const FloatFast sampleScore, const FloatFast target) {
       // this function is NOT performance critical as it's called on every sample, but only during initialization.
 
-      // for MSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
+      // for RMSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
       // to keep the original scores when computing the gradient updates.
 
       // it's possible to reach NaN or +-infinity within this module, so sampleScore can be those values

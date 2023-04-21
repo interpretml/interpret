@@ -8,6 +8,6 @@
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template <typename TFloat>
-struct MseRegressionMultitaskLoss : public RegressionMultitaskLoss {
+struct RmseRegressionMultitaskLoss : public RegressionMultitaskLoss {
    // this one needs to be special cased!
 };
