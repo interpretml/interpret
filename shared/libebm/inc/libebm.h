@@ -386,7 +386,6 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratifi
 );
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
-   BoolEbm isClassification,
    const char * objective,
    LinkEbm * linkOut,
    double * linkParamOut

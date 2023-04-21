@@ -21,7 +21,6 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetLoss(
-   const bool bClassification,
    const Config * const pConfig,
    const char * sLoss,
    LossWrapper * const pLossWrapperOut
@@ -31,16 +30,14 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetLoss(
    EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
    EBM_ASSERT(nullptr == pLossWrapperOut->m_pFunctionPointersCpp);
 
-   static const char g_sMse[] = "mse";
-   static const char g_sLogLoss[] = "log_loss";
-
    if(nullptr == sLoss) {
-      sLoss = bClassification ? g_sLogLoss : g_sMse;
+      return Error_LossUnknown;
    }
    sLoss = SkipWhitespace(sLoss);
    if('\0' == *sLoss) {
-      sLoss = bClassification ? g_sLogLoss : g_sMse;
+      return Error_LossUnknown;
    }
+
    const char * const sLossEnd = sLoss + strlen(sLoss);
 
    ErrorEbm error;

@@ -77,10 +77,21 @@ def measure_interactions(
         raise ValueError(msg)
 
     is_classification = None
-    if objective in ["log_loss"]:
-        is_classification = True
-    elif objective in ["mse"]:
-        is_classification = False
+    native = Native.get_native_singleton()
+    if objective is not None:
+        if objective.isspace():
+            objective = None
+        else:
+            link, _ = native.determine_link(objective)
+            model_type = native.get_model_type(link)
+            if model_type == "classification":
+                is_classification = True
+            elif model_type == "regression":
+                is_classification = False
+            else:
+                msg = f"Unknown objective {objective}"
+                _log.error(msg)
+                raise ValueError(msg)
 
     classes = None
     if is_classifier(init_score):
@@ -141,9 +152,13 @@ def measure_interactions(
             invert_classes = dict(zip(classes, count()))
             y = np.array([invert_classes[el] for el in y], dtype=np.int64)
         n_classes = len(classes)
+        if objective is None:
+            objective = "log_loss"
     else:
         y = y.astype(np.float64, copy=False)
         n_classes = -1
+        if objective is None:
+            objective = "mse"
 
     if init_score is not None:
         if n_classes == 2 or n_classes == -1:

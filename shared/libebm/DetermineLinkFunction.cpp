@@ -17,7 +17,6 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
-   BoolEbm isClassification,
    const char * objective,
    LinkEbm * linkOut,
    double * linkParamOut
@@ -26,7 +25,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
 
    Config config;
    config.cOutputs = 1; // this is kind of cheating, but it should work
-   const ErrorEbm error = GetLoss(!!isClassification, &config, objective, &loss);
+   const ErrorEbm error = GetLoss(&config, objective, &loss);
    if(Error_None != error) {
       if(nullptr != linkOut) {
          *linkOut = Link_ERROR;
@@ -102,37 +101,38 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionString(LinkEbm l
 }
 
 EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char * link) {
-   link = SkipWhitespace(link);
+   if(nullptr != link) {
+      link = SkipWhitespace(link);
 
-   if(IsStringEqualsForgiving(link, g_sCustomRegression))
-      return Link_custom_regression;
-   if(IsStringEqualsForgiving(link, g_sCustomClassification))
-      return Link_custom_classification;
-   if(IsStringEqualsForgiving(link, g_sCustomRanking))
-      return Link_custom_ranking;
-   if(IsStringEqualsForgiving(link, g_sPower))
-      return Link_power;
-   if(IsStringEqualsForgiving(link, g_sLogit))
-      return Link_logit;
-   if(IsStringEqualsForgiving(link, g_sProbit))
-      return Link_probit;
-   if(IsStringEqualsForgiving(link, g_sCloglog))
-      return Link_cloglog;
-   if(IsStringEqualsForgiving(link, g_sLoglog))
-      return Link_loglog;
-   if(IsStringEqualsForgiving(link, g_sCauchit))
-      return Link_cauchit;
-   if(IsStringEqualsForgiving(link, g_sIdentity))
-      return Link_identity;
-   if(IsStringEqualsForgiving(link, g_sLog))
-      return Link_log;
-   if(IsStringEqualsForgiving(link, g_sInverse))
-      return Link_inverse;
-   if(IsStringEqualsForgiving(link, g_sInverseSquare))
-      return Link_inverse_square;
-   if(IsStringEqualsForgiving(link, g_sSqrt))
-      return Link_sqrt;
-
+      if(IsStringEqualsForgiving(link, g_sCustomRegression))
+         return Link_custom_regression;
+      if(IsStringEqualsForgiving(link, g_sCustomClassification))
+         return Link_custom_classification;
+      if(IsStringEqualsForgiving(link, g_sCustomRanking))
+         return Link_custom_ranking;
+      if(IsStringEqualsForgiving(link, g_sPower))
+         return Link_power;
+      if(IsStringEqualsForgiving(link, g_sLogit))
+         return Link_logit;
+      if(IsStringEqualsForgiving(link, g_sProbit))
+         return Link_probit;
+      if(IsStringEqualsForgiving(link, g_sCloglog))
+         return Link_cloglog;
+      if(IsStringEqualsForgiving(link, g_sLoglog))
+         return Link_loglog;
+      if(IsStringEqualsForgiving(link, g_sCauchit))
+         return Link_cauchit;
+      if(IsStringEqualsForgiving(link, g_sIdentity))
+         return Link_identity;
+      if(IsStringEqualsForgiving(link, g_sLog))
+         return Link_log;
+      if(IsStringEqualsForgiving(link, g_sInverse))
+         return Link_inverse;
+      if(IsStringEqualsForgiving(link, g_sInverseSquare))
+         return Link_inverse_square;
+      if(IsStringEqualsForgiving(link, g_sSqrt))
+         return Link_sqrt;
+   }
    return Link_ERROR;
 }
 

@@ -549,6 +549,8 @@ void TestApi::InitializeBoosting(const IntEbm countInnerBags) {
       exit(1);
    }
 
+   const char * const sObjective = IsClassification(m_cClasses) ? "log_loss" : "mse";
+
    const size_t cScores = GetCountScores(m_cClasses);
    const size_t cFeatures = m_featureBinCounts.size();
    const size_t cTrainingSamples = IsClassification(m_cClasses) ? m_trainingClassificationTargets.size() : m_trainingRegressionTargets.size();
@@ -634,7 +636,7 @@ void TestApi::InitializeBoosting(const IntEbm countInnerBags) {
       0 == m_dimensionCounts.size() ? nullptr : &m_dimensionCounts[0],
       0 == m_featureIndexes.size() ? nullptr : &m_featureIndexes[0],
       countInnerBags,
-      nullptr,
+      sObjective,
       nullptr,
       &m_boosterHandle
    );
@@ -965,6 +967,8 @@ void TestApi::InitializeInteraction() {
       exit(1);
    }
 
+   const char * const sObjective = IsClassification(m_cClasses) ? "log_loss" : "mse";
+
    const size_t cScores = GetCountScores(m_cClasses);
    const size_t cFeatures = m_featureBinCounts.size();
    const size_t cSamples = IsClassification(m_cClasses) ? m_interactionClassificationTargets.size() : m_interactionRegressionTargets.size();
@@ -1014,7 +1018,7 @@ void TestApi::InitializeInteraction() {
       pDataSet,
       0 == bag.size() ? nullptr : &bag[0],
       0 == m_interactionInitScores.size() ? nullptr : &m_interactionInitScores[0],
-      nullptr,
+      sObjective,
       nullptr,
       &m_interactionHandle
    );

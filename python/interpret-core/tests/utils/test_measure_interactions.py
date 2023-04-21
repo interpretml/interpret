@@ -140,7 +140,7 @@ def test_inconsistent_objective(regression_data):
     lr = LinearRegression()
 
     with pytest.raises(ValueError):
-        measure_interactions(X, y, init_score=lr, objective="classification")
+        measure_interactions(X, y, init_score=lr, objective="log_loss")
 
 
 def test_inconsistent_X_and_y(regression_data):

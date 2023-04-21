@@ -210,10 +210,23 @@ ErrorEbm InteractionCore::Create(
 
       Config config;
       config.cOutputs = cScores;
-      error = GetLoss(IsClassification(cClasses), &config, sObjective, &pRet->m_loss);
+      error = GetLoss(&config, sObjective, &pRet->m_loss);
       if(Error_None != error) {
          // already logged
          return error;
+      }
+
+      const ModelType modelType = GetModelType(pRet->m_loss.m_linkFunction);
+      if(IsClassification(cClasses)) {
+         if(modelType != ModelType_GeneralClassification) {
+            LOG_0(Trace_Warning, "ERROR InteractionCore::Create mismatch in loss class model type");
+            return Error_IllegalParamVal;
+         }
+      } else {
+         if(modelType != ModelType_Regression) {
+            LOG_0(Trace_Warning, "ERROR InteractionCore::Create mismatch in loss class model type");
+            return Error_IllegalParamVal;
+         }
       }
 
       const bool bHessian = pRet->IsHessian();

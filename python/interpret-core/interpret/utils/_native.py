@@ -553,13 +553,17 @@ class Native:
 
         return bag
 
-    def determine_link(self, is_classification, objective):
+    def determine_link(self, objective):
+        if objective is None or objective.isspace():
+            msg = "objective must be specified"
+            _log.error(msg)
+            raise Exception(msg)
+
         link = ct.c_int32(0)
         link_param = ct.c_double(np.nan)
 
         return_code = self._unsafe.DetermineLinkFunction(
-            is_classification,
-            None if objective is None else objective.encode("ascii"),
+            objective.encode("ascii"),
             ct.byref(link),
             ct.byref(link_param),
         )
@@ -1007,8 +1011,6 @@ class Native:
         self._unsafe.SampleWithoutReplacementStratified.restype = ct.c_int32
 
         self._unsafe.DetermineLinkFunction.argtypes = [
-            # int32_t isClassification
-            ct.c_int32,
             # char * objective
             ct.c_char_p,
             # int32_t * linkOut
@@ -1231,6 +1233,11 @@ class Booster(AbstractContextManager):
     def __enter__(self):
         _log.info("Booster allocation start")
 
+        if self.objective is None or self.objective.isspace():
+            msg = "objective must be specified"
+            _log.error(msg)
+            raise Exception(msg)
+
         dimension_counts = np.empty(len(self.term_features), ct.c_int64)
         feature_indexes = []
         for term_idx, feature_idxs in enumerate(self.term_features):
@@ -1299,7 +1306,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(dimension_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
-            None if self.objective is None else self.objective.encode("ascii"),
+            self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(booster_handle),
         )
@@ -1637,6 +1644,11 @@ class InteractionDetector(AbstractContextManager):
     def __enter__(self):
         _log.info("Allocation interaction start")
 
+        if self.objective is None or self.objective.isspace():
+            msg = "objective must be specified"
+            _log.error(msg)
+            raise Exception(msg)
+
         native = Native.get_native_singleton()
 
         n_samples, n_features, n_weights, n_targets = native.extract_dataset_header(
@@ -1679,7 +1691,7 @@ class InteractionDetector(AbstractContextManager):
             Native._make_pointer(
                 self.init_scores, np.float64, 2 if 1 < n_class_scores else 1, True
             ),
-            None if self.objective is None else self.objective.encode("ascii"),
+            self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(interaction_handle),
         )

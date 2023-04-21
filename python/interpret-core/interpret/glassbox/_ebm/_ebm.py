@@ -513,6 +513,7 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
+        objective = self.objective
         if is_classifier(self):
             y = typify_classification(y)
             # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
@@ -520,11 +521,15 @@ class EBMModel(BaseEstimator):
             # in two separate runs, which would flip the ordering of the classes within our score tensors.
             classes, y = np.unique(y, return_inverse=True)
             n_classes = len(classes)
+            if objective is None or objective.isspace():
+                objective = "log_loss"
         else:
             y = y.astype(np.float64, copy=False)
             min_target = y.min()
             max_target = y.max()
             n_classes = -1
+            if objective is None or objective.isspace():
+                objective = "mse"
 
         if sample_weight is not None:
             sample_weight = clean_dimensions(sample_weight, "sample_weight")
@@ -539,7 +544,7 @@ class EBMModel(BaseEstimator):
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         native = Native.get_native_singleton()
-        link, link_param = native.determine_link(0 <= n_classes, self.objective)
+        link, link_param = native.determine_link(objective)
 
         # Privacy calculations
         is_differential_privacy = is_private(self)
@@ -822,7 +827,7 @@ class EBMModel(BaseEstimator):
                         noise_scale_boosting,
                         bin_data_weights,
                         rngs[idx],
-                        self.objective,
+                        objective,
                         None,
                     )
                 )
@@ -935,7 +940,7 @@ class EBMModel(BaseEstimator):
                                 Native.InteractionFlags_Default,
                                 max_cardinality,
                                 min_samples_leaf,
-                                self.objective,
+                                objective,
                                 None,
                             )
                         )
@@ -1031,7 +1036,7 @@ class EBMModel(BaseEstimator):
                             noise_scale_boosting,
                             bin_data_weights,
                             rngs[idx],
-                            self.objective,
+                            objective,
                             None,
                         )
                     )

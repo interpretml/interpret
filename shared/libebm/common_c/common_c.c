@@ -83,10 +83,10 @@ extern const char * IsStringEqualsCaseInsensitive(const char * sMain, const char
 
 extern BoolEbm IsStringEqualsForgiving(const char * sMain, const char * sLabel) {
    sMain = IsStringEqualsCaseInsensitive(sMain, sLabel);
-   if('\0' == *sMain) {
-      return EBM_TRUE;
+   if(NULL == sMain || '\0' != *sMain) {
+      return EBM_FALSE;
    }
-   return EBM_FALSE;
+   return EBM_TRUE;
 }
 
 #ifdef __cplusplus
