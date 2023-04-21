@@ -280,6 +280,7 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/dataset_shared.cpp" -o "$tmp_path/dataset_shared.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/DataSetBoosting.cpp" -o "$tmp_path/DataSetBoosting.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/DataSetInteraction.cpp" -o "$tmp_path/DataSetInteraction.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/DetermineLinkFunction.cpp" -o "$tmp_path/DetermineLinkFunction.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/debug_ebm.cpp" -o "$tmp_path/debug_ebm.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/Discretize.cpp" -o "$tmp_path/Discretize.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/Term.cpp" -o "$tmp_path/Term.o"
@@ -320,6 +321,7 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    "$tmp_path/dataset_shared.o" \
    "$tmp_path/DataSetBoosting.o" \
    "$tmp_path/DataSetInteraction.o" \
+   "$tmp_path/DetermineLinkFunction.o" \
    "$tmp_path/debug_ebm.o" \
    "$tmp_path/Discretize.o" \
    "$tmp_path/Term.o" \

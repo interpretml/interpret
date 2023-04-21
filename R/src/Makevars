@@ -22,6 +22,7 @@ OBJECTS = \
    $(NATIVEDIR)/dataset_shared.o \
    $(NATIVEDIR)/DataSetBoosting.o \
    $(NATIVEDIR)/DataSetInteraction.o \
+   $(NATIVEDIR)/DetermineLinkFunction.o \
    $(NATIVEDIR)/debug_ebm.o \
    $(NATIVEDIR)/Discretize.o \
    $(NATIVEDIR)/Term.o \
