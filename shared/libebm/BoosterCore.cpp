@@ -582,12 +582,12 @@ ErrorEbm BoosterCore::Create(
 
       const ModelType modelType = GetModelType(pBoosterCore->m_loss.m_linkFunction);
       if(IsClassification(cClasses)) {
-         if(modelType != ModelType_GeneralClassification) {
+         if(modelType < ModelType_GeneralClassification) {
             LOG_0(Trace_Warning, "ERROR BoosterCore::Create mismatch in loss class model type");
             return Error_IllegalParamVal;
          }
       } else {
-         if(modelType != ModelType_Regression) {
+         if(ModelType_Regression != modelType) {
             LOG_0(Trace_Warning, "ERROR BoosterCore::Create mismatch in loss class model type");
             return Error_IllegalParamVal;
          }

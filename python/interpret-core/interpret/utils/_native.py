@@ -27,10 +27,9 @@ class Native:
     InteractionFlags_Pure = 0x00000001
 
     # ModelType
-    ModelType_Unknown = -4
-    ModelType_Ranking = -3
-    ModelType_Regression = -2
-    ModelType_MulticlassUnspecified = -1
+    ModelType_Unknown = -3
+    ModelType_Ranking = -2
+    ModelType_Regression = -1
     ModelType_GeneralClassification = 0
     ModelType_MonoClassification = 1
     ModelType_BinaryClassification = 2
@@ -577,19 +576,19 @@ class Native:
         )
 
     def get_model_type(self, link):
-        if link is None:
-            msg = "link must be set to a non-None value"
+        if link is None or link.isspace():
+            msg = "link must be set to a value"
             _log.error(msg)
             raise Exception(msg)
 
         link_int = self._unsafe.GetLinkFunctionInt(link.encode("ascii"))
         model_type = self._unsafe.GetModelType(link_int)
-        if model_type == Native.ModelType_Ranking:
-            return "ranking"
+        if Native.ModelType_GeneralClassification <= model_type:
+            return "classification"
         elif model_type == Native.ModelType_Regression:
             return "regression"
-        elif Native.ModelType_MulticlassUnspecified <= model_type:
-            return "classification"
+        elif model_type == Native.ModelType_Ranking:
+            return "ranking"
         else:
             msg = f"unrecognized link function type: {link}"
             _log.error(msg)
