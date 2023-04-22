@@ -7,10 +7,10 @@
 // TFloat is a datatype that could hold inside a double, float, or some SIMD intrinsic type.
 // See sse2_32.cpp, cuda_32.cpp, and cpu_64.cpp as examples where TFloat operators are defined.
 template<typename TFloat>
-struct MseLogLinkRegressionLoss : RegressionLoss {
-   LOSS_BOILERPLATE(MseLogLinkRegressionLoss, Link_log)
+struct RmseLogLinkRegressionLoss : RegressionLoss {
+   LOSS_BOILERPLATE(RmseLogLinkRegressionLoss, Link_log)
 
-   inline MseLogLinkRegressionLoss(const Config & config) {
+   inline RmseLogLinkRegressionLoss(const Config & config) {
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }

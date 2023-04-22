@@ -38,12 +38,10 @@ static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
       RegisterLoss<ExampleRegressionLoss>("example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
       RegisterLoss<PseudoHuberRegressionLoss>("pseudo_huber", FloatParam("delta", 1.0)),
       RegisterLoss<RmseRegressionLoss>("rmse"),
-      RegisterLoss<MseLogLinkRegressionLoss>("mse_log"),
+      RegisterLoss<RmseLogLinkRegressionLoss>("rmse_log"),
       RegisterLoss<LogLossBinaryLoss>("log_loss"),
       RegisterLoss<LogLossMulticlassLoss>("log_loss"),
-      RegisterLoss<PoissonRegressionLoss>("poisson_loss", FloatParam("max_delta_step", 0.7)),
-      RegisterLoss<GammaRegressionLoss>("gamma_loss"),
-
-      // TODO: add an "example" loss here and adapt the instructions above to handle it
+      RegisterLoss<PoissonRegressionLoss>("poisson", FloatParam("max_delta_step", 0.7)),
+      RegisterLoss<GammaDevianceRegressionLoss>("gamma_deviance"),
    };
 }
