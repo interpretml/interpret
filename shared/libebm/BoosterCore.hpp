@@ -211,6 +211,14 @@ public:
    inline bool IsHessian() {
       return EBM_FALSE != m_loss.m_bLossHasHessian;
    }
+
+   inline double GradientConstant() {
+      return m_loss.m_gradientConstant;
+   }
+
+   inline double HessianConstant() {
+      return m_loss.m_hessianConstant;
+   }
 };
 
 } // DEFINED_ZONE_NAME

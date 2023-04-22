@@ -492,13 +492,13 @@ protected:
       static_assert(std::is_same<decltype(linkParam), double>::value, "this->LinkParam() should return a double");
       pLossWrapperOut->m_linkParam = linkParam;
 
-      auto gradientMultiple = (static_cast<TLoss *>(this))->GradientMultiple();
-      static_assert(std::is_same<decltype(gradientMultiple), double>::value, "this->GradientMultiple() should return a double");
-      auto hessianMultiple = (static_cast<TLoss *>(this))->HessianMultiple();
-      static_assert(std::is_same<decltype(hessianMultiple), double>::value, "this->HessianMultiple() should return a double");
+      auto gradientConstant = (static_cast<TLoss *>(this))->GradientConstant();
+      static_assert(std::is_same<decltype(gradientConstant), double>::value, "this->GradientConstant() should return a double");
+      auto hessianConstant = (static_cast<TLoss *>(this))->HessianConstant();
+      static_assert(std::is_same<decltype(hessianConstant), double>::value, "this->HessianConstant() should return a double");
 
-      pLossWrapperOut->m_gradientMultiple = gradientMultiple;
-      pLossWrapperOut->m_hessianMultiple = hessianMultiple;
+      pLossWrapperOut->m_gradientConstant = gradientConstant;
+      pLossWrapperOut->m_hessianConstant = hessianConstant;
       pLossWrapperOut->m_bLossHasHessian = HasHessian<TLoss, TFloat>() ? EBM_TRUE : EBM_FALSE;
       pLossWrapperOut->m_bRmse = TLoss::k_bRmse ? EBM_TRUE : EBM_FALSE;
 

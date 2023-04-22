@@ -28,12 +28,12 @@ public:
       return std::numeric_limits<double>::quiet_NaN();
    }
 
-   inline double GradientMultiple() const noexcept {
-      return 1.0;
+   inline double GradientConstant() const noexcept {
+      return 2.0;
    }
 
-   inline double HessianMultiple() const noexcept {
-      return 1.0;
+   inline double HessianConstant() const noexcept {
+      return 2.0;
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {

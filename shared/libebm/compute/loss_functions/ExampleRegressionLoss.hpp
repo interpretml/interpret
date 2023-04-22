@@ -27,11 +27,11 @@ struct ExampleRegressionLoss : RegressionLoss {
       return std::numeric_limits<double>::quiet_NaN();
    }
 
-   inline double GradientMultiple() const noexcept {
+   inline double GradientConstant() const noexcept {
       return 1.0;
    }
 
-   inline double HessianMultiple() const noexcept {
+   inline double HessianConstant() const noexcept {
       return 1.0;
    }
 
@@ -47,12 +47,17 @@ struct ExampleRegressionLoss : RegressionLoss {
 
    GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
       const TFloat error = prediction - target;
-      return error;
+      // Alternatively, the 2.0 factor could be moved to GradientConstant()
+      const TFloat gradient = 2.0 * error;
+      return gradient;
    }
 
    // If the loss function doesn't have a second derivative, then delete the CalcGradientHessian function.
    GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
       const TFloat error = prediction - target;
-      return MakeGradientHessian(error, 1.0);
+      // Alternatively, the 2.0 factor could be moved to GradientConstant() and HessianConstant()
+      const TFloat gradient = 2.0 * error;
+      const TFloat hessian = 2.0;
+      return MakeGradientHessian(gradient, hessian);
    }
 };

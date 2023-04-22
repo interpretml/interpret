@@ -25,11 +25,11 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
       return std::numeric_limits<double>::quiet_NaN();
    }
 
-   inline double GradientMultiple() const noexcept {
+   inline double GradientConstant() const noexcept {
       return 1.0;
    }
 
-   inline double HessianMultiple() const noexcept {
+   inline double HessianConstant() const noexcept {
       return 1.0;
    }
 

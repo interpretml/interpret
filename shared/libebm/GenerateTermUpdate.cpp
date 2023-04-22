@@ -831,6 +831,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    double gainAvg = 0.0;
    const InnerBag * const * ppInnerBag = pBoosterCore->GetInnerBags();
    if(nullptr != ppInnerBag) {
+      const double gradientConstant = pBoosterCore->GradientConstant();
+      const double hessianConstant = pBoosterCore->HessianConstant();
+      double multiple = gradientConstant / hessianConstant / cInnerBagsAfterZero;
+      const double gainMultiple = gradientConstant * multiple;
+      multiple *= learningRate;
+
       RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
       RandomDeterministic rngInternal;
       // TODO: move this code down into our called functions since we can happily pass down nullptr into there and then use the rng CPU register trick at the lowest function level
@@ -939,7 +945,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
 
             // this could re-promote gain to be +inf again if weightTotal < 1.0
             // do the sample count inversion here in case adding all the avgeraged gains pushes us into +inf
-            gain = gain / cInnerBagsAfterZero / weightTotal;
+            gain = gain / weightTotal * gainMultiple;
             gainAvg += gain;
             EBM_ASSERT(!std::isnan(gainAvg));
             EBM_ASSERT(0 <= gainAvg);
@@ -978,10 +984,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       }
 
       LOG_0(Trace_Verbose, "GenerateTermUpdate done sampling set loop");
-
-      double multiple = 1.0; // TODO: get this from the loss function
-      multiple /= cInnerBagsAfterZero;
-      multiple *= learningRate;
 
       bool bBad;
       // we need to divide by the number of sampling sets that we constructed this from.

@@ -61,9 +61,8 @@ struct LossWrapper {
    LinkEbm m_linkFunction;
    double m_linkParam;
 
-   // TODO: we're not using m_gradientMultiple & m_hessianMultiple yet!
-   double m_gradientMultiple;
-   double m_hessianMultiple;
+   double m_gradientConstant;
+   double m_hessianConstant;
    BoolEbm m_bLossHasHessian;
    BoolEbm m_bRmse;
 
