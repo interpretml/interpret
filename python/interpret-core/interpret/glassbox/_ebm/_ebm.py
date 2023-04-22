@@ -375,7 +375,7 @@ class EBMModel(BaseEstimator):
                     "for debugging/testing. Set random_state to None to remove this warning."
                 )
 
-    def fit(self, X, y, sample_weight=None):  # noqa: C901
+    def fit(self, X, y, sample_weight=None, init_score = None):  # noqa: C901
         """Fits model to provided samples.
 
         Args:
@@ -540,6 +540,16 @@ class EBMModel(BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
             sample_weight = sample_weight.astype(np.float64, copy=False)
+
+        if init_score is not None:
+            init_score = clean_dimensions(init_score, "init_score")
+            if init_score.ndim != 1:
+                raise ValueError("init_score must be 1 dimensional")
+            if len(y) != len(init_score):
+                msg = f"y has {len(y)} samples and init_score has {len(init_score)} samples"
+                _log.error(msg)
+                raise ValueError(msg)
+            init_score = init_score.astype(np.float64, copy=False)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
@@ -812,7 +822,7 @@ class EBMModel(BaseEstimator):
                     (
                         dataset,
                         bags[idx],
-                        None,
+                        init_score,
                         term_features,
                         inner_bags,
                         boost_flags,
@@ -909,6 +919,7 @@ class EBMModel(BaseEstimator):
                             initial_intercept,
                             model,
                             term_features,
+                            init_score
                         )
                     )
 
@@ -1496,7 +1507,7 @@ class EBMModel(BaseEstimator):
         outer = self._to_outer_jsonable(properties)
         return json.dumps(outer, allow_nan=False, indent=2)
 
-    def decision_function(self, X):
+    def decision_function(self, X, init_score=None):
         """Predict scores from model before calling the link function.
 
         Args:
@@ -1520,6 +1531,7 @@ class EBMModel(BaseEstimator):
             self.intercept_,
             self.term_scores_,
             self.term_features_,
+            init_score
         )
 
     def explain_global(self, name=None):
@@ -1890,6 +1902,7 @@ class EBMModel(BaseEstimator):
                 self.intercept_,
                 self.term_scores_,
                 self.term_features_,
+                init_score
             )
             pred = self._inv_link(pred)
 
@@ -2269,7 +2282,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             random_state=random_state,
         )
 
-    def predict_proba(self, X):
+    def predict_proba(self, X, init_score = None):
         """Probability estimates on provided samples.
 
         Args:
@@ -2281,6 +2294,16 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
+
+        if init_score is not None:
+            init_score = clean_dimensions(init_score, "init_score")
+            if init_score.ndim != 1:
+                raise ValueError("init_score must be 1 dimensional")
+            if n_samples != len(init_score):
+                msg = f"y has {n_samples} samples and init_score has {len(init_score)} samples"
+                _log.error(msg)
+                raise ValueError(msg)
+            init_score = init_score.astype(np.float64, copy=False)
 
         if len(self.classes_) == 1:
             # if there is only one class then all probabilities are 100%
@@ -2295,11 +2318,12 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             self.intercept_,
             self.term_scores_,
             self.term_features_,
+            init_score
         )
 
         return self._inv_link(log_odds_vector)
 
-    def predict(self, X):
+    def predict(self, X, init_score=None):
         """Predicts on provided samples.
 
         Args:
@@ -2312,6 +2336,15 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
+        if init_score is not None:
+            init_score = clean_dimensions(init_score, "init_score")
+            if init_score.ndim != 1:
+                raise ValueError("init_score must be 1 dimensional")
+            if n_samples != len(init_score):
+                msg = f"y has {n_samples} samples and init_score has {len(init_score)} samples"
+                _log.error(msg)
+                raise ValueError(msg)
+            init_score = init_score.astype(np.float64, copy=False)
         # TODO: handle the 1 class case here
 
         log_odds_vector = ebm_decision_function(
@@ -2323,6 +2356,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             self.intercept_,
             self.term_scores_,
             self.term_features_,
+            init_score
         )
 
         # TODO: for binary classification we could just look for values greater than zero instead of expanding
@@ -2332,7 +2366,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
         return self.classes_[np.argmax(log_odds_vector, axis=1)]
 
-    def predict_and_contrib(self, X, output="probabilities"):
+    def predict_and_contrib(self, X, output="probabilities", init_score=None):
         """Predicts on provided samples, returning predictions and explanations for each sample.
 
         Args:
@@ -2347,6 +2381,15 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
+        if init_score is not None:
+            init_score = clean_dimensions(init_score, "init_score")
+            if init_score.ndim != 1:
+                raise ValueError("init_score must be 1 dimensional")
+            if n_samples != len(init_score):
+                msg = f"y has {n_samples} samples and init_score has {len(init_score)} samples"
+                _log.error(msg)
+                raise ValueError(msg)
+            init_score = init_score.astype(np.float64, copy=False)
         # TODO: handle the 1 class case here
 
         scores, explanations = ebm_decision_function_and_explain(
@@ -2358,6 +2401,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             self.intercept_,
             self.term_scores_,
             self.term_features_,
+            init_score
         )
 
         if output == "probabilities":
@@ -2586,7 +2630,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             random_state=random_state,
         )
 
-    def predict(self, X):
+    def predict(self, X, init_score=None):
         """Predicts on provided samples.
 
         Args:
@@ -2599,6 +2643,16 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
+        if init_score is not None:
+            init_score = clean_dimensions(init_score, "init_score")
+            if init_score.ndim != 1:
+                raise ValueError("init_score must be 1 dimensional")
+            if n_samples != len(init_score):
+                msg = f"y has {n_samples} samples and init_score has {len(init_score)} samples"
+                _log.error(msg)
+                raise ValueError(msg)
+            init_score = init_score.astype(np.float64, copy=False)
+
         scores = ebm_decision_function(
             X,
             n_samples,
@@ -2608,10 +2662,11 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.intercept_,
             self.term_scores_,
             self.term_features_,
+            init_score
         )
         return self._inv_link(scores)
 
-    def predict_and_contrib(self, X):
+    def predict_and_contrib(self, X, init_score=None):
         """Predicts on provided samples, returning predictions and explanations for each sample.
 
         Args:
@@ -2625,6 +2680,16 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
+        if init_score is not None:
+            init_score = clean_dimensions(init_score, "init_score")
+            if init_score.ndim != 1:
+                raise ValueError("init_score must be 1 dimensional")
+            if n_samples != len(init_score):
+                msg = f"y has {n_samples} samples and init_score has {len(init_score)} samples"
+                _log.error(msg)
+                raise ValueError(msg)
+            init_score = init_score.astype(np.float64, copy=False)
+
         scores, explanations = ebm_decision_function_and_explain(
             X,
             n_samples,
@@ -2634,6 +2699,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.intercept_,
             self.term_scores_,
             self.term_features_,
+            init_score
         )
         return self._inv_link(scores), explanations
 

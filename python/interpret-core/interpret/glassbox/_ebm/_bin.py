@@ -137,6 +137,7 @@ def ebm_decision_function(
     intercept,
     term_scores,
     term_features,
+    init_score = None
 ):
     if type(intercept) is float or len(intercept) == 1:
         sample_scores = np.full(n_samples, intercept, dtype=np.float64)
@@ -151,7 +152,10 @@ def ebm_decision_function(
         ):
             sample_scores += term_scores[term_idx][tuple(bin_indexes)]
 
-    return sample_scores
+    if init_score is None:
+        return sample_scores
+    else:
+        return (sample_scores + init_score)
 
 
 def ebm_decision_function_and_explain(
@@ -163,6 +167,7 @@ def ebm_decision_function_and_explain(
     intercept,
     term_scores,
     term_features,
+    init_score = None
 ):
     if type(intercept) is float or len(intercept) == 1:
         sample_scores = np.full(n_samples, intercept, dtype=np.float64)
@@ -184,7 +189,10 @@ def ebm_decision_function_and_explain(
             sample_scores += scores
             explanations[:, term_idx] = scores
 
-    return sample_scores, explanations
+    if init_score is None:
+        return sample_scores, explanations
+    else:
+        return sample_scores + init_score, explanations
 
 
 def make_bin_weights(
