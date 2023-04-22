@@ -382,6 +382,7 @@ class EBMModel(BaseEstimator):
             X: Numpy array for training samples.
             y: Numpy array as training labels.
             sample_weight: Optional array of weights per sample. Should be same length as X and y.
+            init_score: Optional array of initial score per sample. Should be same length as X and y.
 
         Returns:
             Itself.
@@ -1512,6 +1513,7 @@ class EBMModel(BaseEstimator):
 
         Args:
             X: Numpy array for samples.
+            init_score: Optional array of initial score per sample. Should be same length as X.
 
         Returns:
             The sum of the additive term contributions.
@@ -1520,6 +1522,15 @@ class EBMModel(BaseEstimator):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
+        if init_score is not None:
+            init_score = clean_dimensions(init_score, "init_score")
+            if init_score.ndim != 1:
+                raise ValueError("init_score must be 1 dimensional")
+            if n_samples != len(init_score):
+                msg = f"y has {n_samples} samples and init_score has {len(init_score)} samples"
+                _log.error(msg)
+                raise ValueError(msg)
+            init_score = init_score.astype(np.float64, copy=False)
         # TODO: handle the 1 class case here
 
         return ebm_decision_function(
@@ -1801,13 +1812,14 @@ class EBMModel(BaseEstimator):
             ),
         )
 
-    def explain_local(self, X, y=None, name=None):
+    def explain_local(self, X, y=None, name=None, init_score=None):
         """Provides local explanations for provided samples.
 
         Args:
             X: Numpy array for X to explain.
             y: Numpy vector for y to explain.
             name: User-defined explanation name.
+            init_score: Optional array of initial score per sample. Should be same length as X and y.
 
         Returns:
             An explanation object, visualizing feature-value pairs
@@ -1834,7 +1846,16 @@ class EBMModel(BaseEstimator):
         X, n_samples = preclean_X(
             X, self.feature_names_in_, self.feature_types_in_, n_samples
         )
-
+        if init_score is not None:
+            init_score = clean_dimensions(init_score, "init_score")
+            if init_score.ndim != 1:
+                raise ValueError("init_score must be 1 dimensional")
+            if n_samples != len(init_score):
+                msg = f"y has {n_samples} samples and init_score has {len(init_score)} samples"
+                _log.error(msg)
+                raise ValueError(msg)
+            init_score = init_score.astype(np.float64, copy=False)
+            
         term_names = self.term_names_
         term_types = generate_term_types(self.feature_types_in_, self.term_features_)
 
@@ -2282,11 +2303,12 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             random_state=random_state,
         )
 
-    def predict_proba(self, X, init_score = None):
+    def predict_proba(self, X, init_score=None):
         """Probability estimates on provided samples.
 
         Args:
             X: Numpy array for samples.
+            init_score: Optional array of initial score per sample. Should be same length as X.
 
         Returns:
             Probability estimate of sample for each class.
@@ -2328,6 +2350,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
         Args:
             X: Numpy array for samples.
+            init_score: Optional array of initial score per sample. Should be same length as X.
 
         Returns:
             Predicted class label per sample.
@@ -2372,6 +2395,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Args:
             X: Numpy array for samples.
             output: Prediction type to output (i.e. one of 'probabilities', 'labels', 'logits')
+            init_score: Optional array of initial score per sample. Should be same length as X.
 
         Returns:
             Predictions and local explanations for each sample.
@@ -2635,6 +2659,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
         Args:
             X: Numpy array for samples.
+            init_score: Optional array of initial score per sample. Should be same length as X.
 
         Returns:
             Predicted class label per sample.
@@ -2671,7 +2696,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
         Args:
             X: Numpy array for samples.
-
+            init_score: Optional array of initial score per sample. Should be same length as X.
+            
         Returns:
             Predictions and local explanations for each sample.
         """
