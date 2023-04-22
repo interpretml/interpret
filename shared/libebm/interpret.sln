@@ -90,16 +90,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "loss_functions", "loss_func
 		compute\loss_functions\CrossEntropyMulticlassLoss.hpp = compute\loss_functions\CrossEntropyMulticlassLoss.hpp
 		compute\loss_functions\CrossEntropyMulticlassMultitaskLoss.hpp = compute\loss_functions\CrossEntropyMulticlassMultitaskLoss.hpp
 		compute\loss_functions\ExampleRegressionLoss.hpp = compute\loss_functions\ExampleRegressionLoss.hpp
-		compute\loss_functions\GammaRegressionLoss.hpp = compute\loss_functions\GammaRegressionLoss.hpp
+		compute\loss_functions\GammaDevianceRegressionLoss.hpp = compute\loss_functions\GammaDevianceRegressionLoss.hpp
 		compute\loss_functions\LogLossBinaryLoss.hpp = compute\loss_functions\LogLossBinaryLoss.hpp
 		compute\loss_functions\LogLossBinaryMultitaskLoss.hpp = compute\loss_functions\LogLossBinaryMultitaskLoss.hpp
 		compute\loss_functions\LogLossMulticlassLoss.hpp = compute\loss_functions\LogLossMulticlassLoss.hpp
 		compute\loss_functions\loss_registrations.hpp = compute\loss_functions\loss_registrations.hpp
-		compute\loss_functions\MseLogLinkRegressionLoss.hpp = compute\loss_functions\MseLogLinkRegressionLoss.hpp
-		compute\loss_functions\RmseRegressionMultitaskLoss.hpp = compute\loss_functions\RmseRegressionMultitaskLoss.hpp
 		compute\loss_functions\PoissonRegressionLoss.hpp = compute\loss_functions\PoissonRegressionLoss.hpp
 		compute\loss_functions\PseudoHuberRegressionLoss.hpp = compute\loss_functions\PseudoHuberRegressionLoss.hpp
+		compute\loss_functions\RmseLogLinkRegressionLoss.hpp = compute\loss_functions\RmseLogLinkRegressionLoss.hpp
 		compute\loss_functions\RmseRegressionLoss.hpp = compute\loss_functions\RmseRegressionLoss.hpp
+		compute\loss_functions\RmseRegressionMultitaskLoss.hpp = compute\loss_functions\RmseRegressionMultitaskLoss.hpp
 		compute\loss_functions\TweedieRegressionLoss.hpp = compute\loss_functions\TweedieRegressionLoss.hpp
 	EndProjectSection
 EndProject

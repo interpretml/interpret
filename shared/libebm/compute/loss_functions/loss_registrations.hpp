@@ -25,11 +25,11 @@
 #include "ExampleRegressionLoss.hpp"
 #include "PseudoHuberRegressionLoss.hpp"
 #include "RmseRegressionLoss.hpp"
-#include "MseLogLinkRegressionLoss.hpp"
+#include "RmseLogLinkRegressionLoss.hpp"
 #include "LogLossBinaryLoss.hpp"
 #include "LogLossMulticlassLoss.hpp"
 #include "PoissonRegressionLoss.hpp"
-#include "GammaRegressionLoss.hpp"
+#include "GammaDevianceRegressionLoss.hpp"
 
 // Add new *Loss type registrations to this list:
 static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
