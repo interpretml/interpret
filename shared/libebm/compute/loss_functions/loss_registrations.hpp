@@ -28,7 +28,7 @@
 #include "RmseLogLinkRegressionLoss.hpp"
 #include "LogLossBinaryLoss.hpp"
 #include "LogLossMulticlassLoss.hpp"
-#include "PoissonRegressionLoss.hpp"
+#include "PoissonDevianceRegressionLoss.hpp"
 #include "GammaDevianceRegressionLoss.hpp"
 
 // Add new *Loss type registrations to this list:
@@ -41,7 +41,7 @@ static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
       RegisterLoss<RmseLogLinkRegressionLoss>("rmse_log"),
       RegisterLoss<LogLossBinaryLoss>("log_loss"),
       RegisterLoss<LogLossMulticlassLoss>("log_loss"),
-      RegisterLoss<PoissonRegressionLoss>("poisson", FloatParam("max_delta_step", 0.7)),
+      RegisterLoss<PoissonDevianceRegressionLoss>("poisson_deviance", FloatParam("max_delta_step", 0.7)),
       RegisterLoss<GammaDevianceRegressionLoss>("gamma_deviance"),
    };
 }
