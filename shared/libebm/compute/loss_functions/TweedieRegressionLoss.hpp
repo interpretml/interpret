@@ -37,19 +37,22 @@ struct TweedieRegressionLoss : RegressionLoss {
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
-      TFloat metric = 2 * (target * (target / prediction).Log() - (target - prediction));
-      return metric;
+      //Incomplete Implementation
+      //TFloat metric = 1
+      return 1;
    }
 
    GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
-      TFloat gradient = -2 * (target - prediction) / prediction;
-      return gradient;
+      //Incomplete Implementation
+      //TFloat gradient = 1
+      return 1;
    }
 
    // If the loss function doesn't have a second derivative, then delete the CalcGradientHessian function.
    GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
-      TFloat gradient = -2 * (target - prediction) / prediction;
-      TFloat hessian = 2 * (target - prediction) / (prediction * prediction);
-      return MakeGradientHessian(gradient, hessian);
+      //Incomplete Implementation
+      //TFloat gradient = 1;
+      //TFloat hessian = 1;
+      return MakeGradientHessian(1, 1);
    }
 };

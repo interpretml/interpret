@@ -339,7 +339,7 @@ def clean_init_score(init_score, n_samples, X_unclean):
     init_score = clean_dimensions(init_score, "init_score")
     if n_samples == 1:  # then the sample dimension would have been eliminated
         if init_score.ndim != 1:
-            msg = "init_score has an inconsistent number of samples compared to y"
+            msg = "init_score has an inconsistent number of samples compared to X"
             _log.error(msg)
             raise ValueError(msg)
         if init_score.shape[0] != 1:
@@ -349,7 +349,7 @@ def clean_init_score(init_score, n_samples, X_unclean):
             # must be a 1 class problem
             return np.empty((n_samples, 0), np.float64)
         if init_score.shape[0] != n_samples:
-            msg = "init_score has an inconsistent number of samples compared to y"
+            msg = "init_score has an inconsistent number of samples compared to X"
             _log.error(msg)
             raise ValueError(msg)
     init_score = init_score.astype(np.float64, copy=False)
