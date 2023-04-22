@@ -28,7 +28,7 @@
 #include "RmseLogLinkRegressionLoss.hpp"
 #include "LogLossBinaryLoss.hpp"
 #include "LogLossMulticlassLoss.hpp"
-#include "PoissonRegressionLoss.hpp"
+#include "PoissonDevianceRegressionLoss.hpp"
 #include "GammaDevianceRegressionLoss.hpp"
 
 // Add new *Loss type registrations to this list:
