@@ -19,7 +19,7 @@ from sklearn.utils.multiclass import type_of_target
 from sklearn.base import is_classifier, is_regressor
 
 from ._clean_x import preclean_X
-from ._clean_simple import clean_dimensions, typify_classification, clean_init_score
+from ._clean_simple import clean_dimensions, typify_classification, clean_init_score_and_X
 
 from ._preprocessor import construct_bins
 from ._native import Native
@@ -109,9 +109,10 @@ def measure_interactions(
             )
         is_classification = False
 
-    if init_score is not None:
-        # use the uncleaned X since scikit-learn Estimators need the original data format
-        init_score = clean_init_score(init_score, len(y), X)
+    if init_score is None:
+        X, n_samples = preclean_X(X, feature_names, feature_types, len(y))
+    else:
+        init_score, X, n_samples = clean_init_score_and_X(init_score, X, feature_names, feature_types, len(y))
         if init_score.ndim == 2:
             # it must be multiclass, or mono-classification
             if is_classification is False:
@@ -189,8 +190,6 @@ def measure_interactions(
                 f"y has {len(y)} samples and sample_weight has {len(sample_weight)} samples"
             )
         sample_weight = sample_weight.astype(np.float64, copy=False)
-
-    X, n_samples = preclean_X(X, feature_names, feature_types, len(y))
 
     binning_result = construct_bins(
         X=X,

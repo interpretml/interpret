@@ -7,7 +7,6 @@ import numpy as np
 
 from ...utils._native import Native
 from ...utils._clean_x import unify_columns
-from ...utils._clean_simple import clean_init_score
 
 _log = logging.getLogger(__name__)
 
@@ -152,9 +151,8 @@ def ebm_decision_function(
             X, n_samples, feature_names_in, feature_types_in, bins, term_features
         ):
             sample_scores += term_scores[term_idx][tuple(bin_indexes)]
-    if init_score is not None:
-        init_score = clean_init_score(init_score, n_samples, X)
 
+    # TODO: instead of adding these, start from them instead of zeros
     if init_score is None:
         return sample_scores
     else:
@@ -192,9 +190,7 @@ def ebm_decision_function_and_explain(
             sample_scores += scores
             explanations[:, term_idx] = scores
 
-    if init_score is not None:
-        init_score = clean_init_score(init_score, n_samples, X)
-
+    # TODO: instead of adding these, start from them instead of zeros
     if init_score is None:
         return sample_scores, explanations
     else:
