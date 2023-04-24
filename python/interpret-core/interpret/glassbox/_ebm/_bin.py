@@ -138,7 +138,7 @@ def ebm_decision_function(
     intercept,
     term_scores,
     term_features,
-    init_score = None
+    init_score=None,
 ):
     if type(intercept) is float or len(intercept) == 1:
         sample_scores = np.full(n_samples, intercept, dtype=np.float64)
@@ -158,7 +158,7 @@ def ebm_decision_function(
     if init_score is None:
         return sample_scores
     else:
-        return (sample_scores + init_score)
+        return sample_scores + init_score
 
 
 def ebm_decision_function_and_explain(
@@ -170,7 +170,7 @@ def ebm_decision_function_and_explain(
     intercept,
     term_scores,
     term_features,
-    init_score = None
+    init_score=None,
 ):
     if type(intercept) is float or len(intercept) == 1:
         sample_scores = np.full(n_samples, intercept, dtype=np.float64)

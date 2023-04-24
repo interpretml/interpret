@@ -24,7 +24,11 @@ from ...utils._histogram import (
 )
 from ...utils._seed import normalize_initial_seed
 from ...utils._clean_x import preclean_X
-from ...utils._clean_simple import clean_dimensions, clean_init_score, typify_classification
+from ...utils._clean_simple import (
+    clean_dimensions,
+    clean_init_score,
+    typify_classification,
+)
 
 from ...utils._unify_data import unify_data
 
@@ -375,7 +379,7 @@ class EBMModel(BaseEstimator):
                     "for debugging/testing. Set random_state to None to remove this warning."
                 )
 
-    def fit(self, X, y, sample_weight=None, init_score = None):  # noqa: C901
+    def fit(self, X, y, sample_weight=None, init_score=None):  # noqa: C901
         """Fits model to provided samples.
 
         Args:
@@ -541,7 +545,7 @@ class EBMModel(BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
             sample_weight = sample_weight.astype(np.float64, copy=False)
-        
+
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
         if init_score is not None:
             init_score = clean_init_score(init_score, n_samples, X)
@@ -911,7 +915,7 @@ class EBMModel(BaseEstimator):
                             initial_intercept,
                             model,
                             term_features,
-                            init_score
+                            init_score,
                         )
                     )
 
@@ -1526,7 +1530,7 @@ class EBMModel(BaseEstimator):
             self.intercept_,
             self.term_scores_,
             self.term_features_,
-            init_score
+            init_score,
         )
 
     def explain_global(self, name=None):
@@ -1900,7 +1904,7 @@ class EBMModel(BaseEstimator):
                 self.intercept_,
                 self.term_scores_,
                 self.term_features_,
-                init_score
+                init_score,
             )
             pred = self._inv_link(pred)
 
@@ -2310,7 +2314,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             self.intercept_,
             self.term_scores_,
             self.term_features_,
-            init_score
+            init_score,
         )
 
         return self._inv_link(log_odds_vector)
@@ -2342,7 +2346,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             self.intercept_,
             self.term_scores_,
             self.term_features_,
-            init_score
+            init_score,
         )
 
         # TODO: for binary classification we could just look for values greater than zero instead of expanding
@@ -2381,7 +2385,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             self.intercept_,
             self.term_scores_,
             self.term_features_,
-            init_score
+            init_score,
         )
 
         if output == "probabilities":
@@ -2636,7 +2640,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.intercept_,
             self.term_scores_,
             self.term_features_,
-            init_score
+            init_score,
         )
         return self._inv_link(scores)
 
@@ -2646,7 +2650,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Args:
             X: Numpy array for samples.
             init_score: Optional array of initial score per sample. Should be same length as X.
-            
+
         Returns:
             Predictions and local explanations for each sample.
         """
@@ -2667,7 +2671,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.intercept_,
             self.term_scores_,
             self.term_features_,
-            init_score
+            init_score,
         )
         return self._inv_link(scores), explanations
 
