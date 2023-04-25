@@ -19,7 +19,11 @@ from sklearn.utils.multiclass import type_of_target
 from sklearn.base import is_classifier, is_regressor
 
 from ._clean_x import preclean_X
-from ._clean_simple import clean_dimensions, typify_classification, clean_init_score_and_X
+from ._clean_simple import (
+    clean_dimensions,
+    typify_classification,
+    clean_init_score_and_X,
+)
 
 from ._preprocessor import construct_bins
 from ._native import Native
@@ -76,13 +80,15 @@ def measure_interactions(
         _log.error(msg)
         raise ValueError(msg)
 
+    link = None
+    link_param = None
     is_classification = None
     native = Native.get_native_singleton()
     if objective is not None:
         if objective.isspace():
             objective = None
         else:
-            link, _ = native.determine_link(objective)
+            link, link_param = native.determine_link(objective)
             model_type = native.get_model_type(link)
             if model_type == "classification":
                 is_classification = True
@@ -102,17 +108,23 @@ def measure_interactions(
                 "objective is for regresion but the init_score is a classification model"
             )
         is_classification = True
+        if link is None:
+            link, _ = native.determine_link("log_loss")
     elif is_regressor(init_score):
         if is_classification is True:
             raise ValueError(
                 "objective is for classification but the init_score is a regression model"
             )
         is_classification = False
+        if link is None:
+            link, _ = native.determine_link("rmse")
 
     if init_score is None:
         X, n_samples = preclean_X(X, feature_names, feature_types, len(y))
     else:
-        init_score, X, n_samples = clean_init_score_and_X(init_score, X, feature_names, feature_types, len(y))
+        init_score, X, n_samples = clean_init_score_and_X(
+            link, link_param, init_score, X, feature_names, feature_types, len(y)
+        )
         if init_score.ndim == 2:
             # it must be multiclass, or mono-classification
             if is_classification is False:

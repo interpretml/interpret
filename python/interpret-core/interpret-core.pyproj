@@ -80,6 +80,7 @@
     <Compile Include="interpret\utils\_clean_simple.py" />
     <Compile Include="interpret\utils\_compressed_dataset.py" />
     <Compile Include="interpret\utils\_histogram.py" />
+    <Compile Include="interpret\utils\_link.py" />
     <Compile Include="interpret\utils\_rank_interactions.py" />
     <Compile Include="interpret\utils\_shap_common.py" />
     <Compile Include="interpret\utils\_clean_x.py" />

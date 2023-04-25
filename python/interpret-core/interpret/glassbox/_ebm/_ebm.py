@@ -19,9 +19,8 @@ from ._utils import (
     generate_term_names,
     generate_term_types,
 )
-from ...utils._histogram import (
-    make_all_histogram_edges,
-)
+from ...utils._histogram import make_all_histogram_edges
+from ...utils._link import inv_link
 from ...utils._seed import normalize_initial_seed
 from ...utils._clean_x import preclean_X
 from ...utils._clean_simple import (
@@ -546,13 +545,21 @@ class EBMModel(BaseEstimator):
                 raise ValueError(msg)
             sample_weight = sample_weight.astype(np.float64, copy=False)
 
+        native = Native.get_native_singleton()
+        link, link_param = native.determine_link(objective)
+
         if init_score is None:
             X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
         else:
-            init_score, X, n_samples = clean_init_score_and_X(init_score, X, self.feature_names, self.feature_types, len(y))
-
-        native = Native.get_native_singleton()
-        link, link_param = native.determine_link(objective)
+            init_score, X, n_samples = clean_init_score_and_X(
+                link,
+                link_param,
+                init_score,
+                X,
+                self.feature_names,
+                self.feature_types,
+                len(y),
+            )
 
         # Privacy calculations
         is_differential_privacy = is_private(self)
@@ -1155,34 +1162,6 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def _inv_link(self, scores):
-        if self.link_ == "logit":
-            if not is_classifier(self):
-                msg = "EBM with logit link must be a classifier"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if len(self.classes_) == 1:
-                # if there is only one class then all probabilities are 100%
-                return np.full((len(scores), 1), 1.0, np.float64)
-
-            if scores.ndim == 1:
-                # binary classification requires prepending a 0
-                scores = np.c_[np.zeros(scores.shape), scores]
-            return softmax(scores)
-
-        if not is_regressor(self):
-            msg = "EBM with non-logit link must be a regressor"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        if self.link_ == "identity":
-            return scores
-        elif self.link_ == "log":
-            return np.exp(scores)
-        else:
-            raise ValueError("Unsupported link function: {}".format(self.link_))
-
     def _to_inner_jsonable(self, properties="all"):
         """Converts the inner model to a JSONable representation.
 
@@ -1520,7 +1499,14 @@ class EBMModel(BaseEstimator):
         if init_score is None:
             X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         else:
-            init_score, X, n_samples = clean_init_score_and_X(init_score, X, self.feature_names_in_, self.feature_types_in_)
+            init_score, X, n_samples = clean_init_score_and_X(
+                self.link_,
+                self.link_param_,
+                init_score,
+                X,
+                self.feature_names_in_,
+                self.feature_types_in_,
+            )
 
         # TODO: handle the 1 class case here
 
@@ -1839,7 +1825,15 @@ class EBMModel(BaseEstimator):
                 X, self.feature_names_in_, self.feature_types_in_, n_samples
             )
         else:
-            init_score, X, n_samples = clean_init_score_and_X(init_score, X, self.feature_names_in_, self.feature_types_in_, n_samples)
+            init_score, X, n_samples = clean_init_score_and_X(
+                self.link_,
+                self.link_param_,
+                init_score,
+                X,
+                self.feature_names_in_,
+                self.feature_types_in_,
+                n_samples,
+            )
 
         term_names = self.term_names_
         term_types = generate_term_types(self.feature_types_in_, self.term_features_)
@@ -1910,7 +1904,8 @@ class EBMModel(BaseEstimator):
                 self.term_features_,
                 init_score,
             )
-            pred = self._inv_link(pred)
+            n_classes = len(self.classes_) if is_classifier(self) else -1
+            pred = inv_link(self.link_, self.link_param_, pred, n_classes)
 
             classes = self.classes_ if is_classifier(self) else None
 
@@ -2300,17 +2295,23 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-
         if init_score is None:
             X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         else:
-            init_score, X, n_samples = clean_init_score_and_X(init_score, X, self.feature_names_in_, self.feature_types_in_)
+            init_score, X, n_samples = clean_init_score_and_X(
+                self.link_,
+                self.link_param_,
+                init_score,
+                X,
+                self.feature_names_in_,
+                self.feature_types_in_,
+            )
 
         if len(self.classes_) == 1:
             # if there is only one class then all probabilities are 100%
             return np.full((n_samples, 1), 1.0, np.float64)
 
-        log_odds_vector = ebm_decision_function(
+        log_odds = ebm_decision_function(
             X,
             n_samples,
             self.feature_names_in_,
@@ -2322,7 +2323,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             init_score,
         )
 
-        return self._inv_link(log_odds_vector)
+        return inv_link(self.link_, self.link_param_, log_odds, len(self.classes_))
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
@@ -2339,11 +2340,18 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         if init_score is None:
             X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         else:
-            init_score, X, n_samples = clean_init_score_and_X(init_score, X, self.feature_names_in_, self.feature_types_in_)
+            init_score, X, n_samples = clean_init_score_and_X(
+                self.link_,
+                self.link_param_,
+                init_score,
+                X,
+                self.feature_names_in_,
+                self.feature_types_in_,
+            )
 
         # TODO: handle the 1 class case here
 
-        log_odds_vector = ebm_decision_function(
+        log_odds = ebm_decision_function(
             X,
             n_samples,
             self.feature_names_in_,
@@ -2356,11 +2364,11 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         )
 
         # TODO: for binary classification we could just look for values greater than zero instead of expanding
-        if log_odds_vector.ndim == 1:
+        if log_odds.ndim == 1:
             # Handle binary classification case -- softmax only works with 0s appended
-            log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
+            log_odds = np.c_[np.zeros(log_odds.shape), log_odds]
 
-        return self.classes_[np.argmax(log_odds_vector, axis=1)]
+        return self.classes_[np.argmax(log_odds, axis=1)]
 
     def predict_and_contrib(self, X, output="probabilities", init_score=None):
         """Predicts on provided samples, returning predictions and explanations for each sample.
@@ -2379,7 +2387,14 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         if init_score is None:
             X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         else:
-            init_score, X, n_samples = clean_init_score_and_X(init_score, X, self.feature_names_in_, self.feature_types_in_)
+            init_score, X, n_samples = clean_init_score_and_X(
+                self.link_,
+                self.link_param_,
+                init_score,
+                X,
+                self.feature_names_in_,
+                self.feature_types_in_,
+            )
 
         # TODO: handle the 1 class case here
 
@@ -2396,7 +2411,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         )
 
         if output == "probabilities":
-            result = self._inv_link(scores)
+            result = inv_link(self.link_, self.link_param_, scores, len(self.classes_))
         elif output == "labels":
             # TODO: for binary classification we could just look for values greater than zero instead of expanding
             if scores.ndim == 1:
@@ -2636,7 +2651,14 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         if init_score is None:
             X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         else:
-            init_score, X, n_samples = clean_init_score_and_X(init_score, X, self.feature_names_in_, self.feature_types_in_)
+            init_score, X, n_samples = clean_init_score_and_X(
+                self.link_,
+                self.link_param_,
+                init_score,
+                X,
+                self.feature_names_in_,
+                self.feature_types_in_,
+            )
 
         scores = ebm_decision_function(
             X,
@@ -2649,7 +2671,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.term_features_,
             init_score,
         )
-        return self._inv_link(scores)
+        return inv_link(self.link_, self.link_param_, scores, -1)
 
     def predict_and_contrib(self, X, init_score=None):
         """Predicts on provided samples, returning predictions and explanations for each sample.
@@ -2667,7 +2689,14 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         if init_score is None:
             X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         else:
-            init_score, X, n_samples = clean_init_score_and_X(init_score, X, self.feature_names_in_, self.feature_types_in_)
+            init_score, X, n_samples = clean_init_score_and_X(
+                self.link_,
+                self.link_param_,
+                init_score,
+                X,
+                self.feature_names_in_,
+                self.feature_types_in_,
+            )
 
         scores, explanations = ebm_decision_function_and_explain(
             X,
@@ -2680,7 +2709,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.term_features_,
             init_score,
         )
-        return self._inv_link(scores), explanations
+        return inv_link(self.link_, self.link_param_, scores, -1), explanations
 
 
 class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
@@ -2889,13 +2918,20 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         if init_score is None:
             X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         else:
-            init_score, X, n_samples = clean_init_score_and_X(init_score, X, self.feature_names_in_, self.feature_types_in_)
+            init_score, X, n_samples = clean_init_score_and_X(
+                self.link_,
+                self.link_param_,
+                init_score,
+                X,
+                self.feature_names_in_,
+                self.feature_types_in_,
+            )
 
         if len(self.classes_) == 1:
             # if there is only one class then all probabilities are 100%
             return np.full((n_samples, 1), 1.0, np.float64)
 
-        log_odds_vector = ebm_decision_function(
+        log_odds = ebm_decision_function(
             X,
             n_samples,
             self.feature_names_in_,
@@ -2906,7 +2942,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             self.term_features_,
             init_score,
         )
-        return self._inv_link(log_odds_vector)
+        return inv_link(self.link_, self.link_param_, log_odds, len(self.classes_))
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
@@ -2923,11 +2959,18 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         if init_score is None:
             X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         else:
-            init_score, X, n_samples = clean_init_score_and_X(init_score, X, self.feature_names_in_, self.feature_types_in_)
+            init_score, X, n_samples = clean_init_score_and_X(
+                self.link_,
+                self.link_param_,
+                init_score,
+                X,
+                self.feature_names_in_,
+                self.feature_types_in_,
+            )
 
         # TODO: handle the 1 class case here
 
-        log_odds_vector = ebm_decision_function(
+        log_odds = ebm_decision_function(
             X,
             n_samples,
             self.feature_names_in_,
@@ -2940,11 +2983,11 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         )
 
         # TODO: for binary classification we could just look for values greater than zero instead of expanding
-        if log_odds_vector.ndim == 1:
+        if log_odds.ndim == 1:
             # Handle binary classification case -- softmax only works with 0s appended
-            log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
+            log_odds = np.c_[np.zeros(log_odds.shape), log_odds]
 
-        return self.classes_[np.argmax(log_odds_vector, axis=1)]
+        return self.classes_[np.argmax(log_odds, axis=1)]
 
 
 class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
@@ -3167,7 +3210,14 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         if init_score is None:
             X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         else:
-            init_score, X, n_samples = clean_init_score_and_X(init_score, X, self.feature_names_in_, self.feature_types_in_)
+            init_score, X, n_samples = clean_init_score_and_X(
+                self.link_,
+                self.link_param_,
+                init_score,
+                X,
+                self.feature_names_in_,
+                self.feature_types_in_,
+            )
 
         scores = ebm_decision_function(
             X,
@@ -3181,4 +3231,4 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             init_score,
         )
 
-        return self._inv_link(scores)
+        return inv_link(self.link_, self.link_param_, scores, -1)
