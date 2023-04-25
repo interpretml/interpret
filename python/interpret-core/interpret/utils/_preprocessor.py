@@ -500,6 +500,17 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 raise ValueError("y must be 1 dimensional")
             n_samples = len(y)
 
+        if sample_weight is not None:
+            sample_weight = clean_dimensions(sample_weight, "sample_weight")
+            if sample_weight.ndim != 1:
+                raise ValueError("sample_weight must be 1 dimensional")
+            if n_samples is not None and n_samples != len(sample_weight):
+                msg = f"y has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
+                _log.error(msg)
+                raise ValueError(msg)
+            n_samples = len(sample_weight)
+            sample_weight = sample_weight.astype(np.float64, copy=False)
+
         X, _ = preclean_X(
             X, self.feature_names, self.feature_types, n_samples
         )  # materialize any iterators first

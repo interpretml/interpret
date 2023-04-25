@@ -152,11 +152,10 @@ def ebm_decision_function(
         ):
             sample_scores += term_scores[term_idx][tuple(bin_indexes)]
 
-    # TODO: instead of adding these, start from them instead of zeros
-    if init_score is None:
-        return sample_scores
-    else:
-        return sample_scores + init_score
+    if init_score is not None:
+        sample_scores += init_score
+
+    return sample_scores
 
 
 def ebm_decision_function_and_explain(
@@ -190,11 +189,10 @@ def ebm_decision_function_and_explain(
             sample_scores += scores
             explanations[:, term_idx] = scores
 
-    # TODO: instead of adding these, start from them instead of zeros
-    if init_score is None:
-        return sample_scores, explanations
-    else:
-        return sample_scores + init_score, explanations
+    if init_score is not None:
+        sample_scores += init_score
+
+    return sample_scores, explanations
 
 
 def make_bin_weights(

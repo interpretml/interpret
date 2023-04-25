@@ -300,7 +300,7 @@ def clean_init_score_and_X(
                     # having any dimension as zero length probably means 1 class, so treat it that way
                     return np.empty((n_samples, 0), np.float64), X, n_samples
                 if probs.shape[0] != n_samples:
-                    msg = f"init_score.predict_proba(X) returned inconsistent number of samples compared to {sample_source}"
+                    msg = "init_score.predict_proba(X) returned inconsistent number of samples compared to X"
                     _log.error(msg)
                     raise ValueError(msg)
                 if probs.ndim == 1:
@@ -327,7 +327,7 @@ def clean_init_score_and_X(
                     # must be a 1 class problem
                     return np.empty((n_samples, 0), np.float64), X, n_samples
                 if init_score.shape[0] != n_samples:
-                    msg = "init_score.decision_function(X) returned inconsistent number of samples compared to {sample_source}"
+                    msg = "init_score.decision_function(X) returned inconsistent number of samples compared to X"
                     _log.error(msg)
                     raise ValueError(msg)
             init_score = init_score.astype(np.float64, copy=False)
@@ -342,7 +342,7 @@ def clean_init_score_and_X(
             _log.error(msg)
             raise ValueError(msg)
         if predictions.shape[0] != n_samples:
-            msg = "init_score.predict(X) returned inconsistent number of samples compared to {sample_source}"
+            msg = "init_score.predict(X) returned inconsistent number of samples compared to X"
             _log.error(msg)
             raise ValueError(msg)
         predictions = predictions.astype(np.float64, copy=False)
@@ -353,7 +353,7 @@ def clean_init_score_and_X(
     X, n_samples = preclean_X(X, feature_names, feature_types, n_samples, sample_source)
     if n_samples == 1:  # then the sample dimension would have been eliminated
         if init_score.ndim != 1:
-            msg = "init_score has an inconsistent number of samples compared to {sample_source}"
+            msg = "init_score has an inconsistent number of samples compared to X"
             _log.error(msg)
             raise ValueError(msg)
         if init_score.shape[0] != 1:
@@ -363,7 +363,7 @@ def clean_init_score_and_X(
             # must be a 1 class problem
             return np.empty((n_samples, 0), np.float64), X, n_samples
         if init_score.shape[0] != n_samples:
-            msg = "init_score has an inconsistent number of samples compared to {sample_source}"
+            msg = "init_score has an inconsistent number of samples compared to X"
             _log.error(msg)
             raise ValueError(msg)
     init_score = init_score.astype(np.float64, copy=False)
