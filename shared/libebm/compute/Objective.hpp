@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-// !!! NOTE: To add a new loss/objective function in C++, follow the steps listed at the top of the "Loss.cpp" file !!!
+// !!! NOTE: To add a new objective in C++, follow the steps listed at the top of the "objective_registrations.hpp" file !!!
 
-#ifndef LOSS_HPP
-#define LOSS_HPP
+#ifndef OBJECTIVE_HPP
+#define OBJECTIVE_HPP
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <memory> // shared_ptr, unique_ptr
@@ -18,21 +18,6 @@
 #include "zoned_bridge_cpp_functions.hpp" // FunctionPointersCpp
 #include "compute.hpp" // GPU_GLOBAL
 
-// Nomenclature used in this package:
-// - objective: We can use any metric for early stopping, so our list of objectives is identical to the
-//   list of metrics that we provide internally. Not all objectives are differentiable though, so for
-//   some objectives we need to choose a reasonable differentiable loss function that we can optimize via 
-//   gradient boosting. As an example, someone could request an 'auc' objective which uses a 
-//   'log_loss' loss since 'auc' is not a differentiable function. This follows the catboost approach:
-//   https://catboost.ai/en/docs/concepts/loss-functions
-// - loss function: A differentiable cost/error function that we can use for optimization via gradient boosting
-// - link function: For prediction we need the reverse/inverse link function, sometimes also known as 
-//   the mean/activation(in NN) function. Multiple loss functions can share a single link function, so for 
-//   simplicity we record the appropriate link function in our model since the original loss function 
-//   and objectives are extraneous information when using the model to make predictions.  
-// - In this package the choice of objective determines the loss function, which determines the link function.
-//   If more flexibility is needed, custom objectives can be used.
-
 struct ApplyUpdateBridge;
 
 namespace DEFINED_ZONE_NAME {
@@ -41,17 +26,17 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class Registration;
-typedef const std::vector<std::shared_ptr<const Registration>> (* REGISTER_LOSSES_FUNCTION)();
+typedef const std::vector<std::shared_ptr<const Registration>> (* REGISTER_OBJECTIVES_FUNCTION)();
 
-struct SingletaskLoss;
-struct BinaryLoss;
-struct MulticlassLoss;
-struct RegressionLoss;
+struct SingletaskObjective;
+struct BinaryObjective;
+struct MulticlassObjective;
+struct RegressionObjective;
 
-struct MultitaskLoss;
-struct BinaryMultitaskLoss;
-struct MulticlassMultitaskLoss;
-struct RegressionMultitaskLoss;
+struct MultitaskObjective;
+struct BinaryMultitaskObjective;
+struct MulticlassMultitaskObjective;
+struct RegressionMultitaskObjective;
 
 
 template<typename TFloat>
@@ -87,10 +72,10 @@ GPU_DEVICE inline GradientHessian<TFloat> MakeGradientHessian(const double gradi
 }
 
 
-template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
-GPU_GLOBAL static void RemoteApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-   const TLoss * const pLossSpecific = static_cast<const TLoss *>(pLoss);
-   pLossSpecific->template InjectedApplyUpdate<cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+template<typename TObjective, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+GPU_GLOBAL static void RemoteApplyUpdate(const Objective * const pObjective, ApplyUpdateBridge * const pData) {
+   const TObjective * const pObjectiveSpecific = static_cast<const TObjective *>(pObjective);
+   pObjectiveSpecific->template InjectedApplyUpdate<cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
 }
 
 
@@ -101,39 +86,39 @@ protected:
    ~Registrable() = default;
 };
 
-struct Loss : public Registrable {
+struct Objective : public Registrable {
 private:
 
    // Welcome to the demented hall of mirrors.. a prison for your mind
    // And no, I did not make this to purposely torment you
 
-   template<class TLoss, typename TFloat>
+   template<class TObjective, typename TFloat>
    struct HasHessianInternal {
-      // use SFINAE to determine if TLoss has the function CalcGradientHessian with the correct signature
+      // use SFINAE to determine if TObjective has the function CalcGradientHessian with the correct signature
 
       template<typename T>
       static auto check(T * p) -> decltype(p->CalcGradientHessian(TFloat { 0 }, TFloat { 0 }), std::true_type());
 
       static std::false_type check(...);
 
-      using internal_type = decltype(check(static_cast<typename std::remove_reference<TLoss>::type *>(nullptr)));
+      using internal_type = decltype(check(static_cast<typename std::remove_reference<TObjective>::type *>(nullptr)));
       static constexpr bool value = internal_type::value;
    };
-   template<typename TLoss, typename TFloat>
+   template<typename TObjective, typename TFloat>
    constexpr static bool HasHessian() {
-      // use SFINAE to determine if TLoss has the function CalcGradientHessian with the correct signature
-      return HasHessianInternal<TLoss, TFloat>::value;
+      // use SFINAE to determine if TObjective has the function CalcGradientHessian with the correct signature
+      return HasHessianInternal<TObjective, TFloat>::value;
    }
 
-   template<typename TLoss>
-   constexpr static bool IsEdgeLoss() {
+   template<typename TObjective>
+   constexpr static bool IsEdgeObjective() {
       return
-         std::is_base_of<BinaryLoss, TLoss>::value ||
-         std::is_base_of<MulticlassLoss, TLoss>::value ||
-         std::is_base_of<RegressionLoss, TLoss>::value ||
-         std::is_base_of<BinaryMultitaskLoss, TLoss>::value ||
-         std::is_base_of<MulticlassMultitaskLoss, TLoss>::value ||
-         std::is_base_of<RegressionMultitaskLoss, TLoss>::value;
+         std::is_base_of<BinaryObjective, TObjective>::value ||
+         std::is_base_of<MulticlassObjective, TObjective>::value ||
+         std::is_base_of<RegressionObjective, TObjective>::value ||
+         std::is_base_of<BinaryMultitaskObjective, TObjective>::value ||
+         std::is_base_of<MulticlassMultitaskObjective, TObjective>::value ||
+         std::is_base_of<RegressionMultitaskObjective, TObjective>::value;
    }
 
 
@@ -144,89 +129,89 @@ private:
    // part of our template blowup issue of having N * M starting point templates where N is the number
    // of scores and M is the number of bit packs.  If we use 8 * 16 that's already 128 copies of the
    // templated function at this point and more later.  Reducing this to just 16 is very very helpful.
-   template<typename TLoss, typename TFloat, typename std::enable_if<!TLoss::IsMultiScore, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, typename std::enable_if<!TObjective::IsMultiScore, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm TypeApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
-         return HessianApplyUpdate<TLoss, TFloat, k_oneScore, k_cItemsPerBitPackNone>(pData);
+         return HessianApplyUpdate<TObjective, TFloat, k_oneScore, k_cItemsPerBitPackNone>(pData);
       } else {
-         return BitPack<TLoss, TFloat, k_oneScore, k_cItemsPerBitPackMax>::Func(this, pData);
+         return BitPack<TObjective, TFloat, k_oneScore, k_cItemsPerBitPackMax>::Func(this, pData);
       }
    }
-   template<typename TLoss, typename TFloat, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, typename std::enable_if<TObjective::IsMultiScore && std::is_base_of<MulticlassMultitaskObjective, TObjective>::value, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm TypeApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
-         return HessianApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackNone>(pData);
+         return HessianApplyUpdate<TObjective, TFloat, k_dynamicScores, k_cItemsPerBitPackNone>(pData);
       } else {
          // if our inner loop is dynamic scores, then the compiler won't do a full unwind of the bit pack
          // loop, so just short circuit it to using dynamic
-         return HessianApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackDynamic>(pData);
+         return HessianApplyUpdate<TObjective, TFloat, k_dynamicScores, k_cItemsPerBitPackDynamic>(pData);
       }
    }
-   template<typename TLoss, typename TFloat, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, typename std::enable_if<TObjective::IsMultiScore && !std::is_base_of<MulticlassMultitaskObjective, TObjective>::value, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm TypeApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
-         return HessianApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackNone>(pData);
+         return HessianApplyUpdate<TObjective, TFloat, k_dynamicScores, k_cItemsPerBitPackNone>(pData);
       } else {
-         return CountScores<TLoss, TFloat, (k_cCompilerScoresMax < k_cCompilerScoresStart ? k_dynamicScores : k_cCompilerScoresStart)>::Func(this, pData);
+         return CountScores<TObjective, TFloat, (k_cCompilerScoresMax < k_cCompilerScoresStart ? k_dynamicScores : k_cCompilerScoresStart)>::Func(this, pData);
       }
    }
 
 
-   template<typename TLoss, typename TFloat, size_t cCompilerScores>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores>
    struct CountScores final {
-      INLINE_ALWAYS static ErrorEbm Func(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
+      INLINE_ALWAYS static ErrorEbm Func(const Objective * const pObjective, ApplyUpdateBridge * const pData) {
          if(cCompilerScores == pData->m_cScores) {
-            return pLoss->HessianApplyUpdate<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackDynamic>(pData);
+            return pObjective->HessianApplyUpdate<TObjective, TFloat, cCompilerScores, k_cItemsPerBitPackDynamic>(pData);
          } else {
-            return CountScores<TLoss, TFloat, k_cCompilerScoresMax == cCompilerScores ? k_dynamicScores : cCompilerScores + 1>::Func(pLoss, pData);
+            return CountScores<TObjective, TFloat, k_cCompilerScoresMax == cCompilerScores ? k_dynamicScores : cCompilerScores + 1>::Func(pObjective, pData);
          }
       }
    };
-   template<typename TLoss, typename TFloat>
-   struct CountScores<TLoss, TFloat, k_dynamicScores> final {
-      INLINE_ALWAYS static ErrorEbm Func(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         return pLoss->HessianApplyUpdate<TLoss, TFloat, k_dynamicScores, k_cItemsPerBitPackDynamic>(pData);
+   template<typename TObjective, typename TFloat>
+   struct CountScores<TObjective, TFloat, k_dynamicScores> final {
+      INLINE_ALWAYS static ErrorEbm Func(const Objective * const pObjective, ApplyUpdateBridge * const pData) {
+         return pObjective->HessianApplyUpdate<TObjective, TFloat, k_dynamicScores, k_cItemsPerBitPackDynamic>(pData);
       }
    };
 
 
    // in our current format cCompilerScores will always be 1, but just in case we change our code to allow
    // for special casing multiclass with compile time unrolling of the compiler pack, leave cCompilerScores here
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack>
    struct BitPack final {
-      INLINE_ALWAYS static ErrorEbm Func(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
+      INLINE_ALWAYS static ErrorEbm Func(const Objective * const pObjective, ApplyUpdateBridge * const pData) {
          if(cCompilerPack == pData->m_cPack) {
-            return pLoss->HessianApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack>(pData);
+            return pObjective->HessianApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack>(pData);
          } else {
-            return BitPack<TLoss, TFloat, cCompilerScores, GetNextBitPack(cCompilerPack)>::Func(pLoss, pData);
+            return BitPack<TObjective, TFloat, cCompilerScores, GetNextBitPack(cCompilerPack)>::Func(pObjective, pData);
          }
       }
    };
-   template<typename TLoss, typename TFloat, size_t cCompilerScores>
-   struct BitPack<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackLast> final {
-      INLINE_ALWAYS static ErrorEbm Func(const Loss * const pLoss, ApplyUpdateBridge * const pData) {
-         return pLoss->HessianApplyUpdate<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackLast>(pData);
+   template<typename TObjective, typename TFloat, size_t cCompilerScores>
+   struct BitPack<TObjective, TFloat, cCompilerScores, k_cItemsPerBitPackLast> final {
+      INLINE_ALWAYS static ErrorEbm Func(const Objective * const pObjective, ApplyUpdateBridge * const pData) {
+         return pObjective->HessianApplyUpdate<TObjective, TFloat, cCompilerScores, k_cItemsPerBitPackLast>(pData);
       }
    };
 
 
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, typename std::enable_if<HasHessian<TLoss, TFloat>(), void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, typename std::enable_if<HasHessian<TObjective, TFloat>(), void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm HessianApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(pData->m_bHessianNeeded) {
-         return OptionsApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, true>(pData);
+         return OptionsApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, true>(pData);
       } else {
-         return OptionsApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pData);
+         return OptionsApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, false>(pData);
       }
    }
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, typename std::enable_if<!HasHessian<TLoss, TFloat>(), void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, typename std::enable_if<!HasHessian<TObjective, TFloat>(), void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm HessianApplyUpdate(ApplyUpdateBridge * const pData) const {
-      return OptionsApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pData);
+      return OptionsApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, false>(pData);
    }
 
 
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<!TLoss::k_bRmse, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<!TObjective::k_bRmse, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm OptionsApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(nullptr != pData->m_aGradientsAndHessians) {
          static constexpr bool bKeepGradHess = true;
@@ -240,10 +225,10 @@ private:
 
             // this branch will only be taking during interaction initialization
 
-            return OperatorApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+            return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
          } else {
             static constexpr bool bWeight = false;
-            return OperatorApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+            return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
          }
       } else {
          static constexpr bool bKeepGradHess = false;
@@ -253,10 +238,10 @@ private:
 
             if(nullptr != pData->m_aWeights) {
                static constexpr bool bWeight = true;
-               return OperatorApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+               return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
             } else {
                static constexpr bool bWeight = false;
-               return OperatorApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+               return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
             }
          } else {
             static constexpr bool bCalcMetric = false;
@@ -268,11 +253,11 @@ private:
             EBM_ASSERT(nullptr == pData->m_aWeights);
             static constexpr bool bWeight = false; // if we are not calculating the metric or updating gradients then we never need the weights
 
-            return OperatorApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+            return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
          }
       }
    }
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<TLoss::k_bRmse, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, typename std::enable_if<TObjective::k_bRmse, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm OptionsApplyUpdate(ApplyUpdateBridge * const pData) const {
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
       static constexpr bool bKeepGradHess = true;
@@ -282,10 +267,10 @@ private:
 
          if(nullptr != pData->m_aWeights) {
             static constexpr bool bWeight = true;
-            return OperatorApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+            return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
          } else {
             static constexpr bool bWeight = false;
-            return OperatorApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+            return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
          }
       } else {
          static constexpr bool bCalcMetric = false;
@@ -293,21 +278,21 @@ private:
          EBM_ASSERT(nullptr == pData->m_aWeights);
          static constexpr bool bWeight = false; // if we are not calculating the metric then we never need the weights
 
-         return OperatorApplyUpdate<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
+         return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
       }
    }
 
 
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    INLINE_RELEASE_TEMPLATED ErrorEbm OperatorApplyUpdate(ApplyUpdateBridge * const pData) const {
-      return TFloat::template OperatorApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(this, pData);
+      return TFloat::template OperatorApplyUpdate<TObjective, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(this, pData);
    }
 
 protected:
 
-   template<typename TLoss, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE void ChildApplyUpdate(ApplyUpdateBridge * const pData) const {
-      const TLoss * const pLoss = static_cast<const TLoss *>(this);
+      const TObjective * const pObjective = static_cast<const TObjective *>(this);
 
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
@@ -408,18 +393,18 @@ protected:
 
             TFloat prediction;
             if(bGetTarget) {
-               prediction = pLoss->InverseLinkFunction(sampleScore);
+               prediction = pObjective->InverseLinkFunction(sampleScore);
             }
 
             if(bKeepGradHess) {
                TFloat gradient;
                TFloat hessian;
                if(bHessian) {
-                  const GradientHessian<TFloat> gradientHessian = pLoss->CalcGradientHessian(prediction, target);
+                  const GradientHessian<TFloat> gradientHessian = pObjective->CalcGradientHessian(prediction, target);
                   gradient = gradientHessian.GetGradient();
                   hessian = gradientHessian.GetHessian();
                } else {
-                  gradient = pLoss->CalcGradient(prediction, target);
+                  gradient = pObjective->CalcGradient(prediction, target);
                }
                if(bWeight) {
                   // This is only used during the initialization of interaction detection. For boosting
@@ -439,7 +424,7 @@ protected:
             }
 
             if(bCalcMetric) {
-               TFloat metric = pLoss->CalcMetric(prediction, target);
+               TFloat metric = pObjective->CalcMetric(prediction, target);
                if(bWeight) {
                   metric *= weight;
                }
@@ -469,56 +454,56 @@ protected:
    }
 
 
-   template<typename TLoss, typename TFloat>
+   template<typename TObjective, typename TFloat>
    INLINE_RELEASE_TEMPLATED ErrorEbm ParentApplyUpdate(ApplyUpdateBridge * const pData) const {
-      static_assert(IsEdgeLoss<TLoss>(), "TLoss must inherit from one of the children of the Loss class");
-      return TypeApplyUpdate<TLoss, TFloat>(pData);
+      static_assert(IsEdgeObjective<TObjective>(), "TObjective must inherit from one of the children of the Objective class");
+      return TypeApplyUpdate<TObjective, TFloat>(pData);
    }
 
 
-   template<typename TLoss, typename TFloat>
-   INLINE_RELEASE_TEMPLATED void FillLossWrapper(void * const pWrapperOut) noexcept {
+   template<typename TObjective, typename TFloat>
+   INLINE_RELEASE_TEMPLATED void FillObjectiveWrapper(void * const pWrapperOut) noexcept {
       EBM_ASSERT(nullptr != pWrapperOut);
-      LossWrapper * const pLossWrapperOut = static_cast<LossWrapper *>(pWrapperOut);
+      ObjectiveWrapper * const pObjectiveWrapperOut = static_cast<ObjectiveWrapper *>(pWrapperOut);
       FunctionPointersCpp * const pFunctionPointers =
-         static_cast<FunctionPointersCpp *>(pLossWrapperOut->m_pFunctionPointersCpp);
+         static_cast<FunctionPointersCpp *>(pObjectiveWrapperOut->m_pFunctionPointersCpp);
       EBM_ASSERT(nullptr != pFunctionPointers);
 
-      pFunctionPointers->m_pApplyUpdateCpp = &TLoss::StaticApplyUpdate;
+      pFunctionPointers->m_pApplyUpdateCpp = &TObjective::StaticApplyUpdate;
 
-      pLossWrapperOut->m_linkFunction = TLoss::k_linkFunction;
+      pObjectiveWrapperOut->m_linkFunction = TObjective::k_linkFunction;
 
-      auto linkParam = (static_cast<TLoss *>(this))->LinkParam();
+      auto linkParam = (static_cast<TObjective *>(this))->LinkParam();
       static_assert(std::is_same<decltype(linkParam), double>::value, "this->LinkParam() should return a double");
-      pLossWrapperOut->m_linkParam = linkParam;
+      pObjectiveWrapperOut->m_linkParam = linkParam;
 
-      auto gradientConstant = (static_cast<TLoss *>(this))->GradientConstant();
+      auto gradientConstant = (static_cast<TObjective *>(this))->GradientConstant();
       static_assert(std::is_same<decltype(gradientConstant), double>::value, "this->GradientConstant() should return a double");
-      auto hessianConstant = (static_cast<TLoss *>(this))->HessianConstant();
+      auto hessianConstant = (static_cast<TObjective *>(this))->HessianConstant();
       static_assert(std::is_same<decltype(hessianConstant), double>::value, "this->HessianConstant() should return a double");
 
-      pLossWrapperOut->m_gradientConstant = gradientConstant;
-      pLossWrapperOut->m_hessianConstant = hessianConstant;
-      pLossWrapperOut->m_bLossHasHessian = HasHessian<TLoss, TFloat>() ? EBM_TRUE : EBM_FALSE;
-      pLossWrapperOut->m_bRmse = TLoss::k_bRmse ? EBM_TRUE : EBM_FALSE;
+      pObjectiveWrapperOut->m_gradientConstant = gradientConstant;
+      pObjectiveWrapperOut->m_hessianConstant = hessianConstant;
+      pObjectiveWrapperOut->m_bObjectiveHasHessian = HasHessian<TObjective, TFloat>() ? EBM_TRUE : EBM_FALSE;
+      pObjectiveWrapperOut->m_bRmse = TObjective::k_bRmse ? EBM_TRUE : EBM_FALSE;
 
-      pLossWrapperOut->m_pLoss = this;
+      pObjectiveWrapperOut->m_pObjective = this;
    }
 
-   Loss() = default;
-   ~Loss() = default;
+   Objective() = default;
+   ~Objective() = default;
 
 public:
 
-   static ErrorEbm CreateLoss(
-      const REGISTER_LOSSES_FUNCTION registerLossesFunction,
+   static ErrorEbm CreateObjective(
+      const REGISTER_OBJECTIVES_FUNCTION registerObjectivesFunction,
       const Config * const pConfig,
-      const char * const sLoss,
-      const char * const sLossEnd,
-      LossWrapper * const pLossWrapperOut
+      const char * const sObjective,
+      const char * const sObjectiveEnd,
+      ObjectiveWrapper * const pObjectiveWrapperOut
    ) noexcept;
 };
-static_assert(std::is_standard_layout<Loss>::value && std::is_trivially_copyable<Loss>::value,
+static_assert(std::is_standard_layout<Objective>::value && std::is_trivially_copyable<Objective>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 // TODO: include ranking
@@ -541,99 +526,99 @@ static_assert(std::is_standard_layout<Loss>::value && std::is_trivially_copyable
 //               multiclass, regression, etc. different targets.
 // Multitask   : A slightly more restricted form of multioutput where training jointly optimizes the targets.
 //               The different targets can still be of different types (binary, multiclass, regression, etc), but
-//               importantly they share a single loss function.  In C++ we deal only with multitask since otherwise 
+//               importantly they share a single objective.  In C++ we deal only with multitask since otherwise 
 //               it would make more sense to train the targets separately.  In higher level languages the models can 
 //               either be Multitask or Multioutput depending on how they were generated.
 // Multilabel  : A more restricted version of multitask where the tasks are all binary classification.  We use
 //               the term MultitaskBinary* here since it fits better into our ontology.
 // 
-// The most general loss function that we could handle in C++ would be to take a custom loss function that jointly 
+// The most general objective that we could handle in C++ would be to take a custom objective that jointly 
 // optimizes a multitask problem that contains regression, binary, and multiclass tasks.  This would be: 
-// "MultitaskLossCustom"
+// "CustomMultitaskObjective"
 
-struct SingletaskLoss : public Loss {
+struct SingletaskObjective : public Objective {
 protected:
-   SingletaskLoss() = default;
-   ~SingletaskLoss() = default;
+   SingletaskObjective() = default;
+   ~SingletaskObjective() = default;
 };
 
-struct BinaryLoss : public SingletaskLoss {
+struct BinaryObjective : public SingletaskObjective {
 protected:
-   BinaryLoss() = default;
-   ~BinaryLoss() = default;
+   BinaryObjective() = default;
+   ~BinaryObjective() = default;
 public:
    static constexpr bool IsMultiScore = false;
 };
 
-struct MulticlassLoss : public SingletaskLoss {
+struct MulticlassObjective : public SingletaskObjective {
 protected:
-   MulticlassLoss() = default;
-   ~MulticlassLoss() = default;
+   MulticlassObjective() = default;
+   ~MulticlassObjective() = default;
 public:
    static constexpr bool IsMultiScore = true;
 };
 
-struct RegressionLoss : public SingletaskLoss {
+struct RegressionObjective : public SingletaskObjective {
 protected:
-   RegressionLoss() = default;
-   ~RegressionLoss() = default;
+   RegressionObjective() = default;
+   ~RegressionObjective() = default;
 public:
    static constexpr bool IsMultiScore = false;
 };
 
-struct MultitaskLoss : public Loss {
+struct MultitaskObjective : public Objective {
 protected:
-   MultitaskLoss() = default;
-   ~MultitaskLoss() = default;
+   MultitaskObjective() = default;
+   ~MultitaskObjective() = default;
 public:
    static constexpr bool IsMultiScore = true;
 };
 
-struct BinaryMultitaskLoss : public MultitaskLoss {
+struct BinaryMultitaskObjective : public MultitaskObjective {
 protected:
-   BinaryMultitaskLoss() = default;
-   ~BinaryMultitaskLoss() = default;
+   BinaryMultitaskObjective() = default;
+   ~BinaryMultitaskObjective() = default;
 };
 
-struct MulticlassMultitaskLoss : public MultitaskLoss {
+struct MulticlassMultitaskObjective : public MultitaskObjective {
 protected:
-   MulticlassMultitaskLoss() = default;
-   ~MulticlassMultitaskLoss() = default;
+   MulticlassMultitaskObjective() = default;
+   ~MulticlassMultitaskObjective() = default;
 };
 
-struct RegressionMultitaskLoss : public MultitaskLoss {
+struct RegressionMultitaskObjective : public MultitaskObjective {
 protected:
-   RegressionMultitaskLoss() = default;
-   ~RegressionMultitaskLoss() = default;
+   RegressionMultitaskObjective() = default;
+   ~RegressionMultitaskObjective() = default;
 };
 
 
-#define LOSS_CONSTANTS_BOILERPLATE(__EBM_TYPE, __LINK_FUNCTION) \
+#define OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE, __LINK_FUNCTION) \
    public: \
       static constexpr bool k_bRmse = false; \
       static constexpr LinkEbm k_linkFunction = (__LINK_FUNCTION); \
-      static ErrorEbm StaticApplyUpdate(const Loss * const pThis, ApplyUpdateBridge * const pData) { \
+      static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->ParentApplyUpdate<const __EBM_TYPE<TFloat>, TFloat>(pData); \
       } \
       void FillWrapper(void * const pWrapperOut) noexcept { \
          static_assert( \
             std::is_same<__EBM_TYPE<TFloat>, typename std::remove_pointer<decltype(this)>::type>::value, \
-            "*Loss types mismatch"); \
-         FillLossWrapper<typename std::remove_pointer<decltype(this)>::type, TFloat>(pWrapperOut); \
+            "*Objective types mismatch"); \
+         FillObjectiveWrapper<typename std::remove_pointer<decltype(this)>::type, TFloat>(pWrapperOut); \
       }
 
-#define LOSS_TEMPLATE_BOILERPLATE \
+#define OBJECTIVE_TEMPLATE_BOILERPLATE \
    public: \
       template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight> \
       GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const { \
-         Loss::ChildApplyUpdate<typename std::remove_pointer<decltype(this)>::type, TFloat, \
+         Objective::ChildApplyUpdate<typename std::remove_pointer<decltype(this)>::type, TFloat, \
             cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData); \
       }
 
-#define LOSS_BOILERPLATE(__EBM_TYPE, __LINK_FUNCTION) \
-   LOSS_CONSTANTS_BOILERPLATE(__EBM_TYPE, __LINK_FUNCTION) \
-   LOSS_TEMPLATE_BOILERPLATE
+#define OBJECTIVE_BOILERPLATE(__EBM_TYPE, __LINK_FUNCTION) \
+   OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE, __LINK_FUNCTION) \
+   OBJECTIVE_TEMPLATE_BOILERPLATE
 
 } // DEFINED_ZONE_NAME
 
-#endif // LOSS_HPP
+#endif // OBJECTIVE_HPP

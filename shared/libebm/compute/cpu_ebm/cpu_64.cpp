@@ -16,7 +16,7 @@
 #include "bridge_cpp.hpp"
 
 #include "Registration.hpp"
-#include "Loss.hpp"
+#include "Objective.hpp"
 
 #include "approximate_math.hpp"
 #include "compute_stats.hpp"
@@ -162,10 +162,10 @@ struct Cpu_64_Float final {
       return val.m_data;
    }
 
-   template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
-   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) noexcept {
+   template<typename TObjective, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Objective * const pObjective, ApplyUpdateBridge * const pData) noexcept {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
-      RemoteApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pLoss, pData);
+      RemoteApplyUpdate<TObjective, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pObjective, pData);
       return Error_None;
    }
 
@@ -177,23 +177,23 @@ static_assert(std::is_standard_layout<Cpu_64_Float>::value && std::is_trivially_
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 
-// FIRST, define the RegisterLoss function that we'll be calling from our registrations.  This is a static 
+// FIRST, define the RegisterObjective function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions
 template<template <typename> class TRegistrable, typename... Args>
-INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterLoss(const char * const sRegistrationName, const Args...args) {
+INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterObjective(const char * const sRegistrationName, const Args...args) {
    return Register<TRegistrable, Cpu_64_Float>(sRegistrationName, args...);
 }
 
-// now include all our special loss registrations which will use the RegisterLoss function we defined above!
-#include "loss_registrations.hpp"
+// now include all our special objective registrations which will use the RegisterObjective function we defined above!
+#include "objective_registrations.hpp"
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateLoss_Cpu_64(
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Cpu_64(
    const Config * const pConfig,
-   const char * const sLoss,
-   const char * const sLossEnd,
-   LossWrapper * const pLossWrapperOut
+   const char * const sObjective,
+   const char * const sObjectiveEnd,
+   ObjectiveWrapper * const pObjectiveWrapperOut
 ) {
-   return Loss::CreateLoss(&RegisterLosses, pConfig, sLoss, sLossEnd, pLossWrapperOut);
+   return Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
 }
 
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateMetric_Cpu_64(

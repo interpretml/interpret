@@ -43,60 +43,60 @@ struct ApplyUpdateBridge {
    double m_metricOut;
 };
 
-struct LossWrapper;
+struct ObjectiveWrapper;
 
 // these are extern "C" function pointers so we can't call anything other than an extern "C" function with them
-typedef ErrorEbm (* APPLY_UPDATE_C)(const LossWrapper * const pLossWrapper, ApplyUpdateBridge * const pData);
+typedef ErrorEbm (* APPLY_UPDATE_C)(const ObjectiveWrapper * const pObjectiveWrapper, ApplyUpdateBridge * const pData);
 
-struct LossWrapper {
+struct ObjectiveWrapper {
    APPLY_UPDATE_C m_pApplyUpdateC;
-   // everything below here the C++ *Loss specific class needs to fill out
+   // everything below here the C++ *Objective specific class needs to fill out
 
    // this needs to be void since our Registrable object is C++ visible and we cannot define it initially 
    // here in this C file since our object needs to be a POD and thus can't inherit data
    // and it cannot be empty either since empty structures are not compliant in all C compilers
    // https://stackoverflow.com/questions/755305/empty-structure-in-c?rq=1
-   void * m_pLoss;
+   void * m_pObjective;
 
    LinkEbm m_linkFunction;
    double m_linkParam;
 
    double m_gradientConstant;
    double m_hessianConstant;
-   BoolEbm m_bLossHasHessian;
+   BoolEbm m_bObjectiveHasHessian;
    BoolEbm m_bRmse;
 
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface
    void * m_pFunctionPointersCpp;
 };
 
-inline static void InitializeLossWrapperUnfailing(LossWrapper * const pLossWrapper) {
-   pLossWrapper->m_pLoss = NULL;
-   pLossWrapper->m_pFunctionPointersCpp = NULL;
+inline static void InitializeObjectiveWrapperUnfailing(ObjectiveWrapper * const pObjectiveWrapper) {
+   pObjectiveWrapper->m_pObjective = NULL;
+   pObjectiveWrapper->m_pFunctionPointersCpp = NULL;
 }
 
-inline static void FreeLossWrapperInternals(LossWrapper * const pLossWrapper) {
-   free(pLossWrapper->m_pLoss);
-   free(pLossWrapper->m_pFunctionPointersCpp);
+inline static void FreeObjectiveWrapperInternals(ObjectiveWrapper * const pObjectiveWrapper) {
+   free(pObjectiveWrapper->m_pObjective);
+   free(pObjectiveWrapper->m_pFunctionPointersCpp);
 }
 
 struct Config {
-   // don't use m_ notation here, mostly to make it cleaner for people writing *Loss classes
+   // don't use m_ notation here, mostly to make it cleaner for people writing *Objective classes
    size_t cOutputs;
 };
 
-INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateLoss_Cpu_64(
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateObjective_Cpu_64(
    const Config * const pConfig,
-   const char * const sLoss,
-   const char * const sLossEnd,
-   LossWrapper * const pLossWrapperOut
+   const char * const sObjective,
+   const char * const sObjectiveEnd,
+   ObjectiveWrapper * const pObjectiveWrapperOut
 );
 
-INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateLoss_Cuda_32(
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateObjective_Cuda_32(
    const Config * const pConfig,
-   const char * const sLoss,
-   const char * const sLossEnd,
-   LossWrapper * const pLossWrapperOut
+   const char * const sObjective,
+   const char * const sObjectiveEnd,
+   ObjectiveWrapper * const pObjectiveWrapperOut
 );
 
 INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateMetric_Cpu_64(

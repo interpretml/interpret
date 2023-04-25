@@ -96,23 +96,23 @@ class Native:
         elif error_code == -5:
             return Exception(f"Thread start failed in {native_function}")
         elif error_code == -10:
-            return Exception(f"Loss constructor native exception in {native_function}")
+            return Exception(f"Objective constructor exception in {native_function}")
         elif error_code == -11:
-            return Exception("Loss parameter unknown")
+            return Exception("Objective parameter unknown")
         elif error_code == -12:
-            return Exception("Loss parameter value malformed")
+            return Exception("Objective parameter value malformed")
         elif error_code == -13:
-            return Exception("Loss parameter value out of range")
+            return Exception("Objective parameter value out of range")
         elif error_code == -14:
-            return Exception("Loss parameter mismatch")
+            return Exception("Objective parameter mismatch")
         elif error_code == -15:
-            return Exception("Unrecognized loss type")
+            return Exception("Unrecognized objective type")
         elif error_code == -16:
-            return Exception("Illegal loss registration name")
+            return Exception("Illegal objective registration name")
         elif error_code == -17:
-            return Exception("Illegal loss parameter name")
+            return Exception("Illegal objective parameter name")
         elif error_code == -18:
-            return Exception("Duplicate loss parameter name")
+            return Exception("Duplicate objective parameter name")
         else:
             return Exception(
                 f"Unrecognized native return code {error_code} in {native_function}"

@@ -17,7 +17,7 @@ namespace DEFINED_ZONE_NAME {
 
 static bool CheckForIllegalCharacters(const char * s) noexcept {
    if(nullptr != s) {
-      // to be generously safe towards people adding new loss/metric registrations, check for nullptr
+      // to be generously safe towards people adding new objective/metric registrations, check for nullptr
       while(true) {
          const char chr = *s;
          if('\0' == chr) {
@@ -60,7 +60,7 @@ void Registration::CheckParamNames(const char * const sParamName, std::vector<co
    EBM_ASSERT(nullptr != sParamName);
 
    // yes, this is exponential, but it's only exponential for parameters that we define in this executable so
-   // we have complete control, and loss/metric params should not exceed a handfull
+   // we have complete control, and objective/metric params should not exceed a handfull
    for(const char * const sOtherParamName : usedParamNames) {
       EBM_ASSERT(nullptr != sOtherParamName);
 

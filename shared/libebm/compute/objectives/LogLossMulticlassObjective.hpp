@@ -2,15 +2,15 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-// !! To add a new loss/objective function in C++ follow the steps at the top of the "loss_registrations.hpp" file !!
+// !! To add a new objective in C++ follow the steps at the top of the "objective_registrations.hpp" file !!
 
-// Do not use this file as a reference for other loss functions. LogLoss is special.
+// Do not use this file as a reference for other objectives. LogLoss is special.
 
 template<typename TFloat>
-struct LogLossMulticlassLoss final : public MulticlassLoss {
-   LOSS_CONSTANTS_BOILERPLATE(LogLossMulticlassLoss, Link_logit)
+struct LogLossMulticlassObjective final : public MulticlassObjective {
+   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossMulticlassObjective, Link_logit)
 
-   inline LogLossMulticlassLoss(const Config & config) {
+   inline LogLossMulticlassObjective(const Config & config) {
       if(1 == config.cOutputs) {
          // we share the tag "log_loss" with binary classification
          throw SkipRegistrationException();
@@ -34,20 +34,20 @@ struct LogLossMulticlassLoss final : public MulticlassLoss {
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
-      // This function is here to signal the LogLossMulticlassLoss class abilities, but it will not be called
+      // This function is here to signal the LogLossMulticlassObjective class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
    }
 
    GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
-      // This function is here to signal the LogLossMulticlassLoss class abilities, but it will not be called
+      // This function is here to signal the LogLossMulticlassObjective class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
       return 0.0;
    }
 
    GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
-      // This function is here to signal the LogLossMulticlassLoss class abilities, but it will not be called
+      // This function is here to signal the LogLossMulticlassObjective class abilities, but it will not be called
       UNUSED(prediction);
       UNUSED(target);
       return GradientHessian<TFloat>(0.0, 0.0);

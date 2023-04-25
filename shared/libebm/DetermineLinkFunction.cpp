@@ -21,11 +21,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    LinkEbm * linkOut,
    double * linkParamOut
 ) {
-   LossWrapper loss;
+   ObjectiveWrapper objectiveWrapper;
 
    Config config;
    config.cOutputs = 1; // this is kind of cheating, but it should work
-   const ErrorEbm error = GetLoss(&config, objective, &loss);
+   const ErrorEbm error = GetObjective(&config, objective, &objectiveWrapper);
    if(Error_None != error) {
       if(nullptr != linkOut) {
          *linkOut = Link_ERROR;
@@ -37,13 +37,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    }
 
    // this leaves the contents that are not pointers
-   FreeLossWrapperInternals(&loss);
+   FreeObjectiveWrapperInternals(&objectiveWrapper);
 
    if(nullptr != linkOut) {
-      *linkOut = loss.m_linkFunction;
+      *linkOut = objectiveWrapper.m_linkFunction;
    }
    if(nullptr != linkParamOut) {
-      *linkParamOut = loss.m_linkParam;
+      *linkParamOut = objectiveWrapper.m_linkParam;
    }
    return Error_None;
 }

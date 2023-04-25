@@ -251,7 +251,7 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    mkdir ./python/interpret-core/interpret
    mkdir ./python/interpret-core/interpret/lib
 
-   extras="-DLIBEBM_EXPORTS -DNDEBUG -I$code_path/inc -I$code_path/common_c -I$code_path/common_cpp -I$code_path/bridge_c -I$code_path/bridge_cpp -I$code_path -I$code_path/compute -I$code_path/compute/loss_functions -I$code_path/compute/metrics"
+   extras="-DLIBEBM_EXPORTS -DNDEBUG -I$code_path/inc -I$code_path/common_c -I$code_path/common_cpp -I$code_path/bridge_c -I$code_path/bridge_cpp -I$code_path -I$code_path/compute -I$code_path/compute/objectives -I$code_path/compute/metrics"
 
    mkdir ./tmp
    mkdir ./tmp/mk
@@ -299,7 +299,7 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/InnerBag.cpp" -o "$tmp_path/InnerBag.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/Tensor.cpp" -o "$tmp_path/Tensor.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/TensorTotalsBuild.cpp" -o "$tmp_path/TensorTotalsBuild.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/compute/Loss.cpp" -o "$tmp_path/Loss.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/compute/Objective.cpp" -o "$tmp_path/Objective.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/compute/Registration.cpp" -o "$tmp_path/Registration.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/compute/zoned_bridge_c_functions.cpp" -o "$tmp_path/zoned_bridge_c_functions.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_main "$code_path/compute/cpu_ebm/cpu_32.cpp" -o "$tmp_path/cpu_32.o"
@@ -340,7 +340,7 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    "$tmp_path/InnerBag.o" \
    "$tmp_path/Tensor.o" \
    "$tmp_path/TensorTotalsBuild.o" \
-   "$tmp_path/Loss.o" \
+   "$tmp_path/Objective.o" \
    "$tmp_path/Registration.o" \
    "$tmp_path/zoned_bridge_c_functions.o" \
    "$tmp_path/cpu_32.o" \
@@ -448,7 +448,7 @@ main_args="$main_args -I$src_path_sanitized"
 
 compute_args="$bridge_args"
 compute_args="$compute_args -I$src_path_sanitized/compute"
-compute_args="$compute_args -I$src_path_sanitized/compute/loss_functions"
+compute_args="$compute_args -I$src_path_sanitized/compute/objectives"
 compute_args="$compute_args -I$src_path_sanitized/compute/metrics"
 
 # add any other non-include options

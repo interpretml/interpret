@@ -15,11 +15,11 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-struct Loss;
+struct Objective;
 
 // these are going to be extern "C++", which we require to call our static member functions per:
 // https://www.drdobbs.com/c-theory-and-practice/184403437
-typedef ErrorEbm (* APPLY_UPDATE_CPP)(const Loss * const pLoss, ApplyUpdateBridge * const pData);
+typedef ErrorEbm (* APPLY_UPDATE_CPP)(const Objective * const pObjective, ApplyUpdateBridge * const pData);
 
 struct FunctionPointersCpp {
    // unfortunately, function pointers are not interchangable with data pointers since in some architectures

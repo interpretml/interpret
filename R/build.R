@@ -66,7 +66,7 @@ copy_code(file.path(native_path, "common_cpp"), file.path(cxx_path, "common_cpp"
 copy_code(file.path(native_path, "bridge_c"), file.path(cxx_path, "bridge_c"))
 copy_code(file.path(native_path, "bridge_cpp"), file.path(cxx_path, "bridge_cpp"))
 copy_code(file.path(native_path, "compute"), file.path(cxx_path, "compute"))
-copy_code(file.path(native_path, "compute", "loss_functions"), file.path(cxx_path, "compute", "loss_functions"))
+copy_code(file.path(native_path, "compute", "objectives"), file.path(cxx_path, "compute", "objectives"))
 copy_code(file.path(native_path, "compute", "metrics"), file.path(cxx_path, "compute", "metrics"))
 copy_code(file.path(native_path, "compute", "cpu_ebm"), file.path(cxx_path, "compute", "cpu_ebm"))
 

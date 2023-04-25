@@ -146,7 +146,7 @@ BoosterCore::~BoosterCore() {
    DeleteTensors(m_cTerms, m_apCurrentTermTensors);
    DeleteTensors(m_cTerms, m_apBestTermTensors);
 
-   FreeLossWrapperInternals(&m_loss);
+   FreeObjectiveWrapperInternals(&m_objective);
 };
 
 void BoosterCore::Free(BoosterCore * const pBoosterCore) {
@@ -574,21 +574,21 @@ ErrorEbm BoosterCore::Create(
 
       Config config;
       config.cOutputs = cScores;
-      error = GetLoss(&config, sObjective, &pBoosterCore->m_loss);
+      error = GetObjective(&config, sObjective, &pBoosterCore->m_objective);
       if (Error_None != error) {
          // already logged
          return error;
       }
 
-      const ModelType modelType = GetModelType(pBoosterCore->m_loss.m_linkFunction);
+      const ModelType modelType = GetModelType(pBoosterCore->m_objective.m_linkFunction);
       if(IsClassification(cClasses)) {
          if(modelType < ModelType_GeneralClassification) {
-            LOG_0(Trace_Warning, "ERROR BoosterCore::Create mismatch in loss class model type");
+            LOG_0(Trace_Warning, "ERROR BoosterCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }
       } else {
          if(ModelType_Regression != modelType) {
-            LOG_0(Trace_Warning, "ERROR BoosterCore::Create mismatch in loss class model type");
+            LOG_0(Trace_Warning, "ERROR BoosterCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }
       }
@@ -742,7 +742,7 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
    data.m_aWeights = nullptr;
    data.m_aSampleScores = GetTrainingSet()->GetSampleScores();
    data.m_aGradientsAndHessians = GetTrainingSet()->GetGradientsAndHessiansPointer();
-   return LossApplyUpdate(&data);
+   return ObjectiveApplyUpdate(&data);
 }
 
 } // DEFINED_ZONE_NAME

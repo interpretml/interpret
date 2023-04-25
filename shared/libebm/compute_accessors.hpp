@@ -10,7 +10,7 @@
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
 #include "common_c.h"
-#include "bridge_c.h" // CreateLoss_*
+#include "bridge_c.h" // CreateObjective_*
 #include "zones.h"
 
 #include "common_cpp.hpp" // INLINE_RELEASE_UNTEMPLATED
@@ -20,29 +20,29 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetLoss(
+INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetObjective(
    const Config * const pConfig,
-   const char * sLoss,
-   LossWrapper * const pLossWrapperOut
+   const char * sObjective,
+   ObjectiveWrapper * const pObjectiveWrapperOut
 ) noexcept {
    EBM_ASSERT(nullptr != pConfig);
-   EBM_ASSERT(nullptr != pLossWrapperOut);
-   EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-   EBM_ASSERT(nullptr == pLossWrapperOut->m_pFunctionPointersCpp);
+   EBM_ASSERT(nullptr != pObjectiveWrapperOut);
+   EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+   EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pFunctionPointersCpp);
 
-   if(nullptr == sLoss) {
-      return Error_LossUnknown;
+   if(nullptr == sObjective) {
+      return Error_ObjectiveUnknown;
    }
-   sLoss = SkipWhitespace(sLoss);
-   if('\0' == *sLoss) {
-      return Error_LossUnknown;
+   sObjective = SkipWhitespace(sObjective);
+   if('\0' == *sObjective) {
+      return Error_ObjectiveUnknown;
    }
 
-   const char * const sLossEnd = sLoss + strlen(sLoss);
+   const char * const sObjectiveEnd = sObjective + strlen(sObjective);
 
    ErrorEbm error;
 
-   error = CreateLoss_Cpu_64(pConfig, sLoss, sLossEnd, pLossWrapperOut);
+   error = CreateObjective_Cpu_64(pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
 
    return error;
 }

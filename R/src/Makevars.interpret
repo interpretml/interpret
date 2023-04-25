@@ -5,7 +5,7 @@
 NATIVEDIR=./libebm
 
 CXX_STD = CXX17
-PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -I$(NATIVEDIR)/common_c -I$(NATIVEDIR)/common_cpp -I$(NATIVEDIR)/bridge_c -I$(NATIVEDIR)/bridge_cpp -I$(NATIVEDIR)/compute -I$(NATIVEDIR)/compute/loss_functions -I$(NATIVEDIR)/compute/metrics -I$(NATIVEDIR)/compute/cpu_ebm -DLIBEBM_R -DZONE_R
+PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -I$(NATIVEDIR)/common_c -I$(NATIVEDIR)/common_cpp -I$(NATIVEDIR)/bridge_c -I$(NATIVEDIR)/bridge_cpp -I$(NATIVEDIR)/compute -I$(NATIVEDIR)/compute/objectives -I$(NATIVEDIR)/compute/metrics -I$(NATIVEDIR)/compute/cpu_ebm -DLIBEBM_R -DZONE_R
 # TODO test adding the g++/clang flags to PKG_CXXFLAGS.  I think -g0 and -O3 won't work though since the R compile flags already include -g and -O2:
 PKG_CXXFLAGS=$(CXX_VISIBILITY) 
 
@@ -43,7 +43,7 @@ OBJECTS = \
    $(NATIVEDIR)/TensorTotalsBuild.o \
    $(NATIVEDIR)/common_c/common_c.o \
    $(NATIVEDIR)/common_c/logging.o \
-   $(NATIVEDIR)/compute/Loss.o \
+   $(NATIVEDIR)/compute/Objective.o \
    $(NATIVEDIR)/compute/Registration.o \
    $(NATIVEDIR)/compute/zoned_bridge_c_functions.o \
    $(NATIVEDIR)/compute/cpu_ebm/cpu_32.o \

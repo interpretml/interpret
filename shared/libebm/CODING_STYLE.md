@@ -43,7 +43,7 @@
 - Using exceptions and C++ oriented style in the testing code is perfectly fine.
 - For the core library, we use exceptions very sparingly. The only places we use exceptions are when
   having to interface with STL classes for which there aren't good C replacements, and for code the end user might
-  want to change, like custom Loss function classes
+  want to change, like custom Objective classes
   This is for a number of reasons:
     - our C++ library doesn't have a lot of depenencies.  Out of memory errors are almost the only error that
       we generate.

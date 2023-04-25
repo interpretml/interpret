@@ -14,7 +14,7 @@ extern "C" {
 #endif // __cplusplus
 
 INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate)(
-   const LossWrapper * const pLossWrapper,
+   const ObjectiveWrapper * const pObjectiveWrapper,
    ApplyUpdateBridge * const pData
 );
 

@@ -241,8 +241,8 @@ class RegistrationPack final : public Registration {
             static_assert(std::is_trivially_copyable<TRegistrable<TFloat>>::value,
                "This allows us to memcpy the struct to a GPU or the network.");
 
-            // use the in-place constructor to constrct our specialized Loss/Metric function in our pre-reserved memory
-            // this works because the *Loss/Metric classes need to be standard layout and trivially copyable anyways
+            // use the in-place constructor to constrct our specialized Objective/Metric in our pre-reserved memory
+            // this works because the *Objective/Metric classes need to be standard layout and trivially copyable anyways
             TRegistrable<TFloat> * const pRegistrable = new (pRegistrableMemory) TRegistrable<TFloat>(*pConfig, args...);
             EBM_ASSERT(nullptr != pRegistrable); // since allocation already happened
             EBM_ASSERT(pRegistrableMemory == pRegistrable);

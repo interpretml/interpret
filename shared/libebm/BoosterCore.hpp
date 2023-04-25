@@ -12,7 +12,7 @@
 
 #include "libebm.h" // ErrorEbm
 #include "common_c.h" // ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
-#include "bridge_c.h" // LossWrapper
+#include "bridge_c.h" // ObjectiveWrapper
 #include "zones.h"
 
 #include "ebm_internal.hpp" // FloatBig
@@ -65,7 +65,7 @@ class BoosterCore final {
    DataSetBoosting m_trainingSet;
    DataSetBoosting m_validationSet;
 
-   LossWrapper m_loss;
+   ObjectiveWrapper m_objective;
 
    static void DeleteTensors(const size_t cTerms, Tensor ** const apTensors);
 
@@ -99,7 +99,7 @@ class BoosterCore final {
    {
       m_trainingSet.InitializeUnfailing();
       m_validationSet.InitializeUnfailing();
-      InitializeLossWrapperUnfailing(&m_loss);
+      InitializeObjectiveWrapperUnfailing(&m_objective);
    }
 
 public:
@@ -200,24 +200,24 @@ public:
       FloatFast * const aUpdateScores
    );
 
-   inline ErrorEbm LossApplyUpdate(ApplyUpdateBridge * const pData) {
-      return (*m_loss.m_pApplyUpdateC)(&m_loss, pData);
+   inline ErrorEbm ObjectiveApplyUpdate(ApplyUpdateBridge * const pData) {
+      return (*m_objective.m_pApplyUpdateC)(&m_objective, pData);
    }
 
    inline bool IsRmse() {
-      return EBM_FALSE != m_loss.m_bRmse;
+      return EBM_FALSE != m_objective.m_bRmse;
    }
 
    inline bool IsHessian() {
-      return EBM_FALSE != m_loss.m_bLossHasHessian;
+      return EBM_FALSE != m_objective.m_bObjectiveHasHessian;
    }
 
    inline double GradientConstant() {
-      return m_loss.m_gradientConstant;
+      return m_objective.m_gradientConstant;
    }
 
    inline double HessianConstant() {
-      return m_loss.m_hessianConstant;
+      return m_objective.m_hessianConstant;
    }
 };
 

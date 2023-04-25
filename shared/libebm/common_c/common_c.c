@@ -61,7 +61,7 @@ extern const char * IsStringEqualsCaseInsensitive(const char * sMain, const char
       }
       if('A' <= labelChar && labelChar <= 'Z') {
          // in theory within our executable we could ensure that all labels are lower case, but we want
-         // people to tweak the loss and metric registrations, so let's be defensive here and do a full
+         // people to tweak the objective and metric registrations, so let's be defensive here and do a full
          // case insensitive compare
          labelChar += 'a' - 'A';
       }

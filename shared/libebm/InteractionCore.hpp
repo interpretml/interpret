@@ -38,14 +38,14 @@ class InteractionCore final {
 
    DataSetInteraction m_dataFrame;
 
-   LossWrapper m_loss;
+   ObjectiveWrapper m_objective;
 
    inline ~InteractionCore() {
       // this only gets called after our reference count has been decremented to zero
 
       m_dataFrame.Destruct();
       free(m_aFeatures);
-      FreeLossWrapperInternals(&m_loss);
+      FreeObjectiveWrapperInternals(&m_objective);
    };
 
    inline InteractionCore() noexcept :
@@ -55,7 +55,7 @@ class InteractionCore final {
       m_aFeatures(nullptr)
    {
       m_dataFrame.InitializeUnfailing();
-      InitializeLossWrapperUnfailing(&m_loss);
+      InitializeObjectiveWrapperUnfailing(&m_objective);
    }
 
 public:
@@ -101,24 +101,24 @@ public:
       const double * const aInitScores
    );
 
-   inline ErrorEbm LossApplyUpdate(ApplyUpdateBridge * const pData) {
-      return (*m_loss.m_pApplyUpdateC)(&m_loss, pData);
+   inline ErrorEbm ObjectiveApplyUpdate(ApplyUpdateBridge * const pData) {
+      return (*m_objective.m_pApplyUpdateC)(&m_objective, pData);
    }
 
    inline bool IsRmse() {
-      return EBM_FALSE != m_loss.m_bRmse;
+      return EBM_FALSE != m_objective.m_bRmse;
    }
 
    inline bool IsHessian() {
-      return EBM_FALSE != m_loss.m_bLossHasHessian;
+      return EBM_FALSE != m_objective.m_bObjectiveHasHessian;
    }
 
    inline double GradientConstant() {
-      return m_loss.m_gradientConstant;
+      return m_objective.m_gradientConstant;
    }
 
    inline double HessianConstant() {
-      return m_loss.m_hessianConstant;
+      return m_objective.m_hessianConstant;
    }
 };
 

@@ -17,7 +17,7 @@
 #include "bridge_cpp.hpp"
 
 #include "Registration.hpp"
-#include "Loss.hpp"
+#include "Objective.hpp"
 
 #include "approximate_math.hpp"
 #include "compute_stats.hpp"
@@ -27,11 +27,11 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template <typename TLoss>
-GPU_GLOBAL void TestGpuAdd(const Loss * const pLoss, const int * const pVal1, const int * const pVal2, int * const pResult) {
-   TLoss * const pLossSpecific = static_cast<TLoss *>(pLoss);
+template <typename TObjective>
+GPU_GLOBAL void TestGpuAdd(const Objective * const pObjective, const int * const pVal1, const int * const pVal2, int * const pResult) {
+   TObjective * const pObjectiveSpecific = static_cast<TObjective *>(pObjective);
    const size_t iGpuThread = threadIdx.x;
-//   pResult[iGpuThread] = static_cast<int>(static_cast<float>(pLossSpecific->CalculateGradient(static_cast<float>(pVal1[iGpuThread]), static_cast<float>(pVal2[iGpuThread]))));
+//   pResult[iGpuThread] = static_cast<int>(static_cast<float>(pObjectiveSpecific->CalculateGradient(static_cast<float>(pVal1[iGpuThread]), static_cast<float>(pVal2[iGpuThread]))));
 }
 
 struct Cuda_32_Int final {
@@ -175,8 +175,8 @@ struct Cuda_32_Float final {
    }
 
 
-   template<typename TLoss, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
-   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Loss * const pLoss, ApplyUpdateBridge * const pData) noexcept {
+   template<typename TObjective, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Objective * const pObjective, ApplyUpdateBridge * const pData) noexcept {
       static constexpr size_t k_cItems = 5;
 
       bool bExitError = true;
@@ -185,13 +185,13 @@ struct Cuda_32_Float final {
       const int aVal2[k_cItems] = { 100, 200, 300, 400, 500 };
       int aResult[k_cItems];
 
-      static_assert(std::is_standard_layout<TLoss>::value && std::is_trivially_copyable<TLoss>::value,
+      static_assert(std::is_standard_layout<TObjective>::value && std::is_trivially_copyable<TObjective>::value,
          "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
       int * aDeviceVal1 = nullptr;
       int * aDeviceVal2 = nullptr;
       int * aDeviceResult = nullptr;
-      void * pDeviceLoss = nullptr;
+      void * pDeviceObjective = nullptr;
       cudaError_t error;
 
       error = cudaSetDevice(0);
@@ -214,12 +214,12 @@ struct Cuda_32_Float final {
          goto exit_error;
       }
 
-      if(!std::is_empty<TLoss>::value) {
-         error = cudaMalloc((void **)&pDeviceLoss, sizeof(TLoss));
+      if(!std::is_empty<TObjective>::value) {
+         error = cudaMalloc((void **)&pDeviceObjective, sizeof(TObjective));
          if(cudaSuccess != error) {
             goto exit_error;
          }
-         error = cudaMemcpy(pDeviceLoss, pLoss, sizeof(TLoss), cudaMemcpyHostToDevice);
+         error = cudaMemcpy(pDeviceObjective, pObjective, sizeof(TObjective), cudaMemcpyHostToDevice);
          if(cudaSuccess != error) {
             goto exit_error;
          }
@@ -235,8 +235,8 @@ struct Cuda_32_Float final {
          goto exit_error;
       }
 
-      TestGpuAdd<TLoss><<<1, k_cItems>>>(static_cast<Loss *>(pDeviceLoss), aDeviceVal1, aDeviceVal2, aDeviceResult);
-      RemoteApplyUpdate<TLoss, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight><<<1, k_cItems>>>(pLoss, pData);
+      TestGpuAdd<TObjective><<<1, k_cItems>>>(static_cast<Objective *>(pDeviceObjective), aDeviceVal1, aDeviceVal2, aDeviceResult);
+      RemoteApplyUpdate<TObjective, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight><<<1, k_cItems>>>(pObjective, pData);
 
       error = cudaGetLastError();
       if(cudaSuccess != error) {
@@ -259,8 +259,8 @@ struct Cuda_32_Float final {
 
       bool bExitHard = false;
 
-      if(nullptr != pDeviceLoss) {
-         error = cudaFree(pDeviceLoss);
+      if(nullptr != pDeviceObjective) {
+         error = cudaFree(pDeviceObjective);
          if(cudaSuccess != error) {
             bExitHard = true;
          }
@@ -304,23 +304,23 @@ private:
 static_assert(std::is_standard_layout<Cuda_32_Float>::value && std::is_trivially_copyable<Cuda_32_Float>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
-// FIRST, define the RegisterLoss function that we'll be calling from our registrations.  This is a static 
+// FIRST, define the RegisterObjective function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions
 template<template <typename> class TRegistrable, typename... Args>
-INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterLoss(const char * const sRegistrationName, const Args...args) {
+INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterObjective(const char * const sRegistrationName, const Args...args) {
    return Register<TRegistrable, Cuda_32_Float>(sRegistrationName, args...);
 }
 
-// now include all our special loss registrations which will use the RegisterLoss function we defined above!
-#include "loss_registrations.hpp"
+// now include all our special objective registrations which will use the RegisterObjective function we defined above!
+#include "objective_registrations.hpp"
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateLoss_Cuda_32(
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Cuda_32(
    const Config * const pConfig,
-   const char * const sLoss,
-   const char * const sLossEnd,
-   LossWrapper * const pLossWrapperOut
+   const char * const sObjective,
+   const char * const sObjectiveEnd,
+   ObjectiveWrapper * const pObjectiveWrapperOut
 ) {
-   return Loss::CreateLoss(&RegisterLosses, pConfig, sLoss, sLossEnd, pLossWrapperOut);
+   return Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
 }
 
 } // DEFINED_ZONE_NAME

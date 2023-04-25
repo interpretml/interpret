@@ -23,16 +23,16 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-struct Loss;
+struct Objective;
 
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate) (
-   const LossWrapper * const pLossWrapper,
+   const ObjectiveWrapper * const pObjectiveWrapper,
    ApplyUpdateBridge * const pData
 ) {
-   const Loss * const pLoss = static_cast<const Loss *>(pLossWrapper->m_pLoss);
+   const Objective * const pObjective = static_cast<const Objective *>(pObjectiveWrapper->m_pObjective);
    const APPLY_UPDATE_CPP pApplyUpdateCpp = 
-      (static_cast<FunctionPointersCpp *>(pLossWrapper->m_pFunctionPointersCpp))->m_pApplyUpdateCpp;
-   return (*pApplyUpdateCpp)(pLoss, pData);
+      (static_cast<FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pApplyUpdateCpp;
+   return (*pApplyUpdateCpp)(pObjective, pData);
 }
 
 } // DEFINED_ZONE_NAME

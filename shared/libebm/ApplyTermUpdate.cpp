@@ -152,7 +152,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       data.m_aWeights = nullptr;
       data.m_aSampleScores = pBoosterCore->GetTrainingSet()->GetSampleScores();
       data.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
-      error = pBoosterCore->LossApplyUpdate(&data);
+      error = pBoosterCore->ObjectiveApplyUpdate(&data);
       if(Error_None != error) {
          return error;
       }
@@ -184,7 +184,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       data.m_aWeights = pBoosterCore->GetValidationWeights();
       data.m_aSampleScores = pBoosterCore->GetValidationSet()->GetSampleScores();
       data.m_aGradientsAndHessians = pBoosterCore->GetValidationSet()->GetGradientsAndHessiansPointer();
-      error = pBoosterCore->LossApplyUpdate(&data);
+      error = pBoosterCore->ObjectiveApplyUpdate(&data);
       if(Error_None != error) {
          return error;
       }

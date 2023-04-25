@@ -210,21 +210,21 @@ ErrorEbm InteractionCore::Create(
 
       Config config;
       config.cOutputs = cScores;
-      error = GetLoss(&config, sObjective, &pRet->m_loss);
+      error = GetObjective(&config, sObjective, &pRet->m_objective);
       if(Error_None != error) {
          // already logged
          return error;
       }
 
-      const ModelType modelType = GetModelType(pRet->m_loss.m_linkFunction);
+      const ModelType modelType = GetModelType(pRet->m_objective.m_linkFunction);
       if(IsClassification(cClasses)) {
          if(modelType < ModelType_GeneralClassification) {
-            LOG_0(Trace_Warning, "ERROR InteractionCore::Create mismatch in loss class model type");
+            LOG_0(Trace_Warning, "ERROR InteractionCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }
       } else {
          if(ModelType_Regression != modelType) {
-            LOG_0(Trace_Warning, "ERROR InteractionCore::Create mismatch in loss class model type");
+            LOG_0(Trace_Warning, "ERROR InteractionCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }
       }
@@ -415,7 +415,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       data.m_aGradientsAndHessians = m_dataFrame.GetGradientsAndHessiansPointer();
       // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
       // reuse the same code that we use for boosting in order to generate our gradients and hessians
-      const ErrorEbm error = LossApplyUpdate(&data);
+      const ErrorEbm error = ObjectiveApplyUpdate(&data);
 
       free(aMulticlassMidwayTemp); // nullptr ok
       free(aUpdateScores);

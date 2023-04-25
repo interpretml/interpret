@@ -2,17 +2,17 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-// !! To add a new loss/objective function in C++ follow the steps at the top of the "loss_registrations.hpp" file !!
+// !! To add a new objective in C++ follow the steps at the top of the "objective_registrations.hpp" file !!
 
 // TFloat is a datatype that could hold inside a double, float, or some SIMD intrinsic type.
 // See sse2_32.cpp, cuda_32.cpp, and cpu_64.cpp as examples where TFloat operators are defined.
 template<typename TFloat>
-struct PoissonDevianceRegressionLoss : RegressionLoss {
-   LOSS_BOILERPLATE(PoissonDevianceRegressionLoss, Link_log)
+struct PoissonDevianceRegressionObjective : RegressionObjective {
+   OBJECTIVE_BOILERPLATE(PoissonDevianceRegressionObjective, Link_log)
 
    double m_maxDeltaStepExp;
-   // The constructor parameters following config must match the RegisterLoss parameters in loss_registrations.hpp
-   inline PoissonDevianceRegressionLoss(const Config & config, const double maxDeltaStep) {
+   // The constructor parameters following config must match the RegisterObjective parameters in objective_registrations.hpp
+   inline PoissonDevianceRegressionObjective(const Config & config, const double maxDeltaStep) {
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }

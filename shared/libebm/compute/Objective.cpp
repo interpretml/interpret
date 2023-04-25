@@ -11,95 +11,95 @@
 #include "zoned_bridge_c_functions.h"
 #include "registration_exceptions.hpp"
 #include "Registration.hpp"
-#include "Loss.hpp"
+#include "Objective.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-ErrorEbm Loss::CreateLoss(
-   const REGISTER_LOSSES_FUNCTION registerLossesFunction,
+ErrorEbm Objective::CreateObjective(
+   const REGISTER_OBJECTIVES_FUNCTION registerObjectivesFunction,
    const Config * const pConfig,
-   const char * const sLoss,
-   const char * const sLossEnd,
-   LossWrapper * const pLossWrapperOut
+   const char * const sObjective,
+   const char * const sObjectiveEnd,
+   ObjectiveWrapper * const pObjectiveWrapperOut
 ) noexcept {
-   EBM_ASSERT(nullptr != registerLossesFunction);
+   EBM_ASSERT(nullptr != registerObjectivesFunction);
    EBM_ASSERT(nullptr != pConfig);
    EBM_ASSERT(1 <= pConfig->cOutputs);
-   EBM_ASSERT(nullptr != sLoss);
-   EBM_ASSERT(nullptr != sLossEnd);
-   EBM_ASSERT(sLoss < sLossEnd); // empty string not allowed
-   EBM_ASSERT('\0' != *sLoss);
-   EBM_ASSERT(!(0x20 == *sLoss || (0x9 <= *sLoss && *sLoss <= 0xd)));
-   EBM_ASSERT('\0' == *sLossEnd);
-   EBM_ASSERT(nullptr != pLossWrapperOut);
-   EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-   EBM_ASSERT(nullptr == pLossWrapperOut->m_pFunctionPointersCpp);
+   EBM_ASSERT(nullptr != sObjective);
+   EBM_ASSERT(nullptr != sObjectiveEnd);
+   EBM_ASSERT(sObjective < sObjectiveEnd); // empty string not allowed
+   EBM_ASSERT('\0' != *sObjective);
+   EBM_ASSERT(!(0x20 == *sObjective || (0x9 <= *sObjective && *sObjective <= 0xd)));
+   EBM_ASSERT('\0' == *sObjectiveEnd);
+   EBM_ASSERT(nullptr != pObjectiveWrapperOut);
+   EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+   EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pFunctionPointersCpp);
 
-   LOG_0(Trace_Info, "Entered Loss::CreateLoss");
+   LOG_0(Trace_Info, "Entered Objective::CreateObjective");
 
    void * const pFunctionPointersCpp = malloc(sizeof(FunctionPointersCpp));
    ErrorEbm error = Error_OutOfMemory;
    if(nullptr != pFunctionPointersCpp) {
-      pLossWrapperOut->m_pFunctionPointersCpp = pFunctionPointersCpp;
+      pObjectiveWrapperOut->m_pFunctionPointersCpp = pFunctionPointersCpp;
       try {
-         const std::vector<std::shared_ptr<const Registration>> registrations = (*registerLossesFunction)();
-         const bool bFailed = Registration::CreateRegistrable(pConfig, sLoss, sLossEnd, pLossWrapperOut, registrations);
+         const std::vector<std::shared_ptr<const Registration>> registrations = (*registerObjectivesFunction)();
+         const bool bFailed = Registration::CreateRegistrable(pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut, registrations);
          if(!bFailed) {
-            EBM_ASSERT(nullptr != pLossWrapperOut->m_pLoss);
-            pLossWrapperOut->m_pApplyUpdateC = MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate);
-            LOG_0(Trace_Info, "Exited Loss::CreateLoss");
+            EBM_ASSERT(nullptr != pObjectiveWrapperOut->m_pObjective);
+            pObjectiveWrapperOut->m_pApplyUpdateC = MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate);
+            LOG_0(Trace_Info, "Exited Objective::CreateObjective");
             return Error_None;
          }
-         EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(Trace_Info, "Exited Loss::CreateLoss unknown loss");
-         error = Error_LossUnknown;
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Info, "Exited Objective::CreateObjective unknown objective");
+         error = Error_ObjectiveUnknown;
       } catch(const ParamValMalformedException &) {
-         EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamValMalformedException");
-         error = Error_LossParamValMalformed;
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamValMalformedException");
+         error = Error_ObjectiveParamValMalformed;
       } catch(const ParamUnknownException &) {
-         EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamUnknownException");
-         error = Error_LossParamUnknown;
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamUnknownException");
+         error = Error_ObjectiveParamUnknown;
       } catch(const RegistrationConstructorException &) {
-         EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss RegistrationConstructorException");
-         error = Error_LossConstructorException;
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective RegistrationConstructorException");
+         error = Error_ObjectiveConstructorException;
       } catch(const ParamValOutOfRangeException &) {
-         EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamValOutOfRangeException");
-         error = Error_LossParamValOutOfRange;
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamValOutOfRangeException");
+         error = Error_ObjectiveParamValOutOfRange;
       } catch(const ParamMismatchWithConfigException &) {
-         EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss ParamMismatchWithConfigException");
-         error = Error_LossParamMismatchWithConfig;
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamMismatchWithConfigException");
+         error = Error_ObjectiveParamMismatchWithConfig;
       } catch(const IllegalRegistrationNameException &) {
-         EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss IllegalRegistrationNameException");
-         error = Error_LossIllegalRegistrationName;
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective IllegalRegistrationNameException");
+         error = Error_ObjectiveIllegalRegistrationName;
       } catch(const IllegalParamNameException &) {
-         EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss IllegalParamNameException");
-         error = Error_LossIllegalParamName;
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective IllegalParamNameException");
+         error = Error_ObjectiveIllegalParamName;
       } catch(const DuplicateParamNameException &) {
-         EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss DuplicateParamNameException");
-         error = Error_LossDuplicateParamName;
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective DuplicateParamNameException");
+         error = Error_ObjectiveDuplicateParamName;
       } catch(const std::bad_alloc &) {
-         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss Out of Memory");
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective Out of Memory");
          error = Error_OutOfMemory;
       } catch(...) {
-         LOG_0(Trace_Warning, "WARNING Loss::CreateLoss internal error, unknown exception");
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective internal error, unknown exception");
          error = Error_UnexpectedInternal;
       }
-      free(pLossWrapperOut->m_pLoss); // this is legal if pLossWrapper->m_pLoss is nullptr
-      pLossWrapperOut->m_pLoss = nullptr;
+      free(pObjectiveWrapperOut->m_pObjective); // this is legal if pObjectiveWrapper->m_pObjective is nullptr
+      pObjectiveWrapperOut->m_pObjective = nullptr;
 
-      free(pLossWrapperOut->m_pFunctionPointersCpp); // this is legal if pLossWrapper->m_pFunctionPointersCpp is nullptr
-      pLossWrapperOut->m_pFunctionPointersCpp = nullptr;
+      free(pObjectiveWrapperOut->m_pFunctionPointersCpp); // this is legal if pObjectiveWrapper->m_pFunctionPointersCpp is nullptr
+      pObjectiveWrapperOut->m_pFunctionPointersCpp = nullptr;
    }
    return error;
 }
