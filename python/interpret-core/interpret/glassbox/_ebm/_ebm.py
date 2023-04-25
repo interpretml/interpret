@@ -385,7 +385,8 @@ class EBMModel(BaseEstimator):
             X: Numpy array for training samples.
             y: Numpy array as training labels.
             sample_weight: Optional array of weights per sample. Should be same length as X and y.
-            init_score: Optional array of initial score per sample. Should be same length as X and y.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
 
         Returns:
             Itself.
@@ -1489,7 +1490,8 @@ class EBMModel(BaseEstimator):
 
         Args:
             X: Numpy array for samples.
-            init_score: Optional array of initial score per sample. Should be same length as X.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
 
         Returns:
             The sum of the additive term contributions.
@@ -1796,7 +1798,8 @@ class EBMModel(BaseEstimator):
             X: Numpy array for X to explain.
             y: Numpy vector for y to explain.
             name: User-defined explanation name.
-            init_score: Optional array of initial score per sample. Should be same length as X and y.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
 
         Returns:
             An explanation object, visualizing feature-value pairs
@@ -2288,7 +2291,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
         Args:
             X: Numpy array for samples.
-            init_score: Optional array of initial score per sample. Should be same length as X.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
 
         Returns:
             Probability estimate of sample for each class.
@@ -2330,7 +2334,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
         Args:
             X: Numpy array for samples.
-            init_score: Optional array of initial score per sample. Should be same length as X.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
 
         Returns:
             Predicted class label per sample.
@@ -2376,7 +2381,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Args:
             X: Numpy array for samples.
             output: Prediction type to output (i.e. one of 'probabilities', 'labels', 'logits')
-            init_score: Optional array of initial score per sample. Should be same length as X.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
 
         Returns:
             Predictions and local explanations for each sample.
@@ -2490,7 +2496,9 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
     objective : str, default="rmse"
-        The objective to optimize.
+        The objective to optimize. Options include: "rmse",
+        "gamma_deviance", "poisson_deviance:max_delta_step=0.7",
+        "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function)
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
@@ -2641,7 +2649,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
         Args:
             X: Numpy array for samples.
-            init_score: Optional array of initial score per sample. Should be same length as X.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
 
         Returns:
             Predicted class label per sample.
@@ -2678,7 +2687,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
         Args:
             X: Numpy array for samples.
-            init_score: Optional array of initial score per sample. Should be same length as X.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
 
         Returns:
             Predictions and local explanations for each sample.
@@ -2908,7 +2918,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
 
         Args:
             X: Numpy array for samples.
-            init_score: Optional array of initial score per sample. Should be same length as X.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
 
         Returns:
             Probability estimate of sample for each class.
@@ -2949,7 +2960,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
 
         Args:
             X: Numpy array for samples.
-            init_score: Optional array of initial score per sample. Should be same length as X.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
 
         Returns:
             Predicted class label per sample.
@@ -3029,7 +3041,9 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
     objective : str, default="rmse"
-        The objective to optimize.
+        The objective to optimize. Options include: "rmse",
+        "gamma_deviance", "poisson_deviance:max_delta_step=0.7",
+        "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function)
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
@@ -3200,7 +3214,8 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
         Args:
             X: Numpy array for samples.
-            init_score: Optional array of initial score per sample. Should be same length as X.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
 
         Returns:
             Predicted class label per sample.
