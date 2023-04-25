@@ -35,17 +35,14 @@ struct ExampleRegressionObjective : RegressionObjective {
       return 1.0;
    }
 
-   GPU_DEVICE inline TFloat InverseLinkFunction(const TFloat score) const noexcept {
-      // Identity link function
-      return score;
-   }
-
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       return error * error;
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       // Alternatively, the 2.0 factor could be moved to GradientConstant()
       const TFloat gradient = 2.0 * error;
@@ -53,7 +50,8 @@ struct ExampleRegressionObjective : RegressionObjective {
    }
 
    // If the loss function doesn't have a second derivative, then delete the CalcGradientHessian function.
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       // Alternatively, the 2.0 factor could be moved to GradientConstant() and HessianConstant()
       const TFloat gradient = 2.0 * error;

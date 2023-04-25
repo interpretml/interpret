@@ -391,20 +391,15 @@ protected:
                pWeight += TFloat::cPack;
             }
 
-            TFloat prediction;
-            if(bGetTarget) {
-               prediction = pObjective->InverseLinkFunction(sampleScore);
-            }
-
             if(bKeepGradHess) {
                TFloat gradient;
                TFloat hessian;
                if(bHessian) {
-                  const GradientHessian<TFloat> gradientHessian = pObjective->CalcGradientHessian(prediction, target);
+                  const GradientHessian<TFloat> gradientHessian = pObjective->CalcGradientHessian(sampleScore, target);
                   gradient = gradientHessian.GetGradient();
                   hessian = gradientHessian.GetHessian();
                } else {
-                  gradient = pObjective->CalcGradient(prediction, target);
+                  gradient = pObjective->CalcGradient(sampleScore, target);
                }
                if(bWeight) {
                   // This is only used during the initialization of interaction detection. For boosting
@@ -424,7 +419,7 @@ protected:
             }
 
             if(bCalcMetric) {
-               TFloat metric = pObjective->CalcMetric(prediction, target);
+               TFloat metric = pObjective->CalcMetric(sampleScore, target);
                if(bWeight) {
                   metric *= weight;
                }

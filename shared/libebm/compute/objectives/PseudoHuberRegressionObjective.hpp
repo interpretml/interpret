@@ -48,36 +48,34 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
       return 1.0;
    }
 
-   GPU_DEVICE inline TFloat InverseLinkFunction(const TFloat score) const noexcept {
-      // pseudo_huber uses an identity link function
-      return score;
-   }
-
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
-      TFloat error = prediction - target;
-      TFloat errorFraction = error * m_deltaInverted;
-      TFloat calc = errorFraction * errorFraction + 1.0;
-      TFloat sqrtCalc = Sqrt(calc);
-      TFloat metric = m_deltaSquared * (sqrtCalc - 1.0);
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = score; // identity link function
+      const TFloat error = prediction - target;
+      const TFloat errorFraction = error * m_deltaInverted;
+      const TFloat calc = errorFraction * errorFraction + 1.0;
+      const TFloat sqrtCalc = Sqrt(calc);
+      const TFloat metric = m_deltaSquared * (sqrtCalc - 1.0);
       return metric;
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
-      TFloat error = prediction - target;
-      TFloat errorFraction = error * m_deltaInverted;
-      TFloat calc = errorFraction * errorFraction + 1.0;
-      TFloat sqrtCalc = Sqrt(calc);
-      TFloat gradient = error / sqrtCalc;
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = score; // identity link function
+      const TFloat error = prediction - target;
+      const TFloat errorFraction = error * m_deltaInverted;
+      const TFloat calc = errorFraction * errorFraction + 1.0;
+      const TFloat sqrtCalc = Sqrt(calc);
+      const TFloat gradient = error / sqrtCalc;
       return gradient;
    }
 
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
-      TFloat error = prediction - target;
-      TFloat errorFraction = error * m_deltaInverted;
-      TFloat calc = errorFraction * errorFraction + 1.0;
-      TFloat sqrtCalc = Sqrt(calc);
-      TFloat gradient = error / sqrtCalc;
-      TFloat hessian = 1.0 / (calc * sqrtCalc);
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = score; // identity link function
+      const TFloat error = prediction - target;
+      const TFloat errorFraction = error * m_deltaInverted;
+      const TFloat calc = errorFraction * errorFraction + 1.0;
+      const TFloat sqrtCalc = Sqrt(calc);
+      const TFloat gradient = error / sqrtCalc;
+      const TFloat hessian = 1.0 / (calc * sqrtCalc);
       return MakeGradientHessian(gradient, hessian);
    }
 };

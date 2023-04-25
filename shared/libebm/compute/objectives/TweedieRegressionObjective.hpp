@@ -29,27 +29,25 @@ struct TweedieRegressionObjective : RegressionObjective {
       return 1.0;
    }
 
-   GPU_DEVICE inline TFloat InverseLinkFunction(const TFloat score) const noexcept {
-      // Gamma regression uses a log link function
-      return score.Exp();
-   }
-
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = Exp(score); // log link function
       //Incomplete Implementation
-      //TFloat metric = 1
+      //const TFloat metric = 1
       return 1;
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = Exp(score); // log link function
       //Incomplete Implementation
-      //TFloat gradient = 1
+      //const TFloat gradient = 1
       return 1;
    }
 
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = Exp(score); // log link function
       //Incomplete Implementation
-      //TFloat gradient = 1;
-      //TFloat hessian = 1;
+      //const TFloat gradient = 1;
+      //const TFloat hessian = 1;
       return MakeGradientHessian(1, 1);
    }
 };

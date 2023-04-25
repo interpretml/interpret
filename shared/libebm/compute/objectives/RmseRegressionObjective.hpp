@@ -36,15 +36,15 @@ public:
       return 2.0;
    }
 
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
       // This function is here to signal the RmseRegressionObjective class abilities, but it will not be called
-      UNUSED(prediction);
+      UNUSED(score);
       UNUSED(target);
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
       // This function is here to signal the RmseRegressionObjective class abilities, but it will not be called
-      UNUSED(prediction);
+      UNUSED(score);
       UNUSED(target);
       return 0.0;
    }

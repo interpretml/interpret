@@ -28,24 +28,22 @@ struct GammaDevianceRegressionObjective : RegressionObjective {
       return 1.0;
    }
 
-   GPU_DEVICE inline TFloat InverseLinkFunction(const TFloat score) const noexcept {
-      // Gamma regression uses a log link function
-      return Exp(score);
-   }
-
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
-      TFloat metric =  2 * ((target - prediction)/prediction - Log(target / prediction));
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = Exp(score); // log link function
+      const TFloat metric =  2 * ((target - prediction)/prediction - Log(target / prediction));
       return metric;
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
-      TFloat gradient = 1.0 - (target / prediction);
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = Exp(score); // log link function
+      const TFloat gradient = 1.0 - (target / prediction);
       return gradient;
    }
 
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
-      TFloat gradient = 1.0 - (target / prediction);
-      TFloat hessian = (target / prediction);
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = Exp(score); // log link function
+      const TFloat gradient = 1.0 - (target / prediction);
+      const TFloat hessian = (target / prediction);
       return MakeGradientHessian(gradient, hessian);
    }
 };

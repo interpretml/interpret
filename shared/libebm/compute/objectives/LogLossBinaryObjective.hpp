@@ -29,22 +29,22 @@ struct LogLossBinaryObjective final : public BinaryObjective {
       return 1.0;
    }
 
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
       // This function is here to signal the LogLossBinaryObjective class abilities, but it will not be called
-      UNUSED(prediction);
+      UNUSED(score);
       UNUSED(target);
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
       // This function is here to signal the LogLossBinaryObjective class abilities, but it will not be called
-      UNUSED(prediction);
+      UNUSED(score);
       UNUSED(target);
       return 0.0;
    }
 
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
       // This function is here to signal the LogLossBinaryObjective class abilities, but it will not be called
-      UNUSED(prediction);
+      UNUSED(score);
       UNUSED(target);
       return GradientHessian<TFloat>(0.0, 0.0);
    }

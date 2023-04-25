@@ -28,24 +28,23 @@ struct RmseLogLinkRegressionObjective : RegressionObjective {
       return 2.0;
    }
 
-   GPU_DEVICE inline TFloat InverseLinkFunction(const TFloat score) const noexcept {
-      return Exp(score);
-   }
-
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat prediction, const TFloat target) const noexcept {
-      TFloat metric = (prediction - target) * (prediction - target);
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = Exp(score); // log link function
+      const TFloat metric = (prediction - target) * (prediction - target);
       return metric;
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat prediction, const TFloat target) const noexcept {
-      TFloat gradient = prediction - target;
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
+      const TFloat prediction = Exp(score); // log link function
+      const TFloat gradient = prediction - target;
       return gradient;
    }
 
    // If the loss function doesn't have a second derivative, then delete the CalcGradientHessian function.
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat prediction, const TFloat target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
       // TODO: we can eliminate this function once we support that for non-rmse
-      TFloat gradient = prediction - target;
+      const TFloat prediction = Exp(score); // log link function
+      const TFloat gradient = prediction - target;
       return MakeGradientHessian(gradient, 1.0);
    }
 };
