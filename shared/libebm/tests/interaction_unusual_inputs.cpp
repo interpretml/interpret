@@ -415,7 +415,7 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
       TestSample({ 1, 1 }, 7, 1.355),
       });
    test1.InitializeInteraction();
-   const double interactionStrength = test1.TestCalcInteractionStrength({ 0, 1 });
+   const double interactionStrength = test1.TestCalcInteractionStrength({ 0, 1 }, InteractionFlags_EnableNewton);
 
    // we have a 2x2 matrix for boosting, which means there is only 1 cut point and it is known
    // so the gain should be from going from a singularity to the 4 quadrants

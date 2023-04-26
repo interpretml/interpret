@@ -180,6 +180,7 @@ typedef struct _InteractionHandle {
 
 #define InteractionFlags_Default                   (INTERACTION_FLAGS_CAST(0x00000000))
 #define InteractionFlags_Pure                      (INTERACTION_FLAGS_CAST(0x00000001))
+#define InteractionFlags_EnableNewton              (INTERACTION_FLAGS_CAST(0x00000002))
 
 // No messages will be logged. This is the default.
 #define Trace_Off                                  (TRACE_CAST(0))

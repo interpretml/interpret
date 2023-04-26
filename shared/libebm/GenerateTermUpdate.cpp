@@ -717,7 +717,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       static_cast<UBoostFlags>(BoostFlags_DisableNewtonUpdate) |
       static_cast<UBoostFlags>(BoostFlags_GradientSums) |
       static_cast<UBoostFlags>(BoostFlags_RandomSplits)
-      ))) {
+   ))) {
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains unknown flags. Ignoring extras.");
    }
 
@@ -832,10 +832,18 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    const InnerBag * const * ppInnerBag = pBoosterCore->GetInnerBags();
    if(nullptr != ppInnerBag) {
       const double gradientConstant = pBoosterCore->GradientConstant();
-      const double hessianConstant = pBoosterCore->HessianConstant();
-      double multiple = gradientConstant / hessianConstant / cInnerBagsAfterZero;
-      const double gainMultiple = gradientConstant * multiple;
+
+      const double multipleCommon = gradientConstant / cInnerBagsAfterZero;
+      double multiple = multipleCommon;
+      double gainMultiple = multipleCommon;
+      if(0 == (static_cast<UBoostFlags>(flags) & (static_cast<UBoostFlags>(BoostFlags_DisableNewtonUpdate) | static_cast<UBoostFlags>(BoostFlags_GradientSums)))) {
+         multiple /= pBoosterCore->HessianConstant();
+      }
+      if(0 == (static_cast<UBoostFlags>(flags) & static_cast<UBoostFlags>(BoostFlags_DisableNewtonGain))) {
+         gainMultiple /= pBoosterCore->HessianConstant();
+      }
       multiple *= learningRate;
+      gainMultiple *= gradientConstant;
 
       RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
       RandomDeterministic rngInternal;

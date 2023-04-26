@@ -110,7 +110,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
    if(0 != (static_cast<UInteractionFlags>(flags) & ~(
       static_cast<UInteractionFlags>(InteractionFlags_Pure)
-      ))) {
+   ))) {
       LOG_0(Trace_Error, "ERROR CalcInteractionStrength flags contains unknown flags. Ignoring extras.");
    }
 
@@ -389,8 +389,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       const double totalWeight = static_cast<double>(pDataSet->GetWeightTotal());
       EBM_ASSERT(0 < totalWeight); // if all are zeros we assume there are no weights and use the count
       const double gradientConstant = pInteractionCore->GradientConstant();
-      const double hessianConstant = pInteractionCore->HessianConstant();
-      bestGain = bestGain / totalWeight / hessianConstant * gradientConstant * gradientConstant;
+      bestGain /= totalWeight;
+      if(0 != (static_cast<UInteractionFlags>(flags) & static_cast<UInteractionFlags>(InteractionFlags_EnableNewton))) {
+         bestGain /= pInteractionCore->HessianConstant();
+      }
+      bestGain *= gradientConstant;
+      bestGain *= gradientConstant;
 
       if(UNLIKELY(/* NaN */ !LIKELY(bestGain <= std::numeric_limits<double>::max()))) {
          // We simplify our caller's handling by returning -lowest as our error indicator. -lowest will sort to being the
