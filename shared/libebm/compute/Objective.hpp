@@ -290,6 +290,51 @@ private:
 
 protected:
 
+   template<typename TObjective, typename TFloat, bool bHessian, bool bWeight, typename std::enable_if<bHessian, void>::type * = nullptr>
+   INLINE_ALWAYS typename TFloat::T * HandleGradHess(
+      typename TFloat::T * const pGradientAndHessian,
+      const TFloat sampleScore,
+      const TFloat target,
+      const TFloat weight
+   ) const noexcept {
+      const TObjective * const pObjective = static_cast<const TObjective *>(this);
+      const GradientHessian<TFloat> gradientHessian = pObjective->CalcGradientHessian(sampleScore, target);
+      TFloat gradient = gradientHessian.GetGradient();
+      TFloat hessian = gradientHessian.GetHessian();
+      if(bWeight) {
+         // This is only used during the initialization of interaction detection. For boosting
+         // we currently multiply by the weight during bin summation instead since we use the weight
+         // there to include the inner bagging counts of occurences.
+         // Whether this multiplication happens or not is controlled by the caller by passing in the
+         // weight array or not.
+         gradient *= weight;
+         hessian *= weight;
+      }
+      gradient.SaveAligned(pGradientAndHessian);
+      hessian.SaveAligned(pGradientAndHessian + TFloat::cPack);
+      return pGradientAndHessian + (TFloat::cPack + TFloat::cPack);
+   }
+   template<typename TObjective, typename TFloat, bool bHessian, bool bWeight, typename std::enable_if<!bHessian, void>::type * = nullptr>
+   INLINE_ALWAYS typename TFloat::T * HandleGradHess(
+      typename TFloat::T * const pGradientAndHessian, 
+      const TFloat sampleScore, 
+      const TFloat target,
+      const TFloat weight
+   ) const noexcept {
+      const TObjective * const pObjective = static_cast<const TObjective *>(this);
+      TFloat gradient = pObjective->CalcGradient(sampleScore, target);
+      if(bWeight) {
+         // This is only used during the initialization of interaction detection. For boosting
+         // we currently multiply by the weight during bin summation instead since we use the weight
+         // there to include the inner bagging counts of occurences.
+         // Whether this multiplication happens or not is controlled by the caller by passing in the
+         // weight array or not.
+         gradient *= weight;
+      }
+      gradient.SaveAligned(pGradientAndHessian);
+      return pGradientAndHessian + TFloat::cPack;
+   }
+
    template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE void ChildApplyUpdate(ApplyUpdateBridge * const pData) const {
       const TObjective * const pObjective = static_cast<const TObjective *>(this);
@@ -392,30 +437,7 @@ protected:
             }
 
             if(bKeepGradHess) {
-               TFloat gradient;
-               TFloat hessian;
-               if(bHessian) {
-                  const GradientHessian<TFloat> gradientHessian = pObjective->CalcGradientHessian(sampleScore, target);
-                  gradient = gradientHessian.GetGradient();
-                  hessian = gradientHessian.GetHessian();
-               } else {
-                  gradient = pObjective->CalcGradient(sampleScore, target);
-               }
-               if(bWeight) {
-                  // This is only used during the initialization of interaction detection. For boosting
-                  // we currently multiply by the weight during bin summation instead since we use the weight
-                  // there to include the inner bagging counts of occurences.
-                  // Whether this multiplication happens or not is controlled by the caller by passing in the
-                  // weight array or not.
-                  gradient *= weight;
-                  hessian *= weight;
-               }
-               gradient.SaveAligned(pGradientAndHessian);
-               pGradientAndHessian += TFloat::cPack;
-               if(bHessian) {
-                  hessian.SaveAligned(pGradientAndHessian);
-                  pGradientAndHessian += TFloat::cPack;
-               }
+               pGradientAndHessian = HandleGradHess<TObjective, TFloat, bHessian, bWeight>(pGradientAndHessian, sampleScore, target, weight);
             }
 
             if(bCalcMetric) {

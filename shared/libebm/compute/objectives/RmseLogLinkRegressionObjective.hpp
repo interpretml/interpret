@@ -44,12 +44,4 @@ struct RmseLogLinkRegressionObjective : RegressionObjective {
       const TFloat gradient = prediction - target;
       return gradient;
    }
-
-   // If the loss function doesn't have a second derivative, then delete the CalcGradientHessian function.
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
-      // TODO: we can eliminate this function once we support that for non-rmse
-      const TFloat prediction = Exp(score); // log link function
-      const TFloat gradient = prediction - target;
-      return MakeGradientHessian(gradient, 1.0);
-   }
 };
