@@ -11,7 +11,7 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
    OBJECTIVE_BOILERPLATE(PseudoHuberRegressionObjective, MINIMIZE_METRIC, Link_identity)
 
    TFloat m_deltaInverted;
-   TFloat m_deltaSquared;
+   double m_deltaSquared;
 
    // The constructor parameters following config must match the RegisterObjective parameters in objective_registrations.hpp
    inline PseudoHuberRegressionObjective(const Config & config, const double delta) {
@@ -49,7 +49,7 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
    }
 
    inline double FinishMetric(const double metricSum) const noexcept {
-      return metricSum;
+      return m_deltaSquared * metricSum;
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
@@ -58,7 +58,7 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
       const TFloat errorFraction = error * m_deltaInverted;
       const TFloat calc = errorFraction * errorFraction + 1.0;
       const TFloat sqrtCalc = Sqrt(calc);
-      const TFloat metric = m_deltaSquared * (sqrtCalc - 1.0);
+      const TFloat metric = sqrtCalc - 1.0;
       return metric;
    }
 

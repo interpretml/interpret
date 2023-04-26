@@ -24,6 +24,7 @@ struct ExampleRegressionObjective : RegressionObjective {
    }
 
    inline double LinkParam() const noexcept {
+      // only Link_power and the custom link functions use the LinkParam
       return std::numeric_limits<double>::quiet_NaN();
    }
 
@@ -36,7 +37,7 @@ struct ExampleRegressionObjective : RegressionObjective {
    }
 
    inline double FinishMetric(const double metricSum) const noexcept {
-      return std::sqrt(metricSum); // finish the 'r' in 'rmse'
+      return metricSum; // return MSE, but if we wanted to return RMSE we would take the sqrt here
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
@@ -57,7 +58,7 @@ struct ExampleRegressionObjective : RegressionObjective {
    GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
-      // Alternatively, the 2.0 factor could be moved to GradientConstant() and HessianConstant()
+      // Alternatively, the 2.0 factors could be moved to GradientConstant() and HessianConstant()
       const TFloat gradient = 2.0 * error;
       const TFloat hessian = 2.0;
       return MakeGradientHessian(gradient, hessian);

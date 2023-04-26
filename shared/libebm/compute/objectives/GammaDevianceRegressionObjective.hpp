@@ -10,7 +10,7 @@ template<typename TFloat>
 struct GammaDevianceRegressionObjective : RegressionObjective {
    OBJECTIVE_BOILERPLATE(GammaDevianceRegressionObjective, MINIMIZE_METRIC, Link_log)
 
-   inline GammaDevianceRegressionObjective(const Config & config) {
+      inline GammaDevianceRegressionObjective(const Config & config) {
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }
@@ -29,12 +29,12 @@ struct GammaDevianceRegressionObjective : RegressionObjective {
    }
 
    inline double FinishMetric(const double metricSum) const noexcept {
-      return metricSum;
+      return 2.0 * metricSum;
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
       const TFloat prediction = Exp(score); // log link function
-      const TFloat metric =  2 * ((target - prediction)/prediction - Log(target / prediction));
+      const TFloat metric = target / prediction - 1.0 - Log(target / prediction);
       return metric;
    }
 

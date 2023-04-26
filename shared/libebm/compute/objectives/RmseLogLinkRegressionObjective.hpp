@@ -34,7 +34,8 @@ struct RmseLogLinkRegressionObjective : RegressionObjective {
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
       const TFloat prediction = Exp(score); // log link function
-      const TFloat metric = (prediction - target) * (prediction - target);
+      const TFloat error = prediction - target;
+      const TFloat metric = error * error;
       return metric;
    }
 
