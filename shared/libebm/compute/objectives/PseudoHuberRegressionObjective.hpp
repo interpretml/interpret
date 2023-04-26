@@ -8,7 +8,7 @@
 // See sse2_32.cpp, cuda_32.cpp, and cpu_64.cpp as examples where TFloat operators are defined.
 template<typename TFloat>
 struct PseudoHuberRegressionObjective : RegressionObjective {
-   OBJECTIVE_BOILERPLATE(PseudoHuberRegressionObjective, Link_identity)
+   OBJECTIVE_BOILERPLATE(PseudoHuberRegressionObjective, MINIMIZE_METRIC, Link_identity)
 
    TFloat m_deltaInverted;
    TFloat m_deltaSquared;
@@ -46,6 +46,10 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
 
    inline double HessianConstant() const noexcept {
       return 1.0;
+   }
+
+   inline double FinishMetric(const double metricSum) const noexcept {
+      return metricSum;
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {

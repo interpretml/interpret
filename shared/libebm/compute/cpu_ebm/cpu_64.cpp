@@ -5,6 +5,7 @@
 #include "precompiled_header_cpp.hpp"
 
 #include <cmath>
+#include <type_traits>
 
 #include "libebm.h"
 #include "logging.h"
@@ -40,6 +41,7 @@ static_assert(std::is_standard_layout<Cpu_64_Int>::value && std::is_trivially_co
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 struct Cpu_64_Float final {
+   static constexpr bool bCpu = true;
    static constexpr int cPack = 1;
    using T = double;
    using TInt = Cpu_64_Int;

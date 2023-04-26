@@ -8,7 +8,7 @@
 
 template<typename TFloat>
 struct LogLossMulticlassObjective final : public MulticlassObjective {
-   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossMulticlassObjective, Link_logit)
+   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossMulticlassObjective, MINIMIZE_METRIC, Link_logit)
 
    inline LogLossMulticlassObjective(const Config & config) {
       if(1 == config.cOutputs) {
@@ -31,6 +31,10 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
 
    inline double HessianConstant() const noexcept {
       return 1.0;
+   }
+
+   inline double FinishMetric(const double metricSum) const noexcept {
+      return metricSum;
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {

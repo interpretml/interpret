@@ -7,6 +7,7 @@
 #if (defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)) && defined(__x86_64__) || defined(_MSC_VER)
 
 #include <cmath>
+#include <type_traits>
 #include <immintrin.h> // SIMD.  Do not include in precompiled_header_cpp.hpp!
 
 #include "libebm.h"
@@ -43,6 +44,7 @@ static_assert(std::is_standard_layout<Sse_32_Int>::value && std::is_trivially_co
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 struct Sse_32_Float final {
+   static constexpr bool bCpu = false;
    static constexpr int cPack = 4;
    using T = float;
    using TInt = Sse_32_Int;

@@ -20,6 +20,7 @@ struct Objective;
 // these are going to be extern "C++", which we require to call our static member functions per:
 // https://www.drdobbs.com/c-theory-and-practice/184403437
 typedef ErrorEbm (* APPLY_UPDATE_CPP)(const Objective * const pObjective, ApplyUpdateBridge * const pData);
+typedef double (* FINISH_METRIC_CPP)(const Objective * const pObjective, const double metricSum);
 
 struct FunctionPointersCpp {
    // unfortunately, function pointers are not interchangable with data pointers since in some architectures
@@ -27,6 +28,7 @@ struct FunctionPointersCpp {
    // https://stackoverflow.com/questions/12358843/why-are-function-pointers-and-data-pointers-incompatible-in-c-c
 
    APPLY_UPDATE_CPP m_pApplyUpdateCpp;
+   FINISH_METRIC_CPP m_pFinishMetricCpp;
 };
 
 } // DEFINED_ZONE_NAME

@@ -52,6 +52,7 @@ struct Cuda_32_Float final {
    // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__SINGLE.html#group__CUDA__MATH__SINGLE
    // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__DOUBLE.html#group__CUDA__MATH__DOUBLE
 
+   static constexpr bool bCpu = false;
    static constexpr int cPack = 1;
    using T = float;
    using TInt = Cuda_32_Int;

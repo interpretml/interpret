@@ -47,9 +47,11 @@ struct ObjectiveWrapper;
 
 // these are extern "C" function pointers so we can't call anything other than an extern "C" function with them
 typedef ErrorEbm (* APPLY_UPDATE_C)(const ObjectiveWrapper * const pObjectiveWrapper, ApplyUpdateBridge * const pData);
+typedef double (* FINISH_METRIC_C)(const ObjectiveWrapper * const pObjectiveWrapper, const double metricSum);
 
 struct ObjectiveWrapper {
    APPLY_UPDATE_C m_pApplyUpdateC;
+   FINISH_METRIC_C m_pFinishMetricC;
    // everything below here the C++ *Objective specific class needs to fill out
 
    // this needs to be void since our Registrable object is C++ visible and we cannot define it initially 
@@ -57,6 +59,8 @@ struct ObjectiveWrapper {
    // and it cannot be empty either since empty structures are not compliant in all C compilers
    // https://stackoverflow.com/questions/755305/empty-structure-in-c?rq=1
    void * m_pObjective;
+
+   BoolEbm m_bMaximizeMetric;
 
    LinkEbm m_linkFunction;
    double m_linkParam;

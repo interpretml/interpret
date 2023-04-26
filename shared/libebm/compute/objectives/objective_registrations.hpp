@@ -38,12 +38,12 @@ static const std::vector<std::shared_ptr<const Registration>> RegisterObjectives
    // IMPORTANT: the parameter types listed here must match the parameters types in the Objective class constructor
    return {
       RegisterObjective<ExampleRegressionObjective>("example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
-      RegisterObjective<PseudoHuberRegressionObjective>("pseudo_huber", FloatParam("delta", 1.0)),
       RegisterObjective<RmseRegressionObjective>("rmse"),
       RegisterObjective<RmseLogLinkRegressionObjective>("rmse_log"),
-      RegisterObjective<LogLossBinaryObjective>("log_loss"),
-      RegisterObjective<LogLossMulticlassObjective>("log_loss"),
       RegisterObjective<PoissonDevianceRegressionObjective>("poisson_deviance", FloatParam("max_delta_step", 0.7)),
       RegisterObjective<GammaDevianceRegressionObjective>("gamma_deviance"),
+      RegisterObjective<PseudoHuberRegressionObjective>("pseudo_huber", FloatParam("delta", 1.0)),
+      RegisterObjective<LogLossBinaryObjective>("log_loss"),
+      RegisterObjective<LogLossMulticlassObjective>("log_loss"),
    };
 }

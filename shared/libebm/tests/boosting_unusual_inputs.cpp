@@ -592,7 +592,7 @@ TEST_CASE("mono-classification") {
    double avgValidationMetric;
    error = ApplyTermUpdate(test.GetBoosterHandle(), &avgValidationMetric);
    CHECK(Error_None == error);
-   CHECK(0 == avgValidationMetric);
+   CHECK(std::numeric_limits<double>::infinity() == avgValidationMetric);
 
    error = GetBestTermScores(test.GetBoosterHandle(), 0, nullptr);
    CHECK(Error_None == error);
@@ -789,7 +789,7 @@ TEST_CASE("features with 0 states, boosting") {
    test.InitializeBoosting();
 
    double validationMetric = test.Boost(0).validationMetric;
-   CHECK(0 == validationMetric);
+   CHECK(std::numeric_limits<double>::infinity() == validationMetric);
 
    double termScores[1];
 

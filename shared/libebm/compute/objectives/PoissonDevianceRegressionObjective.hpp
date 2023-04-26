@@ -8,7 +8,7 @@
 // See sse2_32.cpp, cuda_32.cpp, and cpu_64.cpp as examples where TFloat operators are defined.
 template<typename TFloat>
 struct PoissonDevianceRegressionObjective : RegressionObjective {
-   OBJECTIVE_BOILERPLATE(PoissonDevianceRegressionObjective, Link_log)
+   OBJECTIVE_BOILERPLATE(PoissonDevianceRegressionObjective, MINIMIZE_METRIC, Link_log)
 
    double m_maxDeltaStepExp;
    // The constructor parameters following config must match the RegisterObjective parameters in objective_registrations.hpp
@@ -36,6 +36,10 @@ struct PoissonDevianceRegressionObjective : RegressionObjective {
 
    inline double HessianConstant() const noexcept {
       return m_maxDeltaStepExp;
+   }
+
+   inline double FinishMetric(const double metricSum) const noexcept {
+      return metricSum;
    }
 
    //Different GBM Implementations

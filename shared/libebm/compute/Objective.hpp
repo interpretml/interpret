@@ -350,9 +350,9 @@ protected:
          pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
       }
 
-      TFloat sumMetric;
+      TFloat metricSum;
       if(bCalcMetric) {
-         sumMetric = 0.0;
+         metricSum = 0.0;
       }
       do {
          alignas(16) StorageDataType iTensorBinCombined[TFloat::cPack];
@@ -423,7 +423,7 @@ protected:
                if(bWeight) {
                   metric *= weight;
                }
-               sumMetric += metric;
+               metricSum += metric;
             }
 
             if(bCompilerZeroDimensional) {
@@ -444,7 +444,7 @@ protected:
       } while(pSampleScoresEnd != pSampleScore);
 
       if(bCalcMetric) {
-         pData->m_metricOut = static_cast<double>(Sum(sumMetric));
+         pData->m_metricOut = static_cast<double>(Sum(metricSum));
       }
    }
 
@@ -455,6 +455,14 @@ protected:
       return TypeApplyUpdate<TObjective, TFloat>(pData);
    }
 
+   template<typename TObjective, typename TFloat, typename std::enable_if<TFloat::bCpu, void>::type * = nullptr>
+   INLINE_RELEASE_TEMPLATED static void SetFinishMetric(FunctionPointersCpp * const pFunctionPointers) noexcept {
+      pFunctionPointers->m_pFinishMetricCpp = &TObjective::StaticFinishMetric;
+   }
+   template<typename TObjective, typename TFloat, typename std::enable_if<!TFloat::bCpu, void>::type * = nullptr>
+   INLINE_RELEASE_TEMPLATED static void SetFinishMetric(FunctionPointersCpp * const pFunctionPointers) noexcept {
+      pFunctionPointers->m_pFinishMetricCpp = nullptr;
+   }
 
    template<typename TObjective, typename TFloat>
    INLINE_RELEASE_TEMPLATED void FillObjectiveWrapper(void * const pWrapperOut) noexcept {
@@ -465,17 +473,21 @@ protected:
       EBM_ASSERT(nullptr != pFunctionPointers);
 
       pFunctionPointers->m_pApplyUpdateCpp = &TObjective::StaticApplyUpdate;
+      
+      const auto bMaximizeMetric = TObjective::k_bMaximizeMetric;
+      static_assert(std::is_same<decltype(bMaximizeMetric), const BoolEbm>::value, "TObjective::k_bMaximizeMetric should be a BoolEbm");
+      pObjectiveWrapperOut->m_bMaximizeMetric = bMaximizeMetric;
 
       pObjectiveWrapperOut->m_linkFunction = TObjective::k_linkFunction;
 
-      auto linkParam = (static_cast<TObjective *>(this))->LinkParam();
-      static_assert(std::is_same<decltype(linkParam), double>::value, "this->LinkParam() should return a double");
+      const auto linkParam = (static_cast<TObjective *>(this))->LinkParam();
+      static_assert(std::is_same<decltype(linkParam), const double>::value, "this->LinkParam() should return a double");
       pObjectiveWrapperOut->m_linkParam = linkParam;
 
-      auto gradientConstant = (static_cast<TObjective *>(this))->GradientConstant();
-      static_assert(std::is_same<decltype(gradientConstant), double>::value, "this->GradientConstant() should return a double");
-      auto hessianConstant = (static_cast<TObjective *>(this))->HessianConstant();
-      static_assert(std::is_same<decltype(hessianConstant), double>::value, "this->HessianConstant() should return a double");
+      const auto gradientConstant = (static_cast<TObjective *>(this))->GradientConstant();
+      static_assert(std::is_same<decltype(gradientConstant), const double>::value, "this->GradientConstant() should return a double");
+      const auto hessianConstant = (static_cast<TObjective *>(this))->HessianConstant();
+      static_assert(std::is_same<decltype(hessianConstant), const double>::value, "this->HessianConstant() should return a double");
 
       pObjectiveWrapperOut->m_gradientConstant = gradientConstant;
       pObjectiveWrapperOut->m_hessianConstant = hessianConstant;
@@ -483,6 +495,8 @@ protected:
       pObjectiveWrapperOut->m_bRmse = TObjective::k_bRmse ? EBM_TRUE : EBM_FALSE;
 
       pObjectiveWrapperOut->m_pObjective = this;
+
+      SetFinishMetric<TObjective, TFloat>(pFunctionPointers);
    }
 
    Objective() = default;
@@ -588,12 +602,17 @@ protected:
 };
 
 
-#define OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE, __LINK_FUNCTION) \
+#define OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION) \
    public: \
       static constexpr bool k_bRmse = false; \
+      static constexpr BoolEbm k_bMaximizeMetric = (__MAXIMIZE_METRIC); \
       static constexpr LinkEbm k_linkFunction = (__LINK_FUNCTION); \
       static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->ParentApplyUpdate<const __EBM_TYPE<TFloat>, TFloat>(pData); \
+      } \
+      template<typename T = void, typename std::enable_if<TFloat::bCpu, T>::type * = nullptr> \
+      static double StaticFinishMetric(const Objective * const pThis, const double metricSum) { \
+         return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->FinishMetric(metricSum); \
       } \
       void FillWrapper(void * const pWrapperOut) noexcept { \
          static_assert( \
@@ -610,8 +629,8 @@ protected:
             cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData); \
       }
 
-#define OBJECTIVE_BOILERPLATE(__EBM_TYPE, __LINK_FUNCTION) \
-   OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE, __LINK_FUNCTION) \
+#define OBJECTIVE_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION) \
+   OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION) \
    OBJECTIVE_TEMPLATE_BOILERPLATE
 
 } // DEFINED_ZONE_NAME

@@ -8,7 +8,7 @@
 // See sse2_32.cpp, cpu_64.cpp, and cuda_32.cu as examples where TFloat operators are defined.
 template<typename TFloat>
 struct ExampleRegressionObjective : RegressionObjective {
-   OBJECTIVE_BOILERPLATE(ExampleRegressionObjective, Link_identity)
+   OBJECTIVE_BOILERPLATE(ExampleRegressionObjective, MINIMIZE_METRIC, Link_identity)
 
    TFloat m_param0;
    TFloat m_param1;
@@ -33,6 +33,10 @@ struct ExampleRegressionObjective : RegressionObjective {
 
    inline double HessianConstant() const noexcept {
       return 1.0;
+   }
+
+   inline double FinishMetric(const double metricSum) const noexcept {
+      return std::sqrt(metricSum); // finish the 'r' in 'rmse'
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {

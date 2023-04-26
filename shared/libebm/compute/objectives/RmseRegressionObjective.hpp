@@ -10,9 +10,14 @@ template<typename TFloat>
 struct RmseRegressionObjective final : public RegressionObjective {
 public:
    static constexpr bool k_bRmse = true;
+   static constexpr BoolEbm k_bMaximizeMetric = MINIMIZE_METRIC;
    static constexpr LinkEbm k_linkFunction = Link_identity;
    static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) {
       return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentApplyUpdate<const RmseRegressionObjective<TFloat>, TFloat>(pData);
+   }
+   template<typename T = void, typename std::enable_if<TFloat::bCpu, T>::type * = nullptr>
+   static double StaticFinishMetric(const Objective * const pThis, const double metricSum) {
+      return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->FinishMetric(metricSum);
    }
    void FillWrapper(void * const pWrapperOut) noexcept {
       FillObjectiveWrapper<RmseRegressionObjective, TFloat>(pWrapperOut);
@@ -34,6 +39,17 @@ public:
 
    inline double HessianConstant() const noexcept {
       return 2.0;
+   }
+
+   inline double FinishMetric(const double metricSum) const noexcept {
+      // TODO for now we return mse in actual fact, but we don't really expose the final value in pyton
+      // so it's academic at the moment. MSE and RMSE have the same ordering, so we early stop at essentially
+      // the same time. MSE has the benefit of exactness between platforms since the sqrt function isn't
+      // guaranteed to give the same results. Once we've implemented our own tailor series approximations
+      // then we can get exactness between platforms and then there will be no reason not to expose
+      // RMSE instead of MSE
+      return metricSum;
+      //return std::sqrt(metricSum); // finish the 'r' in 'rmse'
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {

@@ -86,9 +86,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  
       // The term scores are a tensor with zero length array logits, which means for our representation that we 
       // have zero items in the array total. Since we can predit the output with 100% accuracy, our log loss is 0.
-      if(nullptr != avgValidationMetricOut) {
-         *avgValidationMetricOut = 0.0;
-      }
+      // Leave the avgValidationMetricOut value as +inf though to avoid special casing here without calling the metric.
       LOG_COUNTED_0(
          pTerm->GetPointerCountLogExitApplyTermUpdateMessages(),
          Trace_Info,
@@ -102,9 +100,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
    EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
 
    if(size_t { 0 } == pTerm->GetCountTensorBins()) {
-      if(nullptr != avgValidationMetricOut) {
-         *avgValidationMetricOut = 0.0;
-      }
       LOG_COUNTED_0(
          pTerm->GetPointerCountLogExitApplyTermUpdateMessages(),
          Trace_Info,
@@ -188,22 +183,25 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       if(Error_None != error) {
          return error;
       }
-      validationMetricAvg = data.m_metricOut;
+
+      validationMetricAvg = pBoosterCore->FinishMetric(data.m_metricOut);
+
+      if(EBM_FALSE != pBoosterCore->MaximizeMetric()) {
+         // make it so that we always return values such that the caller wants to minimize them. If the caller
+         // wants more information they can determine if they should negate the values we return them.
+         validationMetricAvg = -validationMetricAvg;
+      }
 
       EBM_ASSERT(!std::isnan(validationMetricAvg)); // NaNs can happen, but we should have cleaned them up
-      EBM_ASSERT(0.0 <= validationMetricAvg); // negatives can happen, but we should have cleaned them up
 
       const double totalWeight = static_cast<double>(pBoosterCore->GetValidationWeightTotal());
       EBM_ASSERT(!std::isnan(totalWeight));
       EBM_ASSERT(!std::isinf(totalWeight));
-      EBM_ASSERT(0 < totalWeight);
+      EBM_ASSERT(0.0 < totalWeight);
       validationMetricAvg /= totalWeight; // if totalWeight < 1.0 then this can overflow to +inf
 
       EBM_ASSERT(!std::isnan(validationMetricAvg)); // NaNs can happen, but we should have cleaned them up
-      EBM_ASSERT(0.0 <= validationMetricAvg); // negatives can happen, but we should have cleaned them up
 
-      // validationMetricAvg is either logloss (classification) or root mean squared error (rmse) (regression).  
-      // In either case we want to minimize it.
       if(LIKELY(validationMetricAvg < pBoosterCore->GetBestModelMetric())) {
          // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
          pBoosterCore->SetBestModelMetric(validationMetricAvg);

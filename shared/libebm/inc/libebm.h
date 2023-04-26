@@ -149,6 +149,9 @@ typedef struct _InteractionHandle {
 #define EBM_FALSE                                  (BOOL_CAST(0))
 #define EBM_TRUE                                   (BOOL_CAST(1))
 
+#define MINIMIZE_METRIC                            EBM_FALSE
+#define MAXIMIZE_METRIC                            EBM_TRUE
+
 #define Error_None                                 (ERROR_CAST(0))
 #define Error_OutOfMemory                          (ERROR_CAST(-1))
 // errors occuring entirely within the C/C++ code

@@ -204,6 +204,10 @@ public:
       return (*m_objective.m_pApplyUpdateC)(&m_objective, pData);
    }
 
+   inline double FinishMetric(const double metricSum) {
+      return (*m_objective.m_pFinishMetricC)(&m_objective, metricSum);
+   }
+
    inline bool IsRmse() {
       return EBM_FALSE != m_objective.m_bRmse;
    }
@@ -218,6 +222,10 @@ public:
 
    inline double HessianConstant() {
       return m_objective.m_hessianConstant;
+   }
+
+   inline BoolEbm MaximizeMetric() {
+      return m_objective.m_bMaximizeMetric;
    }
 };
 

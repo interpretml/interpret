@@ -8,7 +8,7 @@
 
 template<typename TFloat>
 struct LogLossBinaryObjective final : public BinaryObjective {
-   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossBinaryObjective, Link_logit)
+   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossBinaryObjective, MINIMIZE_METRIC, Link_logit)
 
    inline LogLossBinaryObjective(const Config & config) {
       if(1 != config.cOutputs) {
@@ -27,6 +27,10 @@ struct LogLossBinaryObjective final : public BinaryObjective {
 
    inline double HessianConstant() const noexcept {
       return 1.0;
+   }
+
+   inline double FinishMetric(const double metricSum) const noexcept {
+      return metricSum;
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {

@@ -50,6 +50,12 @@ ErrorEbm Objective::CreateObjective(
          if(!bFailed) {
             EBM_ASSERT(nullptr != pObjectiveWrapperOut->m_pObjective);
             pObjectiveWrapperOut->m_pApplyUpdateC = MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate);
+#ifdef ZONE_cpu
+            pObjectiveWrapperOut->m_pFinishMetricC = MAKE_ZONED_C_FUNCTION_NAME(FinishMetric);
+#else // ZONE_cpu
+            pObjectiveWrapperOut->m_pFinishMetricC = nullptr;
+#endif // ZONE_cpu
+
             LOG_0(Trace_Info, "Exited Objective::CreateObjective");
             return Error_None;
          }
