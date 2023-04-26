@@ -10,7 +10,7 @@ template<typename TFloat>
 struct GammaDevianceRegressionObjective : RegressionObjective {
    OBJECTIVE_BOILERPLATE(GammaDevianceRegressionObjective, MINIMIZE_METRIC, Link_log)
 
-      inline GammaDevianceRegressionObjective(const Config & config) {
+   inline GammaDevianceRegressionObjective(const Config & config) {
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }

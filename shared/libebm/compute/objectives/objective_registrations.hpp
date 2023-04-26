@@ -25,13 +25,14 @@
 
 // Add new "*Objective.h" include files here:
 #include "ExampleRegressionObjective.hpp"
-#include "PseudoHuberRegressionObjective.hpp"
 #include "RmseRegressionObjective.hpp"
 #include "RmseLogLinkRegressionObjective.hpp"
-#include "LogLossBinaryObjective.hpp"
-#include "LogLossMulticlassObjective.hpp"
 #include "PoissonDevianceRegressionObjective.hpp"
 #include "GammaDevianceRegressionObjective.hpp"
+#include "PseudoHuberRegressionObjective.hpp"
+#include "TweedieRegressionObjective.hpp"
+#include "LogLossBinaryObjective.hpp"
+#include "LogLossMulticlassObjective.hpp"
 
 // Add new *Objective type registrations to this list:
 static const std::vector<std::shared_ptr<const Registration>> RegisterObjectives() {
@@ -43,6 +44,7 @@ static const std::vector<std::shared_ptr<const Registration>> RegisterObjectives
       RegisterObjective<PoissonDevianceRegressionObjective>("poisson_deviance", FloatParam("max_delta_step", 0.7)),
       RegisterObjective<GammaDevianceRegressionObjective>("gamma_deviance"),
       RegisterObjective<PseudoHuberRegressionObjective>("pseudo_huber", FloatParam("delta", 1.0)),
+      RegisterObjective<TweedieRegressionObjective>("tweedie", FloatParam("variance_power", std::numeric_limits<double>::quiet_NaN()), FloatParam("link_power", std::numeric_limits<double>::quiet_NaN())),
       RegisterObjective<LogLossBinaryObjective>("log_loss"),
       RegisterObjective<LogLossMulticlassObjective>("log_loss"),
    };
