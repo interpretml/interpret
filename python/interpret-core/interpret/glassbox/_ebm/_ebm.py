@@ -2191,6 +2191,12 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     standard_deviations\\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the standard deviations of the bagged model scores.
         The last dimension of length n_classes is dropped for binary classification.
+    link\\_ : str
+        Link function used to convert the predictions or target into linear space
+        additive scores and vice versa via the inverse link. Possible values include:
+        "custom_classification", "logit", "probit", "cloglog", "loglog", "cauchit"
+    link_param\\_ : float
+        Float value that can be used by the link function. For classification it is only used by "custom_classification".
     bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
         Per-bag record of the total weight within each bag.
     breakpoint_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
@@ -2212,6 +2218,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin0..., ?class]
     term_scores_: List[np.ndarray]  # np.float64, [bin0..., ?class]
     standard_deviations_: List[np.ndarray]  # np.float64, [bin0..., ?class]
+    link_: str
+    link_param_: float
     bag_weights_: np.ndarray  # np.float64, 1D[bag]
     breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
 
@@ -2545,6 +2553,12 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Per-term list of the model scores.
     standard_deviations\\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the standard deviations of the bagged model scores.
+    link\\_ : str
+        Link function used to convert the predictions or target into linear space
+        additive scores and vice versa via the inverse link. Possible values include:
+        "custom_regression", "power", "identity", "log", "inverse", "inverse_square", "sqrt"
+    link_param\\_ : float
+        Float value that can be used by the link function. The primary use is for the power link.
     bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
         Per-bag record of the total weight within each bag.
     breakpoint_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
@@ -2570,6 +2584,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin0...]
     term_scores_: List[np.ndarray]  # np.float64, [bin0...]
     standard_deviations_: List[np.ndarray]  # np.float64, [bin0...]
+    link_: str
+    link_param_: float
     bag_weights_: np.ndarray  # np.float64, 1D[bag]
     breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
 
@@ -2815,6 +2831,12 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         Per-term list of the model scores.
     standard_deviations\\_ : List of array of float with shape ``(n_bins)``
         Per-term list of the standard deviations of the bagged model scores.
+    link\\_ : str
+        Link function used to convert the predictions or target into linear space
+        additive scores and vice versa via the inverse link. Possible values include:
+        "custom_classification", "logit", "probit", "cloglog", "loglog", "cauchit"
+    link_param\\_ : float
+        Float value that can be used by the link function. For classification it is only used by "custom_classification".
     bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
         Per-bag record of the total weight within each bag.
     breakpoint_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
@@ -2839,6 +2861,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
     bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin]
     term_scores_: List[np.ndarray]  # np.float64, [bin]
     standard_deviations_: List[np.ndarray]  # np.float64, [bin]
+    link_: str
+    link_param_: float
     bag_weights_: np.ndarray  # np.float64, 1D[bag]
     breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
 
@@ -3101,6 +3125,12 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Per-term list of the model scores.
     standard_deviations\\_ : List of array of float with shape ``(n_bins)``
         Per-term list of the standard deviations of the bagged model scores.
+    link\\_ : str
+        Link function used to convert the predictions or target into linear space
+        additive scores and vice versa via the inverse link. Possible values include:
+        "custom_regression", "power", "identity", "log", "inverse", "inverse_square", "sqrt"
+    link_param\\_ : float
+        Float value that can be used by the link function. The primary use is for the power link.
     bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
         Per-bag record of the total weight within each bag.
     breakpoint_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
@@ -3129,6 +3159,8 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin0..., ?class]
     term_scores_: List[np.ndarray]  # np.float64, [bin0..., ?class]
     standard_deviations_: List[np.ndarray]  # np.float64, [bin0..., ?class]
+    link_: str
+    link_param_: float
     bag_weights_: np.ndarray  # np.float64, 1D[bag]
     breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
 
