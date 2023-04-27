@@ -47,13 +47,13 @@ struct PoissonDevianceRegressionObjective : RegressionObjective {
    // https://github.com/microsoft/LightGBM/blob/master/src/objective/regression_objective.hpp
    //
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
-      static const TFloat epsilon = TFloat(1e-8);
+      static const TFloat epsilon = 1e-8;
 
       const TFloat prediction = Exp(score); // log link function
       const TFloat error = prediction - target;
-      const TFloat extra = target * Log(prediction / target);
+      const TFloat extra = target * Log(target / prediction);
       const TFloat conditionalExtra = IfLess(target, epsilon, 0.0, extra);
-      return error - conditionalExtra;
+      return error + conditionalExtra;
    }
 
    GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {

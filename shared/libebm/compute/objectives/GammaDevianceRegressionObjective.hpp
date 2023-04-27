@@ -33,8 +33,11 @@ struct GammaDevianceRegressionObjective : RegressionObjective {
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+      static const TFloat epsilon = 1e-9;
+
       const TFloat prediction = Exp(score); // log link function
-      const TFloat metric = target / prediction - 1.0 - Log(target / prediction);
+      const TFloat frac = target / (prediction + epsilon);
+      const TFloat metric = frac - 1.0 - Log(frac);
       return metric;
    }
 
