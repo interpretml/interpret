@@ -41,7 +41,7 @@ static const std::vector<std::shared_ptr<const Registration>> RegisterObjectives
       RegisterObjective<ExampleRegressionObjective>("example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
       RegisterObjective<RmseRegressionObjective>("rmse"),
       RegisterObjective<RmseLogLinkRegressionObjective>("rmse_log"),
-      RegisterObjective<PoissonDevianceRegressionObjective>("poisson_deviance", FloatParam("max_delta_step", 0.7)),
+      RegisterObjective<PoissonDevianceRegressionObjective>("poisson_deviance"),
       RegisterObjective<GammaDevianceRegressionObjective>("gamma_deviance"),
       RegisterObjective<PseudoHuberRegressionObjective>("pseudo_huber", FloatParam("delta", 1.0)),
       RegisterObjective<TweedieRegressionObjective>("tweedie", FloatParam("variance_power", std::numeric_limits<double>::quiet_NaN()), FloatParam("link_power", std::numeric_limits<double>::quiet_NaN())),

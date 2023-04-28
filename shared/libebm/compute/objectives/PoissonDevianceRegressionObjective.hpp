@@ -10,20 +10,21 @@ template<typename TFloat>
 struct PoissonDevianceRegressionObjective : RegressionObjective {
    OBJECTIVE_BOILERPLATE(PoissonDevianceRegressionObjective, MINIMIZE_METRIC, Link_log)
 
-   double m_maxDeltaStepExp;
+   static constexpr double epsilon = 1e-8;
+
    // The constructor parameters following config must match the RegisterObjective parameters in objective_registrations.hpp
-   inline PoissonDevianceRegressionObjective(const Config & config, const double maxDeltaStep) {
+   inline PoissonDevianceRegressionObjective(const Config & config) {
+      // XGBoost and LightGBM have a max_delta_step parameter which is set to 0.7 by default. This parameter's only
+      // actual effect is that it changes the effective learning rate by a multiple of 1/e^max_delta_step, which
+      // is a parameter that you can set already from the public interface.
+      // They add this parameter value to the prediction before taking the exp for the hessian calculation, but you can 
+      // extract it to outside the exp by multiplying the hessian by e^max_delta_step instead.
+      // To get an equivalent rate to XGBoost/LightGBM for Poisson, multiply our learning rate by
+      // 0.49658530379140951.
+
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }
-      if(std::isnan(maxDeltaStep) || maxDeltaStep <= 0.0 || std::isinf(maxDeltaStep)) {
-         throw ParamValOutOfRangeException();
-      }
-      const double maxDeltaStepExp = std::exp(maxDeltaStep);
-      if(std::isinf(maxDeltaStepExp)) {
-         throw ParamValOutOfRangeException();
-      }
-      m_maxDeltaStepExp = maxDeltaStepExp;
    }
 
    inline double LinkParam() const noexcept {
@@ -35,7 +36,7 @@ struct PoissonDevianceRegressionObjective : RegressionObjective {
    }
 
    inline double HessianConstant() const noexcept {
-      return m_maxDeltaStepExp;
+      return 1.0;
    }
 
    inline double FinishMetric(const double metricSum) const noexcept {
@@ -47,8 +48,6 @@ struct PoissonDevianceRegressionObjective : RegressionObjective {
    // https://github.com/microsoft/LightGBM/blob/master/src/objective/regression_objective.hpp
    //
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
-      static const TFloat epsilon = 1e-8;
-
       const TFloat prediction = Exp(score); // log link function
       const TFloat error = prediction - target;
       const TFloat extra = target * Log(target / prediction);
