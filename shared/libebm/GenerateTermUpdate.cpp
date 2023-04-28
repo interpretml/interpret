@@ -836,11 +836,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       const double multipleCommon = gradientConstant / cInnerBagsAfterZero;
       double multiple = multipleCommon;
       double gainMultiple = multipleCommon;
-      if(0 == (static_cast<UBoostFlags>(flags) & (static_cast<UBoostFlags>(BoostFlags_DisableNewtonUpdate) | static_cast<UBoostFlags>(BoostFlags_GradientSums)))) {
+      if(0 != (static_cast<UBoostFlags>(flags) & static_cast<UBoostFlags>(BoostFlags_GradientSums))) {
+         multiple *= pBoosterCore->LearningRateAdjustmentDifferentialPrivacy();
+      } else if(0 != (static_cast<UBoostFlags>(flags) & static_cast<UBoostFlags>(BoostFlags_DisableNewtonUpdate))) {
+         multiple *= pBoosterCore->LearningRateAdjustmentGradientBoosting();
+      } else {
          multiple /= pBoosterCore->HessianConstant();
+         multiple *= pBoosterCore->LearningRateAdjustmentHessianBoosting();
       }
-      if(0 == (static_cast<UBoostFlags>(flags) & static_cast<UBoostFlags>(BoostFlags_DisableNewtonGain))) {
+      if(0 != (static_cast<UBoostFlags>(flags) & static_cast<UBoostFlags>(BoostFlags_DisableNewtonGain))) {
+         gainMultiple *= pBoosterCore->GainAdjustmentGradientBoosting();
+      } else {
          gainMultiple /= pBoosterCore->HessianConstant();
+         gainMultiple *= pBoosterCore->GainAdjustmentHessianBoosting();
       }
       multiple *= learningRate;
       gainMultiple *= gradientConstant;

@@ -49,6 +49,26 @@ struct TweedieRegressionObjective : RegressionObjective {
       return m_linkParam;
    }
 
+   inline double LearningRateAdjustmentDifferentialPrivacy() const noexcept {
+      return 1.0; // typically leave this at 1.0 (unmodified)
+   }
+
+   inline double LearningRateAdjustmentGradientBoosting() const noexcept {
+      return 1.0; // typically leave this at 1.0 (unmodified)
+   }
+
+   inline double LearningRateAdjustmentHessianBoosting() const noexcept {
+      return 1.0; // typically leave this at 1.0 (unmodified)
+   }
+
+   inline double GainAdjustmentGradientBoosting() const noexcept {
+      return 1.0; // typically leave this at 1.0 (unmodified)
+   }
+
+   inline double GainAdjustmentHessianBoosting() const noexcept {
+      return 1.0; // typically leave this at 1.0 (unmodified)
+   }
+
    inline double GradientConstant() const noexcept {
       return 1.0;
    }

@@ -216,6 +216,26 @@ public:
       return EBM_FALSE != m_objective.m_bObjectiveHasHessian;
    }
 
+   inline double LearningRateAdjustmentDifferentialPrivacy() const noexcept {
+      return m_objective.m_learningRateAdjustmentDifferentialPrivacy;
+   }
+
+   inline double LearningRateAdjustmentGradientBoosting() const noexcept {
+      return m_objective.m_learningRateAdjustmentGradientBoosting;
+   }
+
+   inline double LearningRateAdjustmentHessianBoosting() const noexcept {
+      return m_objective.m_learningRateAdjustmentHessianBoosting;
+   }
+
+   inline double GainAdjustmentGradientBoosting() const noexcept {
+      return m_objective.m_gainAdjustmentGradientBoosting;
+   }
+
+   inline double GainAdjustmentHessianBoosting() const noexcept {
+      return m_objective.m_gainAdjustmentHessianBoosting;
+   }
+
    inline double GradientConstant() {
       return m_objective.m_gradientConstant;
    }

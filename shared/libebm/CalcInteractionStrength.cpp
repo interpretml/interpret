@@ -388,11 +388,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       // if totalWeight < 1 then bestGain could overflow to +inf, so do the division first
       const double totalWeight = static_cast<double>(pDataSet->GetWeightTotal());
       EBM_ASSERT(0 < totalWeight); // if all are zeros we assume there are no weights and use the count
-      const double gradientConstant = pInteractionCore->GradientConstant();
       bestGain /= totalWeight;
       if(0 != (static_cast<UInteractionFlags>(flags) & static_cast<UInteractionFlags>(InteractionFlags_EnableNewton))) {
          bestGain /= pInteractionCore->HessianConstant();
+         bestGain *= pInteractionCore->GainAdjustmentHessianBoosting();
+      } else {
+         bestGain *= pInteractionCore->GainAdjustmentGradientBoosting();
       }
+      const double gradientConstant = pInteractionCore->GradientConstant();
       bestGain *= gradientConstant;
       bestGain *= gradientConstant;
 

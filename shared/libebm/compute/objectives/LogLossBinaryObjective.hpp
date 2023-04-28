@@ -21,6 +21,26 @@ struct LogLossBinaryObjective final : public BinaryObjective {
       return std::numeric_limits<double>::quiet_NaN();
    }
 
+   inline double LearningRateAdjustmentDifferentialPrivacy() const noexcept {
+      return 1.0; // typically leave this at 1.0 (unmodified)
+   }
+
+   inline double LearningRateAdjustmentGradientBoosting() const noexcept {
+      return 1.0; // typically leave this at 1.0 (unmodified)
+   }
+
+   inline double LearningRateAdjustmentHessianBoosting() const noexcept {
+      return 1.0; // typically leave this at 1.0 (unmodified)
+   }
+
+   inline double GainAdjustmentGradientBoosting() const noexcept {
+      return 1.0; // typically leave this at 1.0 (unmodified)
+   }
+
+   inline double GainAdjustmentHessianBoosting() const noexcept {
+      return 1.0; // typically leave this at 1.0 (unmodified)
+   }
+
    inline double GradientConstant() const noexcept {
       return 1.0;
    }

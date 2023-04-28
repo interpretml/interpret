@@ -65,6 +65,12 @@ struct ObjectiveWrapper {
    LinkEbm m_linkFunction;
    double m_linkParam;
 
+   double m_learningRateAdjustmentDifferentialPrivacy;
+   double m_learningRateAdjustmentGradientBoosting;
+   double m_learningRateAdjustmentHessianBoosting;
+   double m_gainAdjustmentGradientBoosting;
+   double m_gainAdjustmentHessianBoosting;
+
    double m_gradientConstant;
    double m_hessianConstant;
    BoolEbm m_bObjectiveHasHessian;

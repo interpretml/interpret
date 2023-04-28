@@ -113,6 +113,14 @@ public:
       return EBM_FALSE != m_objective.m_bObjectiveHasHessian;
    }
 
+   inline double GainAdjustmentGradientBoosting() const noexcept {
+      return m_objective.m_gainAdjustmentGradientBoosting;
+   }
+
+   inline double GainAdjustmentHessianBoosting() const noexcept {
+      return m_objective.m_gainAdjustmentHessianBoosting;
+   }
+
    inline double GradientConstant() {
       return m_objective.m_gradientConstant;
    }
