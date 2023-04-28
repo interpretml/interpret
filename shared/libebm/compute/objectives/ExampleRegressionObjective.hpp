@@ -10,6 +10,8 @@ template<typename TFloat>
 struct ExampleRegressionObjective : RegressionObjective {
    OBJECTIVE_BOILERPLATE(ExampleRegressionObjective, MINIMIZE_METRIC, Link_identity)
 
+   static constexpr double Two = 2.0;
+
    TFloat m_param0;
    TFloat m_param1;
 
@@ -29,23 +31,29 @@ struct ExampleRegressionObjective : RegressionObjective {
    }
 
    inline double LearningRateAdjustmentDifferentialPrivacy() const noexcept {
-      return 1.0; // typically leave this at 1.0 (unmodified)
+      // WARNING: Do not change this rate without accounting for it in the privacy budget if this objective supports DP
+      // typically leave this at 1.0 (unmodified)
+      return 1.0;
    }
 
    inline double LearningRateAdjustmentGradientBoosting() const noexcept {
-      return 1.0; // typically leave this at 1.0 (unmodified)
+      // typically leave this at 1.0 (unmodified)
+      return 1.0;
    }
 
    inline double LearningRateAdjustmentHessianBoosting() const noexcept {
-      return 1.0; // typically leave this at 1.0 (unmodified)
+      // typically leave this at 1.0 (unmodified)
+      return 1.0;
    }
 
    inline double GainAdjustmentGradientBoosting() const noexcept {
-      return 1.0; // typically leave this at 1.0 (unmodified)
+      // typically leave this at 1.0 (unmodified)
+      return 1.0;
    }
 
    inline double GainAdjustmentHessianBoosting() const noexcept {
-      return 1.0; // typically leave this at 1.0 (unmodified)
+      // typically leave this at 1.0 (unmodified)
+      return 1.0;
    }
 
    inline double GradientConstant() const noexcept {
@@ -70,7 +78,7 @@ struct ExampleRegressionObjective : RegressionObjective {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       // Alternatively, the 2.0 factor could be moved to GradientConstant()
-      const TFloat gradient = 2.0 * error;
+      const TFloat gradient = Two * error;
       return gradient;
    }
 
@@ -79,8 +87,8 @@ struct ExampleRegressionObjective : RegressionObjective {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       // Alternatively, the 2.0 factors could be moved to GradientConstant() and HessianConstant()
-      const TFloat gradient = 2.0 * error;
-      const TFloat hessian = 2.0;
+      const TFloat gradient = Two * error;
+      const TFloat hessian = Two;
       return MakeGradientHessian(gradient, hessian);
    }
 };

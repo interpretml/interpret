@@ -34,23 +34,35 @@ public:
    }
 
    inline double LearningRateAdjustmentDifferentialPrivacy() const noexcept {
-      return 1.0; // typically leave this at 1.0 (unmodified)
+      // we follow the gradient adjustment for DP since we have a similar change in rate and we want to make
+      // our results comparable. The DP paper uses this adjusted rate.
+
+      // WARNING: do not change this rate without accounting for it in the privacy budget!
+      return 0.5;
    }
 
    inline double LearningRateAdjustmentGradientBoosting() const noexcept {
-      return 1.0; // typically leave this at 1.0 (unmodified)
+      // the hessian is 2.0 for RMSE. If we change to gradient boosting we divide by the weight/count which is
+      // normalized to 1, so we double the effective learning rate without this adjustment.  We want 
+      // gradient boosting and hessian boosting to have similar rates, and this adjustment makes it that way
+      return 0.5;
    }
 
    inline double LearningRateAdjustmentHessianBoosting() const noexcept {
-      return 1.0; // typically leave this at 1.0 (unmodified)
+      // this is the reference point
+      return 1.0;
    }
 
    inline double GainAdjustmentGradientBoosting() const noexcept {
-      return 1.0; // typically leave this at 1.0 (unmodified)
+      // the hessian is 2.0 for RMSE. If we change to gradient boosting we divide by the weight/count which is
+      // normalized to 1, so we double the effective learning rate without this adjustment.  We want 
+      // gradient boosting and hessian boosting to have similar rates, and this adjustment makes it that way
+      return 0.5;
    }
 
    inline double GainAdjustmentHessianBoosting() const noexcept {
-      return 1.0; // typically leave this at 1.0 (unmodified)
+      // this is the reference point
+      return 1.0;
    }
 
    inline double GradientConstant() const noexcept {
