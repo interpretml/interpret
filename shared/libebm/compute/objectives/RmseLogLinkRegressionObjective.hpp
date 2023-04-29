@@ -14,6 +14,10 @@ struct RmseLogLinkRegressionObjective : RegressionObjective {
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }
+
+      if(config.isDifferentiallyPrivate) {
+         throw NonPrivateRegistrationException();
+      }
    }
 
    inline double LinkParam() const noexcept {

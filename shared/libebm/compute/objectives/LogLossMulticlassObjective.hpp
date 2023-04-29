@@ -19,6 +19,10 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
       if(config.cOutputs <= 0) {
          throw ParamMismatchWithConfigException();
       }
+
+      if(config.isDifferentiallyPrivate) {
+         throw NonPrivateRegistrationException();
+      }
    }
 
    inline double LinkParam() const noexcept {

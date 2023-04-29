@@ -188,6 +188,7 @@ ErrorEbm BoosterCore::Create(
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
    const double * const aInitScores,
+   const BoolEbm isDifferentiallyPrivate,
    const char * const sObjective,
    BoosterCore ** const ppBoosterCoreOut
 ) {
@@ -574,6 +575,7 @@ ErrorEbm BoosterCore::Create(
 
       Config config;
       config.cOutputs = cScores;
+      config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
       error = GetObjective(&config, sObjective, &pBoosterCore->m_objective);
       if (Error_None != error) {
          // already logged

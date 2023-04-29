@@ -171,6 +171,8 @@ typedef struct _InteractionHandle {
 #define Error_ObjectiveIllegalRegistrationName     (ERROR_CAST(-16))
 #define Error_ObjectiveIllegalParamName            (ERROR_CAST(-17))
 #define Error_ObjectiveDuplicateParamName          (ERROR_CAST(-18))
+#define Error_ObjectiveNonPrivate                  (ERROR_CAST(-19))
+#define Error_ObjectiveParamNonPrivate             (ERROR_CAST(-20))
 
 #define BoostFlags_Default                         (BOOST_FLAGS_CAST(0x00000000))
 #define BoostFlags_DisableNewtonGain               (BOOST_FLAGS_CAST(0x00000001))
@@ -389,6 +391,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratifi
 );
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
+   BoolEbm isDifferentiallyPrivate,
    const char * objective,
    LinkEbm * linkOut,
    double * linkParamOut
@@ -413,6 +416,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    const IntEbm * dimensionCounts,
    const IntEbm * featureIndexes,
    IntEbm countInnerBags,
+   BoolEbm isDifferentiallyPrivate,
    const char * objective,
    const double * experimentalParams,
    BoosterHandle * boosterHandleOut
@@ -470,6 +474,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    const BagEbm * bag,
    // TODO: add a baseScore parameter here for symmetry with CreateBooster
    const double * initScores, // only samples with non-zeros in the bag are included
+   BoolEbm isDifferentiallyPrivate,
    const char * objective,
    const double * experimentalParams,
    InteractionHandle * interactionHandleOut

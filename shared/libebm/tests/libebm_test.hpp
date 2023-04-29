@@ -295,6 +295,9 @@ class TestApi {
    const ptrdiff_t m_cClasses;
    const ptrdiff_t m_iZeroClassificationLogit;
 
+   BoolEbm m_bDifferentiallyPrivate;
+   const char * m_sObjective;
+
    std::vector<BoolEbm> m_featureNominals;
    std::vector<IntEbm> m_featureBinCounts;
    std::vector<IntEbm> m_dimensionCounts;
@@ -349,7 +352,9 @@ public:
 
    TestApi(
       const ptrdiff_t cClasses, 
-      const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault
+      const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault,
+      const BoolEbm m_bDifferentiallyPrivate = EBM_FALSE,
+      const char * const m_sObjective = nullptr
    );
    ~TestApi();
 

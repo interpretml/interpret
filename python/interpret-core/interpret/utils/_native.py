@@ -113,6 +113,12 @@ class Native:
             return Exception("Illegal objective parameter name")
         elif error_code == -18:
             return Exception("Duplicate objective parameter name")
+        elif error_code == -19:
+            return Exception("Differential Privacy not supported by the objective")
+        elif error_code == -20:
+            return Exception(
+                "Differential Privacy not supported by an objective parameter value"
+            )
         else:
             return Exception(
                 f"Unrecognized native return code {error_code} in {native_function}"
@@ -552,7 +558,7 @@ class Native:
 
         return bag
 
-    def determine_link(self, objective):
+    def determine_link(self, is_private, objective):
         if objective is None or objective.isspace():
             msg = "objective must be specified"
             _log.error(msg)
@@ -562,6 +568,7 @@ class Native:
         link_param = ct.c_double(np.nan)
 
         return_code = self._unsafe.DetermineLinkFunction(
+            is_private,
             objective.encode("ascii"),
             ct.byref(link),
             ct.byref(link_param),
@@ -1010,6 +1017,8 @@ class Native:
         self._unsafe.SampleWithoutReplacementStratified.restype = ct.c_int32
 
         self._unsafe.DetermineLinkFunction.argtypes = [
+            # int32_t isDifferentiallyPrivate
+            ct.c_int32,
             # char * objective
             ct.c_char_p,
             # int32_t * linkOut
@@ -1054,6 +1063,8 @@ class Native:
             ct.c_void_p,
             # int64_t countInnerBags
             ct.c_int64,
+            # int32_t isDifferentiallyPrivate
+            ct.c_int32,
             # char * objective
             ct.c_char_p,
             # double * experimentalParams
@@ -1154,6 +1165,8 @@ class Native:
             ct.c_void_p,
             # double * initScores
             ct.c_void_p,
+            # int32_t isDifferentiallyPrivate
+            ct.c_int32,
             # char * objective
             ct.c_char_p,
             # double * experimentalParams
@@ -1199,6 +1212,7 @@ class Booster(AbstractContextManager):
         term_features,
         n_inner_bags,
         rng,
+        is_private,
         objective,
         experimental_params,
     ):
@@ -1223,6 +1237,7 @@ class Booster(AbstractContextManager):
         self.term_features = term_features
         self.n_inner_bags = n_inner_bags
         self.rng = rng
+        self.is_private = is_private
         self.objective = objective
         self.experimental_params = experimental_params
 
@@ -1305,6 +1320,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(dimension_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
+            self.is_private,
             self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(booster_handle),
@@ -1618,6 +1634,7 @@ class InteractionDetector(AbstractContextManager):
         dataset,
         bag,
         init_scores,
+        is_private,
         objective,
         experimental_params,
     ):
@@ -1637,6 +1654,7 @@ class InteractionDetector(AbstractContextManager):
         self.dataset = dataset
         self.bag = bag
         self.init_scores = init_scores
+        self.is_private = is_private
         self.objective = objective
         self.experimental_params = experimental_params
 
@@ -1690,6 +1708,7 @@ class InteractionDetector(AbstractContextManager):
             Native._make_pointer(
                 self.init_scores, np.float64, 2 if 1 < n_class_scores else 1, True
             ),
+            self.is_private,
             self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(interaction_handle),

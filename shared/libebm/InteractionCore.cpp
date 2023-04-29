@@ -61,6 +61,7 @@ void InteractionCore::Free(InteractionCore * const pInteractionCore) {
 ErrorEbm InteractionCore::Create(
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
+   const BoolEbm isDifferentiallyPrivate,
    const char * const sObjective,
    const double * const experimentalParams,
    InteractionCore ** const ppInteractionCoreOut
@@ -210,6 +211,7 @@ ErrorEbm InteractionCore::Create(
 
       Config config;
       config.cOutputs = cScores;
+      config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
       error = GetObjective(&config, sObjective, &pRet->m_objective);
       if(Error_None != error) {
          // already logged

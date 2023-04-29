@@ -17,6 +17,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
+   BoolEbm isDifferentiallyPrivate,
    const char * objective,
    LinkEbm * linkOut,
    double * linkParamOut
@@ -25,6 +26,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
 
    Config config;
    config.cOutputs = 1; // this is kind of cheating, but it should work
+   config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
    const ErrorEbm error = GetObjective(&config, objective, &objectiveWrapper);
    if(Error_None != error) {
       if(nullptr != linkOut) {

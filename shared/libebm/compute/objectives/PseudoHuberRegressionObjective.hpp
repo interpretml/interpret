@@ -19,6 +19,10 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
          throw ParamMismatchWithConfigException();
       }
 
+      if(config.isDifferentiallyPrivate) {
+         throw NonPrivateRegistrationException();
+      }
+
       if(std::isnan(delta) || delta <= 0.0 || std::isinf(delta)) {
          throw ParamValOutOfRangeException();
       }

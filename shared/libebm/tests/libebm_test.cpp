@@ -218,10 +218,17 @@ double TestApi::GetTermScore(
    }
 }
 
-TestApi::TestApi(const ptrdiff_t cClasses, const ptrdiff_t iZeroClassificationLogit) :
+TestApi::TestApi(
+   const ptrdiff_t cClasses, 
+   const ptrdiff_t iZeroClassificationLogit, 
+   const BoolEbm bDifferentiallyPrivate, 
+   const char * const sObjective
+) :
    m_stage(Stage::Beginning),
    m_cClasses(cClasses),
    m_iZeroClassificationLogit(iZeroClassificationLogit),
+   m_bDifferentiallyPrivate(bDifferentiallyPrivate),
+   m_sObjective(sObjective),
    m_bNullTrainingWeights(true),
    m_bNullTrainingInitScores(true),
    m_bNullValidationWeights(true),
@@ -549,7 +556,10 @@ void TestApi::InitializeBoosting(const IntEbm countInnerBags) {
       exit(1);
    }
 
-   const char * const sObjective = IsClassification(m_cClasses) ? "log_loss" : "rmse";
+   const char * sObjective = m_sObjective;
+   if(nullptr == sObjective) {
+      sObjective = IsClassification(m_cClasses) ? "log_loss" : "rmse";
+   }
 
    const size_t cScores = GetCountScores(m_cClasses);
    const size_t cFeatures = m_featureBinCounts.size();
@@ -636,6 +646,7 @@ void TestApi::InitializeBoosting(const IntEbm countInnerBags) {
       0 == m_dimensionCounts.size() ? nullptr : &m_dimensionCounts[0],
       0 == m_featureIndexes.size() ? nullptr : &m_featureIndexes[0],
       countInnerBags,
+      m_bDifferentiallyPrivate,
       sObjective,
       nullptr,
       &m_boosterHandle
@@ -967,7 +978,10 @@ void TestApi::InitializeInteraction() {
       exit(1);
    }
 
-   const char * const sObjective = IsClassification(m_cClasses) ? "log_loss" : "rmse";
+   const char * sObjective = m_sObjective;
+   if(nullptr == sObjective) {
+      sObjective = IsClassification(m_cClasses) ? "log_loss" : "rmse";
+   }
 
    const size_t cScores = GetCountScores(m_cClasses);
    const size_t cFeatures = m_featureBinCounts.size();
@@ -1018,6 +1032,7 @@ void TestApi::InitializeInteraction() {
       pDataSet,
       0 == bag.size() ? nullptr : &bag[0],
       0 == m_interactionInitScores.size() ? nullptr : &m_interactionInitScores[0],
+      m_bDifferentiallyPrivate,
       sObjective,
       nullptr,
       &m_interactionHandle

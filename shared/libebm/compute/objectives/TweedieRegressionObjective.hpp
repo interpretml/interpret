@@ -18,6 +18,10 @@ struct TweedieRegressionObjective : RegressionObjective {
          throw ParamMismatchWithConfigException();
       }
 
+      if(config.isDifferentiallyPrivate) {
+         throw NonPrivateRegistrationException();
+      }
+
       // for a discussion on variance_power and link_power, see:
       // https://search.r-project.org/CRAN/refmans/statmod/html/tweedie.html
       // https://docs.h2o.ai/h2o/latest-stable/h2o-docs/data-science/algo-params/tweedie_link_power.html

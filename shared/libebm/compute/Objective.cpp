@@ -28,6 +28,7 @@ ErrorEbm Objective::CreateObjective(
    EBM_ASSERT(nullptr != registerObjectivesFunction);
    EBM_ASSERT(nullptr != pConfig);
    EBM_ASSERT(1 <= pConfig->cOutputs);
+   EBM_ASSERT(EBM_FALSE == pConfig->isDifferentiallyPrivate || EBM_TRUE == pConfig->isDifferentiallyPrivate);
    EBM_ASSERT(nullptr != sObjective);
    EBM_ASSERT(nullptr != sObjectiveEnd);
    EBM_ASSERT(sObjective < sObjectiveEnd); // empty string not allowed
@@ -94,6 +95,14 @@ ErrorEbm Objective::CreateObjective(
          EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective DuplicateParamNameException");
          error = Error_ObjectiveDuplicateParamName;
+      } catch(const NonPrivateRegistrationException &) {
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective NonPrivateRegistrationException");
+         error = Error_ObjectiveNonPrivate;
+      } catch(const NonPrivateParamException &) {
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective NonPrivateParamException");
+         error = Error_ObjectiveParamNonPrivate;
       } catch(const std::bad_alloc &) {
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective Out of Memory");
          error = Error_OutOfMemory;

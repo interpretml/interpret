@@ -30,6 +30,7 @@ def boost(
     noise_scale,
     bin_weights,
     rng,
+    is_private,
     objective,
     experimental_params=None,
 ):
@@ -41,6 +42,7 @@ def boost(
         term_features,
         n_inner_bags,
         rng,
+        is_private,
         objective,
         experimental_params,
     ) as booster:

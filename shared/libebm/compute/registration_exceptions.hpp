@@ -65,6 +65,18 @@ public:
    DuplicateParamNameException() = default;
 };
 
+class NonPrivateRegistrationException final : public std::exception {
+   // this should not be thrown from the Registrable constructor
+public:
+   NonPrivateRegistrationException() = default;
+};
+
+class NonPrivateParamException final : public std::exception {
+   // this should not be thrown from the Registrable constructor
+public:
+   NonPrivateParamException() = default;
+};
+
 } // DEFINED_ZONE_NAME
 
 #endif // REGISTRATION_EXCEPTIONS_HPP

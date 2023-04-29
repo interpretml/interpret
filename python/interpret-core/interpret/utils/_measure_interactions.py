@@ -82,6 +82,8 @@ def measure_interactions(
         _log.error(msg)
         raise ValueError(msg)
 
+    is_differential_privacy = False
+
     link = None
     link_param = None
     is_classification = None
@@ -90,7 +92,7 @@ def measure_interactions(
         if objective.isspace():
             objective = None
         else:
-            link, link_param = native.determine_link(objective)
+            link, link_param = native.determine_link(is_differential_privacy, objective)
             model_type = native.get_model_type(link)
             if model_type == "classification":
                 is_classification = True
@@ -111,7 +113,7 @@ def measure_interactions(
             )
         is_classification = True
         if link is None:
-            link, _ = native.determine_link("log_loss")
+            link, _ = native.determine_link(is_differential_privacy, "log_loss")
     elif is_regressor(init_score):
         if is_classification is True:
             raise ValueError(
@@ -119,7 +121,7 @@ def measure_interactions(
             )
         is_classification = False
         if link is None:
-            link, _ = native.determine_link("rmse")
+            link, _ = native.determine_link(is_differential_privacy, "rmse")
 
     if init_score is None:
         X, n_samples = preclean_X(X, feature_names, feature_types, len(y))
@@ -252,6 +254,7 @@ def measure_interactions(
         interaction_flags=Native.InteractionFlags_Pure,
         max_cardinality=max_cardinality,
         min_samples_leaf=min_samples_leaf,
+        is_private=is_differential_privacy,
         objective=objective,
         experimental_params=None,
         n_output_interactions=n_output_interactions,

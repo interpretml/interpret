@@ -546,8 +546,10 @@ class EBMModel(BaseEstimator):
                 raise ValueError(msg)
             sample_weight = sample_weight.astype(np.float64, copy=False)
 
+        is_differential_privacy = is_private(self)
+
         native = Native.get_native_singleton()
-        link, link_param = native.determine_link(objective)
+        link, link_param = native.determine_link(is_differential_privacy, objective)
 
         if init_score is None:
             X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
@@ -563,7 +565,6 @@ class EBMModel(BaseEstimator):
             )
 
         # Privacy calculations
-        is_differential_privacy = is_private(self)
         if is_differential_privacy:
             validate_eps_delta(self.epsilon, self.delta)
 
@@ -843,6 +844,7 @@ class EBMModel(BaseEstimator):
                         noise_scale_boosting,
                         bin_data_weights,
                         rngs[idx],
+                        is_differential_privacy,
                         objective,
                         None,
                     )
@@ -957,6 +959,7 @@ class EBMModel(BaseEstimator):
                                 Native.InteractionFlags_Default,
                                 max_cardinality,
                                 min_samples_leaf,
+                                is_differential_privacy,
                                 objective,
                                 None,
                             )
@@ -1053,6 +1056,7 @@ class EBMModel(BaseEstimator):
                             noise_scale_boosting,
                             bin_data_weights,
                             rngs[idx],
+                            is_differential_privacy,
                             objective,
                             None,
                         )
@@ -2776,8 +2780,6 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         Total number of boosting rounds with n_terms boosting steps per round.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
-    objective : str, default="log_loss"
-        The objective to optimize.
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
@@ -2896,7 +2898,6 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         max_rounds: Optional[int] = 300,
         # Trees
         max_leaves: int = 3,
-        objective: str = "log_loss",
         # Overall
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = None,
@@ -2927,7 +2928,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             early_stopping_tolerance=0.0,
             min_samples_leaf=0,
             max_leaves=max_leaves,
-            objective=objective,
+            objective="log_loss",
             n_jobs=n_jobs,
             random_state=random_state,
             epsilon=epsilon,
@@ -3064,10 +3065,6 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Total number of boosting rounds with n_terms boosting steps per round.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
-    objective : str, default="rmse"
-        The objective to optimize. Options include: "rmse",
-        "gamma_deviance", "poisson_deviance:max_delta_step=0.7",
-        "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function)
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
@@ -3196,7 +3193,6 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         max_rounds: Optional[int] = 300,
         # Trees
         max_leaves: int = 3,
-        objective: str = "rmse",
         # Overall
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = None,
@@ -3229,7 +3225,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             early_stopping_tolerance=0.0,
             min_samples_leaf=0,
             max_leaves=max_leaves,
-            objective=objective,
+            objective="rmse",
             n_jobs=n_jobs,
             random_state=random_state,
             epsilon=epsilon,

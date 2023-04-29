@@ -21,6 +21,10 @@ struct ExampleRegressionObjective : RegressionObjective {
          throw ParamMismatchWithConfigException();
       }
 
+      if(config.isDifferentiallyPrivate) {
+         throw NonPrivateRegistrationException();
+      }
+
       m_param0 = param0;
       m_param1 = param1;
    }
