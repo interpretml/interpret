@@ -35,7 +35,7 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate) (
    return (*pApplyUpdateCpp)(pObjective, pData);
 }
 
-#ifdef ZONE_cpu
+#if defined(ZONE_cpu) || defined(ZONE_R)
 INTERNAL_IMPORT_EXPORT_BODY double MAKE_ZONED_C_FUNCTION_NAME(FinishMetric) (
    const ObjectiveWrapper * const pObjectiveWrapper,
    const double metricSum
@@ -45,6 +45,6 @@ INTERNAL_IMPORT_EXPORT_BODY double MAKE_ZONED_C_FUNCTION_NAME(FinishMetric) (
       (static_cast<const FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pFinishMetricCpp;
    return (*pFinishMetricCpp)(pObjective, metricSum);
 }
-#endif // ZONE_cpu
+#endif // ZONE_cpu || ZONE_R
 
 } // DEFINED_ZONE_NAME

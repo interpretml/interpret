@@ -18,12 +18,12 @@ INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate)(
    ApplyUpdateBridge * const pData
 );
 
-#ifdef ZONE_cpu
+#if defined(ZONE_cpu) || defined(ZONE_R)
 INTERNAL_IMPORT_EXPORT_INCLUDE double MAKE_ZONED_C_FUNCTION_NAME(FinishMetric) (
    const ObjectiveWrapper * const pObjectiveWrapper,
    const double metricSum
 );
-#endif // ZONE_cpu
+#endif // ZONE_cpu || ZONE_R
 
 
 #ifdef __cplusplus
