@@ -33,6 +33,7 @@
 #include "TweedieRegressionObjective.hpp"
 #include "LogLossBinaryObjective.hpp"
 #include "LogLossMulticlassObjective.hpp"
+#include "TweedieDevianceRegressionObjective.hpp"
 
 // Add new *Objective type registrations to this list:
 static const std::vector<std::shared_ptr<const Registration>> RegisterObjectives() {
@@ -47,5 +48,6 @@ static const std::vector<std::shared_ptr<const Registration>> RegisterObjectives
       RegisterObjective<TweedieRegressionObjective>("tweedie", FloatParam("variance_power", std::numeric_limits<double>::quiet_NaN()), FloatParam("link_power", std::numeric_limits<double>::quiet_NaN())),
       RegisterObjective<LogLossBinaryObjective>("log_loss"),
       RegisterObjective<LogLossMulticlassObjective>("log_loss"),
+      RegisterObjective<TweedieDevianceRegressionObjective>("tweedie_deviance", FloatParam("variance_power", 1.5)),
    };
 }
