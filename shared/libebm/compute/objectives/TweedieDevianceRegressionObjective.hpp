@@ -17,21 +17,18 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }
-
       if(config.isDifferentiallyPrivate) {
          throw NonPrivateRegistrationException();
       }
       if(variancePower < 1.0 || variancePower > 2.0) {
-         throw ParamValOutOfRangeException();
+         // TODO: Implement Tweedie for other Powers. For now skip this registration
+         throw SkipRegistrationException();
       }
       // for a discussion on variance_power and link_power, see:
       // https://search.r-project.org/CRAN/refmans/statmod/html/tweedie.html
       // https://docs.h2o.ai/h2o/latest-stable/h2o-docs/data-science/algo-params/tweedie_link_power.html
 
       m_variancePowerParam = variancePower;
-
-      // TODO: Implement Tweedie. For now skip this registration
-      throw SkipRegistrationException();
    }
 
    inline double LinkParam() const noexcept {
@@ -72,9 +69,9 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
       const TFloat prediction = Exp(score); // log link function
-      -target * Exp((1 - m_variancePowerParam) * score) / (1 - m_variancePowerParam)  + Exp((2 - m_variancePowerParam) * score) / (2 - m_variancePowerParam);
+      const TFloat metric = -target * Exp((1 - m_variancePowerParam) * score) / (1 - m_variancePowerParam)  + Exp((2 - m_variancePowerParam) * score) / (2 - m_variancePowerParam);
       //const TFloat metric = 1
-      return 1;
+      return metric;
    }
 
    GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
