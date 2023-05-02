@@ -69,8 +69,8 @@ def measure_interactions(
             e.g. [((1, 2), 0.134), ((3, 7), 0.0842)].  Ordered by decreasing interaction strengths.
     """
 
-    # with 64 bytes per tensor cell, a 2^24 tensor would be 1 gigabyte
-    max_cardinality = 16777216
+    # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
+    max_cardinality = 1048576
 
     y = clean_dimensions(y, "y")
     if y.ndim != 1:
