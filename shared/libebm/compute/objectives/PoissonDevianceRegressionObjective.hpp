@@ -10,8 +10,6 @@ template<typename TFloat>
 struct PoissonDevianceRegressionObjective : RegressionObjective {
    OBJECTIVE_BOILERPLATE(PoissonDevianceRegressionObjective, MINIMIZE_METRIC, Link_log)
 
-   static constexpr double epsilon = 1e-8;
-
    // The constructor parameters following config must match the RegisterObjective parameters in objective_registrations.hpp
    inline PoissonDevianceRegressionObjective(const Config & config) {
       // XGBoost and LightGBM have a max_delta_step parameter which is set to 0.7 by default. This parameter's only
@@ -74,9 +72,7 @@ struct PoissonDevianceRegressionObjective : RegressionObjective {
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
       const TFloat prediction = Exp(score); // log link function
       const TFloat error = prediction - target;
-      const TFloat extra = target * Log(target / prediction);
-      const TFloat conditionalExtra = IfLess(target, epsilon, 0.0, extra);
-      return error + conditionalExtra;
+      return error + target * Log(target / prediction);
    }
 
    GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {

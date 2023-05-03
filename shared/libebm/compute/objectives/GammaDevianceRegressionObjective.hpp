@@ -10,8 +10,6 @@ template<typename TFloat>
 struct GammaDevianceRegressionObjective : RegressionObjective {
    OBJECTIVE_BOILERPLATE(GammaDevianceRegressionObjective, MINIMIZE_METRIC, Link_log)
 
-   static constexpr double epsilon = 1e-9;
-
    inline GammaDevianceRegressionObjective(const Config & config) {
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
@@ -60,21 +58,23 @@ struct GammaDevianceRegressionObjective : RegressionObjective {
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
       const TFloat prediction = Exp(score); // log link function
-      const TFloat frac = target / (prediction + epsilon);
+      const TFloat frac = target / prediction;
       const TFloat metric = frac - 1.0 - Log(frac);
       return metric;
    }
 
    GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
       const TFloat prediction = Exp(score); // log link function
-      const TFloat gradient = 1.0 - (target / prediction);
+      const TFloat frac = target / prediction;
+      const TFloat gradient = 1.0 - frac;
       return gradient;
    }
 
    GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
       const TFloat prediction = Exp(score); // log link function
-      const TFloat gradient = 1.0 - (target / prediction);
-      const TFloat hessian = (target / prediction);
+      const TFloat frac = target / prediction;
+      const TFloat gradient = 1.0 - frac;
+      const TFloat hessian = frac;
       return MakeGradientHessian(gradient, hessian);
    }
 };
