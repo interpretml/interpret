@@ -56,11 +56,23 @@ struct Cpu_64_Float final {
    Cpu_64_Float(const Cpu_64_Float & other) noexcept = default; // preserve POD status
    Cpu_64_Float & operator=(const Cpu_64_Float &) noexcept = default; // preserve POD status
 
-   inline Cpu_64_Float(const double val) noexcept : m_data { val } {
+   inline Cpu_64_Float(const double val) noexcept : m_data { static_cast<T>(val) } {
+   }
+   inline Cpu_64_Float(const float val) noexcept : m_data { static_cast<T>(val) } {
+   }
+   inline Cpu_64_Float(const int val) noexcept : m_data { static_cast<T>(val) } {
    }
 
    inline Cpu_64_Float & operator= (const double val) noexcept {
-      m_data = val;
+      m_data = static_cast<T>(val);
+      return *this;
+   }
+   inline Cpu_64_Float & operator= (const float val) noexcept {
+      m_data = static_cast<T>(val);
+      return *this;
+   }
+   inline Cpu_64_Float & operator= (const int val) noexcept {
+      m_data = static_cast<T>(val);
       return *this;
    }
 

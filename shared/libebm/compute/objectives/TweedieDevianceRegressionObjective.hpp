@@ -23,7 +23,7 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
       if(config.isDifferentiallyPrivate) {
          throw NonPrivateRegistrationException();
       }
-      if(variancePower <= 1.0 || variancePower >= 2.0) {
+      if(variancePower <= 1.0 || 2.0 <= variancePower) {
          // TODO: Implement Tweedie for other Powers
          throw ParamValOutOfRangeException();
       }
@@ -31,8 +31,8 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
       // https://search.r-project.org/CRAN/refmans/statmod/html/tweedie.html
       // https://docs.h2o.ai/h2o/latest-stable/h2o-docs/data-science/algo-params/tweedie_link_power.html
 
-      const double variancePowerParamSub1 = 1 - variancePower;
-      const double variancePowerParamSub2 = 2 - variancePower;
+      const double variancePowerParamSub1 = 1.0 - variancePower;
+      const double variancePowerParamSub2 = 2.0 - variancePower;
 
       m_variancePowerParamSub1 = variancePowerParamSub1;
       m_variancePowerParamSub2 = variancePowerParamSub2;
@@ -73,7 +73,7 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
    }
 
    inline double FinishMetric(const double metricSum) const noexcept {
-      return 2 * metricSum;
+      return 2.0 * metricSum;
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {

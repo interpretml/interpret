@@ -135,11 +135,6 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
          }
 
 #ifndef NDEBUG
-#ifdef EXPAND_BINARY_LOGITS
-         static constexpr bool bExpandBinaryLogits = true;
-#else // EXPAND_BINARY_LOGITS
-         static constexpr bool bExpandBinaryLogits = false;
-#endif // EXPAND_BINARY_LOGITS
          FloatFast gradientTotalDebug = 0;
 #endif // NDEBUG
 

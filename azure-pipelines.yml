@@ -447,6 +447,7 @@ jobs:
       architecture: 'x64'
   # we copy the tests to a new location to test the installed package rather than the source files
   - script: |
+      python -m pip install numpy==1.23.0  REM remove this once Shap can handle numpy 1.24.0
       python -m pip install --upgrade pip setuptools wheel
       FOR %%A IN ($(System.ArtifactsDirectory)\bdist\interpret_core-*.whl) DO SET "install_file=%%A"
       python -m pip install "%install_file%"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
@@ -460,6 +461,7 @@ jobs:
     displayName: 'pytest (win)'
   # we copy the tests to a new location to test the installed package rather than the source files
   - script: |
+      python -m pip install numpy==1.23.0  # remove this once Shap can handle numpy 1.24.0
       python -m pip install --upgrade pip setuptools wheel
       cd $(System.ArtifactsDirectory)/bdist
       install_file=$(echo interpret_core-*.whl)

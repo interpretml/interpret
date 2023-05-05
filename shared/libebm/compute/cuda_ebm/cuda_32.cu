@@ -69,8 +69,20 @@ struct Cuda_32_Float final {
 
    GPU_BOTH inline Cuda_32_Float(const double val) noexcept : m_data { static_cast<T>(val) } {
    }
+   GPU_BOTH inline Cuda_32_Float(const float val) noexcept : m_data { static_cast<T>(val) } {
+   }
+   GPU_BOTH inline Cuda_32_Float(const int val) noexcept : m_data { static_cast<T>(val) } {
+   }
 
    GPU_BOTH inline Cuda_32_Float & operator= (const double val) noexcept {
+      m_data = static_cast<T>(val);
+      return *this;
+   }
+   GPU_BOTH inline Cuda_32_Float & operator= (const float val) noexcept {
+      m_data = static_cast<T>(val);
+      return *this;
+   }
+   GPU_BOTH inline Cuda_32_Float & operator= (const int val) noexcept {
       m_data = static_cast<T>(val);
       return *this;
    }

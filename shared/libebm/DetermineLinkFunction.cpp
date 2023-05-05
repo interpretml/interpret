@@ -23,6 +23,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    double * linkParamOut
 ) {
    ObjectiveWrapper objectiveWrapper;
+   InitializeObjectiveWrapperUnfailing(&objectiveWrapper);
 
    Config config;
    config.cOutputs = 1; // this is kind of cheating, but it should work

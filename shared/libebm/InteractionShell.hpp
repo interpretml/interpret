@@ -36,10 +36,6 @@ class InteractionShell final {
    int m_cLogEnterMessages;
    int m_cLogExitMessages;
 
-#ifndef NDEBUG
-   const BinBase * m_pDebugFastBinsEnd;
-#endif // NDEBUG
-
 public:
 
    InteractionShell() = default; // preserve our POD status

@@ -625,19 +625,6 @@ namespace EbmStats {
 
       // gradient can't be +-infinity, since an infinity in the denominator would just lead us to zero for the gradient value!
 
-#ifndef NDEBUG
-      const FloatFast expVal = std::exp(sampleScore);
-      FloatFast gradientDebug;
-      FloatFast hessianDebug;
-      InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(FloatFast { 1 } / (FloatFast { 1 } + expVal), expVal, gradientDebug, hessianDebug);
-      if(1 == target) {
-         gradientDebug = EbmStats::MulticlassFixTargetGradient(gradientDebug, FloatFast { 1 });
-      }
-      // the TransformScoreToGradientMulticlass can't be +-infinity per notes in TransformScoreToGradientMulticlass, 
-      // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
-      // if either is a NaN value, then don't compare since we aren't sure that we're exactly equal in those cases because of numeric instability reasons
-      // EBM_ASSERT(std::isnan(sampleScore) || std::isnan(gradientDebug) || std::abs(gradientDebug - gradient) < k_epsilonGradientForBinaryToMulticlass);
-#endif // NDEBUG
       return gradient;
    }
 
@@ -758,14 +745,6 @@ namespace EbmStats {
       // EBM_ASSERT(std::isnan(sampleScore) || 0 <= singleSampleLogLoss); // log(1) == 0
       // TODO : check our approxmiate log above for handling of 1 exactly.  We might need to change the above assert to allow a small negative value
       //   if our approxmiate log doesn't guarantee non-negative results AND numbers slightly larger than 1
-
-#ifndef NDEBUG
-      const FloatFast expVal = std::exp(sampleScore);
-      const FloatFast singleSampleLogLossDebug = EbmStats::ComputeSingleSampleLogLossMulticlass(
-         1 + expVal, 0 == target ? FloatFast { 1 } : expVal
-      );
-      // EBM_ASSERT(std::isnan(singleSampleLogLoss) || std::isinf(singleSampleLogLoss) || std::isnan(singleSampleLogLossDebug) || std::isinf(singleSampleLogLossDebug) || std::abs(singleSampleLogLossDebug - singleSampleLogLoss) < k_epsilonGradientForBinaryToMulticlass);
-#endif // NDEBUG
 
       return singleSampleLogLoss;
    }

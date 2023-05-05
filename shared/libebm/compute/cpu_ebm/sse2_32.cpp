@@ -61,8 +61,20 @@ struct Sse_32_Float final {
 
    inline Sse_32_Float(const double val) noexcept : m_data { _mm_set1_ps(static_cast<T>(val)) } {
    }
+   inline Sse_32_Float(const float val) noexcept : m_data { _mm_set1_ps(static_cast<T>(val)) } {
+   }
+   inline Sse_32_Float(const int val) noexcept : m_data { _mm_set1_ps(static_cast<T>(val)) } {
+   }
 
    inline Sse_32_Float & operator= (const double val) noexcept {
+      m_data = _mm_set1_ps(static_cast<T>(val));
+      return *this;
+   }
+   inline Sse_32_Float & operator= (const float val) noexcept {
+      m_data = _mm_set1_ps(static_cast<T>(val));
+      return *this;
+   }
+   inline Sse_32_Float & operator= (const int val) noexcept {
       m_data = _mm_set1_ps(static_cast<T>(val));
       return *this;
    }

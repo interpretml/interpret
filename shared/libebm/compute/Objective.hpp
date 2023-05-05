@@ -97,7 +97,7 @@ private:
       // use SFINAE to determine if TObjective has the function CalcGradientHessian with the correct signature
 
       template<typename T>
-      static auto check(T * p) -> decltype(p->CalcGradientHessian(TFloat { 0 }, TFloat { 0 }), std::true_type());
+      static auto check(T * p) -> decltype(p->CalcGradientHessian(TFloat { 0.0 }, TFloat { 0.0 }), std::true_type());
 
       static std::false_type check(...);
 
