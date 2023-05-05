@@ -10,8 +10,6 @@ template<typename TFloat>
 struct PoissonDevianceRegressionObjective : RegressionObjective {
    OBJECTIVE_BOILERPLATE(PoissonDevianceRegressionObjective, MINIMIZE_METRIC, Link_log)
 
-   static constexpr double epsilon = 1e-8;
-
    // The constructor parameters following config must match the RegisterObjective parameters in objective_registrations.hpp
    inline PoissonDevianceRegressionObjective(const Config & config) {
       // XGBoost and LightGBM have a max_delta_step parameter which is set to 0.7 by default. This parameter's only
@@ -74,8 +72,13 @@ struct PoissonDevianceRegressionObjective : RegressionObjective {
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
       const TFloat prediction = Exp(score); // log link function
       const TFloat error = prediction - target;
-      const TFloat extra = target * Log(target / prediction);
-      const TFloat conditionalExtra = IfLess(target, epsilon, 0.0, extra);
+      const TFloat frac = target / prediction;
+      const TFloat extra = target * Log(frac);
+      // target == 0 is legal in poisson and we need to treat the extra variable as a zero in that case as if the
+      // Log succeeded and was subsequently multiplied by 0. But due to floating point considerations the
+      // fraction inside the log can underflow to zero or a denormal if target is a small non-zero number. We want to 
+      // treat denormals as zero, so check if less than the minimum non-denormal as our check for zero.
+      const TFloat conditionalExtra = IfLess(frac, std::numeric_limits<TFloat::T>::min(), 0.0, extra);
       return error + conditionalExtra;
    }
 

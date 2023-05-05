@@ -10,9 +10,10 @@ template<typename TFloat>
 struct TweedieDevianceRegressionObjective : RegressionObjective {
    OBJECTIVE_BOILERPLATE(TweedieDevianceRegressionObjective, MINIMIZE_METRIC, Link_log)
 
-   double m_variancePowerParam;
-   double m_variancePowerParamSub1;
-   double m_variancePowerParamSub2;
+   TFloat m_variancePowerParamSub1;
+   TFloat m_variancePowerParamSub2;
+   TFloat m_inverseVariancePowerParamSub1;
+   TFloat m_inverseVariancePowerParamSub2;
 
    // The constructor parameters following config must match the RegisterObjective parameters in objective_registrations.hpp
    inline TweedieDevianceRegressionObjective(const Config & config, double variancePower) {
@@ -22,18 +23,21 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
       if(config.isDifferentiallyPrivate) {
          throw NonPrivateRegistrationException();
       }
-      if(variancePower < 1.0 || variancePower > 2.0) {
-         // TODO: Implement Tweedie for other Powers. For now skip this registration
-         throw SkipRegistrationException();
+      if(variancePower <= 1.0 || variancePower >= 2.0) {
+         // TODO: Implement Tweedie for other Powers
+         throw ParamValOutOfRangeException();
       }
       // for a discussion on variance_power and link_power, see:
       // https://search.r-project.org/CRAN/refmans/statmod/html/tweedie.html
       // https://docs.h2o.ai/h2o/latest-stable/h2o-docs/data-science/algo-params/tweedie_link_power.html
 
-      m_variancePowerParam = variancePower;
-      m_variancePowerParamSub1 = 1 - m_variancePowerParam;
-      m_variancePowerParamSub2 = 2 - m_variancePowerParam;
+      const double variancePowerParamSub1 = 1 - variancePower;
+      const double variancePowerParamSub2 = 2 - variancePower;
 
+      m_variancePowerParamSub1 = variancePowerParamSub1;
+      m_variancePowerParamSub2 = variancePowerParamSub2;
+      m_inverseVariancePowerParamSub1 = 1.0 / variancePowerParamSub1;
+      m_inverseVariancePowerParamSub2 = 1.0 / variancePowerParamSub2;
    }
 
    inline double LinkParam() const noexcept {
@@ -69,31 +73,30 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
    }
 
    inline double FinishMetric(const double metricSum) const noexcept {
-      return 2*metricSum;
+      return 2 * metricSum;
    }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
-      const TFloat prediction = Exp(score); // log link function
-      const TFloat exp1Score = Exp((m_variancePowerParamSub1) * score);
-      const TFloat exp2Score = Exp((m_variancePowerParamSub2) * score);
-      const TFloat metric = -target * (exp1Score / m_variancePowerParamSub1)  + (exp2Score / m_variancePowerParamSub2);
+      const TFloat exp1Score = Exp(m_variancePowerParamSub1 * score);
+      const TFloat exp2Score = Exp(m_variancePowerParamSub2 * score);
+      const TFloat metric = exp2Score * m_inverseVariancePowerParamSub2 - target * m_inverseVariancePowerParamSub1 * exp1Score;
       return metric;
    }
 
    GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
-      const TFloat prediction = Exp(score); // log link function
-      const TFloat exp1Score = Exp((m_variancePowerParamSub1) * score);
-      const TFloat exp2Score = Exp((m_variancePowerParamSub2) * score);
-      const TFloat gradient = (-target * exp1Score + exp2Score);
+      const TFloat exp1Score = Exp(m_variancePowerParamSub1 * score);
+      const TFloat exp2Score = Exp(m_variancePowerParamSub2 * score);
+      const TFloat targetTimesExp1Score = target * exp1Score;
+      const TFloat gradient = exp2Score - targetTimesExp1Score;
       return gradient;
    }
 
    GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
-      const TFloat prediction = Exp(score); // log link function
-      const TFloat exp1Score = Exp((m_variancePowerParamSub1) * score);
-      const TFloat exp2Score = Exp((m_variancePowerParamSub2) * score);
-      const TFloat gradient = (-target * exp1Score + exp2Score);
-      const TFloat hessian = (-target * (m_variancePowerParamSub1) * exp1Score + (m_variancePowerParamSub2) * exp2Score);
+      const TFloat exp1Score = Exp(m_variancePowerParamSub1 * score);
+      const TFloat exp2Score = Exp(m_variancePowerParamSub2 * score);
+      const TFloat targetTimesExp1Score = target * exp1Score;
+      const TFloat gradient = exp2Score - targetTimesExp1Score;
+      const TFloat hessian = m_variancePowerParamSub2 * exp2Score - m_variancePowerParamSub1 * targetTimesExp1Score;
       return MakeGradientHessian(gradient, hessian);
    }
 };
