@@ -447,42 +447,42 @@ jobs:
       architecture: 'x64'
   # we copy the tests to a new location to test the installed package rather than the source files
   - script: |
-      python -m pip install numpy==1.23.0  REM remove this once Shap can handle numpy 1.24.0
       python -m pip install --upgrade pip setuptools wheel
       FOR %%A IN ($(System.ArtifactsDirectory)\bdist\interpret_core-*.whl) DO SET "install_file=%%A"
       python -m pip install "%install_file%"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
+      python -m pip install numpy==1.23.0  REM remove this once Shap can handle numpy 1.24.0
       set PATH=%PATH%;%GeckoWebDriver%
-      mkdir "$(Agent.TempDirectory)\t1"
-      mkdir "$(Agent.TempDirectory)\t1\t2"
-      xcopy /E "$(Build.SourcesDirectory)\python\interpret-core\tests\*" "$(Agent.TempDirectory)\t1\t2\"
-      cd /D "$(Agent.TempDirectory)\t1\t2"
+      mkdir "$(Agent.TempDirectory)\zqmr"
+      mkdir "$(Agent.TempDirectory)\zqmr\t"
+      xcopy /E "$(Build.SourcesDirectory)\python\interpret-core\tests\*" "$(Agent.TempDirectory)\zqmr\t\"
+      cd /D "$(Agent.TempDirectory)\zqmr\t"
       python -m pytest -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'pytest (win)'
   # we copy the tests to a new location to test the installed package rather than the source files
   - script: |
-      python -m pip install numpy==1.23.0  # remove this once Shap can handle numpy 1.24.0
       python -m pip install --upgrade pip setuptools wheel
       cd $(System.ArtifactsDirectory)/bdist
       install_file=$(echo interpret_core-*.whl)
       python -m pip install "$install_file"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
-      mkdir -p "$(Agent.TempDirectory)/t1/t2"
-      cp -r "$(Build.SourcesDirectory)/python/interpret-core/tests/" "$(Agent.TempDirectory)/t1/t2/"
-      cd "$(Agent.TempDirectory)/t1/t2"
+      python -m pip install numpy==1.23.0  # remove this once Shap can handle numpy 1.24.0
+      mkdir -p "$(Agent.TempDirectory)/zqmr/t"
+      cp -r "$(Build.SourcesDirectory)/python/interpret-core/tests/" "$(Agent.TempDirectory)/zqmr/t/"
+      cd "$(Agent.TempDirectory)/zqmr/t"
       python -m pytest -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
     condition: not(startsWith(variables['image.name'], 'windows'))
     displayName: 'pytest (non-win)'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
-      testResultsFiles: '$(Agent.TempDirectory)/t1/t2/junit/test-results.xml'
+      testResultsFiles: '$(Agent.TempDirectory)/zqmr/t/junit/test-results.xml'
       testRunTitle: 'Publish test results for Python $(python.version) at $(image.name)'
     displayName: 'Publish test results'
   - task: PublishCodeCoverageResults@1
     inputs:
       codeCoverageTool: Cobertura
-      summaryFileLocation: '$(Agent.TempDirectory)/t1/t2/coverage.xml'
-      # reportDirectory: '$(Agent.TempDirectory)/t1/t2/**/htmlcov'
+      summaryFileLocation: '$(Agent.TempDirectory)/zqmr/t/coverage.xml'
+      # reportDirectory: '$(Agent.TempDirectory)/zqmr/t/**/htmlcov'
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Publish test coverage results'
 

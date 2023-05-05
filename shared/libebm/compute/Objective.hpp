@@ -92,22 +92,22 @@ private:
    // Welcome to the demented hall of mirrors.. a prison for your mind
    // And no, I did not make this to purposely torment you
 
-   template<class TObjective, typename TFloat>
+   template<class TObjective>
    struct HasHessianInternal {
       // use SFINAE to determine if TObjective has the function CalcGradientHessian with the correct signature
 
       template<typename T>
-      static auto check(T * p) -> decltype(p->CalcGradientHessian(TFloat { 0.0 }, TFloat { 0.0 }), std::true_type());
+      static auto check(T * p) -> decltype(p->CalcGradientHessian(0, 0), std::true_type());
 
       static std::false_type check(...);
 
       using internal_type = decltype(check(static_cast<typename std::remove_reference<TObjective>::type *>(nullptr)));
       static constexpr bool value = internal_type::value;
    };
-   template<typename TObjective, typename TFloat>
+   template<typename TObjective>
    constexpr static bool HasHessian() {
       // use SFINAE to determine if TObjective has the function CalcGradientHessian with the correct signature
-      return HasHessianInternal<TObjective, TFloat>::value;
+      return HasHessianInternal<TObjective>::value;
    }
 
    template<typename TObjective>
@@ -197,7 +197,7 @@ private:
    };
 
 
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, typename std::enable_if<HasHessian<TObjective, TFloat>(), void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, typename std::enable_if<HasHessian<TObjective>(), void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm HessianApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(pData->m_bHessianNeeded) {
          return OptionsApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, true>(pData);
@@ -205,7 +205,7 @@ private:
          return OptionsApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, false>(pData);
       }
    }
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, typename std::enable_if<!HasHessian<TObjective, TFloat>(), void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, typename std::enable_if<!HasHessian<TObjective>(), void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm HessianApplyUpdate(ApplyUpdateBridge * const pData) const {
       return OptionsApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, false>(pData);
    }
@@ -539,7 +539,7 @@ protected:
       static_assert(std::is_same<decltype(hessianConstant), const double>::value, "this->HessianConstant() should return a double");
       pObjectiveWrapperOut->m_hessianConstant = hessianConstant;
 
-      pObjectiveWrapperOut->m_bObjectiveHasHessian = HasHessian<TObjective, TFloat>() ? EBM_TRUE : EBM_FALSE;
+      pObjectiveWrapperOut->m_bObjectiveHasHessian = HasHessian<TObjective>() ? EBM_TRUE : EBM_FALSE;
       pObjectiveWrapperOut->m_bRmse = TObjective::k_bRmse ? EBM_TRUE : EBM_FALSE;
 
       pObjectiveWrapperOut->m_pObjective = this;
