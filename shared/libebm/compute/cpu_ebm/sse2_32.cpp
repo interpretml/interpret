@@ -35,6 +35,7 @@ struct Sse_32_Int final {
    using T = uint32_t;
 
    inline Sse_32_Int(const T val) noexcept : m_data(_mm_set1_epi32(static_cast<T>(val))) {
+      UNUSED(m_data);
    }
 
 private:

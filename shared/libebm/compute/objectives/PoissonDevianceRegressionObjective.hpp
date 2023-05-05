@@ -78,7 +78,7 @@ struct PoissonDevianceRegressionObjective : RegressionObjective {
       // Log succeeded and was subsequently multiplied by 0. But due to floating point considerations the
       // fraction inside the log can underflow to zero or a denormal if target is a small non-zero number. We want to 
       // treat denormals as zero, so check if less than the minimum non-denormal as our check for zero.
-      const TFloat conditionalExtra = IfLess(frac, std::numeric_limits<TFloat::T>::min(), 0.0, extra);
+      const TFloat conditionalExtra = IfLess(frac, std::numeric_limits<typename TFloat::T>::min(), 0.0, extra);
       return error + conditionalExtra;
    }
 

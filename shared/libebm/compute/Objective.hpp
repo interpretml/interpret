@@ -291,7 +291,7 @@ private:
 protected:
 
    template<typename TObjective, typename TFloat, bool bHessian, bool bWeight, typename std::enable_if<bHessian, void>::type * = nullptr>
-   INLINE_ALWAYS typename TFloat::T * HandleGradHess(
+   GPU_DEVICE INLINE_ALWAYS typename TFloat::T * HandleGradHess(
       typename TFloat::T * const pGradientAndHessian,
       const TFloat sampleScore,
       const TFloat target,
@@ -315,7 +315,7 @@ protected:
       return pGradientAndHessian + (TFloat::cPack + TFloat::cPack);
    }
    template<typename TObjective, typename TFloat, bool bHessian, bool bWeight, typename std::enable_if<!bHessian, void>::type * = nullptr>
-   INLINE_ALWAYS typename TFloat::T * HandleGradHess(
+   GPU_DEVICE INLINE_ALWAYS typename TFloat::T * HandleGradHess(
       typename TFloat::T * const pGradientAndHessian, 
       const TFloat sampleScore, 
       const TFloat target,

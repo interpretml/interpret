@@ -89,7 +89,7 @@ struct TweedieRegressionObjective : RegressionObjective {
       UNUSED(score);
       UNUSED(target);
 
-      const TFloat prediction = Exp(score); // log link function
+      //const TFloat prediction = Exp(score); // log link function
       //Incomplete Implementation
       //const TFloat metric = 1
       return 1;
@@ -99,7 +99,7 @@ struct TweedieRegressionObjective : RegressionObjective {
       UNUSED(score);
       UNUSED(target);
 
-      const TFloat prediction = Exp(score); // log link function
+      //const TFloat prediction = Exp(score); // log link function
       //Incomplete Implementation
       //const TFloat gradient = 1
       return 1;
@@ -109,7 +109,7 @@ struct TweedieRegressionObjective : RegressionObjective {
       UNUSED(score);
       UNUSED(target);
 
-      const TFloat prediction = Exp(score); // log link function
+      //const TFloat prediction = Exp(score); // log link function
       //Incomplete Implementation
       const TFloat gradient = 1;
       const TFloat hessian = 1;

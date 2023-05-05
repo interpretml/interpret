@@ -32,6 +32,7 @@ struct Cpu_64_Int final {
    using T = uint64_t;
 
    inline Cpu_64_Int(const uint64_t val) noexcept : m_data(val) {
+      UNUSED(m_data);
    }
 
 private:

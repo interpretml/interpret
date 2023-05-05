@@ -39,6 +39,7 @@ struct Cuda_32_Int final {
    using T = uint32_t;
 
    GPU_BOTH inline Cuda_32_Int(const uint32_t val) noexcept : m_data(val) {
+      UNUSED(m_data);
    }
 
 private:
