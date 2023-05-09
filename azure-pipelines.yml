@@ -450,7 +450,6 @@ jobs:
       python -m pip install --upgrade pip setuptools wheel
       FOR %%A IN ($(System.ArtifactsDirectory)\bdist\interpret_core-*.whl) DO SET "install_file=%%A"
       python -m pip install "%install_file%"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
-      python -m pip install numpy==1.23.0  REM remove this once Shap can handle numpy 1.24.0
       set PATH=%PATH%;%GeckoWebDriver%
       mkdir "$(Agent.TempDirectory)\zqmr"
       mkdir "$(Agent.TempDirectory)\zqmr\t"
@@ -465,7 +464,6 @@ jobs:
       cd $(System.ArtifactsDirectory)/bdist
       install_file=$(echo interpret_core-*.whl)
       python -m pip install "$install_file"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
-      python -m pip install numpy==1.23.0  # remove this once Shap can handle numpy 1.24.0
       mkdir -p "$(Agent.TempDirectory)/zqmr/t"
       cp -r "$(Build.SourcesDirectory)/python/interpret-core/tests/" "$(Agent.TempDirectory)/zqmr/t/"
       cd "$(Agent.TempDirectory)/zqmr/t"
