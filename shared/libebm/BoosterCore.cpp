@@ -597,9 +597,7 @@ ErrorEbm BoosterCore::Create(
 
       const bool bHessian = pBoosterCore->IsHessian();
 
-      if(IsOverflowBinSize<FloatFast>(bHessian, cScores) ||
-         IsOverflowBinSize<FloatBig>(bHessian, cScores))
-      {
+      if(IsOverflowBinSize<FloatFast>(bHessian, cScores) || IsOverflowBinSize<FloatBig>(bHessian, cScores)) {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
          return Error_OutOfMemory;
       }
@@ -619,9 +617,7 @@ ErrorEbm BoosterCore::Create(
       pBoosterCore->m_cBytesBigBins = cBytesPerBigBin * cBigBinsMax;
 
       if(0 != cSingleDimensionBinsMax) {
-         if(IsOverflowTreeNodeSize(bHessian, cScores) ||
-            IsOverflowSplitPositionSize(bHessian, cScores))
-         {
+         if(IsOverflowTreeNodeSize(bHessian, cScores) || IsOverflowSplitPositionSize(bHessian, cScores)) {
             LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin tracking size overflow");
             return Error_OutOfMemory;
          }

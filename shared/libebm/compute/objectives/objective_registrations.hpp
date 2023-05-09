@@ -27,7 +27,6 @@
 #include "ExampleRegressionObjective.hpp"
 #include "RmseRegressionObjective.hpp"
 #include "RmseLogLinkRegressionObjective.hpp"
-//#include "TweedieRegressionObjective.hpp"
 #include "PoissonDevianceRegressionObjective.hpp"
 #include "TweedieDevianceRegressionObjective.hpp"
 #include "GammaDevianceRegressionObjective.hpp"
@@ -42,7 +41,6 @@ static const std::vector<std::shared_ptr<const Registration>> RegisterObjectives
       RegisterObjective<ExampleRegressionObjective>("example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
       RegisterObjective<RmseRegressionObjective>("rmse"),
       RegisterObjective<RmseLogLinkRegressionObjective>("rmse_log"),
-//      RegisterObjective<TweedieRegressionObjective>("tweedie", FloatParam("variance_power", std::numeric_limits<double>::quiet_NaN()), FloatParam("link_power", std::numeric_limits<double>::quiet_NaN())),
       RegisterObjective<PoissonDevianceRegressionObjective>("poisson_deviance"),
       RegisterObjective<TweedieDevianceRegressionObjective>("tweedie_deviance", FloatParam("variance_power", 1.5)),
       RegisterObjective<GammaDevianceRegressionObjective>("gamma_deviance"),

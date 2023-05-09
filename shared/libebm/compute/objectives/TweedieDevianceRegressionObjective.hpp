@@ -27,9 +27,13 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
          // TODO: Implement Tweedie for other Powers
          throw ParamValOutOfRangeException();
       }
+
       // for a discussion on variance_power and link_power, see:
       // https://search.r-project.org/CRAN/refmans/statmod/html/tweedie.html
       // https://docs.h2o.ai/h2o/latest-stable/h2o-docs/data-science/algo-params/tweedie_link_power.html
+      // But if we add a link_power parameter in the future, make it always 1.0 by default, which will be log
+      // since log is better for interpretability, and also other packages (XGBoost/LightGBM) use log exclusively.
+      // Then expose link_power via the LinkParam function below.
 
       const double variancePowerParamSub1 = 1.0 - variancePower;
       const double variancePowerParamSub2 = 2.0 - variancePower;

@@ -178,9 +178,8 @@ def process_terms(n_classes, bagged_scores, bin_weights, bag_weights):
             if n_classes != 1:
                 restore_missing_value_zeros(tensor_copy, weights)
             tensor_bags.append(tensor_copy)
-        score_tensors = np.array(
-            tensor_bags, np.float64
-        )  # replace it to get stddev of 0 for weight of 0
+        # replace it to get stddev of 0 for weight of 0
+        score_tensors = np.array(tensor_bags, np.float64)
         new_bagged_scores.append(score_tensors)
 
         # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation

@@ -62,7 +62,7 @@ joblib_dep = "joblib>=0.11"
 extras = {
     # Core
     "required": [
-        "numpy>=1.11.1,<1.24.0", # remove once Shap can handle numpy 1.24.0
+        "numpy>=1.11.1,<1.24.0",  # remove once Shap can handle numpy 1.24.0
         "scipy>=0.18.1",
         "pandas>=0.19.2",
         sklearn_dep,

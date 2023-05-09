@@ -641,9 +641,8 @@ def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, process
             raise ValueError(msg)
 
     categories = dict(zip(pd_categories, count(1)))
-    X_col = X_col.astype(
-        dtype=np.int64, copy=False
-    )  # we'll need int64 for calling C++ anyways
+    # we'll need int64 for calling C++ anyways
+    X_col = X_col.astype(dtype=np.int64, copy=False)
     X_col = X_col + 1
     return X_col, categories
 
@@ -663,9 +662,8 @@ def _encode_pandas_categorical_existing(X_col, pd_categories, categories):
     if len(mapping) <= len(categories):
         mapping_cmp = np.arange(1, len(mapping) + 1, dtype=np.int64)
         if np.array_equal(mapping, mapping_cmp):
-            X_col = X_col.astype(
-                dtype=np.int64, copy=False
-            )  # avoid overflows for np.int8
+            # avoid overflows for np.int8
+            X_col = X_col.astype(dtype=np.int64, copy=False)
             X_col = X_col + 1
             return X_col, None
     else:
@@ -674,9 +672,8 @@ def _encode_pandas_categorical_existing(X_col, pd_categories, categories):
             unknowns = len(categories) <= X_col
             bad = np.full(len(X_col), None, dtype=np.object_)
             bad[unknowns] = pd_categories[X_col[unknowns]]
-            X_col = X_col.astype(
-                dtype=np.int64, copy=False
-            )  # avoid overflows for np.int8
+            # avoid overflows for np.int8
+            X_col = X_col.astype(dtype=np.int64, copy=False)
             X_col = X_col + 1
             X_col[unknowns] = -1
             return X_col, bad

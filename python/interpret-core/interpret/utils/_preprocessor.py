@@ -145,9 +145,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             n_samples = len(sample_weight)
             sample_weight = sample_weight.astype(np.float64, copy=False)
 
-            min_weight = (
-                sample_weight.min()
-            )  # NaN values are guaranteed to be the min if they exist
+            # NaN values are guaranteed to be the min if they exist
+            min_weight = sample_weight.min()
             # TODO: for now weights of zero are illegal, but in the future accept them
             if (
                 math.isnan(min_weight)
@@ -189,6 +188,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     sensitivity=max_weight,
                 )
             elif self.composition == "gdp":
+                # Alg Line 17"
                 noise_scale = (
                     calc_gdp_noise_multi(
                         total_queries=n_features,
@@ -196,7 +196,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         delta=self.delta,
                     )
                     * max_weight
-                )  # Alg Line 17"
+                )
             else:
                 raise NotImplementedError(
                     f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
@@ -511,9 +511,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             n_samples = len(sample_weight)
             sample_weight = sample_weight.astype(np.float64, copy=False)
 
-        X, _ = preclean_X(
-            X, self.feature_names, self.feature_types, n_samples
-        )  # materialize any iterators first
+        # materialize any iterators first
+        X, _ = preclean_X(X, self.feature_names, self.feature_types, n_samples)
         return self.fit(X, y, sample_weight).transform(X)
 
 

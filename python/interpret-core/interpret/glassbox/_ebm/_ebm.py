@@ -704,9 +704,8 @@ class EBMModel(BaseEstimator):
                     target_epsilon=training_eps,
                     delta=training_delta,
                 )
-                noise_scale_boosting *= (
-                    domain_size * self.learning_rate * max_weight
-                )  # Alg Line 17
+                # Alg Line 17
+                noise_scale_boosting *= domain_size * self.learning_rate * max_weight
             else:
                 raise NotImplementedError(
                     f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
@@ -736,10 +735,8 @@ class EBMModel(BaseEstimator):
             interactions = self.interactions
 
         rng = native.create_rng(init_random_state)
-        rng = native.branch_rng(
-            rng
-        )  # branch it so we have no correlation to the binning rng that uses the same seed
-
+        # branch it so we have no correlation to the binning rng that uses the same seed
+        rng = native.branch_rng(rng)
         used_seeds = set()
         rngs = []
         bag_weights = []
@@ -761,9 +758,8 @@ class EBMModel(BaseEstimator):
                 bagged_rng,
                 is_classifier(self) and not is_differential_privacy,
             )
-            rngs.append(
-                bagged_rng
-            )  # we bag within the same proces, so bagged_rng will progress inside make_bag
+            # we bag within the same proces, so bagged_rng will progress inside make_bag
+            rngs.append(bagged_rng)
             bags.append(bag)
             if bag is None:
                 if sample_weight is None:
@@ -862,9 +858,8 @@ class EBMModel(BaseEstimator):
             for model, bag_breakpoint_iteration, bagged_rng in results:
                 breakpoint_iteration[-1].append(bag_breakpoint_iteration)
                 models.append(after_boosting(term_features, model, main_bin_weights))
-                rngs.append(
-                    bagged_rng
-                )  # retrieve our rng state since this was used outside of our process
+                # retrieve our rng state since this was used outside of our process
+                rngs.append(bagged_rng)
 
             while True:  # this isn't for looping. Just for break statements to exit
                 if interactions is None:
@@ -1677,9 +1672,8 @@ class EBMModel(BaseEstimator):
                     },
                 }
                 if is_classifier(self):
-                    data_dict["meta"] = {
-                        "label_names": self.classes_.tolist()  # Classes should be numpy array, convert to list.
-                    }
+                    # Classes should be numpy array, convert to list.
+                    data_dict["meta"] = {"label_names": self.classes_.tolist()}
 
                 data_dicts.append(data_dict)
             elif len(feature_idxs) == 2:
@@ -1872,9 +1866,8 @@ class EBMModel(BaseEstimator):
                     },
                 }
                 if is_classifier(self):
-                    data_dict["meta"] = {
-                        "label_names": self.classes_.tolist()  # Classes should be numpy array, convert to list.
-                    }
+                    # Classes should be numpy array, convert to list.
+                    data_dict["meta"] = {"label_names": self.classes_.tolist()}
                 data_dicts.append(data_dict)
 
             for term_idx, bin_indexes in eval_terms(

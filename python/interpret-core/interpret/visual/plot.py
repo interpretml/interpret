@@ -845,6 +845,7 @@ def plot_ebm_multiple_booleans(
         _ = plt.figure(figsize=(12, 12))
         sorted_i = np.argsort(impacts)
         for counter, i in enumerate(sorted_i):
+            # Assume symmetric error.
             plt.bar(
                 counter,
                 impacts[i],
@@ -852,7 +853,7 @@ def plot_ebm_multiple_booleans(
                 color="blue",
                 edgecolor="black",
                 yerr=upper_bounds[i] - impacts[i],
-            )  # Assume symmetric error.
+            )
         plt.xticks(
             range(len(names)), np.array(names)[sorted_i], rotation=90, fontsize=24
         )

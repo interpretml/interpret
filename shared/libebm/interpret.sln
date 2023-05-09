@@ -101,7 +101,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "objectives", "objectives", 
 		compute\objectives\RmseRegressionMultitaskObjective.hpp = compute\objectives\RmseRegressionMultitaskObjective.hpp
 		compute\objectives\RmseRegressionObjective.hpp = compute\objectives\RmseRegressionObjective.hpp
 		compute\objectives\TweedieDevianceRegressionObjective.hpp = compute\objectives\TweedieDevianceRegressionObjective.hpp
-		compute\objectives\TweedieRegressionObjective.hpp = compute\objectives\TweedieRegressionObjective.hpp
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "metrics", "metrics", "{43E23DAD-B0D6-4148-B12A-F58560778CB3}"
