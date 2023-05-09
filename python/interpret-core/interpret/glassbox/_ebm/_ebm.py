@@ -2502,7 +2502,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Maximum number of leaves allowed in each tree.
     objective : str, default="rmse"
         The objective to optimize. Options include: "rmse",
-        "gamma_deviance", "poisson_deviance:max_delta_step=0.7",
+        "poisson_deviance", "tweedie_deviance:variance_power=1.5", "gamma_deviance", 
         "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function)
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula

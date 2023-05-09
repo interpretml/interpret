@@ -62,7 +62,7 @@ def measure_interactions(
         max_interaction_bins: Max number of bins per interaction terms
         min_samples_leaf: Minimum number of samples for tree splits used when calculating gain
         objective: None (rmse or log_loss), "rmse" (regression default), "log_loss" (classification default),
-            "gamma_deviance", "poisson_deviance:max_delta_step=0.7",
+            "poisson_deviance", "tweedie_deviance:variance_power=1.5", "gamma_deviance", 
             "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function)
     Returns:
         List containing a tuple of feature indices for the terms and interaction strengths,
