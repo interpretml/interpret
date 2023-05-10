@@ -33,7 +33,7 @@ TEST_CASE("zero learning rate, boosting, regression") {
 }
 
 TEST_CASE("zero learning rate, boosting, binary") {
-   TestApi test = TestApi(2, 0);
+   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
    test.AddFeatures({});
    test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 0) });
@@ -121,7 +121,7 @@ TEST_CASE("negative learning rate, boosting, regression") {
 }
 
 TEST_CASE("negative learning rate, boosting, binary") {
-   TestApi test = TestApi(2, 0);
+   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
    test.AddFeatures({});
    test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 0) });
@@ -620,7 +620,7 @@ TEST_CASE("Zero training samples, boosting, regression") {
 }
 
 TEST_CASE("Zero training samples, boosting, binary") {
-   TestApi test = TestApi(2, 0);
+   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddTerms({ { 0 } });
    test.AddTrainingSamples({});
@@ -696,7 +696,7 @@ TEST_CASE("Zero validation samples, boosting, regression") {
 }
 
 TEST_CASE("Zero validation samples, boosting, binary") {
-   TestApi test = TestApi(2, 0);
+   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddTerms({ { 0 } });
    test.AddTrainingSamples({ TestSample({ 1 }, 0) });
@@ -900,7 +900,7 @@ TEST_CASE("zero terms, boosting, regression") {
 }
 
 TEST_CASE("zero terms, boosting, binary") {
-   TestApi test = TestApi(2, 0);
+   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
    test.AddFeatures({});
    test.AddTerms({});
    test.AddTrainingSamples({ TestSample({}, 1) });
@@ -954,7 +954,7 @@ TEST_CASE("Term with zero features, boosting, regression") {
 }
 
 TEST_CASE("Term with zero features, boosting, binary") {
-   TestApi test = TestApi(2, 0);
+   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
    test.AddFeatures({});
    test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 0) });
@@ -1070,21 +1070,21 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
 }
 
 TEST_CASE("Term with one feature with one or two states is the exact same as zero terms, boosting, binary") {
-   TestApi testZeroDimensions = TestApi(2, 0);
+   TestApi testZeroDimensions = TestApi(2, EBM_FALSE, nullptr, 0);
    testZeroDimensions.AddFeatures({});
    testZeroDimensions.AddTerms({ {} });
    testZeroDimensions.AddTrainingSamples({ TestSample({}, 0) });
    testZeroDimensions.AddValidationSamples({ TestSample({}, 0) });
    testZeroDimensions.InitializeBoosting();
 
-   TestApi testOneState = TestApi(2, 0);
+   TestApi testOneState = TestApi(2, EBM_FALSE, nullptr, 0);
    testOneState.AddFeatures({ FeatureTest(1) });
    testOneState.AddTerms({ { 0 } });
    testOneState.AddTrainingSamples({ TestSample({ 0 }, 0) });
    testOneState.AddValidationSamples({ TestSample({ 0 }, 0) });
    testOneState.InitializeBoosting();
 
-   TestApi testTwoStates = TestApi(2, 0);
+   TestApi testTwoStates = TestApi(2, EBM_FALSE, nullptr, 0);
    testTwoStates.AddFeatures({ FeatureTest(2) });
    testTwoStates.AddTerms({ { 0 } });
    testTwoStates.AddTrainingSamples({ TestSample({ 1 }, 0) });
@@ -1645,4 +1645,26 @@ TEST_CASE("pair and main gain identical, boosting, regression") {
    double gainAvg2 = test2.Boost(0).gainAvg;
 
    CHECK_APPROX(gainAvg1, gainAvg2);
+}
+
+TEST_CASE("tweedie, boosting") {
+   TestApi test = TestApi(k_learningTypeRegression, EBM_FALSE, "tweedie_deviance:variance_power=1.3");
+   test.AddFeatures({ FeatureTest(1) });
+   test.AddTerms({ { 0 } });
+   test.AddTrainingSamples({ TestSample({ 0 }, 10) });
+   test.AddValidationSamples({ TestSample({ 0 }, 12) });
+   test.InitializeBoosting();
+
+   double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
+   double termScore = double { std::numeric_limits<double>::quiet_NaN() };
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm, BoostFlags_Default).validationMetric;
+      }
+   }
+
+   CHECK_APPROX(validationMetric, 54.414769150086464);
+
+   termScore = test.GetCurrentTermScore(0, {0}, 0);
+   CHECK_APPROX(termScore, 2.3025076860047466);
 }

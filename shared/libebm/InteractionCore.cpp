@@ -262,7 +262,12 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
    const BagEbm * const aBag,
    const double * const aInitScores
 ) {
+   ErrorEbm error = Error_None;
    if(!m_dataFrame.IsGradientsAndHessiansNull()) {
+      const BagEbm * pSampleReplication = aBag;
+
+      ApplyUpdateBridge data;
+
       size_t cSetSamples = m_dataFrame.GetCountSamples();
       EBM_ASSERT(1 <= cSetSamples); // if m_dataFrame.IsGradientsAndHessiansNull
 
@@ -272,6 +277,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       EBM_ASSERT(0 != cClasses); // no gradients if 0 == cClasses
       EBM_ASSERT(1 != cClasses); // no gradients if 1 == cClasses
       const size_t cScores = GetCountScores(cClasses);
+
       if(IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)");
          return Error_OutOfMemory;
@@ -279,99 +285,72 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       const size_t cBytesScores = sizeof(FloatFast) * cScores;
       const size_t cBytesAllScores = cBytesScores * cSetSamples;
 
-      if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
-         LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
+      FloatFast * pSampleScoreTo = static_cast<FloatFast *>(malloc(cBytesAllScores));
+      if(UNLIKELY(nullptr == pSampleScoreTo)) {
+         LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == pSampleScoreTo");
          return Error_OutOfMemory;
       }
-
-      FloatFast * const aSampleScoreTo = static_cast<FloatFast *>(malloc(cBytesAllScores));
-      if(UNLIKELY(nullptr == aSampleScoreTo)) {
-         LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aSampleScoreTo");
-         return Error_OutOfMemory;
-      }
-
-      StorageDataType * const aTargetsTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
-      if(UNLIKELY(nullptr == aTargetsTo)) {
-         free(aSampleScoreTo);
-         LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aTargetsTo");
-         return Error_OutOfMemory;
-      }
+      data.m_aSampleScores = pSampleScoreTo;
 
       FloatFast * const aUpdateScores = static_cast<FloatFast *>(malloc(cBytesScores));
       if(UNLIKELY(nullptr == aUpdateScores)) {
-         free(aTargetsTo);
-         free(aSampleScoreTo);
          LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aUpdateScores");
-         return Error_OutOfMemory;
+         error = Error_OutOfMemory;
+         goto free_sample_scores;
       }
-
-      FloatFast * aMulticlassMidwayTemp = nullptr;
-      if(IsMulticlass(cClasses)) {
-         aMulticlassMidwayTemp = static_cast<FloatFast *>(malloc(cBytesScores));
-         if(UNLIKELY(nullptr == aMulticlassMidwayTemp)) {
-            free(aUpdateScores);
-            free(aTargetsTo);
-            free(aSampleScoreTo);
-            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aMulticlassMidwayTemp");
-            return Error_OutOfMemory;
-         }
-      }
+      data.m_aUpdateTensorScores = aUpdateScores;
 
       memset(aUpdateScores, 0, cBytesScores);
 
+      data.m_aMulticlassMidwayTemp = nullptr;
+      if(IsClassification(cClasses)) {
+         if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
+            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
+            error = Error_OutOfMemory;
+            goto free_tensor_scores;
+         }
+         StorageDataType * pTargetTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
+         if(UNLIKELY(nullptr == pTargetTo)) {
+            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == pTargetTo");
+            error = Error_OutOfMemory;
+            goto free_tensor_scores;
+         }
+         data.m_aTargets = pTargetTo;
 
-      const BagEbm * pSampleReplication = aBag;
-      const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargetsFrom);
-      StorageDataType * pTargetTo = aTargetsTo;
-      const StorageDataType * const pTargetToEnd = &aTargetsTo[cSetSamples];
-
-      if(nullptr == aInitScores) {
-         // if aInitScores is nullptr then all initial scores are zero
-         memset(aSampleScoreTo, 0, cBytesAllScores);
-
-         do {
-            BagEbm replication = 1;
-            if(nullptr != pSampleReplication) {
-               do {
-                  replication = *pSampleReplication;
-                  ++pSampleReplication;
-                  ++pTargetFrom;
-               } while(replication <= BagEbm { 0 });
-               --pTargetFrom;
+         if(IsMulticlass(cClasses)) {
+            FloatFast * const aMulticlassMidwayTemp = static_cast<FloatFast *>(malloc(cBytesScores));
+            if(UNLIKELY(nullptr == aMulticlassMidwayTemp)) {
+               LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aMulticlassMidwayTemp");
+               error = Error_OutOfMemory;
+               goto free_targets;
             }
-            const SharedStorageDataType targetOriginal = *pTargetFrom;
-            ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
+            data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
+         }
 
-            // the shared data storage structure ensures that all target values are less than the number of classes
-            // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
-            // so we do not need the runtime to check this
-            EBM_ASSERT(targetOriginal < static_cast<SharedStorageDataType>(cClasses));
-            // since cClasses must be below StorageDataType, it follows that..
-            EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
-            const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
-            do {
-               *pTargetTo = target;
-               ++pTargetTo;
+         const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargetsFrom);
+         const StorageDataType * const pTargetToEnd = &pTargetTo[cSetSamples];
 
-               --replication;
-            } while(BagEbm { 0 } != replication);
-         } while(pTargetToEnd != pTargetTo);
-      } else {
          const double * pInitScoreFrom = aInitScores;
-         FloatFast * pSampleScoreTo = aSampleScoreTo;
          do {
             BagEbm replication = 1;
+            size_t cAdvance = cScores;
             if(nullptr != pSampleReplication) {
+               cAdvance = 0; // we'll add this now inside the loop below
                do {
                   do {
                      replication = *pSampleReplication;
                      ++pSampleReplication;
                      ++pTargetFrom;
                   } while(BagEbm { 0 } == replication);
-                  pInitScoreFrom += cScores;
+                  cAdvance += cScores;
                } while(replication < BagEbm { 0 });
                --pTargetFrom;
-               pInitScoreFrom -= cScores;
+            }
+
+            const double * pInitScoreFromOld = nullptr;
+            if(nullptr != pInitScoreFrom) {
+               pInitScoreFrom += cAdvance;
+               pInitScoreFromOld = pInitScoreFrom - cScores;
             }
 
             const SharedStorageDataType targetOriginal = *pTargetFrom;
@@ -384,51 +363,109 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             // since cClasses must be below StorageDataType, it follows that..
             EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
             const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
-            const double * pInitScoreFromEnd = pInitScoreFrom + cScores;
             do {
                *pTargetTo = target;
                ++pTargetTo;
 
+               const double * pInitScoreFromLoop = pInitScoreFromOld;
+               const double * pSampleScoreToEnd = pSampleScoreTo + cScores;
                do {
-                  *pSampleScoreTo = SafeConvertFloat<FloatFast>(*pInitScoreFrom);
+                  FloatFast initScore = 0;
+                  if(nullptr != pInitScoreFromLoop) {
+                     initScore = SafeConvertFloat<FloatFast>(*pInitScoreFromLoop);
+                     ++pInitScoreFromLoop;
+                  }
+                  *pSampleScoreTo = initScore;
                   ++pSampleScoreTo;
-                  ++pInitScoreFrom;
-               } while(pInitScoreFromEnd != pInitScoreFrom);
-               pInitScoreFrom -= cScores; // in case replication is more than 1 and we do another loop
-
+               } while(pSampleScoreToEnd != pSampleScoreTo);
                --replication;
             } while(BagEbm { 0 } != replication);
-            pInitScoreFrom += cScores;
+         } while(pTargetToEnd != pTargetTo);
+      } else {
+         if(IsMultiplyError(sizeof(FloatFast), cSetSamples)) {
+            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cSetSamples)");
+            error = Error_OutOfMemory;
+            goto free_tensor_scores;
+         }
+         FloatFast * pTargetTo = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSetSamples));
+         if(UNLIKELY(nullptr == pTargetTo)) {
+            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == pTargetTo");
+            error = Error_OutOfMemory;
+            goto free_tensor_scores;
+         }
+         data.m_aTargets = pTargetTo;
+
+         const FloatFast * pTargetFrom = static_cast<const FloatFast *>(aTargetsFrom);
+         const FloatFast * const pTargetToEnd = &pTargetTo[cSetSamples];
+
+         const double * pInitScoreFrom = aInitScores;
+         do {
+            BagEbm replication = 1;
+            size_t cAdvance = cScores;
+            if(nullptr != pSampleReplication) {
+               cAdvance = 0; // we'll add this now inside the loop below
+               do {
+                  do {
+                     replication = *pSampleReplication;
+                     ++pSampleReplication;
+                     ++pTargetFrom;
+                  } while(BagEbm { 0 } == replication);
+                  cAdvance += cScores;
+               } while(replication < BagEbm { 0 });
+               --pTargetFrom;
+            }
+
+            const double * pInitScoreFromOld = nullptr;
+            if(nullptr != pInitScoreFrom) {
+               pInitScoreFrom += cAdvance;
+               pInitScoreFromOld = pInitScoreFrom - cScores;
+            }
+
+            const FloatFast targetOriginal = *pTargetFrom;
+            ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
+
+            const FloatFast target = SafeConvertFloat<FloatFast>(targetOriginal);
+            do {
+               *pTargetTo = target;
+               ++pTargetTo;
+
+               const double * pInitScoreFromLoop = pInitScoreFromOld;
+               const double * pSampleScoreToEnd = pSampleScoreTo + cScores;
+               do {
+                  FloatFast initScore = 0;
+                  if(nullptr != pInitScoreFromLoop) {
+                     initScore = SafeConvertFloat<FloatFast>(*pInitScoreFromLoop);
+                     ++pInitScoreFromLoop;
+                  }
+                  *pSampleScoreTo = initScore;
+                  ++pSampleScoreTo;
+               } while(pSampleScoreToEnd != pSampleScoreTo);
+               --replication;
+            } while(BagEbm { 0 } != replication);
          } while(pTargetToEnd != pTargetTo);
       }
 
-      ApplyUpdateBridge data;
       data.m_cScores = cScores;
       data.m_cPack = k_cItemsPerBitPackNone;
       data.m_bHessianNeeded = EBM_TRUE;
       data.m_bCalcMetric = false;
-      data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
-      data.m_aUpdateTensorScores = aUpdateScores;
       data.m_cSamples = cSetSamples;
       data.m_aPacked = nullptr;
-      data.m_aTargets = aTargetsTo;
       data.m_aWeights = m_dataFrame.GetWeights();
-      data.m_aSampleScores = aSampleScoreTo;
       data.m_aGradientsAndHessians = m_dataFrame.GetGradientsAndHessiansPointer();
       // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
       // reuse the same code that we use for boosting in order to generate our gradients and hessians
-      const ErrorEbm error = ObjectiveApplyUpdate(&data);
+      error = ObjectiveApplyUpdate(&data);
 
-      free(aMulticlassMidwayTemp); // nullptr ok
-      free(aUpdateScores);
-      free(aTargetsTo);
-      free(aSampleScoreTo);
-
-      if(Error_None != error) {
-         return error;
-      }
+      free(data.m_aMulticlassMidwayTemp); // nullptr ok
+   free_targets:
+      free(const_cast<void *>(data.m_aTargets));
+   free_tensor_scores:
+      free(const_cast<void *>(data.m_aUpdateTensorScores));
+   free_sample_scores:
+      free(data.m_aSampleScores);
    }
-   return Error_None;
+   return error;
 }
 
 } // DEFINED_ZONE_NAME

@@ -352,9 +352,9 @@ public:
 
    TestApi(
       const ptrdiff_t cClasses, 
-      const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault,
       const BoolEbm m_bDifferentiallyPrivate = EBM_FALSE,
-      const char * const m_sObjective = nullptr
+      const char * const m_sObjective = nullptr,
+      const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault
    );
    ~TestApi();
 

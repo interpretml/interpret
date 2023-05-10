@@ -20,7 +20,7 @@ TEST_CASE("Zero interaction samples, interaction, regression") {
 }
 
 TEST_CASE("Zero interaction samples, interaction, binary") {
-   TestApi test = TestApi(2, 0);
+   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddInteractionSamples({});
    test.InitializeInteraction();
@@ -79,7 +79,7 @@ TEST_CASE("Term with zero features, interaction, regression") {
 }
 
 TEST_CASE("Term with zero features, interaction, binary") {
-   TestApi test = TestApi(2, 0);
+   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
    test.AddFeatures({});
    test.AddInteractionSamples({ TestSample({}, 0) });
    test.InitializeInteraction();
@@ -106,7 +106,7 @@ TEST_CASE("Term with one feature with one state, interaction, regression") {
 }
 
 TEST_CASE("Term with one feature with one state, interaction, binary") {
-   TestApi test = TestApi(2, 0);
+   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionSamples({ TestSample({ 0 }, 0) });
    test.InitializeInteraction();
@@ -435,3 +435,18 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
 
    CHECK_APPROX(interactionStrength, gainAvg);
 }
+
+TEST_CASE("tweedie, interaction") {
+   TestApi test = TestApi(k_learningTypeRegression, EBM_FALSE, "tweedie_deviance:variance_power=1.3");
+   test.AddFeatures({ FeatureTest(2), FeatureTest(2) });
+   test.AddInteractionSamples({ 
+      TestSample({ 0, 0 }, 10),
+      TestSample({ 0, 1 }, 11),
+      TestSample({ 1, 0 }, 13),
+      TestSample({ 1, 1 }, 12)
+   });
+   test.InitializeInteraction();
+   double metricReturn = test.TestCalcInteractionStrength({ 0, 1 });
+   CHECK_APPROX(metricReturn, 1.25);
+}
+

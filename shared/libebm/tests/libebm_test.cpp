@@ -220,9 +220,9 @@ double TestApi::GetTermScore(
 
 TestApi::TestApi(
    const ptrdiff_t cClasses, 
-   const ptrdiff_t iZeroClassificationLogit, 
    const BoolEbm bDifferentiallyPrivate, 
-   const char * const sObjective
+   const char * const sObjective,
+   const ptrdiff_t iZeroClassificationLogit
 ) :
    m_stage(Stage::Beginning),
    m_cClasses(cClasses),

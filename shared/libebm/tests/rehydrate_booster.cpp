@@ -41,7 +41,7 @@ TEST_CASE("Test Rehydration, boosting, regression") {
 }
 
 TEST_CASE("Test Rehydration, boosting, binary") {
-   TestApi testContinuous = TestApi(2, 0);
+   TestApi testContinuous = TestApi(2, EBM_FALSE, nullptr, 0);
    testContinuous.AddFeatures({});
    testContinuous.AddTerms({ {} });
    testContinuous.AddTrainingSamples({ TestSample({}, 0) });
@@ -55,7 +55,7 @@ TEST_CASE("Test Rehydration, boosting, binary") {
    double termScoreContinuous;
    double validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      TestApi testRestart = TestApi(2, 0);
+      TestApi testRestart = TestApi(2, EBM_FALSE, nullptr, 0);
       testRestart.AddFeatures({});
       testRestart.AddTerms({ {} });
       testRestart.AddTrainingSamples({ TestSample({}, 0, 1, { termScore0, termScore1 }) });

@@ -50,7 +50,7 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
          // a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
-            TestApi test = TestApi(2, 0);
+            TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
             test.AddFeatures({ FeatureTest(cBins) });
             test.AddTerms({ { 0 } });
 
@@ -112,7 +112,7 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
          // a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
-            TestApi test = TestApi(2, 0);
+            TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
             test.AddFeatures({ FeatureTest(2), FeatureTest(cBins) });
 
             std::vector<TestSample> samples;
