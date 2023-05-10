@@ -12,12 +12,17 @@ public:
    static constexpr bool k_bRmse = true;
    static constexpr BoolEbm k_bMaximizeMetric = MINIMIZE_METRIC;
    static constexpr LinkEbm k_linkFunction = Link_identity;
+   static constexpr OutputType k_outputType = ConvertOutputType(k_linkFunction);
    static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) {
       return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentApplyUpdate<const RmseRegressionObjective<TFloat>, TFloat>(pData);
    }
    template<typename T = void, typename std::enable_if<TFloat::bCpu, T>::type * = nullptr>
    static double StaticFinishMetric(const Objective * const pThis, const double metricSum) {
       return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->FinishMetric(metricSum);
+   }
+   template<typename T = void, typename std::enable_if<TFloat::bCpu, T>::type * = nullptr>
+   static BoolEbm StaticCheckTargets(const Objective * const pThis, const size_t c, const void * const aTargets) {
+      return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentCheckTargets<const RmseRegressionObjective<TFloat>, TFloat>(c, aTargets);
    }
    void FillWrapper(void * const pWrapperOut) noexcept {
       FillObjectiveWrapper<RmseRegressionObjective, TFloat>(pWrapperOut);
@@ -27,6 +32,10 @@ public:
       if(1 != config.cOutputs) {
          throw ParamMismatchWithConfigException();
       }
+   }
+
+   inline bool CheckRegressionTarget(const double target) const noexcept {
+      return std::isnan(target) || std::isinf(target);
    }
 
    inline double LinkParam() const noexcept {

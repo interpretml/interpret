@@ -40,6 +40,10 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
       m_deltaInverted = deltaInverted;
    }
 
+   inline bool CheckRegressionTarget(const double target) const noexcept {
+      return std::isnan(target) || std::isinf(target);
+   }
+
    inline double LinkParam() const noexcept {
       return std::numeric_limits<double>::quiet_NaN();
    }

@@ -119,6 +119,8 @@ class Native:
             return Exception(
                 "Differential Privacy not supported by an objective parameter value"
             )
+        elif error_code == -21:
+            return Exception("Illegal target value for the objective")
         else:
             return Exception(
                 f"Unrecognized native return code {error_code} in {native_function}"

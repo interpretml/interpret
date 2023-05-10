@@ -15,6 +15,7 @@
 #include "common_c.h" // INLINE_ALWAYS
 #include "zones.h"
 
+#include "bridge_cpp.hpp" // IsRegressionOutput, etc.
 #include "zoned_bridge_cpp_functions.hpp" // FunctionPointersCpp
 #include "compute.hpp" // GPU_GLOBAL
 
@@ -477,13 +478,49 @@ protected:
       return TypeApplyUpdate<TObjective, TFloat>(pData);
    }
 
+   template<typename TObjective, typename TFloat, typename std::enable_if<TObjective::k_outputType == OutputType_Regression, void>::type * = nullptr>
+   INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void * const aTargets) const noexcept {
+      // regression
+      const TObjective * const pObjective = static_cast<const TObjective *>(this);
+      const FloatFast * pTarget = static_cast<const FloatFast *>(aTargets);
+      const FloatFast * const pTargetEnd = &pTarget[c];
+      while(pTargetEnd != pTarget) {
+         if(pObjective->CheckRegressionTarget(*pTarget)) {
+            return EBM_TRUE;
+         }
+         ++pTarget;
+      }
+      return EBM_FALSE;
+   }
+   template<typename TObjective, typename TFloat, typename std::enable_if<TObjective::k_outputType == OutputType_GeneralClassification, void>::type * = nullptr>
+   INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void * const aTargets) const noexcept {
+      // classification
+      UNUSED(c);
+      UNUSED(aTargets);
+      return EBM_FALSE;
+   }
+   template<typename TObjective, typename TFloat, typename std::enable_if<TObjective::k_outputType == OutputType_Ranking, void>::type * = nullptr>
+   INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void * const aTargets) const noexcept {
+      // classification
+      UNUSED(c);
+      UNUSED(aTargets);
+      return EBM_FALSE;
+   }
+   template<typename TObjective, typename TFloat>
+   INLINE_RELEASE_TEMPLATED BoolEbm ParentCheckTargets(const size_t c, const void * const aTargets) const noexcept {
+      static_assert(IsEdgeObjective<TObjective>(), "TObjective must inherit from one of the children of the Objective class");
+      return TypeCheckTargets<TObjective, TFloat>(c, aTargets);
+   }
+
    template<typename TObjective, typename TFloat, typename std::enable_if<TFloat::bCpu, void>::type * = nullptr>
-   INLINE_RELEASE_TEMPLATED static void SetFinishMetric(FunctionPointersCpp * const pFunctionPointers) noexcept {
+   INLINE_RELEASE_TEMPLATED static void SetCpuFunctions(FunctionPointersCpp * const pFunctionPointers) noexcept {
       pFunctionPointers->m_pFinishMetricCpp = &TObjective::StaticFinishMetric;
+      pFunctionPointers->m_pCheckTargetsCpp = &TObjective::StaticCheckTargets;
    }
    template<typename TObjective, typename TFloat, typename std::enable_if<!TFloat::bCpu, void>::type * = nullptr>
-   INLINE_RELEASE_TEMPLATED static void SetFinishMetric(FunctionPointersCpp * const pFunctionPointers) noexcept {
+   INLINE_RELEASE_TEMPLATED static void SetCpuFunctions(FunctionPointersCpp * const pFunctionPointers) noexcept {
       pFunctionPointers->m_pFinishMetricCpp = nullptr;
+      pFunctionPointers->m_pCheckTargetsCpp = nullptr;
    }
 
    template<typename TObjective, typename TFloat>
@@ -544,7 +581,7 @@ protected:
 
       pObjectiveWrapperOut->m_pObjective = this;
 
-      SetFinishMetric<TObjective, TFloat>(pFunctionPointers);
+      SetCpuFunctions<TObjective, TFloat>(pFunctionPointers);
    }
 
    Objective() = default;
@@ -655,12 +692,16 @@ protected:
       static constexpr bool k_bRmse = false; \
       static constexpr BoolEbm k_bMaximizeMetric = (__MAXIMIZE_METRIC); \
       static constexpr LinkEbm k_linkFunction = (__LINK_FUNCTION); \
+      static constexpr OutputType k_outputType = ConvertOutputType(k_linkFunction); \
       static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->ParentApplyUpdate<const __EBM_TYPE<TFloat>, TFloat>(pData); \
       } \
       template<typename T = void, typename std::enable_if<TFloat::bCpu, T>::type * = nullptr> \
       static double StaticFinishMetric(const Objective * const pThis, const double metricSum) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->FinishMetric(metricSum); \
+      } \
+      static BoolEbm StaticCheckTargets(const Objective * const pThis, const size_t c, const void * const aTargets) { \
+         return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->ParentCheckTargets<const __EBM_TYPE<TFloat>, TFloat>(c, aTargets); \
       } \
       void FillWrapper(void * const pWrapperOut) noexcept { \
          static_assert( \

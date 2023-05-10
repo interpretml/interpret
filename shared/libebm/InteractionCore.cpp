@@ -78,9 +78,9 @@ ErrorEbm InteractionCore::Create(
 
    ErrorEbm error;
 
-   InteractionCore * pRet;
+   InteractionCore * pInteractionCore;
    try {
-      pRet = new InteractionCore();
+      pInteractionCore = new InteractionCore();
    } catch(const std::bad_alloc &) {
       LOG_0(Trace_Warning, "WARNING InteractionCore::Create Out of memory allocating InteractionCore");
       return Error_OutOfMemory;
@@ -88,13 +88,13 @@ ErrorEbm InteractionCore::Create(
       LOG_0(Trace_Warning, "WARNING InteractionCore::Create Unknown error");
       return Error_UnexpectedInternal;
    }
-   if(nullptr == pRet) {
+   if(nullptr == pInteractionCore) {
       // this should be impossible since bad_alloc should have been thrown, but let's be untrusting
       LOG_0(Trace_Warning, "WARNING InteractionCore::Create nullptr == pInteractionCore");
       return Error_OutOfMemory;
    }
    // give ownership of our object back to the caller, even if there is a failure
-   *ppInteractionCoreOut = pRet;
+   *ppInteractionCoreOut = pInteractionCore;
 
    SharedStorageDataType countSamples;
    size_t cFeatures;
@@ -135,14 +135,14 @@ ErrorEbm InteractionCore::Create(
          LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate IsMultiplyError(sizeof(Feature), cFeatures)");
          return Error_OutOfMemory;
       }
-      pRet->m_cFeatures = cFeatures;
+      pInteractionCore->m_cFeatures = cFeatures;
       FeatureInteraction * const aFeatures =
          static_cast<FeatureInteraction *>(malloc(sizeof(FeatureInteraction) * cFeatures));
       if(nullptr == aFeatures) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate nullptr == aFeatures");
          return Error_OutOfMemory;
       }
-      pRet->m_aFeatures = aFeatures;
+      pInteractionCore->m_aFeatures = aFeatures;
 
       size_t iFeatureInitialize = 0;
       do {
@@ -200,11 +200,12 @@ ErrorEbm InteractionCore::Create(
 
 
    ptrdiff_t cClasses;
-   if(nullptr == GetDataSetSharedTarget(pDataSetShared, 0, &cClasses)) {
+   const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
+   if(nullptr == aTargets) {
       LOG_0(Trace_Warning, "WARNING InteractionCore::Create cClasses cannot fit into ptrdiff_t");
       return Error_IllegalParamVal;
    }
-   pRet->m_cClasses = cClasses;
+   pInteractionCore->m_cClasses = cClasses;
 
    if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
       const size_t cScores = GetCountScores(cClasses);
@@ -212,13 +213,13 @@ ErrorEbm InteractionCore::Create(
       Config config;
       config.cOutputs = cScores;
       config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
-      error = GetObjective(&config, sObjective, &pRet->m_objective);
+      error = GetObjective(&config, sObjective, &pInteractionCore->m_objective);
       if(Error_None != error) {
          // already logged
          return error;
       }
 
-      const OutputType outputType = GetOutputType(pRet->m_objective.m_linkFunction);
+      const OutputType outputType = GetOutputType(pInteractionCore->m_objective.m_linkFunction);
       if(IsClassification(cClasses)) {
          if(outputType < OutputType_GeneralClassification) {
             LOG_0(Trace_Warning, "ERROR InteractionCore::Create mismatch in objective class model type");
@@ -231,14 +232,19 @@ ErrorEbm InteractionCore::Create(
          }
       }
 
-      const bool bHessian = pRet->IsHessian();
+      if(EBM_FALSE != pInteractionCore->CheckTargets(cSamples, aTargets)) {
+         LOG_0(Trace_Warning, "ERROR InteractionCore::Create invalid target value");
+         return Error_ObjectiveIllegalTarget;
+      }
+
+      const bool bHessian = pInteractionCore->IsHessian();
 
       if(IsOverflowBinSize<FloatFast>(bHessian, cScores) || IsOverflowBinSize<FloatBig>(bHessian, cScores)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsOverflowBinSize overflow");
          return Error_OutOfMemory;
       }
 
-      error = pRet->m_dataFrame.Initialize(
+      error = pInteractionCore->m_dataFrame.Initialize(
          cScores,
          bHessian,
          pDataSetShared,

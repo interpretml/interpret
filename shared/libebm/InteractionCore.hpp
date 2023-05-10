@@ -106,6 +106,10 @@ public:
       return (*m_objective.m_pApplyUpdateC)(&m_objective, pData);
    }
 
+   inline BoolEbm CheckTargets(const size_t c, const void * const aTargets) const noexcept {
+      return (*m_objective.m_pCheckTargetsC)(&m_objective, c, aTargets);
+   }
+
    inline bool IsRmse() {
       return EBM_FALSE != m_objective.m_bRmse;
    }

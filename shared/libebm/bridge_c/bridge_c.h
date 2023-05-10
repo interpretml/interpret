@@ -48,10 +48,12 @@ struct ObjectiveWrapper;
 // these are extern "C" function pointers so we can't call anything other than an extern "C" function with them
 typedef ErrorEbm (* APPLY_UPDATE_C)(const ObjectiveWrapper * const pObjectiveWrapper, ApplyUpdateBridge * const pData);
 typedef double (* FINISH_METRIC_C)(const ObjectiveWrapper * const pObjectiveWrapper, const double metricSum);
+typedef BoolEbm (* CHECK_TARGETS_C)(const ObjectiveWrapper * const pObjectiveWrapper, const size_t c, const void * const aTargets);
 
 struct ObjectiveWrapper {
    APPLY_UPDATE_C m_pApplyUpdateC;
    FINISH_METRIC_C m_pFinishMetricC;
+   CHECK_TARGETS_C m_pCheckTargetsC;
    // everything below here the C++ *Objective specific class needs to fill out
 
    // this needs to be void since our Registrable object is C++ visible and we cannot define it initially 

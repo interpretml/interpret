@@ -561,7 +561,8 @@ ErrorEbm BoosterCore::Create(
    }
 
    ptrdiff_t cClasses;
-   if(nullptr == GetDataSetSharedTarget(pDataSetShared, 0, &cClasses)) {
+   const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
+   if(nullptr == aTargets) {
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create cClasses cannot fit into ptrdiff_t");
       return Error_IllegalParamVal;
    }
@@ -593,6 +594,11 @@ ErrorEbm BoosterCore::Create(
             LOG_0(Trace_Warning, "ERROR BoosterCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }
+      }
+
+      if(EBM_FALSE != pBoosterCore->CheckTargets(cSamples, aTargets)) {
+         LOG_0(Trace_Warning, "ERROR BoosterCore::Create invalid target value");
+         return Error_ObjectiveIllegalTarget;
       }
 
       const bool bHessian = pBoosterCore->IsHessian();

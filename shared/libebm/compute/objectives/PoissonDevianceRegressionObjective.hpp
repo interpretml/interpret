@@ -29,6 +29,10 @@ struct PoissonDevianceRegressionObjective : RegressionObjective {
       }
    }
 
+   inline bool CheckRegressionTarget(const double target) const noexcept {
+      return std::isnan(target) || std::isinf(target) || target < 0.0;
+   }
+
    inline double LinkParam() const noexcept {
       return std::numeric_limits<double>::quiet_NaN();
    }

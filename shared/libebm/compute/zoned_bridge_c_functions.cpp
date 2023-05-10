@@ -45,6 +45,17 @@ INTERNAL_IMPORT_EXPORT_BODY double MAKE_ZONED_C_FUNCTION_NAME(FinishMetric) (
       (static_cast<const FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pFinishMetricCpp;
    return (*pFinishMetricCpp)(pObjective, metricSum);
 }
+
+INTERNAL_IMPORT_EXPORT_BODY BoolEbm MAKE_ZONED_C_FUNCTION_NAME(CheckTargets) (
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   const size_t c, 
+   const void * const aTargets
+) {
+   const Objective * const pObjective = static_cast<const Objective *>(pObjectiveWrapper->m_pObjective);
+   const CHECK_TARGETS_CPP pCheckTargetsCpp =
+      (static_cast<const FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pCheckTargetsCpp;
+   return (*pCheckTargetsCpp)(pObjective, c, aTargets);
+}
 #endif // ZONE_cpu || ZONE_R
 
 } // DEFINED_ZONE_NAME

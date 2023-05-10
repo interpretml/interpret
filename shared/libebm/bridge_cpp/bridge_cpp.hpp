@@ -104,6 +104,35 @@ static constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is
 // TODO : remove the 2 suffixes from these, and verify these are being used!!  AND at the same time verify that we like the sign of anything that uses these constants size_t vs ptrdiff_t
 static constexpr ptrdiff_t k_cItemsPerBitPackDynamic = ptrdiff_t { 0 };
 
+inline constexpr static bool IsRegressionOutput(const LinkEbm link) noexcept {
+   return 
+      Link_custom_regression == link ||
+      Link_power == link ||
+      Link_identity == link ||
+      Link_log == link ||
+      Link_inverse == link ||
+      Link_inverse_square == link ||
+      Link_sqrt == link;
+}
+inline constexpr static bool IsClassificationOutput(const LinkEbm link) noexcept {
+   return
+      Link_custom_classification == link ||
+      Link_logit == link ||
+      Link_probit == link ||
+      Link_cloglog == link ||
+      Link_loglog == link ||
+      Link_cauchit == link;
+}
+inline constexpr static bool IsRankingOutput(const LinkEbm link) noexcept {
+   return Link_custom_ranking == link;
+}
+inline constexpr static OutputType ConvertOutputType(const LinkEbm link) noexcept {
+   return IsRegressionOutput(link) ? OutputType_Regression :
+      IsClassificationOutput(link) ? OutputType_GeneralClassification :
+      IsRankingOutput(link) ? OutputType_Ranking :
+      OutputType_Unknown;
+}
+
 struct BinSumsBoostingBridge {
    BoolEbm m_bHessian;
    size_t m_cScores;

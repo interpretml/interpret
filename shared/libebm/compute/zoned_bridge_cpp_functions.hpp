@@ -21,6 +21,7 @@ struct Objective;
 // https://www.drdobbs.com/c-theory-and-practice/184403437
 typedef ErrorEbm (* APPLY_UPDATE_CPP)(const Objective * const pObjective, ApplyUpdateBridge * const pData);
 typedef double (* FINISH_METRIC_CPP)(const Objective * const pObjective, const double metricSum);
+typedef BoolEbm (* CHECK_TARGETS_CPP)(const Objective * const pObjective, const size_t c, const void * const aTargets);
 
 struct FunctionPointersCpp {
    // unfortunately, function pointers are not interchangable with data pointers since in some architectures
@@ -29,6 +30,7 @@ struct FunctionPointersCpp {
 
    APPLY_UPDATE_CPP m_pApplyUpdateCpp;
    FINISH_METRIC_CPP m_pFinishMetricCpp;
+   CHECK_TARGETS_CPP m_pCheckTargetsCpp;
 };
 
 } // DEFINED_ZONE_NAME
