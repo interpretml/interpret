@@ -234,12 +234,15 @@ public:
       EBM_ASSERT(pFastTotalStateInitialize == &fastTotalState[cRealDimensions]);
 
 #ifndef NDEBUG
+      UNUSED(aDebugCopyBinsBase);
+#ifdef CHECK_TENSORS
 
       auto * const pDebugBin = static_cast<Bin<FloatBig, bHessian, cArrayScores> *>(malloc(cBytesPerBin));
 
       auto * aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bHessian, cArrayScores>();
 
-#endif //NDEBUG
+#endif // CHECK_TENSORS
+#endif // NDEBUG
 
       auto * pBin = aBins;
 
@@ -278,6 +281,7 @@ public:
          memcpy(pBin, pAddPrev, cBytesPerBin);
 
 #ifndef NDEBUG
+#ifdef CHECK_TENSORS
          if(nullptr != aDebugCopyBins && nullptr != pDebugBin) {
             size_t aiStart[k_cDimensionsMax];
             size_t aiLast[k_cDimensionsMax];
@@ -296,6 +300,7 @@ public:
             );
             EBM_ASSERT(pDebugBin->GetCountSamples() == pBin->GetCountSamples());
          }
+#endif // CHECK_TENSORS
 #endif // NDEBUG
 
          // we're walking through all bins, so just move to the next one in the flat array, 
@@ -321,7 +326,9 @@ public:
 
             if(UNLIKELY(pFastTotalStateInitialize == pFastTotalState)) {
 #ifndef NDEBUG
+#ifdef CHECK_TENSORS
                free(pDebugBin);
+#endif // CHECK_TENSORS
 #endif // NDEBUG
 
                LOG_0(Trace_Verbose, "Exited BuildFastTotals");

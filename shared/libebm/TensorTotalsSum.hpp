@@ -26,6 +26,7 @@ struct TensorSumDimension {
 };
 
 #ifndef NDEBUG
+#ifdef CHECK_TENSORS
 
 template<bool bHessian>
 void TensorTotalsSumDebugSlow(
@@ -158,6 +159,7 @@ void TensorTotalsCompareDebug(
    }
 }
 
+#endif // CHECK_TENSORS
 #endif // NDEBUG
 
 template<bool bHessian, size_t cCompilerScores>
@@ -314,6 +316,8 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
    } while(LIKELY(0 <= dimensionFlags));
 
 #ifndef NDEBUG
+   UNUSED(aDebugCopyBins);
+#ifdef CHECK_TENSORS
    if(nullptr != aDebugCopyBins) {
       TensorTotalsCompareDebug<bHessian>(
          cScores,
@@ -325,6 +329,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
          aGradientPairsOut
       );
    }
+#endif // CHECK_TENSORS
 #endif // NDEBUG
 }
 
