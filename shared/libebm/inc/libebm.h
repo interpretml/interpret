@@ -106,8 +106,8 @@ typedef uint32_t UInteractionFlags;
 #define UInteractionFlagsPrintf PRIx32
 typedef int32_t LinkEbm;
 #define LinkEbmPrintf PRId32
-typedef int64_t ModelType;
-#define ModelTypePrintf PRId64
+typedef int64_t OutputType;
+#define OutputTypePrintf PRId64
 
 typedef struct _BoosterHandle {
    uint32_t handleVerification; // should be 10995 if ok. Do not use size_t since that requires an additional header.
@@ -123,7 +123,7 @@ typedef struct _InteractionHandle {
 #define INTERACTION_FLAGS_CAST(val)                (STATIC_CAST(InteractionFlags, (val)))
 #define TRACE_CAST(val)                            (STATIC_CAST(TraceEbm, (val)))
 #define LINK_CAST(val)                             (STATIC_CAST(LinkEbm, (val)))
-#define MODEL_TYPE_CAST(val)                       (STATIC_CAST(ModelType, (val)))
+#define OUTPUT_TYPE_CAST(val)                      (STATIC_CAST(OutputType, (val)))
 
 // TODO: look through our code for places where SAFE_FLOAT64_AS_INT64_MAX or FLOAT64_TO_INT64_MAX would be useful
 
@@ -216,13 +216,13 @@ typedef struct _InteractionHandle {
 #define Link_inverse_square                        (LINK_CAST(13)) // Inverse Gaussian regression
 #define Link_sqrt                                  (LINK_CAST(14)) // Square root regression
 
-#define ModelType_Unknown                          (MODEL_TYPE_CAST(-3))
-#define ModelType_Ranking                          (MODEL_TYPE_CAST(-2))
-#define ModelType_Regression                       (MODEL_TYPE_CAST(-1))
-#define ModelType_GeneralClassification            (MODEL_TYPE_CAST(0))  // classification with unspecified # classes
-#define ModelType_MonoClassification               (MODEL_TYPE_CAST(1))  // degenerate case of predicting 1 class
-#define ModelType_BinaryClassification             (MODEL_TYPE_CAST(2))  // 2 classes
-#define ModelType_MulticlassPlus                   (MODEL_TYPE_CAST(3))  // 3+ classes (the value is the # of classes)
+#define OutputType_Unknown                         (OUTPUT_TYPE_CAST(-3))
+#define OutputType_Ranking                         (OUTPUT_TYPE_CAST(-2))
+#define OutputType_Regression                      (OUTPUT_TYPE_CAST(-1))
+#define OutputType_GeneralClassification           (OUTPUT_TYPE_CAST(0))  // classification with unspecified # classes
+#define OutputType_MonoClassification              (OUTPUT_TYPE_CAST(1))  // degenerate case of predicting 1 class
+#define OutputType_BinaryClassification            (OUTPUT_TYPE_CAST(2))  // 2 classes
+#define OutputType_MulticlassPlus                  (OUTPUT_TYPE_CAST(3))  // 3+ classes (the value is the # of classes)
 
 // All our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void (EBM_CALLING_CONVENTION * LogCallbackFunction)(TraceEbm traceLevel, const char * message);
@@ -402,7 +402,7 @@ EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetLinkFunctionString(
 EBM_API_INCLUDE LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(
    const char * link
 );
-EBM_API_INCLUDE ModelType EBM_CALLING_CONVENTION GetModelType(
+EBM_API_INCLUDE OutputType EBM_CALLING_CONVENTION GetOutputType(
    LinkEbm link
 );
 

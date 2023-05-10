@@ -26,14 +26,14 @@ class Native:
     InteractionFlags_Default = 0x00000000
     InteractionFlags_Pure = 0x00000001
 
-    # ModelType
-    ModelType_Unknown = -3
-    ModelType_Ranking = -2
-    ModelType_Regression = -1
-    ModelType_GeneralClassification = 0
-    ModelType_MonoClassification = 1
-    ModelType_BinaryClassification = 2
-    ModelType_MulticlassPlus = 3
+    # OutputType
+    OutputType_Unknown = -3
+    OutputType_Ranking = -2
+    OutputType_Regression = -1
+    OutputType_GeneralClassification = 0
+    OutputType_MonoClassification = 1
+    OutputType_BinaryClassification = 2
+    OutputType_MulticlassPlus = 3
 
     # TraceLevel
     _Trace_Off = 0
@@ -582,19 +582,19 @@ class Native:
             link_param.value,
         )
 
-    def get_model_type(self, link):
+    def get_output_type(self, link):
         if link is None or link.isspace():
             msg = "link must be set to a value"
             _log.error(msg)
             raise Exception(msg)
 
         link_int = self._unsafe.GetLinkFunctionInt(link.encode("ascii"))
-        model_type = self._unsafe.GetModelType(link_int)
-        if Native.ModelType_GeneralClassification <= model_type:
+        output_type = self._unsafe.GetOutputType(link_int)
+        if Native.OutputType_GeneralClassification <= output_type:
             return "classification"
-        elif model_type == Native.ModelType_Regression:
+        elif output_type == Native.OutputType_Regression:
             return "regression"
-        elif model_type == Native.ModelType_Ranking:
+        elif output_type == Native.OutputType_Ranking:
             return "ranking"
         else:
             msg = f"unrecognized link function type: {link}"
@@ -1040,11 +1040,11 @@ class Native:
         ]
         self._unsafe.GetLinkFunctionInt.restype = ct.c_int32
 
-        self._unsafe.GetModelType.argtypes = [
+        self._unsafe.GetOutputType.argtypes = [
             # int32_t link
             ct.c_int32,
         ]
-        self._unsafe.GetModelType.restype = ct.c_int64
+        self._unsafe.GetOutputType.restype = ct.c_int64
 
         self._unsafe.CreateBooster.argtypes = [
             # void * rng

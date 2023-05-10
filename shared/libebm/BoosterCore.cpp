@@ -582,14 +582,14 @@ ErrorEbm BoosterCore::Create(
          return error;
       }
 
-      const ModelType modelType = GetModelType(pBoosterCore->m_objective.m_linkFunction);
+      const OutputType outputType = GetOutputType(pBoosterCore->m_objective.m_linkFunction);
       if(IsClassification(cClasses)) {
-         if(modelType < ModelType_GeneralClassification) {
+         if(outputType < OutputType_GeneralClassification) {
             LOG_0(Trace_Warning, "ERROR BoosterCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }
       } else {
-         if(ModelType_Regression != modelType) {
+         if(OutputType_Regression != outputType) {
             LOG_0(Trace_Warning, "ERROR BoosterCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }

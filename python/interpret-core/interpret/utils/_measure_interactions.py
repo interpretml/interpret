@@ -93,10 +93,10 @@ def measure_interactions(
             objective = None
         else:
             link, link_param = native.determine_link(is_differential_privacy, objective)
-            model_type = native.get_model_type(link)
-            if model_type == "classification":
+            output_type = native.get_output_type(link)
+            if output_type == "classification":
                 is_classification = True
-            elif model_type == "regression":
+            elif output_type == "regression":
                 is_classification = False
             else:
                 msg = f"Unknown objective {objective}"

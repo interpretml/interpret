@@ -133,7 +133,7 @@ get_current_model <- function(booster) {
 }
 
 booster <- function(
-   model_type,
+   output_type,
    n_classes,
    dataset_handle,
    bag,
@@ -155,7 +155,7 @@ booster <- function(
    )
 
    self <- structure(list(
-      model_type = model_type, 
+      output_type = output_type, 
       n_classes = n_classes, 
       terms = terms, 
       booster_handle = booster_handle
@@ -165,7 +165,7 @@ booster <- function(
 }
 
 cyclic_gradient_boost <- function(
-   model_type,
+   output_type,
    n_classes,
    dataset_handle,
    bag,
@@ -186,7 +186,7 @@ cyclic_gradient_boost <- function(
    c_structs <- convert_terms_to_c(terms)
 
    ebm_booster <- booster(
-      model_type,
+      output_type,
       n_classes,
       dataset_handle,
       bag,

@@ -139,38 +139,38 @@ EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char * link
    return Link_ERROR;
 }
 
-EBM_API_BODY ModelType EBM_CALLING_CONVENTION GetModelType(LinkEbm link) {
+EBM_API_BODY OutputType EBM_CALLING_CONVENTION GetOutputType(LinkEbm link) {
    switch(link) {
    case Link_custom_regression:
-      return ModelType_Regression;
+      return OutputType_Regression;
    case Link_custom_classification:
-      return ModelType_GeneralClassification;
+      return OutputType_GeneralClassification;
    case Link_custom_ranking:
-      return ModelType_Ranking;
+      return OutputType_Ranking;
    case Link_power:
-      return ModelType_Regression;
+      return OutputType_Regression;
    case Link_logit:
-      return ModelType_GeneralClassification;
+      return OutputType_GeneralClassification;
    case Link_probit:
-      return ModelType_GeneralClassification;
+      return OutputType_GeneralClassification;
    case Link_cloglog:
-      return ModelType_GeneralClassification;
+      return OutputType_GeneralClassification;
    case Link_loglog:
-      return ModelType_GeneralClassification;
+      return OutputType_GeneralClassification;
    case Link_cauchit:
-      return ModelType_GeneralClassification;
+      return OutputType_GeneralClassification;
    case Link_identity:
-      return ModelType_Regression;
+      return OutputType_Regression;
    case Link_log:
-      return ModelType_Regression;
+      return OutputType_Regression;
    case Link_inverse:
-      return ModelType_Regression;
+      return OutputType_Regression;
    case Link_inverse_square:
-      return ModelType_Regression;
+      return OutputType_Regression;
    case Link_sqrt:
-      return ModelType_Regression;
+      return OutputType_Regression;
    default:
-      return ModelType_Unknown;
+      return OutputType_Unknown;
    }
 }
 

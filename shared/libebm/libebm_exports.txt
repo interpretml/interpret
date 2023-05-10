@@ -35,7 +35,7 @@
       DetermineLinkFunction;
       GetLinkFunctionString;
       GetLinkFunctionInt;
-      GetModelType;
+      GetOutputType;
       CreateBooster;
       CreateBoosterView;
       FreeBooster;
