@@ -173,6 +173,7 @@ typedef struct _InteractionHandle {
 #define Error_ObjectiveDuplicateParamName          (ERROR_CAST(-18))
 #define Error_ObjectiveNonPrivate                  (ERROR_CAST(-19))
 #define Error_ObjectiveParamNonPrivate             (ERROR_CAST(-20))
+#define Error_ObjectiveIllegalTarget               (ERROR_CAST(-21))
 
 #define BoostFlags_Default                         (BOOST_FLAGS_CAST(0x00000000))
 #define BoostFlags_DisableNewtonGain               (BOOST_FLAGS_CAST(0x00000001))

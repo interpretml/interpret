@@ -9,6 +9,7 @@
 #include "common_c.h" // LIKELY
 #include "zones.h"
 
+#include "bridge_cpp.hpp" // IsRegressionOutput, IsClassificationOutput, IsRankingOutput
 #include "compute_accessors.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -140,38 +141,7 @@ EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char * link
 }
 
 EBM_API_BODY OutputType EBM_CALLING_CONVENTION GetOutputType(LinkEbm link) {
-   switch(link) {
-   case Link_custom_regression:
-      return OutputType_Regression;
-   case Link_custom_classification:
-      return OutputType_GeneralClassification;
-   case Link_custom_ranking:
-      return OutputType_Ranking;
-   case Link_power:
-      return OutputType_Regression;
-   case Link_logit:
-      return OutputType_GeneralClassification;
-   case Link_probit:
-      return OutputType_GeneralClassification;
-   case Link_cloglog:
-      return OutputType_GeneralClassification;
-   case Link_loglog:
-      return OutputType_GeneralClassification;
-   case Link_cauchit:
-      return OutputType_GeneralClassification;
-   case Link_identity:
-      return OutputType_Regression;
-   case Link_log:
-      return OutputType_Regression;
-   case Link_inverse:
-      return OutputType_Regression;
-   case Link_inverse_square:
-      return OutputType_Regression;
-   case Link_sqrt:
-      return OutputType_Regression;
-   default:
-      return OutputType_Unknown;
-   }
+   return ConvertOutputType(link);
 }
 
 } // DEFINED_ZONE_NAME

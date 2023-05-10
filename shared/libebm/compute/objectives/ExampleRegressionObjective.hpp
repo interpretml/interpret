@@ -36,6 +36,10 @@ struct ExampleRegressionObjective : RegressionObjective {
       m_param1 = param1;
    }
 
+   inline bool CheckRegressionTarget(const double target) const noexcept {
+      return std::isnan(target) || std::isinf(target);
+   }
+
    inline double LinkParam() const noexcept {
       // only Link_power and the custom link functions use the LinkParam
       return std::numeric_limits<double>::quiet_NaN();

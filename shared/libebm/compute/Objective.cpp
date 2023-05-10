@@ -53,8 +53,10 @@ ErrorEbm Objective::CreateObjective(
             pObjectiveWrapperOut->m_pApplyUpdateC = MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate);
 #if defined(ZONE_cpu) || defined(ZONE_R)
             pObjectiveWrapperOut->m_pFinishMetricC = MAKE_ZONED_C_FUNCTION_NAME(FinishMetric);
+            pObjectiveWrapperOut->m_pCheckTargetsC = MAKE_ZONED_C_FUNCTION_NAME(CheckTargets);
 #else // ZONE_cpu || ZONE_R
             pObjectiveWrapperOut->m_pFinishMetricC = nullptr;
+            pObjectiveWrapperOut->m_pCheckTargetsC = nullptr;
 #endif // ZONE_cpu || ZONE_R
 
             LOG_0(Trace_Info, "Exited Objective::CreateObjective");
