@@ -324,6 +324,8 @@ def merge_ebms(models):
     else:
         raise Exception("Inconsistent model types being merged.")
 
+    # TODO: create the ExplainableBoostingClassifier etc, type directly
+    # by name instead of using __new__ from ebm_type
     ebm = ebm_type.__new__(ebm_type)
 
     if any(
