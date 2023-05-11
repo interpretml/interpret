@@ -68,7 +68,7 @@ from math import isnan, ceil
 import numpy as np
 from warnings import warn
 
-from sklearn.base import is_classifier, is_regressor  # type: ignore
+from sklearn.base import is_classifier  # type: ignore
 from sklearn.utils.validation import check_is_fitted  # type: ignore
 from sklearn.isotonic import IsotonicRegression
 
@@ -80,7 +80,6 @@ from sklearn.base import (
     ClassifierMixin,
     RegressorMixin,
 )  # type: ignore
-from sklearn.utils.extmath import softmax  # type: ignore
 from itertools import combinations, groupby
 
 import logging

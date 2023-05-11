@@ -12,7 +12,7 @@ from setuptools.command.sdist import sdist
 
 name = "interpret-core"
 # NOTE: Version is replaced by a regex script.
-version = "0.3.2"
+version = "0.4.0"
 long_description = """
 Core system for the interpret package.
 
