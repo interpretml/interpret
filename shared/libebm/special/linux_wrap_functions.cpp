@@ -39,6 +39,8 @@ __asm__(".symver exp, exp@GLIBC_2.2.5");
 __asm__(".symver log, log@GLIBC_2.2.5");
 __asm__(".symver log2, log2@GLIBC_2.2.5");
 __asm__(".symver pow, pow@GLIBC_2.2.5");
+__asm__(".symver expf, expf@GLIBC_2.2.5");
+__asm__(".symver logf, logf@GLIBC_2.2.5");
 
 extern "C" {
    void * __wrap_memcpy(void * dest, const void * src, size_t n) {
@@ -55,6 +57,12 @@ extern "C" {
    }
    double __wrap_pow(double base, double exponent) {
       return pow(base, exponent);
+   }
+   float __wrap_expf(float x) {
+      return expf(x);
+   }
+   float __wrap_logf(float x) {
+      return logf(x);
    }
 }
 
