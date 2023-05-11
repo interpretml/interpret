@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.0] - 2023-05-11
+### Added
+- alternative objective functions: poisson_deviance, tweedie_deviance, gamma_deviance, pseudo_huber, rmse_log (log link)
+- greediness __init__ parameter that allows selecting a behavior between cyclic boosting and greedy boosting
+- smoothing_rounds __init__ parameter
+- added type hints to the EBM __init__ parameters and class attributes
+- init_score parameter to allow boosting and prediction on top of a previous model
+- multiclass support in merge_ebms
+### Changed
+- default BaseLinear regressor is changed from Lasso to LinearRegression class
+- placed limits on the amount of memory used to find interactions with high cardinality categoricals
+### Fixed
+- validation_size of 0 is now handled by disabling early_stopping and using the final model
+### Breaking Changes
+- replaced the __init__ param "mains" with "exclude"
+- removed the binning __init__ param as this functionality was already fully supported in feature_types
+- removed the unused zero_val_count attribute and n_samples attribute
+- renamed the noise_scale_ attribute to noise_scale_boosting_ and added noise_scale_binning_ to DPEBMs
+
 ## [v0.3.2] - 2023-03-14
 ### Fixed
 - fix the issue that the shared library would only work on newer linux versions
