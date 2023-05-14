@@ -24,6 +24,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "root", "root", "{F5894036-A
 		..\..\CHANGELOG.md = ..\..\CHANGELOG.md
 		..\..\CONTRIBUTING.md = ..\..\CONTRIBUTING.md
 		..\..\README.md = ..\..\README.md
+		..\..\scripts\release_process.txt = ..\..\scripts\release_process.txt
 		vs_python_setup.txt = vs_python_setup.txt
 	EndProjectSection
 EndProject

@@ -1,5 +1,6 @@
 # InterpretML
 
+<a href="https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Interpretable_Classification_Methods.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/interpretml/interpret/develop?labpath=examples%2Fpython%2FInterpretable_Classification_Methods.ipynb)
 ![License](https://img.shields.io/github/license/interpretml/interpret.svg?style=flat-square)
 ![Python Version](https://img.shields.io/pypi/pyversions/interpret.svg?style=flat-square)
@@ -602,7 +603,6 @@ We also build on top of many great packages. Please check them out!
 
 # Papers that use or compare EBMs
 
-
 - [Model Interpretability in Credit Insurance](http://hdl.handle.net/10400.5/27507)
 - [Federated Boosted Decision Trees with Differential Privacy](https://arxiv.org/pdf/2210.02910.pdf)
 - [GAM(E) CHANGER OR NOT? AN EVALUATION OF INTERPRETABLE MACHINE LEARNING MODELS](https://arxiv.org/pdf/2204.09123.pdf)
@@ -653,12 +653,13 @@ We also build on top of many great packages. Please check them out!
 - [Using Innovative Machine Learning Methods to Screen and Identify Predictors of Congenital Heart Diseases](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8777022/pdf/fcvm-08-797002.pdf)
 - [Explainable Boosting Machine for Predicting Alzheimer’s Disease from MRI Hippocampal Subfields](https://link.springer.com/chapter/10.1007/978-3-030-86993-9_31)
 - [Impact of Accuracy on Model Interpretations](https://arxiv.org/pdf/2011.09903.pdf)
+- [Machine Learning Algorithms for Identifying Dependencies in OT Protocols](https://www.mdpi.com/1996-1073/16/10/4056)
 
 # Books that discuss EBMs
 
+- [Machine Learning for High-Risk Applications](https://www.oreilly.com/library/view/machine-learning-for/9781098102425/)
 - [Interpretable Machine Learning with Python](https://www.amazon.com/Interpretable-Machine-Learning-Python-hands/dp/180020390X)
 - [Explainable Artificial Intelligence: An Introduction to Interpretable Machine Learning](https://www.amazon.com/Explainable-Artificial-Intelligence_-An-Introduction-to-Interpretable-XAI/dp/3030833550)
-- [Machine Learning for High-Risk Applications](https://www.oreilly.com/library/view/machine-learning-for/9781098102425/)
 - [Applied Machine Learning Explainability Techniques](https://www.amazon.com/Applied-Machine-Learning-Explainability-Techniques/dp/1803246154)
 - [The eXplainable A.I.: With Python examples](https://www.amazon.com/eXplainable-I-Python-examples-ebook/dp/B0B4F98MN6)
 - [Explainable AI Recipes](https://www.amazon.com/Explainable-Recipes-Implement-Explainability-Interpretability-ebook/dp/B0BSF5NBY7)

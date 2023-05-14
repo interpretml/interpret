@@ -2188,7 +2188,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Per-term list of the standard deviations of the bagged model scores.
         The last dimension of length n_classes is dropped for binary classification.
     link\\_ : str
-        Link function used to convert the predictions or target into linear space
+        Link function used to convert the predictions or targets into linear space
         additive scores and vice versa via the inverse link. Possible values include:
         "custom_classification", "logit", "probit", "cloglog", "loglog", "cauchit"
     link_param\\_ : float
@@ -2550,7 +2550,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     standard_deviations\\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the standard deviations of the bagged model scores.
     link\\_ : str
-        Link function used to convert the predictions or target into linear space
+        Link function used to convert the predictions or targets into linear space
         additive scores and vice versa via the inverse link. Possible values include:
         "custom_regression", "power", "identity", "log", "inverse", "inverse_square", "sqrt"
     link_param\\_ : float
@@ -2826,7 +2826,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
     standard_deviations\\_ : List of array of float with shape ``(n_bins)``
         Per-term list of the standard deviations of the bagged model scores.
     link\\_ : str
-        Link function used to convert the predictions or target into linear space
+        Link function used to convert the predictions or targets into linear space
         additive scores and vice versa via the inverse link. Possible values include:
         "custom_classification", "logit", "probit", "cloglog", "loglog", "cauchit"
     link_param\\_ : float
@@ -3115,7 +3115,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     standard_deviations\\_ : List of array of float with shape ``(n_bins)``
         Per-term list of the standard deviations of the bagged model scores.
     link\\_ : str
-        Link function used to convert the predictions or target into linear space
+        Link function used to convert the predictions or targets into linear space
         additive scores and vice versa via the inverse link. Possible values include:
         "custom_regression", "power", "identity", "log", "inverse", "inverse_square", "sqrt"
     link_param\\_ : float
