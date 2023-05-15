@@ -19,8 +19,6 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 static constexpr ptrdiff_t k_regression = -1;
-static constexpr size_t k_oneScore = 1;
-static constexpr size_t k_dynamicScores = 0;
 inline constexpr static bool IsRegression(const ptrdiff_t cClasses) noexcept {
    return k_regression == cClasses;
 }
@@ -47,6 +45,9 @@ inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) noexcept
    return cClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
 #endif // EXPAND_BINARY_LOGITS
 }
+
+static constexpr size_t k_oneScore = 1;
+static constexpr size_t k_dynamicScores = 0;
 
 inline constexpr static size_t GetArrayScores(const size_t cScores) noexcept {
    return k_dynamicScores == cScores ? size_t { 1 } : cScores;
@@ -126,7 +127,7 @@ inline constexpr static bool IsClassificationOutput(const LinkEbm link) noexcept
 inline constexpr static bool IsRankingOutput(const LinkEbm link) noexcept {
    return Link_custom_ranking == link;
 }
-inline constexpr static OutputType ConvertOutputType(const LinkEbm link) noexcept {
+inline constexpr static OutputType GetOutputType(const LinkEbm link) noexcept {
    return IsRegressionOutput(link) ? OutputType_Regression :
       IsClassificationOutput(link) ? OutputType_GeneralClassification :
       IsRankingOutput(link) ? OutputType_Ranking :

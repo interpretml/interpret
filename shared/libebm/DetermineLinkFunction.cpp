@@ -52,8 +52,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    return Error_None;
 }
 
-static const char g_sERROR[] = "ERROR";
-
 static const char g_sCustomRegression[] = "custom_regression";
 static const char g_sCustomClassification[] = "custom_classification";
 static const char g_sCustomRanking[] = "custom_ranking";
@@ -69,7 +67,7 @@ static const char g_sInverse[] = "inverse";
 static const char g_sInverseSquare[] = "inverse_square";
 static const char g_sSqrt[] = "sqrt";
 
-EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionString(LinkEbm link) {
+EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionStr(LinkEbm link) {
    switch(link) {
    case Link_custom_regression:
       return g_sCustomRegression;
@@ -100,7 +98,7 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionString(LinkEbm l
    case Link_sqrt:
       return g_sSqrt;
    default:
-      return g_sERROR;
+      return nullptr;
    }
 }
 
@@ -140,8 +138,26 @@ EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char * link
    return Link_ERROR;
 }
 
-EBM_API_BODY OutputType EBM_CALLING_CONVENTION GetOutputType(LinkEbm link) {
-   return ConvertOutputType(link);
+EBM_API_BODY OutputType EBM_CALLING_CONVENTION GetOutputTypeInt(LinkEbm link) {
+   return GetOutputType(link);
+}
+
+static const char g_sClassification[] = "classification";
+static const char g_sRegression[] = "regression";
+static const char g_sRanking[] = "ranking";
+
+EBM_API_BODY const char * EBM_CALLING_CONVENTION GetOutputTypeStr(const char * link) {
+   const OutputType outputType = GetOutputType(GetLinkFunctionInt(link));
+   if(OutputType_GeneralClassification <= outputType) {
+      return g_sClassification;
+   }
+   if(OutputType_Regression == outputType) {
+      return g_sRegression;
+   }
+   if(OutputType_Ranking == outputType) {
+      return g_sRanking;
+   }
+   return nullptr;
 }
 
 } // DEFINED_ZONE_NAME

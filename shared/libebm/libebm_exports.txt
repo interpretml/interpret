@@ -33,9 +33,10 @@
       SampleWithoutReplacement;
       SampleWithoutReplacementStratified;
       DetermineLinkFunction;
-      GetLinkFunctionString;
+      GetLinkFunctionStr;
       GetLinkFunctionInt;
-      GetOutputType;
+      GetOutputTypeInt;
+      GetOutputTypeStr;
       CreateBooster;
       CreateBoosterView;
       FreeBooster;

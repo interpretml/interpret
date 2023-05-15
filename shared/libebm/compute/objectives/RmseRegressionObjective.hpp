@@ -12,7 +12,7 @@ public:
    static constexpr bool k_bRmse = true;
    static constexpr BoolEbm k_bMaximizeMetric = MINIMIZE_METRIC;
    static constexpr LinkEbm k_linkFunction = Link_identity;
-   static constexpr OutputType k_outputType = ConvertOutputType(k_linkFunction);
+   static constexpr OutputType k_outputType = GetOutputType(k_linkFunction);
    static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) {
       return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentApplyUpdate<const RmseRegressionObjective<TFloat>, TFloat>(pData);
    }

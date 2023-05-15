@@ -692,7 +692,7 @@ protected:
       static constexpr bool k_bRmse = false; \
       static constexpr BoolEbm k_bMaximizeMetric = (__MAXIMIZE_METRIC); \
       static constexpr LinkEbm k_linkFunction = (__LINK_FUNCTION); \
-      static constexpr OutputType k_outputType = ConvertOutputType(k_linkFunction); \
+      static constexpr OutputType k_outputType = GetOutputType(k_linkFunction); \
       static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->ParentApplyUpdate<const __EBM_TYPE<TFloat>, TFloat>(pData); \
       } \

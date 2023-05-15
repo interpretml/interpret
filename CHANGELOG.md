@@ -12,6 +12,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - added type hints to the EBM __init__ parameters and class attributes
 - init_score parameter to allow boosting and prediction on top of a previous model
 - multiclass support in merge_ebms
+- ability to monotonize features using post process model editing
 ### Changed
 - default BaseLinear regressor is changed from Lasso to LinearRegression class
 - placed limits on the amount of memory used to find interactions with high cardinality categoricals
