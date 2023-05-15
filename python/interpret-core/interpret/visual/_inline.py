@@ -9,6 +9,7 @@ import uuid
 
 from plotly.io import to_json
 from plotly import graph_objs as go
+import streamlit.components.v1 as components
 import sys
 import json
 import base64
@@ -243,6 +244,8 @@ def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=
         or "azuresynapse" in detected_envs
     ):
         display(HTML(init_js + body_js))
+    elif "streamlit" in detected_envs:
+        components.html(HTML(init_js + body_js).data, height=1000, width=1000, scrolling=True)
     else:  # Fallthrough assumes we are in an IPython environment at a minimum.
         if not _current_module.jupyter_initialized:
             _current_module.jupyter_initialized = True

@@ -38,7 +38,7 @@
   - conda env list  # see the list of existing environments
   - conda create --yes --name interpret_N python=3.9
   - conda activate interpret_N
-  - pip install interpret_core-*-py3-none-any.whl[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
+  - pip install interpret_core-*-py3-none-any.whl[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,streamlit,testing]
   - cd <REPO_ROOT>
   - cd examples/python
   - jupyter notebook

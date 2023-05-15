@@ -92,6 +92,7 @@ extras = {
         "gevent>=1.3.6",
         "requests>=2.19.0",
     ],
+    "streamlit": ["streamlit>=1.10.0"],
     # Testing
     "testing": [
         "pytest>=4.3.0",
