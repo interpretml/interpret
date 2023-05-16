@@ -1724,16 +1724,18 @@ class InteractionDetector(AbstractContextManager):
     def calc_interaction_strength(
         self, feature_idxs, interaction_flags, max_cardinality, min_samples_leaf
     ):
-        """Provides strength for an feature interaction. Higher is better."""
+        """Provides a strength measurement of a feature interaction. Higher is better."""
         _log.info("Fast interaction strength start")
 
         native = Native.get_native_singleton()
+
+        feature_idxs = np.array(feature_idxs, np.int64)
 
         strength = ct.c_double(0.0)
         return_code = native._unsafe.CalcInteractionStrength(
             self._interaction_handle,
             len(feature_idxs),
-            Native._make_pointer(np.array(feature_idxs, np.int64), np.int64),
+            Native._make_pointer(feature_idxs, np.int64),
             interaction_flags,
             max_cardinality,
             min_samples_leaf,
