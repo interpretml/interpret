@@ -10,7 +10,7 @@
 static constexpr TestPriority k_filePriority = TestPriority::InteractionUnusualInputs;
 
 TEST_CASE("Zero interaction samples, interaction, regression") {
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({ FeatureTest(2) });
    test.AddInteractionSamples({});
    test.InitializeInteraction();
@@ -20,7 +20,7 @@ TEST_CASE("Zero interaction samples, interaction, regression") {
 }
 
 TEST_CASE("Zero interaction samples, interaction, binary") {
-   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
+   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddInteractionSamples({});
    test.InitializeInteraction();
@@ -50,7 +50,7 @@ TEST_CASE("classification with 0 possible target states, interaction") {
 }
 
 TEST_CASE("classification with 1 possible target, interaction") {
-   TestApi test = TestApi(1);
+   TestApi test = TestApi(OutputType_MonoClassification);
    test.AddFeatures({ FeatureTest(2) });
    test.AddInteractionSamples({ TestSample({ 1 }, 0) });
    test.InitializeInteraction();
@@ -60,7 +60,7 @@ TEST_CASE("classification with 1 possible target, interaction") {
 }
 
 TEST_CASE("features with 0 states, interaction") {
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({ FeatureTest(0) });
    test.AddInteractionSamples({});
    test.InitializeInteraction();
@@ -70,7 +70,7 @@ TEST_CASE("features with 0 states, interaction") {
 }
 
 TEST_CASE("Term with zero features, interaction, regression") {
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({});
    test.AddInteractionSamples({ TestSample({}, 10) });
    test.InitializeInteraction();
@@ -79,7 +79,7 @@ TEST_CASE("Term with zero features, interaction, regression") {
 }
 
 TEST_CASE("Term with zero features, interaction, binary") {
-   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
+   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
    test.AddFeatures({});
    test.AddInteractionSamples({ TestSample({}, 0) });
    test.InitializeInteraction();
@@ -97,7 +97,7 @@ TEST_CASE("Term with zero features, interaction, multiclass") {
 }
 
 TEST_CASE("Term with one feature with one state, interaction, regression") {
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionSamples({ TestSample({ 0 }, 10) });
    test.InitializeInteraction();
@@ -106,7 +106,7 @@ TEST_CASE("Term with one feature with one state, interaction, regression") {
 }
 
 TEST_CASE("Term with one feature with one state, interaction, binary") {
-   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
+   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionSamples({ TestSample({ 0 }, 0) });
    test.InitializeInteraction();
@@ -124,7 +124,7 @@ TEST_CASE("Term with one feature with one state, interaction, multiclass") {
 }
 
 TEST_CASE("weights are proportional, interaction, regression") {
-   TestApi test1 = TestApi(k_learningTypeRegression);
+   TestApi test1 = TestApi(OutputType_Regression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({ 
       TestSample({ 0, 0 }, 10.1, FloatTickIncrementTest(0.3)),
@@ -135,7 +135,7 @@ TEST_CASE("weights are proportional, interaction, regression") {
    test1.InitializeInteraction();
    double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
-   TestApi test2 = TestApi(k_learningTypeRegression);
+   TestApi test2 = TestApi(OutputType_Regression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test2.AddInteractionSamples({
       TestSample({ 0, 0 }, 10.1, FloatTickIncrementTest(2)),
@@ -146,7 +146,7 @@ TEST_CASE("weights are proportional, interaction, regression") {
    test2.InitializeInteraction();
    double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
 
-   TestApi test3 = TestApi(k_learningTypeRegression);
+   TestApi test3 = TestApi(OutputType_Regression);
    test3.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test3.AddInteractionSamples({
       TestSample({ 0, 0 }, 10.1, 0),
@@ -162,7 +162,7 @@ TEST_CASE("weights are proportional, interaction, regression") {
 }
 
 TEST_CASE("weights are proportional, interaction, binary") {
-   TestApi test1 = TestApi(2);
+   TestApi test1 = TestApi(OutputType_BinaryClassification);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({
       TestSample({ 0, 0 }, 0, FloatTickIncrementTest(0.3)),
@@ -173,7 +173,7 @@ TEST_CASE("weights are proportional, interaction, binary") {
    test1.InitializeInteraction();
    double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
-   TestApi test2 = TestApi(2);
+   TestApi test2 = TestApi(OutputType_BinaryClassification);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test2.AddInteractionSamples({
       TestSample({ 0, 0 }, 0, FloatTickIncrementTest(2)),
@@ -184,7 +184,7 @@ TEST_CASE("weights are proportional, interaction, binary") {
    test2.InitializeInteraction();
    double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
 
-   TestApi test3 = TestApi(2);
+   TestApi test3 = TestApi(OutputType_BinaryClassification);
    test3.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test3.AddInteractionSamples({
       TestSample({ 0, 0 }, 0, 0),
@@ -238,7 +238,7 @@ TEST_CASE("weights are proportional, interaction, multiclass") {
 }
 
 TEST_CASE("weights totals equivalence, interaction, regression") {
-   TestApi test1 = TestApi(k_learningTypeRegression);
+   TestApi test1 = TestApi(OutputType_Regression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({
       TestSample({ 0, 0 }, 10.1, 0.15),
@@ -250,7 +250,7 @@ TEST_CASE("weights totals equivalence, interaction, regression") {
    test1.InitializeInteraction();
    double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
-   TestApi test2 = TestApi(k_learningTypeRegression);
+   TestApi test2 = TestApi(OutputType_Regression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test2.AddInteractionSamples({
       TestSample({ 0, 0 }, 10.1, 2),
@@ -266,7 +266,7 @@ TEST_CASE("weights totals equivalence, interaction, regression") {
 }
 
 TEST_CASE("weights totals equivalence, interaction, binary") {
-   TestApi test1 = TestApi(2);
+   TestApi test1 = TestApi(OutputType_BinaryClassification);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({
       TestSample({ 0, 0 }, 0, 0.3),
@@ -278,7 +278,7 @@ TEST_CASE("weights totals equivalence, interaction, binary") {
    test1.InitializeInteraction();
    double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
-   TestApi test2 = TestApi(2);
+   TestApi test2 = TestApi(OutputType_BinaryClassification);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test2.AddInteractionSamples({
       TestSample({ 0, 0 }, 0, 2),
@@ -336,7 +336,7 @@ TEST_CASE("purified interaction strength with impure inputs should be zero, inte
 
    // we can use any random weights for impure inputs, so stress test this!
 
-   TestApi test1 = TestApi(k_learningTypeRegression);
+   TestApi test1 = TestApi(OutputType_Regression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({
       TestSample({ 0, 0 }, (3.0 + 11.0), 24.25),
@@ -365,7 +365,7 @@ TEST_CASE("purified interaction strength same as pre-purified strength, interact
    // -16  2
    //  32 -8
 
-   TestApi test1 = TestApi(k_learningTypeRegression);
+   TestApi test1 = TestApi(OutputType_Regression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({
       TestSample({ 0, 0 }, -16.0, 2.5),
@@ -388,7 +388,7 @@ TEST_CASE("purified interaction strength same as pre-purified strength, interact
    // 14  10
    // 16  12
 
-   TestApi test2 = TestApi(k_learningTypeRegression);
+   TestApi test2 = TestApi(OutputType_Regression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test2.AddInteractionSamples({
       TestSample({ 0, 0 }, -16.0 + (3.0 + 11.0), 2.5),
@@ -406,7 +406,7 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
    // we use the same algorithm to calculate interaction strength (gain) and during boosting (gain again)
    // so we would expect them to generate the same response
 
-   TestApi test1 = TestApi(k_learningTypeRegression);
+   TestApi test1 = TestApi(OutputType_Regression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({
       TestSample({ 0, 0 }, 3, 232.24),
@@ -420,7 +420,7 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
    // we have a 2x2 matrix for boosting, which means there is only 1 cut point and it is known
    // so the gain should be from going from a singularity to the 4 quadrants
 
-   TestApi test2 = TestApi(k_learningTypeRegression);
+   TestApi test2 = TestApi(OutputType_Regression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test2.AddTerms({ { 0, 1 } });
    test2.AddTrainingSamples({
@@ -437,7 +437,7 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
 }
 
 TEST_CASE("tweedie, interaction") {
-   TestApi test = TestApi(k_learningTypeRegression, EBM_FALSE, "tweedie_deviance:variance_power=1.3");
+   TestApi test = TestApi(OutputType_Regression, EBM_FALSE, "tweedie_deviance:variance_power=1.3");
    test.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test.AddInteractionSamples({ 
       TestSample({ 0, 0 }, 10),

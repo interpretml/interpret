@@ -10,7 +10,7 @@
 static constexpr TestPriority k_filePriority = TestPriority::BoostingUnusualInputs;
 
 TEST_CASE("zero learning rate, boosting, regression") {
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({});
    test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 10) });
@@ -33,7 +33,7 @@ TEST_CASE("zero learning rate, boosting, regression") {
 }
 
 TEST_CASE("zero learning rate, boosting, binary") {
-   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
+   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
    test.AddFeatures({});
    test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 0) });
@@ -91,7 +91,7 @@ TEST_CASE("zero learning rate, boosting, multiclass") {
 }
 
 TEST_CASE("negative learning rate, boosting, regression") {
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({});
    test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 10) });
@@ -121,7 +121,7 @@ TEST_CASE("negative learning rate, boosting, regression") {
 }
 
 TEST_CASE("negative learning rate, boosting, binary") {
-   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
+   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
    test.AddFeatures({});
    test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 0) });
@@ -200,7 +200,7 @@ TEST_CASE("zero minSamplesLeaf, boosting, regression") {
    // TODO : call test.Boost many more times in a loop, and verify the output remains the same as previous runs
    // TODO : add classification binary and multiclass versions of this
 
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({ FeatureTest(2) });
    test.AddTerms({ { 0 } });
    test.AddTrainingSamples({
@@ -219,7 +219,7 @@ TEST_CASE("zero minSamplesLeaf, boosting, regression") {
 }
 
 TEST_CASE("weights are proportional, boosting, regression") {
-   TestApi test1 = TestApi(k_learningTypeRegression);
+   TestApi test1 = TestApi(OutputType_Regression);
    test1.AddFeatures({ FeatureTest(2) });
    test1.AddTerms({ { 0 } });
    test1.AddTrainingSamples({
@@ -237,7 +237,7 @@ TEST_CASE("weights are proportional, boosting, regression") {
    CHECK_APPROX(termScore1, test1.GetCurrentTermScore(0, { 1 }, 0));
 
 
-   TestApi test2 = TestApi(k_learningTypeRegression);
+   TestApi test2 = TestApi(OutputType_Regression);
    test2.AddFeatures({ FeatureTest(2) });
    test2.AddTerms({ { 0 } });
    test2.AddTrainingSamples({
@@ -255,7 +255,7 @@ TEST_CASE("weights are proportional, boosting, regression") {
    CHECK_APPROX(termScore2, test2.GetCurrentTermScore(0, { 1 }, 0));
 
 
-   TestApi test3 = TestApi(k_learningTypeRegression);
+   TestApi test3 = TestApi(OutputType_Regression);
    test3.AddFeatures({ FeatureTest(2) });
    test3.AddTerms({ { 0 } });
    test3.AddTrainingSamples({
@@ -280,7 +280,7 @@ TEST_CASE("weights are proportional, boosting, regression") {
 }
 
 TEST_CASE("weights are proportional, boosting, binary") {
-   TestApi test1 = TestApi(2);
+   TestApi test1 = TestApi(OutputType_BinaryClassification);
    test1.AddFeatures({ FeatureTest(2) });
    test1.AddTerms({ { 0 } });
    test1.AddTrainingSamples({
@@ -298,7 +298,7 @@ TEST_CASE("weights are proportional, boosting, binary") {
    CHECK_APPROX(termScore1, test1.GetCurrentTermScore(0, { 1 }, 0));
 
 
-   TestApi test2 = TestApi(2);
+   TestApi test2 = TestApi(OutputType_BinaryClassification);
    test2.AddFeatures({ FeatureTest(2) });
    test2.AddTerms({ { 0 } });
    test2.AddTrainingSamples({
@@ -316,7 +316,7 @@ TEST_CASE("weights are proportional, boosting, binary") {
    CHECK_APPROX(termScore2, test2.GetCurrentTermScore(0, { 1 }, 0));
 
 
-   TestApi test3 = TestApi(2);
+   TestApi test3 = TestApi(OutputType_BinaryClassification);
    test3.AddFeatures({ FeatureTest(2) });
    test3.AddTerms({ { 0 } });
    test3.AddTrainingSamples({
@@ -402,7 +402,7 @@ TEST_CASE("weights are proportional, boosting, multiclass") {
 }
 
 TEST_CASE("weights totals equivalence, boosting, regression") {
-   TestApi test1 = TestApi(k_learningTypeRegression);
+   TestApi test1 = TestApi(OutputType_Regression);
    test1.AddFeatures({ FeatureTest(2) });
    test1.AddTerms({ { 0 } });
    test1.AddTrainingSamples({
@@ -420,7 +420,7 @@ TEST_CASE("weights totals equivalence, boosting, regression") {
    termScore1 = test1.GetCurrentTermScore(0, { 0 }, 0);
 
 
-   TestApi test2 = TestApi(k_learningTypeRegression);
+   TestApi test2 = TestApi(OutputType_Regression);
    test2.AddFeatures({ FeatureTest(2) });
    test2.AddTerms({ { 0 } });
    test2.AddTrainingSamples({
@@ -442,7 +442,7 @@ TEST_CASE("weights totals equivalence, boosting, regression") {
 }
 
 TEST_CASE("weights totals equivalence, boosting, binary") {
-   TestApi test1 = TestApi(2);
+   TestApi test1 = TestApi(OutputType_BinaryClassification);
    test1.AddFeatures({ FeatureTest(2) });
    test1.AddTerms({ { 0 } });
    test1.AddTrainingSamples({
@@ -460,7 +460,7 @@ TEST_CASE("weights totals equivalence, boosting, binary") {
    termScore1 = test1.GetCurrentTermScore(0, { 0 }, 1);
 
 
-   TestApi test2 = TestApi(2);
+   TestApi test2 = TestApi(OutputType_BinaryClassification);
    test2.AddFeatures({ FeatureTest(2) });
    test2.AddTerms({ { 0 } });
    test2.AddTrainingSamples({
@@ -530,7 +530,7 @@ TEST_CASE("one leavesMax, boosting, regression") {
       IntEbm { 1 }
    };
 
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({ FeatureTest(2) });
    test.AddTerms({ { 0 } });
    test.AddTrainingSamples({
@@ -549,7 +549,7 @@ TEST_CASE("one leavesMax, boosting, regression") {
 }
 
 TEST_CASE("mono-classification") {
-   TestApi test = TestApi(1);
+   TestApi test = TestApi(OutputType_MonoClassification);
    test.AddFeatures({ FeatureTest(2) });
    test.AddTerms({ { 0 } });
    test.AddTrainingSamples({
@@ -602,7 +602,7 @@ TEST_CASE("mono-classification") {
 }
 
 TEST_CASE("Zero training samples, boosting, regression") {
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({ FeatureTest(2) });
    test.AddTerms({ { 0 } });
    test.AddTrainingSamples({});
@@ -620,7 +620,7 @@ TEST_CASE("Zero training samples, boosting, regression") {
 }
 
 TEST_CASE("Zero training samples, boosting, binary") {
-   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
+   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddTerms({ { 0 } });
    test.AddTrainingSamples({});
@@ -667,7 +667,7 @@ TEST_CASE("Zero training samples, boosting, multiclass") {
 }
 
 TEST_CASE("Zero validation samples, boosting, regression") {
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({ FeatureTest(2) });
    test.AddTerms({ { 0 } });
    test.AddTrainingSamples({ TestSample({ 1 }, 10) });
@@ -696,7 +696,7 @@ TEST_CASE("Zero validation samples, boosting, regression") {
 }
 
 TEST_CASE("Zero validation samples, boosting, binary") {
-   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
+   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddTerms({ { 0 } });
    test.AddTrainingSamples({ TestSample({ 1 }, 0) });
@@ -781,7 +781,7 @@ TEST_CASE("Zero validation samples, boosting, multiclass") {
 
 TEST_CASE("features with 0 states, boosting") {
    // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({ FeatureTest(0) });
    test.AddTerms({ { 0 } });
    test.AddTrainingSamples({});
@@ -805,7 +805,7 @@ TEST_CASE("features with 0 states, boosting") {
 
 
 TEST_CASE("features with 1 state in various positions, boosting") {
-   TestApi test0 = TestApi(k_learningTypeRegression);
+   TestApi test0 = TestApi(OutputType_Regression);
    test0.AddFeatures({
       FeatureTest(1),
       FeatureTest(2),
@@ -816,7 +816,7 @@ TEST_CASE("features with 1 state in various positions, boosting") {
    test0.AddValidationSamples({ TestSample({ 0, 1, 1 }, 12) });
    test0.InitializeBoosting();
 
-   TestApi test1 = TestApi(k_learningTypeRegression);
+   TestApi test1 = TestApi(OutputType_Regression);
    test1.AddFeatures({
       FeatureTest(2),
       FeatureTest(1),
@@ -827,7 +827,7 @@ TEST_CASE("features with 1 state in various positions, boosting") {
    test1.AddValidationSamples({ TestSample({ 1, 0, 1 }, 12) });
    test1.InitializeBoosting();
 
-   TestApi test2 = TestApi(k_learningTypeRegression);
+   TestApi test2 = TestApi(OutputType_Regression);
    test2.AddFeatures({
       FeatureTest(2),
       FeatureTest(2),
@@ -888,7 +888,7 @@ TEST_CASE("features with 1 state in various positions, boosting") {
 }
 
 TEST_CASE("zero terms, boosting, regression") {
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({});
    test.AddTerms({});
    test.AddTrainingSamples({ TestSample({}, 10) });
@@ -900,7 +900,7 @@ TEST_CASE("zero terms, boosting, regression") {
 }
 
 TEST_CASE("zero terms, boosting, binary") {
-   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
+   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
    test.AddFeatures({});
    test.AddTerms({});
    test.AddTrainingSamples({ TestSample({}, 1) });
@@ -924,7 +924,7 @@ TEST_CASE("zero terms, boosting, multiclass") {
 }
 
 TEST_CASE("Term with zero features, boosting, regression") {
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({});
    test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 10) });
@@ -954,7 +954,7 @@ TEST_CASE("Term with zero features, boosting, regression") {
 }
 
 TEST_CASE("Term with zero features, boosting, binary") {
-   TestApi test = TestApi(2, EBM_FALSE, nullptr, 0);
+   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
    test.AddFeatures({});
    test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 0) });
@@ -1029,21 +1029,21 @@ TEST_CASE("Term with zero features, boosting, multiclass") {
 }
 
 TEST_CASE("Term with one feature with one or two states is the exact same as zero terms, boosting, regression") {
-   TestApi testZeroDimensions = TestApi(k_learningTypeRegression);
+   TestApi testZeroDimensions = TestApi(OutputType_Regression);
    testZeroDimensions.AddFeatures({});
    testZeroDimensions.AddTerms({ {} });
    testZeroDimensions.AddTrainingSamples({ TestSample({}, 10) });
    testZeroDimensions.AddValidationSamples({ TestSample({}, 12) });
    testZeroDimensions.InitializeBoosting();
 
-   TestApi testOneState = TestApi(k_learningTypeRegression);
+   TestApi testOneState = TestApi(OutputType_Regression);
    testOneState.AddFeatures({ FeatureTest(1) });
    testOneState.AddTerms({ { 0 } });
    testOneState.AddTrainingSamples({ TestSample({ 0 }, 10) });
    testOneState.AddValidationSamples({ TestSample({ 0 }, 12) });
    testOneState.InitializeBoosting();
 
-   TestApi testTwoStates = TestApi(k_learningTypeRegression);
+   TestApi testTwoStates = TestApi(OutputType_Regression);
    testTwoStates.AddFeatures({ FeatureTest(2) });
    testTwoStates.AddTerms({ { 0 } });
    testTwoStates.AddTrainingSamples({ TestSample({ 1 }, 10) });
@@ -1070,21 +1070,21 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
 }
 
 TEST_CASE("Term with one feature with one or two states is the exact same as zero terms, boosting, binary") {
-   TestApi testZeroDimensions = TestApi(2, EBM_FALSE, nullptr, 0);
+   TestApi testZeroDimensions = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
    testZeroDimensions.AddFeatures({});
    testZeroDimensions.AddTerms({ {} });
    testZeroDimensions.AddTrainingSamples({ TestSample({}, 0) });
    testZeroDimensions.AddValidationSamples({ TestSample({}, 0) });
    testZeroDimensions.InitializeBoosting();
 
-   TestApi testOneState = TestApi(2, EBM_FALSE, nullptr, 0);
+   TestApi testOneState = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
    testOneState.AddFeatures({ FeatureTest(1) });
    testOneState.AddTerms({ { 0 } });
    testOneState.AddTrainingSamples({ TestSample({ 0 }, 0) });
    testOneState.AddValidationSamples({ TestSample({ 0 }, 0) });
    testOneState.InitializeBoosting();
 
-   TestApi testTwoStates = TestApi(2, EBM_FALSE, nullptr, 0);
+   TestApi testTwoStates = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
    testTwoStates.AddFeatures({ FeatureTest(2) });
    testTwoStates.AddTerms({ { 0 } });
    testTwoStates.AddTrainingSamples({ TestSample({ 1 }, 0) });
@@ -1170,7 +1170,7 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
 }
 
 TEST_CASE("3 dimensional term with one dimension reduced in different ways, boosting, regression") {
-   TestApi test0 = TestApi(k_learningTypeRegression);
+   TestApi test0 = TestApi(OutputType_Regression);
    test0.AddFeatures({ FeatureTest(1), FeatureTest(2), FeatureTest(2) });
    test0.AddTerms({ { 0, 1, 2 } });
    test0.AddTrainingSamples({
@@ -1182,7 +1182,7 @@ TEST_CASE("3 dimensional term with one dimension reduced in different ways, boos
    test0.AddValidationSamples({ TestSample({ 0, 1, 0 }, 12) });
    test0.InitializeBoosting();
 
-   TestApi test1 = TestApi(k_learningTypeRegression);
+   TestApi test1 = TestApi(OutputType_Regression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(1), FeatureTest(2) });
    test1.AddTerms({ { 0, 1, 2 } });
    test1.AddTrainingSamples({
@@ -1194,7 +1194,7 @@ TEST_CASE("3 dimensional term with one dimension reduced in different ways, boos
    test1.AddValidationSamples({ TestSample({ 0, 0, 1 }, 12) });
    test1.InitializeBoosting();
 
-   TestApi test2 = TestApi(k_learningTypeRegression);
+   TestApi test2 = TestApi(OutputType_Regression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2), FeatureTest(1) });
    test2.AddTerms({ { 0, 1, 2 } });
    test2.AddTrainingSamples({
@@ -1439,7 +1439,7 @@ TEST_CASE("Random splitting, pure tripples, regression") {
       IntEbm { 3 }
    };
 
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({ FeatureTest(cStates), FeatureTest(cStates), FeatureTest(cStates) });
    test.AddTerms({ { 0, 1, 2 } });
    std::vector<TestSample> samples;
@@ -1559,7 +1559,7 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
       IntEbm { 3 }
    };
 
-   TestApi test = TestApi(2);
+   TestApi test = TestApi(OutputType_BinaryClassification);
    test.AddFeatures({ FeatureTest(1) });
    test.AddTerms({ { 0 } });
    test.AddTrainingSamples({
@@ -1600,7 +1600,7 @@ TEST_CASE("zero gain, boosting, regression") {
    // we start with a singular bin that has 5 cases, and split it to two bins with 2 and 3 cases respectively.
    // We can arbitrarily set the gradient totals to 4 and 7, and then calculate what the 
 
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({ FeatureTest(2) });
    test.AddTerms({ { 0 } });
    test.AddTrainingSamples({
@@ -1619,7 +1619,7 @@ TEST_CASE("pair and main gain identical, boosting, regression") {
    // for the split on both sides into the pair are zero, then the gain from the pair boosting
    // should be identical to the gain from the main if we were to combine the pairs into mains
 
-   TestApi test1 = TestApi(k_learningTypeRegression);
+   TestApi test1 = TestApi(OutputType_Regression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddTerms({ { 0, 1 } });
    test1.AddTrainingSamples({
@@ -1632,7 +1632,7 @@ TEST_CASE("pair and main gain identical, boosting, regression") {
    test1.InitializeBoosting(0);
    const double gainAvg1 = test1.Boost(0).gainAvg;
 
-   TestApi test2 = TestApi(k_learningTypeRegression);
+   TestApi test2 = TestApi(OutputType_Regression);
    test2.AddFeatures({ FeatureTest(2) });
    test2.AddTerms({ { 0 } });
    test2.AddTrainingSamples({
@@ -1648,7 +1648,7 @@ TEST_CASE("pair and main gain identical, boosting, regression") {
 }
 
 TEST_CASE("tweedie, boosting") {
-   TestApi test = TestApi(k_learningTypeRegression, EBM_FALSE, "tweedie_deviance:variance_power=1.3");
+   TestApi test = TestApi(OutputType_Regression, EBM_FALSE, "tweedie_deviance:variance_power=1.3");
    test.AddFeatures({ FeatureTest(1) });
    test.AddTerms({ { 0 } });
    test.AddTrainingSamples({ TestSample({ 0 }, 10) });

@@ -18,31 +18,34 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-static constexpr ptrdiff_t k_regression = -1;
 inline constexpr static bool IsRegression(const ptrdiff_t cClasses) noexcept {
-   return k_regression == cClasses;
+   return ptrdiff_t { OutputType_Regression } == cClasses;
 }
 inline constexpr static bool IsClassification(const ptrdiff_t cClasses) noexcept {
-   return 0 <= cClasses;
+   return ptrdiff_t { OutputType_GeneralClassification } <= cClasses;
 }
 inline constexpr static bool IsBinaryClassification(const ptrdiff_t cClasses) noexcept {
 #ifdef EXPAND_BINARY_LOGITS
    return UNUSED(cClasses), false;
 #else // EXPAND_BINARY_LOGITS
-   return 2 == cClasses;
+   return ptrdiff_t { OutputType_BinaryClassification } == cClasses;
 #endif // EXPAND_BINARY_LOGITS
 }
 inline constexpr static bool IsMulticlass(const ptrdiff_t cClasses) noexcept {
-   return IsClassification(cClasses) && !IsBinaryClassification(cClasses);
+#ifdef EXPAND_BINARY_LOGITS
+   return ptrdiff_t { OutputType_GeneralClassification } <= cClasses;
+#else // EXPAND_BINARY_LOGITS
+   return ptrdiff_t { OutputType_BinaryClassification } < cClasses;
+#endif // EXPAND_BINARY_LOGITS
 }
 
 inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) noexcept {
    // this will work for anything except if cClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the 
    // dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
-   return cClasses <= ptrdiff_t { 1 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+   return cClasses < ptrdiff_t { OutputType_BinaryClassification } ? size_t { 1 } : static_cast<size_t>(cClasses);
 #else // EXPAND_BINARY_LOGITS
-   return cClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+   return cClasses <= ptrdiff_t { OutputType_BinaryClassification } ? size_t { 1 } : static_cast<size_t>(cClasses);
 #endif // EXPAND_BINARY_LOGITS
 }
 

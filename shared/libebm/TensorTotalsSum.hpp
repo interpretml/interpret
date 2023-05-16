@@ -10,7 +10,7 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
-#include "bridge_cpp.hpp" // GetCountScores
+#include "bridge_cpp.hpp" // GetArrayScores
 
 #include "GradientPair.hpp"
 #include "Bin.hpp"

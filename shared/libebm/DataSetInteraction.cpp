@@ -8,7 +8,6 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "common_cpp.hpp" // INLINE_RELEASE_UNTEMPLATED
-#include "bridge_cpp.hpp" // GetCountScores
 
 #include "ebm_internal.hpp" // AddPositiveFloatsSafeBig
 

@@ -9,7 +9,6 @@
 #include <string.h> // memcpy
 
 #include "common_cpp.hpp" // INLINE_RELEASE_UNTEMPLATED
-#include "bridge_cpp.hpp" // GetCountScores
 
 #include "Feature.hpp" // Feature
 #include "Term.hpp" // Term

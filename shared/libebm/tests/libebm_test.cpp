@@ -181,7 +181,7 @@ double TestApi::GetTermScore(
    if(static_cast<size_t>(m_cClasses) <= iClassOrZero) {
       exit(1);
    }
-   if(2 == m_cClasses) {
+   if(OutputType_BinaryClassification == m_cClasses) {
       // binary classification
 #ifdef EXPAND_BINARY_LOGITS
       if(m_iZeroClassificationLogit < 0) {
@@ -219,7 +219,7 @@ double TestApi::GetTermScore(
 }
 
 TestApi::TestApi(
-   const ptrdiff_t cClasses, 
+   const OutputType cClasses,
    const BoolEbm bDifferentiallyPrivate, 
    const char * const sObjective,
    const ptrdiff_t iZeroClassificationLogit
@@ -239,7 +239,7 @@ TestApi::TestApi(
    m_interactionHandle(nullptr) 
 {
    if(IsClassification(cClasses)) {
-      if(cClasses <= iZeroClassificationLogit) {
+      if(static_cast<ptrdiff_t>(cClasses) <= iZeroClassificationLogit) {
          exit(1);
       }
    } else {
@@ -347,7 +347,7 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
                   if(std::isinf(oneLogit)) {
                      exit(1);
                   }
-                  if(2 == m_cClasses) {
+                  if(OutputType_BinaryClassification == m_cClasses) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
@@ -472,7 +472,7 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
                   if(std::isinf(oneLogit)) {
                      exit(1);
                   }
-                  if(2 == m_cClasses) {
+                  if(OutputType_BinaryClassification == m_cClasses) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
@@ -884,8 +884,7 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
             }
             m_interactionClassificationTargets.push_back(targetInt);
             if(!bNullInitScores) {
-               if(static_cast<size_t>(m_cClasses) !=
-                  oneSample.m_initScores.size()) {
+               if(static_cast<size_t>(m_cClasses) != oneSample.m_initScores.size()) {
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
@@ -896,7 +895,7 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
                   if(std::isinf(oneLogit)) {
                      exit(1);
                   }
-                  if(2 == m_cClasses) {
+                  if(OutputType_BinaryClassification == m_cClasses) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {

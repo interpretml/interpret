@@ -12,7 +12,7 @@
 #include "common_c.h"
 
 #include "common_cpp.hpp" // IsConvertError
-#include "bridge_cpp.hpp" // k_regression
+#include "bridge_cpp.hpp" // GetCountItemsBitPacked
 
 #include "dataset_shared.hpp"
 
@@ -2190,7 +2190,7 @@ extern const void * GetDataSetSharedTarget(
    const SharedStorageDataType id = pTargetDataSetShared->m_id;
    EBM_ASSERT(IsTarget(id));
 
-   ptrdiff_t cClasses = k_regression;
+   ptrdiff_t cClasses = ptrdiff_t { OutputType_Regression };
    const void * pRet = reinterpret_cast<const void *>(pTargetDataSetShared + 1);
    if(IsClassificationTarget(id)) {
       const ClassificationTargetDataSetShared * const pClassificationTargetDataSetShared =
@@ -2272,7 +2272,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
          const SharedStorageDataType id = pTargetDataSetShared->m_id;
          EBM_ASSERT(IsTarget(id));
 
-         IntEbm countClasses = IntEbm { -1 };
+         IntEbm countClasses = IntEbm { OutputType_Regression };
          if(IsClassificationTarget(id)) {
             const ClassificationTargetDataSetShared * const pClassificationTargetDataSetShared =
                reinterpret_cast<const ClassificationTargetDataSetShared *>(pTargetDataSetShared + 1);

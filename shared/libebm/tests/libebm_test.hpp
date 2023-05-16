@@ -136,16 +136,15 @@ bool IsApproxEqual(const double val, const double expected, const double percent
 
 // EBM/interpret specific stuff below here!!
 
-static constexpr ptrdiff_t k_learningTypeRegression = ptrdiff_t { -1 };
-inline constexpr static bool IsClassification(const ptrdiff_t cClasses) {
-   return 0 <= cClasses;
+inline constexpr static bool IsClassification(const OutputType cClasses) {
+   return OutputType_GeneralClassification <= cClasses;
 }
 
-inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) {
+inline constexpr static size_t GetCountScores(const OutputType cClasses) {
 #ifdef EXPAND_BINARY_LOGITS
-   return ptrdiff_t { 1 } < cClasses ? static_cast<size_t>(cClasses) : (ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses ? size_t { 0 } : size_t { 1 });
+   return OutputType_BinaryClassification <= cClasses ? static_cast<size_t>(cClasses) : (ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses ? size_t { 0 } : size_t { 1 });
 #else // EXPAND_BINARY_LOGITS
-   return ptrdiff_t { 2 } < cClasses ? static_cast<size_t>(cClasses) : (ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses ? size_t { 0 } : size_t { 1 });
+   return OutputType_BinaryClassification < cClasses ? static_cast<size_t>(cClasses) : (ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses ? size_t { 0 } : size_t { 1 });
 #endif // EXPAND_BINARY_LOGITS
 }
 
@@ -292,7 +291,7 @@ class TestApi {
    std::vector<unsigned char> m_rng;
 
    Stage m_stage;
-   const ptrdiff_t m_cClasses;
+   const OutputType m_cClasses;
    const ptrdiff_t m_iZeroClassificationLogit;
 
    BoolEbm m_bDifferentiallyPrivate;
@@ -351,7 +350,7 @@ class TestApi {
 public:
 
    TestApi(
-      const ptrdiff_t cClasses, 
+      const OutputType cClasses,
       const BoolEbm m_bDifferentiallyPrivate = EBM_FALSE,
       const char * const m_sObjective = nullptr,
       const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault

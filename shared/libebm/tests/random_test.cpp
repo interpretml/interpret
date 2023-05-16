@@ -335,7 +335,7 @@ TEST_CASE("SampleWithoutReplacement, stress test") {
 }
 
 TEST_CASE("test random number generator equivalency") {
-   TestApi test = TestApi(k_learningTypeRegression);
+   TestApi test = TestApi(OutputType_Regression);
    test.AddFeatures({ FeatureTest(2) });
    test.AddTerms({ { 0 } });
 
