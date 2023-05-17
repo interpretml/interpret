@@ -8,14 +8,14 @@
   - python exact value comparison tests in stash
   - C++ exact value comparison tests in stash
   - console tests
-  - compare benchmark to previous known release (v0.4.0 is a validated release)
+  - compare benchmark to previous known release (v0.4.1 is a validated release)
 
 - IMPORTANT: check that the linux shared library is manylinux:
   - in azure-pipelines, under the published artifacts, under asm-x64-ubuntu-*, open libebm_linux_x64.s
   - look for the section "Version References"
   - if there is anything above GLIBC_2.5 (GLIBC_2.4 is ok), then we probably want to add a wrapper
 
-- update version numbers for R, PyPi, npm(interpret-inline):
+- update version numbers for R, PyPI, npm(interpret-inline):
   - R/DESCRIPTION (also update the date!)
   - python/interpret/setup.py
   - python/interpret-core/setup.py
@@ -110,7 +110,7 @@ set_visualize_provider(InlineProvider())
   - wait 2-3 days if possible to see if CRAN has any issues at: https://cran.r-project.org/web/checks/check_results_interpret.html
 
 - publish on conda-forge:
-  - we can re-do a release with the same version number, unlike pypi, so release this first for testing
+  - we can re-do a release with the same version number, unlike PyPI, so release this first for testing
   - PRE:
     - get the git ID:
       - go to: https://github.com/interpretml/interpret
@@ -120,6 +120,7 @@ set_visualize_provider(InlineProvider())
       - get the sha256 for the tar.gz: curl -sL https://github.com/interpretml/interpret/archive/<GIT_SHA>.tar.gz | openssl sha256
   - libebm:
     - fork into a new github username repo from (if not already forked): https://github.com/conda-forge/libebm-feedstock
+    - sync the fork, if not already synced
     - edit the local repo in github: https://github.com/<USERNAME>/libebm-feedstock/blob/main/recipe/meta.yaml
       - update the version number
       - update the github URL with the git hash
@@ -135,6 +136,7 @@ set_visualize_provider(InlineProvider())
     - wait a bit longer (30 minutes seems to sometimes work) for the CDN to have an updated copy. If a rebuild is needed use: @conda-forge-admin, please restart ci
   - interpret-core:
     - fork into a new github username repo from (if not already forked): https://github.com/conda-forge/interpret-core-feedstock
+    - sync the fork, if not already synced
     - edit the local repo in github: https://github.com/<USERNAME>/interpret-core-feedstock/blob/main/recipe/meta.yaml
       - update the version number
       - update the github URL with the git hash
@@ -150,6 +152,7 @@ set_visualize_provider(InlineProvider())
     - wait a bit longer (30 minutes seems to sometimes work) for the CDN to have an updated copy. If a rebuild is needed use: @conda-forge-admin, please restart ci
   - interpret:
     - fork into a new github username repo from (if not already forked): https://github.com/conda-forge/interpret-feedstock
+    - sync the fork, if not already synced
     - edit the local repo in github: https://github.com/<USERNAME>/interpret-feedstock/blob/main/recipe/meta.yaml
       - update the version number
       - update the github URL with the git hash
@@ -182,18 +185,21 @@ from interpret.provider import InlineProvider
 set_visualize_provider(InlineProvider())
   - re-run all the notebooks and check the visualizations again
 
-- publish on PyPi:
+- publish on PyPI:
   - upload the sdist and bdist together:
     - cd <PACKAGE_DOWNLOAD_DIRECTORY>
     - pip install twine
     - in an otherwise empty directory that only contains the 4 files (interpret bdist, interpret-core bdist, interpret sdist, interpret-core sdist), run
     - twine upload interpret*
     - fill in the username/password
+    - verify PyPI upload at: 
+      https://pypi.org/project/interpret-core/#files
+      https://pypi.org/project/interpret/#files
 
-- test pypi release on colab:
+- test PyPI release on colab:
   - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Interpretable_Classification_Methods.ipynb
 
-- test pypi release locally:
+- test PyPI release locally:
   - open anaconda console window
   - conda env list  # see the list of existing environments
   - conda create --yes --name interpret_N python=3.9
