@@ -147,13 +147,21 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
             # NaN values are guaranteed to be the min if they exist
             min_weight = sample_weight.min()
-            # TODO: for now weights of zero are illegal, but in the future accept them
-            if (
-                math.isnan(min_weight)
-                or min_weight <= 0
-                or math.isinf(sample_weight.max())
-            ):
-                msg = "illegal sample_weight value"
+            if math.isnan(min_weight):
+                msg = "illegal NaN sample_weight value"
+                _log.error(msg)
+                raise ValueError(msg)
+            if math.isinf(sample_weight.max()):
+                msg = "illegal +infinity sample_weight value"
+                _log.error(msg)
+                raise ValueError(msg)
+            if min_weight < 0:
+                msg = "illegal negative sample_weight value"
+                _log.error(msg)
+                raise ValueError(msg)
+            if min_weight == 0:
+                # TODO: for now weights of zero are illegal, but in the future accept them
+                msg = "illegal sample_weight value of zero"
                 _log.error(msg)
                 raise ValueError(msg)
 

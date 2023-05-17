@@ -377,13 +377,17 @@ class EBMModel(BaseEstimator):
                     "for debugging/testing. Set random_state to None to remove this warning."
                 )
 
-    def fit(self, X, y, sample_weight=None, init_score=None):  # noqa: C901
+    def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
         """Fits model to provided samples.
 
         Args:
             X: Numpy array for training samples.
             y: Numpy array as training labels.
             sample_weight: Optional array of weights per sample. Should be same length as X and y.
+            bags: Optional bag definitions. The first dimension should have length equal to the number of outer_bags.
+                The second dimension should have length equal to the number of samples. The contents should be
+                +1 for training, -1 for validation, and 0 if not included in the bag. Numbers other than 1 indicate
+                how many times to include the sample in the training or validation sets.
             init_score: Optional. Either a model that can generate scores or per-sample initialization score.
                 If samples scores it should be the same length as X.
 
@@ -402,6 +406,12 @@ class EBMModel(BaseEstimator):
             msg = "outer_bags must be 1 or greater. Did you mean to set: outer_bags=1, validation_size=0?"
             _log.error(msg)
             raise ValueError(msg)
+
+        if bags is not None:
+            if len(bags) != self.outer_bags:
+                msg = f"bags has {len(bags)} bags and self.outer_bags is {self.outer_bags} bags"
+                _log.error(msg)
+                raise ValueError(msg)
 
         if not isinstance(self.validation_size, int) and not isinstance(
             self.validation_size, float
@@ -680,6 +690,71 @@ class EBMModel(BaseEstimator):
             exclude = _clean_exclude(exclude, feature_map)
             term_features = [(x,) for x in range(n_features_in) if (x,) not in exclude]
 
+        rng = native.create_rng(init_random_state)
+        # branch it so we have no correlation to the binning rng that uses the same seed
+        rng = native.branch_rng(rng)
+        used_seeds = set()
+        rngs = []
+        internal_bags = []
+        for idx in range(self.outer_bags):
+            while True:
+                bagged_rng = native.branch_rng(rng)
+                seed = native.generate_seed(bagged_rng)
+                # we really really do not want identical bags. branch_rng is pretty good but it can lead to
+                # collisions, so check with a 32-bit seed if we possibly have a collision and regenerate if so
+                if seed not in used_seeds:
+                    break
+            # we do not need used_seeds if the rng is None, but it does not hurt anything
+            used_seeds.add(seed)
+
+            if bags is None:
+                bag = make_bag(
+                    y,
+                    self.validation_size,
+                    bagged_rng,
+                    is_classifier(self) and not is_differential_privacy,
+                )
+                # we bag within the same proces, so bagged_rng will progress inside make_bag
+            else:
+                bag = bags[idx]
+                if not isinstance(bag, np.ndarray):
+                    bag = np.array(bag)
+                if bag.ndim != 1:
+                    msg = "bags must be 2-dimensional"
+                    _log.error(msg)
+                    raise ValueError(msg)
+                if len(y) != len(bag):
+                    msg = f"y has {len(y)} samples and bags has {len(bag)} samples"
+                    _log.error(msg)
+                    raise ValueError(msg)
+                if (127 < bag).any() or (bag < -128).any():
+                    msg = "A value in bags is outside the valid range -128 to 127"
+                    _log.error(msg)
+                    raise ValueError(msg)
+                if bag.flags.c_contiguous:
+                    bag = bag.astype(np.int8, copy=False)
+                else:
+                    bag = bag.astype(np.int8, copy=True)
+
+            rngs.append(bagged_rng)
+            internal_bags.append(bag)
+
+        bag_weights = []
+        for bag in internal_bags:
+            if bag is None:
+                if sample_weight is None:
+                    bag_weights.append(n_samples)
+                else:
+                    bag_weights.append(sample_weight.sum())
+            else:
+                keep = 0 < bag
+                if sample_weight is None:
+                    bag_weights.append(bag[keep].sum())
+                else:
+                    bag_weights.append((bag[keep] * sample_weight[keep]).sum())
+                del keep
+        bag_weights = np.array(bag_weights, np.float64)
+
         if is_differential_privacy:
             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
             domain_size = 1 if is_classifier(self) else max_target - min_target
@@ -733,46 +808,6 @@ class EBMModel(BaseEstimator):
             min_samples_leaf = self.min_samples_leaf
             interactions = self.interactions
 
-        rng = native.create_rng(init_random_state)
-        # branch it so we have no correlation to the binning rng that uses the same seed
-        rng = native.branch_rng(rng)
-        used_seeds = set()
-        rngs = []
-        bag_weights = []
-        bags = []
-        for _ in range(self.outer_bags):
-            while True:
-                bagged_rng = native.branch_rng(rng)
-                seed = native.generate_seed(bagged_rng)
-                # we really really do not want identical bags. branch_rng is pretty good but it can lead to
-                # collisions, so check with a 32-bit seed if we possibly have a collision and regenerate if so
-                if seed not in used_seeds:
-                    break
-            # we do not need used_seeds if the rng is None, but it does not hurt anything
-            used_seeds.add(seed)
-
-            bag = make_bag(
-                y,
-                self.validation_size,
-                bagged_rng,
-                is_classifier(self) and not is_differential_privacy,
-            )
-            # we bag within the same proces, so bagged_rng will progress inside make_bag
-            rngs.append(bagged_rng)
-            bags.append(bag)
-            if bag is None:
-                if sample_weight is None:
-                    bag_weights.append(n_samples)
-                else:
-                    bag_weights.append(sample_weight.sum())
-            else:
-                keep = 0 < bag
-                if sample_weight is None:
-                    bag_weights.append(bag[keep].sum())
-                else:
-                    bag_weights.append((bag[keep] * sample_weight[keep]).sum())
-        bag_weights = np.array(bag_weights, np.float64)
-
         if n_classes == 1:
             warn(
                 "Only 1 class detected for classification. The model will predict 1.0 whenever predict_proba is called."
@@ -815,16 +850,27 @@ class EBMModel(BaseEstimator):
             parallel_args = []
             for idx in range(self.outer_bags):
                 early_stopping_rounds_local = early_stopping_rounds
-                if bags[idx] is None or (0 <= bags[idx]).all():
+                bag = internal_bags[idx]
+                if bag is None or (0 <= bag).all():
                     # if there are no validation samples, turn off early stopping
                     # because the validation metric cannot improve each round
                     early_stopping_rounds_local = 0
 
+                init_score_local = init_score
+                if (
+                    init_score_local is not None
+                    and bag is not None
+                    and np.count_nonzero(bag) != len(bag)
+                ):
+                    # TODO: instead of making these copies we should
+                    # put init_score into the native shared dataframe
+                    init_score_local = init_score_local[bag != 0]
+
                 parallel_args.append(
                     (
                         dataset,
-                        bags[idx],
-                        init_score,
+                        bag,
+                        init_score_local,
                         term_features,
                         inner_bags,
                         boost_flags,
@@ -908,22 +954,23 @@ class EBMModel(BaseEstimator):
                     Native.get_count_scores_c(n_classes), np.float64
                 )
                 scores_bags = []
-                for model in models:
+                for model, bag in zip(models, internal_bags):
                     # TODO: instead of going back to the original data in X, we
                     # could use the compressed and already binned data in dataset
-                    scores_bags.append(
-                        ebm_decision_function(
-                            X,
-                            n_samples,
-                            feature_names_in,
-                            feature_types_in,
-                            bins,
-                            initial_intercept,
-                            model,
-                            term_features,
-                            init_score,
-                        )
+                    scores = ebm_decision_function(
+                        X,
+                        n_samples,
+                        feature_names_in,
+                        feature_types_in,
+                        bins,
+                        initial_intercept,
+                        model,
+                        term_features,
+                        init_score,
                     )
+                    if bag is not None and np.count_nonzero(bag) != len(bag):
+                        scores = scores[bag != 0]
+                    scores_bags.append(scores)
 
                 dataset = bin_native_by_dimension(
                     n_classes,
@@ -946,7 +993,7 @@ class EBMModel(BaseEstimator):
                         parallel_args.append(
                             (
                                 dataset,
-                                bags[idx],
+                                internal_bags[idx],
                                 scores_bags[idx],
                                 combinations(range(n_features_in), 2),
                                 exclude,
@@ -963,7 +1010,7 @@ class EBMModel(BaseEstimator):
                         rank_interactions, parallel_args
                     )
 
-                    # this holds references to dataset, bags, and scores_bags which we want python to reclaim later
+                    # this holds references to dataset, internal_bags, and scores_bags which we want python to reclaim later
                     del parallel_args
 
                     # Select merged pairs
@@ -1026,7 +1073,7 @@ class EBMModel(BaseEstimator):
                 parallel_args = []
                 for idx in range(self.outer_bags):
                     early_stopping_rounds_local = early_stopping_rounds
-                    if bags[idx] is None or (0 <= bags[idx]).all():
+                    if internal_bags[idx] is None or (0 <= internal_bags[idx]).all():
                         # if there are no validation samples, turn off early stopping
                         # because the validation metric cannot improve each round
                         early_stopping_rounds_local = 0
@@ -1034,7 +1081,7 @@ class EBMModel(BaseEstimator):
                     parallel_args.append(
                         (
                             dataset,
-                            bags[idx],
+                            internal_bags[idx],
                             scores_bags[idx],
                             boost_groups,
                             inner_bags,
