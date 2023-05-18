@@ -980,6 +980,19 @@ static ErrorEbm CutCuttingRange(
 
          // this should be exact, since we would have set it like this
          EBM_ASSERT(!pCutLowModificationExclusiveBoundary->IsCut() || pCutLowModificationExclusiveBoundary->m_iValAspirationalFloat == static_cast<double>(pCutLowModificationExclusiveBoundary->m_iVal));
+         // TODO: We've gotten a report of this assert triggering from this issue:
+         // https://github.com/interpretml/interpret/issues/430
+         // I think I need to add "k_valNotLegal == pCutLowModificationExclusiveBoundary->m_iVal || " but I cannot
+         // figure out what realistic situation m_iVal would end up with k_valNotLegal at a distance of exactly
+         // k_cutExploreDistance since k_valNotLegal gets generated when potential cuts are pushed into a corner
+         // but you would think that would mean that there would be a valid cut separating a potential cut
+         // from the set of illegal cuts and we wouldn't be able to have k_cutExploreDistance uncut potential
+         // cuts with the k_valNotLegal located exactly at distance k_cutExploreDistance.
+         // This also applies to the assert below that checks:
+         // "pCutBest->m_iVal <= pCutHighModificationExclusiveBoundary->m_iVal"
+         // I do not believe this condition creates an issue in the release build, but I'm leaving the assert
+         // here without modification until we can find a valid case where this occurs to preclude the scenario
+         // that there is an unknown bug.
          EBM_ASSERT(pCutLowModificationExclusiveBoundary->m_iVal <= pCutBest->m_iVal);
          EBM_ASSERT(pCutLowModificationExclusiveBoundary->m_iValAspirationalFloat < pCutBest->m_iValAspirationalFloat);
 
