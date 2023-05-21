@@ -66,8 +66,8 @@ public:
       Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
       const IntEbm * pLeavesMax1 = aLeavesMax;
-      const FeatureBoosting * const * ppFeature1 = pTerm->GetFeatures();
-      const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature1[pTerm->GetCountDimensions()];
+      const TermFeature * pTermFeature1 = pTerm->GetTermFeatures();
+      const TermFeature * const pTermFeaturesEnd = &pTermFeature1[pTerm->GetCountDimensions()];
       size_t cSlicesTotal = 0;
       size_t cSlicesPlusRandomMax = 0;
       size_t cCollapsedTensorCells = 1;
@@ -90,7 +90,7 @@ public:
             }
          }
 
-         const FeatureBoosting * const pFeature = *ppFeature1;
+         const FeatureBoosting * const pFeature = pTermFeature1->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          const size_t cSlices = EbmMin(cLeavesMax, cBins);
@@ -117,8 +117,8 @@ public:
             EBM_ASSERT(!IsMultiplyError(cCollapsedTensorCells, cSlices)); // our allocated histogram is bigger
             cCollapsedTensorCells *= cSlices;
          }
-         ++ppFeature1;
-      } while(ppFeaturesEnd != ppFeature1);
+         ++pTermFeature1;
+      } while(pTermFeaturesEnd != pTermFeature1);
 
       // since we subtract 1 from cPossibleSplitLocations, we need to check that our final slice length isn't longer
       cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesTotal);
@@ -167,7 +167,7 @@ public:
 
       const IntEbm * pLeavesMax2 = aLeavesMax;
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
-      const FeatureBoosting * const * ppFeature2 = pTerm->GetFeatures();
+      const TermFeature * pTermFeature2 = pTerm->GetTermFeatures();
       do {
          size_t cTreeSplitsMax;
          if(nullptr == pLeavesMax2) {
@@ -187,7 +187,7 @@ public:
             }
          }
 
-         const FeatureBoosting * const pFeature = *ppFeature2;
+         const FeatureBoosting * const pFeature = pTermFeature2->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          size_t cPossibleSplitLocations = cBins - size_t { 1 };
@@ -223,16 +223,16 @@ public:
             *pcItemsInNextSliceOrBytesInCurrentSlice2 = cBins; // index 1 past the last item
             ++pcItemsInNextSliceOrBytesInCurrentSlice2;
          }
-         ++ppFeature2;
-      } while(ppFeaturesEnd != ppFeature2);
+         ++pTermFeature2;
+      } while(pTermFeaturesEnd != pTermFeature2);
 
       const IntEbm * pLeavesMax3 = aLeavesMax;
       const size_t * pcBytesInSliceEnd;
-      const FeatureBoosting * const * ppFeature3 = pTerm->GetFeatures();
+      const TermFeature * pTermFeature3 = pTerm->GetTermFeatures();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice3 = acItemsInNextSliceOrBytesInCurrentSlice;
       size_t cBytesCollapsedTensor3;
       while(true) {
-         EBM_ASSERT(ppFeature3 < ppFeaturesEnd);
+         EBM_ASSERT(pTermFeature3 < pTermFeaturesEnd);
 
          size_t cLeavesMax;
          if(nullptr == pLeavesMax3) {
@@ -253,8 +253,8 @@ public:
          }
 
          // the first dimension is special.  we put byte until next item into it instead of counts remaining
-         const FeatureBoosting * const pFeature = *ppFeature3;
-         ++ppFeature3;
+         const FeatureBoosting * const pFeature = pTermFeature3->m_pFeature;
+         ++pTermFeature3;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          if(size_t { 1 } < cBins) {
@@ -299,7 +299,7 @@ public:
       RandomSplitState randomSplitState[k_cDimensionsMax - size_t { 1 }]; // the first dimension is special cased
       RandomSplitState * pStateInit = &randomSplitState[0];
 
-      for(; ppFeaturesEnd != ppFeature3; ++ppFeature3) {
+      for(; pTermFeaturesEnd != pTermFeature3; ++pTermFeature3) {
          size_t cLeavesMax;
          if(nullptr == pLeavesMax3) {
             cLeavesMax = size_t { 1 };
@@ -318,7 +318,7 @@ public:
             }
          }
 
-         const FeatureBoosting * const pFeature = *ppFeature3;
+         const FeatureBoosting * const pFeature = pTermFeature3->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          if(size_t { 1 } < cBins) {
@@ -436,14 +436,14 @@ public:
       FloatBig gain = 0;
 
 
-      const FeatureBoosting * const * ppFeature4 = pTerm->GetFeatures();
+      const TermFeature * pTermFeature4 = pTerm->GetTermFeatures();
       size_t iDimensionWrite = ~size_t { 0 }; // this is -1, but without the compiler warning
       size_t cBinsWrite;
       do {
-         const FeatureBoosting * const pFeature = *ppFeature4;
+         const FeatureBoosting * const pFeature = pTermFeature4->m_pFeature;
          cBinsWrite = pFeature->GetCountBins();
          ++iDimensionWrite;
-         ++ppFeature4;
+         ++pTermFeature4;
       } while(cBinsWrite <= size_t { 1 });
 
       const size_t * const pcBytesInSliceLast = pcBytesInSliceEnd - size_t { 1 };
@@ -478,10 +478,10 @@ public:
       if(PREDICTABLE(pStateInit != pState)) {
          do {
             do {
-               const FeatureBoosting * const pFeature = *ppFeature4;
+               const FeatureBoosting * const pFeature = pTermFeature4->m_pFeature;
                cBinsWrite = pFeature->GetCountBins();
                ++iDimensionWrite;
-               ++ppFeature4;
+               ++pTermFeature4;
             } while(cBinsWrite <= size_t { 1 });
 
             ++pcBytesInSlice2; // we have one less split than we have slices, so move to the next one

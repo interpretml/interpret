@@ -11,10 +11,9 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
-#include "Transpose.hpp"
-
 #include "Feature.hpp"
 #include "Term.hpp"
+#include "Transpose.hpp"
 #include "Tensor.hpp"
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"
@@ -319,7 +318,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
    }
    const size_t iDimension = static_cast<size_t>(indexDimension);
 
-   size_t cBins = pTerm->GetFeatures()[iDimension]->GetCountBins();
+   size_t cBins = pTerm->GetTermFeatures()[iDimension].m_pFeature->GetCountBins();
    cBins = size_t { 0 } == cBins ? size_t { 1 } : cBins; // for our purposes here, 0 bins means 0 splits
 
    // cBins started from IntEbm, so we should be able to convert back safely

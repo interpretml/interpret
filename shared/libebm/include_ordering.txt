@@ -33,11 +33,11 @@
 #include "RandomDeterministic.hpp"
 #include "RandomNondeterministic.hpp"
 #include "GaussianDistribution.hpp" // implicitly depends on RandomDeterministic.hpp and RandomNondeterministic.hpp but the dependency is templated away
-#include "Transpose.hpp"
 #include "approximate_math.hpp"
 #include "ebm_stats.hpp" // depends on approximate_math.hpp
 #include "Feature.hpp" // ONLY zones.h
 #include "Term.hpp" // ONLY zones.h and Feature.hpp
+#include "Transpose.hpp"
 #include "dataset_shared.hpp"
 #include "DataSetBoosting.hpp" // depends on dataset_shared.hpp, Feature.hpp, Term.hpp
 #include "DataSetInteraction.hpp" // depends on dataset_shared.hpp

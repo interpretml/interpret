@@ -19,6 +19,11 @@ namespace DEFINED_ZONE_NAME {
 
 class FeatureBoosting;
 
+struct TermFeature {
+   const FeatureBoosting * m_pFeature;
+   size_t                  m_iTranspose;
+};
+
 class Term final {
    ptrdiff_t m_cItemsPerBitPack;
    size_t m_cDimensions;
@@ -31,7 +36,7 @@ class Term final {
    int m_cLogExitApplyTermUpdateMessages;
 
    // IMPORTANT: m_apFeature must be in the last position for the struct hack and this must be standard layout
-   const FeatureBoosting * m_apFeature[k_cDimensionsMax];
+   TermFeature m_aTermFeatures[k_cDimensionsMax];
 
 public:
 
@@ -41,7 +46,7 @@ public:
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    inline static size_t GetTermCountBytes(const size_t cDimensions) noexcept {
-      return offsetof(Term, m_apFeature) + sizeof(Term::m_apFeature[0]) * cDimensions;
+      return offsetof(Term, m_aTermFeatures) + sizeof(Term::m_aTermFeatures[0]) * cDimensions;
    }
 
    inline static void Free(Term * const pTerm) noexcept {
@@ -101,11 +106,11 @@ public:
       m_cAuxillaryBins = cAuxillaryBins;
    }
 
-   inline const FeatureBoosting * const * GetFeatures() const noexcept {
-      return ArrayToPointer(m_apFeature);
+   inline const TermFeature * GetTermFeatures() const noexcept {
+      return ArrayToPointer(m_aTermFeatures);
    }
-   inline const FeatureBoosting ** GetFeatures() noexcept {
-      return ArrayToPointer(m_apFeature);
+   inline TermFeature * GetTermFeatures() noexcept {
+      return ArrayToPointer(m_aTermFeatures);
    }
 
    inline int * GetPointerCountLogEnterGenerateTermUpdateMessages() noexcept {

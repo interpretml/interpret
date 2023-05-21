@@ -388,8 +388,8 @@ ErrorEbm BoosterCore::Create(
                return Error_IllegalParamVal;
             }
             size_t cSingleDimensionBins = 0;
-            const FeatureBoosting ** ppFeature = pTerm->GetFeatures();
-            const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature[cDimensions];
+            TermFeature * pTermFeature = pTerm->GetTermFeatures();
+            const TermFeature * const pTermFeaturesEnd = &pTermFeature[cDimensions];
             do {
                const IntEbm indexFeature = *piTermFeature;
                if(indexFeature < 0) {
@@ -411,7 +411,7 @@ ErrorEbm BoosterCore::Create(
                EBM_ASSERT(nullptr != pBoosterCore->m_aFeatures);
 
                const FeatureBoosting * const pInputFeature = &pBoosterCore->m_aFeatures[iFeature];
-               *ppFeature = pInputFeature;
+               pTermFeature->m_pFeature = pInputFeature;
 
                const size_t cBins = pInputFeature->GetCountBins();
                if(LIKELY(size_t { 1 } < cBins)) {
@@ -443,8 +443,8 @@ ErrorEbm BoosterCore::Create(
                EBM_ASSERT(0 == cTensorBins || cAuxillaryBinsForBuildFastTotals < cTensorBins);
 
                ++piTermFeature;
-               ++ppFeature;
-            } while(ppFeaturesEnd != ppFeature);
+               ++pTermFeature;
+            } while(pTermFeaturesEnd != pTermFeature);
 
             if(LIKELY(size_t { 0 } != cTensorBins)) {
                cFastBinsMax = EbmMax(cFastBinsMax, cTensorBins);

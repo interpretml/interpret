@@ -10,6 +10,9 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
+#include "Feature.hpp"
+#include "Term.hpp"
+
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
@@ -33,6 +36,7 @@ extern void Transpose(
    const size_t cDimensions,
    TransposeDimension * const aDim
 ) {
+   // TODO: can we can have 0 dimensions here?
    EBM_ASSERT(1 <= cDimensions);
 
    TransposeDimension * pDimInit = aDim;
@@ -44,6 +48,7 @@ extern void Transpose(
       cSkip = 0;
    }
    do {
+      // it is possible to have just missing and unknown bins
       EBM_ASSERT(2 <= pDimInit->cBins);
 
       if(pDimInit->bDropFirst) {
@@ -61,13 +66,14 @@ extern void Transpose(
       cBytesStride *= cBinsReduced;
 
       cSkipLevelInit *= pDimInit->cBins - (pDimInit->bDropFirst ? size_t { 1 } : size_t { 0 }) - (pDimInit->bDropLast ? size_t { 1 } : size_t { 0 });
-      pDimInit->iBinsRemaining = pDimInit->cBins; // TODO: move this to pDimTransposed pointer?
+      pDimInit->iBinsRemaining = pDimInit->cBins;
 
       ++pDimInit;
    } while(pDimEnd != pDimInit);
 
    // it should not be possible to eliminate all bins along a dimension unless there are zero samples in the
    // entire dataset, in which case we should not be reaching this function
+   // TODO: maybe we should return an error if the caller was bad and specified a dimension with zero real cells
    EBM_ASSERT(0 != cSkipLevelInit);
 
    while(true) {
@@ -98,6 +104,10 @@ extern void Transpose(
          --iBinsRemaining;
          pDim->iBinsRemaining = iBinsRemaining;
          if(1 == iBinsRemaining) {
+            // TODO: when we replace iBinsRemaining with a pointer, we can set that pointer to the last bin
+            //       if bDropLast is true and then check the value of bDropLast to see if we need to progress one
+            //       more cell to the real last one
+
             // we're moving into the last position
             if(!pDim->bDropLast) {
                if(2 != pDim->cBins || !pDim->bDropFirst) {
@@ -110,6 +120,10 @@ extern void Transpose(
             }
             break;
          } else if(pDim->cBins - 1 == iBinsRemaining) {
+            // TODO: when we replace iBinsRemaining with a pointer, we can probably fill that pointer with nullptr
+            //       if bDropFirst is first when we wrap and then check for nullptr here and then fill it with the
+            //       real value of the last or end based on bDropLast
+
             // we're moving away from the first position
             if(!pDim->bDropFirst) {
                pStride = reinterpret_cast<TStride *>(reinterpret_cast<char *>(pStride) + pDim->cBytesStride);

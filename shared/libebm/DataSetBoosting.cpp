@@ -334,14 +334,14 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
          const StorageDataType * const pInputDataToEnd = pInputDataTo + cDataUnitsTo;
 
-         const FeatureBoosting * const * ppFeature = pTerm->GetFeatures();
+         const TermFeature * pTermFeature = pTerm->GetTermFeatures();
          EBM_ASSERT(1 <= pTerm->GetCountDimensions());
-         const FeatureBoosting * const * const ppFeaturesEnd = &ppFeature[pTerm->GetCountDimensions()];
+         const TermFeature * const pTermFeaturesEnd = &pTermFeature[pTerm->GetCountDimensions()];
 
          InputDataPointerAndCountBins dimensionInfo[k_cDimensionsMax];
          InputDataPointerAndCountBins * pDimensionInfoInit = &dimensionInfo[0];
          do {
-            const FeatureBoosting * const pFeature = *ppFeature;
+            const FeatureBoosting * const pFeature = pTermFeature->m_pFeature;
             const size_t cBins = pFeature->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we don't construct datasets on empty training sets
             if(size_t { 1 } < cBins) {
@@ -408,8 +408,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                ++pDimensionInfoInit;
             }
             ++piTermFeatures;
-            ++ppFeature;
-         } while(ppFeaturesEnd != ppFeature);
+            ++pTermFeature;
+         } while(pTermFeaturesEnd != pTermFeature);
          EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pTerm->GetCountRealDimensions()]);
 
          EBM_ASSERT(nullptr != aBag || isLoopTraining); // if aBag is nullptr then we have no validation samples

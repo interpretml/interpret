@@ -10,10 +10,9 @@
 
 #include "RandomDeterministic.hpp" // RandomDeterministic
 
-#include "Transpose.hpp"
-
 #include "Feature.hpp" // Feature
 #include "Term.hpp" // Term
+#include "Transpose.hpp"
 #include "Tensor.hpp" // Tensor
 
 #include "BoosterCore.hpp" // BoosterCore
