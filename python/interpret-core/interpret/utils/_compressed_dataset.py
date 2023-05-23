@@ -57,14 +57,13 @@ def bin_native(
 
         if isinstance(feature_bins, dict):
             # categorical feature
-            n_bins = 1 if len(feature_bins) == 0 else (max(feature_bins.values()) + 1)
+            n_bins = 2 if len(feature_bins) == 0 else (max(feature_bins.values()) + 2)
         else:
             # continuous feature
             X_col = native.discretize(X_col, feature_bins)
-            n_bins = len(feature_bins) + 2
+            n_bins = len(feature_bins) + 3
 
         if bad is not None:
-            n_bins += 1
             X_col[bad != _none_ndarray] = n_bins - 1
 
         n_bytes += native.measure_feature(
@@ -102,14 +101,13 @@ def bin_native(
 
         if isinstance(feature_bins, dict):
             # categorical feature
-            n_bins = 1 if len(feature_bins) == 0 else (max(feature_bins.values()) + 1)
+            n_bins = 2 if len(feature_bins) == 0 else (max(feature_bins.values()) + 2)
         else:
             # continuous feature
             X_col = native.discretize(X_col, feature_bins)
-            n_bins = len(feature_bins) + 2
+            n_bins = len(feature_bins) + 3
 
         if bad is not None:
-            n_bins += 1
             X_col[bad != _none_ndarray] = n_bins - 1
 
         native.fill_feature(

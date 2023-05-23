@@ -390,6 +390,7 @@ ErrorEbm BoosterCore::Create(
             size_t cSingleDimensionBins = 0;
             TermFeature * pTermFeature = pTerm->GetTermFeatures();
             const TermFeature * const pTermFeaturesEnd = &pTermFeature[cDimensions];
+            size_t iDimension = 0;
             do {
                const IntEbm indexFeature = *piTermFeature;
                if(indexFeature < 0) {
@@ -412,6 +413,8 @@ ErrorEbm BoosterCore::Create(
 
                const FeatureBoosting * const pInputFeature = &pBoosterCore->m_aFeatures[iFeature];
                pTermFeature->m_pFeature = pInputFeature;
+               pTermFeature->m_cStride = cTensorBins;
+               pTermFeature->m_iTranspose = iDimension; // TODO: no tranposition yet, but move it from python to C
 
                const size_t cBins = pInputFeature->GetCountBins();
                if(LIKELY(size_t { 1 } < cBins)) {
@@ -442,6 +445,7 @@ ErrorEbm BoosterCore::Create(
                // same reasoning as above: cAuxillaryBinsForBuildFastTotals grows slower than cTensorBins
                EBM_ASSERT(0 == cTensorBins || cAuxillaryBinsForBuildFastTotals < cTensorBins);
 
+               ++iDimension;
                ++piTermFeature;
                ++pTermFeature;
             } while(pTermFeaturesEnd != pTermFeature);

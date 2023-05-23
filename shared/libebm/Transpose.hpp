@@ -20,82 +20,122 @@ namespace DEFINED_ZONE_NAME {
 
 struct TransposeDimension {
    size_t cBins;
-   size_t iTranspose;
    bool bDropFirst;
    bool bDropLast;
-
    size_t cBinsReduced;
    size_t iBinsRemaining;
+
    size_t cBytesStride;
 };
 
 template<bool bCopyToIncrement, typename TIncrement, typename TStride>
 extern void Transpose(
+   const Term * const pTerm,
+   const size_t cScores,
    TIncrement * pIncrement,
-   TStride * pStride,
-   const size_t cDimensions,
-   TransposeDimension * const aDim
+   TStride * pStride
 ) {
-   // TODO: can we can have 0 dimensions here?
-   EBM_ASSERT(1 <= cDimensions);
+   EBM_ASSERT(0 < cScores);
+   const size_t cBytesPerCell = sizeof(*pStride) * cScores;
+
+   const size_t cDimensions = pTerm->GetCountDimensions();
+   if(size_t { 0 } == cDimensions) {
+      TIncrement * const pIncrementEnd = pIncrement + cScores;
+      do {
+         if(bCopyToIncrement) {
+            *pIncrement = static_cast<TIncrement>(*pStride);
+         } else {
+            *pStride = static_cast<TStride>(*pIncrement);
+         }
+         ++pStride;
+         ++pIncrement;
+      } while(pIncrementEnd != pIncrement);
+
+      return;
+   }
+
+   const TermFeature * const aTermFeatures = pTerm->GetTermFeatures();
+   const TermFeature * pTermFeature = aTermFeatures;
+
+   TransposeDimension aDim[k_cDimensionsMax];
 
    TransposeDimension * pDimInit = aDim;
    const TransposeDimension * const pDimEnd = &aDim[cDimensions];
-   size_t cBytesStride = sizeof(*pStride);
-   size_t cSkipLevelInit = 1;
+
    size_t cSkip;
+   size_t cSkipLevelInit;
    if(!bCopyToIncrement) {
       cSkip = 0;
+      cSkipLevelInit = 1;
    }
    do {
-      // it is possible to have just missing and unknown bins
-      EBM_ASSERT(2 <= pDimInit->cBins);
+      // we process this in the order of pIncrement. The m_iTranspose of the TermFeature indicates where
+      // we need to look to find the feature we are transposing to the location of the pIncrement dimension
 
-      if(pDimInit->bDropFirst) {
-         if(!bCopyToIncrement) {
+      const FeatureBoosting * const pFeature = aTermFeatures[pTermFeature->m_iTranspose].m_pFeature;
+      pDimInit->cBytesStride = aTermFeatures[pTermFeature->m_iTranspose].m_cStride * cBytesPerCell;
+
+      const size_t cBinsReduced = pFeature->GetCountBins();
+      EBM_ASSERT(1 <= cBinsReduced); // otherwise we should have exited in the caller
+      bool bMissing = pFeature->IsMissing();
+      bool bUnknown = pFeature->IsUnknown();
+      const size_t cBins = cBinsReduced + (bMissing ? size_t { 0 } : size_t { 1 }) + (bUnknown ? size_t { 0 } : size_t { 1 });
+      EBM_ASSERT(2 <= cBins); // just missing and unknown required
+
+      pDimInit->cBins = cBins;
+      pDimInit->bDropFirst = !bMissing;
+      pDimInit->bDropLast = !bUnknown;
+
+      pDimInit->cBinsReduced = cBinsReduced;
+      pDimInit->iBinsRemaining = cBins;
+
+      if(!bCopyToIncrement) {
+         if(!bMissing) {
             cSkip += cSkipLevelInit;
          }
+         cSkipLevelInit *= cBinsReduced;
       }
 
-      TransposeDimension * const pDimTransposed = &aDim[pDimInit->iTranspose];
-      pDimTransposed->cBytesStride = cBytesStride;
-
-      const size_t cBinsReduced = pDimTransposed->cBins - (pDimTransposed->bDropFirst ? size_t { 1 } : size_t { 0 }) - (pDimTransposed->bDropLast ? size_t { 1 } : size_t { 0 });
-      pDimTransposed->cBinsReduced = cBinsReduced;
-
-      cBytesStride *= cBinsReduced;
-
-      cSkipLevelInit *= pDimInit->cBins - (pDimInit->bDropFirst ? size_t { 1 } : size_t { 0 }) - (pDimInit->bDropLast ? size_t { 1 } : size_t { 0 });
-      pDimInit->iBinsRemaining = pDimInit->cBins;
-
+      ++pTermFeature;
       ++pDimInit;
    } while(pDimEnd != pDimInit);
 
    // it should not be possible to eliminate all bins along a dimension unless there are zero samples in the
    // entire dataset, in which case we should not be reaching this function
    // TODO: maybe we should return an error if the caller was bad and specified a dimension with zero real cells
-   EBM_ASSERT(0 != cSkipLevelInit);
+   if(!bCopyToIncrement) {
+      EBM_ASSERT(0 != cSkipLevelInit);
+   }
 
    while(true) {
+      TIncrement * const pIncrementEnd = pIncrement + cScores;
+
+      size_t cSkipLevel;
       if(bCopyToIncrement) {
-         *pIncrement = static_cast<TIncrement>(*pStride);
+         TStride * pStrideTemp = pStride;
+         do {
+            *pIncrement = static_cast<TIncrement>(*pStrideTemp);
+            ++pStrideTemp;
+            ++pIncrement;
+         } while(pIncrementEnd != pIncrement);
       } else {
          if(0 == cSkip) {
-            *pStride = static_cast<TStride>(*pIncrement);
+            TStride * pStrideTemp = pStride;
+            do {
+               *pStrideTemp = static_cast<TStride>(*pIncrement);
+               ++pStrideTemp;
+               ++pIncrement;
+            } while(pIncrementEnd != pIncrement);
          } else {
             // TODO: instead of using a counter, use a pointer that we compare to *pIncrement. No need to decrement it 
             // then and we can use a branchless comparison to update the pStrideSkipTo pointer when adding to the 
             // equivalent to cSkip which will be executed less than this decrement that happen each loop
             --cSkip;
+            pIncrement = pIncrementEnd;
          }
-      }
-
-      ++pIncrement;
-
-      size_t cSkipLevel;
-      if(!bCopyToIncrement) {
          cSkipLevel = 1;
       }
+
       TransposeDimension * pDim = aDim;
       while(true) {
          // TODO: instead of iBinsRemaining, use a pFirst and pLast on each dimension to keep track of our state
@@ -110,7 +150,8 @@ extern void Transpose(
 
             // we're moving into the last position
             if(!pDim->bDropLast) {
-               if(2 != pDim->cBins || !pDim->bDropFirst) {
+               // there is a corner case to handle where we're leaving the missing and entering the unknown bin
+               if(1 != pDim->cBinsReduced) {
                   pStride = reinterpret_cast<TStride *>(reinterpret_cast<char *>(pStride) + pDim->cBytesStride);
                }
             } else {

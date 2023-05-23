@@ -991,7 +991,7 @@ WARNING_PUSH
 WARNING_REDUNDANT_CODE
 static IntEbm AppendFeature(
    const IntEbm countBins,
-   const BoolEbm isMissing,
+   BoolEbm isMissing,
    const BoolEbm isUnknown,
    const BoolEbm isNominal,
    const IntEbm countSamples,
@@ -1025,18 +1025,40 @@ static IntEbm AppendFeature(
    );
 
    {
+
+
+
+
+
+
+      // TODO: REMOVE THIS HACK, AND MAKE isMissing const again in the function above
+      isMissing = EBM_TRUE;
+
+
+
+
+
+
+
+
+
+      if(countBins <= IntEbm { 1 }) {
+         LOG_0(Trace_Error, "ERROR AppendFeature countBins must be 2 or larger");
+         goto return_bad;
+      }
       // we do not need to access memory based on the value of countBins, so we do not need to check if fits into size_t
       if(IsConvertError<SharedStorageDataType>(countBins)) {
          LOG_0(Trace_Error, "ERROR AppendFeature countBins is outside the range of a valid index");
          goto return_bad;
       }
-      const SharedStorageDataType cBins = static_cast<SharedStorageDataType>(countBins);
+      SharedStorageDataType cBins = static_cast<SharedStorageDataType>(countBins);
+      cBins -= EBM_FALSE != isMissing ? SharedStorageDataType { 0 } : SharedStorageDataType { 1 };
+      cBins -= EBM_FALSE != isUnknown ? SharedStorageDataType { 0 } : SharedStorageDataType { 1 };
 
       if(EBM_FALSE != isMissing && EBM_TRUE != isMissing) {
          LOG_0(Trace_Error, "ERROR AppendFeature isMissing is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
       }
-
       if(EBM_FALSE != isUnknown && EBM_TRUE != isUnknown) {
          LOG_0(Trace_Error, "ERROR AppendFeature isUnknown is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
@@ -1156,17 +1178,26 @@ static IntEbm AppendFeature(
 
             ptrdiff_t cShift = static_cast<ptrdiff_t>((cSamples - size_t { 1 }) % cItemsPerBitPack * cBitsPerItemMax);
             const ptrdiff_t cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - size_t { 1 }) * cBitsPerItemMax);
+            const IntEbm indexBinIllegal = countBins - (EBM_FALSE != isUnknown ? IntEbm { 0 } : IntEbm { 1 });
             do {
                SharedStorageDataType bits = 0;
                do {
-                  const IntEbm indexBin = *pBinIndex;
-                  if(indexBin < IntEbm { 0 }) {
-                     LOG_0(Trace_Error, "ERROR AppendFeature indexBin can't be negative");
+                  IntEbm indexBin = *pBinIndex;
+                  if(indexBinIllegal <= indexBin) {
+                     LOG_0(Trace_Error, "ERROR AppendFeature indexBinIllegal <= indexBin");
                      goto return_bad;
                   }
-                  if(countBins <= indexBin) {
-                     LOG_0(Trace_Error, "ERROR AppendFeature countBins <= indexBin");
-                     goto return_bad;
+                  if(EBM_FALSE != isMissing) {
+                     if(indexBin < IntEbm { 0 }) {
+                        LOG_0(Trace_Error, "ERROR AppendFeature indexBin can't be negative");
+                        goto return_bad;
+                     }
+                  } else {
+                     if(indexBin <= IntEbm { 0 }) {
+                        LOG_0(Trace_Error, "ERROR AppendFeature indexBin <= IntEbm { 0 }");
+                        goto return_bad;
+                     }
+                     --indexBin;
                   }
                   ++pBinIndex;
 
@@ -2110,7 +2141,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
 
          EBM_ASSERT(IsFeature(pFeatureDataSetShared->m_id));
 
-         const SharedStorageDataType countBins = pFeatureDataSetShared->m_cBins;
+         SharedStorageDataType countBins = pFeatureDataSetShared->m_cBins;
+         // countBins originally fit into SharedStorageDataType so it should still with these additions
+         countBins += IsMissingFeature(pFeatureDataSetShared->m_id) ? SharedStorageDataType { 0 } : SharedStorageDataType { 1 };
+         countBins += IsUnknownFeature(pFeatureDataSetShared->m_id) ? SharedStorageDataType { 0 } : SharedStorageDataType { 1 };
          if(IsConvertError<IntEbm>(countBins)) {
             LOG_0(Trace_Error, "ERROR ExtractBinCounts IsConvertError<IntEbm>(countBins)");
             return Error_IllegalParamVal;

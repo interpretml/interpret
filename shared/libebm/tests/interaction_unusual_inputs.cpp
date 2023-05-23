@@ -61,7 +61,7 @@ TEST_CASE("classification with 1 possible target, interaction") {
 
 TEST_CASE("features with 0 states, interaction") {
    TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({ FeatureTest(0) });
+   test.AddFeatures({ FeatureTest(2, false, false) });
    test.AddInteractionSamples({});
    test.InitializeInteraction();
 
@@ -98,7 +98,7 @@ TEST_CASE("Term with zero features, interaction, multiclass") {
 
 TEST_CASE("Term with one feature with one state, interaction, regression") {
    TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({ FeatureTest(1) });
+   test.AddFeatures({ FeatureTest(2, true, false) });
    test.AddInteractionSamples({ TestSample({ 0 }, 10) });
    test.InitializeInteraction();
    double metricReturn = test.TestCalcInteractionStrength({ 0 });
@@ -107,7 +107,7 @@ TEST_CASE("Term with one feature with one state, interaction, regression") {
 
 TEST_CASE("Term with one feature with one state, interaction, binary") {
    TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-   test.AddFeatures({ FeatureTest(1) });
+   test.AddFeatures({ FeatureTest(2, true, false) });
    test.AddInteractionSamples({ TestSample({ 0 }, 0) });
    test.InitializeInteraction();
    double metricReturn = test.TestCalcInteractionStrength({ 0 });
@@ -116,7 +116,7 @@ TEST_CASE("Term with one feature with one state, interaction, binary") {
 
 TEST_CASE("Term with one feature with one state, interaction, multiclass") {
    TestApi test = TestApi(3);
-   test.AddFeatures({ FeatureTest(1) });
+   test.AddFeatures({ FeatureTest(2, true, false) });
    test.AddInteractionSamples({ TestSample({ 0 }, 0) });
    test.InitializeInteraction();
    double metricReturn = test.TestCalcInteractionStrength({ 0 });

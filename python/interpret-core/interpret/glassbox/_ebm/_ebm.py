@@ -40,12 +40,7 @@ from ._bin import (
     ebm_decision_function_and_explain,
     make_bin_weights,
 )
-from ._tensor import (
-    make_boosting_weights,
-    after_boosting,
-    remove_last,
-    trim_tensor,
-)
+from ._tensor import remove_last, trim_tensor
 from ...utils._native import Native
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
@@ -785,7 +780,7 @@ class EBMModel(BaseEstimator):
                     f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
                 )
 
-            bin_data_weights = make_boosting_weights(main_bin_weights)
+            bin_data_weights = main_bin_weights
             boost_flags = (
                 Native.BoostFlags_GradientSums | Native.BoostFlags_RandomSplits
             )
@@ -902,7 +897,7 @@ class EBMModel(BaseEstimator):
             rngs = []
             for model, bag_breakpoint_iteration, bagged_rng in results:
                 breakpoint_iteration[-1].append(bag_breakpoint_iteration)
-                models.append(after_boosting(term_features, model, main_bin_weights))
+                models.append(model)
                 # retrieve our rng state since this was used outside of our process
                 rngs.append(bagged_rng)
 
@@ -1113,9 +1108,7 @@ class EBMModel(BaseEstimator):
                 breakpoint_iteration.append([])
                 for idx in range(self.outer_bags):
                     breakpoint_iteration[-1].append(results[idx][1])
-                    models[idx].extend(
-                        after_boosting(boost_groups, results[idx][0], main_bin_weights)
-                    )
+                    models[idx].extend(results[idx][0])
                     rngs[idx] = results[idx][2]
 
                 term_features.extend(boost_groups)

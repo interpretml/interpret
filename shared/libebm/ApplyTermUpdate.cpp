@@ -319,6 +319,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
    const size_t iDimension = static_cast<size_t>(indexDimension);
 
    size_t cBins = pTerm->GetTermFeatures()[iDimension].m_pFeature->GetCountBins();
+   const bool bMissing = pTerm->GetTermFeatures()[iDimension].m_pFeature->IsMissing();
+   const bool bUnknown = pTerm->GetTermFeatures()[iDimension].m_pFeature->IsUnknown();
+   cBins += bMissing ? size_t { 0 } : size_t { 1 };
+   cBins += bUnknown ? size_t { 0 } : size_t { 1 };
    cBins = size_t { 0 } == cBins ? size_t { 1 } : cBins; // for our purposes here, 0 bins means 0 splits
 
    // cBins started from IntEbm, so we should be able to convert back safely
@@ -355,11 +359,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
          return Error_IllegalParamVal;
       }
 
+      const ActiveDataType indexSplitAdd = bMissing ? size_t { 0 } : size_t { 1 };
+
       const ActiveDataType * pSplitIndexesFrom = pBoosterShell->GetTermUpdate()->GetSplitPointer(iDimension);
       IntEbm * pSplitIndexesTo = splitIndexesOut;
       IntEbm * pSplitIndexesToEnd = splitIndexesOut + cSplits;
       do {
-         const ActiveDataType indexSplit = *pSplitIndexesFrom;
+         // if the missing bin was eliminated, we need to increment our split indexes
+         const ActiveDataType indexSplit = *pSplitIndexesFrom + indexSplitAdd;
          ++pSplitIndexesFrom;
 
          EBM_ASSERT(!IsConvertError<IntEbm>(indexSplit)); // the total count works so the index should too
@@ -422,10 +429,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(
 
    size_t cTensorScores = pTerm->GetCountTensorBins();
    if(size_t { 0 } == cTensorScores) {
-      // if we have zero samples and one of the dimensions has 0 bins then there is no tensor, so return now
+      // If we have zero samples and one of the dimensions has 0 bins then there is no tensor, so return now
+      // In theory it might be better to zero out the caller's tensor cells (2 ^ n_dimensions), but this condition
+      // is almost an error already, so don't try reading/writing memory. We just define this situation as
+      // having a zero sized tensor result. The caller can zero their own memory if they want it zero
 
       // if GetCountTensorBins is 0, then pBoosterShell->GetTermUpdate() does not contain valid data
 
+      LOG_0(Trace_Warning, "WARNING GetTermUpdate size_t { 0 } == cTensorScores");
       return Error_None;
    }
 
@@ -434,15 +445,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(
       return error;
    }
 
-   EBM_ASSERT(!IsMultiplyError(cTensorScores, GetCountScores(pBoosterCore->GetCountClasses())));
-   cTensorScores *= GetCountScores(pBoosterCore->GetCountClasses());
+   FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
+   Transpose<true>(pTerm, GetCountScores(pBoosterCore->GetCountClasses()), updateScoresTensorOut, aUpdateScores);
 
-   const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
-   // we've allocated this memory, so it should be reachable, so these numbers should multiply
-   EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensorOut), cTensorScores));
-   EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cTensorScores));
-   static_assert(sizeof(*updateScoresTensorOut) == sizeof(*aUpdateScores), "float mismatch");
-   memcpy(updateScoresTensorOut, aUpdateScores, sizeof(*aUpdateScores) * cTensorScores);
    return Error_None;
 }
 
@@ -512,10 +517,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
 
    size_t cTensorScores = pTerm->GetCountTensorBins();
    if(size_t { 0 } == cTensorScores) {
-      // if we have zero samples and one of the dimensions has 0 bins then there is no tensor, so return now
+      // If we have zero samples and one of the dimensions has 0 bins then there is no tensor, so return now
 
-      // if GetCountTensorBins is 0, then we leave pBoosterShell->GetTermUpdate() with invalid data since
-      // out Tensor class does not support tensors of zero elements
+      // if GetCountTensorBins is 0, then pBoosterShell->GetTermUpdate() does not contain valid data
+
+      LOG_0(Trace_Warning, "WARNING SetTermUpdate size_t { 0 } == cTensorScores");
 
       pBoosterShell->SetTermIndex(iTerm);
       return Error_None;
@@ -531,14 +537,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
       return error;
    }
 
-   EBM_ASSERT(!IsMultiplyError(cTensorScores, GetCountScores(pBoosterCore->GetCountClasses())));
-   cTensorScores *= GetCountScores(pBoosterCore->GetCountClasses());
-
    FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
-   EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cTensorScores));
-   EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensor), cTensorScores));
-   static_assert(sizeof(*updateScoresTensor) == sizeof(*aUpdateScores), "float mismatch");
-   memcpy(aUpdateScores, updateScoresTensor, sizeof(*aUpdateScores) * cTensorScores);
+   // *updateScoresTensor is const, but Transpose can go either way.  When bCopyToIncrement is false like it
+   // is below, then Transpose will treat updateScoresTensor as const
+   Transpose<false>(pTerm, GetCountScores(pBoosterCore->GetCountClasses()), const_cast<double *>(updateScoresTensor), aUpdateScores);
 
    pBoosterShell->SetTermIndex(iTerm);
 

@@ -402,7 +402,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
 
    size_t cTensorScores = pTerm->GetCountTensorBins();
    if(size_t { 0 } == cTensorScores) {
-      // if one of the dimensions has zero bins then the tensor has zero tensor bins and there is nothing to do
+      // If we have zero samples and one of the dimensions has 0 bins then there is no tensor, so return now
+      // In theory it might be better to zero out the caller's tensor cells (2 ^ n_dimensions), but this condition
+      // is almost an error already, so don't try reading/writing memory. We just define this situation as
+      // having a zero sized tensor result. The caller can zero their own memory if they want it zero
+
+      // if GetCountTensorBins is 0, then pBoosterCore->GetBestModel()[iTerm] does not contain valid data
+
       LOG_0(Trace_Warning, "WARNING GetBestTermScores feature with zero bins");
       return Error_None;
    }
@@ -413,19 +419,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
       return Error_IllegalParamVal;
    }
 
-   EBM_ASSERT(!IsMultiplyError(cTensorScores, GetCountScores(pBoosterCore->GetCountClasses())));
-   cTensorScores *= GetCountScores(pBoosterCore->GetCountClasses());
-
    Tensor * const pTensor = pBoosterCore->GetBestModel()[iTerm];
    EBM_ASSERT(nullptr != pTensor);
    EBM_ASSERT(pTensor->GetExpanded()); // the tensor should have been expanded at startup
    FloatFast * const aTermScores = pTensor->GetTensorScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
-   EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cTensorScores));
-   EBM_ASSERT(!IsMultiplyError(sizeof(*aTermScores), cTensorScores));
-   static_assert(sizeof(*termScoresTensorOut) == sizeof(*aTermScores), "float mismatch");
-   memcpy(termScoresTensorOut, aTermScores, sizeof(*aTermScores) * cTensorScores);
+   Transpose<true>(pTerm, GetCountScores(pBoosterCore->GetCountClasses()), termScoresTensorOut, aTermScores);
 
    LOG_0(Trace_Info, "Exited GetBestTermScores");
    return Error_None;
@@ -482,7 +482,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
 
    size_t cTensorScores = pTerm->GetCountTensorBins();
    if(size_t { 0 } == cTensorScores) {
-      // if one of the dimensions has zero bins then the tensor has zero tensor bins and there is nothing to do
+      // If we have zero samples and one of the dimensions has 0 bins then there is no tensor, so return now
+      // In theory it might be better to zero out the caller's tensor cells (2 ^ n_dimensions), but this condition
+      // is almost an error already, so don't try reading/writing memory. We just define this situation as
+      // having a zero sized tensor result. The caller can zero their own memory if they want it zero
+
+      // if GetCountTensorBins is 0, then pBoosterCore->GetCurrentModel()[iTerm] does not contain valid data
+
       LOG_0(Trace_Warning, "WARNING GetCurrentTermScores feature with zero bins");
       return Error_None;
    }
@@ -493,19 +499,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
       return Error_IllegalParamVal;
    }
 
-   EBM_ASSERT(!IsMultiplyError(cTensorScores, GetCountScores(pBoosterCore->GetCountClasses())));
-   cTensorScores *= GetCountScores(pBoosterCore->GetCountClasses());
-
    Tensor * const pTensor = pBoosterCore->GetCurrentModel()[iTerm];
    EBM_ASSERT(nullptr != pTensor);
    EBM_ASSERT(pTensor->GetExpanded()); // the tensor should have been expanded at startup
    FloatFast * const aTermScores = pTensor->GetTensorScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
-   EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cTensorScores));
-   EBM_ASSERT(!IsMultiplyError(sizeof(*aTermScores), cTensorScores));
-   static_assert(sizeof(*termScoresTensorOut) == sizeof(*aTermScores), "float mismatch");
-   memcpy(termScoresTensorOut, aTermScores, sizeof(*aTermScores) * cTensorScores);
+   Transpose<true>(pTerm, GetCountScores(pBoosterCore->GetCountClasses()), termScoresTensorOut, aTermScores);
 
    LOG_0(Trace_Info, "Exited GetCurrentTermScores");
    return Error_None;

@@ -153,15 +153,22 @@ static constexpr SeedEbm k_seed = SeedEbm { -42 };
 class FeatureTest final {
 public:
 
-   const bool m_bNominal;
    const IntEbm m_countBins;
+   const bool m_bMissing;
+   const bool m_bUnknown;
+   const bool m_bNominal;
 
    inline FeatureTest(
       const IntEbm countBins, 
+      const bool bMissing = true,
+      const bool bUnknown = true,
       const bool bNominal = false
    ) :
-      m_bNominal(bNominal),
-      m_countBins(countBins) {
+      m_countBins(countBins),
+      m_bMissing(bMissing),
+      m_bUnknown(bUnknown),
+      m_bNominal(bNominal)
+   {
       if(countBins < 0) {
          exit(1);
       }
@@ -297,6 +304,8 @@ class TestApi {
    BoolEbm m_bDifferentiallyPrivate;
    const char * m_sObjective;
 
+   std::vector<BoolEbm> m_featureMissings;
+   std::vector<BoolEbm> m_featureUnknowns;
    std::vector<BoolEbm> m_featureNominals;
    std::vector<IntEbm> m_featureBinCounts;
    std::vector<IntEbm> m_dimensionCounts;

@@ -19,7 +19,9 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
          // 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
             TestApi test = TestApi(OutputType_Regression);
-            test.AddFeatures({ FeatureTest(cBins) });
+            // add one to the bins because our interface needs missing and unknown bins but 
+            // internally drop the unknown bin to make it possible to have 1 bin
+            test.AddFeatures({ FeatureTest(cBins + 1, true, false) });
             test.AddTerms({ { 0 } });
 
             std::vector<TestSample> trainingSamples;
@@ -51,7 +53,9 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
          // a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
             TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-            test.AddFeatures({ FeatureTest(cBins) });
+            // add one to the bins because our interface needs missing and unknown bins but 
+            // internally drop the unknown bin to make it possible to have 1 bin
+            test.AddFeatures({ FeatureTest(cBins + 1, true, false) });
             test.AddTerms({ { 0 } });
 
             std::vector<TestSample> trainingSamples;
@@ -87,7 +91,9 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
          // a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
             TestApi test = TestApi(OutputType_Regression);
-            test.AddFeatures({ FeatureTest(2), FeatureTest(cBins) });
+            // add one to the bins because our interface needs missing and unknown bins but 
+            // internally drop the unknown bin to make it possible to have 1 bin
+            test.AddFeatures({ FeatureTest(2), FeatureTest(cBins + 1, true, false) });
 
             std::vector<TestSample> samples;
             for(size_t iSample = 0; iSample < cSamples; ++iSample) {
@@ -113,7 +119,9 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
          // a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
             TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-            test.AddFeatures({ FeatureTest(2), FeatureTest(cBins) });
+            // add one to the bins because our interface needs missing and unknown bins but 
+            // internally drop the unknown bin to make it possible to have 1 bin
+            test.AddFeatures({ FeatureTest(2), FeatureTest(cBins + 1, true, false) });
 
             std::vector<TestSample> samples;
             for(size_t iSample = 0; iSample < cSamples; ++iSample) {

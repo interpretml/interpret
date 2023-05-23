@@ -9,42 +9,6 @@ import logging
 _log = logging.getLogger(__name__)
 
 
-def _append_tensor(tensor, append_low=None, append_high=None):
-    if append_low is None:
-        if append_high is None:
-            return tensor
-        dim_slices = [slice(0, dim_len) for dim_len in tensor.shape]
-        new_shape = [
-            dim_len + int(is_high)
-            for dim_len, is_high in zip(tensor.shape, append_high)
-        ]
-    else:
-        dim_slices = [
-            slice(int(is_low), dim_len + int(is_low))
-            for dim_len, is_low in zip(tensor.shape, append_low)
-        ]
-        if append_high is None:
-            new_shape = [
-                dim_len + int(is_low)
-                for dim_len, is_low in zip(tensor.shape, append_low)
-            ]
-        else:
-            new_shape = [
-                dim_len + int(is_low) + int(is_high)
-                for dim_len, is_low, is_high in zip(
-                    tensor.shape, append_low, append_high
-                )
-            ]
-
-    if len(new_shape) != tensor.ndim:
-        # multiclass
-        new_shape.append(tensor.shape[-1])
-
-    new_tensor = np.zeros(tuple(new_shape), dtype=tensor.dtype)
-    new_tensor[tuple(dim_slices)] = tensor
-    return new_tensor
-
-
 def trim_tensor(tensor, trim_low=None, trim_high=None):
     if trim_low is None:
         if trim_high is None:
@@ -65,33 +29,6 @@ def trim_tensor(tensor, trim_low=None, trim_high=None):
                 for dim_len, is_low, is_high in zip(tensor.shape, trim_low, trim_high)
             ]
     return tensor[tuple(dim_slices)]
-
-
-def make_boosting_weights(term_bin_weights):
-    # TODO: replace this function with a bool array that we generate in bin_native.. this function will crash
-    # if there are samples with zero weights
-    bin_data_weights = []
-    for term_weights in term_bin_weights:
-        if term_weights[-1] == 0:
-            bin_data_weights.append(term_weights[:-1])
-        else:
-            bin_data_weights.append(term_weights)
-    return bin_data_weights
-
-
-def after_boosting(term_features, tensors, feature_bin_weights):
-    # TODO: this isn't a problem today since any unnamed categories in the mains and the pairs are the same
-    #       (they don't exist in the pairs today at all since DP-EBMs aren't pair enabled yet and we haven't
-    #       made the option for them in regular EBMs), but when we eventually go that way then we'll
-    #       need to examine the tensored term based bin weights to see what to do.  Alternatively, we could
-    #       obtain this information from bin_native which would be cleaner since we only need it during boosting
-    new_tensors = []
-    for term_idx, feature_idxs in enumerate(term_features):
-        higher = [
-            feature_bin_weights[feature_idx][-1] == 0 for feature_idx in feature_idxs
-        ]
-        new_tensors.append(_append_tensor(tensors[term_idx], None, higher))
-    return new_tensors
 
 
 def remove_last(tensors, term_bin_weights):

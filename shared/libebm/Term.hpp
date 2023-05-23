@@ -21,6 +21,7 @@ class FeatureBoosting;
 
 struct TermFeature {
    const FeatureBoosting * m_pFeature;
+   size_t                  m_cStride;
    size_t                  m_iTranspose;
 };
 
