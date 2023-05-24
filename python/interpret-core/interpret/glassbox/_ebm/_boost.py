@@ -105,10 +105,6 @@ def boost(
 
                     # Loop through all random splits and add noise before updating
                     for f, s, noise in zip(splits_iter[:-1], splits_iter[1:], noises):
-                        if s == 1:
-                            # Skip cuts that fall on 0th (missing value) bin -- missing values not supported in DP
-                            continue
-
                         noisy_update_tensor[f:s] = term_update_tensor[f:s] + noise
 
                         # Native code will be returning sums of residuals in slices, not averages.

@@ -991,7 +991,7 @@ WARNING_PUSH
 WARNING_REDUNDANT_CODE
 static IntEbm AppendFeature(
    const IntEbm countBins,
-   BoolEbm isMissing,
+   const BoolEbm isMissing,
    const BoolEbm isUnknown,
    const BoolEbm isNominal,
    const IntEbm countSamples,
@@ -1025,23 +1025,6 @@ static IntEbm AppendFeature(
    );
 
    {
-
-
-
-
-
-
-      // TODO: REMOVE THIS HACK, AND MAKE isMissing const again in the function above
-      isMissing = EBM_TRUE;
-
-
-
-
-
-
-
-
-
       if(countBins <= IntEbm { 1 }) {
          LOG_0(Trace_Error, "ERROR AppendFeature countBins must be 2 or larger");
          goto return_bad;
