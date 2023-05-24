@@ -21,18 +21,160 @@
 
 //#include "approximate_math.hpp"
 
+#include "Feature.hpp"
+#include "Term.hpp"
+#include "Transpose.hpp"
+
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+
 //#define INCLUDE_TESTS_IN_RELEASE
+//#define ENABLE_TRANSPOSE
 //#define ENABLE_TEST_LOG_SUM_ERRORS
 //#define ENABLE_TEST_EXP_SUM_ERRORS
 //#define ENABLE_TEST_SOFTMAX_SUM_ERRORS
 //#define ENABLE_PRINTF
 
 #if !defined(NDEBUG) || defined(INCLUDE_TESTS_IN_RELEASE)
+
+
+
+#ifdef ENABLE_TRANSPOSE
+static double TestTranspose() {
+   double debugRet = 0; // this just prevents the optimizer from eliminating this code
+
+   std::mt19937 testRandom(52);
+   std::uniform_int_distribution<> dimensionsDistributions(1, 5);
+
+   FeatureBoosting features[5];
+   Term term;
+
+   double original[20000];
+   double transposed[20000];
+   double restored[20000];
+
+   for(int iTest = 0; iTest < 100000; ++iTest) {
+      const int cDimensions = dimensionsDistributions(testRandom);
+
+      debugRet += cDimensions; // just to ensure this code gets run
+
+      term.Initialize(cDimensions);
+      term.SetCountRealDimensions(cDimensions);
+
+      TermFeature * aTermFeatures = term.GetTermFeatures();
+      size_t cTensorBins = 1;
+      for(int iDimension = 0; iDimension < cDimensions; ++iDimension) {
+         aTermFeatures[iDimension].m_iTranspose = iDimension;
+         aTermFeatures[iDimension].m_pFeature = &features[iDimension];
+         aTermFeatures[iDimension].m_cStride = cTensorBins;
+
+         int cBins;
+         bool bMissing;
+         bool bUnknown;
+         int cExpandedBins;
+         do {
+            cBins = dimensionsDistributions(testRandom);
+            bMissing = 4 <= dimensionsDistributions(testRandom);
+            bUnknown = 4 <= dimensionsDistributions(testRandom);
+            cExpandedBins = cBins + (bMissing ? 0 : 1) + (bUnknown ? 0 : 1);
+         } while(cExpandedBins < 2);
+
+         features[iDimension].Initialize(cBins, bMissing, bUnknown, EBM_FALSE);
+
+         cTensorBins *= cBins;
+      }
+
+      for(int iDimension = 0; iDimension < cDimensions; ++iDimension) {
+         std::uniform_int_distribution<> shuffleDistribution(iDimension, cDimensions - 1);
+         int iShuffle = shuffleDistribution(testRandom);
+         size_t temp = aTermFeatures[iShuffle].m_iTranspose;
+         aTermFeatures[iShuffle].m_iTranspose = aTermFeatures[iDimension].m_iTranspose;
+         aTermFeatures[iDimension].m_iTranspose = temp;
+      }
+
+      for(int i = 0; i < 20000; ++i) {
+         original[i] = i;
+      }
+
+      Transpose<false>(&term, 1, original, transposed);
+      Transpose<true>(&term, 1, restored, transposed);
+
+      size_t indexIncrement[5];
+      indexIncrement[0] = 0;
+      indexIncrement[1] = 0;
+      indexIncrement[2] = 0;
+      indexIncrement[3] = 0;
+      indexIncrement[4] = 0;
+      size_t indexCorrected[5];
+
+      while(true) {
+         for(int iDimension = 0; iDimension < cDimensions; ++iDimension) {
+            const FeatureBoosting * pFeature = aTermFeatures[aTermFeatures[iDimension].m_iTranspose].m_pFeature;
+            bool bMissing = pFeature->IsMissing();
+            bool bUnknown = pFeature->IsUnknown();
+            size_t cBins = pFeature->GetCountBins();
+            cBins = cBins + (bMissing ? 0 : 1) + (bUnknown ? 0 : 1);
+            size_t i = indexIncrement[iDimension];
+
+            if(i == cBins - 1 && !bUnknown) {
+               --i;
+            }
+            if(i == 0 && !bMissing) {
+               ++i;
+            }
+
+            indexCorrected[iDimension] = i;
+         }
+
+         cTensorBins = 1;
+         size_t iFlatIncrement = 0;
+         size_t iFlatCorrected = 0;
+         for(int iDimension = 0; iDimension < cDimensions; ++iDimension) {
+            const FeatureBoosting * pFeature = aTermFeatures[aTermFeatures[iDimension].m_iTranspose].m_pFeature;
+            bool bMissing = pFeature->IsMissing();
+            bool bUnknown = pFeature->IsUnknown();
+            size_t cBins = pFeature->GetCountBins();
+            cBins = cBins + (bMissing ? 0 : 1) + (bUnknown ? 0 : 1);
+
+            iFlatIncrement += indexIncrement[iDimension] * cTensorBins;
+            iFlatCorrected += indexCorrected[iDimension] * cTensorBins;
+
+            cTensorBins *= cBins;
+         }
+
+         EBM_ASSERT(original[iFlatCorrected] == restored[iFlatIncrement]);
+
+         int iDimension;
+         for(iDimension = 0; iDimension < cDimensions; ++iDimension) {
+            const FeatureBoosting * pFeature = aTermFeatures[aTermFeatures[iDimension].m_iTranspose].m_pFeature;
+            bool bMissing = pFeature->IsMissing();
+            bool bUnknown = pFeature->IsUnknown();
+            size_t cBins = pFeature->GetCountBins();
+            cBins = cBins + (bMissing ? 0 : 1) + (bUnknown ? 0 : 1);
+            size_t i = indexIncrement[iDimension];
+            ++i;
+            indexIncrement[iDimension] = i;
+            if(i != cBins) {
+               break;
+            }
+            indexIncrement[iDimension] = 0;
+         }
+
+         if(iDimension == cDimensions) {
+            break;
+         }
+      }
+   }
+
+   return debugRet;
+}
+
+// this is just to prevent the compiler for optimizing our code away on release
+extern double g_TestTranspose = TestTranspose();
+#endif
 
 
 #ifdef ENABLE_TEST_LOG_SUM_ERRORS

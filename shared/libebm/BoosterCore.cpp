@@ -390,7 +390,10 @@ ErrorEbm BoosterCore::Create(
             size_t cSingleDimensionBins = 0;
             TermFeature * pTermFeature = pTerm->GetTermFeatures();
             const TermFeature * const pTermFeaturesEnd = &pTermFeature[cDimensions];
-            size_t iDimension = 0;
+            // TODO: Ideally we would flip our input dimensions so that we're aligned with the output ordering
+            //       and thus not need a transpose when transfering data to the caller. We're doing it this way
+            //       for now to test the transpose ability and also to maintain the same results as before for comparison
+            size_t iTranspose = cDimensions - 1;
             do {
                const IntEbm indexFeature = *piTermFeature;
                if(indexFeature < 0) {
@@ -414,7 +417,7 @@ ErrorEbm BoosterCore::Create(
                const FeatureBoosting * const pInputFeature = &pBoosterCore->m_aFeatures[iFeature];
                pTermFeature->m_pFeature = pInputFeature;
                pTermFeature->m_cStride = cTensorBins;
-               pTermFeature->m_iTranspose = iDimension; // TODO: no tranposition yet, but move it from python to C
+               pTermFeature->m_iTranspose = iTranspose; // TODO: no tranposition yet, but move it from python to C
 
                const size_t cBins = pInputFeature->GetCountBins();
                if(LIKELY(size_t { 1 } < cBins)) {
@@ -445,7 +448,7 @@ ErrorEbm BoosterCore::Create(
                // same reasoning as above: cAuxillaryBinsForBuildFastTotals grows slower than cTensorBins
                EBM_ASSERT(0 == cTensorBins || cAuxillaryBinsForBuildFastTotals < cTensorBins);
 
-               ++iDimension;
+               --iTranspose;
                ++piTermFeature;
                ++pTermFeature;
             } while(pTermFeaturesEnd != pTermFeature);

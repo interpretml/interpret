@@ -1267,7 +1267,6 @@ class Booster(AbstractContextManager):
             self._term_shapes = []
             for feature_idxs in self.term_features:
                 dimensions = [bin_counts[feature_idx] for feature_idx in feature_idxs]
-                dimensions.reverse()
 
                 # Array returned for multiclass is one higher dimension
                 if 1 < n_class_scores:
@@ -1467,13 +1466,6 @@ class Booster(AbstractContextManager):
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetBestTermScores")
 
-        n_dimensions = len(self.term_features[term_idx])
-        temp_transpose = [*range(n_dimensions - 1, -1, -1)]
-        if len(shape) != n_dimensions:  # multiclass
-            temp_transpose.append(len(temp_transpose))
-        term_scores = np.ascontiguousarray(
-            np.transpose(term_scores, tuple(temp_transpose))
-        )
         return term_scores
 
     def _get_current_term_scores(self, term_idx):
@@ -1506,13 +1498,6 @@ class Booster(AbstractContextManager):
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetCurrentTermScores")
 
-        n_dimensions = len(self.term_features[term_idx])
-        temp_transpose = [*range(n_dimensions - 1, -1, -1)]
-        if len(shape) != n_dimensions:  # multiclass
-            temp_transpose.append(len(temp_transpose))
-        term_scores = np.ascontiguousarray(
-            np.transpose(term_scores, tuple(temp_transpose))
-        )
         return term_scores
 
     def _get_term_update_splits_dimension(self, dimension_index):
@@ -1564,13 +1549,6 @@ class Booster(AbstractContextManager):
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetTermUpdate")
 
-        n_dimensions = len(self.term_features[self._term_idx])
-        temp_transpose = [*range(n_dimensions - 1, -1, -1)]
-        if len(shape) != n_dimensions:  # multiclass
-            temp_transpose.append(len(temp_transpose))
-        update_scores = np.ascontiguousarray(
-            np.transpose(update_scores, tuple(temp_transpose))
-        )
         return update_scores
 
     def set_term_update(self, term_idx, update_scores):
@@ -1585,14 +1563,6 @@ class Booster(AbstractContextManager):
             )
 
         shape = self._term_shapes[term_idx]
-
-        n_dimensions = len(self.term_features[term_idx])
-        temp_transpose = [*range(n_dimensions - 1, -1, -1)]
-        if len(shape) != n_dimensions:  # multiclass
-            temp_transpose.append(len(temp_transpose))
-        update_scores = np.ascontiguousarray(
-            np.transpose(update_scores, tuple(temp_transpose))
-        )
 
         if shape != update_scores.shape:  # pragma: no cover
             raise ValueError("incorrect tensor shape in call to set_term_update")

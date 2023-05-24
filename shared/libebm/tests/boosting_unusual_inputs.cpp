@@ -1220,13 +1220,13 @@ TEST_CASE("3 dimensional term with one dimension reduced in different ways, boos
          CHECK_APPROX(validationMetric0, validationMetric2);
 
          double termScore01 = test0.GetCurrentTermScore(iTerm, { 0, 0, 0 }, 0);
-         double termScore02 = test0.GetCurrentTermScore(iTerm, { 0, 0, 1 }, 0);
+         double termScore02 = test0.GetCurrentTermScore(iTerm, { 1, 0, 0 }, 0);
          double termScore03 = test0.GetCurrentTermScore(iTerm, { 0, 1, 0 }, 0);
-         double termScore04 = test0.GetCurrentTermScore(iTerm, { 0, 1, 1 }, 0);
+         double termScore04 = test0.GetCurrentTermScore(iTerm, { 1, 1, 0 }, 0);
 
          double termScore11 = test1.GetCurrentTermScore(iTerm, { 0, 0, 0 }, 0);
-         double termScore12 = test1.GetCurrentTermScore(iTerm, { 1, 0, 0 }, 0);
-         double termScore13 = test1.GetCurrentTermScore(iTerm, { 0, 0, 1 }, 0);
+         double termScore12 = test1.GetCurrentTermScore(iTerm, { 0, 0, 1 }, 0);
+         double termScore13 = test1.GetCurrentTermScore(iTerm, { 1, 0, 0 }, 0);
          double termScore14 = test1.GetCurrentTermScore(iTerm, { 1, 0, 1 }, 0);
          CHECK_APPROX(termScore11, termScore01);
          CHECK_APPROX(termScore12, termScore02);
@@ -1235,8 +1235,8 @@ TEST_CASE("3 dimensional term with one dimension reduced in different ways, boos
 
          double termScore21 = test2.GetCurrentTermScore(iTerm, { 0, 0, 0 }, 0);
          double termScore22 = test2.GetCurrentTermScore(iTerm, { 0, 1, 0 }, 0);
-         double termScore23 = test2.GetCurrentTermScore(iTerm, { 1, 0, 0 }, 0);
-         double termScore24 = test2.GetCurrentTermScore(iTerm, { 1, 1, 0 }, 0);
+         double termScore23 = test2.GetCurrentTermScore(iTerm, { 0, 0, 1 }, 0);
+         double termScore24 = test2.GetCurrentTermScore(iTerm, { 0, 1, 1 }, 0);
          CHECK_APPROX(termScore21, termScore01);
          CHECK_APPROX(termScore22, termScore02);
          CHECK_APPROX(termScore23, termScore03);
