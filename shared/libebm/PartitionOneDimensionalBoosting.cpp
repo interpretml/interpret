@@ -106,19 +106,19 @@ static ErrorEbm Flatten(
    BoosterShell * const pBoosterShell,
    const size_t iDimension,
    const size_t cBins,
-   const size_t cSplits
+   const size_t cSlices
 ) {
    LOG_0(Trace_Verbose, "Entered Flatten");
 
    EBM_ASSERT(nullptr != pBoosterShell);
    EBM_ASSERT(iDimension <= k_cDimensionsMax);
-   EBM_ASSERT(cSplits < cBins);
+   EBM_ASSERT(cSlices <= cBins);
    
    ErrorEbm error;
 
    Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
-   error = pInnerTermUpdate->SetCountSplits(iDimension, cSplits);
+   error = pInnerTermUpdate->SetCountSlices(iDimension, cSlices);
    if(UNLIKELY(Error_None != error)) {
       // already logged
       return error;
@@ -127,15 +127,14 @@ static ErrorEbm Flatten(
    const BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
 
-   // we checked during init that cScores * cBins can be allocated, so cSplits + 1 must work too
-   EBM_ASSERT(!IsMultiplyError(cScores, cSplits + size_t { 1 }));
-   error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * (cSplits + size_t { 1 }));
+   EBM_ASSERT(!IsMultiplyError(cScores, cSlices));
+   error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * cSlices);
    if(UNLIKELY(Error_None != error)) {
       // already logged
       return error;
    }
 
-   ActiveDataType * pSplits = pInnerTermUpdate->GetSplitPointer(iDimension);
+   ActiveDataType * pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
    FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
 
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bHessian, cScores)); // we're accessing allocated memory
@@ -150,7 +149,7 @@ static ErrorEbm Flatten(
    auto * pTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian>();
 
    TreeNode<bHessian> * pParent = nullptr;
-   size_t iSplit;
+   size_t iEdge;
    while(true) {
 
    moved_down:;
@@ -180,7 +179,8 @@ static ErrorEbm Flatten(
 
          EBM_ASSERT(aBins <= pBinLast);
          EBM_ASSERT(pBinLast < pBinsEnd);
-         iSplit = CountBins(pBinLast, aBins, cBytesPerBin);
+         // TODO: it might make more sense to store the pBinEnd instead of pBinLast in the tree nodes?
+         iEdge = CountBins(pBinLast, aBins, cBytesPerBin) + 1;
             
          const auto * aGradientPair = pTreeNode->GetGradientPairs();
          size_t iScore = 0;
@@ -210,8 +210,8 @@ static ErrorEbm Flatten(
    moved_up:;
       auto * pChildren = pTreeNode->AFTER_GetChildren();
       if(nullptr != pChildren) {
-         *pSplits = iSplit;
-         ++pSplits;
+         *pSplit = iEdge;
+         ++pSplit;
 
          pParent = pTreeNode;
          pTreeNode->AFTER_SetChildren(nullptr);
@@ -708,7 +708,7 @@ public:
       }
       *pTotalGain = static_cast<double>(totalGain);
       const size_t cSplits = cSplitsMax - cSplitsRemaining;
-      return Flatten<bHessian>(pBoosterShell, iDimension, cBins, cSplits);
+      return Flatten<bHessian>(pBoosterShell, iDimension, cBins, cSplits + 1);
    }
 };
 

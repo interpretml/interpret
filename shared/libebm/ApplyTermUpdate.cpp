@@ -264,7 +264,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
    BoosterHandle boosterHandle,
    IntEbm indexDimension,
    IntEbm * countSplitsInOut,
-   IntEbm * splitIndexesOut
+   IntEbm * splitsOut
 ) {
    LOG_COUNTED_N(
       &g_cLogGetTermUpdateSplits,
@@ -274,12 +274,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
       "boosterHandle=%p, "
       "indexDimension=%" IntEbmPrintf ", "
       "countSplitsInOut=%p"
-      "splitIndexesOut=%p"
+      "splitsOut=%p"
       ,
       static_cast<void *>(boosterHandle),
       indexDimension, 
       static_cast<void *>(countSplitsInOut),
-      static_cast<void *>(splitIndexesOut)
+      static_cast<void *>(splitsOut)
    );
 
    if(nullptr == countSplitsInOut) {
@@ -350,30 +350,30 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
       return Error_None;
    }
 
-   const size_t cSplits = pBoosterShell->GetTermUpdate()->GetCountSplits(iDimension);
+   const size_t cSplits = pBoosterShell->GetTermUpdate()->GetCountSlices(iDimension) - 1;
    EBM_ASSERT(cSplits < cBins);
    if(0 != cSplits) {
-      if(nullptr == splitIndexesOut) {
+      if(nullptr == splitsOut) {
          *countSplitsInOut = IntEbm { 0 };
-         LOG_0(Trace_Error, "ERROR GetTermUpdateSplits splitIndexesOut cannot be nullptr");
+         LOG_0(Trace_Error, "ERROR GetTermUpdateSplits splitsOut cannot be nullptr");
          return Error_IllegalParamVal;
       }
 
-      const ActiveDataType indexSplitAdd = bMissing ? size_t { 0 } : size_t { 1 };
+      const ActiveDataType indexEdgeAdd = bMissing ? size_t { 0 } : size_t { 1 };
 
-      const ActiveDataType * pSplitIndexesFrom = pBoosterShell->GetTermUpdate()->GetSplitPointer(iDimension);
-      IntEbm * pSplitIndexesTo = splitIndexesOut;
-      IntEbm * pSplitIndexesToEnd = splitIndexesOut + cSplits;
+      const ActiveDataType * pFrom = pBoosterShell->GetTermUpdate()->GetSplitPointer(iDimension);
+      IntEbm * pTo = splitsOut;
+      IntEbm * pToEnd = splitsOut + cSplits;
       do {
          // if the missing bin was eliminated, we need to increment our split indexes
-         const ActiveDataType indexSplit = *pSplitIndexesFrom + indexSplitAdd;
-         ++pSplitIndexesFrom;
+         const ActiveDataType indexEdge = *pFrom + indexEdgeAdd;
+         ++pFrom;
 
-         EBM_ASSERT(!IsConvertError<IntEbm>(indexSplit)); // the total count works so the index should too
-         *pSplitIndexesTo = static_cast<IntEbm>(indexSplit);
+         EBM_ASSERT(!IsConvertError<IntEbm>(indexEdge)); // the total count works so the index should too
+         *pTo = static_cast<IntEbm>(indexEdge);
 
-         ++pSplitIndexesTo;
-      } while(pSplitIndexesToEnd != pSplitIndexesTo);
+         ++pTo;
+      } while(pToEnd != pTo);
    }
    EBM_ASSERT(!IsConvertError<IntEbm>(cSplits)); // cSplits originally came from an IntEbm
    *countSplitsInOut = static_cast<IntEbm>(cSplits);

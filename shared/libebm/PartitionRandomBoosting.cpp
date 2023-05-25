@@ -451,7 +451,7 @@ public:
       const size_t cFirstSplits = pcBytesInSliceLast - acItemsInNextSliceOrBytesInCurrentSlice;
       // 3 items in the acItemsInNextSliceOrBytesInCurrentSlice means 2 splits and 
       // one last item to indicate the termination point
-      error = pInnerTermUpdate->SetCountSplits(iDimensionWrite, cFirstSplits);
+      error = pInnerTermUpdate->SetCountSlices(iDimensionWrite, cFirstSplits + 1);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          free(pBuffer);
@@ -461,13 +461,13 @@ public:
       if(LIKELY(size_t { 0 } != cFirstSplits)) {
          ActiveDataType * pSplitFirst = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
          // converting negative to positive number is defined behavior in C++ and uses twos compliment
-         size_t iSplitFirst = static_cast<size_t>(ptrdiff_t { -1 });
+         size_t iEdgeFirst = 0;
          do {
             EBM_ASSERT(pcBytesInSlice2 < pcBytesInSliceLast);
             EBM_ASSERT(0 != *pcBytesInSlice2);
             EBM_ASSERT(0 == *pcBytesInSlice2 % cBytesPerBin);
-            iSplitFirst += *pcBytesInSlice2 / cBytesPerBin;
-            *pSplitFirst = iSplitFirst;
+            iEdgeFirst += *pcBytesInSlice2 / cBytesPerBin;
+            *pSplitFirst = iEdgeFirst;
             ++pSplitFirst;
             ++pcBytesInSlice2;
             // the last one is the distance to the end, which we don't include in the update
@@ -487,7 +487,8 @@ public:
             ++pcBytesInSlice2; // we have one less split than we have slices, so move to the next one
 
             const size_t * pcItemsInNextSliceLast = pState->m_pcItemsInNextSliceEnd - size_t { 1 };
-            error = pInnerTermUpdate->SetCountSplits(iDimensionWrite, pcItemsInNextSliceLast - pcBytesInSlice2);
+            // TODO: use pcItemsInNextSliceEnd instead of pcItemsInNextSliceLast?
+            error = pInnerTermUpdate->SetCountSlices(iDimensionWrite, pcItemsInNextSliceLast - pcBytesInSlice2 + 1);
             if(Error_None != error) {
                // already logged
                free(pBuffer);
@@ -495,13 +496,13 @@ public:
             }
             if(pcItemsInNextSliceLast != pcBytesInSlice2) {
                ActiveDataType * pSplit = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
-               size_t iSplit2 = *pcItemsInNextSliceLast - size_t { 1 };
-               *pSplit = iSplit2;
+               size_t iEdge2 = *pcItemsInNextSliceLast;
+               *pSplit = iEdge2;
                --pcItemsInNextSliceLast;
                while(pcItemsInNextSliceLast != pcBytesInSlice2) {
-                  iSplit2 += *pcBytesInSlice2;
+                  iEdge2 += *pcBytesInSlice2;
                   ++pSplit;
-                  *pSplit = iSplit2;
+                  *pSplit = iEdge2;
                   ++pcBytesInSlice2;
                }
                // increment it once more because our indexes are shifted such that the first one was the last item

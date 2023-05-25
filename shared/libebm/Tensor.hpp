@@ -25,6 +25,13 @@ namespace DEFINED_ZONE_NAME {
 
 class Term;
 
+// Terminology:
+// bin - features are binned in the caller. A feature has a set number of bins
+// slice - one or more adjacent bins grouped together
+// edge - the outer boundaries of the bins. Edges include the point before the first bin and the point after the
+//        last bin. If there are 2 bins, there are 3 edges. The number of edges is fixed for a feature after binning
+// split - an edge that is used to separate slices appart from one another. There are between 0 and n_bins - 1 splits
+
 // TODO: we need to radically change this data structure so that we can efficiently pass it between machines in a 
 // cluster AND within/between a GPU/CPU.  This stucture should be:
 //
@@ -43,13 +50,9 @@ class Term;
 // NO m_cDimensions; -> we can pass in the Term object to know the # of dimensions
 // FloatFast m_aTensorScores[]; // a space for our values
 // UIntEbm DIMENSION_1_SPLIT_POINTS
-// UIntEbm DIMENSION_1_BIN_COUNT -> we find this by traversing the 0th dimension items
+// UIntEbm DIMENSION_1_SLICE_COUNT -> we find this by traversing the 0th dimension items
 // UIntEbm DIMENSION_0_SPLIT_POINTS -> we travel backwards by the count
-// UIntEbm DIMENSION_0_BIN_COUNT -> we find this using m_cBytes to find the end, then subtract sizeof(UIntEbm)
-//
-// - use SLICE_COUNT instead of SPLIT_COUNT because then we can express tensors with zero bins AND we can still
-//   get to the End pointer because our slices don't and split points are both 64 bit numbers, so subtracting from
-//   the current pointer gets us to the next BIN_COUNT value since a bin count of 1 means zero splits, so subtract 1
+// UIntEbm DIMENSION_0_SLICE_COUNT -> we find this using m_cBytes to find the end, then subtract sizeof(UIntEbm)
 //
 // Reasons:
 //   - our super-parallel algorithm needs to split up the data and have separate processing cores process their data
@@ -99,7 +102,7 @@ class Tensor final {
 
       const ActiveDataType * m_pSplit1;
       const ActiveDataType * m_pSplit2;
-      size_t m_cNewSplits;
+      size_t m_cNewSlices;
    };
    static_assert(std::is_standard_layout<DimensionInfoStack>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -115,8 +118,8 @@ class Tensor final {
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
       const ActiveDataType * m_pSplit1;
-      size_t m_iSplit2;
-      size_t m_cNewSplits;
+      size_t m_iEdge2;
+      size_t m_cNewSlices;
    };
    static_assert(std::is_standard_layout<DimensionInfoStackExpand>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -131,13 +134,9 @@ class Tensor final {
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
-      // TODO : change m_cSplits to m_cSlices to fit the rest of our framework where we always use bin/slices, but also
-      //        to represent tensors with slices that are 0 (truely empty without even 1 bin), and because we need
-      //        to multiply by cSlices, when calculating the tensor volume, so we can never get away or optimize the
-      //        need away for cSlicess, unlike perhaps cSplits which might in some cases allow for tricks to optimize
-      size_t m_cSplits;
+      size_t m_cSlices;
       ActiveDataType * m_aSplits;
-      size_t m_cSplitCapacity;
+      size_t m_cSliceCapacity;
    };
    static_assert(std::is_standard_layout<DimensionInfo>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -149,7 +148,7 @@ class Tensor final {
    // TODO : is this still required after we do tree splitting by pairs??
    // we always allocate our array because we don't want to Require Add(...) to check for the null pointer
    // always allocate one so that we never have to check if we have sufficient storage when we call Reset with one split and two values
-   static constexpr size_t k_initialSplitCapacity = 1;
+   static constexpr size_t k_initialSliceCapacity = 2;
    static constexpr size_t k_initialTensorCapacity = 2;
 
    size_t m_cTensorScoreCapacity;
@@ -160,6 +159,7 @@ class Tensor final {
    bool m_bExpanded;
 
    // IMPORTANT: m_aDimensions must be in the last position for the struct hack and this must be standard layout
+   // TODO: make this length k_cDimensionsMax and reduce allocations as needed, so that we do not need the struct hack
    DimensionInfo m_aDimensions[1];
 
    inline const DimensionInfo * GetDimensions() const {
@@ -192,7 +192,7 @@ public:
    static void Free(Tensor * const pTensor);
    static Tensor * Allocate(const size_t cDimensionsMax, const size_t cScores);
    void Reset();
-   ErrorEbm SetCountSplits(const size_t iDimension, const size_t cSplits);
+   ErrorEbm SetCountSlices(const size_t iDimension, const size_t cSlices);
    ErrorEbm EnsureTensorScoreCapacity(const size_t cTensorScores);
    ErrorEbm Copy(const Tensor & rhs);
    bool MultiplyAndCheckForIssues(const double v);
@@ -218,9 +218,9 @@ public:
       return GetDimensions()[iDimension].m_aSplits;
    }
 
-   inline size_t GetCountSplits(const size_t iDimension) {
+   inline size_t GetCountSlices(const size_t iDimension) {
       EBM_ASSERT(iDimension < m_cDimensions);
-      return GetDimensions()[iDimension].m_cSplits;
+      return GetDimensions()[iDimension].m_cSlices;
    }
 
    inline FloatFast * GetTensorScoresPointer() {

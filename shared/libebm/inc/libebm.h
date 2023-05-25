@@ -447,7 +447,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
    BoosterHandle boosterHandle,
    IntEbm indexDimension,
    IntEbm * countSplitsInOut,
-   IntEbm * splitIndexesOut
+   IntEbm * splitsOut
 );
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(
    BoosterHandle boosterHandle,

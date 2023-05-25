@@ -487,12 +487,12 @@ public:
                   *pTotalGain = static_cast<double>(bestGain);
                   if(bSplitFirst2) {
                      // if bSplitFirst2 is true, then there definetly was a split, so we don't have to check for zero splits
-                     error = pInnerTermUpdate->SetCountSplits(iDimension2, 1);
+                     error = pInnerTermUpdate->SetCountSlices(iDimension2, 2);
                      if(Error_None != error) {
                         // already logged
                         return error;
                      }
-                     pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = splitFirst2Best;
+                     pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = splitFirst2Best + 1;
 
                      if(splitFirst2LowBest < splitFirst2HighBest) {
                         error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
@@ -500,28 +500,28 @@ public:
                            // already logged
                            return error;
                         }
-                        error = pInnerTermUpdate->SetCountSplits(iDimension1, 2);
+                        error = pInnerTermUpdate->SetCountSlices(iDimension1, 3);
                         if(Error_None != error) {
                            // already logged
                            return error;
                         }
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest;
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[1] = splitFirst2HighBest;
+                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest + 1;
+                        pInnerTermUpdate->GetSplitPointer(iDimension1)[1] = splitFirst2HighBest + 1;
                      } else if(splitFirst2HighBest < splitFirst2LowBest) {
                         error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
                         if(Error_None != error) {
                            // already logged
                            return error;
                         }
-                        error = pInnerTermUpdate->SetCountSplits(iDimension1, 2);
+                        error = pInnerTermUpdate->SetCountSlices(iDimension1, 3);
                         if(Error_None != error) {
                            // already logged
                            return error;
                         }
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst2HighBest;
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[1] = splitFirst2LowBest;
+                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst2HighBest + 1;
+                        pInnerTermUpdate->GetSplitPointer(iDimension1)[1] = splitFirst2LowBest + 1;
                      } else {
-                        error = pInnerTermUpdate->SetCountSplits(iDimension1, 1);
+                        error = pInnerTermUpdate->SetCountSlices(iDimension1, 2);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -532,7 +532,7 @@ public:
                            // already logged
                            return error;
                         }
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest;
+                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest + 1;
                      }
 
                      auto * const pGradientPairTotals2LowLowBest = pTotals2LowLowBest->GetGradientPairs();
@@ -604,7 +604,7 @@ public:
                         }
                      }
                   } else {
-                     error = pInnerTermUpdate->SetCountSplits(iDimension1, 1);
+                     error = pInnerTermUpdate->SetCountSlices(iDimension1, 2);
                      if(Error_None != error) {
                         // already logged
                         return error;
@@ -616,7 +616,7 @@ public:
                      // our code path above must have gone through the section that set both bestGain and 
                      // splitFirst1Best.  The Clang static analyzer does not seem to recognize this, so stop it
                      StopClangAnalysis();
-                     pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst1Best;
+                     pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst1Best + 1;
 
                      if(splitFirst1LowBest < splitFirst1HighBest) {
                         error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
@@ -625,13 +625,13 @@ public:
                            return error;
                         }
 
-                        error = pInnerTermUpdate->SetCountSplits(iDimension2, 2);
+                        error = pInnerTermUpdate->SetCountSlices(iDimension2, 3);
                         if(Error_None != error) {
                            // already logged
                            return error;
                         }
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest;
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[1] = splitFirst1HighBest;
+                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest + 1;
+                        pInnerTermUpdate->GetSplitPointer(iDimension2)[1] = splitFirst1HighBest + 1;
                      } else if(splitFirst1HighBest < splitFirst1LowBest) {
                         error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
                         if(Error_None != error) {
@@ -639,15 +639,15 @@ public:
                            return error;
                         }
 
-                        error = pInnerTermUpdate->SetCountSplits(iDimension2, 2);
+                        error = pInnerTermUpdate->SetCountSlices(iDimension2, 3);
                         if(Error_None != error) {
                            // already logged
                            return error;
                         }
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = splitFirst1HighBest;
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[1] = splitFirst1LowBest;
+                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = splitFirst1HighBest + 1;
+                        pInnerTermUpdate->GetSplitPointer(iDimension2)[1] = splitFirst1LowBest + 1;
                      } else {
-                        error = pInnerTermUpdate->SetCountSplits(iDimension2, 1);
+                        error = pInnerTermUpdate->SetCountSlices(iDimension2, 2);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -657,7 +657,7 @@ public:
                            // already logged
                            return error;
                         }
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest;
+                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest + 1;
                      }
 
                      auto * const pGradientPairTotals1LowLowBest = pTotals1LowLowBest->GetGradientPairs();
@@ -744,14 +744,14 @@ public:
 #ifndef NDEBUG
       const ErrorEbm errorDebug1 =
 #endif // NDEBUG
-         pInnerTermUpdate->SetCountSplits(iDimension1, 0);
+         pInnerTermUpdate->SetCountSlices(iDimension1, 1);
       // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split array at all
       EBM_ASSERT(Error_None == errorDebug1);
 
 #ifndef NDEBUG
       const ErrorEbm errorDebug2 =
 #endif // NDEBUG
-         pInnerTermUpdate->SetCountSplits(iDimension2, 0);
+         pInnerTermUpdate->SetCountSlices(iDimension2, 1);
       // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split array at all
       EBM_ASSERT(Error_None == errorDebug2);
 

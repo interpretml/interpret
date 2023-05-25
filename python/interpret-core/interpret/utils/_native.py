@@ -1092,7 +1092,7 @@ class Native:
             ct.c_int64,
             # int64_t * countSplitsInOut
             ct.POINTER(ct.c_int64),
-            # int64_t * splitIndexesOut
+            # int64_t * splitsOut
             ct.c_void_p,
         ]
         self._unsafe.GetTermUpdateSplits.restype = ct.c_int32
