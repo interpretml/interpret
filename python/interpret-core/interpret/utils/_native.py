@@ -1334,6 +1334,7 @@ class Booster(AbstractContextManager):
 
     def generate_term_update(
         self,
+        rng,
         term_idx,
         boost_flags,
         learning_rate,
@@ -1365,7 +1366,7 @@ class Booster(AbstractContextManager):
         max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
         return_code = native._unsafe.GenerateTermUpdate(
-            Native._make_pointer(self.rng, np.ubyte, is_null_allowed=True),
+            Native._make_pointer(rng, np.ubyte, is_null_allowed=True),
             self._booster_handle,
             term_idx,
             boost_flags,

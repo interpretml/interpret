@@ -80,6 +80,7 @@ def boost(
                     _, term_idx = heapq.heappop(heap)
 
                 avg_gain = booster.generate_term_update(
+                    rng,
                     term_idx=term_idx,
                     boost_flags=boost_flags_local,
                     learning_rate=learning_rate,
@@ -109,7 +110,7 @@ def boost(
 
                         # Native code will be returning sums of residuals in slices, not averages.
                         # Compute noisy average by dividing noisy sum by noisy bin weights
-                        region_weight = np.sum(bin_weights[term_idx][f:s])
+                        region_weight = np.sum(bin_weights[term_features[term_idx][0]][f:s])
                         noisy_update_tensor[f:s] = (
                             noisy_update_tensor[f:s] / region_weight
                         )

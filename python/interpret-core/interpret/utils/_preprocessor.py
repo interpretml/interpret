@@ -296,6 +296,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         is_privacy_bounds_warning = True
                         max_feature_val = np.nanmax(X_col)
 
+                    # TODO: instead of passing in "max_bins - 1" should we be passing in "max_bins - 2"?
+                    #       It's not a big deal since it doesn't cause an error, and I don't want to 
+                    #       change the results right now, but clean this up eventually
                     cuts, feature_bin_weights = private_numeric_binning(
                         X_col,
                         sample_weight,
@@ -367,6 +370,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         is_privacy_types_warning = True
 
                     # TODO: clean up this hack that uses strings of the indexes
+                    # TODO: instead of passing in "max_bins - 1" should we be passing in "max_bins - 2"?
+                    #       It's not a big deal since it doesn't cause an error, and I don't want to 
+                    #       change the results right now, but clean this up eventually
                     keep_bins, old_feature_bin_weights = private_categorical_binning(
                         X_col, sample_weight, noise_scale, max_bins - 1, rng
                     )
@@ -484,6 +490,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         X_col = X_col.copy()
 
                     X_col = native.discretize(X_col, bins)
+
+                if np.count_nonzero(X_col) != len(X_col):
+                    msg = "missing values in X not supported in transform"
+                    _log.error(msg)
+                    raise ValueError(msg)
 
                 X_binned[:, feature_idx] = X_col
 

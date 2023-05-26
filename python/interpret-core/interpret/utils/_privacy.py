@@ -55,6 +55,14 @@ def private_numeric_binning(
     max_feature_val,
     rng=None,
 ):
+    # TODO: a few ways to improve this function:
+    #   - it prefers the leftmost bin since it starts from there and accumulates
+    #   - we are not guaranteed max_bins bins.  We could have more or less.  If for example all the
+    #     noise were positive by chance, more could be above target_weight than planned. On the opposite
+    #     side we could have badly placed weights and collapse more than required. The noisy bin weights
+    #     are public information after the noise has been added, so we can use much more aggressively optimizing
+    #     algorithms to more evently distribute the weight
+
     native = Native.get_native_singleton()
     uniform_weights, uniform_edges = np.histogram(
         X_col,
