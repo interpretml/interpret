@@ -196,12 +196,12 @@ public:
 
             if(size_t { 0 } != cTreeSplitsMax) {
                size_t * pFillIndexes = pcItemsInNextSliceOrBytesInCurrentSlice2;
-               size_t iPossibleSplitLocations = cPossibleSplitLocations; // 1 means split between bin 0 and bin 1
+               size_t iEdge = cPossibleSplitLocations; // 1 means split between bin 0 and bin 1
                do {
-                  *pFillIndexes = iPossibleSplitLocations;
+                  *pFillIndexes = iEdge;
                   ++pFillIndexes;
-                  --iPossibleSplitLocations;
-               } while(size_t { 0 } != iPossibleSplitLocations);
+                  --iEdge;
+               } while(size_t { 0 } != iEdge);
 
                size_t * pOriginal = pcItemsInNextSliceOrBytesInCurrentSlice2;
 
@@ -446,21 +446,20 @@ public:
          ++pTermFeature4;
       } while(cBinsWrite <= size_t { 1 });
 
-      const size_t * const pcBytesInSliceLast = pcBytesInSliceEnd - size_t { 1 };
-      EBM_ASSERT(acItemsInNextSliceOrBytesInCurrentSlice <= pcBytesInSliceLast);
-      const size_t cFirstSplits = pcBytesInSliceLast - acItemsInNextSliceOrBytesInCurrentSlice;
+      EBM_ASSERT(acItemsInNextSliceOrBytesInCurrentSlice < pcBytesInSliceEnd);
+      const size_t cFirstSlices = pcBytesInSliceEnd - acItemsInNextSliceOrBytesInCurrentSlice;
       // 3 items in the acItemsInNextSliceOrBytesInCurrentSlice means 2 splits and 
       // one last item to indicate the termination point
-      error = pInnerTermUpdate->SetCountSlices(iDimensionWrite, cFirstSplits + 1);
+      error = pInnerTermUpdate->SetCountSlices(iDimensionWrite, cFirstSlices);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          free(pBuffer);
          return error;
       }
       const size_t * pcBytesInSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
-      if(LIKELY(size_t { 0 } != cFirstSplits)) {
+      if(LIKELY(size_t { 1 } < cFirstSlices)) {
+         const size_t * const pcBytesInSliceLast = pcBytesInSliceEnd - size_t { 1 };
          ActiveDataType * pSplitFirst = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
-         // converting negative to positive number is defined behavior in C++ and uses twos compliment
          size_t iEdgeFirst = 0;
          do {
             EBM_ASSERT(pcBytesInSlice2 < pcBytesInSliceLast);
@@ -486,14 +485,14 @@ public:
 
             ++pcBytesInSlice2; // we have one less split than we have slices, so move to the next one
 
-            const size_t * pcItemsInNextSliceLast = pState->m_pcItemsInNextSliceEnd - size_t { 1 };
-            // TODO: use pcItemsInNextSliceEnd instead of pcItemsInNextSliceLast?
-            error = pInnerTermUpdate->SetCountSlices(iDimensionWrite, pcItemsInNextSliceLast - pcBytesInSlice2 + 1);
+            const size_t * pcItemsInNextSliceEnd = pState->m_pcItemsInNextSliceEnd;
+            error = pInnerTermUpdate->SetCountSlices(iDimensionWrite, pcItemsInNextSliceEnd - pcBytesInSlice2);
             if(Error_None != error) {
                // already logged
                free(pBuffer);
                return error;
             }
+            const size_t * pcItemsInNextSliceLast = pcItemsInNextSliceEnd - size_t { 1 };
             if(pcItemsInNextSliceLast != pcBytesInSlice2) {
                ActiveDataType * pSplit = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
                size_t iEdge2 = *pcItemsInNextSliceLast;

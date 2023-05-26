@@ -179,7 +179,6 @@ static ErrorEbm Flatten(
 
          EBM_ASSERT(aBins <= pBinLast);
          EBM_ASSERT(pBinLast < pBinsEnd);
-         // TODO: it might make more sense to store the pBinEnd instead of pBinLast in the tree nodes?
          iEdge = CountBins(pBinLast, aBins, cBytesPerBin) + 1;
             
          const auto * aGradientPair = pTreeNode->GetGradientPairs();
