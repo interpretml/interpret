@@ -3,12 +3,14 @@
   - check github issues
   - check github pull requests
   - check existing documentation
+  - look for any warnings in our builds
 
 - run extra tests:
   - python exact value comparison tests in stash
   - C++ exact value comparison tests in stash
   - console tests
   - compare benchmark to previous known release (v0.4.1 is a validated release)
+    Commit: e6c6d1ddf14965ac042ed0eafaad03ca8864f1b2 on 2023-05-24 was benchmarked as good
 
 - IMPORTANT: check that the linux shared library is manylinux:
   - in azure-pipelines, under the published artifacts, under asm-x64-ubuntu-*, open libebm_linux_x64.s
