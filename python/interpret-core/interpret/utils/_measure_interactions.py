@@ -260,4 +260,7 @@ def measure_interactions(
         n_output_interactions=n_output_interactions,
     )
 
+    if isinstance(ranked_interactions, Exception):
+        raise ranked_interactions
+
     return list(map(tuple, map(reversed, ranked_interactions)))

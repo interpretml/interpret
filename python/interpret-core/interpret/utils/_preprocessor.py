@@ -297,7 +297,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         max_feature_val = np.nanmax(X_col)
 
                     # TODO: instead of passing in "max_bins - 1" should we be passing in "max_bins - 2"?
-                    #       It's not a big deal since it doesn't cause an error, and I don't want to 
+                    #       It's not a big deal since it doesn't cause an error, and I don't want to
                     #       change the results right now, but clean this up eventually
                     cuts, feature_bin_weights = private_numeric_binning(
                         X_col,
@@ -371,7 +371,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
                     # TODO: clean up this hack that uses strings of the indexes
                     # TODO: instead of passing in "max_bins - 1" should we be passing in "max_bins - 2"?
-                    #       It's not a big deal since it doesn't cause an error, and I don't want to 
+                    #       It's not a big deal since it doesn't cause an error, and I don't want to
                     #       change the results right now, but clean this up eventually
                     keep_bins, old_feature_bin_weights = private_categorical_binning(
                         X_col, sample_weight, noise_scale, max_bins - 1, rng

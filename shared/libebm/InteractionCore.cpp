@@ -210,6 +210,7 @@ ErrorEbm InteractionCore::Create(
    if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
       const size_t cScores = GetCountScores(cClasses);
 
+      LOG_0(Trace_Info, "INFO InteractionCore::Create determining Objective");
       Config config;
       config.cOutputs = cScores;
       config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
@@ -218,6 +219,7 @@ ErrorEbm InteractionCore::Create(
          // already logged
          return error;
       }
+      LOG_0(Trace_Info, "INFO InteractionCore::Create Objective determined");
 
       const OutputType outputType = GetOutputType(pInteractionCore->m_objective.m_linkFunction);
       if(IsClassification(cClasses)) {
@@ -236,6 +238,7 @@ ErrorEbm InteractionCore::Create(
          LOG_0(Trace_Warning, "ERROR InteractionCore::Create invalid target value");
          return Error_ObjectiveIllegalTarget;
       }
+      LOG_0(Trace_Info, "INFO InteractionCore::Create Targets verified");
 
       const bool bHessian = pInteractionCore->IsHessian();
 

@@ -624,6 +624,7 @@ We also build on top of many great packages. Please check them out!
 - [Interpretable machine learning for predicting pathologic complete response in patients treated with chemoradiation therapy for rectal adenocarcinoma](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9771385/pdf/frai-05-1059033.pdf)
 - [Exploring the Balance between Interpretability and Performance with carefully designed Constrainable Neural Additive Models](https://deliverypdf.ssrn.com/delivery.php?ID=998105006000069122073098120102102121021040051018055094125029122011041003059093125102072122106122077081069015087124028097016003127095087091028087010007035098086102086081014043013113004081117108011028041097095064071100112069081100069120077067116088100069070097093080074087115080072064086111126&EXT=pdf&INDEX=TRUE)
 - [Estimating Discontinuous Time-Varying Risk Factors and Treatment Benefits for COVID-19 with Interpretable ML](https://arxiv.org/pdf/2211.08991.pdf)
+- [Extending Explainable Boosting Machines to Scientific Image Data](https://arxiv.org/pdf/2305.16526.pdf)
 - [Pest Presence Prediction Using Interpretable Machine Learning](https://arxiv.org/pdf/2205.07723.pdf)
 - [Key Thresholds and Relative Contributions of Knee Geometry, Anteroposterior Laxity, and Body Weight as Risk Factors for Noncontact ACL Injury](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10184233/pdf/10.1177_23259671231163627.pdf)
 - [epitope1D: Accurate Taxonomy-Aware B-Cell Linear Epitope Prediction](https://www.biorxiv.org/content/10.1101/2022.10.17.512613v1.full.pdf)

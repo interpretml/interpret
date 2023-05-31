@@ -895,7 +895,9 @@ class EBMModel(BaseEstimator):
             breakpoint_iteration = [[]]
             models = []
             rngs = []
-            for model, bag_breakpoint_iteration, bagged_rng in results:
+            for exception, model, bag_breakpoint_iteration, bagged_rng in results:
+                if exception is not None:
+                    raise exception
                 breakpoint_iteration[-1].append(bag_breakpoint_iteration)
                 models.append(model)
                 # retrieve our rng state since this was used outside of our process
@@ -1013,6 +1015,9 @@ class EBMModel(BaseEstimator):
                     for n, interaction_strengths_and_indices in enumerate(
                         bagged_ranked_interaction
                     ):
+                        if isinstance(interaction_strengths_and_indices, Exception):
+                            raise interaction_strengths_and_indices
+
                         interaction_indices = list(
                             map(
                                 operator.itemgetter(1),
@@ -1107,9 +1112,11 @@ class EBMModel(BaseEstimator):
 
                 breakpoint_iteration.append([])
                 for idx in range(self.outer_bags):
-                    breakpoint_iteration[-1].append(results[idx][1])
-                    models[idx].extend(results[idx][0])
-                    rngs[idx] = results[idx][2]
+                    if results[idx][0] is not None:
+                        raise results[idx][0]
+                    breakpoint_iteration[-1].append(results[idx][2])
+                    models[idx].extend(results[idx][1])
+                    rngs[idx] = results[idx][3]
 
                 term_features.extend(boost_groups)
 

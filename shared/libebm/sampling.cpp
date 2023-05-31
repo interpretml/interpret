@@ -18,20 +18,14 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-// we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterSampleWithoutReplacement = 5;
-static int g_cLogExitSampleWithoutReplacement = 5;
-
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
    void * rng,
    IntEbm countTrainingSamples,
    IntEbm countValidationSamples,
    BagEbm * bagOut
 ) {
-   LOG_COUNTED_N(
-      &g_cLogEnterSampleWithoutReplacement,
+   LOG_N(
       Trace_Info,
-      Trace_Verbose,
       "Entered SampleWithoutReplacement: "
       "rng=%p, "
       "countTrainingSamples=%" IntEbmPrintf ", "
@@ -62,12 +56,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
    }
    size_t cSamplesRemaining = cTrainingSamples + cValidationSamples;
    if(UNLIKELY(size_t { 0 } == cSamplesRemaining)) {
-      LOG_COUNTED_0(
-         &g_cLogExitSampleWithoutReplacement,
-         Trace_Info,
-         Trace_Verbose,
-         "Exited SampleWithoutReplacement with zero elements"
-      );
+      LOG_0(Trace_Info, "Exited SampleWithoutReplacement with zero elements");
       return Error_None;
    }
    if(UNLIKELY(IsMultiplyError(sizeof(*bagOut), cSamplesRemaining))) {
@@ -118,19 +107,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
    }
    EBM_ASSERT(0 == cTrainingRemaining); // this should be all used up too now
 
-   LOG_COUNTED_0(
-      &g_cLogExitSampleWithoutReplacement,
-      Trace_Info,
-      Trace_Verbose,
-      "Exited SampleWithoutReplacement"
-   );
+   LOG_0(Trace_Info, "Exited SampleWithoutReplacement");
    return Error_None;
 }
-
-
-static int g_cLogEnterSampleWithoutReplacementStratified = 5;
-static int g_cLogExitSampleWithoutReplacementStratified = 5;
-
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    void * rng,
@@ -145,10 +124,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
       size_t m_cSamples;
    };
 
-   LOG_COUNTED_N(
-      &g_cLogEnterSampleWithoutReplacementStratified,
+   LOG_N(
       Trace_Info,
-      Trace_Verbose,
       "Entered SampleWithoutReplacementStratified: "
       "rng=%p, "
       "countClasses=%" IntEbmPrintf ", "
@@ -184,12 +161,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
 
    const size_t cSamples = cTrainingSamples + cValidationSamples;
    if(UNLIKELY(size_t { 0 } == cSamples)) {
-      LOG_COUNTED_0(
-         &g_cLogExitSampleWithoutReplacementStratified,
-         Trace_Info,
-         Trace_Verbose,
-         "Exited SampleWithoutReplacementStratified with zero samples"
-      );
+      LOG_0(Trace_Info, "Exited SampleWithoutReplacementStratified with zero samples");
       return Error_None;
    }
 
@@ -449,12 +421,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    free(aTargetClasses);
    free(apMostImprovedClasses);
 
-   LOG_COUNTED_0(
-      &g_cLogExitSampleWithoutReplacementStratified,
-      Trace_Info,
-      Trace_Verbose,
-      "Exited SampleWithoutReplacementStratified"
-   );
+   LOG_0(Trace_Info, "Exited SampleWithoutReplacementStratified");
 
    return Error_None;
 }

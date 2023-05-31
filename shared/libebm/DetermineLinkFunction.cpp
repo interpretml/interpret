@@ -23,6 +23,20 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    LinkEbm * linkOut,
    double * linkParamOut
 ) {
+   LOG_N(
+      Trace_Info,
+      "Entered DetermineLinkFunction: "
+      "isDifferentiallyPrivate=%s, "
+      "objective=%p, "
+      "linkOut=%p, "
+      "linkParamOut=%p"
+      ,
+      ObtainTruth(isDifferentiallyPrivate),
+      static_cast<const void *>(objective),
+      static_cast<void *>(linkOut),
+      static_cast<void *>(linkParamOut)
+   );
+
    ObjectiveWrapper objectiveWrapper;
    InitializeObjectiveWrapperUnfailing(&objectiveWrapper);
 
@@ -31,6 +45,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
    const ErrorEbm error = GetObjective(&config, objective, &objectiveWrapper);
    if(Error_None != error) {
+      LOG_0(Trace_Error, "ERROR DetermineLinkFunction GetObjective failed");
+
       if(nullptr != linkOut) {
          *linkOut = Link_ERROR;
       }
@@ -49,6 +65,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    if(nullptr != linkParamOut) {
       *linkParamOut = objectiveWrapper.m_linkParam;
    }
+
+   LOG_0(Trace_Info, "Exited DetermineLinkFunction");
+
    return Error_None;
 }
 
