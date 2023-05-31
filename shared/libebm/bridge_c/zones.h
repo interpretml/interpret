@@ -11,16 +11,12 @@ extern "C" {
 
 #if defined(ZONE_main)
 #define DEFINED_ZONE_NAME      NAMESPACE_MAIN
-#elif defined(ZONE_cpu)
-#define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_CPU
 #elif defined(ZONE_avx512)
 #define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_AVX512
 #elif defined(ZONE_cuda)
 #define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_CUDA
 #elif defined(ZONE_no_cuda)
 #define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_NO_CUDA
-#elif defined(ZONE_R)
-#define DEFINED_ZONE_NAME      NAMESPACE_R
 #else
 #error ZONE not recognized
 #endif
