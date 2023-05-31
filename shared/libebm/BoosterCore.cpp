@@ -341,7 +341,7 @@ ErrorEbm BoosterCore::Create(
    size_t cBigBinsMax = 0;
    size_t cSingleDimensionBinsMax = 0;
 
-   LOG_0(Trace_Info, "BoosterCore::Create starting feature group processing");
+   LOG_0(Trace_Info, "BoosterCore::Create starting term processing");
    if(0 != cTerms) {
       pBoosterCore->m_cTerms = cTerms;
       pBoosterCore->m_apTerms = Term::AllocateTerms(cTerms);
@@ -359,7 +359,7 @@ ErrorEbm BoosterCore::Create(
             return Error_IllegalParamVal;
          }
          if(IntEbm { k_cDimensionsMax } < countDimensions) {
-            LOG_0(Trace_Error, "WARNING BoosterCore::Create countDimensions too large and would cause out of memory condition");
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create countDimensions too large and would cause out of memory condition");
             return Error_OutOfMemory;
          }
          const size_t cDimensions = static_cast<size_t>(countDimensions);
@@ -378,7 +378,7 @@ ErrorEbm BoosterCore::Create(
          ptrdiff_t cItemsPerBitPack = k_cItemsPerBitPackNone;
          size_t cTensorBins = 1;
          if(UNLIKELY(0 == cDimensions)) {
-            LOG_0(Trace_Info, "INFO BoosterCore::Create empty feature group");
+            LOG_0(Trace_Info, "INFO BoosterCore::Create empty term");
 
             cFastBinsMax = EbmMax(cFastBinsMax, size_t { 1 });
             cBigBinsMax = EbmMax(cBigBinsMax, size_t { 1 });
@@ -442,7 +442,7 @@ ErrorEbm BoosterCore::Create(
 
                   cAuxillaryBinsForBuildFastTotals += cTensorBins;
                } else {
-                  LOG_0(Trace_Info, "INFO BoosterCore::Create feature group with no useful features");
+                  LOG_0(Trace_Info, "INFO BoosterCore::Create term with no useful features");
                }
                cTensorBins *= cBins;
                // same reasoning as above: cAuxillaryBinsForBuildFastTotals grows slower than cTensorBins
@@ -506,7 +506,7 @@ ErrorEbm BoosterCore::Create(
          ++iTerm;
       } while(iTerm < cTerms);
    }
-   LOG_0(Trace_Info, "BoosterCore::Create finished feature group processing");
+   LOG_0(Trace_Info, "BoosterCore::Create finished term processing");
 
    EBM_ASSERT(nullptr == pBoosterCore->m_apInnerBags);
    if(0 != cTrainingSamples) {
@@ -595,18 +595,18 @@ ErrorEbm BoosterCore::Create(
       const OutputType outputType = GetOutputType(pBoosterCore->m_objective.m_linkFunction);
       if(IsClassification(cClasses)) {
          if(outputType < OutputType_GeneralClassification) {
-            LOG_0(Trace_Warning, "ERROR BoosterCore::Create mismatch in objective class model type");
+            LOG_0(Trace_Error, "ERROR BoosterCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }
       } else {
          if(OutputType_Regression != outputType) {
-            LOG_0(Trace_Warning, "ERROR BoosterCore::Create mismatch in objective class model type");
+            LOG_0(Trace_Error, "ERROR BoosterCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }
       }
 
       if(EBM_FALSE != pBoosterCore->CheckTargets(cSamples, aTargets)) {
-         LOG_0(Trace_Warning, "ERROR BoosterCore::Create invalid target value");
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create invalid target value");
          return Error_ObjectiveIllegalTarget;
       }
       LOG_0(Trace_Info, "INFO BoosterCore::Create Targets verified");

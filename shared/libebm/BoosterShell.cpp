@@ -207,7 +207,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       LOG_0(Trace_Error, "ERROR CreateBooster dimensionCounts cannot be null if 0 < countTerms");
       return Error_IllegalParamVal;
    }
-   // it's legal for featureIndexes to be null if there are no features indexed by our feature groups
+   // it's legal for featureIndexes to be null if there are no features indexed by our terms
    // dimensionCounts can have zero features, so it could be legal for this to be null even if 0 < countTerms
 
    if(IsConvertError<size_t>(countInnerBags)) {
@@ -383,7 +383,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountTerms() <= iTerm) {
-      LOG_0(Trace_Error, "ERROR GetBestTermScores indexTerm above the number of feature groups that we have");
+      LOG_0(Trace_Error, "ERROR GetBestTermScores indexTerm above the number of terms that we have");
       return Error_IllegalParamVal;
    }
 
@@ -463,7 +463,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountTerms() <= iTerm) {
-      LOG_0(Trace_Error, "ERROR GetCurrentTermScores indexTerm above the number of feature groups that we have");
+      LOG_0(Trace_Error, "ERROR GetCurrentTermScores indexTerm above the number of terms that we have");
       return Error_IllegalParamVal;
    }
 

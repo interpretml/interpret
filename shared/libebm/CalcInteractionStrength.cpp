@@ -215,7 +215,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
       const size_t cBins = pFeature->GetCountBins();
       if(UNLIKELY(cBins <= size_t { 1 })) {
-         LOG_0(Trace_Info, "INFO CalcInteractionStrength feature group contains a feature with only 1 or 0 bins");
+         LOG_0(Trace_Info, "INFO CalcInteractionStrength term contains a feature with only 1 or 0 bins");
          if(nullptr != avgInteractionStrengthOut) {
             *avgInteractionStrengthOut = 0.0;
          }

@@ -570,7 +570,7 @@ def merge_ebms(models):
         model_bag_weights = getattr(model, "bag_weights_", None)
         if model_bag_weights is None:
             # this model wasn't the result of a merge, so get the total weight for the model
-            # every feature group in a model should have the same weight, but perhaps the user edited
+            # every term in a model should have the same weight, but perhaps the user edited
             # the model weights and they don't agree.  We handle these by taking the average
             model_bag_weights = [avg_weight] * n_outer_bags
         elif len(model_bag_weights) != n_outer_bags:
@@ -596,7 +596,7 @@ def merge_ebms(models):
     sorted_fgs = order_terms(list(all_fg))
 
     # TODO: in the future we might at this point try and figure out the most
-    #       common feature ordering within the feature groups.  Take the mode first
+    #       common feature ordering within the terms.  Take the mode first
     #       and amonst the orderings that tie, choose the one that's best sorted by
     #       feature indexes
     ebm.term_features_ = sorted_fgs
@@ -655,7 +655,7 @@ def merge_ebms(models):
                 )
                 bin_weight_percentages.append(fixed_tensor * model_weight)
 
-        # use this when we don't have a feature group in a model as a reasonable
+        # use this when we don't have a term in a model as a reasonable
         # set of guesses for the distribution of the weight of the model
         bin_weight_percentages = np.sum(bin_weight_percentages, axis=0)
         bin_weight_percentages = bin_weight_percentages / bin_weight_percentages.sum()

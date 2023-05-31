@@ -696,7 +696,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    EBM_ASSERT(nullptr != pBoosterCore);
 
    if(static_cast<IntEbm>(pBoosterCore->GetCountTerms()) <= indexTerm) {
-      LOG_0(Trace_Error, "ERROR GenerateTermUpdate indexTerm above the number of feature groups that we have");
+      LOG_0(Trace_Error, "ERROR GenerateTermUpdate indexTerm above the number of terms that we have");
       return Error_IllegalParamVal;
    }
    size_t iTerm = static_cast<size_t>(indexTerm);

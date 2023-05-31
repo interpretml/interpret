@@ -224,18 +224,18 @@ ErrorEbm InteractionCore::Create(
       const OutputType outputType = GetOutputType(pInteractionCore->m_objective.m_linkFunction);
       if(IsClassification(cClasses)) {
          if(outputType < OutputType_GeneralClassification) {
-            LOG_0(Trace_Warning, "ERROR InteractionCore::Create mismatch in objective class model type");
+            LOG_0(Trace_Error, "ERROR InteractionCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }
       } else {
          if(OutputType_Regression != outputType) {
-            LOG_0(Trace_Warning, "ERROR InteractionCore::Create mismatch in objective class model type");
+            LOG_0(Trace_Error, "ERROR InteractionCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }
       }
 
       if(EBM_FALSE != pInteractionCore->CheckTargets(cSamples, aTargets)) {
-         LOG_0(Trace_Warning, "ERROR InteractionCore::Create invalid target value");
+         LOG_0(Trace_Warning, "WARNING InteractionCore::Create invalid target value");
          return Error_ObjectiveIllegalTarget;
       }
       LOG_0(Trace_Info, "INFO InteractionCore::Create Targets verified");

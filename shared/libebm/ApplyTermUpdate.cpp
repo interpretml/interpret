@@ -335,7 +335,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
    if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
       // if we have 0 or 1 classes then there is no tensor, so return now
       *countSplitsInOut = 0;
-      LOG_0(Trace_Warning, "ERROR GetTermUpdateSplits ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()");
+      LOG_0(Trace_Warning, "WARNING GetTermUpdateSplits ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()");
       return Error_None;
    }
    EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
@@ -346,7 +346,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
       // if GetCountTensorBins is 0, then pBoosterShell->GetTermUpdate() does not contain valid data
 
       *countSplitsInOut = 0;
-      LOG_0(Trace_Warning, "ERROR GetTermUpdateSplits size_t { 0 } == pTerm->GetCountTensorBins()");
+      LOG_0(Trace_Warning, "WARNING GetTermUpdateSplits size_t { 0 } == pTerm->GetCountTensorBins()");
       return Error_None;
    }
 
@@ -501,7 +501,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
    const size_t iTerm = static_cast<size_t>(indexTerm);
    if(pBoosterCore->GetCountTerms() <= iTerm) {
       pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
-      LOG_0(Trace_Error, "ERROR SetTermUpdate indexTerm above the number of feature groups that we have");
+      LOG_0(Trace_Error, "ERROR SetTermUpdate indexTerm above the number of terms that we have");
       return Error_IllegalParamVal;
    }
 

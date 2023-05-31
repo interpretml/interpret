@@ -184,7 +184,7 @@ public:
    // to a direct indexable tensor until after recieved by the nodes.  We'll NEED to keep the entire strucutre
    // as a single continuous chunk of memory.  At the very start will be our regular struct (containing the
    // full size of the data region at the top (64 bit since we don't know what processor we'll be on)
-   // We know the number of dimensions for an feature group at allocation, so we can put the values right below
+   // We know the number of dimensions for each term at allocation, so we can put the values right below
    // that.  When we find ourselves expanding dimensions, we can first figure out how much all the values and dimension
    // need to grow and then we can directly move each dimension pointed to object without needing to move the full
    // values array.

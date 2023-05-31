@@ -55,6 +55,9 @@ class Native:
         # using ndpointer creates cyclic garbage references which could clog up
         # our memory and require extra garbage collections.  This function avoids that
 
+        # array MUST be an object with a reference that will remain valid for the duration
+        # of the pointer's use. We do not create a new reference to array
+
         if array is None:
             if not is_null_allowed:  # pragma: no cover
                 raise ValueError("array cannot be None")
@@ -66,12 +69,15 @@ class Native:
         if array.dtype.type is not dtype:  # pragma: no cover
             raise ValueError(f"array should be an ndarray of type {dtype}")
 
+        # if the data is transposed, Fortran ordered, or has strides, we can't use it
         if not array.flags.c_contiguous:  # pragma: no cover
             raise ValueError("array should be a contiguous ndarray")
 
         if array.ndim != ndim:  # pragma: no cover
             raise ValueError(f"array should have {ndim} dimensions")
 
+        # ctypes.data will return an interor pointer when given an array that is sliced,
+        # so arr[1:-1] will return a pointer to the 1st element within arr.
         return array.ctypes.data
 
     @staticmethod
@@ -111,7 +117,7 @@ class Native:
                 "Differential Privacy not supported by an objective parameter value"
             )
         elif error_code == -21:
-            return Exception("Illegal target value for the objective")
+            return Exception("Illegal value in y for the objective")
         else:
             return Exception(
                 f"Unrecognized native return code {error_code} in {native_function}"
@@ -1439,10 +1445,10 @@ class Booster(AbstractContextManager):
 
     def _get_best_term_scores(self, term_idx):
         """Returns best model/function according to validation set
-            for a given feature group.
+            for a given term.
 
         Args:
-            term_idx: The index for the feature group.
+            term_idx: The index for the term.
 
         Returns:
             An ndarray that represents the model.
@@ -1471,10 +1477,10 @@ class Booster(AbstractContextManager):
 
     def _get_current_term_scores(self, term_idx):
         """Returns current model/function according to validation set
-            for a given feature group.
+            for a given term.
 
         Args:
-            term_idx: The index for the feature group.
+            term_idx: The index for the term.
 
         Returns:
             An ndarray that represents the model.
