@@ -9,8 +9,7 @@
   - python exact value comparison tests in stash
   - C++ exact value comparison tests in stash
   - console tests
-  - compare benchmark to previous known release (v0.4.1 is a validated release)
-    Commit: e6c6d1ddf14965ac042ed0eafaad03ca8864f1b2 on 2023-05-24 was benchmarked as good
+  - compare benchmark to previous known release (v0.4.2 is a validated release)
 
 - IMPORTANT: check that the linux shared library is manylinux:
   - in azure-pipelines, under the published artifacts, under asm-x64-ubuntu-*, open libebm_linux_x64.s
@@ -199,13 +198,13 @@ set_visualize_provider(InlineProvider())
       https://pypi.org/project/interpret/#files
 
 - test PyPI release on colab:
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Interpretable_Classification_Methods.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Interpretable_Regression_Methods.ipynb
   - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Differentially_Private_EBMs.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Merging_EBM_Models.ipynb
   - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/EBM_Importances.ipynb
   - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Explaining_Blackbox_Classifiers.ipynb
   - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Explaining_Blackbox_Regressors.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Interpretable_Classification_Methods.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Interpretable_Regression_Methods.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Merging_EBM_Models.ipynb
   - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Prototype_Selection_with_SPOTgreedy.ipynb
 
 - test PyPI release locally:
@@ -243,6 +242,11 @@ set_visualize_provider(InlineProvider())
   - choose a tag in the format "v0.x.x", and allow it to be created
   - set the release title to "Version 0.x.x"
   - paste the CHANGELOG changes into the "Describe this release" window
+  - escape any underscores with '\' characters
+  - make sure the first line has the following format:
+    ## [v0.x.x] - yyyy-mm-dd
+  - Add the following at the bottom. It will make the version a link to the code:
+    [v0.x.x]: https://github.com/interpretml/interpret/tree/v0.x.x
   - preview it just to be sure
   - click "publish release".  Github will automatically attach the source code .zip and .tar.gz files
 - in your local git
@@ -250,4 +254,4 @@ set_visualize_provider(InlineProvider())
   - switch to the "main" branch
   - merge "develop" into "main" (this will also cary along with it the tag)
   - push the "main" branch
-
+- verify main and develop branch have been updated in github
