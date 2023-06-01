@@ -589,6 +589,7 @@ We also build on top of many great packages. Please check them out!
 
 - [Interpretable or Accurate? Why Not Both?](https://towardsdatascience.com/interpretable-or-accurate-why-not-both-4d9c73512192)
 - [The Explainable Boosting Machine. As accurate as gradient boosting, as interpretable as linear regression.](https://towardsdatascience.com/the-explainable-boosting-machine-f24152509ebb)
+- [Exploring explainable boosting machines](https://leinadj.github.io/2023/04/09/Exploring-Explainable-Boosting-Machines.html)
 - [Performance And Explainability With EBM](https://blog.oakbits.com/ebm-algorithm.html)
 - [InterpretML: Another Way to Explain Your Model](https://towardsdatascience.com/interpretml-another-way-to-explain-your-model-b7faf0a384f8)
 - [A gentle introduction to GA2Ms, a white box model](https://www.fiddler.ai/blog/a-gentle-introduction-to-ga2ms-a-white-box-model)
@@ -635,6 +636,7 @@ We also build on top of many great packages. Please check them out!
 - [Using Interpretable Machine Learning to Predict Maternal and Fetal Outcomes](https://arxiv.org/pdf/2207.05322.pdf)
 - [Calibrate: Interactive Analysis of Probabilistic Model Output](https://arxiv.org/pdf/2207.13770.pdf)
 - [Neural Additive Models: Interpretable Machine Learning with Neural Nets](https://arxiv.org/pdf/2004.13912.pdf)
+- [Laplace-Approximated Neural Additive Models](https://arxiv.org/pdf/2305.16905.pdf)
 - [NODE-GAM: Neural Generalized Additive Model for Interpretable Deep Learning](https://arxiv.org/pdf/2106.01613.pdf)
 - [Scalable Interpretability via Polynomials](https://arxiv.org/pdf/2205.14108v1.pdf)
 - [Neural Basis Models for Interpretability](https://arxiv.org/pdf/2205.14120.pdf)
