@@ -5,7 +5,7 @@
 NATIVEDIR=../../shared/libebm
 
 CXX_STD = CXX17
-PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -I$(NATIVEDIR)/common_c -I$(NATIVEDIR)/common_cpp -I$(NATIVEDIR)/bridge_c -I$(NATIVEDIR)/bridge_cpp -I$(NATIVEDIR)/compute -I$(NATIVEDIR)/compute/objectives -I$(NATIVEDIR)/compute/metrics -I$(NATIVEDIR)/compute/cpu_ebm -DLIBEBM_R -DZONE_main
+PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -I$(NATIVEDIR)/common_c -I$(NATIVEDIR)/common_cpp -I$(NATIVEDIR)/bridge_c -I$(NATIVEDIR)/bridge_cpp -I$(NATIVEDIR)/compute -I$(NATIVEDIR)/compute/objectives -I$(NATIVEDIR)/compute/metrics -I$(NATIVEDIR)/compute/cpu_ebm -DLIBEBM_R -DZONE_cpu
 # TODO test adding the g++/clang flags to PKG_CXXFLAGS.  I think -g0 and -O3 won't work though since the R compile flags already include -g and -O2:
 PKG_CXXFLAGS=$(CXX_VISIBILITY) 
 

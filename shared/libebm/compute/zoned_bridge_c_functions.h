@@ -18,7 +18,7 @@ INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate)(
    ApplyUpdateBridge * const pData
 );
 
-#ifdef ZONE_main
+#ifdef ZONE_cpu
 INTERNAL_IMPORT_EXPORT_INCLUDE double MAKE_ZONED_C_FUNCTION_NAME(FinishMetric) (
    const ObjectiveWrapper * const pObjectiveWrapper,
    const double metricSum
@@ -28,7 +28,7 @@ INTERNAL_IMPORT_EXPORT_INCLUDE BoolEbm MAKE_ZONED_C_FUNCTION_NAME(CheckTargets) 
    const size_t c, 
    const void * const aTargets
 );
-#endif // ZONE_main
+#endif // ZONE_cpu
 
 
 #ifdef __cplusplus

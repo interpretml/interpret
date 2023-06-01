@@ -9,14 +9,14 @@
 extern "C" {
 #endif // __cplusplus
 
-#if defined(ZONE_main)
-#define DEFINED_ZONE_NAME      NAMESPACE_MAIN
+#if defined(ZONE_cpu)
+#define DEFINED_ZONE_NAME      NAMESPACE_CPU
 #elif defined(ZONE_avx512)
-#define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_AVX512
+#define DEFINED_ZONE_NAME      NAMESPACE_AVX512
 #elif defined(ZONE_cuda)
-#define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_CUDA
+#define DEFINED_ZONE_NAME      NAMESPACE_CUDA
 #elif defined(ZONE_no_cuda)
-#define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_NO_CUDA
+#define DEFINED_ZONE_NAME      NAMESPACE_NO_CUDA
 #else
 #error ZONE not recognized
 #endif
