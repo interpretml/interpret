@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.2] - 2023-05-31
+### Added
+- support for specifying outer bags
+### Changed
+- exceptions raised in the joblib child processes will be re-raised in the main process rather than be expressed as a TerminatedWorkerError
+- small additional improvements in memory compression
+- small improvements in maximizing the benefit of the privacy budget for Differentially Private EBMs
+### Fixed
+- fixed segfault that was occurring in the Anaconda build
+- fixed a bug that would prevent Differentially Private EBMs from using the exclude parameter
+
 ## [v0.4.1] - 2023-05-16
 ### Added
 - support for visualizations in streamlit
