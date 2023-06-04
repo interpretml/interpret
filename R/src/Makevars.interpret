@@ -16,6 +16,7 @@ OBJECTS = \
    $(NATIVEDIR)/BoosterCore.o \
    $(NATIVEDIR)/BoosterShell.o \
    $(NATIVEDIR)/CalcInteractionStrength.o \
+   $(NATIVEDIR)/ConvertAddBin.o \
    $(NATIVEDIR)/CutQuantile.o \
    $(NATIVEDIR)/CutUniform.o \
    $(NATIVEDIR)/CutWinsorized.o \

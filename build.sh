@@ -274,6 +274,7 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/BoosterCore.cpp" -o "$tmp_path/BoosterCore.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/BoosterShell.cpp" -o "$tmp_path/BoosterShell.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/CalcInteractionStrength.cpp" -o "$tmp_path/CalcInteractionStrength.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/ConvertAddBin.cpp" -o "$tmp_path/ConvertAddBin.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/CutQuantile.cpp" -o "$tmp_path/CutQuantile.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/CutUniform.cpp" -o "$tmp_path/CutUniform.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/CutWinsorized.cpp" -o "$tmp_path/CutWinsorized.o"

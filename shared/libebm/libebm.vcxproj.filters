@@ -47,6 +47,7 @@
     </ClCompile>
     <ClCompile Include="random.cpp" />
     <ClCompile Include="DetermineLinkFunction.cpp" />
+    <ClCompile Include="ConvertAddBin.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InteractionShell.hpp" />

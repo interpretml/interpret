@@ -14,6 +14,8 @@
 #include "common_c.h" // UNUSED
 #include "zones.h"
 
+#include "common_cpp.hpp"
+
 #include "GradientPair.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -69,6 +71,15 @@ static size_t GetBinSize(const bool bHessian, const size_t cScores);
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores>
 struct Bin final : BinBase {
+   friend extern void ConvertAddBin(
+      const size_t cScores,
+      const bool bHessian,
+      const size_t cBins,
+      const bool bDoubleDest,
+      void * const aAddDest,
+      const bool bDoubleSrc,
+      const void * const aSrc
+   );
    template<typename> friend bool IsOverflowBinSize(const bool, const size_t);
    template<typename> friend size_t GetBinSize(const bool, const size_t);
 

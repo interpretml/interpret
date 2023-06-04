@@ -33,6 +33,15 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 extern ErrorEbm BinSumsBoosting(BinSumsBoostingBridge * const pParams);
+extern void ConvertAddBin(
+   const size_t cScores,
+   const bool bHessian,
+   const size_t cBins,
+   const bool bDoubleDest,
+   void * const aAddDest,
+   const bool bDoubleSrc,
+   const void * const aSrc
+);
 
 extern void TensorTotalsBuild(
    const bool bHessian,
@@ -121,16 +130,22 @@ static ErrorEbm BoostZeroDimensional(
    BinBase * const pBigBin = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != pBigBin);
 
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
 #ifndef NDEBUG
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
    pBoosterShell->SetDebugBigBinsEnd(IndexBin(pBigBin, cBytesPerBigBin));
 #endif // NDEBUG
 
-   // TODO: put this into it's own function that converts our fast floats to big floats
-   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
-   EBM_ASSERT(cBytesPerFastBin == cBytesPerBigBin); // until we switch fast to float datatypes
-   memcpy(pBigBin, pFastBin, cBytesPerFastBin);
+   memset(pBigBin, 0, cBytesPerBigBin);
+   ConvertAddBin(
+      cScores,
+      pBoosterCore->IsHessian(),
+      1,
+      std::is_same<FloatBig, double>::value,
+      pBigBin,
+      std::is_same<FloatFast, double>::value,
+      pFastBin
+   );
 
 
    // TODO: we can exit here back to python to allow caller modification to our histograms
@@ -238,17 +253,25 @@ static ErrorEbm BoostSingleDimensional(
    BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != aBigBins);
 
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
 #ifndef NDEBUG
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
    EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cBins));
    pBoosterShell->SetDebugBigBinsEnd(IndexBin(aBigBins, cBytesPerBigBin * cBins));
 #endif // NDEBUG
 
-   // TODO: put this into it's own function that converts our fast floats to big floats
-   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
-   EBM_ASSERT(cBytesPerFastBin == cBytesPerBigBin); // until we switch fast to float datatypes
-   memcpy(aBigBins, aFastBins, cBytesPerFastBin * cBins);
+   memset(aBigBins, 0, cBytesPerBigBin * cBins);
+   ConvertAddBin(
+      cScores,
+      pBoosterCore->IsHessian(),
+      cBins,
+      std::is_same<FloatBig, double>::value,
+      aBigBins,
+      std::is_same<FloatFast, double>::value,
+      aFastBins
+   );
+
+
 
 
    // TODO: we can exit here back to python to allow caller modification to our histograms
@@ -359,9 +382,17 @@ static ErrorEbm BoostMultiDimensional(
    pBoosterShell->SetDebugBigBinsEnd(pDebugBigBinsEnd);
 #endif // NDEBUG
 
-   // TODO: put this into it's own function that converts our fast floats to big floats
-   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
-   memcpy(aBigBins, aFastBins, cBytesPerFastBin * cTensorBins);
+   memset(aBigBins, 0, cBytesPerBigBin * cTensorBins);
+   ConvertAddBin(
+      cScores,
+      pBoosterCore->IsHessian(),
+      cTensorBins,
+      std::is_same<FloatBig, double>::value,
+      aBigBins,
+      std::is_same<FloatFast, double>::value,
+      aFastBins
+   );
+
 
 
 
@@ -596,17 +627,24 @@ static ErrorEbm BoostRandom(
    BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != aBigBins);
 
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
 #ifndef NDEBUG
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
    EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTotalBins));
    pBoosterShell->SetDebugBigBinsEnd(IndexBin(aBigBins, cBytesPerBigBin * cTotalBins));
 #endif // NDEBUG
 
-   // TODO: put this into it's own function that converts our fast floats to big floats
-   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
-   EBM_ASSERT(cBytesPerFastBin == cBytesPerBigBin); // until we switch fast to float datatypes
-   memcpy(aBigBins, aFastBins, cBytesPerFastBin * cTotalBins);
+   memset(aBigBins, 0, cBytesPerBigBin * cTotalBins);
+   ConvertAddBin(
+      cScores,
+      pBoosterCore->IsHessian(),
+      cTotalBins,
+      std::is_same<FloatBig, double>::value,
+      aBigBins,
+      std::is_same<FloatFast, double>::value,
+      aFastBins
+   );
+
 
 
    // TODO: we can exit here back to python to allow caller modification to our histograms
