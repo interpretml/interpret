@@ -71,14 +71,14 @@ static size_t GetBinSize(const bool bHessian, const size_t cScores);
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores>
 struct Bin final : BinBase {
-   friend extern void ConvertAddBin(
-      const size_t cScores,
-      const bool bHessian,
-      const size_t cBins,
-      const bool bDoubleDest,
-      void * const aAddDest,
-      const bool bDoubleSrc,
-      const void * const aSrc
+   friend void ConvertAddBin(
+      const size_t,
+      const bool,
+      const size_t,
+      const bool,
+      void * const,
+      const bool,
+      const void * const
    );
    template<typename> friend bool IsOverflowBinSize(const bool, const size_t);
    template<typename> friend size_t GetBinSize(const bool, const size_t);
