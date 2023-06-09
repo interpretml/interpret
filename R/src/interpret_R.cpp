@@ -302,7 +302,7 @@ SEXP CutQuantile_R(SEXP featureVals, SEXP minSamplesBin, SEXP isRounded, SEXP co
       const double * pCutsLowerBoundInclusive = aCutsLowerBoundInclusive;
       const double * const pCutsLowerBoundInclusiveEnd = aCutsLowerBoundInclusive + static_cast<size_t>(cCuts);
       do {
-         *pRet = static_cast<double>(*pCutsLowerBoundInclusive);
+         *pRet = *pCutsLowerBoundInclusive;
          ++pRet;
          ++pCutsLowerBoundInclusive;
       } while(pCutsLowerBoundInclusiveEnd != pCutsLowerBoundInclusive);
@@ -833,7 +833,7 @@ SEXP GenerateTermUpdate_R(
    }
 
    SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(avgGain);
+   REAL(ret)[0] = avgGain;
    UNPROTECT(1);
    return ret;
 }
@@ -854,7 +854,7 @@ SEXP ApplyTermUpdate_R(SEXP boosterHandleWrapped) {
    }
 
    SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(avgValidationMetric);
+   REAL(ret)[0] = avgValidationMetric;
    UNPROTECT(1);
    return ret;
 }
@@ -1093,7 +1093,7 @@ SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexe
    }
 
    SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(avgInteractionStrength);
+   REAL(ret)[0] = avgInteractionStrength;
    UNPROTECT(1);
    return ret;
 }

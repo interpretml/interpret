@@ -377,7 +377,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                ++pTargetTo;
 
                const double * pInitScoreFromLoop = pInitScoreFromOld;
-               const double * pSampleScoreToEnd = pSampleScoreTo + cScores;
+               const FloatFast * pSampleScoreToEnd = pSampleScoreTo + cScores;
                do {
                   FloatFast initScore = 0;
                   if(nullptr != pInitScoreFromLoop) {
@@ -430,16 +430,14 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                pInitScoreFromOld = pInitScoreFrom - cScores;
             }
 
-            const FloatFast targetOriginal = *pTargetFrom;
+            const FloatFast target = *pTargetFrom;
             ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
-
-            const FloatFast target = SafeConvertFloat<FloatFast>(targetOriginal);
             do {
                *pTargetTo = target;
                ++pTargetTo;
 
                const double * pInitScoreFromLoop = pInitScoreFromOld;
-               const double * pSampleScoreToEnd = pSampleScoreTo + cScores;
+               const FloatFast * pSampleScoreToEnd = pSampleScoreTo + cScores;
                do {
                   FloatFast initScore = 0;
                   if(nullptr != pInitScoreFromLoop) {

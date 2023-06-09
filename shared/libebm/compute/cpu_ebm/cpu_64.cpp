@@ -29,6 +29,7 @@ namespace DEFINED_ZONE_NAME {
 
 struct Cpu_64_Int final {
    static constexpr int cPack = 1;
+   // TODO: for just the CPU version, should we make the integer a size_t since we never pack it
    using T = uint64_t;
 
    inline Cpu_64_Int(const uint64_t val) noexcept : m_data(val) {

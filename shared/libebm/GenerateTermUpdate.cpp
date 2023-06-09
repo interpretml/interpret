@@ -120,7 +120,7 @@ static ErrorEbm BoostZeroDimensional(
    params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
 #ifndef NDEBUG
    params.m_pDebugFastBinsEnd = IndexBin(pFastBin, cBytesPerFastBin);
-   params.m_totalWeightDebug = pInnerBag->GetWeightTotal();
+   params.m_totalWeightDebug = SafeConvertFloat<FloatFast>(pInnerBag->GetWeightTotal());
 #endif // NDEBUG
    error = BinSumsBoosting(&params);
    if(Error_None != error) {
@@ -243,7 +243,7 @@ static ErrorEbm BoostSingleDimensional(
    params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
 #ifndef NDEBUG
    params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cBins);
-   params.m_totalWeightDebug = pInnerBag->GetWeightTotal();
+   params.m_totalWeightDebug = SafeConvertFloat<FloatFast>(pInnerBag->GetWeightTotal());
 #endif // NDEBUG
    error = BinSumsBoosting(&params);
    if(Error_None != error) {
@@ -287,7 +287,7 @@ static ErrorEbm BoostSingleDimensional(
       cSamplesLeafMin,
       cSplitsMax,
       pBoosterCore->GetTrainingSet()->GetCountSamples(),
-      pInnerBag->GetWeightTotal(),
+      SafeConvertFloat<FloatBig>(pInnerBag->GetWeightTotal()),
       pTotalGain
    );
 
@@ -358,7 +358,7 @@ static ErrorEbm BoostMultiDimensional(
    params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
 #ifndef NDEBUG
    params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
-   params.m_totalWeightDebug = pInnerBag->GetWeightTotal();
+   params.m_totalWeightDebug = SafeConvertFloat<FloatFast>(pInnerBag->GetWeightTotal());
 #endif // NDEBUG
    error = BinSumsBoosting(&params);
    if(Error_None != error) {
@@ -617,7 +617,7 @@ static ErrorEbm BoostRandom(
    params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
 #ifndef NDEBUG
    params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTotalBins);
-   params.m_totalWeightDebug = pInnerBag->GetWeightTotal();
+   params.m_totalWeightDebug = SafeConvertFloat<FloatFast>(pInnerBag->GetWeightTotal());
 #endif // NDEBUG
    error = BinSumsBoosting(&params);
    if(Error_None != error) {
@@ -994,7 +994,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             EBM_ASSERT(!std::isnan(gain));
             EBM_ASSERT(0 <= gain);
 
-            const double weightTotal = static_cast<double>(pInnerBag->GetWeightTotal());
+            const double weightTotal = pInnerBag->GetWeightTotal();
             EBM_ASSERT(0 < weightTotal); // if all are zeros we assume there are no weights and use the count
 
             // this could re-promote gain to be +inf again if weightTotal < 1.0

@@ -10,7 +10,7 @@
 
 #include "logging.h" // EBM_ASSERT
 
-#include "ebm_internal.hpp" // AddPositiveFloatsSafeBig
+#include "ebm_internal.hpp" // AddPositiveFloatsSafe
 #include "RandomDeterministic.hpp" // RandomDeterministic
 #include "RandomNondeterministic.hpp" // RandomNondeterministic
 #include "InnerBag.hpp"
@@ -103,16 +103,16 @@ ErrorEbm InnerBag::GenerateSingleInnerBag(
    const size_t * pCountOccurrences = aCountOccurrences;
    const size_t * const pCountOccurrencesEnd = &aCountOccurrences[cSamples];
    FloatFast * pWeightsInternal = aWeightsInternal;
-   FloatBig total;
+   double total;
    if(nullptr == aWeights) {
       do {
          *pWeightsInternal = static_cast<FloatFast>(*pCountOccurrences);
          ++pWeightsInternal;
          ++pCountOccurrences;
       } while(pCountOccurrencesEnd != pCountOccurrences);
-      total = static_cast<FloatBig>(cSamples);
+      total = static_cast<double>(cSamples);
 #ifndef NDEBUG
-      const FloatBig debugTotal = AddPositiveFloatsSafeBig(cSamples, aWeightsInternal);
+      const double debugTotal = AddPositiveFloatsSafe<double>(cSamples, aWeightsInternal);
       EBM_ASSERT(debugTotal * 0.999 <= total && total <= 1.0001 * debugTotal);
 #endif // NDEBUG
    } else {
@@ -123,8 +123,8 @@ ErrorEbm InnerBag::GenerateSingleInnerBag(
          ++pWeightsInternal;
          ++pCountOccurrences;
       } while(pCountOccurrencesEnd != pCountOccurrences);
-      total = AddPositiveFloatsSafeBig(cSamples, aWeightsInternal);
-      if(std::isnan(total) || std::isinf(total) || total <= 0) {
+      total = AddPositiveFloatsSafe<double>(cSamples, aWeightsInternal);
+      if(std::isnan(total) || std::isinf(total) || total <= double { 0 }) {
          LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag std::isnan(total) || std::isinf(total) || total <= 0");
          return Error_UserParamVal;
       }
@@ -154,7 +154,7 @@ InnerBag * InnerBag::GenerateFlatInnerBag(
    }
    pRet->InitializeUnfailing();
 
-   pRet->m_weightTotal = static_cast<FloatBig>(cSamples);
+   pRet->m_weightTotal = static_cast<double>(cSamples);
    if(nullptr != aWeights) {
       if(IsMultiplyError(sizeof(FloatFast), cSamples)) {
          pRet->Free();
@@ -170,9 +170,8 @@ InnerBag * InnerBag::GenerateFlatInnerBag(
       }
       pRet->m_aWeights = aWeightsInternal;
 
-      FloatBig total;
-      total = AddPositiveFloatsSafeBig(cSamples, aWeights);
-      if(std::isnan(total) || std::isinf(total) || total <= 0) {
+      double total = AddPositiveFloatsSafe<double>(cSamples, aWeights);
+      if(std::isnan(total) || std::isinf(total) || total <= double { 0 }) {
          pRet->Free();
          LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag std::isnan(total) || std::isinf(total) || total <= 0");
          return nullptr;

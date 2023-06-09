@@ -193,7 +193,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
 
       EBM_ASSERT(!std::isnan(validationMetricAvg)); // NaNs can happen, but we should have cleaned them up
 
-      const double totalWeight = static_cast<double>(pBoosterCore->GetValidationWeightTotal());
+      const double totalWeight = pBoosterCore->GetValidationWeightTotal();
       EBM_ASSERT(!std::isnan(totalWeight));
       EBM_ASSERT(!std::isinf(totalWeight));
       EBM_ASSERT(0.0 < totalWeight);

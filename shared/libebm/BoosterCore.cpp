@@ -14,7 +14,7 @@
 
 #include "common_cpp.hpp" // IsConvertError, IsMultiplyError
 #include "compute_accessors.hpp"
-#include "ebm_internal.hpp" // AddPositiveFloatsSafeBig
+#include "ebm_internal.hpp" // AddPositiveFloatsSafe
 
 #include "dataset_shared.hpp" // GetDataSetSharedHeader
 #include "Tensor.hpp" // Tensor
@@ -541,7 +541,7 @@ ErrorEbm BoosterCore::Create(
    }
 
    EBM_ASSERT(nullptr == pBoosterCore->m_aValidationWeights);
-   pBoosterCore->m_validationWeightTotal = static_cast<FloatBig>(cValidationSamples);
+   pBoosterCore->m_validationWeightTotal = static_cast<double>(cValidationSamples);
    if(0 != cWeights && 0 != cValidationSamples) {
       error = ExtractWeights(
          pDataSetShared,
@@ -555,8 +555,8 @@ ErrorEbm BoosterCore::Create(
          return error;
       }
       if(nullptr != pBoosterCore->m_aValidationWeights) {
-         const FloatBig total = AddPositiveFloatsSafeBig(cValidationSamples, pBoosterCore->m_aValidationWeights);
-         if(std::isnan(total) || std::isinf(total) || total <= 0) {
+         const double total = AddPositiveFloatsSafe<double>(cValidationSamples, pBoosterCore->m_aValidationWeights);
+         if(std::isnan(total) || std::isinf(total) || total <= double { 0 }) {
             LOG_0(Trace_Warning, "WARNING BoosterCore::Create std::isnan(total) || std::isinf(total) || total <= 0");
             return Error_UserParamVal;
          }

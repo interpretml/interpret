@@ -118,30 +118,30 @@ static constexpr bool k_bUseLogitboost = false;
 //   return totalOuter;
 //}
 
-template<typename T>
-static FloatBig AddPositiveFloatsSafeBig(size_t cVals, const T * pVals) {
+template<typename TSum, typename TItem>
+static TSum AddPositiveFloatsSafe(size_t cVals, const TItem * pVals) {
    // floats have 23 bits of mantissa, so if you add 2^23 of them, the average value is below the threshold where
    // it adds to the sum total value even by the smallest amount.  When that happens the sum stops advancing.
    // This function solves that problem by breaking the loop into 3 sections, which allows us to go back to zero where
    // floats have more resolution
 
    EBM_ASSERT(nullptr != pVals);
-   FloatBig totalOuter = 0;
+   TSum totalOuter = 0;
    while(size_t { 0 } != cVals) {
-      FloatBig totalMid = 0;
+      TSum totalMid = 0;
       do {
          EBM_ASSERT(0 != cVals);
          const size_t cInner = ((cVals - 1) % k_cFloatSumLimit) + 1;
          cVals -= cInner;
          EBM_ASSERT(0 == cVals % k_cFloatSumLimit);
-         const T * const pValsEnd = pVals + cInner;
-         FloatBig totalInner = 0;
+         const TItem * const pValsEnd = pVals + cInner;
+         TSum totalInner = 0;
          do {
-            const T val = *pVals;
+            const TItem val = *pVals;
             if(val < 0) {
-               return std::numeric_limits<FloatBig>::lowest();
+               return std::numeric_limits<TSum>::lowest();
             }
-            totalInner += SafeConvertFloat<FloatBig>(val);
+            totalInner += SafeConvertFloat<TSum>(val);
             ++pVals;
          } while(pValsEnd != pVals);
          totalMid += totalInner;

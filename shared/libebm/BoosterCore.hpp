@@ -48,7 +48,7 @@ class BoosterCore final {
 
    size_t m_cInnerBags;
    InnerBag ** m_apInnerBags;
-   FloatBig m_validationWeightTotal;
+   double m_validationWeightTotal;
    FloatFast * m_aValidationWeights;
 
    Tensor ** m_apCurrentTermTensors;
@@ -155,7 +155,7 @@ public:
       return m_apInnerBags;
    }
 
-   inline FloatBig GetValidationWeightTotal() const {
+   inline double GetValidationWeightTotal() const {
       return m_validationWeightTotal;
    }
 
@@ -210,6 +210,8 @@ public:
    }
 
    inline BoolEbm CheckTargets(const size_t c, const void * const aTargets) const noexcept {
+      EBM_ASSERT(nullptr != m_objective.m_pCheckTargetsC);
+      EBM_ASSERT(nullptr != aTargets);
       return (*m_objective.m_pCheckTargetsC)(&m_objective, c, aTargets);
    }
 

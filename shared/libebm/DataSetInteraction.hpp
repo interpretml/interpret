@@ -29,7 +29,7 @@ class DataSetInteraction final {
    size_t m_cFeatures;
 
    FloatFast * m_aWeights;
-   FloatBig m_weightTotal;
+   double m_weightTotal;
 
 public:
 
@@ -63,7 +63,7 @@ public:
    INLINE_ALWAYS const FloatFast * GetWeights() const {
       return m_aWeights;
    }
-   INLINE_ALWAYS FloatBig GetWeightTotal() const {
+   INLINE_ALWAYS double GetWeightTotal() const {
       return m_weightTotal;
    }
 

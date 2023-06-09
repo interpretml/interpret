@@ -27,7 +27,7 @@ class InnerBag final {
    // the raw data in both formats since it is never converted anyways, but this count is!
    size_t * m_aCountOccurrences;
    FloatFast * m_aWeights;
-   FloatBig m_weightTotal;
+   double m_weightTotal;
 
    // we take owernship of the aWeights array
 
@@ -57,7 +57,7 @@ public:
    const FloatFast * GetWeights() const {
       return m_aWeights;
    }
-   FloatBig GetWeightTotal() const {
+   double GetWeightTotal() const {
       return m_weightTotal;
    }
 

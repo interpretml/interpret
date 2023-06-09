@@ -331,9 +331,14 @@ EBM_API_BODY void EBM_CALLING_CONVENTION CleanFloats(IntEbm count, double * vals
       LOG_0(Trace_Error, "ERROR CleanFloats count value too large to index into memory");
       return;
    }
+
+   // use volatile to make even more sure that the variables are written to memory to chop extra precision bits
+   // https://stackoverflow.com/questions/53118960/can-a-static-castfloat-from-double-assigned-to-double-be-optimized-away
+
+   volatile double * a = valsInOut;
    while(0 != c) {
       --c;
-      const double val = valsInOut[c];
+      const volatile double val = a[c];
       // Use this check for NaN for cross-language portability.  It is not technically needed 
       // if IEEE-754 is followed, since "anything < NaN" and "NaN < anything" are false
       if(!std::isnan(val)) {
@@ -343,7 +348,7 @@ EBM_API_BODY void EBM_CALLING_CONVENTION CleanFloats(IntEbm count, double * vals
             // val is in the subnormal range, so force it to zero.  
             // DO NOT COMPARE WITH ZERO SINCE SOME CPUs INDICATE TRUE WHEN COMPARING 0.0 TO A SUBNORMAL
             // if the environment violates IEEE-754 with "denormals-are-zero" ("subnormals-are-zero")
-            valsInOut[c] = 0.0;
+            a[c] = 0.0;
          }
       }
    }

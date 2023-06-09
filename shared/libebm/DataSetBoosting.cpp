@@ -10,6 +10,7 @@
 
 #include "common_cpp.hpp" // INLINE_RELEASE_UNTEMPLATED
 
+#include "ebm_internal.hpp" // SafeConvertFloat
 #include "Feature.hpp" // Feature
 #include "Term.hpp" // Term
 #include "dataset_shared.hpp" // SharedStorageDataType
@@ -73,8 +74,6 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
       static_assert(std::numeric_limits<FloatFast>::is_iec559, "IEEE 754 guarantees zeros means a zero float");
       memset(aSampleScores, 0, sizeof(FloatFast) * cElements);
    } else {
-      const size_t cBytesPerItem = sizeof(*aSampleScores) * cScores;
-
       const BagEbm * pSampleReplication = aBag;
       FloatFast * pSampleScore = aSampleScores;
       const FloatFast * const pSampleScoresEnd = &aSampleScores[cElements];
@@ -94,13 +93,18 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
             } while(isLoopTraining != isItemTraining);
             pInitScore -= cScores;
          }
+
+         const double * const pFromEnd = &pInitScore[cScores];
          do {
             EBM_ASSERT(pSampleScore < pSampleScoresEnd);
 
-            static_assert(sizeof(*pSampleScore) == sizeof(*pInitScore), "float mismatch");
-            memcpy(pSampleScore, pInitScore, cBytesPerItem);
+            const double * pFrom = pInitScore;
+            do {
+               *pSampleScore = SafeConvertFloat<FloatFast>(*pFrom);
+               ++pSampleScore;
+               ++pFrom;
+            } while(pFromEnd != pFrom);
 
-            pSampleScore += cScores;
             replication -= direction;
          } while(BagEbm { 0 } != replication);
          pInitScore += cScores;

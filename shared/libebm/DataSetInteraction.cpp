@@ -9,7 +9,7 @@
 
 #include "common_cpp.hpp" // INLINE_RELEASE_UNTEMPLATED
 
-#include "ebm_internal.hpp" // AddPositiveFloatsSafeBig
+#include "ebm_internal.hpp" // AddPositiveFloatsSafe
 
 #include "Feature.hpp"
 #include "dataset_shared.hpp" // SharedStorageDataType
@@ -288,7 +288,7 @@ ErrorEbm DataSetInteraction::Initialize(
       // if cSamples is zero, then we don't need to allocate anything since we won't use them anyways
 
       EBM_ASSERT(nullptr == m_aWeights);
-      m_weightTotal = static_cast<FloatBig>(cSetSamples);
+      m_weightTotal = static_cast<double>(cSetSamples);
       if(0 != cWeights) {
          error = ExtractWeights(
             pDataSetShared,
@@ -302,8 +302,8 @@ ErrorEbm DataSetInteraction::Initialize(
             return error;
          }
          if(nullptr != m_aWeights) {
-            const FloatBig total = AddPositiveFloatsSafeBig(cSetSamples, m_aWeights);
-            if(std::isnan(total) || std::isinf(total) || total <= FloatBig { 0 }) {
+            const double total = AddPositiveFloatsSafe<double>(cSetSamples, m_aWeights);
+            if(std::isnan(total) || std::isinf(total) || total <= double { 0 }) {
                LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= 0");
                return Error_UserParamVal;
             }

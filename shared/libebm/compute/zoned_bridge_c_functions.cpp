@@ -9,6 +9,7 @@
 #include <algorithm>
 
 #include "libebm.h" // ErrorEbm
+#include "logging.h"
 #include "bridge_c.h" // INTERNAL_IMPORT_EXPORT_BODY
 #include "zones.h"
 
@@ -51,9 +52,13 @@ INTERNAL_IMPORT_EXPORT_BODY BoolEbm MAKE_ZONED_C_FUNCTION_NAME(CheckTargets) (
    const size_t c, 
    const void * const aTargets
 ) {
+   EBM_ASSERT(nullptr != pObjectiveWrapper);
+   EBM_ASSERT(nullptr != aTargets);
    const Objective * const pObjective = static_cast<const Objective *>(pObjectiveWrapper->m_pObjective);
+   EBM_ASSERT(nullptr != pObjective);
    const CHECK_TARGETS_CPP pCheckTargetsCpp =
       (static_cast<const FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pCheckTargetsCpp;
+   EBM_ASSERT(nullptr != pCheckTargetsCpp);
    return (*pCheckTargetsCpp)(pObjective, c, aTargets);
 }
 #endif // ZONE_cpu

@@ -660,13 +660,14 @@ We also build on top of many great packages. Please check them out!
 - [Impact of Accuracy on Model Interpretations](https://arxiv.org/pdf/2011.09903.pdf)
 - [Machine Learning Algorithms for Identifying Dependencies in OT Protocols](https://www.mdpi.com/1996-1073/16/10/4056)
 
-# Books that discuss EBMs
+# Books that cover EBMs
 
 - [Machine Learning for High-Risk Applications](https://www.oreilly.com/library/view/machine-learning-for/9781098102425/)
 - [Interpretable Machine Learning with Python](https://www.amazon.com/Interpretable-Machine-Learning-Python-hands/dp/180020390X)
 - [Explainable Artificial Intelligence: An Introduction to Interpretable Machine Learning](https://www.amazon.com/Explainable-Artificial-Intelligence_-An-Introduction-to-Interpretable-XAI/dp/3030833550)
 - [Applied Machine Learning Explainability Techniques](https://www.amazon.com/Applied-Machine-Learning-Explainability-Techniques/dp/1803246154)
 - [The eXplainable A.I.: With Python examples](https://www.amazon.com/eXplainable-I-Python-examples-ebook/dp/B0B4F98MN6)
+- [Platform and Model Design for Responsible AI: Design and build resilient, private, fair, and transparent machine learning models](https://www.amazon.com/Platform-Model-Design-Responsible-transparent/dp/1803237074)
 - [Explainable AI Recipes](https://www.amazon.com/Explainable-Recipes-Implement-Explainability-Interpretability-ebook/dp/B0BSF5NBY7)
 
 # External tools

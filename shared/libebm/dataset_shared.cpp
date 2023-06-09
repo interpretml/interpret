@@ -14,6 +14,7 @@
 #include "common_cpp.hpp" // IsConvertError
 #include "bridge_cpp.hpp" // GetCountItemsBitPacked
 
+#include "ebm_internal.hpp" // SafeConvertFloat
 #include "dataset_shared.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -1360,8 +1361,14 @@ static IntEbm AppendWeight(
                goto return_bad;
             }
 
-            static_assert(sizeof(FloatFast) == sizeof(*aWeights), "float mismatch");
-            memcpy(pFillMem + iByteCur, aWeights, cBytesAllSamples);
+            FloatFast * pFill = reinterpret_cast<FloatFast *>(pFillMem + iByteCur);
+            const double * pWeight = aWeights;
+            const double * const pWeightsEnd = &aWeights[cSamples];
+            do {
+               *pFill = SafeConvertFloat<FloatFast>(*pWeight);
+               ++pFill;
+               ++pWeight;
+            } while(pWeightsEnd != pWeight);
          }
          iByteCur = iByteNext;
       }
@@ -1574,8 +1581,14 @@ static IntEbm AppendTarget(
                } while(pTargetsEnd != pTarget);
                EBM_ASSERT(reinterpret_cast<unsigned char *>(pFillData) == pFillMem + iByteNext);
             } else {
-               static_assert(sizeof(FloatFast) == sizeof(double), "float mismatch");
-               memcpy(pFillMem + iByteCur, aTargets, cBytesAllSamples);
+               FloatFast * pFill = reinterpret_cast<FloatFast *>(pFillMem + iByteCur);
+               const double * pTarget = reinterpret_cast<const double *>(aTargets);
+               const double * const pTargetsEnd = &pTarget[cSamples];
+               do {
+                  *pFill = SafeConvertFloat<FloatFast>(*pTarget);
+                  ++pFill;
+                  ++pTarget;
+               } while(pTargetsEnd != pTarget);
             }
          }
          iByteCur = iByteNext;
