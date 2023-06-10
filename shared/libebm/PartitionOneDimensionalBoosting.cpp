@@ -595,7 +595,7 @@ public:
          if(UNLIKELY(retFind < 0)) {
             // Any negative return means there was an overflow. Signal the overflow by making gain infinite here.
             // We'll flip it later to a negative number to signal to the caller that there was an overflow.
-            totalGain = std::numeric_limits<double>::infinity();
+            totalGain = std::numeric_limits<FloatBig>::infinity();
          }
       } else {
          // our priority queue comparison function cannot handle NaN gains so we filter out before

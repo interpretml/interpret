@@ -27,6 +27,15 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 extern ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pBinSumsInteraction);
+extern void ConvertAddBin(
+   const size_t cScores,
+   const bool bHessian,
+   const size_t cBins,
+   const bool bDoubleDest,
+   void * const aAddDest,
+   const bool bDoubleSrc,
+   const void * const aSrc
+);
 
 extern void TensorTotalsBuild(
    const bool bHessian,
@@ -328,9 +337,17 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    const auto * const pDebugBigBinsEnd = IndexBin(aBigBins, cBytesPerBigBin * cTotalBigBins);
 #endif // NDEBUG
 
-   // TODO: put this into it's own function that converts our fast floats to big floats
-   EBM_ASSERT(cBytesPerBigBin == cBytesPerFastBin);
-   memcpy(aBigBins, aFastBins, cBytesPerFastBin * cTensorBins);
+   memset(aBigBins, 0, cBytesPerBigBin * cTensorBins);
+   ConvertAddBin(
+      cScores,
+      pInteractionCore->IsHessian(),
+      cTensorBins,
+      std::is_same<FloatBig, double>::value,
+      aBigBins,
+      std::is_same<FloatFast, double>::value,
+      aFastBins
+   );
+
 
 
 
