@@ -10,9 +10,10 @@
 #include "common_c.h" // LIKELY
 #include "zones.h"
 
-#include "ebm_stats.hpp"
 #include "GradientPair.hpp"
 #include "Bin.hpp"
+
+#include "ebm_stats.hpp"
 #include "TensorTotalsSum.hpp"
 #include "InteractionCore.hpp"
 

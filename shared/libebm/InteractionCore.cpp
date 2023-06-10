@@ -11,13 +11,12 @@
 #include "logging.h" // EBM_ASSERT
 
 #include "bridge_cpp.hpp" // GetCountScores
+#include "Bin.hpp" // IsOverflowBinSize
 
 #include "compute_accessors.hpp"
 #include "ebm_internal.hpp" // SafeConvertFloat
-
 #include "Feature.hpp" // Feature
 #include "dataset_shared.hpp" // GetDataSetSharedHeader
-#include "Bin.hpp" // IsOverflowBinSize
 #include "InteractionCore.hpp"
 
 namespace DEFINED_ZONE_NAME {

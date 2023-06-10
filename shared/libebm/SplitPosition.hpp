@@ -13,7 +13,6 @@
 #include "zones.h"
 
 #include "common_cpp.hpp" // IsAddError
-
 #include "Bin.hpp"
 
 namespace DEFINED_ZONE_NAME {

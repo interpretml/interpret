@@ -14,13 +14,13 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "GradientPair.hpp"
+#include "Bin.hpp"
 
+#include "ebm_internal.hpp"
 #include "RandomDeterministic.hpp"
 #include "ebm_stats.hpp"
 #include "Tensor.hpp"
-#include "GradientPair.hpp"
-#include "Bin.hpp"
 #include "TreeNode.hpp"
 #include "SplitPosition.hpp"
 #include "BoosterCore.hpp"

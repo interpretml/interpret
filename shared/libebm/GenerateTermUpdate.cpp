@@ -13,8 +13,10 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "GradientPair.hpp"
+#include "Bin.hpp"
 
+#include "ebm_internal.hpp"
 #include "RandomDeterministic.hpp"
 #include "RandomNondeterministic.hpp"
 #include "ebm_stats.hpp"
@@ -22,8 +24,6 @@
 #include "Term.hpp"
 #include "InnerBag.hpp"
 #include "Tensor.hpp"
-#include "GradientPair.hpp"
-#include "Bin.hpp"
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"
 

@@ -9,24 +9,20 @@
 #include <limits> // numeric_limits
 #include <thread>
 
-
 #include "logging.h" // EBM_ASSERT
 
 #include "common_cpp.hpp" // IsConvertError, IsMultiplyError
+#include "Bin.hpp" // IsOverflowBinSize
+
 #include "compute_accessors.hpp"
 #include "ebm_internal.hpp" // AddPositiveFloatsSafe
-
 #include "dataset_shared.hpp" // GetDataSetSharedHeader
 #include "Tensor.hpp" // Tensor
 #include "Feature.hpp" // Feature
 #include "Term.hpp" // Term
 #include "InnerBag.hpp" // InnerBag
-
-#include "Bin.hpp" // IsOverflowBinSize
-
 #include "TreeNode.hpp" // IsOverflowTreeNodeSize
 #include "SplitPosition.hpp" // IsOverflowSplitPositionSize
-
 #include "BoosterCore.hpp"
 
 namespace DEFINED_ZONE_NAME {

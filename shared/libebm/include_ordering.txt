@@ -16,6 +16,8 @@
 // common and bridge that depend on zoning
 #include "common_cpp.hpp" // depends only on zones.h, but could someday also depend on libebm.h, logging.h, common_c.h
 #include "bridge_cpp.hpp" // depends on libebm.h (via bridge_c.h), bridge_c.h, zones.h, common_cpp.hpp.  Could someday depend on logging.h, common_c.h
+#include "GradientPair.hpp"
+#include "Bin.hpp" // depends on GradientPair.hpp
 
 // everything below here more or less depends on all the above includes
 
@@ -23,6 +25,8 @@
 #include "zoned_bridge_c_functions.h" // ONLY depends on libebm.h, bridge_c.h, zones.h
 #include "zoned_bridge_cpp_functions.hpp" // depends on libebm.h, zones.h    circular pointer to Objective.hpp.  pointers to structs in bridge_c.h
 #include "compute.hpp" // GENERAL include file in the compute zones.  Depends on zones.h, and bridge_cpp.hpp, and indirectly through bridge_cpp.hpp depends on libebm.h, bridge_c.h, common_cpp.hpp
+#include "approximate_math.hpp"
+#include "compute_stats.hpp"
 #include "registration_exceptions.hpp"
 #include "Registration.hpp" // depends on registration_exceptions.hpp
 #include "Objective.hpp" // depends on zoned_bridge_cpp_functions.hpp, compute.hpp.  The cpp file depends on: zoned_bridge_c_functions.h, registration_exceptions.hpp, Registration.hpp
@@ -33,7 +37,6 @@
 #include "RandomDeterministic.hpp"
 #include "RandomNondeterministic.hpp"
 #include "GaussianDistribution.hpp" // implicitly depends on RandomDeterministic.hpp and RandomNondeterministic.hpp but the dependency is templated away
-#include "approximate_math.hpp"
 #include "ebm_stats.hpp" // depends on approximate_math.hpp
 #include "Feature.hpp" // ONLY zones.h
 #include "Term.hpp" // ONLY zones.h and Feature.hpp
@@ -43,8 +46,6 @@
 #include "DataSetInteraction.hpp" // depends on dataset_shared.hpp
 #include "InnerBag.hpp" // depends on RandomDeterministic.hpp
 #include "Tensor.hpp" // depends on Term.hpp and Feature.hpp
-#include "GradientPair.hpp"
-#include "Bin.hpp" // depends on GradientPair.hpp
 #include "TreeNode.hpp" // depends on Bin.hpp
 #include "SplitPosition.hpp" // depends on Bin.hpp
 #include "TensorTotalsSum.hpp" // depends on GradientPair.hpp and Bin.hpp

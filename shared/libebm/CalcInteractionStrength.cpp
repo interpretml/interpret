@@ -13,11 +13,11 @@
 #include "common_c.h" // FloatBig
 #include "zones.h"
 
-#include "ebm_internal.hpp" // k_cDimensionsMax
+#include "Bin.hpp" // GetBinSize
 
+#include "ebm_internal.hpp" // k_cDimensionsMax
 #include "Feature.hpp"
 #include "DataSetInteraction.hpp"
-#include "Bin.hpp" // GetBinSize
 #include "InteractionCore.hpp"
 #include "InteractionShell.hpp"
 

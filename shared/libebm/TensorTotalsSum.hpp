@@ -11,7 +11,6 @@
 #include "zones.h"
 
 #include "bridge_cpp.hpp" // GetArrayScores
-
 #include "GradientPair.hpp"
 #include "Bin.hpp"
 

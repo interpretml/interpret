@@ -12,12 +12,13 @@
 #include "common_c.h" // LIKELY
 #include "zones.h"
 
+#include "GradientPair.hpp"
+#include "Bin.hpp"
+
 #include "ebm_stats.hpp"
 #include "Feature.hpp"
 #include "Term.hpp"
 #include "Tensor.hpp"
-#include "GradientPair.hpp"
-#include "Bin.hpp"
 #include "TensorTotalsSum.hpp"
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"

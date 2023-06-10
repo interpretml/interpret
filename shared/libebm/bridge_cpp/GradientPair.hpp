@@ -8,6 +8,7 @@
 #include <type_traits> // std::is_standard_layout
 
 #include "logging.h" // EBM_ASSERT
+#include "common_c.h" // UNUSED
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {

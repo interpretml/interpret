@@ -10,12 +10,11 @@
 #include "zones.h"
 
 #include "bridge_cpp.hpp" // BinSumsInteractionBridge
-
-#include "ebm_internal.hpp" // k_cDimensionsMax
-
-#include "DataSetInteraction.hpp" // DataSetInteraction
 #include "GradientPair.hpp" // GradientPair
 #include "Bin.hpp" // Bin
+
+#include "ebm_internal.hpp" // k_cDimensionsMax
+#include "DataSetInteraction.hpp" // DataSetInteraction
 #include "InteractionCore.hpp" // InteractionCore
 #include "InteractionShell.hpp" // InteractionShell
 
