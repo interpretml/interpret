@@ -453,19 +453,6 @@ namespace EbmStats {
       return hessian;
    }
 
-   GPU_DEVICE INLINE_ALWAYS static FloatFast ComputeGradientRegressionRmseFromOriginalGradient(const FloatFast originalGradient) {
-      // this function IS performance critical as it's called on every sample
-
-      // for RMSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
-      // to keep the original scores when computing the gradient updates, so we only need the previous gradient
-
-      // originalGradient can be +-infinity, or NaN.  See note in ComputeSinglePartitionUpdate
-
-      // this function is here to document where we're calculating regression, like InverseLinkFunctionThenCalculateGradientBinaryClassification below.  It doesn't do anything, 
-      //   but it serves as an indication that the calculation would be placed here if we changed it in the future
-      return originalGradient;
-   }
-
    GPU_DEVICE INLINE_ALWAYS static void InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(
       const FloatFast sumExpInverted,
       const FloatFast itemExp, 
@@ -747,19 +734,6 @@ namespace EbmStats {
       //   if our approxmiate log doesn't guarantee non-negative results AND numbers slightly larger than 1
 
       return singleSampleLogLoss;
-   }
-
-   GPU_DEVICE INLINE_ALWAYS static FloatFast ComputeSingleSampleSquaredErrorRegressionFromGradient(const FloatFast gradient) {
-      // this IS a performance critical function.  It gets called per validation sample!
-
-      // for RMSE, the gradient is the error and we square it
-
-      // gradient can be +-infinity, or NaN.  See note in ComputeSinglePartitionUpdate
-
-      // we are confirmed to get the same mean squared error value as scikit-learn for regression
-      return gradient * gradient;
-
-      // gradient can be anything from 0 to +infinity, or NaN
    }
 };
 

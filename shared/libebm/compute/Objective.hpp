@@ -341,6 +341,7 @@ protected:
       const TObjective * const pObjective = static_cast<const TObjective *>(this);
 
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
+      
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
@@ -361,11 +362,7 @@ protected:
       TFloat updateScore;
 
       if(bCompilerZeroDimensional) {
-         const typename TFloat::T singleScore = aUpdateTensorScores[0];
-         for(int i = 0; i < TFloat::cPack; ++i) {
-            updateScores[i] = singleScore;
-         }
-         updateScore.LoadAligned(updateScores);
+         updateScore = aUpdateTensorScores[0];
       } else {
          const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
 
@@ -404,6 +401,8 @@ protected:
          alignas(16) StorageDataType iTensorBinCombined[TFloat::cPack];
          if(!bCompilerZeroDimensional) {
             // we store the already multiplied dimensional value in *pInputData
+            // TODO: once we've added some complexity to ensure that the pInputData is the same size as 
+            // the integer mapping of TFloat we can load all the bit packs in a single SIMD instruction
             for(int i = 0; i < TFloat::cPack; ++i) {
                iTensorBinCombined[i] = pInputData[i];
             }
@@ -411,7 +410,7 @@ protected:
          }
          while(true) {
             if(!bCompilerZeroDimensional) {
-               // in later versions of SIMD there are scatter/gather intrinsics that do this in one operation
+               // TODO: in later versions of SIMD there are scatter/gather intrinsics that do this in one operation
                for(int i = 0; i < TFloat::cPack; ++i) {
                   const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined[i] >> cShift) & maskBits;
                   updateScores[i] = aUpdateTensorScores[iTensorBin];

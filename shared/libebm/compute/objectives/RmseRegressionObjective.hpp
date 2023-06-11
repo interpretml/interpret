@@ -109,16 +109,18 @@ public:
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
+      static_assert(k_oneScore == cCompilerScores, "for RMSE regression there should always be one score");
+      static_assert(!bHessian, "for RMSE regression we should never need the hessians");
       static_assert(bKeepGradHess, "for RMSE regression we should always keep the gradients");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
 
-      const FloatFast * const aUpdateTensorScores = reinterpret_cast<const FloatFast *>(pData->m_aUpdateTensorScores);
+      const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
 
-      FloatFast * pGradient = reinterpret_cast<FloatFast *>(pData->m_aGradientsAndHessians); // no hessians for regression
-      const FloatFast * const pGradientsEnd = pGradient + cSamples;
+      typename TFloat::T * pGradient = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians); // no hessians for regression
+      const typename TFloat::T * const pGradientsEnd = pGradient + cSamples;
 
       size_t cBitsPerItemMax;
       ptrdiff_t cShift;
@@ -126,7 +128,8 @@ public:
       size_t maskBits;
       const StorageDataType * pInputData;
 
-      FloatFast updateScore;
+      alignas(16) typename TFloat::T updateScores[TFloat::cPack];
+      TFloat updateScore;
 
       if(bCompilerZeroDimensional) {
          updateScore = aUpdateTensorScores[0];
@@ -145,47 +148,57 @@ public:
          pInputData = pData->m_aPacked;
       }
 
-      const FloatFast * pWeight;
+      const typename TFloat::T * pWeight;
       if(bWeight) {
-         pWeight = reinterpret_cast<const FloatFast *>(pData->m_aWeights);
+         pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
       }
 
-      FloatFast sumSquareError;
+      TFloat metricSum;
       if(bCalcMetric) {
-         sumSquareError = 0;
+         metricSum = 0.0;
       }
       do {
-         StorageDataType iTensorBinCombined;
+         alignas(16) StorageDataType iTensorBinCombined[TFloat::cPack];
          if(!bCompilerZeroDimensional) {
             // we store the already multiplied dimensional value in *pInputData
-            iTensorBinCombined = *pInputData;
-            ++pInputData;
+            for(int i = 0; i < TFloat::cPack; ++i) {
+               iTensorBinCombined[i] = pInputData[i];
+            }
+            pInputData += TFloat::cPack;
          }
          while(true) {
             if(!bCompilerZeroDimensional) {
-               const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined >> cShift) & maskBits;
-               updateScore = aUpdateTensorScores[iTensorBin];
+               // in later versions of SIMD there are scatter/gather intrinsics that do this in one operation
+               for(int i = 0; i < TFloat::cPack; ++i) {
+                  const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined[i] >> cShift) & maskBits;
+                  updateScores[i] = aUpdateTensorScores[iTensorBin];
+               }
+               updateScore.LoadAligned(updateScores);
             }
 
             // for RMSE regression we cannot put the weight into the gradient like we could with other objectives
             // for regression or for classification because we only preserve the gradient and to calculate the
             // square error we need the original gradient and not the weight multiplied gradient... well we could
-            // do it but it would require a division. A better way would be to have two FloatFast arrays: a 
+            // do it but it would require a division. A better way would be to have two TFloat arrays: a 
             // non-weight adjusted one and a weight adjusted one for when inner bags are used
             // NOTE: For interactions we can and do put the weight into the gradient because we never update it
-            const FloatFast gradient = EbmStats::ComputeGradientRegressionRmseFromOriginalGradient(*pGradient) + updateScore;
-            *pGradient = gradient;
-            ++pGradient;
+
+            TFloat gradient;
+            gradient.LoadAligned(pGradient);
+            gradient += updateScore;
+            gradient.SaveAligned(pGradient);
+            pGradient += TFloat::cPack;
 
             if(bCalcMetric) {
-               FloatFast sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
-
+               // we use RMSE so get the squared error part here
+               TFloat metric = gradient * gradient;
                if(bWeight) {
-                  const FloatFast weight = *pWeight;
-                  sampleSquaredError *= weight;
-                  ++pWeight;
+                  TFloat weight;
+                  weight.LoadAligned(pWeight);
+                  metric *= weight;
+                  pWeight += TFloat::cPack;
                }
-               sumSquareError += sampleSquaredError;
+               metricSum += metric;
             }
 
             if(bCompilerZeroDimensional) {
@@ -206,7 +219,7 @@ public:
       } while(pGradientsEnd != pGradient);
 
       if(bCalcMetric) {
-         pData->m_metricOut = static_cast<double>(sumSquareError);
+         pData->m_metricOut = static_cast<double>(Sum(metricSum));
       }
    }
 };
