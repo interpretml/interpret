@@ -89,67 +89,17 @@ extern ErrorEbm PartitionRandomBoosting(
    double * const pTotalGain
 );
 
-static ErrorEbm BoostZeroDimensional(
+static void BoostZeroDimensional(
    BoosterShell * const pBoosterShell, 
-   const InnerBag * const pInnerBag,
    const BoostFlags flags
 ) {
    LOG_0(Trace_Verbose, "Entered BoostZeroDimensional");
 
-   ErrorEbm error;
-
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster
-   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores);
-
-   BinBase * const pFastBin = pBoosterShell->GetBoostingFastBinsTemp();
-   EBM_ASSERT(nullptr != pFastBin);
-
-   pFastBin->ZeroMem(cBytesPerFastBin);
-
-   BinSumsBoostingBridge params;
-   params.m_bHessian = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
-   params.m_cScores = cScores;
-   params.m_cPack = k_cItemsPerBitPackNone;
-   params.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
-   params.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
-   params.m_aWeights = pInnerBag->GetWeights();
-   params.m_pCountOccurrences = pInnerBag->GetCountOccurrences();
-   params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
-#ifndef NDEBUG
-   params.m_pDebugFastBinsEnd = IndexBin(pFastBin, cBytesPerFastBin);
-   params.m_totalWeightDebug = SafeConvertFloat<FloatFast>(pInnerBag->GetWeightTotal());
-#endif // NDEBUG
-   error = BinSumsBoosting(&params);
-   if(Error_None != error) {
-      return error;
-   }
-
    BinBase * const pBigBin = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != pBigBin);
-
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
-#ifndef NDEBUG
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster
-   pBoosterShell->SetDebugBigBinsEnd(IndexBin(pBigBin, cBytesPerBigBin));
-#endif // NDEBUG
-
-   memset(pBigBin, 0, cBytesPerBigBin);
-   ConvertAddBin(
-      cScores,
-      pBoosterCore->IsHessian(),
-      1,
-      std::is_same<FloatBig, double>::value,
-      pBigBin,
-      std::is_same<FloatFast, double>::value,
-      pFastBin
-   );
-
-
-   // TODO: we can exit here back to python to allow caller modification to our histograms
-
 
    Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
    FloatFast * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
@@ -186,16 +136,13 @@ static ErrorEbm BoostZeroDimensional(
    }
 
    LOG_0(Trace_Verbose, "Exited BoostZeroDimensional");
-
-   return Error_None;
 }
 
 static ErrorEbm BoostSingleDimensional(
    RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
-   const size_t iTerm,
    const size_t cBins,
-   const InnerBag * const pInnerBag,
+   const FloatFast weightTotal,
    const size_t iDimension,
    const size_t cSamplesLeafMin,
    const IntEbm countLeavesMax,
@@ -215,68 +162,6 @@ static ErrorEbm BoostSingleDimensional(
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-   EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-   EBM_ASSERT(1 == pBoosterCore->GetTerms()[iTerm]->GetCountRealDimensions());
-   EBM_ASSERT(cBins == pBoosterCore->GetTerms()[iTerm]->GetCountTensorBins());
-   EBM_ASSERT(0 == pBoosterCore->GetTerms()[iTerm]->GetCountAuxillaryBins());
-
-   const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
-
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster
-   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores);
-   EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cBins));
-
-   BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
-   EBM_ASSERT(nullptr != aFastBins);
-
-   aFastBins->ZeroMem(cBytesPerFastBin, cBins);
-
-   BinSumsBoostingBridge params;
-   params.m_bHessian = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
-   params.m_cScores = cScores;
-   params.m_cPack = pBoosterCore->GetTerms()[iTerm]->GetTermBitPack();
-   params.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
-   params.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
-   params.m_aWeights = pInnerBag->GetWeights();
-   params.m_pCountOccurrences = pInnerBag->GetCountOccurrences();
-   params.m_aPacked = pBoosterCore->GetTrainingSet()->GetInputDataPointer(iTerm);
-   params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
-#ifndef NDEBUG
-   params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cBins);
-   params.m_totalWeightDebug = SafeConvertFloat<FloatFast>(pInnerBag->GetWeightTotal());
-#endif // NDEBUG
-   error = BinSumsBoosting(&params);
-   if(Error_None != error) {
-      return error;
-   }
-
-   BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
-   EBM_ASSERT(nullptr != aBigBins);
-
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
-#ifndef NDEBUG
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
-   EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cBins));
-   pBoosterShell->SetDebugBigBinsEnd(IndexBin(aBigBins, cBytesPerBigBin * cBins));
-#endif // NDEBUG
-
-   memset(aBigBins, 0, cBytesPerBigBin * cBins);
-   ConvertAddBin(
-      cScores,
-      pBoosterCore->IsHessian(),
-      cBins,
-      std::is_same<FloatBig, double>::value,
-      aBigBins,
-      std::is_same<FloatFast, double>::value,
-      aFastBins
-   );
-
-
-
-
-   // TODO: we can exit here back to python to allow caller modification to our histograms
-
-
    EBM_ASSERT(1 <= pBoosterCore->GetTrainingSet()->GetCountSamples());
 
    error = PartitionOneDimensionalBoosting(
@@ -287,7 +172,7 @@ static ErrorEbm BoostSingleDimensional(
       cSamplesLeafMin,
       cSplitsMax,
       pBoosterCore->GetTrainingSet()->GetCountSamples(),
-      SafeConvertFloat<FloatBig>(pInnerBag->GetWeightTotal()),
+      weightTotal,
       pTotalGain
    );
 
@@ -301,7 +186,6 @@ static ErrorEbm BoostSingleDimensional(
 static ErrorEbm BoostMultiDimensional(
    BoosterShell * const pBoosterShell,
    const size_t iTerm,
-   const InnerBag * const pInnerBag,
    const size_t cSamplesLeafMin,
    double * const pTotalGain
 ) {
@@ -337,68 +221,14 @@ static ErrorEbm BoostMultiDimensional(
 
    const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
-   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores);
-   EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTensorBins));
-
-   BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
-   EBM_ASSERT(nullptr != aFastBins);
-   
-   aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
-
-   BinSumsBoostingBridge params;
-   params.m_bHessian = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
-   params.m_cScores = cScores;
-   params.m_cPack = pBoosterCore->GetTerms()[iTerm]->GetTermBitPack();
-   params.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
-   params.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
-   params.m_aWeights = pInnerBag->GetWeights();
-   params.m_pCountOccurrences = pInnerBag->GetCountOccurrences();
-   params.m_aPacked = pBoosterCore->GetTrainingSet()->GetInputDataPointer(iTerm);
-   params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
-#ifndef NDEBUG
-   params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
-   params.m_totalWeightDebug = SafeConvertFloat<FloatFast>(pInnerBag->GetWeightTotal());
-#endif // NDEBUG
-   error = BinSumsBoosting(&params);
-   if(Error_None != error) {
-      return error;
-   }
-
    const size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
 
    EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
    const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
 
-
    // we don't need to free this!  It's tracked and reused by pBoosterShell
    BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
    EBM_ASSERT(nullptr != aBigBins);
-
-#ifndef NDEBUG
-   EBM_ASSERT(!IsAddError(cTensorBins, cAuxillaryBins));
-   EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTensorBins + cAuxillaryBins));
-   const auto * const pDebugBigBinsEnd = IndexBin(aBigBins, cBytesPerBigBin * (cTensorBins + cAuxillaryBins));
-   pBoosterShell->SetDebugBigBinsEnd(pDebugBigBinsEnd);
-#endif // NDEBUG
-
-   memset(aBigBins, 0, cBytesPerBigBin * cTensorBins);
-   ConvertAddBin(
-      cScores,
-      pBoosterCore->IsHessian(),
-      cTensorBins,
-      std::is_same<FloatBig, double>::value,
-      aBigBins,
-      std::is_same<FloatFast, double>::value,
-      aFastBins
-   );
-
-
-
-
-   // TODO: we can exit here back to python to allow caller modification to our histograms
-
-
 
    // we also need to zero the auxillary bins
    aBigBins->ZeroMem(cBytesPerBigBin, cAuxillaryBins, cTensorBins);
@@ -428,7 +258,7 @@ static ErrorEbm BoostMultiDimensional(
       aBigBins
 #ifndef NDEBUG
       , aDebugCopyBins
-      , pDebugBigBinsEnd
+      , pBoosterShell->GetDebugBigBinsEnd()
 #endif // NDEBUG
    );
 
@@ -576,7 +406,6 @@ static ErrorEbm BoostRandom(
    RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const size_t iTerm,
-   const InnerBag * const pInnerBag,
    const BoostFlags flags,
    const IntEbm * const aLeavesMax,
    double * const pTotalGain
@@ -590,65 +419,6 @@ static ErrorEbm BoostRandom(
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
-
-   const size_t cTotalBins = pTerm->GetCountTensorBins();
-   EBM_ASSERT(1 <= cTotalBins);
-
-   const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
-
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
-   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores);
-
-   BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
-   EBM_ASSERT(nullptr != aFastBins);
-
-   EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTotalBins));
-   aFastBins->ZeroMem(cBytesPerFastBin, cTotalBins);
-
-   BinSumsBoostingBridge params;
-   params.m_bHessian = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
-   params.m_cScores = cScores;
-   params.m_cPack = pBoosterCore->GetTerms()[iTerm]->GetTermBitPack();
-   params.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
-   params.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
-   params.m_aWeights = pInnerBag->GetWeights();
-   params.m_pCountOccurrences = pInnerBag->GetCountOccurrences();
-   params.m_aPacked = pBoosterCore->GetTrainingSet()->GetInputDataPointer(iTerm);
-   params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
-#ifndef NDEBUG
-   params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTotalBins);
-   params.m_totalWeightDebug = SafeConvertFloat<FloatFast>(pInnerBag->GetWeightTotal());
-#endif // NDEBUG
-   error = BinSumsBoosting(&params);
-   if(Error_None != error) {
-      return error;
-   }
-
-   BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
-   EBM_ASSERT(nullptr != aBigBins);
-
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
-#ifndef NDEBUG
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
-   EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTotalBins));
-   pBoosterShell->SetDebugBigBinsEnd(IndexBin(aBigBins, cBytesPerBigBin * cTotalBins));
-#endif // NDEBUG
-
-   memset(aBigBins, 0, cBytesPerBigBin * cTotalBins);
-   ConvertAddBin(
-      cScores,
-      pBoosterCore->IsHessian(),
-      cTotalBins,
-      std::is_same<FloatBig, double>::value,
-      aBigBins,
-      std::is_same<FloatFast, double>::value,
-      aFastBins
-   );
-
-
-
-   // TODO: we can exit here back to python to allow caller modification to our histograms
-
 
    error = PartitionRandomBoosting(
       pRng,
@@ -782,7 +552,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    }
 
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-
    if(ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses) {
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  
       // The term scores are a tensor with zero length array logits, which means for our representation that we have 
@@ -798,7 +567,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
    EBM_ASSERT(nullptr != pBoosterShell->GetInnerTermUpdate());
 
-   if(size_t { 0 } == pTerm->GetCountTensorBins()) {
+   size_t cTensorBins = pTerm->GetCountTensorBins();
+   if(size_t { 0 } == cTensorBins) {
       // there are zero samples and 0 bins in one of the features in the dimensions, so the update tensor has 0 bins
 
       // if GetCountTensorBins is 0, then we leave pBoosterShell->GetTermUpdate() with invalid data since
@@ -809,7 +579,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       }
       pBoosterShell->SetTermIndex(iTerm);
 
-      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate size_t { 0 } == pTerm->GetCountTensorBins()");
+      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate size_t { 0 } == cTensorBins");
       return Error_None;
    }
 
@@ -926,16 +696,99 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       // are going to remain having 0 splits.
       pBoosterShell->GetInnerTermUpdate()->Reset();
 
+      EBM_ASSERT(1 <= cTensorBins);
+
+      ptrdiff_t cPack = pTerm->GetTermBitPack();
+      if(UNLIKELY(IntEbm { 0 } == lastDimensionLeavesMax)) {
+         // this is kind of hacky where if any one of a number of things occurs (like we have only 1 leaf)
+         // we sum everything into a single bin. The alternative would be to always sum into the tensor bins
+         // but then collapse them afterwards into a single bin, but that's more work.
+         cPack = k_cItemsPerBitPackNone;
+         cTensorBins = 1;
+      }
+
+      const size_t cScores = GetCountScores(cClasses);
+
+      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
+      const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pBoosterCore->IsHessian(), cScores);
+      EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTensorBins));
+
+      BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
+      EBM_ASSERT(nullptr != aFastBins);
+
+      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores)); // we check in CreateBooster 
+      const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pBoosterCore->IsHessian(), cScores);
+      EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTensorBins));
+      const size_t cBytesBigBins = cBytesPerBigBin * cTensorBins;
+
+      BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
+      EBM_ASSERT(nullptr != aBigBins);
+
+#ifndef NDEBUG
+      size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
+      if(0 != (BoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {
+         // if we're doing random boosting we allocated the auxillary memory, but we don't need it
+         cAuxillaryBins = 0;
+      }
+      EBM_ASSERT(!IsAddError(cTensorBins, cAuxillaryBins));
+      EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTensorBins + cAuxillaryBins));
+      pBoosterShell->SetDebugBigBinsEnd(IndexBin(aBigBins, cBytesPerBigBin * (cTensorBins + cAuxillaryBins)));
+#endif // NDEBUG
+
       EBM_ASSERT(1 <= cInnerBagsAfterZero);
       const InnerBag * const * const ppInnerBagsEnd = &ppInnerBag[cInnerBagsAfterZero];
       do {
          const InnerBag * const pInnerBag = *ppInnerBag;
+
+         EBM_ASSERT(0 < pInnerBag->GetWeightTotal()); // if all are zeros we assume there are no weights and use the count
+
+         aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
+
+         BinSumsBoostingBridge params;
+         params.m_bHessian = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
+         params.m_cScores = cScores;
+         params.m_cPack = cPack;
+         params.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
+         params.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
+         params.m_aWeights = pInnerBag->GetWeights();
+         params.m_pCountOccurrences = pInnerBag->GetCountOccurrences();
+         if(k_cItemsPerBitPackNone != cPack) {
+            params.m_aPacked = pBoosterCore->GetTrainingSet()->GetInputDataPointer(iTerm);
+         }
+         params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
+#ifndef NDEBUG
+         params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
+         params.m_totalWeightDebug = SafeConvertFloat<FloatFast>(pInnerBag->GetWeightTotal());
+#endif // NDEBUG
+         error = BinSumsBoosting(&params);
+         if(Error_None != error) {
+            return error;
+         }
+
+         memset(aBigBins, 0, cBytesBigBins);
+         ConvertAddBin(
+            cScores,
+            pBoosterCore->IsHessian(),
+            cTensorBins,
+            std::is_same<FloatBig, double>::value,
+            aBigBins,
+            std::is_same<FloatFast, double>::value,
+            aFastBins
+         );
+
+
+         // TODO: we can exit here back to python to allow caller modification to our histograms
+         //       although having inner bags makes this complicated since each inner bag has it's own
+         //       histogram, so we'd need to exit and re-enter 100 times over if we had 100 inner bags
+         //       and we'd need to have the BinBoosting function be called 100 times, followed by 100 calls
+         //       to cut the tensor, then we'd need to have a single final call to combine the results
+         //       which is more complicated.  It will be nicer if we end up eliminated inner bagging
+         //       or use subsampling each boost step to avoid having multiple inner bags
+
+
          if(UNLIKELY(IntEbm { 0 } == lastDimensionLeavesMax)) {
             LOG_0(Trace_Warning, "WARNING GenerateTermUpdate boosting zero dimensional");
-            error = BoostZeroDimensional(pBoosterShell, pInnerBag, flags);
-            if(Error_None != error) {
-               return error;
-            }
+            BoostZeroDimensional(pBoosterShell, flags);
          } else {
             double gain;
             if(0 != (BoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {
@@ -950,7 +803,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
                   pRng,
                   pBoosterShell,
                   iTerm,
-                  pInnerBag,
                   flags,
                   leavesMax,
                   &gain
@@ -963,12 +815,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
                EBM_ASSERT(IntEbm { 2 } <= lastDimensionLeavesMax); // otherwise we'd use BoostZeroDimensional above
                EBM_ASSERT(size_t { 2 } <= cSignificantBinCount); // otherwise we'd use BoostZeroDimensional above
 
+               EBM_ASSERT(1 == pTerm->GetCountRealDimensions());
+               EBM_ASSERT(cSignificantBinCount == pTerm->GetCountTensorBins());
+               EBM_ASSERT(0 == pTerm->GetCountAuxillaryBins());
+
                error = BoostSingleDimensional(
                   pRng,
                   pBoosterShell,
-                  iTerm,
                   cSignificantBinCount,
-                  pInnerBag,
+                  SafeConvertFloat<FloatFast>(pInnerBag->GetWeightTotal()),
                   iDimensionImportant,
                   cSamplesLeafMin,
                   lastDimensionLeavesMax,
@@ -981,7 +836,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
                error = BoostMultiDimensional(
                   pBoosterShell,
                   iTerm,
-                  pInnerBag,
                   cSamplesLeafMin,
                   &gain
                );
@@ -995,7 +849,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             EBM_ASSERT(0 <= gain);
 
             const double weightTotal = pInnerBag->GetWeightTotal();
-            EBM_ASSERT(0 < weightTotal); // if all are zeros we assume there are no weights and use the count
 
             // this could re-promote gain to be +inf again if weightTotal < 1.0
             // do the sample count inversion here in case adding all the avgeraged gains pushes us into +inf
