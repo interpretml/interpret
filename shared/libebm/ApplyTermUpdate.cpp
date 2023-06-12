@@ -175,7 +175,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       data.m_cSamples = pBoosterCore->GetValidationSet()->GetCountSamples();
       data.m_aPacked = pBoosterCore->GetValidationSet()->GetInputDataPointer(iTerm);
       data.m_aTargets = pBoosterCore->GetValidationSet()->GetTargetDataPointer();
-      data.m_aWeights = pBoosterCore->GetValidationWeights();
+      data.m_aWeights = pBoosterCore->GetValidationSet()->GetInnerBags()[0]->GetWeights();
       data.m_aSampleScores = pBoosterCore->GetValidationSet()->GetSampleScores();
       data.m_aGradientsAndHessians = pBoosterCore->GetValidationSet()->GetGradientsAndHessiansPointer();
       error = pBoosterCore->ObjectiveApplyUpdate(&data);
@@ -193,7 +193,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
 
       EBM_ASSERT(!std::isnan(validationMetricAvg)); // NaNs can happen, but we should have cleaned them up
 
-      const double totalWeight = pBoosterCore->GetValidationWeightTotal();
+      const double totalWeight = pBoosterCore->GetValidationSet()->GetInnerBags()[0]->GetWeightTotal();
       EBM_ASSERT(!std::isnan(totalWeight));
       EBM_ASSERT(!std::isinf(totalWeight));
       EBM_ASSERT(0.0 < totalWeight);

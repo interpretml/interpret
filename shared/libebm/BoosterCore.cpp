@@ -39,14 +39,6 @@ extern ErrorEbm Unbag(
    size_t * const pcValidationSamplesOut
 );
 
-extern ErrorEbm ExtractWeights(
-   const unsigned char * const pDataSetShared,
-   const BagEbm direction,
-   const BagEbm * const aBag,
-   const size_t cSetSamples,
-   FloatFast ** ppWeightsOut
-);
-
 void BoosterCore::DeleteTensors(const size_t cTerms, Tensor ** const apTensors) {
    LOG_0(Trace_Info, "Entered DeleteTensors");
 
@@ -129,11 +121,8 @@ ErrorEbm BoosterCore::InitializeTensors(
 BoosterCore::~BoosterCore() {
    // this only gets called after our reference count has been decremented to zero
 
-   m_trainingSet.Destruct();
-   m_validationSet.Destruct();
-
-   InnerBag::FreeInnerBags(m_cInnerBags, m_apInnerBags);
-   free(m_aValidationWeights);
+   m_trainingSet.Destruct(m_cInnerBags);
+   m_validationSet.Destruct(0);
 
    Term::FreeTerms(m_cTerms, m_apTerms);
 
@@ -504,65 +493,6 @@ ErrorEbm BoosterCore::Create(
    }
    LOG_0(Trace_Info, "BoosterCore::Create finished term processing");
 
-   EBM_ASSERT(nullptr == pBoosterCore->m_apInnerBags);
-   if(0 != cTrainingSamples) {
-      FloatFast * aWeights = nullptr;
-      if(0 != cWeights) {
-         error = ExtractWeights(
-            pDataSetShared,
-            BagEbm { 1 },
-            aBag, 
-            cTrainingSamples,
-            &aWeights
-         );
-         if(Error_None != error) {
-            // error already logged
-            return error;
-         }
-      }
-      pBoosterCore->m_cInnerBags = cInnerBags;
-      // TODO: we could steal the aWeights in GenerateInnerBags for flat sampling sets
-      error = InnerBag::GenerateInnerBags(
-         rng,
-         cTrainingSamples,
-         aWeights, 
-         cInnerBags,
-         &pBoosterCore->m_apInnerBags
-      );
-      free(aWeights);
-      if(UNLIKELY(Error_None != error)) {
-         // already logged
-         return error;
-      }
-   }
-
-   EBM_ASSERT(nullptr == pBoosterCore->m_aValidationWeights);
-   pBoosterCore->m_validationWeightTotal = static_cast<double>(cValidationSamples);
-   if(0 != cWeights && 0 != cValidationSamples) {
-      error = ExtractWeights(
-         pDataSetShared,
-         BagEbm { -1 },
-         aBag, 
-         cValidationSamples,
-         &pBoosterCore->m_aValidationWeights
-      );
-      if(Error_None != error) {
-         // error already logged
-         return error;
-      }
-      if(nullptr != pBoosterCore->m_aValidationWeights) {
-         const double total = AddPositiveFloatsSafe<double>(cValidationSamples, pBoosterCore->m_aValidationWeights);
-         if(std::isnan(total) || std::isinf(total) || total <= double { 0 }) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create std::isnan(total) || std::isinf(total) || total <= 0");
-            return Error_UserParamVal;
-         }
-         // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
-         // to zero though so check it after checking for negative
-         EBM_ASSERT(0 != total);
-         pBoosterCore->m_validationWeightTotal = total;
-      }
-   }
-
    ptrdiff_t cClasses;
    const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
    if(nullptr == aTargets) {
@@ -681,6 +611,7 @@ ErrorEbm BoosterCore::Create(
          }
       }
 
+      pBoosterCore->m_cInnerBags = cInnerBags; // this is used to destruct m_trainingSet, so store it first
       error = pBoosterCore->m_trainingSet.Initialize(
          cScores,
          true,
@@ -693,6 +624,9 @@ ErrorEbm BoosterCore::Create(
          aBag,
          aInitScores,
          cTrainingSamples,
+         rng,
+         cInnerBags,
+         cWeights,
          aiTermFeatures,
          cTerms,
          pBoosterCore->m_apTerms
@@ -713,6 +647,9 @@ ErrorEbm BoosterCore::Create(
          aBag,
          aInitScores,
          cValidationSamples,
+         rng,
+         0,
+         cWeights,
          aiTermFeatures,
          cTerms,
          pBoosterCore->m_apTerms

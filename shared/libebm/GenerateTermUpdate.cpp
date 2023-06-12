@@ -633,12 +633,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    pBoosterShell->GetTermUpdate()->SetCountDimensions(cDimensions);
    pBoosterShell->GetTermUpdate()->Reset();
 
-   // if pBoosterCore->m_apInnerBags is nullptr, then we should have zero training samples
-   // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
-
    double gainAvg = 0.0;
-   const InnerBag * const * ppInnerBag = pBoosterCore->GetInnerBags();
+   const InnerBag * const * ppInnerBag = pBoosterCore->GetTrainingSet()->GetInnerBags();
    if(nullptr != ppInnerBag) {
+      EBM_ASSERT(1 <= pBoosterCore->GetTrainingSet()->GetCountSamples());
+
       const double gradientConstant = pBoosterCore->GradientConstant();
 
       const double multipleCommon = gradientConstant / cInnerBagsAfterZero;
@@ -943,6 +942,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          // also, signal to our caller that an overflow occured with a negative gain
          gainAvg = k_illegalGainDouble;
       }
+   } else {
+      EBM_ASSERT(0 == pBoosterCore->GetTrainingSet()->GetCountSamples());
    }
 
    pBoosterShell->SetTermIndex(iTerm);

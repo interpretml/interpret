@@ -21,6 +21,14 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+extern ErrorEbm ExtractWeights(
+   const unsigned char * const pDataSetShared,
+   const BagEbm direction,
+   const BagEbm * const aBag,
+   const size_t cSetSamples,
+   FloatFast ** ppWeightsOut
+);
+
 INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructGradientsAndHessians(const bool bAllocateHessians, const size_t cSamples, const size_t cScores) {
    LOG_0(Trace_Info, "Entered ConstructGradientsAndHessians");
 
@@ -534,6 +542,9 @@ ErrorEbm DataSetBoosting::Initialize(
    const BagEbm * const aBag,
    const double * const aInitScores,
    const size_t cSetSamples,
+   void * const rng,
+   const size_t cInnerBags,
+   const size_t cWeights,
    const IntEbm * const aiTermFeatures,
    const size_t cTerms,
    const Term * const * const apTerms
@@ -545,6 +556,8 @@ ErrorEbm DataSetBoosting::Initialize(
    EBM_ASSERT(nullptr == m_aSampleScores);
    EBM_ASSERT(nullptr == m_aTargetData);
    EBM_ASSERT(nullptr == m_aaInputData);
+
+   ErrorEbm error;
 
    LOG_0(Trace_Info, "Entered DataSetBoosting::Initialize");
 
@@ -604,6 +617,37 @@ ErrorEbm DataSetBoosting::Initialize(
          m_aaInputData = aaInputData;
          m_cTerms = cTerms; // only needed if nullptr != m_aaInputData
       }
+
+      EBM_ASSERT(nullptr == m_apInnerBags);
+      FloatFast * aWeights = nullptr;
+      if(0 != cWeights) {
+         error = ExtractWeights(
+            pDataSetShared,
+            direction,
+            aBag,
+            cSetSamples,
+            &aWeights
+         );
+         if(Error_None != error) {
+            // error already logged
+            return error;
+         }
+      }
+      // TODO: we could steal the aWeights in GenerateInnerBags for flat sampling sets, or maybe don't use
+      // ExtractWeights and just get them directly from the pDataSetShared
+      error = InnerBag::GenerateInnerBags(
+         rng,
+         cSetSamples,
+         aWeights,
+         cInnerBags,
+         &m_apInnerBags
+      );
+      free(aWeights);
+      if(UNLIKELY(Error_None != error)) {
+         // already logged
+         return error;
+      }
+
       m_cSamples = cSetSamples;
    }
 
@@ -612,8 +656,10 @@ ErrorEbm DataSetBoosting::Initialize(
    return Error_None;
 }
 
-void DataSetBoosting::Destruct() {
+void DataSetBoosting::Destruct(const size_t cInnerBags) {
    LOG_0(Trace_Info, "Entered DataSetBoosting::Destruct");
+
+   InnerBag::FreeInnerBags(cInnerBags, m_apInnerBags);
 
    free(m_aGradientsAndHessians);
    free(m_aSampleScores);

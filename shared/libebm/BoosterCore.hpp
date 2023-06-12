@@ -47,9 +47,6 @@ class BoosterCore final {
    Term ** m_apTerms;
 
    size_t m_cInnerBags;
-   InnerBag ** m_apInnerBags;
-   double m_validationWeightTotal;
-   FloatFast * m_aValidationWeights;
 
    Tensor ** m_apCurrentTermTensors;
    Tensor ** m_apBestTermTensors;
@@ -86,9 +83,6 @@ class BoosterCore final {
       m_cTerms(0),
       m_apTerms(nullptr),
       m_cInnerBags(0),
-      m_apInnerBags(nullptr),
-      m_validationWeightTotal(0),
-      m_aValidationWeights(nullptr),
       m_apCurrentTermTensors(nullptr),
       m_apBestTermTensors(nullptr),
       m_bestModelMetric(std::numeric_limits<double>::infinity()),
@@ -149,18 +143,6 @@ public:
 
    inline size_t GetCountInnerBags() const {
       return m_cInnerBags;
-   }
-
-   inline const InnerBag * const * GetInnerBags() const {
-      return m_apInnerBags;
-   }
-
-   inline double GetValidationWeightTotal() const {
-      return m_validationWeightTotal;
-   }
-
-   inline const FloatFast * GetValidationWeights() const {
-      return m_aValidationWeights;
    }
 
    inline Tensor * const * GetCurrentModel() const {

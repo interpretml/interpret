@@ -14,6 +14,8 @@
 #include "bridge_c.h" // StorageDataType
 #include "zones.h"
 
+#include "InnerBag.hpp" // InnerBag
+
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
@@ -28,6 +30,7 @@ class DataSetBoosting final {
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
    size_t m_cTerms;
+   InnerBag ** m_apInnerBags;
 
 public:
 
@@ -41,11 +44,12 @@ public:
       m_aSampleScores = nullptr;
       m_aTargetData = nullptr;
       m_aaInputData = nullptr;
+      m_apInnerBags = nullptr;
       m_cSamples = 0;
       m_cTerms = 0;
    }
 
-   void Destruct();
+   void Destruct(const size_t cInnerBags);
 
    ErrorEbm Initialize(
       const size_t cScores,
@@ -59,10 +63,17 @@ public:
       const BagEbm * const aBag,
       const double * const aInitScores,
       const size_t cSetSamples,
+      void * const rng,
+      const size_t cInnerBags,
+      const size_t cWeights,
       const IntEbm * const aiTermFeatures,
       const size_t cTerms,
       const Term * const * const apTerms
    );
+
+   inline const InnerBag * const * GetInnerBags() const {
+      return m_apInnerBags;
+   }
 
    inline bool IsGradientsAndHessiansNull() {
       // TODO: remove this and just use GetGradientsAndHessiansPointer
