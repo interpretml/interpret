@@ -59,7 +59,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
    const double * const aInitScores,
    const size_t cSetSamples
 ) {
-   LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructSampleScores");
+   LOG_0(Trace_Info, "Entered DataSubsetBoosting::ConstructSampleScores");
 
    EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
@@ -67,14 +67,14 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
    EBM_ASSERT(1 <= cSetSamples);
 
    if(IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)");
+      LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructSampleScores IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)");
       return nullptr;
    }
    const size_t cElements = cScores * cSetSamples;
 
    FloatFast * const aSampleScores = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cElements));
    if(nullptr == aSampleScores) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == aSampleScores");
+      LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructSampleScores nullptr == aSampleScores");
       return nullptr;
    }
 
@@ -119,7 +119,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
       } while(pSampleScoresEnd != pSampleScore);
    }
 
-   LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructSampleScores");
+   LOG_0(Trace_Info, "Exited DataSubsetBoosting::ConstructSampleScores");
    return aSampleScores;
 }
 WARNING_POP
@@ -130,7 +130,7 @@ INLINE_RELEASE_UNTEMPLATED static void * ConstructTargetData(
    const BagEbm * const aBag,
    const size_t cSetSamples
 ) {
-   LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructTargetData");
+   LOG_0(Trace_Info, "Entered DataSubsetBoosting::ConstructTargetData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
@@ -148,12 +148,12 @@ INLINE_RELEASE_UNTEMPLATED static void * ConstructTargetData(
       const size_t countClasses = static_cast<size_t>(cClasses);
 
       if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
+         LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
          return nullptr;
       }
       StorageDataType * const aTargetData = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
       if(nullptr == aTargetData) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == aTargetData");
+         LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructTargetData nullptr == aTargetData");
          return nullptr;
       }
 
@@ -180,13 +180,13 @@ INLINE_RELEASE_UNTEMPLATED static void * ConstructTargetData(
          if(IsConvertError<StorageDataType>(data)) {
             // this shouldn't be possible since we previously checked that we could convert our target,
             // so if this is failing then we'll be larger than the maximum number of classes
-            LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
+            LOG_0(Trace_Error, "ERROR DataSubsetBoosting::ConstructTargetData data target too big to reference memory");
             free(aTargetData);
             return nullptr;
          }
          const StorageDataType iData = static_cast<StorageDataType>(data);
          if(countClasses <= static_cast<size_t>(iData)) {
-            LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData target value larger than number of classes");
+            LOG_0(Trace_Error, "ERROR DataSubsetBoosting::ConstructTargetData target value larger than number of classes");
             free(aTargetData);
             return nullptr;
          }
@@ -198,16 +198,16 @@ INLINE_RELEASE_UNTEMPLATED static void * ConstructTargetData(
          } while(BagEbm { 0 } != replication);
       } while(pTargetToEnd != pTargetTo);
 
-      LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
+      LOG_0(Trace_Info, "Exited DataSubsetBoosting::ConstructTargetData");
       return aTargetData;
    } else {
       if(IsMultiplyError(sizeof(FloatFast), cSetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(FloatFast), cSetSamples)");
+         LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructTargetData IsMultiplyError(sizeof(FloatFast), cSetSamples)");
          return nullptr;
       }
       FloatFast * const aTargetData = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSetSamples));
       if(nullptr == aTargetData) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == aTargetData");
+         LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructTargetData nullptr == aTargetData");
          return nullptr;
       }
 
@@ -248,7 +248,7 @@ INLINE_RELEASE_UNTEMPLATED static void * ConstructTargetData(
          } while(BagEbm { 0 } != replication);
       } while(pTargetToEnd != pTargetTo);
 
-      LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
+      LOG_0(Trace_Info, "Exited DataSubsetBoosting::ConstructTargetData");
       return aTargetData;
    }
 }
@@ -287,7 +287,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const size_t cTerms,
    const Term * const * const apTerms
 ) {
-   LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructInputData");
+   LOG_0(Trace_Info, "Entered DataSubsetBoosting::ConstructInputData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
@@ -296,12 +296,12 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    EBM_ASSERT(nullptr != apTerms);
 
    if(IsMultiplyError(sizeof(StorageDataType *), cTerms)) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType *), cTerms)");
+      LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType *), cTerms)");
       return nullptr;
    }
    StorageDataType ** const aaInputDataTo = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cTerms));
    if(nullptr == aaInputDataTo) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == aaInputDataTo");
+      LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
@@ -333,12 +333,12 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          const size_t cDataUnitsTo = (cSetSamples - 1) / cItemsPerBitPackTo + 1; // this can't overflow or underflow
 
          if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
+            LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
             goto free_all;
          }
          StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnitsTo));
          if(nullptr == pInputDataTo) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == pInputDataTo");
+            LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructInputData nullptr == pInputDataTo");
             goto free_all;
          }
          *paInputDataTo = pInputDataTo;
@@ -517,7 +517,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       ++ppTerm;
    } while(ppTermsEnd != ppTerm);
 
-   LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructInputData");
+   LOG_0(Trace_Info, "Exited DataSubsetBoosting::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
@@ -530,7 +530,7 @@ free_all:
 }
 WARNING_POP
 
-ErrorEbm DataSetBoosting::Initialize(
+ErrorEbm DataSubsetBoosting::Initialize(
    const size_t cScores,
    const bool bAllocateGradients,
    const bool bAllocateHessians,
@@ -559,13 +559,13 @@ ErrorEbm DataSetBoosting::Initialize(
 
    ErrorEbm error;
 
-   LOG_0(Trace_Info, "Entered DataSetBoosting::Initialize");
+   LOG_0(Trace_Info, "Entered DataSubsetBoosting::Initialize");
 
    if(0 != cSetSamples) {
       if(bAllocateGradients) {
          FloatFast * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSetSamples, cScores);
          if(nullptr == aGradientsAndHessians) {
-            LOG_0(Trace_Warning, "WARNING Exited DataSetBoosting::Initialize nullptr == aGradientsAndHessians");
+            LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aGradientsAndHessians");
             return Error_OutOfMemory;
          }
          m_aGradientsAndHessians = aGradientsAndHessians;
@@ -581,7 +581,7 @@ ErrorEbm DataSetBoosting::Initialize(
             cSetSamples
          );
          if(nullptr == aSampleScores) {
-            LOG_0(Trace_Warning, "WARNING Exited DataSetBoosting::Initialize nullptr == aSampleScores");
+            LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aSampleScores");
             return Error_OutOfMemory;
          }
          m_aSampleScores = aSampleScores;
@@ -594,7 +594,7 @@ ErrorEbm DataSetBoosting::Initialize(
             cSetSamples
          );
          if(nullptr == aTargetData) {
-            LOG_0(Trace_Warning, "WARNING Exited DataSetBoosting::Initialize nullptr == aTargetData");
+            LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aTargetData");
             return Error_OutOfMemory;
          }
          m_aTargetData = aTargetData;
@@ -611,7 +611,7 @@ ErrorEbm DataSetBoosting::Initialize(
             apTerms
          );
          if(nullptr == aaInputData) {
-            LOG_0(Trace_Warning, "WARNING Exited DataSetBoosting::Initialize nullptr == aaInputData");
+            LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aaInputData");
             return Error_OutOfMemory;
          }
          m_aaInputData = aaInputData;
@@ -651,13 +651,13 @@ ErrorEbm DataSetBoosting::Initialize(
       m_cSamples = cSetSamples;
    }
 
-   LOG_0(Trace_Info, "Exited DataSetBoosting::Initialize");
+   LOG_0(Trace_Info, "Exited DataSubsetBoosting::Initialize");
 
    return Error_None;
 }
 
-void DataSetBoosting::Destruct(const size_t cInnerBags) {
-   LOG_0(Trace_Info, "Entered DataSetBoosting::Destruct");
+void DataSubsetBoosting::Destruct(const size_t cInnerBags) {
+   LOG_0(Trace_Info, "Entered DataSubsetBoosting::Destruct");
 
    InnerBag::FreeInnerBags(cInnerBags, m_apInnerBags);
 
@@ -676,7 +676,7 @@ void DataSetBoosting::Destruct(const size_t cInnerBags) {
       free(m_aaInputData);
    }
 
-   LOG_0(Trace_Info, "Exited DataSetBoosting::Destruct");
+   LOG_0(Trace_Info, "Exited DataSubsetBoosting::Destruct");
 }
 
 } // DEFINED_ZONE_NAME

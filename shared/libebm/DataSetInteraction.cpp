@@ -69,19 +69,19 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const size_t cSetSamples,
    const size_t cFeatures
 ) {
-   LOG_0(Trace_Info, "Entered DataSetInteraction::ConstructInputData");
+   LOG_0(Trace_Info, "Entered DataSubsetInteraction::ConstructInputData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(1 <= cSetSamples);
    EBM_ASSERT(1 <= cFeatures);
 
    if(IsMultiplyError(sizeof(StorageDataType *), cFeatures)) {
-      LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType *), cFeatures)");
+      LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType *), cFeatures)");
       return nullptr;
    }
    StorageDataType ** const aaInputDataTo = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cFeatures));
    if(nullptr == aaInputDataTo) {
-      LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData nullptr == aaInputDataTo");
+      LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
@@ -120,7 +120,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          if(IsConvertError<StorageDataType>(cBins - 1)) {
             // if we check this here, we can be guaranteed that any inputData will convert to StorageDataType
             // since the shared datastructure would not allow data items equal or greater than cBins
-            LOG_0(Trace_Error, "ERROR DataSetInteraction::ConstructInputData IsConvertError<StorageDataType>(cBins - 1)");
+            LOG_0(Trace_Error, "ERROR DataSubsetInteraction::ConstructInputData IsConvertError<StorageDataType>(cBins - 1)");
             goto free_all;
          }
 
@@ -158,12 +158,12 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
 
          if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
-            LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
+            LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
             goto free_all;
          }
          StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnitsTo));
          if(nullptr == pInputDataTo) {
-            LOG_0(Trace_Warning, "WARNING DataSetInteraction::ConstructInputData nullptr == pInputDataTo");
+            LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::ConstructInputData nullptr == pInputDataTo");
             goto free_all;
          }
          *paInputDataTo = pInputDataTo;
@@ -232,7 +232,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       ++iFeature;
    } while(cFeatures != iFeature);
 
-   LOG_0(Trace_Info, "Exited DataSetInteraction::ConstructInputData");
+   LOG_0(Trace_Info, "Exited DataSubsetInteraction::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
@@ -245,8 +245,8 @@ free_all:
 }
 WARNING_POP
 
-void DataSetInteraction::Destruct() {
-   LOG_0(Trace_Info, "Entered DataSetInteraction::Destruct");
+void DataSubsetInteraction::Destruct() {
+   LOG_0(Trace_Info, "Entered DataSubsetInteraction::Destruct");
 
    free(m_aGradientsAndHessians);
    free(m_aWeights);
@@ -261,10 +261,10 @@ void DataSetInteraction::Destruct() {
       free(m_aaInputData);
    }
 
-   LOG_0(Trace_Info, "Exited DataSetInteraction::Destruct");
+   LOG_0(Trace_Info, "Exited DataSubsetInteraction::Destruct");
 }
 
-ErrorEbm DataSetInteraction::Initialize(
+ErrorEbm DataSubsetInteraction::Initialize(
    const size_t cScores,
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
@@ -280,7 +280,7 @@ ErrorEbm DataSetInteraction::Initialize(
    EBM_ASSERT(nullptr == m_aaInputData); // we expect to start with zeroed values
    EBM_ASSERT(0 == m_cSamples); // we expect to start with zeroed values
 
-   LOG_0(Trace_Info, "Entered DataSetInteraction::Initialize");
+   LOG_0(Trace_Info, "Entered DataSubsetInteraction::Initialize");
 
    ErrorEbm error;
 
@@ -304,7 +304,7 @@ ErrorEbm DataSetInteraction::Initialize(
          if(nullptr != m_aWeights) {
             const double total = AddPositiveFloatsSafe<double>(cSetSamples, m_aWeights);
             if(std::isnan(total) || std::isinf(total) || total <= double { 0 }) {
-               LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= 0");
+               LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= 0");
                return Error_UserParamVal;
             }
             // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
@@ -342,7 +342,7 @@ ErrorEbm DataSetInteraction::Initialize(
       m_cSamples = cSetSamples;
    }
 
-   LOG_0(Trace_Info, "Exited DataSetInteraction::Initialize");
+   LOG_0(Trace_Info, "Exited DataSubsetInteraction::Initialize");
    return Error_None;
 }
 

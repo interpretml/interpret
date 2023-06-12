@@ -22,7 +22,7 @@ namespace DEFINED_ZONE_NAME {
 
 class FeatureInteraction;
 
-class DataSetInteraction final {
+class DataSubsetInteraction final {
    FloatFast * m_aGradientsAndHessians;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
@@ -33,8 +33,8 @@ class DataSetInteraction final {
 
 public:
 
-   DataSetInteraction() = default; // preserve our POD status
-   ~DataSetInteraction() = default; // preserve our POD status
+   DataSubsetInteraction() = default; // preserve our POD status
+   ~DataSubsetInteraction() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
@@ -89,11 +89,11 @@ public:
       return m_cSamples;
    }
 };
-static_assert(std::is_standard_layout<DataSetInteraction>::value,
+static_assert(std::is_standard_layout<DataSubsetInteraction>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<DataSetInteraction>::value,
+static_assert(std::is_trivial<DataSubsetInteraction>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<DataSetInteraction>::value,
+static_assert(std::is_pod<DataSubsetInteraction>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 } // DEFINED_ZONE_NAME

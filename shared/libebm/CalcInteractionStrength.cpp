@@ -181,7 +181,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       return Error_None;
    }
 
-   const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
+   const DataSubsetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
    EBM_ASSERT(nullptr != pDataSet);
 
    if(size_t { 0 } == pDataSet->GetCountSamples()) {

@@ -23,7 +23,7 @@ namespace DEFINED_ZONE_NAME {
 
 class Term;
 
-class DataSetBoosting final {
+class DataSubsetBoosting final {
    FloatFast * m_aGradientsAndHessians;
    FloatFast * m_aSampleScores;
    void * m_aTargetData;
@@ -34,8 +34,8 @@ class DataSetBoosting final {
 
 public:
 
-   DataSetBoosting() = default; // preserve our POD status
-   ~DataSetBoosting() = default; // preserve our POD status
+   DataSubsetBoosting() = default; // preserve our POD status
+   ~DataSubsetBoosting() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
@@ -101,11 +101,11 @@ public:
       return m_cSamples;
    }
 };
-static_assert(std::is_standard_layout<DataSetBoosting>::value,
+static_assert(std::is_standard_layout<DataSubsetBoosting>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<DataSetBoosting>::value,
+static_assert(std::is_trivial<DataSubsetBoosting>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<DataSetBoosting>::value,
+static_assert(std::is_pod<DataSubsetBoosting>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 } // DEFINED_ZONE_NAME
