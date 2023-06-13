@@ -28,19 +28,8 @@ class InnerBag final {
    // TODO : make this a struct of FractionalType and size_t counts and use MACROS to have either size_t or 
    // FractionalType or both, and perf how this changes things.  We don't get a benefit anywhere by storing 
    // the raw data in both formats since it is never converted anyways, but this count is!
-   size_t * m_aCountOccurrences;
+   size_t * m_aCountOccurrences; // TODO: can we just use the weights and elimiante the count of occurrences?
    FloatFast * m_aWeights;
-   double m_weightTotal;
-
-   ErrorEbm InitializeRealInnerBag(
-      void * const rng,
-      const size_t cSamples,
-      const FloatFast * const aWeights
-   );
-   ErrorEbm InitializeFakeInnerBag(
-      const size_t cSamples,
-      const FloatFast * const aWeights
-   );
 
 public:
 
@@ -54,9 +43,6 @@ public:
    }
    const FloatFast * GetWeights() const {
       return m_aWeights;
-   }
-   double GetWeightTotal() const {
-      return m_weightTotal;
    }
 
    static InnerBag * AllocateInnerBags(const size_t cInnerBags);

@@ -84,40 +84,6 @@ static constexpr size_t k_dynamicDimensions = 0;
 
 static constexpr bool k_bUseLogitboost = false;
 
-//template<typename T>
-//static T AddPositiveFloatsSafe(size_t cVals, const T * pVals) {
-//   // floats have 23 bits of mantissa, so if you add 2^23 of them, the average value is below the threshold where
-//   // it adds to the sum total value even by the smallest amount.  When that happens the sum stops advancing.
-//   // This function solves that problem by breaking the loop into 3 sections, which allows us to go back to zero where
-//   // floats have more resolution
-//
-//   EBM_ASSERT(nullptr != pVals);
-//   T totalOuter = T { 0 };
-//   while(size_t { 0 } != cVals) {
-//      T totalMid = T { 0 };
-//      do {
-//         EBM_ASSERT(0 != cVals);
-//         const size_t cInner = ((cVals - 1) % k_cFloatSumLimit) + 1;
-//         cVals -= cInner;
-//         EBM_ASSERT(0 == cVals % k_cFloatSumLimit);
-//         const T * const pValsEnd = pVals + cInner;
-//         T totalInner = T { 0 };
-//         do {
-//            const T val = *pVals;
-//            if(val < T { 0 }) {
-//               return std::numeric_limits<T>::lowest();
-//            }
-//            totalInner += val;
-//            ++pVals;
-//         } while(pValsEnd != pVals);
-//         totalMid += totalInner;
-//         EBM_ASSERT(0 == cVals % k_cFloatSumLimit);
-//      } while(size_t { 0 } != (cVals / k_cFloatSumLimit) % k_cFloatSumLimit);
-//      totalOuter += totalMid;
-//   }
-//   return totalOuter;
-//}
-
 template<typename TSum, typename TItem>
 static TSum AddPositiveFloatsSafe(size_t cVals, const TItem * pVals) {
    // floats have 23 bits of mantissa, so if you add 2^23 of them, the average value is below the threshold where
@@ -139,7 +105,8 @@ static TSum AddPositiveFloatsSafe(size_t cVals, const TItem * pVals) {
          do {
             const TItem val = *pVals;
             if(val < 0) {
-               return std::numeric_limits<TSum>::lowest();
+               // we often sum up the results of this function, and NaN cannot go back to anything other than NaN
+               return std::numeric_limits<TSum>::quiet_NaN();
             }
             totalInner += SafeConvertFloat<TSum>(val);
             ++pVals;

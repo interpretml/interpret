@@ -117,6 +117,7 @@ struct DataSetBoosting final {
       m_cSamples = 0;
       m_cSubsets = 0;
       m_aSubsets = nullptr;
+      m_aBagWeightTotals = nullptr;
    }
 
    void Destruct(const size_t cInnerBags);
@@ -147,8 +148,8 @@ struct DataSetBoosting final {
    }
 
    inline double GetBagWeightTotal(const size_t iBag) const {
-      EBM_ASSERT(1 == m_cSubsets); // TODO: for now we only support 1 subset
-      return m_aSubsets[0].GetInnerBags()[iBag].GetWeightTotal();
+      EBM_ASSERT(nullptr != m_aBagWeightTotals);
+      return m_aBagWeightTotals[iBag];
    }
 
    inline size_t GetCountSubsets() const {
@@ -164,6 +165,7 @@ private:
    size_t m_cSamples;
    size_t m_cSubsets;
    DataSubsetBoosting * m_aSubsets;
+   double * m_aBagWeightTotals;
 };
 static_assert(std::is_standard_layout<DataSetBoosting>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");

@@ -303,8 +303,8 @@ ErrorEbm DataSubsetInteraction::Initialize(
          }
          if(nullptr != m_aWeights) {
             const double total = AddPositiveFloatsSafe<double>(cSetSamples, m_aWeights);
-            if(std::isnan(total) || std::isinf(total) || total <= double { 0 }) {
-               LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= 0");
+            if(std::isnan(total) || std::isinf(total) || total < std::numeric_limits<double>::min()) {
+               LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::Initialize std::isnan(total) || std::isinf(total) || total < std::numeric_limits<double>::min()");
                return Error_UserParamVal;
             }
             // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add

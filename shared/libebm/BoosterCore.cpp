@@ -15,7 +15,7 @@
 #include "Bin.hpp" // IsOverflowBinSize
 
 #include "compute_accessors.hpp"
-#include "ebm_internal.hpp" // AddPositiveFloatsSafe
+#include "ebm_internal.hpp"
 #include "dataset_shared.hpp" // GetDataSetSharedHeader
 #include "Tensor.hpp" // Tensor
 #include "Feature.hpp" // Feature

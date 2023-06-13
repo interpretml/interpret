@@ -10,7 +10,9 @@
 
 #include "common_cpp.hpp" // INLINE_RELEASE_UNTEMPLATED
 
-#include "ebm_internal.hpp" // SafeConvertFloat
+#include "ebm_internal.hpp" // SafeConvertFloat, AddPositiveFloatsSafe
+#include "RandomDeterministic.hpp" // RandomDeterministic
+#include "RandomNondeterministic.hpp" // RandomNondeterministic
 #include "Feature.hpp" // Feature
 #include "Term.hpp" // Term
 #include "dataset_shared.hpp" // SharedStorageDataType
@@ -644,10 +646,6 @@ void DataSubsetBoosting::Destruct(const size_t cInnerBags) {
    LOG_0(Trace_Info, "Exited DataSubsetBoosting::Destruct");
 }
 
-
-
-
-
 ErrorEbm DataSetBoosting::Initialize(
    const size_t cSubsetItemsMax,
    const size_t cScores,
@@ -683,7 +681,6 @@ ErrorEbm DataSetBoosting::Initialize(
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize IsMultiplyError(sizeof(DataSubsetBoosting), cSubsets)");
          return Error_OutOfMemory;
       }
-
       DataSubsetBoosting * aSubsets = static_cast<DataSubsetBoosting *>(malloc(sizeof(DataSubsetBoosting) * cSubsets));
       if(nullptr == aSubsets) {
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == aSubsets");
@@ -703,7 +700,8 @@ ErrorEbm DataSetBoosting::Initialize(
 
       DataSubsetBoosting * pSubsetInit = aSubsets;
       do {
-         // TODO: allow more than 1 in the future
+         // TODO: allow more than 1 in the future. We need to move the functions inside pSubsetInit->Initialize
+         // into this function and make them subset aware before allowing multiple subsets
          EBM_ASSERT(1 == cSubsets);
 
          error = pSubsetInit->Initialize(
@@ -736,6 +734,54 @@ ErrorEbm DataSetBoosting::Initialize(
          ++pSubsetInit;
       } while(pSubsetsEnd != pSubsetInit);
 
+      const size_t cInnerBagsAfterZero = size_t { 0 } == cInnerBags ? size_t { 1 } : cInnerBags;
+
+      if(IsMultiplyError(sizeof(double), cInnerBagsAfterZero)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize IsMultiplyError(sizeof(double), cInnerBagsAfterZero))");
+         return Error_OutOfMemory;
+      }
+      double * pBagWeightTotals = static_cast<double *>(malloc(sizeof(double) * cInnerBagsAfterZero));
+      if(nullptr == pBagWeightTotals) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == pBagWeightTotals");
+         return Error_OutOfMemory;
+      }
+      m_aBagWeightTotals = pBagWeightTotals;
+
+      // the compiler understands the internal state of this RNG and can locate its internal state into CPU registers
+      RandomDeterministic cpuRng;
+      size_t * aCountOccurrences = nullptr;
+      if(size_t { 0 } != cInnerBags) {
+         if(nullptr == rng) {
+            // Inner bags are not used when building a differentially private model, so
+            // we can use low-quality non-determinism.  Generate a non-deterministic seed
+            uint64_t seed;
+            try {
+               RandomNondeterministic<uint64_t> randomGenerator;
+               seed = randomGenerator.Next(std::numeric_limits<uint64_t>::max());
+            } catch(const std::bad_alloc &) {
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize Out of memory in std::random_device");
+               return Error_OutOfMemory;
+            } catch(...) {
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize Unknown error in std::random_device");
+               return Error_UnexpectedInternal;
+            }
+            cpuRng.Initialize(seed);
+         } else {
+            const RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rng);
+            cpuRng.Initialize(*pRng); // move the RNG from memory into CPU registers
+         }
+
+         if(IsMultiplyError(sizeof(size_t), cSetSamples)) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize IsMultiplyError(sizeof(size_t), cSetSamples)");
+            return Error_OutOfMemory;
+         }
+         aCountOccurrences = static_cast<size_t *>(malloc(sizeof(size_t) * cSetSamples));
+         if(nullptr == aCountOccurrences) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == aCountOccurrences");
+            return Error_OutOfMemory;
+         }
+      }
+
       FloatFast * aWeights = nullptr;
       if(0 != cWeights) {
          // TODO: do we need to extract these, or can we work from the original array?
@@ -748,40 +794,128 @@ ErrorEbm DataSetBoosting::Initialize(
          );
          if(Error_None != error) {
             // error already logged
+            free(aCountOccurrences);
             return error;
          }
       }
 
-      const size_t cInnerBagsAfterZero = size_t { 0 } == cInnerBags ? size_t { 1 } : cInnerBags;
       size_t iBag = 0;
       do {
+         if(nullptr != aCountOccurrences) {
+            memset(aCountOccurrences, 0, sizeof(*aCountOccurrences) * cSetSamples);
+
+            size_t iSample = 0;
+            do {
+               const size_t iCountOccurrences = cpuRng.NextFast(cSetSamples);
+               ++aCountOccurrences[iCountOccurrences];
+               ++iSample;
+            } while(cSetSamples != iSample);
+         }
+
+         const size_t * pCountOccurrences = aCountOccurrences;
+         const FloatFast * pWeight = aWeights;
+
+         double total = 0.0;
          DataSubsetBoosting * pSubset = aSubsets;
          do {
-            // TODO: allow more than 1 in the future
-            EBM_ASSERT(1 == cSubsets);
-
-
             EBM_ASSERT(nullptr != pSubset->m_aInnerBags);
             InnerBag * const pInnerBag = &pSubset->m_aInnerBags[iBag];
 
-            if(size_t { 0 } == cInnerBags) {
-               // zero is a special value that really means allocate one set that contains all samples.
-               error = pInnerBag->InitializeFakeInnerBag(cSetSamples, aWeights);
-            } else {
-               error = pInnerBag->InitializeRealInnerBag(rng, cSetSamples, aWeights);
+            const size_t cSubsetSamples = pSubset->GetCountSamples();
+
+            FloatFast * aWeightsInternal = nullptr;
+            if(nullptr != pWeight || nullptr != pCountOccurrences) {
+               if(IsMultiplyError(sizeof(FloatFast), cSubsetSamples)) {
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize IsMultiplyError(sizeof(FloatFast), cSubsetSamples)");
+                  free(aWeights);
+                  free(aCountOccurrences);
+                  return Error_OutOfMemory;
+               }
+               aWeightsInternal = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSubsetSamples));
+               if(nullptr == aWeightsInternal) {
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == aWeightsInternal");
+                  free(aWeights);
+                  free(aCountOccurrences);
+                  return Error_OutOfMemory;
+               }
+               pInnerBag->m_aWeights = aWeightsInternal;
             }
-            if(UNLIKELY(Error_None != error)) {
-               free(aWeights);
-               return error;
+
+            if(nullptr == pCountOccurrences) {
+               // zero is a special value that really means allocate one set that contains all samples.
+               if(nullptr != pWeight) {
+                  EBM_ASSERT(nullptr != aWeightsInternal);
+                  static_assert(sizeof(*aWeightsInternal) == sizeof(*pWeight), "size needs to be the same for memcpy");
+                  memcpy(aWeightsInternal, pWeight, sizeof(*pWeight) * cSubsetSamples);
+                  pWeight += cSubsetSamples;
+                  total += AddPositiveFloatsSafe<double>(cSubsetSamples, aWeightsInternal);
+               }
+            } else {
+               EBM_ASSERT(cSubsetSamples <= cSetSamples);
+
+               size_t * pOccurrences = static_cast<size_t *>(malloc(sizeof(size_t) * cSubsetSamples));
+               if(nullptr == pOccurrences) {
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == aCountOccurrences");
+                  free(aWeights);
+                  free(aCountOccurrences);
+                  return Error_OutOfMemory;
+               }
+               pInnerBag->m_aCountOccurrences = pOccurrences;
+               const size_t * const pCountOccurrencesEnd = &pOccurrences[cSubsetSamples];
+
+               EBM_ASSERT(nullptr != aWeightsInternal);
+               FloatFast * pWeightsInternal = aWeightsInternal;
+               if(nullptr == pWeight) {
+                  do {
+                     *pOccurrences = *pCountOccurrences;
+                     ++pOccurrences;
+                     *pWeightsInternal = static_cast<FloatFast>(*pCountOccurrences);
+                     ++pWeightsInternal;
+                     ++pCountOccurrences;
+                  } while(pCountOccurrencesEnd != pOccurrences);
+               } else {
+                  do {
+                     *pOccurrences = *pCountOccurrences;
+                     ++pOccurrences;
+                     *pWeightsInternal = *pWeight * static_cast<FloatFast>(*pCountOccurrences);
+                     ++pWeight;
+                     ++pWeightsInternal;
+                     ++pCountOccurrences;
+                  } while(pCountOccurrencesEnd != pOccurrences);
+                  total += AddPositiveFloatsSafe<double>(cSubsetSamples, aWeightsInternal);
+               }
             }
 
             ++pSubset;
          } while(pSubsetsEnd != pSubset);
 
+         if(nullptr == pWeight) {
+            // eliminate any floating point noise by converting directly from the integer representation
+            total = static_cast<double>(cSetSamples);
+         } else {
+            if(std::isnan(total) || std::isinf(total) || total < std::numeric_limits<double>::min()) {
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize std::isnan(total) || std::isinf(total) || total < std::numeric_limits<double>::min()");
+               free(aWeights);
+               free(aCountOccurrences);
+               return Error_UserParamVal;
+            }
+         }
+
+         *pBagWeightTotals = total;
+         ++pBagWeightTotals;
+
          ++iBag;
       } while(cInnerBagsAfterZero != iBag);
 
+      if(nullptr != aCountOccurrences) {
+         if(nullptr != rng) {
+            RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
+            pRng->Initialize(cpuRng); // move the RNG from memory into CPU registers
+         }
+      }
+
       free(aWeights);
+      free(aCountOccurrences);
 
       m_cSamples = cSetSamples;
    }
@@ -804,6 +938,8 @@ void DataSetBoosting::Destruct(const size_t cInnerBags) {
       } while(pSubsetsEnd != pSubset);
       free(m_aSubsets);
    }
+
+   free(m_aBagWeightTotals);
 
    LOG_0(Trace_Info, "Exited DataSetBoosting::Destruct");
 }
