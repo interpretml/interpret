@@ -18,7 +18,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void InitializeRmseGradientsAndHessians(
+extern void InitializeRmseGradientsAndHessiansInteraction(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
    const BagEbm * const aBag,
@@ -202,7 +202,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       } else {
          // check for 0 interaction samples
          if(!pInteractionCore->GetDataSetInteraction()->IsGradientsAndHessiansNull()) {
-            InitializeRmseGradientsAndHessians(
+            InitializeRmseGradientsAndHessiansInteraction(
                static_cast<const unsigned char *>(dataSet),
                BagEbm { 1 },
                bag,

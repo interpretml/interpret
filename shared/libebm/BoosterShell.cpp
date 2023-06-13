@@ -25,7 +25,7 @@ namespace DEFINED_ZONE_NAME {
 
 struct BinBase;
 
-extern void InitializeRmseGradientsAndHessians(
+extern void InitializeRmseGradientsAndHessiansBoosting(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
    const BagEbm * const aBag,
@@ -269,7 +269,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       } else {
          // check for 0 training samples
          if(!pBoosterCore->GetTrainingSet()->IsGradientsAndHessiansNull()) {
-            InitializeRmseGradientsAndHessians(
+            InitializeRmseGradientsAndHessiansBoosting(
                static_cast<const unsigned char *>(dataSet),
                BagEbm { 1 },
                bag,
@@ -281,7 +281,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
          }
          // check for 0 validation samples
          if(!pBoosterCore->GetValidationSet()->IsGradientsAndHessiansNull()) {
-            InitializeRmseGradientsAndHessians(
+            InitializeRmseGradientsAndHessiansBoosting(
                static_cast<const unsigned char *>(dataSet),
                BagEbm { -1 },
                bag,
