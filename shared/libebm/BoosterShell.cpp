@@ -30,9 +30,7 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
    const BagEbm direction,
    const BagEbm * const aBag,
    const double * const aInitScores,
-   const size_t cSetSamples,
-   FloatFast * const aGradientAndHessian,
-   const FloatFast * const aWeight
+   DataSubsetBoosting * const pDataSet
 );
 
 void BoosterShell::Free(BoosterShell * const pBoosterShell) {
@@ -274,9 +272,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
                BagEbm { 1 },
                bag,
                initScores,
-               pBoosterCore->GetTrainingSet()->GetCountSamples(),
-               pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer(),
-               nullptr // for boosting do not pre-multiply the gradients by the weight
+               pBoosterCore->GetTrainingSet()
             );
          }
          // check for 0 validation samples
@@ -286,9 +282,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
                BagEbm { -1 },
                bag,
                initScores,
-               pBoosterCore->GetValidationSet()->GetCountSamples(),
-               pBoosterCore->GetValidationSet()->GetGradientsAndHessiansPointer(),
-               nullptr // for boosting do not pre-multiply the gradients by the weight
+               pBoosterCore->GetValidationSet()
             );
          }
       }

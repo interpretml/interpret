@@ -20,12 +20,9 @@ namespace DEFINED_ZONE_NAME {
 
 extern void InitializeRmseGradientsAndHessiansInteraction(
    const unsigned char * const pDataSetShared,
-   const BagEbm direction,
    const BagEbm * const aBag,
    const double * const aInitScores,
-   const size_t cSetSamples,
-   FloatFast * const aGradientAndHessian,
-   const FloatFast * const aWeight
+   DataSubsetInteraction * const pDataSet
 );
 
 void InteractionShell::Free(InteractionShell * const pInteractionShell) {
@@ -204,12 +201,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
          if(!pInteractionCore->GetDataSetInteraction()->IsGradientsAndHessiansNull()) {
             InitializeRmseGradientsAndHessiansInteraction(
                static_cast<const unsigned char *>(dataSet),
-               BagEbm { 1 },
                bag,
                initScores,
-               pInteractionCore->GetDataSetInteraction()->GetCountSamples(),
-               pInteractionCore->GetDataSetInteraction()->GetGradientsAndHessiansPointer(),
-               pInteractionCore->GetDataSetInteraction()->GetWeights()
+               pInteractionCore->GetDataSetInteraction()
             );
          }
       }

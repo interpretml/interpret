@@ -739,7 +739,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       do {
          const InnerBag * const pInnerBag = *ppInnerBag;
 
-         EBM_ASSERT(0 < pInnerBag->GetWeightTotal()); // if all are zeros we assume there are no weights and use the count
+
+         const double weightTotal = pInnerBag->GetWeightTotal();
+
+         EBM_ASSERT(0 < weightTotal); // if all are zeros we assume there are no weights and use the count
 
          aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
 
@@ -757,7 +760,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
 #ifndef NDEBUG
          params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
-         params.m_totalWeightDebug = SafeConvertFloat<FloatFast>(pInnerBag->GetWeightTotal());
+         params.m_totalWeightDebug = SafeConvertFloat<FloatFast>(weightTotal);
 #endif // NDEBUG
          error = BinSumsBoosting(&params);
          if(Error_None != error) {
@@ -822,7 +825,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
                   pRng,
                   pBoosterShell,
                   cSignificantBinCount,
-                  SafeConvertFloat<FloatFast>(pInnerBag->GetWeightTotal()),
+                  SafeConvertFloat<FloatFast>(weightTotal),
                   iDimensionImportant,
                   cSamplesLeafMin,
                   lastDimensionLeavesMax,
@@ -846,8 +849,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             // gain should be +inf if there was an overflow in our callees
             EBM_ASSERT(!std::isnan(gain));
             EBM_ASSERT(0 <= gain);
-
-            const double weightTotal = pInnerBag->GetWeightTotal();
 
             // this could re-promote gain to be +inf again if weightTotal < 1.0
             // do the sample count inversion here in case adding all the avgeraged gains pushes us into +inf
