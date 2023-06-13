@@ -30,7 +30,7 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
    const BagEbm direction,
    const BagEbm * const aBag,
    const double * const aInitScores,
-   DataSubsetBoosting * const pDataSet
+   DataSetBoosting * const pDataSet
 );
 
 void BoosterShell::Free(BoosterShell * const pBoosterShell) {
@@ -253,8 +253,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
 
    if(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() && ptrdiff_t { 1 } != pBoosterCore->GetCountClasses()) {
       if(!pBoosterCore->IsRmse()) {
-         // check for 0 training samples
-         if(!pBoosterCore->GetTrainingSet()->IsGradientsAndHessiansNull()) {
+         if(0 != pBoosterCore->GetTrainingSet()->GetCountSamples()) {
             error = pBoosterCore->InitializeBoosterGradientsAndHessians(
                pBoosterShell->GetMulticlassMidwayTemp(),
                pBoosterShell->GetTermUpdate()->GetTensorScoresPointer() // initialized to zero at this point
@@ -265,8 +264,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
             }
          }
       } else {
-         // check for 0 training samples
-         if(!pBoosterCore->GetTrainingSet()->IsGradientsAndHessiansNull()) {
+         if(0 != pBoosterCore->GetTrainingSet()->GetCountSamples()) {
             InitializeRmseGradientsAndHessiansBoosting(
                static_cast<const unsigned char *>(dataSet),
                BagEbm { 1 },
@@ -275,8 +273,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
                pBoosterCore->GetTrainingSet()
             );
          }
-         // check for 0 validation samples
-         if(!pBoosterCore->GetValidationSet()->IsGradientsAndHessiansNull()) {
+         if(0 != pBoosterCore->GetValidationSet()->GetCountSamples()) {
             InitializeRmseGradientsAndHessiansBoosting(
                static_cast<const unsigned char *>(dataSet),
                BagEbm { -1 },

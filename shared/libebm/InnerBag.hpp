@@ -16,8 +16,11 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class RandomDeterministic;
+struct DataSetBoosting;
 
 class InnerBag final {
+   friend DataSetBoosting;
+
    // Sampling with replacement is the more theoretically correct method of sampling, but it has the drawback that 
    // we need to keep a count of the number of times each sample is selected in the dataset.  
    // Sampling without replacement would require 1 bit per case, so it can be faster.

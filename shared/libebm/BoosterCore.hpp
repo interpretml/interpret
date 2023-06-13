@@ -59,8 +59,8 @@ class BoosterCore final {
    size_t m_cBytesSplitPositions;
    size_t m_cBytesTreeNodes;
 
-   DataSubsetBoosting m_trainingSet;
-   DataSubsetBoosting m_validationSet;
+   DataSetBoosting m_trainingSet;
+   DataSetBoosting m_validationSet;
 
    ObjectiveWrapper m_objective;
 
@@ -133,11 +133,11 @@ public:
       return m_apTerms;
    }
 
-   inline DataSubsetBoosting * GetTrainingSet() {
+   inline DataSetBoosting * GetTrainingSet() {
       return &m_trainingSet;
    }
 
-   inline DataSubsetBoosting * GetValidationSet() {
+   inline DataSetBoosting * GetValidationSet() {
       return &m_validationSet;
    }
 

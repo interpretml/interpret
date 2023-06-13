@@ -561,95 +561,95 @@ ErrorEbm DataSubsetBoosting::Initialize(
 
    LOG_0(Trace_Info, "Entered DataSubsetBoosting::Initialize");
 
-   if(0 != cSetSamples) {
-      if(bAllocateGradients) {
-         FloatFast * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSetSamples, cScores);
-         if(nullptr == aGradientsAndHessians) {
-            LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aGradientsAndHessians");
-            return Error_OutOfMemory;
-         }
-         m_aGradientsAndHessians = aGradientsAndHessians;
-      } else {
-         EBM_ASSERT(!bAllocateHessians);
-      }
-      if(bAllocateSampleScores) {
-         FloatFast * const aSampleScores = ConstructSampleScores(
-            cScores, 
-            direction, 
-            aBag, 
-            aInitScores,
-            cSetSamples
-         );
-         if(nullptr == aSampleScores) {
-            LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aSampleScores");
-            return Error_OutOfMemory;
-         }
-         m_aSampleScores = aSampleScores;
-      }
-      if(bAllocateTargetData) {
-         void * const aTargetData = ConstructTargetData(
-            pDataSetShared,
-            direction,
-            aBag,
-            cSetSamples
-         );
-         if(nullptr == aTargetData) {
-            LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aTargetData");
-            return Error_OutOfMemory;
-         }
-         m_aTargetData = aTargetData;
-      }
-      if(0 != cTerms) {
-         StorageDataType ** const aaInputData = ConstructInputData(
-            pDataSetShared,
-            cSharedSamples,
-            direction,
-            aBag,
-            cSetSamples,
-            aiTermFeatures,
-            cTerms,
-            apTerms
-         );
-         if(nullptr == aaInputData) {
-            LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aaInputData");
-            return Error_OutOfMemory;
-         }
-         m_aaInputData = aaInputData;
-         m_cTerms = cTerms; // only needed if nullptr != m_aaInputData
-      }
+   EBM_ASSERT(0 != cSetSamples);
 
-      EBM_ASSERT(nullptr == m_apInnerBags);
-      FloatFast * aWeights = nullptr;
-      if(0 != cWeights) {
-         error = ExtractWeights(
-            pDataSetShared,
-            direction,
-            aBag,
-            cSetSamples,
-            &aWeights
-         );
-         if(Error_None != error) {
-            // error already logged
-            return error;
-         }
+   if(bAllocateGradients) {
+      FloatFast * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSetSamples, cScores);
+      if(nullptr == aGradientsAndHessians) {
+         LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aGradientsAndHessians");
+         return Error_OutOfMemory;
       }
-      // TODO: we could steal the aWeights in GenerateInnerBags for flat sampling sets, or maybe don't use
-      // ExtractWeights and just get them directly from the pDataSetShared
-      error = InnerBag::GenerateInnerBags(
-         rng,
-         cSetSamples,
-         aWeights,
-         cInnerBags,
-         &m_apInnerBags
+      m_aGradientsAndHessians = aGradientsAndHessians;
+   } else {
+      EBM_ASSERT(!bAllocateHessians);
+   }
+   if(bAllocateSampleScores) {
+      FloatFast * const aSampleScores = ConstructSampleScores(
+         cScores, 
+         direction, 
+         aBag, 
+         aInitScores,
+         cSetSamples
       );
-      free(aWeights);
-      if(UNLIKELY(Error_None != error)) {
-         // already logged
+      if(nullptr == aSampleScores) {
+         LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aSampleScores");
+         return Error_OutOfMemory;
+      }
+      m_aSampleScores = aSampleScores;
+   }
+   if(bAllocateTargetData) {
+      void * const aTargetData = ConstructTargetData(
+         pDataSetShared,
+         direction,
+         aBag,
+         cSetSamples
+      );
+      if(nullptr == aTargetData) {
+         LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aTargetData");
+         return Error_OutOfMemory;
+      }
+      m_aTargetData = aTargetData;
+   }
+   if(0 != cTerms) {
+      StorageDataType ** const aaInputData = ConstructInputData(
+         pDataSetShared,
+         cSharedSamples,
+         direction,
+         aBag,
+         cSetSamples,
+         aiTermFeatures,
+         cTerms,
+         apTerms
+      );
+      if(nullptr == aaInputData) {
+         LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aaInputData");
+         return Error_OutOfMemory;
+      }
+      m_aaInputData = aaInputData;
+      m_cTerms = cTerms; // only needed if nullptr != m_aaInputData
+   }
+
+   EBM_ASSERT(nullptr == m_apInnerBags);
+   FloatFast * aWeights = nullptr;
+   if(0 != cWeights) {
+      error = ExtractWeights(
+         pDataSetShared,
+         direction,
+         aBag,
+         cSetSamples,
+         &aWeights
+      );
+      if(Error_None != error) {
+         // error already logged
          return error;
       }
-
-      m_cSamples = cSetSamples;
    }
+   // TODO: we could steal the aWeights in GenerateInnerBags for flat sampling sets, or maybe don't use
+   // ExtractWeights and just get them directly from the pDataSetShared
+   error = InnerBag::GenerateInnerBags(
+      rng,
+      cSetSamples,
+      aWeights,
+      cInnerBags,
+      &m_apInnerBags
+   );
+   free(aWeights);
+   if(UNLIKELY(Error_None != error)) {
+      // already logged
+      return error;
+   }
+
+   m_cSamples = cSetSamples;
 
    LOG_0(Trace_Info, "Exited DataSubsetBoosting::Initialize");
 
@@ -677,6 +677,118 @@ void DataSubsetBoosting::Destruct(const size_t cInnerBags) {
    }
 
    LOG_0(Trace_Info, "Exited DataSubsetBoosting::Destruct");
+}
+
+
+
+
+
+ErrorEbm DataSetBoosting::Initialize(
+   const size_t cSubsetItemsMax,
+   const size_t cScores,
+   const bool bAllocateGradients,
+   const bool bAllocateHessians,
+   const bool bAllocateSampleScores,
+   const bool bAllocateTargetData,
+   const unsigned char * const pDataSetShared,
+   const size_t cSharedSamples,
+   const BagEbm direction,
+   const BagEbm * const aBag,
+   const double * const aInitScores,
+   const size_t cSetSamples,
+   void * const rng,
+   const size_t cInnerBags,
+   const size_t cWeights,
+   const IntEbm * const aiTermFeatures,
+   const size_t cTerms,
+   const Term * const * const apTerms
+) {
+   LOG_0(Trace_Info, "Entered DataSetBoosting::Initialize");
+
+   ErrorEbm error;
+
+   EBM_ASSERT(nullptr == m_aSubsets);
+   EBM_ASSERT(0 == m_cSubsets);
+   EBM_ASSERT(0 == m_cSamples);
+
+   if(0 != cSetSamples) {
+      const size_t cSubsets = (cSetSamples - size_t { 1 }) / cSubsetItemsMax + size_t { 1 };
+
+      if(IsMultiplyError(sizeof(DataSubsetBoosting), cSubsets)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize IsMultiplyError(sizeof(DataSubsetBoosting), cSubsets)");
+         return Error_OutOfMemory;
+      }
+
+      DataSubsetBoosting * pSubset = static_cast<DataSubsetBoosting *>(malloc(sizeof(DataSubsetBoosting) * cSubsets));
+      if(nullptr == pSubset) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == pSubset");
+         return Error_OutOfMemory;
+      }
+      m_aSubsets = pSubset;
+      m_cSubsets = cSubsets;
+
+      EBM_ASSERT(1 <= cSubsets);
+      const DataSubsetBoosting * const pSubsetsEnd = pSubset + cSubsets;
+
+      DataSubsetBoosting * pSubsetInit = pSubset;
+      do {
+         pSubsetInit->InitializeUnfailing();
+         ++pSubsetInit;
+      } while(pSubsetsEnd != pSubsetInit);
+
+      do {
+         // TODO: allow more than 1 in the future
+         EBM_ASSERT(1 == cSubsets);
+
+         error = pSubset->Initialize(
+            cScores,
+            bAllocateGradients,
+            bAllocateHessians,
+            bAllocateSampleScores,
+            bAllocateTargetData,
+            pDataSetShared,
+            cSharedSamples,
+            direction,
+            aBag,
+            aInitScores,
+            cSetSamples,
+            rng,
+            cInnerBags,
+            cWeights,
+            aiTermFeatures,
+            cTerms,
+            apTerms
+         );
+         if(Error_None != error) {
+            return error;
+         }
+
+         ++pSubset;
+      } while(pSubsetsEnd != pSubset);
+
+      m_cSamples = cSetSamples;
+   }
+
+   LOG_0(Trace_Info, "Exited DataSetBoosting::Initialize");
+
+   return Error_None;
+}
+
+void DataSetBoosting::Destruct(const size_t cInnerBags) {
+   LOG_0(Trace_Info, "Entered DataSetBoosting::Destruct");
+
+   DataSubsetBoosting * pSubset = m_aSubsets;
+   if(nullptr != pSubset) {
+      EBM_ASSERT(1 <= m_cSubsets);
+      const DataSubsetBoosting * const pSubsetsEnd = pSubset + m_cSubsets;
+      do {
+         pSubset->Destruct(cInnerBags);
+         ++pSubset;
+      } while(pSubsetsEnd != pSubset);
+      free(m_aSubsets);
+   }
+
+   LOG_0(Trace_Info, "Exited DataSetBoosting::Destruct");
 }
 
 } // DEFINED_ZONE_NAME

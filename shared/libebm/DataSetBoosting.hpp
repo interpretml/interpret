@@ -22,14 +22,20 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class Term;
+struct DataSetBoosting;
 
 class DataSubsetBoosting final {
+   friend DataSetBoosting;
+
    FloatFast * m_aGradientsAndHessians;
    FloatFast * m_aSampleScores;
    void * m_aTargetData;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
    size_t m_cTerms;
+
+   // TODO: the InnerBag class is a fixed size, so we don't need to allocate a pointer to an array of pointers
+   //       we can just allocate an array of the fixed sized items and have one less indirection step
    InnerBag ** m_apInnerBags;
 
 public:
@@ -75,11 +81,6 @@ public:
       return m_apInnerBags;
    }
 
-   inline bool IsGradientsAndHessiansNull() {
-      // TODO: remove this and just use GetGradientsAndHessiansPointer
-      return nullptr == m_aGradientsAndHessians;
-   }
-
    inline FloatFast * GetGradientsAndHessiansPointer() {
       return m_aGradientsAndHessians;
    }
@@ -107,6 +108,73 @@ static_assert(std::is_trivial<DataSubsetBoosting>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<DataSubsetBoosting>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
+
+
+struct DataSetBoosting final {
+   DataSetBoosting() = default; // preserve our POD status
+   ~DataSetBoosting() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
+   inline void InitializeUnfailing() {
+      m_cSamples = 0;
+      m_cSubsets = 0;
+      m_aSubsets = nullptr;
+   }
+
+   void Destruct(const size_t cInnerBags);
+
+   ErrorEbm Initialize(
+      const size_t cSubsetItemsMax,
+      const size_t cScores,
+      const bool bAllocateGradients,
+      const bool bAllocateHessians,
+      const bool bAllocateSampleScores,
+      const bool bAllocateTargetData,
+      const unsigned char * const pDataSetShared,
+      const size_t cSharedSamples,
+      const BagEbm direction,
+      const BagEbm * const aBag,
+      const double * const aInitScores,
+      const size_t cSetSamples,
+      void * const rng,
+      const size_t cInnerBags,
+      const size_t cWeights,
+      const IntEbm * const aiTermFeatures,
+      const size_t cTerms,
+      const Term * const * const apTerms
+   );
+
+   inline size_t GetCountSamples() const {
+      return m_cSamples;
+   }
+
+   inline double GetBagWeightTotal(const size_t iBag) const {
+      EBM_ASSERT(1 == m_cSubsets); // TODO: for now we only support 1 subset
+      return m_aSubsets[0].GetInnerBags()[iBag]->GetWeightTotal();
+   }
+
+   inline size_t GetCountSubsets() const {
+      return m_cSubsets;
+   }
+
+   inline DataSubsetBoosting * GetSubsets() {
+      EBM_ASSERT(nullptr != m_aSubsets);
+      return m_aSubsets;
+   }
+
+private:
+   size_t m_cSamples;
+   size_t m_cSubsets;
+   DataSubsetBoosting * m_aSubsets;
+};
+static_assert(std::is_standard_layout<DataSetBoosting>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<DataSetBoosting>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<DataSetBoosting>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
+
 
 } // DEFINED_ZONE_NAME
 

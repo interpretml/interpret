@@ -82,9 +82,6 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
    if(bWeight) {
       pWeight = pParams->m_aWeights;
    }
-#ifndef NDEBUG
-   FloatFast weightTotalDebug = 0;
-#endif // NDEBUG
 
    do {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
@@ -125,27 +122,17 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
             weight = *pWeight;
             pBin->SetWeight(pBin->GetWeight() + weight);
             ++pWeight;
-#ifndef NDEBUG
-            weightTotalDebug += weight;
-#endif // NDEBUG
          } else {
             // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
             //       such that we can remove that field optionally
             pBin->SetWeight(pBin->GetWeight() + FloatFast { 1 });
          }
 
-#ifndef NDEBUG
-         FloatFast gradientTotalDebug = 0;
-#endif // NDEBUG
-
          auto * const aGradientPair = pBin->GetGradientPairs();
          size_t iScore = 0;
          do {
             auto * const pGradientPair = &aGradientPair[iScore];
             FloatFast gradient = bHessian ? pGradientAndHessian[iScore << 1] : pGradientAndHessian[iScore];
-#ifndef NDEBUG
-            gradientTotalDebug += gradient;
-#endif // NDEBUG
             if(bWeight) {
                gradient *= weight;
             }
@@ -177,12 +164,6 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
       }
       cShift = cShiftReset;
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
-
-   EBM_ASSERT(!bWeight || 0 < pParams->m_totalWeightDebug);
-   EBM_ASSERT(!bWeight || 0 < weightTotalDebug);
-   EBM_ASSERT(!bWeight || (weightTotalDebug * FloatFast { 0.999 } <= pParams->m_totalWeightDebug &&
-      pParams->m_totalWeightDebug <= FloatFast { 1.001 } * weightTotalDebug));
-   EBM_ASSERT(bWeight || static_cast<FloatFast>(cSamples) == pParams->m_totalWeightDebug);
 
    return Error_None;
 }

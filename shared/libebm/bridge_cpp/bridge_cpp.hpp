@@ -153,7 +153,6 @@ struct BinSumsBoostingBridge {
 
 #ifndef NDEBUG
    const BinBase * m_pDebugFastBinsEnd;
-   FloatFast m_totalWeightDebug;
 #endif // NDEBUG
 };
 
@@ -174,7 +173,6 @@ struct BinSumsInteractionBridge {
 
 #ifndef NDEBUG
    const BinBase * m_pDebugFastBinsEnd;
-   FloatFast m_totalWeightDebug;
 #endif // NDEBUG
 };
 

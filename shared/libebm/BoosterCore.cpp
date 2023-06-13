@@ -613,6 +613,7 @@ ErrorEbm BoosterCore::Create(
 
       pBoosterCore->m_cInnerBags = cInnerBags; // this is used to destruct m_trainingSet, so store it first
       error = pBoosterCore->m_trainingSet.Initialize(
+         cTrainingSamples, // TODO: reduce these to make multiple sets
          cScores,
          true,
          bHessian,
@@ -636,6 +637,7 @@ ErrorEbm BoosterCore::Create(
       }
 
       error = pBoosterCore->m_validationSet.Initialize(
+         cValidationSamples, // TODO: reduce these to make multiple sets
          cScores,
          pBoosterCore->IsRmse(),
          false,
@@ -676,20 +678,38 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
    }
 #endif // NDEBUG
 
-   ApplyUpdateBridge data;
-   data.m_cScores = cScores;
-   data.m_cPack = k_cItemsPerBitPackNone;
-   data.m_bHessianNeeded = EBM_TRUE;
-   data.m_bCalcMetric = false;
-   data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
-   data.m_aUpdateTensorScores = aUpdateScores;
-   data.m_cSamples = GetTrainingSet()->GetCountSamples();
-   data.m_aPacked = nullptr;
-   data.m_aTargets = GetTrainingSet()->GetTargetDataPointer();
-   data.m_aWeights = nullptr;
-   data.m_aSampleScores = GetTrainingSet()->GetSampleScores();
-   data.m_aGradientsAndHessians = GetTrainingSet()->GetGradientsAndHessiansPointer();
-   return ObjectiveApplyUpdate(&data);
+   ErrorEbm error;
+
+   EBM_ASSERT(1 <= GetTrainingSet()->GetCountSamples());
+   EBM_ASSERT(1 <= GetTrainingSet()->GetCountSubsets());
+
+   DataSubsetBoosting * pSubset = GetTrainingSet()->GetSubsets();
+   const DataSubsetBoosting * const pSubsetsEnd = pSubset + GetTrainingSet()->GetCountSubsets();
+   do {
+      EBM_ASSERT(1 <= pSubset->GetCountSamples());
+
+      ApplyUpdateBridge data;
+      data.m_cScores = cScores;
+      data.m_cPack = k_cItemsPerBitPackNone;
+      data.m_bHessianNeeded = EBM_TRUE;
+      data.m_bCalcMetric = false;
+      data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
+      data.m_aUpdateTensorScores = aUpdateScores;
+      data.m_cSamples = pSubset->GetCountSamples();
+      data.m_aPacked = nullptr;
+      data.m_aTargets = pSubset->GetTargetDataPointer();
+      data.m_aWeights = nullptr;
+      data.m_aSampleScores = pSubset->GetSampleScores();
+      data.m_aGradientsAndHessians = pSubset->GetGradientsAndHessiansPointer();
+      error = ObjectiveApplyUpdate(&data);
+      if(Error_None != error) {
+         return error;
+      }
+
+      ++pSubset;
+   } while(pSubsetsEnd != pSubset);
+
+   return Error_None;
 }
 
 } // DEFINED_ZONE_NAME

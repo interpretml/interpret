@@ -29,7 +29,7 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
    const BagEbm direction,
    const BagEbm * const aBag,
    const double * const aInitScores,
-   DataSubsetBoosting * const pDataSet
+   DataSetBoosting * const pDataSet
 ) {
    // RMSE regression is super super special in that we do not need to keep the scores and we can just use gradients
 
@@ -40,12 +40,13 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
    EBM_ASSERT(nullptr != aTargets); // we previously called GetDataSetSharedTarget and got back non-null result
    EBM_ASSERT(IsRegression(cRuntimeClasses));
 
-   const size_t cSetSamples = pDataSet->GetCountSamples();
-   FloatFast * const aGradientAndHessian = pDataSet->GetGradientsAndHessiansPointer();
+   EBM_ASSERT(1 <= pDataSet->GetCountSamples());
+   EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
+   DataSubsetBoosting * pSubset = pDataSet->GetSubsets();
+   EBM_ASSERT(nullptr != pSubset);
+   const DataSubsetBoosting * const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
 
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
-   EBM_ASSERT(1 <= cSetSamples);
-   EBM_ASSERT(nullptr != aGradientAndHessian);
 
    const BagEbm * pSampleReplication = aBag;
    const bool isLoopTraining = BagEbm { 0 } < direction;
@@ -53,9 +54,13 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
 
    const FloatFast * pTargetData = static_cast<const FloatFast *>(aTargets);
    const double * pInitScore = aInitScores;
-   FloatFast * pGradientAndHessian = aGradientAndHessian;
-   const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples;
-   do {
+
+   EBM_ASSERT(1 <= pSubset->GetCountSamples());
+   FloatFast * pGradientAndHessian = pSubset->GetGradientsAndHessiansPointer();
+   EBM_ASSERT(nullptr != pGradientAndHessian);
+   const FloatFast * pGradientAndHessianEnd = pGradientAndHessian + pSubset->GetCountSamples();
+
+   while(true) {
       BagEbm replication = 1;
       size_t cInitAdvances = 1;
       if(nullptr != pSampleReplication) {
@@ -95,11 +100,21 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
          *pGradientAndHessian = gradient;
          ++pGradientAndHessian;
 
+         if(pGradientAndHessianEnd == pGradientAndHessian) {
+            ++pSubset;
+            if(pSubsetsEnd == pSubset) {
+               LOG_0(Trace_Info, "Exited InitializeRmseGradientsAndHessiansBoosting");
+               return;
+            }
+            EBM_ASSERT(1 <= pSubset->GetCountSamples());
+            pGradientAndHessian = pSubset->GetGradientsAndHessiansPointer();
+            EBM_ASSERT(nullptr != pGradientAndHessian);
+            pGradientAndHessianEnd = pGradientAndHessian + pSubset->GetCountSamples();
+         }
+
          replication -= direction;
       } while(BagEbm { 0 } != replication);
-   } while(pGradientAndHessianEnd != pGradientAndHessian);
-
-   LOG_0(Trace_Info, "Exited InitializeRmseGradientsAndHessiansBoosting");
+   }
 }
 
 extern void InitializeRmseGradientsAndHessiansInteraction(

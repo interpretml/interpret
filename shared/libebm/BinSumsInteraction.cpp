@@ -121,9 +121,6 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
    if(bWeight) {
       pWeight = pParams->m_aWeights;
    }
-#ifndef NDEBUG
-   FloatFast weightTotalDebug = 0;
-#endif // NDEBUG
 
    while(true) {
       size_t cTensorBytes = cBytesPerBin;
@@ -203,9 +200,6 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
          const FloatFast weight = *pWeight;
          pBin->SetWeight(pBin->GetWeight() + weight);
          ++pWeight;
-#ifndef NDEBUG
-         weightTotalDebug += weight;
-#endif // NDEBUG
       } else {
          // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
          //       such that we can remove that field optionally
@@ -229,12 +223,6 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
       pGradientAndHessian += bHessian ? cScores << 1 : cScores;
    }
 done:;
-
-   EBM_ASSERT(!bWeight || 0 < pParams->m_totalWeightDebug);
-   EBM_ASSERT(!bWeight || 0 < weightTotalDebug);
-   EBM_ASSERT(!bWeight || (weightTotalDebug * FloatFast { 0.999 } <= pParams->m_totalWeightDebug &&
-      pParams->m_totalWeightDebug <= FloatFast { 1.001 } * weightTotalDebug));
-   EBM_ASSERT(bWeight || static_cast<FloatFast>(cSamples) == pParams->m_totalWeightDebug);
 
    return Error_None;
 }

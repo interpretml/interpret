@@ -133,57 +133,74 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
    pBoosterCore->GetCurrentModel()[iTerm]->AddExpandedWithBadValueProtection(aUpdateScores);
 
    if(0 != pBoosterCore->GetTrainingSet()->GetCountSamples()) {
-      ApplyUpdateBridge data;
-      data.m_cScores = GetCountScores(pBoosterCore->GetCountClasses());
-      data.m_cPack = pTerm->GetTermBitPack();
-      data.m_bHessianNeeded = EBM_TRUE;
-      data.m_bCalcMetric = false;
-      data.m_aMulticlassMidwayTemp = pBoosterShell->GetMulticlassMidwayTemp();
-      data.m_aUpdateTensorScores = aUpdateScores;
-      data.m_cSamples = pBoosterCore->GetTrainingSet()->GetCountSamples();
-      data.m_aPacked = pBoosterCore->GetTrainingSet()->GetInputDataPointer(iTerm);
-      data.m_aTargets = pBoosterCore->GetTrainingSet()->GetTargetDataPointer();
-      data.m_aWeights = nullptr;
-      data.m_aSampleScores = pBoosterCore->GetTrainingSet()->GetSampleScores();
-      data.m_aGradientsAndHessians = pBoosterCore->GetTrainingSet()->GetGradientsAndHessiansPointer();
-      error = pBoosterCore->ObjectiveApplyUpdate(&data);
-      if(Error_None != error) {
-         return error;
-      }
+      EBM_ASSERT(1 <= pBoosterCore->GetTrainingSet()->GetCountSubsets());
+
+      DataSubsetBoosting * pSubset = pBoosterCore->GetTrainingSet()->GetSubsets();
+      const DataSubsetBoosting * const pSubsetsEnd = pSubset + pBoosterCore->GetTrainingSet()->GetCountSubsets();
+      do {
+         ApplyUpdateBridge data;
+         data.m_cScores = GetCountScores(pBoosterCore->GetCountClasses());
+         data.m_cPack = pTerm->GetTermBitPack();
+         data.m_bHessianNeeded = EBM_TRUE;
+         data.m_bCalcMetric = false;
+         data.m_aMulticlassMidwayTemp = pBoosterShell->GetMulticlassMidwayTemp();
+         data.m_aUpdateTensorScores = aUpdateScores;
+         data.m_cSamples = pSubset->GetCountSamples();
+         data.m_aPacked = pSubset->GetInputDataPointer(iTerm);
+         data.m_aTargets = pSubset->GetTargetDataPointer();
+         data.m_aWeights = nullptr;
+         data.m_aSampleScores = pSubset->GetSampleScores();
+         data.m_aGradientsAndHessians = pSubset->GetGradientsAndHessiansPointer();
+         error = pBoosterCore->ObjectiveApplyUpdate(&data);
+         if(Error_None != error) {
+            return error;
+         }
+
+         ++pSubset;
+      } while(pSubsetsEnd != pSubset);
    }
 
    double validationMetricAvg = 0.0;
    if(0 != pBoosterCore->GetValidationSet()->GetCountSamples()) {
-      // if there is no validation set, it's pretty hard to know what the metric we'll get for our validation set
-      // we could in theory return anything from zero to infinity or possibly, NaN (probably legally the best), but we return 0 here
-      // because we want to kick our caller out of any loop it might be calling us in.  Infinity and NaN are odd values that might cause problems in
-      // a caller that isn't expecting those values, so 0 is the safest option, and our caller can avoid the situation entirely by not calling
-      // us with zero count validation sets
+      EBM_ASSERT(1 <= pBoosterCore->GetValidationSet()->GetCountSubsets());
 
-      // if the count of training samples is zero, don't update the best term scores (it will stay as all zeros), and we don't need to update our 
-      // non-existant training set either C++ doesn't define what happens when you compare NaN to annother number.  It probably follows IEEE 754, 
-      // but it isn't guaranteed, so let's check for zero samples in the validation set this better way
-      // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
+      DataSubsetBoosting * pSubset = pBoosterCore->GetValidationSet()->GetSubsets();
+      const DataSubsetBoosting * const pSubsetsEnd = pSubset + pBoosterCore->GetValidationSet()->GetCountSubsets();
+      do {
+         // if there is no validation set, it's pretty hard to know what the metric we'll get for our validation set
+         // we could in theory return anything from zero to infinity or possibly, NaN (probably legally the best), but we return 0 here
+         // because we want to kick our caller out of any loop it might be calling us in.  Infinity and NaN are odd values that might cause problems in
+         // a caller that isn't expecting those values, so 0 is the safest option, and our caller can avoid the situation entirely by not calling
+         // us with zero count validation sets
 
-      ApplyUpdateBridge data;
-      data.m_cScores = GetCountScores(pBoosterCore->GetCountClasses());
-      data.m_cPack = pTerm->GetTermBitPack();
-      data.m_bHessianNeeded = EBM_TRUE;
-      data.m_bCalcMetric = true;
-      data.m_aMulticlassMidwayTemp = pBoosterShell->GetMulticlassMidwayTemp();
-      data.m_aUpdateTensorScores = aUpdateScores;
-      data.m_cSamples = pBoosterCore->GetValidationSet()->GetCountSamples();
-      data.m_aPacked = pBoosterCore->GetValidationSet()->GetInputDataPointer(iTerm);
-      data.m_aTargets = pBoosterCore->GetValidationSet()->GetTargetDataPointer();
-      data.m_aWeights = pBoosterCore->GetValidationSet()->GetInnerBags()[0]->GetWeights();
-      data.m_aSampleScores = pBoosterCore->GetValidationSet()->GetSampleScores();
-      data.m_aGradientsAndHessians = pBoosterCore->GetValidationSet()->GetGradientsAndHessiansPointer();
-      error = pBoosterCore->ObjectiveApplyUpdate(&data);
-      if(Error_None != error) {
-         return error;
-      }
+         // if the count of training samples is zero, don't update the best term scores (it will stay as all zeros), and we don't need to update our 
+         // non-existant training set either C++ doesn't define what happens when you compare NaN to annother number.  It probably follows IEEE 754, 
+         // but it isn't guaranteed, so let's check for zero samples in the validation set this better way
+         // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
-      validationMetricAvg = pBoosterCore->FinishMetric(data.m_metricOut);
+         ApplyUpdateBridge data;
+         data.m_cScores = GetCountScores(pBoosterCore->GetCountClasses());
+         data.m_cPack = pTerm->GetTermBitPack();
+         data.m_bHessianNeeded = EBM_TRUE;
+         data.m_bCalcMetric = true;
+         data.m_aMulticlassMidwayTemp = pBoosterShell->GetMulticlassMidwayTemp();
+         data.m_aUpdateTensorScores = aUpdateScores;
+         data.m_cSamples = pSubset->GetCountSamples();
+         data.m_aPacked = pSubset->GetInputDataPointer(iTerm);
+         data.m_aTargets = pSubset->GetTargetDataPointer();
+         data.m_aWeights = pSubset->GetInnerBags()[0]->GetWeights();
+         data.m_aSampleScores = pSubset->GetSampleScores();
+         data.m_aGradientsAndHessians = pSubset->GetGradientsAndHessiansPointer();
+         error = pBoosterCore->ObjectiveApplyUpdate(&data);
+         if(Error_None != error) {
+            return error;
+         }
+         validationMetricAvg += data.m_metricOut;
+
+         ++pSubset;
+      } while(pSubsetsEnd != pSubset);
+
+      validationMetricAvg = pBoosterCore->FinishMetric(validationMetricAvg);
 
       if(EBM_FALSE != pBoosterCore->MaximizeMetric()) {
          // make it so that we always return values such that the caller wants to minimize them. If the caller
@@ -193,7 +210,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
 
       EBM_ASSERT(!std::isnan(validationMetricAvg)); // NaNs can happen, but we should have cleaned them up
 
-      const double totalWeight = pBoosterCore->GetValidationSet()->GetInnerBags()[0]->GetWeightTotal();
+      const double totalWeight = pBoosterCore->GetValidationSet()->GetBagWeightTotal(0);
       EBM_ASSERT(!std::isnan(totalWeight));
       EBM_ASSERT(!std::isinf(totalWeight));
       EBM_ASSERT(0.0 < totalWeight);
