@@ -542,9 +542,6 @@ ErrorEbm DataSubsetBoosting::Initialize(
    const BagEbm * const aBag,
    const double * const aInitScores,
    const size_t cSetSamples,
-   void * const rng,
-   const size_t cInnerBags,
-   const size_t cWeights,
    const IntEbm * const aiTermFeatures,
    const size_t cTerms,
    const Term * const * const apTerms
@@ -556,8 +553,6 @@ ErrorEbm DataSubsetBoosting::Initialize(
    EBM_ASSERT(nullptr == m_aSampleScores);
    EBM_ASSERT(nullptr == m_aTargetData);
    EBM_ASSERT(nullptr == m_aaInputData);
-
-   ErrorEbm error;
 
    LOG_0(Trace_Info, "Entered DataSubsetBoosting::Initialize");
 
@@ -617,36 +612,6 @@ ErrorEbm DataSubsetBoosting::Initialize(
       }
       m_aaInputData = aaInputData;
       m_cTerms = cTerms; // only needed if nullptr != m_aaInputData
-   }
-
-   EBM_ASSERT(nullptr == m_aInnerBags);
-   FloatFast * aWeights = nullptr;
-   if(0 != cWeights) {
-      error = ExtractWeights(
-         pDataSetShared,
-         direction,
-         aBag,
-         cSetSamples,
-         &aWeights
-      );
-      if(Error_None != error) {
-         // error already logged
-         return error;
-      }
-   }
-   // TODO: we could steal the aWeights in GenerateInnerBags for flat sampling sets, or maybe don't use
-   // ExtractWeights and just get them directly from the pDataSetShared
-   error = InnerBag::GenerateInnerBags(
-      rng,
-      cSetSamples,
-      aWeights,
-      cInnerBags,
-      &m_aInnerBags
-   );
-   free(aWeights);
-   if(UNLIKELY(Error_None != error)) {
-      // already logged
-      return error;
    }
 
    m_cSamples = cSetSamples;
@@ -719,28 +684,29 @@ ErrorEbm DataSetBoosting::Initialize(
          return Error_OutOfMemory;
       }
 
-      DataSubsetBoosting * pSubset = static_cast<DataSubsetBoosting *>(malloc(sizeof(DataSubsetBoosting) * cSubsets));
-      if(nullptr == pSubset) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == pSubset");
+      DataSubsetBoosting * aSubsets = static_cast<DataSubsetBoosting *>(malloc(sizeof(DataSubsetBoosting) * cSubsets));
+      if(nullptr == aSubsets) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == aSubsets");
          return Error_OutOfMemory;
       }
-      m_aSubsets = pSubset;
+      m_aSubsets = aSubsets;
       m_cSubsets = cSubsets;
 
       EBM_ASSERT(1 <= cSubsets);
-      const DataSubsetBoosting * const pSubsetsEnd = pSubset + cSubsets;
+      const DataSubsetBoosting * const pSubsetsEnd = aSubsets + cSubsets;
 
-      DataSubsetBoosting * pSubsetInit = pSubset;
+      DataSubsetBoosting * pSubsetUnfailingInit = aSubsets;
       do {
-         pSubsetInit->InitializeUnfailing();
-         ++pSubsetInit;
-      } while(pSubsetsEnd != pSubsetInit);
+         pSubsetUnfailingInit->InitializeUnfailing();
+         ++pSubsetUnfailingInit;
+      } while(pSubsetsEnd != pSubsetUnfailingInit);
 
+      DataSubsetBoosting * pSubsetInit = aSubsets;
       do {
          // TODO: allow more than 1 in the future
          EBM_ASSERT(1 == cSubsets);
 
-         error = pSubset->Initialize(
+         error = pSubsetInit->Initialize(
             cScores,
             bAllocateGradients,
             bAllocateHessians,
@@ -752,9 +718,6 @@ ErrorEbm DataSetBoosting::Initialize(
             aBag,
             aInitScores,
             cSetSamples,
-            rng,
-            cInnerBags,
-            cWeights,
             aiTermFeatures,
             cTerms,
             apTerms
@@ -763,8 +726,62 @@ ErrorEbm DataSetBoosting::Initialize(
             return error;
          }
 
-         ++pSubset;
-      } while(pSubsetsEnd != pSubset);
+         InnerBag * const aInnerBags = InnerBag::AllocateInnerBags(cInnerBags);
+         if(nullptr == aInnerBags) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == aInnerBags");
+            return Error_OutOfMemory;
+         }
+         pSubsetInit->m_aInnerBags = aInnerBags;
+
+         ++pSubsetInit;
+      } while(pSubsetsEnd != pSubsetInit);
+
+      FloatFast * aWeights = nullptr;
+      if(0 != cWeights) {
+         // TODO: do we need to extract these, or can we work from the original array?
+         error = ExtractWeights(
+            pDataSetShared,
+            direction,
+            aBag,
+            cSetSamples,
+            &aWeights
+         );
+         if(Error_None != error) {
+            // error already logged
+            return error;
+         }
+      }
+
+      const size_t cInnerBagsAfterZero = size_t { 0 } == cInnerBags ? size_t { 1 } : cInnerBags;
+      size_t iBag = 0;
+      do {
+         DataSubsetBoosting * pSubset = aSubsets;
+         do {
+            // TODO: allow more than 1 in the future
+            EBM_ASSERT(1 == cSubsets);
+
+
+            EBM_ASSERT(nullptr != pSubset->m_aInnerBags);
+            InnerBag * const pInnerBag = &pSubset->m_aInnerBags[iBag];
+
+            if(size_t { 0 } == cInnerBags) {
+               // zero is a special value that really means allocate one set that contains all samples.
+               error = pInnerBag->InitializeFakeInnerBag(cSetSamples, aWeights);
+            } else {
+               error = pInnerBag->InitializeRealInnerBag(rng, cSetSamples, aWeights);
+            }
+            if(UNLIKELY(Error_None != error)) {
+               free(aWeights);
+               return error;
+            }
+
+            ++pSubset;
+         } while(pSubsetsEnd != pSubset);
+
+         ++iBag;
+      } while(cInnerBagsAfterZero != iBag);
+
+      free(aWeights);
 
       m_cSamples = cSetSamples;
    }

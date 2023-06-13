@@ -69,9 +69,6 @@ public:
       const BagEbm * const aBag,
       const double * const aInitScores,
       const size_t cSetSamples,
-      void * const rng,
-      const size_t cInnerBags,
-      const size_t cWeights,
       const IntEbm * const aiTermFeatures,
       const size_t cTerms,
       const Term * const * const apTerms

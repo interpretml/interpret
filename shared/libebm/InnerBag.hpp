@@ -59,13 +59,7 @@ public:
       return m_weightTotal;
    }
 
-   static ErrorEbm GenerateInnerBags(
-      void * const rng,
-      const size_t cSamples,
-      const FloatFast * const aWeights,
-      const size_t cInnerBags,
-      InnerBag ** const paOut
-   );
+   static InnerBag * AllocateInnerBags(const size_t cInnerBags);
    static void FreeInnerBags(const size_t cInnerBags, InnerBag * const aInnerBags);
 };
 static_assert(std::is_standard_layout<InnerBag>::value,
