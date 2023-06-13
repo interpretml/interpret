@@ -32,20 +32,15 @@ class InnerBag final {
    FloatFast * m_aWeights;
    double m_weightTotal;
 
-   // we take owernship of the aWeights array
-
-   static ErrorEbm GenerateSingleInnerBag(
+   ErrorEbm InitializeRealInnerBag(
       void * const rng,
-      const size_t cSamples,
-      const FloatFast * const aWeights,
-      InnerBag ** const ppOut
-   );
-   static InnerBag * GenerateFlatInnerBag(
       const size_t cSamples,
       const FloatFast * const aWeights
    );
-   void Free();
-   void InitializeUnfailing();
+   ErrorEbm InitializeFakeInnerBag(
+      const size_t cSamples,
+      const FloatFast * const aWeights
+   );
 
 public:
 
@@ -69,9 +64,9 @@ public:
       const size_t cSamples,
       const FloatFast * const aWeights,
       const size_t cInnerBags,
-      InnerBag *** const papOut
+      InnerBag ** const paOut
    );
-   static void FreeInnerBags(const size_t cInnerBags, InnerBag ** const apInnerBags);
+   static void FreeInnerBags(const size_t cInnerBags, InnerBag * const aInnerBags);
 };
 static_assert(std::is_standard_layout<InnerBag>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");

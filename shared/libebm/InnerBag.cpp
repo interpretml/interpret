@@ -20,24 +20,12 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-ErrorEbm InnerBag::GenerateSingleInnerBag(
+ErrorEbm InnerBag::InitializeRealInnerBag(
    void * const rng,
    const size_t cSamples,
-   const FloatFast * const aWeights,
-   InnerBag ** const ppOut
+   const FloatFast * const aWeights
 ) {
    LOG_0(Trace_Verbose, "Entered InnerBag::GenerateSingleInnerBag");
-
-   EBM_ASSERT(nullptr != ppOut);
-   EBM_ASSERT(nullptr == *ppOut);
-
-   InnerBag * pRet = static_cast<InnerBag *>(malloc(sizeof(InnerBag)));
-   if(nullptr == pRet) {
-      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag nullptr == pRet");
-      return Error_OutOfMemory;
-   }
-   pRet->InitializeUnfailing();
-   *ppOut = pRet;
 
    EBM_ASSERT(1 <= cSamples); // if there were no samples, we wouldn't be called
 
@@ -51,7 +39,7 @@ ErrorEbm InnerBag::GenerateSingleInnerBag(
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag nullptr == aCountOccurrences");
       return Error_OutOfMemory;
    }
-   pRet->m_aCountOccurrences = aCountOccurrences;
+   m_aCountOccurrences = aCountOccurrences;
 
    if(IsMultiplyError(sizeof(FloatFast), cSamples)) {
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag IsMultiplyError(sizeof(FloatFast), cSamples)");
@@ -62,7 +50,7 @@ ErrorEbm InnerBag::GenerateSingleInnerBag(
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateSingleInnerBag nullptr == aWeightsInternal");
       return Error_OutOfMemory;
    }
-   pRet->m_aWeights = aWeightsInternal;
+   m_aWeights = aWeightsInternal;
 
    memset(aCountOccurrences, 0, cBytesCountOccurrencesCapacity);
 
@@ -133,13 +121,13 @@ ErrorEbm InnerBag::GenerateSingleInnerBag(
    // to zero though so check it after checking for negative
    EBM_ASSERT(0 != total);
 
-   pRet->m_weightTotal = total;
+   m_weightTotal = total;
 
    LOG_0(Trace_Verbose, "Exited InnerBag::GenerateSingleInnerBag");
    return Error_None;
 }
 
-InnerBag * InnerBag::GenerateFlatInnerBag(
+ErrorEbm InnerBag::InitializeFakeInnerBag(
    const size_t cSamples,
    const FloatFast * const aWeights
 ) {
@@ -147,68 +135,46 @@ InnerBag * InnerBag::GenerateFlatInnerBag(
 
    EBM_ASSERT(1 <= cSamples); // if there were no samples, we wouldn't be called
 
-   InnerBag * const pRet = static_cast<InnerBag *>(malloc(sizeof(InnerBag)));
-   if(nullptr == pRet) {
-      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag nullptr == pRet");
-      return nullptr;
-   }
-   pRet->InitializeUnfailing();
-
-   pRet->m_weightTotal = static_cast<double>(cSamples);
+   m_weightTotal = static_cast<double>(cSamples);
    if(nullptr != aWeights) {
       if(IsMultiplyError(sizeof(FloatFast), cSamples)) {
-         pRet->Free();
          LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag IsMultiplyError(sizeof(FloatFast), cSamples)");
-         return nullptr;
+         return Error_OutOfMemory;
       }
       const size_t cBytesWeightsInternalCapacity = sizeof(FloatFast) * cSamples;
       FloatFast * const aWeightsInternal = static_cast<FloatFast *>(malloc(cBytesWeightsInternalCapacity));
       if(nullptr == aWeightsInternal) {
-         pRet->Free();
          LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag nullptr == aWeightsInternal");
-         return nullptr;
+         return Error_OutOfMemory;
       }
-      pRet->m_aWeights = aWeightsInternal;
+      m_aWeights = aWeightsInternal;
 
       double total = AddPositiveFloatsSafe<double>(cSamples, aWeights);
       if(std::isnan(total) || std::isinf(total) || total <= double { 0 }) {
-         pRet->Free();
          LOG_0(Trace_Warning, "WARNING InnerBag::GenerateFlatInnerBag std::isnan(total) || std::isinf(total) || total <= 0");
-         return nullptr;
+         return Error_UserParamVal;
       }
-      pRet->m_weightTotal = total;
+      m_weightTotal = total;
 
       memcpy(aWeightsInternal, aWeights, cBytesWeightsInternalCapacity);
    }
 
    LOG_0(Trace_Info, "Exited InnerBag::GenerateFlatInnerBag");
-   return pRet;
+   return Error_None;
 }
 
-void InnerBag::Free() {
-   free(m_aCountOccurrences);
-   free(m_aWeights);
-   free(this);
-}
-
-void InnerBag::InitializeUnfailing() {
-   m_aCountOccurrences = nullptr;
-   m_aWeights = nullptr;
-}
-
-void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag ** const apInnerBags) {
+void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag * const aInnerBags) {
    LOG_0(Trace_Info, "Entered InnerBag::FreeInnerBags");
-   if(LIKELY(nullptr != apInnerBags)) {
+   if(LIKELY(nullptr != aInnerBags)) {
       const size_t cInnerBagsAfterZero = size_t { 0 } == cInnerBags ? size_t { 1 } : cInnerBags;
-      size_t iInnerBag = 0;
+      InnerBag * pInnerBag = aInnerBags;
+      const InnerBag * const pInnerBagsEnd = aInnerBags + cInnerBagsAfterZero;
       do {
-         InnerBag * const pInnerBag = apInnerBags[iInnerBag];
-         if(nullptr != pInnerBag) {
-            pInnerBag->Free();
-         }
-         ++iInnerBag;
-      } while(cInnerBagsAfterZero != iInnerBag);
-      free(apInnerBags);
+         free(pInnerBag->m_aCountOccurrences);
+         free(pInnerBag->m_aWeights);
+         ++pInnerBag;
+      } while(pInnerBagsEnd != pInnerBag);
+      free(aInnerBags);
    }
    LOG_0(Trace_Info, "Exited InnerBag::FreeInnerBags");
 }
@@ -218,51 +184,51 @@ ErrorEbm InnerBag::GenerateInnerBags(
    const size_t cSamples,
    const FloatFast * const aWeights,
    const size_t cInnerBags,
-   InnerBag *** const papOut
+   InnerBag ** const paOut
 ) {
    LOG_0(Trace_Info, "Entered InnerBag::GenerateInnerBags");
 
-   EBM_ASSERT(nullptr != papOut);
-   EBM_ASSERT(nullptr == *papOut);
+   EBM_ASSERT(nullptr != paOut);
+   EBM_ASSERT(nullptr == *paOut);
+
+   ErrorEbm error;
 
    const size_t cInnerBagsAfterZero = size_t { 0 } == cInnerBags ? size_t { 1 } : cInnerBags;
 
-   if(IsMultiplyError(sizeof(InnerBag *), cInnerBagsAfterZero)) {
-      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags IsMultiplyError(sizeof(InnerBag *), cInnerBagsAfterZero)");
+   if(IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)) {
+      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)");
       return Error_OutOfMemory;
    }
-   InnerBag ** apInnerBags = static_cast<InnerBag **>(malloc(sizeof(InnerBag *) * cInnerBagsAfterZero));
-   if(UNLIKELY(nullptr == apInnerBags)) {
-      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == apInnerBags");
+   InnerBag * pInnerBag = static_cast<InnerBag *>(malloc(sizeof(InnerBag) * cInnerBagsAfterZero));
+   if(UNLIKELY(nullptr == pInnerBag)) {
+      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == pInnerBag");
       return Error_OutOfMemory;
    }
 
-   InnerBag ** ppInnerBagInit = apInnerBags;
-   const InnerBag * const * const ppInnerBagsEnd = &apInnerBags[cInnerBagsAfterZero];
+   InnerBag * pInnerBagInit = pInnerBag;
+   const InnerBag * const pInnerBagsEnd = &pInnerBag[cInnerBagsAfterZero];
    do {
-      *ppInnerBagInit = nullptr;
-      ++ppInnerBagInit;
-   } while(ppInnerBagsEnd != ppInnerBagInit);
+      pInnerBagInit->m_aCountOccurrences = nullptr;
+      pInnerBagInit->m_aWeights = nullptr;
+      ++pInnerBagInit;
+   } while(pInnerBagsEnd != pInnerBagInit);
 
-   *papOut = apInnerBags;
+   *paOut = pInnerBag;
 
    if(size_t { 0 } == cInnerBags) {
       // zero is a special value that really means allocate one set that contains all samples.
-      InnerBag * const pSingleInnerBag = GenerateFlatInnerBag(cSamples, aWeights);
-      if(UNLIKELY(nullptr == pSingleInnerBag)) {
-         LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == pSingleInnerBag");
-         return Error_OutOfMemory;
+      error = pInnerBag->InitializeFakeInnerBag(cSamples, aWeights);
+      if(UNLIKELY(Error_None != error)) {
+         return error;
       }
-      apInnerBags[0] = pSingleInnerBag;
    } else {
-      InnerBag ** ppInnerBag = apInnerBags;
       do {
-         const ErrorEbm error = GenerateSingleInnerBag(rng, cSamples, aWeights, ppInnerBag);
+         error = pInnerBag->InitializeRealInnerBag(rng, cSamples, aWeights);
          if(UNLIKELY(Error_None != error)) {
             return error;
          }
-         ++ppInnerBag;
-      } while(ppInnerBagsEnd != ppInnerBag);
+         ++pInnerBag;
+      } while(pInnerBagsEnd != pInnerBag);
    }
    LOG_0(Trace_Info, "Exited InnerBag::GenerateInnerBags");
    return Error_None;

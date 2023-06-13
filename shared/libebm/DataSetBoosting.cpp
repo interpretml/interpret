@@ -619,7 +619,7 @@ ErrorEbm DataSubsetBoosting::Initialize(
       m_cTerms = cTerms; // only needed if nullptr != m_aaInputData
    }
 
-   EBM_ASSERT(nullptr == m_apInnerBags);
+   EBM_ASSERT(nullptr == m_aInnerBags);
    FloatFast * aWeights = nullptr;
    if(0 != cWeights) {
       error = ExtractWeights(
@@ -641,7 +641,7 @@ ErrorEbm DataSubsetBoosting::Initialize(
       cSetSamples,
       aWeights,
       cInnerBags,
-      &m_apInnerBags
+      &m_aInnerBags
    );
    free(aWeights);
    if(UNLIKELY(Error_None != error)) {
@@ -659,7 +659,7 @@ ErrorEbm DataSubsetBoosting::Initialize(
 void DataSubsetBoosting::Destruct(const size_t cInnerBags) {
    LOG_0(Trace_Info, "Entered DataSubsetBoosting::Destruct");
 
-   InnerBag::FreeInnerBags(cInnerBags, m_apInnerBags);
+   InnerBag::FreeInnerBags(cInnerBags, m_aInnerBags);
 
    free(m_aGradientsAndHessians);
    free(m_aSampleScores);

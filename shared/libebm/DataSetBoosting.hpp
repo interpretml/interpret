@@ -36,7 +36,7 @@ class DataSubsetBoosting final {
 
    // TODO: the InnerBag class is a fixed size, so we don't need to allocate a pointer to an array of pointers
    //       we can just allocate an array of the fixed sized items and have one less indirection step
-   InnerBag ** m_apInnerBags;
+   InnerBag * m_aInnerBags;
 
 public:
 
@@ -50,7 +50,7 @@ public:
       m_aSampleScores = nullptr;
       m_aTargetData = nullptr;
       m_aaInputData = nullptr;
-      m_apInnerBags = nullptr;
+      m_aInnerBags = nullptr;
       m_cSamples = 0;
       m_cTerms = 0;
    }
@@ -77,8 +77,8 @@ public:
       const Term * const * const apTerms
    );
 
-   inline const InnerBag * const * GetInnerBags() const {
-      return m_apInnerBags;
+   inline const InnerBag * GetInnerBags() const {
+      return m_aInnerBags;
    }
 
    inline FloatFast * GetGradientsAndHessiansPointer() {
@@ -151,7 +151,7 @@ struct DataSetBoosting final {
 
    inline double GetBagWeightTotal(const size_t iBag) const {
       EBM_ASSERT(1 == m_cSubsets); // TODO: for now we only support 1 subset
-      return m_aSubsets[0].GetInnerBags()[iBag]->GetWeightTotal();
+      return m_aSubsets[0].GetInnerBags()[iBag].GetWeightTotal();
    }
 
    inline size_t GetCountSubsets() const {

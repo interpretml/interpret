@@ -188,7 +188,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
          data.m_cSamples = pSubset->GetCountSamples();
          data.m_aPacked = pSubset->GetInputDataPointer(iTerm);
          data.m_aTargets = pSubset->GetTargetDataPointer();
-         data.m_aWeights = pSubset->GetInnerBags()[0]->GetWeights();
+         data.m_aWeights = pSubset->GetInnerBags()->GetWeights();
          data.m_aSampleScores = pSubset->GetSampleScores();
          data.m_aGradientsAndHessians = pSubset->GetGradientsAndHessiansPointer();
          error = pBoosterCore->ObjectiveApplyUpdate(&data);
