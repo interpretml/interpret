@@ -2040,12 +2040,20 @@ class EBMModel(BaseEstimator):
         else:
             raise ValueError(f"Unrecognized importance_type: {importance_type}")
 
-    def monotonize(self, term, increasing="auto"):
-        """Adjusts a term to be monotone using isotonic regression.
+    def monotonize(self, term, increasing="auto", passthrough=0.0):
+        """Adjusts a term to be monotone using isotonic regression. An important consideration
+        is that this function only adjusts a single term and will not modify pairwise terms.
+        When a feature needs to be globally monotonic, any pairwise terms that include the feature
+        should be excluded from the model.
 
         Args:
-            term: Index or name of continuous univariate term to apply monotone constraints
+            term: Index or name of the term to monotonize
             increasing: 'auto' or bool. 'auto' decides direction based on Spearman correlation estimate.
+            passthrough: the process of monotonization can result in a change to the mean response
+                of the model. If passthrough is set to 0.0 then the model's mean response to the 
+                training set will not change. If passthrough is set to 1.0 then any change to the 
+                mean response made by monotonization will be passed through to self.intercept_. 
+                Values between 0 and 1 will result in that percentage being passed through.
 
         Returns:
             Itself.
@@ -2067,9 +2075,7 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        feature_idx = features[0]
-
-        if self.feature_types_in_[feature_idx] not in ["continuous", "ordinal"]:
+        if self.feature_types_in_[features[0]] not in ["continuous", "ordinal"]:
             msg = "monotonize only supported on ordered feature types"
             _log.error(msg)
             raise ValueError(msg)
@@ -2081,26 +2087,41 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
+        if passthrough < 0.0 or 1.0 < passthrough:
+            msg = "passthrough must be between 0.0 and 1.0 inclusive"
+            _log.error(msg)
+            raise ValueError(msg)
+
         # copy any fields we overwrite in case someone has a shalow copy of self
         term_scores = self.term_scores_.copy()
-        scores = term_scores[feature_idx].copy()
+        scores = term_scores[term].copy()
 
         # the missing and unknown bins are not part of the continuous range
         y = scores[1:-1]
         x = np.arange(len(y), dtype=np.int64)
 
-        weights = self.bin_weights_[feature_idx][1:-1]
+        all_weights = self.bin_weights_[term]
+        weights = all_weights[1:-1]
+
+        # this should normally be zero, except if there are missing or unknown values
+        original_mean = np.average(y, weights=weights)
 
         # Fit isotonic regression weighted by training data bin counts
-        ir = IsotonicRegression(out_of_bounds="clip", increasing=increasing)
+        ir = IsotonicRegression(increasing=increasing)
         y = ir.fit_transform(x, y, sample_weight=weights)
 
-        # re-center y. Throw away the intercept changes since the monotonize
-        # operation shouldn't be allowed to change the overall model intercept
-        y -= np.average(y, weights=weights)
+        result_mean = np.average(y, weights=weights)
+        change = (original_mean - result_mean) * (1.0 - passthrough)
+        y += change
 
         scores[1:-1] = y
-        term_scores[feature_idx] = scores
+
+        if 0.0 < passthrough:
+            mean = np.average(scores, weights=all_weights)
+            scores -= mean
+            self.intercept_ += mean
+
+        term_scores[term] = scores
         self.term_scores_ = term_scores
 
         bagged_scores = self.bagged_scores_.copy()
@@ -2110,8 +2131,8 @@ class EBMModel(BaseEstimator):
         #       and then re-compute standard_deviations_ and term_scores_ from the monotonized bagged scores.
         #       but first we need to do some testing to figure out if this gives a worse result than applying
         #       IsotonicRegression to the final model which should be more regularized
-        bagged_scores[feature_idx] = None
-        standard_deviations[feature_idx] = None
+        bagged_scores[term] = None
+        standard_deviations[term] = None
 
         self.bagged_scores_ = bagged_scores
         self.standard_deviations_ = standard_deviations

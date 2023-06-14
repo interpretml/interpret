@@ -64,6 +64,10 @@ def test_monotonize():
 
     valid_ebm(clf)
 
+    assert abs(np.average(clf.term_scores_[0], weights=clf.bin_weights_[0])) < 0.0001
+    assert abs(np.average(clf.term_scores_[1], weights=clf.bin_weights_[1])) < 0.0001
+    assert abs(np.average(clf.term_scores_[2], weights=clf.bin_weights_[2])) < 0.0001
+    assert abs(np.average(clf.term_scores_[3], weights=clf.bin_weights_[3])) < 0.0001
     assert np.all(np.diff(clf.term_features_[0]) >= 0)
     assert np.all(np.diff(clf.term_features_[1]) <= 0)
     diff = np.diff(clf.term_features_[2])
