@@ -2050,9 +2050,9 @@ class EBMModel(BaseEstimator):
             term: Index or name of the term to monotonize
             increasing: 'auto' or bool. 'auto' decides direction based on Spearman correlation estimate.
             passthrough: the process of monotonization can result in a change to the mean response
-                of the model. If passthrough is set to 0.0 then the model's mean response to the 
-                training set will not change. If passthrough is set to 1.0 then any change to the 
-                mean response made by monotonization will be passed through to self.intercept_. 
+                of the model. If passthrough is set to 0.0 then the model's mean response to the
+                training set will not change. If passthrough is set to 1.0 then any change to the
+                mean response made by monotonization will be passed through to self.intercept_.
                 Values between 0 and 1 will result in that percentage being passed through.
 
         Returns:
