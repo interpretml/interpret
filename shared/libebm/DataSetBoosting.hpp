@@ -162,6 +162,19 @@ struct DataSetBoosting final {
    }
 
 private:
+
+   ErrorEbm InitializeBags(
+      const size_t cSubsets,
+      DataSubsetBoosting * const aSubsets,
+      const unsigned char * const pDataSetShared,
+      const BagEbm direction,
+      const BagEbm * const aBag,
+      const size_t cSetSamples,
+      void * const rng,
+      const size_t cInnerBags,
+      const size_t cWeights
+   );
+
    size_t m_cSamples;
    size_t m_cSubsets;
    DataSubsetBoosting * m_aSubsets;
