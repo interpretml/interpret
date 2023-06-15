@@ -134,18 +134,9 @@ ErrorEbm DataSetBoosting::ConstructTargetData(
 ) {
    LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructTargetData");
 
-
-
-
-   // TODO: iterate the subsets
    DataSubsetBoosting * pSubset = m_aSubsets;
-
-
-
-
-
-
-   const size_t cSetSamples = m_cSamples;
+   const DataSubsetBoosting * const pSubsetsEnd = pSubset + m_cSubsets;
+   const size_t cSubsetSamplesInit = pSubset->m_cSamples;
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
@@ -162,19 +153,20 @@ ErrorEbm DataSetBoosting::ConstructTargetData(
       const size_t countClasses = static_cast<size_t>(cClasses);
       const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargets);
 
-      if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
+
+      if(IsMultiplyError(sizeof(StorageDataType), cSubsetSamplesInit)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSubsetSamplesInit)");
          return Error_OutOfMemory;
       }
-      StorageDataType * pTargetTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
+      StorageDataType * pTargetTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSubsetSamplesInit));
       if(nullptr == pTargetTo) {
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
          return Error_OutOfMemory;
       }
       pSubset->m_aTargetData = pTargetTo;
-      const StorageDataType * pTargetToEnd = pTargetTo + cSetSamples;
+      const StorageDataType * pTargetToEnd = pTargetTo + cSubsetSamplesInit;
 
-      do {
+      while(true) {
          BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
             bool isItemTraining;
@@ -205,29 +197,48 @@ ErrorEbm DataSetBoosting::ConstructTargetData(
          do {
             *pTargetTo = iData;
             ++pTargetTo;
+
+            if(pTargetToEnd == pTargetTo) {
+               ++pSubset;
+               if(pSubsetsEnd == pSubset) {
+                  LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
+                  return Error_None;
+               }
+
+               const size_t cSubsetSamples = pSubset->m_cSamples;
+               if(IsMultiplyError(sizeof(StorageDataType), cSubsetSamples)) {
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSubsetSamples)");
+                  return Error_OutOfMemory;
+               }
+               pTargetTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSubsetSamples));
+               if(nullptr == pTargetTo) {
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
+                  return Error_OutOfMemory;
+               }
+               pSubset->m_aTargetData = pTargetTo;
+               pTargetToEnd = pTargetTo + cSubsetSamples;
+            }
+
             replication -= direction;
          } while(BagEbm { 0 } != replication);
-      } while(pTargetToEnd != pTargetTo);
-
-      LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
-      return Error_None;
+      }
    } else {
       const FloatFast * pTargetFrom = static_cast<const FloatFast *>(aTargets);
 
 
-      if(IsMultiplyError(sizeof(FloatFast), cSetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(FloatFast), cSetSamples)");
+      if(IsMultiplyError(sizeof(FloatFast), cSubsetSamplesInit)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(FloatFast), cSubsetSamplesInit)");
          return Error_OutOfMemory;
       }
-      FloatFast * pTargetTo = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSetSamples));
+      FloatFast * pTargetTo = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSubsetSamplesInit));
       if(nullptr == pTargetTo) {
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
          return Error_OutOfMemory;
       }
       pSubset->m_aTargetData = pTargetTo;
-      const FloatFast * pTargetToEnd = pTargetTo + cSetSamples;
+      const FloatFast * pTargetToEnd = pTargetTo + cSubsetSamplesInit;
 
-      do {
+      while(true) {
          BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
             bool isItemTraining;
@@ -256,12 +267,32 @@ ErrorEbm DataSetBoosting::ConstructTargetData(
          do {
             *pTargetTo = data;
             ++pTargetTo;
+
+            if(pTargetToEnd == pTargetTo) {
+               ++pSubset;
+               if(pSubsetsEnd == pSubset) {
+                  LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
+                  return Error_None;
+               }
+
+               const size_t cSubsetSamples = pSubset->m_cSamples;
+
+               if(IsMultiplyError(sizeof(FloatFast), cSubsetSamples)) {
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(FloatFast), cSubsetSamples)");
+                  return Error_OutOfMemory;
+               }
+               pTargetTo = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSubsetSamples));
+               if(nullptr == pTargetTo) {
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
+                  return Error_OutOfMemory;
+               }
+               pSubset->m_aTargetData = pTargetTo;
+               pTargetToEnd = pTargetTo + cSubsetSamples;
+            }
+
             replication -= direction;
          } while(BagEbm { 0 } != replication);
-      } while(pTargetToEnd != pTargetTo);
-
-      LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
-      return Error_None;
+      }
    }
 }
 
