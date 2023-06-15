@@ -54,39 +54,48 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructGradientsAndHessians(cons
 WARNING_PUSH
 // NOTE: This warning seems to be flagged by the DEBUG 32 bit build
 WARNING_BUFFER_OVERRUN
-INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
+ErrorEbm DataSetBoosting::ConstructSampleScores(
    const size_t cScores,
    const BagEbm direction,
    const BagEbm * const aBag,
-   const double * const aInitScores,
-   const size_t cSetSamples
+   const double * const aInitScores
 ) {
-   LOG_0(Trace_Info, "Entered DataSubsetBoosting::ConstructSampleScores");
+   LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructSampleScores");
+
+   DataSubsetBoosting * pSubset = m_aSubsets;
+
+   const size_t cSetSamples = m_cSamples;
 
    EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
    EBM_ASSERT(nullptr != aBag || BagEbm { 1 } == direction);  // if aBag is nullptr then we have no validation samples
-   EBM_ASSERT(1 <= cSetSamples);
 
-   if(IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)) {
-      LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructSampleScores IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)");
-      return nullptr;
+   if(IsMultiplyError(sizeof(FloatFast), cScores)) {
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(sizeof(FloatFast), cScores)");
+      return Error_OutOfMemory;
    }
-   const size_t cElements = cScores * cSetSamples;
+   const size_t cBytesOneElement = sizeof(FloatFast) * cScores;
 
-   FloatFast * const aSampleScores = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cElements));
-   if(nullptr == aSampleScores) {
-      LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructSampleScores nullptr == aSampleScores");
-      return nullptr;
+   if(IsMultiplyError(cBytesOneElement, cSetSamples)) {
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(cBytesOneElement, cSetSamples)");
+      return Error_OutOfMemory;
    }
+   const size_t cBytes = cBytesOneElement * cSetSamples;
+   FloatFast * pSampleScore = static_cast<FloatFast *>(malloc(cBytes));
+   if(nullptr == pSampleScore) {
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == pSampleScore");
+      return Error_OutOfMemory;
+   }
+   pSubset->m_aSampleScores = pSampleScore;
 
    if(nullptr == aInitScores) {
       static_assert(std::numeric_limits<FloatFast>::is_iec559, "IEEE 754 guarantees zeros means a zero float");
-      memset(aSampleScores, 0, sizeof(FloatFast) * cElements);
+      memset(pSampleScore, 0, cBytes);
    } else {
+      const FloatFast * pSampleScoresEnd = IndexByte(pSampleScore, cBytes);
+
+
       const BagEbm * pSampleReplication = aBag;
-      FloatFast * pSampleScore = aSampleScores;
-      const FloatFast * const pSampleScoresEnd = &aSampleScores[cElements];
       const double * pInitScore = aInitScores;
       const bool isLoopTraining = BagEbm { 0 } < direction;
       do {
@@ -106,8 +115,6 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
 
          const double * const pFromEnd = &pInitScore[cScores];
          do {
-            EBM_ASSERT(pSampleScore < pSampleScoresEnd);
-
             const double * pFrom = pInitScore;
             do {
                *pSampleScore = SafeConvertFloat<FloatFast>(*pFrom);
@@ -121,8 +128,8 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
       } while(pSampleScoresEnd != pSampleScore);
    }
 
-   LOG_0(Trace_Info, "Exited DataSubsetBoosting::ConstructSampleScores");
-   return aSampleScores;
+   LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructSampleScores");
+   return Error_None;
 }
 WARNING_POP
 
@@ -562,15 +569,9 @@ ErrorEbm DataSubsetBoosting::Initialize(
    const size_t cScores,
    const bool bAllocateGradients,
    const bool bAllocateHessians,
-   const bool bAllocateSampleScores,
-   const BagEbm direction,
-   const BagEbm * const aBag,
-   const double * const aInitScores,
    const size_t cSetSamples,
    const size_t cSubsetSamples
 ) {
-   EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
-
    EBM_ASSERT(nullptr == m_aGradientsAndHessians);
    EBM_ASSERT(nullptr == m_aSampleScores);
    EBM_ASSERT(nullptr == m_aTargetData);
@@ -590,20 +591,6 @@ ErrorEbm DataSubsetBoosting::Initialize(
       m_aGradientsAndHessians = aGradientsAndHessians;
    } else {
       EBM_ASSERT(!bAllocateHessians);
-   }
-   if(bAllocateSampleScores) {
-      FloatFast * const aSampleScores = ConstructSampleScores(
-         cScores, 
-         direction, 
-         aBag, 
-         aInitScores,
-         cSetSamples
-      );
-      if(nullptr == aSampleScores) {
-         LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aSampleScores");
-         return Error_OutOfMemory;
-      }
-      m_aSampleScores = aSampleScores;
    }
 
    m_cSamples = cSubsetSamples;
@@ -867,6 +854,7 @@ ErrorEbm DataSetBoosting::Initialize(
 
    ErrorEbm error;
 
+   EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
    EBM_ASSERT(nullptr == m_aSubsets);
    EBM_ASSERT(0 == m_cSubsets);
    EBM_ASSERT(0 == m_cSamples);
@@ -913,10 +901,6 @@ ErrorEbm DataSetBoosting::Initialize(
             cScores,
             bAllocateGradients,
             bAllocateHessians,
-            bAllocateSampleScores,
-            direction,
-            aBag,
-            aInitScores,
             cSetSamples,
             cSetSamplesRemaining <= cSubsetItemsMax ? cSetSamplesRemaining : cSubsetItemsMax
          );
@@ -954,7 +938,17 @@ ErrorEbm DataSetBoosting::Initialize(
          ++pSubsetInit;
       } while(pSubsetsEnd != pSubsetInit);
 
-
+      if(bAllocateSampleScores) {
+         error = ConstructSampleScores(
+            cScores,
+            direction,
+            aBag,
+            aInitScores
+         );
+         if(Error_None != error) {
+            return error;
+         }
+      }
 
       if(bAllocateTargetData) {
          error = ConstructTargetData(

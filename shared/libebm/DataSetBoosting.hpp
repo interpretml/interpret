@@ -61,10 +61,6 @@ public:
       const size_t cScores,
       const bool bAllocateGradients,
       const bool bAllocateHessians,
-      const bool bAllocateSampleScores,
-      const BagEbm direction,
-      const BagEbm * const aBag,
-      const double * const aInitScores,
       const size_t cSetSamples,
       const size_t cSubsetSamples
    );
@@ -157,6 +153,13 @@ struct DataSetBoosting final {
    }
 
 private:
+
+   ErrorEbm ConstructSampleScores(
+      const size_t cScores,
+      const BagEbm direction,
+      const BagEbm * const aBag,
+      const double * const aInitScores
+   );
 
    ErrorEbm ConstructTargetData(
       const unsigned char * const pDataSetShared,
