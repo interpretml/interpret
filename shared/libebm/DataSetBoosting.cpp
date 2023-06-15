@@ -298,70 +298,24 @@ ErrorEbm DataSetBoosting::ConstructInputData(
    EBM_ASSERT(1 <= cTerms);
    EBM_ASSERT(nullptr != apTerms);
 
-   if(IsMultiplyError(sizeof(StorageDataType *), cTerms)) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType *), cTerms)");
-      return Error_OutOfMemory;
-   }
-
-
-
 
    // TODO: THIS NEEDS TO BE PER-SUBSET
    DataSubsetBoosting * pSubset = m_aSubsets;
 
 
 
-   StorageDataType ** const aaInputDataTo = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cTerms));
-   if(nullptr == aaInputDataTo) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == aaInputDataTo");
-      return Error_OutOfMemory;
-   }
-
-   pSubset->m_aaInputData = aaInputDataTo;
-   pSubset->m_cTerms = cTerms; // TODO: move this out to the dataset or even the booster?
-
-   StorageDataType ** paInputDataToInit = aaInputDataTo;
-   const StorageDataType * const * const paInputDataToEnd = aaInputDataTo + cTerms;
-   do {
-      *paInputDataToInit = nullptr;
-      ++paInputDataToInit;
-   } while(paInputDataToEnd != paInputDataToInit);
 
    const bool isLoopTraining = BagEbm { 0 } < direction;
    const IntEbm * piTermFeatures = aiTermFeatures;
-   StorageDataType ** paInputDataTo = aaInputDataTo;
+   StorageDataType ** paInputDataTo = pSubset->m_aaInputData;
    const Term * const * ppTerm = apTerms;
+   const Term * const * const ppTermEnd = apTerms + cTerms;
    do {
       const Term * const pTerm = *ppTerm;
       EBM_ASSERT(nullptr != pTerm);
       if(0 == pTerm->GetCountRealDimensions()) {
          piTermFeatures += pTerm->GetCountDimensions();
       } else {
-         EBM_ASSERT(1 <= pTerm->GetTermBitPack());
-         const size_t cItemsPerBitPackTo = static_cast<size_t>(pTerm->GetTermBitPack());
-         EBM_ASSERT(1 <= cItemsPerBitPackTo);
-         EBM_ASSERT(cItemsPerBitPackTo <= k_cBitsForStorageType);
-
-         const size_t cBitsPerItemMaxTo = GetCountBits<StorageDataType>(cItemsPerBitPackTo);
-         EBM_ASSERT(1 <= cBitsPerItemMaxTo);
-         EBM_ASSERT(cBitsPerItemMaxTo <= k_cBitsForStorageType);
-
-         EBM_ASSERT(1 <= cSetSamples);
-         const size_t cDataUnitsTo = (cSetSamples - 1) / cItemsPerBitPackTo + 1; // this can't overflow or underflow
-
-         if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
-            return Error_OutOfMemory;
-         }
-         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnitsTo));
-         if(nullptr == pInputDataTo) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == pInputDataTo");
-            return Error_OutOfMemory;
-         }
-         *paInputDataTo = pInputDataTo;
-
-         const StorageDataType * const pInputDataToEnd = pInputDataTo + cDataUnitsTo;
-
          const TermFeature * pTermFeature = pTerm->GetTermFeatures();
          EBM_ASSERT(1 <= pTerm->GetCountDimensions());
          const TermFeature * const pTermFeaturesEnd = &pTermFeature[pTerm->GetCountDimensions()];
@@ -445,8 +399,37 @@ ErrorEbm DataSetBoosting::ConstructInputData(
          BagEbm replication = 0;
          StorageDataType iTensor;
 
+
+
+         EBM_ASSERT(1 <= pTerm->GetTermBitPack());
+         const size_t cItemsPerBitPackTo = static_cast<size_t>(pTerm->GetTermBitPack());
+         EBM_ASSERT(1 <= cItemsPerBitPackTo);
+         EBM_ASSERT(cItemsPerBitPackTo <= k_cBitsForStorageType);
+
+         const size_t cBitsPerItemMaxTo = GetCountBits<StorageDataType>(cItemsPerBitPackTo);
+         EBM_ASSERT(1 <= cBitsPerItemMaxTo);
+         EBM_ASSERT(cBitsPerItemMaxTo <= k_cBitsForStorageType);
+
+         EBM_ASSERT(1 <= cSetSamples);
+         const size_t cDataUnitsTo = (cSetSamples - 1) / cItemsPerBitPackTo + 1; // this can't overflow or underflow
+
+         if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
+            return Error_OutOfMemory;
+         }
+         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnitsTo));
+         if(nullptr == pInputDataTo) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == pInputDataTo");
+            return Error_OutOfMemory;
+         }
+         *paInputDataTo = pInputDataTo;
+
+         const StorageDataType * const pInputDataToEnd = pInputDataTo + cDataUnitsTo;
+
          ptrdiff_t cShiftTo = static_cast<ptrdiff_t>((cSetSamples - 1) % cItemsPerBitPackTo * cBitsPerItemMaxTo);
          const ptrdiff_t cShiftResetTo = static_cast<ptrdiff_t>((cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo);
+
+
 
          do {
             StorageDataType bits = 0;
@@ -532,7 +515,7 @@ ErrorEbm DataSetBoosting::ConstructInputData(
       }
       ++paInputDataTo;
       ++ppTerm;
-   } while(paInputDataToEnd != paInputDataTo);
+   } while(ppTermEnd != ppTerm);
 
    LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructInputData");
    return Error_None;
@@ -871,6 +854,11 @@ ErrorEbm DataSetBoosting::Initialize(
    if(0 != cSetSamples) {
       m_cSamples = cSetSamples;
 
+      if(IsMultiplyError(sizeof(StorageDataType *), cTerms)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize IsMultiplyError(sizeof(StorageDataType *), cTerms)");
+         return Error_OutOfMemory;
+      }
+
       const size_t cSubsets = (cSetSamples - size_t { 1 }) / cSubsetItemsMax + size_t { 1 };
 
       if(IsMultiplyError(sizeof(DataSubsetBoosting), cSubsets)) {
@@ -918,6 +906,25 @@ ErrorEbm DataSetBoosting::Initialize(
          if(Error_None != error) {
             return error;
          }
+
+
+         if(0 != cTerms) {
+            StorageDataType ** paData = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cTerms));
+            if(nullptr == paData) {
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == paData");
+               return Error_OutOfMemory;
+            }
+
+            pSubsetInit->m_aaInputData = paData;
+            pSubsetInit->m_cTerms = cTerms; // TODO: move this out to the dataset or even the booster?
+
+            const StorageDataType * const * const paDataEnd = paData + cTerms;
+            do {
+               *paData = nullptr;
+               ++paData;
+            } while(paDataEnd != paData);
+         }
+
 
          InnerBag * const aInnerBags = InnerBag::AllocateInnerBags(cInnerBags);
          if(nullptr == aInnerBags) {
