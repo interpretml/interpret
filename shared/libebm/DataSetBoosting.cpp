@@ -126,17 +126,29 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
 }
 WARNING_POP
 
-INLINE_RELEASE_UNTEMPLATED static void * ConstructTargetData(
+
+ErrorEbm DataSetBoosting::ConstructTargetData(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
-   const BagEbm * const aBag,
-   const size_t cSetSamples
+   const BagEbm * const aBag
 ) {
-   LOG_0(Trace_Info, "Entered DataSubsetBoosting::ConstructTargetData");
+   LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructTargetData");
+
+
+
+
+   // TODO: iterate the subsets
+   DataSubsetBoosting * pSubset = m_aSubsets;
+
+
+
+
+
+
+   const size_t cSetSamples = m_cSamples;
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
-   EBM_ASSERT(1 <= cSetSamples);
 
    ptrdiff_t cClasses;
    const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
@@ -148,20 +160,20 @@ INLINE_RELEASE_UNTEMPLATED static void * ConstructTargetData(
 
    if(IsClassification(cClasses)) {
       const size_t countClasses = static_cast<size_t>(cClasses);
+      const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargets);
 
       if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
-         return nullptr;
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
+         return Error_OutOfMemory;
       }
-      StorageDataType * const aTargetData = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
-      if(nullptr == aTargetData) {
-         LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructTargetData nullptr == aTargetData");
-         return nullptr;
+      StorageDataType * pTargetTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
+      if(nullptr == pTargetTo) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
+         return Error_OutOfMemory;
       }
+      pSubset->m_aTargetData = pTargetTo;
+      const StorageDataType * pTargetToEnd = pTargetTo + cSetSamples;
 
-      const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargets);
-      StorageDataType * pTargetTo = aTargetData;
-      StorageDataType * pTargetToEnd = aTargetData + cSetSamples;
       do {
          BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
@@ -182,40 +194,39 @@ INLINE_RELEASE_UNTEMPLATED static void * ConstructTargetData(
          if(IsConvertError<StorageDataType>(data)) {
             // this shouldn't be possible since we previously checked that we could convert our target,
             // so if this is failing then we'll be larger than the maximum number of classes
-            LOG_0(Trace_Error, "ERROR DataSubsetBoosting::ConstructTargetData data target too big to reference memory");
-            free(aTargetData);
-            return nullptr;
+            LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
+            return Error_UnexpectedInternal;
          }
          const StorageDataType iData = static_cast<StorageDataType>(data);
          if(countClasses <= static_cast<size_t>(iData)) {
-            LOG_0(Trace_Error, "ERROR DataSubsetBoosting::ConstructTargetData target value larger than number of classes");
-            free(aTargetData);
-            return nullptr;
+            LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData target value larger than number of classes");
+            return Error_UnexpectedInternal;
          }
          do {
-            EBM_ASSERT(pTargetTo < aTargetData + cSetSamples);
             *pTargetTo = iData;
             ++pTargetTo;
             replication -= direction;
          } while(BagEbm { 0 } != replication);
       } while(pTargetToEnd != pTargetTo);
 
-      LOG_0(Trace_Info, "Exited DataSubsetBoosting::ConstructTargetData");
-      return aTargetData;
+      LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
+      return Error_None;
    } else {
-      if(IsMultiplyError(sizeof(FloatFast), cSetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructTargetData IsMultiplyError(sizeof(FloatFast), cSetSamples)");
-         return nullptr;
-      }
-      FloatFast * const aTargetData = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSetSamples));
-      if(nullptr == aTargetData) {
-         LOG_0(Trace_Warning, "WARNING DataSubsetBoosting::ConstructTargetData nullptr == aTargetData");
-         return nullptr;
-      }
-
       const FloatFast * pTargetFrom = static_cast<const FloatFast *>(aTargets);
-      FloatFast * pTargetTo = aTargetData;
-      FloatFast * pTargetToEnd = aTargetData + cSetSamples;
+
+
+      if(IsMultiplyError(sizeof(FloatFast), cSetSamples)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(FloatFast), cSetSamples)");
+         return Error_OutOfMemory;
+      }
+      FloatFast * pTargetTo = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSetSamples));
+      if(nullptr == pTargetTo) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
+         return Error_OutOfMemory;
+      }
+      pSubset->m_aTargetData = pTargetTo;
+      const FloatFast * pTargetToEnd = pTargetTo + cSetSamples;
+
       do {
          BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
@@ -243,15 +254,14 @@ INLINE_RELEASE_UNTEMPLATED static void * ConstructTargetData(
          //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
 
          do {
-            EBM_ASSERT(pTargetTo < aTargetData + cSetSamples);
             *pTargetTo = data;
             ++pTargetTo;
             replication -= direction;
          } while(BagEbm { 0 } != replication);
       } while(pTargetToEnd != pTargetTo);
 
-      LOG_0(Trace_Info, "Exited DataSubsetBoosting::ConstructTargetData");
-      return aTargetData;
+      LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
+      return Error_None;
    }
 }
 
@@ -522,15 +532,12 @@ ErrorEbm DataSubsetBoosting::Initialize(
    const bool bAllocateGradients,
    const bool bAllocateHessians,
    const bool bAllocateSampleScores,
-   const bool bAllocateTargetData,
-   const unsigned char * const pDataSetShared,
    const BagEbm direction,
    const BagEbm * const aBag,
    const double * const aInitScores,
    const size_t cSetSamples,
    const size_t cSubsetSamples
 ) {
-   EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
 
    EBM_ASSERT(nullptr == m_aGradientsAndHessians);
@@ -566,19 +573,6 @@ ErrorEbm DataSubsetBoosting::Initialize(
          return Error_OutOfMemory;
       }
       m_aSampleScores = aSampleScores;
-   }
-   if(bAllocateTargetData) {
-      void * const aTargetData = ConstructTargetData(
-         pDataSetShared,
-         direction,
-         aBag,
-         cSetSamples
-      );
-      if(nullptr == aTargetData) {
-         LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aTargetData");
-         return Error_OutOfMemory;
-      }
-      m_aTargetData = aTargetData;
    }
 
    m_cSamples = cSubsetSamples;
@@ -889,8 +883,6 @@ ErrorEbm DataSetBoosting::Initialize(
             bAllocateGradients,
             bAllocateHessians,
             bAllocateSampleScores,
-            bAllocateTargetData,
-            pDataSetShared,
             direction,
             aBag,
             aInitScores,
@@ -930,6 +922,19 @@ ErrorEbm DataSetBoosting::Initialize(
 
          ++pSubsetInit;
       } while(pSubsetsEnd != pSubsetInit);
+
+
+
+      if(bAllocateTargetData) {
+         error = ConstructTargetData(
+            pDataSetShared,
+            direction,
+            aBag
+         );
+         if(Error_None != error) {
+            return error;
+         }
+      }
 
       if(0 != cTerms) {
          error = ConstructInputData(
