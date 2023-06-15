@@ -298,20 +298,13 @@ ErrorEbm DataSetBoosting::ConstructInputData(
    EBM_ASSERT(1 <= cTerms);
    EBM_ASSERT(nullptr != apTerms);
 
-
-   // TODO: THIS NEEDS TO BE PER-SUBSET
-   DataSubsetBoosting * pSubset = m_aSubsets;
-
-
-
+   const DataSubsetBoosting * const pSubsetsEnd = m_aSubsets + m_cSubsets;
 
    const bool isLoopTraining = BagEbm { 0 } < direction;
    const IntEbm * piTermFeatures = aiTermFeatures;
-   StorageDataType ** paInputDataTo = pSubset->m_aaInputData;
-   const Term * const * ppTerm = apTerms;
-   const Term * const * const ppTermEnd = apTerms + cTerms;
+   size_t iTerm = 0;
    do {
-      const Term * const pTerm = *ppTerm;
+      const Term * const pTerm = apTerms[iTerm];
       EBM_ASSERT(nullptr != pTerm);
       if(0 == pTerm->GetCountRealDimensions()) {
          piTermFeatures += pTerm->GetCountDimensions();
@@ -399,123 +392,125 @@ ErrorEbm DataSetBoosting::ConstructInputData(
          BagEbm replication = 0;
          StorageDataType iTensor;
 
-
-
-         EBM_ASSERT(1 <= pTerm->GetTermBitPack());
-         const size_t cItemsPerBitPackTo = static_cast<size_t>(pTerm->GetTermBitPack());
-         EBM_ASSERT(1 <= cItemsPerBitPackTo);
-         EBM_ASSERT(cItemsPerBitPackTo <= k_cBitsForStorageType);
-
-         const size_t cBitsPerItemMaxTo = GetCountBits<StorageDataType>(cItemsPerBitPackTo);
-         EBM_ASSERT(1 <= cBitsPerItemMaxTo);
-         EBM_ASSERT(cBitsPerItemMaxTo <= k_cBitsForStorageType);
-
-         EBM_ASSERT(1 <= cSetSamples);
-         const size_t cDataUnitsTo = (cSetSamples - 1) / cItemsPerBitPackTo + 1; // this can't overflow or underflow
-
-         if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
-            return Error_OutOfMemory;
-         }
-         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnitsTo));
-         if(nullptr == pInputDataTo) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == pInputDataTo");
-            return Error_OutOfMemory;
-         }
-         *paInputDataTo = pInputDataTo;
-
-         const StorageDataType * const pInputDataToEnd = pInputDataTo + cDataUnitsTo;
-
-         ptrdiff_t cShiftTo = static_cast<ptrdiff_t>((cSetSamples - 1) % cItemsPerBitPackTo * cBitsPerItemMaxTo);
-         const ptrdiff_t cShiftResetTo = static_cast<ptrdiff_t>((cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo);
-
-
-
+         DataSubsetBoosting * pSubset = m_aSubsets;
          do {
-            StorageDataType bits = 0;
-            do {
-               if(BagEbm { 0 } == replication) {
-                  replication = 1;
-                  if(nullptr != pSampleReplication) {
-                     const BagEbm * pSampleReplicationOriginal = pSampleReplication;
-                     bool isItemTraining;
-                     do {
-                        do {
-                           replication = *pSampleReplication;
-                           ++pSampleReplication;
-                        } while(BagEbm { 0 } == replication);
-                        isItemTraining = BagEbm { 0 } < replication;
-                     } while(isLoopTraining != isItemTraining);
-                     const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
-                     if(0 != cAdvances) {
-                        InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
-                        do {
-                           size_t cCompleteAdvanced = cAdvances / pDimensionInfo->m_cItemsPerBitPackFrom;
-                           pDimensionInfo->m_iShiftFrom -= static_cast<ptrdiff_t>(cAdvances % pDimensionInfo->m_cItemsPerBitPackFrom);
-                           if(pDimensionInfo->m_iShiftFrom < ptrdiff_t { 0 }) {
-                              ++cCompleteAdvanced;
-                              pDimensionInfo->m_iShiftFrom += pDimensionInfo->m_cItemsPerBitPackFrom;
-                           }
-                           pDimensionInfo->m_pInputData += cCompleteAdvanced;
+            EBM_ASSERT(1 <= pTerm->GetTermBitPack());
+            const size_t cItemsPerBitPackTo = static_cast<size_t>(pTerm->GetTermBitPack());
+            EBM_ASSERT(1 <= cItemsPerBitPackTo);
+            EBM_ASSERT(cItemsPerBitPackTo <= k_cBitsForStorageType);
 
-                           ++pDimensionInfo;
-                        } while(pDimensionInfoInit != pDimensionInfo);
+            const size_t cBitsPerItemMaxTo = GetCountBits<StorageDataType>(cItemsPerBitPackTo);
+            EBM_ASSERT(1 <= cBitsPerItemMaxTo);
+            EBM_ASSERT(cBitsPerItemMaxTo <= k_cBitsForStorageType);
+
+            const size_t cSubsetSamples = pSubset->m_cSamples;
+
+            EBM_ASSERT(1 <= cSubsetSamples);
+            const size_t cDataUnitsTo = (cSubsetSamples - 1) / cItemsPerBitPackTo + 1; // this can't overflow or underflow
+
+            if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
+               return Error_OutOfMemory;
+            }
+            StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnitsTo));
+            if(nullptr == pInputDataTo) {
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == pInputDataTo");
+               return Error_OutOfMemory;
+            }
+            pSubset->m_aaInputData[iTerm] = pInputDataTo;
+
+            const StorageDataType * const pInputDataToEnd = pInputDataTo + cDataUnitsTo;
+
+            ptrdiff_t cShiftTo = static_cast<ptrdiff_t>((cSubsetSamples - 1) % cItemsPerBitPackTo * cBitsPerItemMaxTo);
+            const ptrdiff_t cShiftResetTo = static_cast<ptrdiff_t>((cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo);
+
+            do {
+               StorageDataType bits = 0;
+               do {
+                  if(BagEbm { 0 } == replication) {
+                     replication = 1;
+                     if(nullptr != pSampleReplication) {
+                        const BagEbm * pSampleReplicationOriginal = pSampleReplication;
+                        bool isItemTraining;
+                        do {
+                           do {
+                              replication = *pSampleReplication;
+                              ++pSampleReplication;
+                           } while(BagEbm { 0 } == replication);
+                           isItemTraining = BagEbm { 0 } < replication;
+                        } while(isLoopTraining != isItemTraining);
+                        const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
+                        if(0 != cAdvances) {
+                           InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
+                           do {
+                              size_t cCompleteAdvanced = cAdvances / pDimensionInfo->m_cItemsPerBitPackFrom;
+                              pDimensionInfo->m_iShiftFrom -= static_cast<ptrdiff_t>(cAdvances % pDimensionInfo->m_cItemsPerBitPackFrom);
+                              if(pDimensionInfo->m_iShiftFrom < ptrdiff_t { 0 }) {
+                                 ++cCompleteAdvanced;
+                                 pDimensionInfo->m_iShiftFrom += pDimensionInfo->m_cItemsPerBitPackFrom;
+                              }
+                              pDimensionInfo->m_pInputData += cCompleteAdvanced;
+
+                              ++pDimensionInfo;
+                           } while(pDimensionInfoInit != pDimensionInfo);
+                        }
                      }
+
+                     size_t tensorIndex = 0;
+                     size_t tensorMultiple = 1;
+                     InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
+                     do {
+                        const SharedStorageDataType indexDataCombined = *pDimensionInfo->m_pInputData;
+                        EBM_ASSERT(pDimensionInfo->m_iShiftFrom * pDimensionInfo->m_cBitsPerItemMaxFrom < k_cBitsForSharedStorageType);
+                        const size_t iData = static_cast<size_t>(indexDataCombined >>
+                           (pDimensionInfo->m_iShiftFrom * pDimensionInfo->m_cBitsPerItemMaxFrom)) &
+                           pDimensionInfo->m_maskBitsFrom;
+
+                        // we check our dataSet when we get the header, and cBins has been checked to fit into size_t
+                        EBM_ASSERT(iData < pDimensionInfo->m_cBins);
+
+                        pDimensionInfo->m_iShiftFrom -= 1;
+                        if(pDimensionInfo->m_iShiftFrom < ptrdiff_t { 0 }) {
+                           pDimensionInfo->m_pInputData += 1;
+                           pDimensionInfo->m_iShiftFrom += pDimensionInfo->m_cItemsPerBitPackFrom;
+                        }
+
+                        // we check for overflows during Term construction, but let's check here again
+                        EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
+
+                        // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
+                        tensorIndex += tensorMultiple * iData;
+                        tensorMultiple *= pDimensionInfo->m_cBins;
+
+                        ++pDimensionInfo;
+                     } while(pDimensionInfoInit != pDimensionInfo);
+
+                     // during term construction we check that the maximum tensor index fits into StorageDataType
+                     EBM_ASSERT(!IsConvertError<StorageDataType>(tensorIndex));
+                     iTensor = static_cast<StorageDataType>(tensorIndex);
                   }
 
-                  size_t tensorIndex = 0;
-                  size_t tensorMultiple = 1;
-                  InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
-                  do {
-                     const SharedStorageDataType indexDataCombined = *pDimensionInfo->m_pInputData;
-                     EBM_ASSERT(pDimensionInfo->m_iShiftFrom * pDimensionInfo->m_cBitsPerItemMaxFrom < k_cBitsForSharedStorageType);
-                     const size_t iData = static_cast<size_t>(indexDataCombined >> 
-                        (pDimensionInfo->m_iShiftFrom * pDimensionInfo->m_cBitsPerItemMaxFrom)) & 
-                        pDimensionInfo->m_maskBitsFrom;
+                  EBM_ASSERT(0 != replication);
+                  EBM_ASSERT(0 < replication && 0 < direction || replication < 0 && direction < 0);
+                  replication -= direction;
 
-                     // we check our dataSet when we get the header, and cBins has been checked to fit into size_t
-                     EBM_ASSERT(iData < pDimensionInfo->m_cBins);
+                  EBM_ASSERT(0 <= cShiftTo);
+                  EBM_ASSERT(static_cast<size_t>(cShiftTo) < k_cBitsForStorageType);
+                  // the tensor index needs to fit in memory, but concivably StorageDataType does not
+                  bits |= iTensor << cShiftTo;
+                  cShiftTo -= cBitsPerItemMaxTo;
+               } while(ptrdiff_t { 0 } <= cShiftTo);
+               cShiftTo = cShiftResetTo;
+               *pInputDataTo = bits;
+               ++pInputDataTo;
+            } while(pInputDataToEnd != pInputDataTo);
 
-                     pDimensionInfo->m_iShiftFrom -= 1;
-                     if(pDimensionInfo->m_iShiftFrom < ptrdiff_t { 0 }) {
-                        pDimensionInfo->m_pInputData += 1;
-                        pDimensionInfo->m_iShiftFrom += pDimensionInfo->m_cItemsPerBitPackFrom;
-                     }
-
-                     // we check for overflows during Term construction, but let's check here again
-                     EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
-
-                     // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
-                     tensorIndex += tensorMultiple * iData;
-                     tensorMultiple *= pDimensionInfo->m_cBins;
-
-                     ++pDimensionInfo;
-                  } while(pDimensionInfoInit != pDimensionInfo);
-
-                  // during term construction we check that the maximum tensor index fits into StorageDataType
-                  EBM_ASSERT(!IsConvertError<StorageDataType>(tensorIndex));
-                  iTensor = static_cast<StorageDataType>(tensorIndex);
-               }
-
-               EBM_ASSERT(0 != replication);
-               EBM_ASSERT(0 < replication && 0 < direction || replication < 0 && direction < 0);
-               replication -= direction;
-
-               EBM_ASSERT(0 <= cShiftTo);
-               EBM_ASSERT(static_cast<size_t>(cShiftTo) < k_cBitsForStorageType);
-               // the tensor index needs to fit in memory, but concivably StorageDataType does not
-               bits |= iTensor << cShiftTo;
-               cShiftTo -= cBitsPerItemMaxTo;
-            } while(ptrdiff_t { 0 } <= cShiftTo);
-            cShiftTo = cShiftResetTo;
-            *pInputDataTo = bits;
-            ++pInputDataTo;
-         } while(pInputDataToEnd != pInputDataTo);
+            ++pSubset;
+         } while(pSubsetsEnd != pSubset);
          EBM_ASSERT(0 == replication);
       }
-      ++paInputDataTo;
-      ++ppTerm;
-   } while(ppTermEnd != ppTerm);
+      ++iTerm;
+   } while(cTerms != iTerm);
 
    LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructInputData");
    return Error_None;
