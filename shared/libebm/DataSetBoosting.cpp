@@ -63,8 +63,7 @@ ErrorEbm DataSetBoosting::ConstructSampleScores(
    LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructSampleScores");
 
    DataSubsetBoosting * pSubset = m_aSubsets;
-
-   const size_t cSetSamples = m_cSamples;
+   const DataSubsetBoosting * const pSubsetsEnd = pSubset + m_cSubsets;
 
    EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
@@ -76,29 +75,46 @@ ErrorEbm DataSetBoosting::ConstructSampleScores(
    }
    const size_t cBytesOneElement = sizeof(FloatFast) * cScores;
 
-   if(IsMultiplyError(cBytesOneElement, cSetSamples)) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(cBytesOneElement, cSetSamples)");
-      return Error_OutOfMemory;
-   }
-   const size_t cBytes = cBytesOneElement * cSetSamples;
-   FloatFast * pSampleScore = static_cast<FloatFast *>(malloc(cBytes));
-   if(nullptr == pSampleScore) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == pSampleScore");
-      return Error_OutOfMemory;
-   }
-   pSubset->m_aSampleScores = pSampleScore;
-
    if(nullptr == aInitScores) {
       static_assert(std::numeric_limits<FloatFast>::is_iec559, "IEEE 754 guarantees zeros means a zero float");
-      memset(pSampleScore, 0, cBytes);
+      do {
+         const size_t cSubsetSamples = pSubset->m_cSamples;
+         if(IsMultiplyError(cBytesOneElement, cSubsetSamples)) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(cBytesOneElement, cSubsetSamples)");
+            return Error_OutOfMemory;
+         }
+         const size_t cBytes = cBytesOneElement * cSubsetSamples;
+         FloatFast * pSampleScore = static_cast<FloatFast *>(malloc(cBytes));
+         if(nullptr == pSampleScore) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == pSampleScore");
+            return Error_OutOfMemory;
+         }
+         pSubset->m_aSampleScores = pSampleScore;
+
+         memset(pSampleScore, 0, cBytes);
+
+         ++pSubset;
+      } while(pSubsetsEnd != pSubset);
    } else {
-      const FloatFast * pSampleScoresEnd = IndexByte(pSampleScore, cBytes);
+      const size_t cSubsetSamplesInit = pSubset->m_cSamples;
+      if(IsMultiplyError(cBytesOneElement, cSubsetSamplesInit)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(cBytesOneElement, cSubsetSamplesInit)");
+         return Error_OutOfMemory;
+      }
+      const size_t cBytesInit = cBytesOneElement * cSubsetSamplesInit;
+      FloatFast * pSampleScore = static_cast<FloatFast *>(malloc(cBytesInit));
+      if(nullptr == pSampleScore) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == pSampleScore");
+         return Error_OutOfMemory;
+      }
+      pSubset->m_aSampleScores = pSampleScore;
+      const FloatFast * pSampleScoresEnd = IndexByte(pSampleScore, cBytesInit);
 
 
       const BagEbm * pSampleReplication = aBag;
       const double * pInitScore = aInitScores;
       const bool isLoopTraining = BagEbm { 0 } < direction;
-      do {
+      while(true) {
          BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
             bool isItemTraining;
@@ -122,10 +138,34 @@ ErrorEbm DataSetBoosting::ConstructSampleScores(
                ++pFrom;
             } while(pFromEnd != pFrom);
 
+            if(pSampleScoresEnd == pSampleScore) {
+               ++pSubset;
+               if(pSubsetsEnd == pSubset) {
+                  EBM_ASSERT(replication == direction);
+                  LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
+                  return Error_None;
+               }
+
+               const size_t cSubsetSamples = pSubset->m_cSamples;
+
+               if(IsMultiplyError(cBytesOneElement, cSubsetSamples)) {
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(cBytesOneElement, cSubsetSamples)");
+                  return Error_OutOfMemory;
+               }
+               const size_t cBytes = cBytesOneElement * cSubsetSamples;
+               pSampleScore = static_cast<FloatFast *>(malloc(cBytes));
+               if(nullptr == pSampleScore) {
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == pSampleScore");
+                  return Error_OutOfMemory;
+               }
+               pSubset->m_aSampleScores = pSampleScore;
+               pSampleScoresEnd = IndexByte(pSampleScore, cBytes);
+            }
+
             replication -= direction;
          } while(BagEbm { 0 } != replication);
          pInitScore += cScores;
-      } while(pSampleScoresEnd != pSampleScore);
+      }
    }
 
    LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructSampleScores");
@@ -208,6 +248,7 @@ ErrorEbm DataSetBoosting::ConstructTargetData(
             if(pTargetToEnd == pTargetTo) {
                ++pSubset;
                if(pSubsetsEnd == pSubset) {
+                  EBM_ASSERT(replication == direction);
                   LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
                   return Error_None;
                }
@@ -278,6 +319,7 @@ ErrorEbm DataSetBoosting::ConstructTargetData(
             if(pTargetToEnd == pTargetTo) {
                ++pSubset;
                if(pSubsetsEnd == pSubset) {
+                  EBM_ASSERT(replication == direction);
                   LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
                   return Error_None;
                }
