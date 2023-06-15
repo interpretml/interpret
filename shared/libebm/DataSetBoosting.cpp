@@ -34,15 +34,6 @@ extern ErrorEbm ExtractWeights(
 ErrorEbm DataSetBoosting::ConstructGradientsAndHessians(const bool bAllocateHessians, const size_t cScores) {
    LOG_0(Trace_Info, "Entered ConstructGradientsAndHessians");
 
-
-
-
-   DataSubsetBoosting * pSubset = m_aSubsets;
-
-
-   const size_t cSetSamples = pSubset->m_cSamples;
-
-
    EBM_ASSERT(1 <= cScores);
 
    const size_t cStorageItems = bAllocateHessians ? size_t { 2 } : size_t { 1 };
@@ -52,21 +43,27 @@ ErrorEbm DataSetBoosting::ConstructGradientsAndHessians(const bool bAllocateHess
    }
    const size_t cElementBytes = sizeof(FloatFast) * cStorageItems * cScores;
 
+   DataSubsetBoosting * pSubset = m_aSubsets;
+   const DataSubsetBoosting * const pSubsetsEnd = pSubset + m_cSubsets;
+   do {
+      const size_t cSubsetSamples = pSubset->m_cSamples;
 
+      if(IsMultiplyError(cElementBytes, cSubsetSamples)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructGradientsAndHessians IsMultiplyError(cElementBytes, cSubsetSamples)");
+         return Error_OutOfMemory;
+      }
+      const size_t cBytesGradientsAndHessians = cElementBytes * cSubsetSamples;
+      ANALYSIS_ASSERT(0 != cBytesGradientsAndHessians);
 
-   if(IsMultiplyError(cElementBytes, cSetSamples)) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructGradientsAndHessians IsMultiplyError(cElementBytes, cSetSamples)");
-      return Error_OutOfMemory;
-   }
-   const size_t cBytesGradientsAndHessians = cElementBytes * cSetSamples;
-   ANALYSIS_ASSERT(0 != cBytesGradientsAndHessians);
+      FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(malloc(cBytesGradientsAndHessians));
+      if(nullptr == aGradientsAndHessians) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
+         return Error_OutOfMemory;
+      }
+      pSubset->m_aGradientsAndHessians = aGradientsAndHessians;
 
-   FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(malloc(cBytesGradientsAndHessians));
-   if(nullptr == aGradientsAndHessians) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
-      return Error_OutOfMemory;
-   }
-   pSubset->m_aGradientsAndHessians = aGradientsAndHessians;
+      ++pSubset;
+   } while(pSubsetsEnd != pSubset);
 
    LOG_0(Trace_Info, "Exited ConstructGradientsAndHessians");
    return Error_None;
@@ -921,10 +918,6 @@ ErrorEbm DataSetBoosting::Initialize(
       size_t cSetSamplesRemaining = cSetSamples;
       DataSubsetBoosting * pSubsetInit = aSubsets;
       do {
-         // TODO: allow more than 1 in the future. We need to move the functions inside pSubsetInit->Initialize
-         // into this function and make them subset aware before allowing multiple subsets
-         EBM_ASSERT(1 == cSubsets);
-
          const size_t cSubsetSamples = cSetSamplesRemaining <= cSubsetItemsMax ? cSetSamplesRemaining : cSubsetItemsMax;
          pSubsetInit->m_cSamples = cSubsetSamples;
 
