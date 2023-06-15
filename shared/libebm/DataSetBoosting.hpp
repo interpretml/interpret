@@ -64,14 +64,11 @@ public:
       const bool bAllocateSampleScores,
       const bool bAllocateTargetData,
       const unsigned char * const pDataSetShared,
-      const size_t cSharedSamples,
       const BagEbm direction,
       const BagEbm * const aBag,
       const double * const aInitScores,
       const size_t cSetSamples,
-      const IntEbm * const aiTermFeatures,
-      const size_t cTerms,
-      const Term * const * const apTerms
+      const size_t cSubsetSamples
    );
 
    inline const InnerBag * GetInnerBags() const {
@@ -163,13 +160,20 @@ struct DataSetBoosting final {
 
 private:
 
+   ErrorEbm ConstructInputData(
+      const unsigned char * const pDataSetShared,
+      const size_t cSharedSamples,
+      const BagEbm direction,
+      const BagEbm * const aBag,
+      const IntEbm * const aiTermFeatures,
+      const size_t cTerms,
+      const Term * const * const apTerms
+   );
+
    ErrorEbm InitializeBags(
-      const size_t cSubsets,
-      DataSubsetBoosting * const aSubsets,
       const unsigned char * const pDataSetShared,
       const BagEbm direction,
       const BagEbm * const aBag,
-      const size_t cSetSamples,
       void * const rng,
       const size_t cInnerBags,
       const size_t cWeights
