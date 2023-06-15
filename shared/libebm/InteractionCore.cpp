@@ -271,13 +271,11 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
    const double * const aInitScores
 ) {
    ErrorEbm error = Error_None;
-   if(!m_dataFrame.IsGradientsAndHessiansNull()) {
+   const size_t cSetSamples = m_dataFrame.GetCountSamples();
+   if(size_t { 0 } != cSetSamples) {
       const BagEbm * pSampleReplication = aBag;
 
       ApplyUpdateBridge data;
-
-      size_t cSetSamples = m_dataFrame.GetCountSamples();
-      EBM_ASSERT(1 <= cSetSamples); // if m_dataFrame.IsGradientsAndHessiansNull
 
       ptrdiff_t cClasses;
       const void * const aTargetsFrom = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
@@ -285,12 +283,14 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       EBM_ASSERT(0 != cClasses); // no gradients if 0 == cClasses
       EBM_ASSERT(1 != cClasses); // no gradients if 1 == cClasses
       const size_t cScores = GetCountScores(cClasses);
+      EBM_ASSERT(1 <= cScores);
 
       if(IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)");
          return Error_OutOfMemory;
       }
       const size_t cBytesScores = sizeof(FloatFast) * cScores;
+      ANALYSIS_ASSERT(0 != cBytesScores);
       const size_t cBytesAllScores = cBytesScores * cSetSamples;
 
       FloatFast * pSampleScoreTo = static_cast<FloatFast *>(malloc(cBytesAllScores));

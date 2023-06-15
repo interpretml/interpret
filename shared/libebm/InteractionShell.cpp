@@ -193,12 +193,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
             initScores
          );
          if(Error_None != error) {
-            InteractionCore::Free(pInteractionCore);
+            // DO NOT FREE pInteractionCore since it's owned by pInteractionShell, which we free here
+            InteractionShell::Free(pInteractionShell);
             return error;
          }
       } else {
-         // check for 0 interaction samples
-         if(!pInteractionCore->GetDataSetInteraction()->IsGradientsAndHessiansNull()) {
+         if(size_t { 0 } != pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
             InitializeRmseGradientsAndHessiansInteraction(
                static_cast<const unsigned char *>(dataSet),
                bag,

@@ -369,7 +369,7 @@ ErrorEbm BoosterCore::Create(
             cBigBinsMax = EbmMax(cBigBinsMax, size_t { 1 });
          } else {
             if(nullptr == piTermFeature) {
-               LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures is null when there are Terms with non-zero numbers of features");
+               LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures cannot be NULL when there are Terms with non-zero numbers of features");
                return Error_IllegalParamVal;
             }
             size_t cSingleDimensionBins = 0;
@@ -381,7 +381,7 @@ ErrorEbm BoosterCore::Create(
             size_t iTranspose = cDimensions - 1;
             do {
                const IntEbm indexFeature = *piTermFeature;
-               if(indexFeature < 0) {
+               if(indexFeature < IntEbm { 0 }) {
                   LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures value cannot be negative");
                   return Error_IllegalParamVal;
                }
@@ -398,6 +398,10 @@ ErrorEbm BoosterCore::Create(
 
                EBM_ASSERT(1 <= cFeatures); // since our iFeature is valid and index 0 would mean cFeatures == 1
                EBM_ASSERT(nullptr != pBoosterCore->m_aFeatures);
+
+               // Clang does not seems to understand that iFeature is bound to the legal 
+               // range of m_aFeatures through the check "cFeatures <= iFeature" above
+               StopClangAnalysis();
 
                const FeatureBoosting * const pInputFeature = &pBoosterCore->m_aFeatures[iFeature];
                pTermFeature->m_pFeature = pInputFeature;

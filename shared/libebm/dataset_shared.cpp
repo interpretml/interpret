@@ -649,7 +649,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
          }
          const size_t cTotalMem = sizeof(FloatFast) * cSamples;
 
-         iOffsetCur = iOffsetNext;
+         // iOffsetCur = iOffsetNext;
          if(IsAddError(iOffsetNext, cTotalMem)) {
             LOG_0(Trace_Error, "ERROR CheckDataSet IsAddError(iOffsetNext, cTotalMem)");
             return Error_IllegalParamVal;
@@ -791,7 +791,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
             }
             const size_t cTotalMem = sizeof(FloatFast) * cSamples;
 
-            iOffsetCur = iOffsetNext;
+            //iOffsetCur = iOffsetNext;
             if(IsAddError(iOffsetNext, cTotalMem)) {
                LOG_0(Trace_Error, "ERROR CheckDataSet IsAddError(iOffsetNext, cTotalMem)");
                return Error_IllegalParamVal;

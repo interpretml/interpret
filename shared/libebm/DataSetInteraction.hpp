@@ -67,10 +67,6 @@ public:
       return m_weightTotal;
    }
 
-   INLINE_ALWAYS bool IsGradientsAndHessiansNull() const {
-      return nullptr == m_aGradientsAndHessians;
-   }
-
    INLINE_ALWAYS const FloatFast * GetGradientsAndHessiansPointer() const {
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
