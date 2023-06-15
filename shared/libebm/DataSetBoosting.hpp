@@ -24,21 +24,8 @@ namespace DEFINED_ZONE_NAME {
 class Term;
 struct DataSetBoosting;
 
-class DataSubsetBoosting final {
+struct DataSubsetBoosting final {
    friend DataSetBoosting;
-
-   FloatFast * m_aGradientsAndHessians;
-   FloatFast * m_aSampleScores;
-   void * m_aTargetData;
-   StorageDataType * * m_aaInputData;
-   size_t m_cSamples;
-   size_t m_cTerms;
-
-   // TODO: the InnerBag class is a fixed size, so we don't need to allocate a pointer to an array of pointers
-   //       we can just allocate an array of the fixed sized items and have one less indirection step
-   InnerBag * m_aInnerBags;
-
-public:
 
    DataSubsetBoosting() = default; // preserve our POD status
    ~DataSubsetBoosting() = default; // preserve our POD status
@@ -46,25 +33,24 @@ public:
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    inline void InitializeUnfailing() {
+      m_cSamples = 0;
       m_aGradientsAndHessians = nullptr;
       m_aSampleScores = nullptr;
       m_aTargetData = nullptr;
       m_aaInputData = nullptr;
       m_aInnerBags = nullptr;
-      m_cSamples = 0;
-      m_cTerms = 0;
    }
 
-   void Destruct(const size_t cInnerBags);
+   void Destruct(const size_t cTerms, const size_t cInnerBags);
 
-   inline const InnerBag * GetInnerBags() const {
-      return m_aInnerBags;
+   inline size_t GetCountSamples() const {
+      return m_cSamples;
    }
-
    inline FloatFast * GetGradientsAndHessiansPointer() {
       return m_aGradientsAndHessians;
    }
    inline const FloatFast * GetGradientsAndHessiansPointer() const {
+      EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
    }
    inline FloatFast * GetSampleScores() {
@@ -74,13 +60,21 @@ public:
       return m_aTargetData;
    }
    inline const StorageDataType * GetInputDataPointer(const size_t iTerm) const {
-      EBM_ASSERT(iTerm < m_cTerms);
       EBM_ASSERT(nullptr != m_aaInputData);
       return m_aaInputData[iTerm];
    }
-   inline size_t GetCountSamples() const {
-      return m_cSamples;
+   inline const InnerBag * GetInnerBag(const size_t iBag) const {
+      EBM_ASSERT(nullptr != m_aInnerBags);
+      return &m_aInnerBags[iBag];
    }
+
+private:
+   size_t m_cSamples;
+   FloatFast * m_aGradientsAndHessians;
+   FloatFast * m_aSampleScores;
+   void * m_aTargetData;
+   StorageDataType ** m_aaInputData;
+   InnerBag * m_aInnerBags;
 };
 static_assert(std::is_standard_layout<DataSubsetBoosting>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -88,7 +82,6 @@ static_assert(std::is_trivial<DataSubsetBoosting>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<DataSubsetBoosting>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
-
 
 struct DataSetBoosting final {
    DataSetBoosting() = default; // preserve our POD status
@@ -103,7 +96,7 @@ struct DataSetBoosting final {
       m_aBagWeightTotals = nullptr;
    }
 
-   void Destruct(const size_t cInnerBags);
+   void Destruct(const size_t cTerms, const size_t cInnerBags);
 
    ErrorEbm Initialize(
       const size_t cSubsetItemsMax,
@@ -129,19 +122,16 @@ struct DataSetBoosting final {
    inline size_t GetCountSamples() const {
       return m_cSamples;
    }
-
-   inline double GetBagWeightTotal(const size_t iBag) const {
-      EBM_ASSERT(nullptr != m_aBagWeightTotals);
-      return m_aBagWeightTotals[iBag];
-   }
-
    inline size_t GetCountSubsets() const {
       return m_cSubsets;
    }
-
    inline DataSubsetBoosting * GetSubsets() {
       EBM_ASSERT(nullptr != m_aSubsets);
       return m_aSubsets;
+   }
+   inline double GetBagWeightTotal(const size_t iBag) const {
+      EBM_ASSERT(nullptr != m_aBagWeightTotals);
+      return m_aBagWeightTotals[iBag];
    }
 
 private:
@@ -191,7 +181,6 @@ static_assert(std::is_trivial<DataSetBoosting>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<DataSetBoosting>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
-
 
 } // DEFINED_ZONE_NAME
 

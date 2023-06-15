@@ -121,8 +121,8 @@ ErrorEbm BoosterCore::InitializeTensors(
 BoosterCore::~BoosterCore() {
    // this only gets called after our reference count has been decremented to zero
 
-   m_trainingSet.Destruct(m_cInnerBags);
-   m_validationSet.Destruct(0);
+   m_trainingSet.Destruct(m_cTerms, m_cInnerBags);
+   m_validationSet.Destruct(m_cTerms, 0);
 
    Term::FreeTerms(m_cTerms, m_apTerms);
 

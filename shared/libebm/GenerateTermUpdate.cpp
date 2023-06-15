@@ -748,8 +748,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             params.m_cPack = cPack;
             params.m_cSamples = pSubset->GetCountSamples();
             params.m_aGradientsAndHessians = pSubset->GetGradientsAndHessiansPointer();
-            params.m_aWeights = pSubset->GetInnerBags()[iBag].GetWeights();
-            params.m_pCountOccurrences = pSubset->GetInnerBags()[iBag].GetCountOccurrences();
+            params.m_aWeights = pSubset->GetInnerBag(iBag)->GetWeights();
+            params.m_pCountOccurrences = pSubset->GetInnerBag(iBag)->GetCountOccurrences();
             if(k_cItemsPerBitPackNone != cPack) {
                params.m_aPacked = pSubset->GetInputDataPointer(iTerm);
             }

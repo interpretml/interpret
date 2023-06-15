@@ -105,7 +105,6 @@ inline constexpr static T MakeLowMask(const size_t cBits) noexcept {
 }
 
 static constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin
-// TODO : remove the 2 suffixes from these, and verify these are being used!!  AND at the same time verify that we like the sign of anything that uses these constants size_t vs ptrdiff_t
 static constexpr ptrdiff_t k_cItemsPerBitPackDynamic = ptrdiff_t { 0 };
 
 inline constexpr static bool IsRegressionOutput(const LinkEbm link) noexcept {
