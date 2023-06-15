@@ -31,24 +31,45 @@ extern ErrorEbm ExtractWeights(
    FloatFast ** ppWeightsOut
 );
 
-INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructGradientsAndHessians(const bool bAllocateHessians, const size_t cSamples, const size_t cScores) {
+ErrorEbm DataSetBoosting::ConstructGradientsAndHessians(const bool bAllocateHessians, const size_t cScores) {
    LOG_0(Trace_Info, "Entered ConstructGradientsAndHessians");
 
-   EBM_ASSERT(1 <= cSamples);
+
+
+
+   DataSubsetBoosting * pSubset = m_aSubsets;
+
+
+   const size_t cSetSamples = pSubset->m_cSamples;
+
+
    EBM_ASSERT(1 <= cScores);
 
    const size_t cStorageItems = bAllocateHessians ? size_t { 2 } : size_t { 1 };
-   if(IsMultiplyError(sizeof(FloatFast), cScores, cStorageItems, cSamples)) {
-      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores, cStorageItems, cSamples)");
-      return nullptr;
+   if(IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)) {
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructGradientsAndHessians IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)");
+      return Error_OutOfMemory;
    }
-   const size_t cBytesGradientsAndHessians = sizeof(FloatFast) * cScores * cStorageItems * cSamples;
+   const size_t cElementBytes = sizeof(FloatFast) * cStorageItems * cScores;
+
+
+
+   if(IsMultiplyError(cElementBytes, cSetSamples)) {
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructGradientsAndHessians IsMultiplyError(cElementBytes, cSetSamples)");
+      return Error_OutOfMemory;
+   }
+   const size_t cBytesGradientsAndHessians = cElementBytes * cSetSamples;
    ANALYSIS_ASSERT(0 != cBytesGradientsAndHessians);
 
    FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(malloc(cBytesGradientsAndHessians));
+   if(nullptr == aGradientsAndHessians) {
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
+      return Error_OutOfMemory;
+   }
+   pSubset->m_aGradientsAndHessians = aGradientsAndHessians;
 
    LOG_0(Trace_Info, "Exited ConstructGradientsAndHessians");
-   return aGradientsAndHessians;
+   return Error_None;
 }
 
 WARNING_PUSH
@@ -607,41 +628,6 @@ ErrorEbm DataSetBoosting::ConstructInputData(
 }
 WARNING_POP
 
-ErrorEbm DataSubsetBoosting::Initialize(
-   const size_t cScores,
-   const bool bAllocateGradients,
-   const bool bAllocateHessians,
-   const size_t cSetSamples,
-   const size_t cSubsetSamples
-) {
-   EBM_ASSERT(nullptr == m_aGradientsAndHessians);
-   EBM_ASSERT(nullptr == m_aSampleScores);
-   EBM_ASSERT(nullptr == m_aTargetData);
-   EBM_ASSERT(nullptr == m_aaInputData);
-
-   LOG_0(Trace_Info, "Entered DataSubsetBoosting::Initialize");
-
-   EBM_ASSERT(0 != cSetSamples);
-   EBM_ASSERT(0 != cSubsetSamples);
-
-   if(bAllocateGradients) {
-      FloatFast * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSetSamples, cScores);
-      if(nullptr == aGradientsAndHessians) {
-         LOG_0(Trace_Warning, "WARNING Exited DataSubsetBoosting::Initialize nullptr == aGradientsAndHessians");
-         return Error_OutOfMemory;
-      }
-      m_aGradientsAndHessians = aGradientsAndHessians;
-   } else {
-      EBM_ASSERT(!bAllocateHessians);
-   }
-
-   m_cSamples = cSubsetSamples;
-
-   LOG_0(Trace_Info, "Exited DataSubsetBoosting::Initialize");
-
-   return Error_None;
-}
-
 void DataSubsetBoosting::Destruct(const size_t cInnerBags) {
    LOG_0(Trace_Info, "Entered DataSubsetBoosting::Destruct");
 
@@ -939,18 +925,10 @@ ErrorEbm DataSetBoosting::Initialize(
          // into this function and make them subset aware before allowing multiple subsets
          EBM_ASSERT(1 == cSubsets);
 
-         error = pSubsetInit->Initialize(
-            cScores,
-            bAllocateGradients,
-            bAllocateHessians,
-            cSetSamples,
-            cSetSamplesRemaining <= cSubsetItemsMax ? cSetSamplesRemaining : cSubsetItemsMax
-         );
-         cSetSamplesRemaining -= cSubsetItemsMax; // this will overflow on last loop, but that's ok
-         if(Error_None != error) {
-            return error;
-         }
+         const size_t cSubsetSamples = cSetSamplesRemaining <= cSubsetItemsMax ? cSetSamplesRemaining : cSubsetItemsMax;
+         pSubsetInit->m_cSamples = cSubsetSamples;
 
+         cSetSamplesRemaining -= cSubsetItemsMax; // this will overflow on last loop, but that's ok
 
          if(0 != cTerms) {
             StorageDataType ** paData = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cTerms));
@@ -969,7 +947,6 @@ ErrorEbm DataSetBoosting::Initialize(
             } while(paDataEnd != paData);
          }
 
-
          InnerBag * const aInnerBags = InnerBag::AllocateInnerBags(cInnerBags);
          if(nullptr == aInnerBags) {
             LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == aInnerBags");
@@ -979,6 +956,15 @@ ErrorEbm DataSetBoosting::Initialize(
 
          ++pSubsetInit;
       } while(pSubsetsEnd != pSubsetInit);
+
+      if(bAllocateGradients) {
+         error = ConstructGradientsAndHessians(bAllocateHessians, cScores);
+         if(Error_None != error) {
+            return error;
+         }
+      } else {
+         EBM_ASSERT(!bAllocateHessians);
+      }
 
       if(bAllocateSampleScores) {
          error = ConstructSampleScores(

@@ -57,14 +57,6 @@ public:
 
    void Destruct(const size_t cInnerBags);
 
-   ErrorEbm Initialize(
-      const size_t cScores,
-      const bool bAllocateGradients,
-      const bool bAllocateHessians,
-      const size_t cSetSamples,
-      const size_t cSubsetSamples
-   );
-
    inline const InnerBag * GetInnerBags() const {
       return m_aInnerBags;
    }
@@ -153,6 +145,8 @@ struct DataSetBoosting final {
    }
 
 private:
+
+   ErrorEbm ConstructGradientsAndHessians(const bool bAllocateHessians, const size_t cScores);
 
    ErrorEbm ConstructSampleScores(
       const size_t cScores,
