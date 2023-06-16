@@ -476,7 +476,7 @@ extern ErrorEbm Unbag(
    return Error_None;
 }
 
-INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
+extern bool CheckWeightsEqual(
    const BagEbm direction,
    const BagEbm * const aBag,
    const FloatFast * pWeights,
