@@ -755,13 +755,11 @@ ErrorEbm DataSetBoosting::InitializeBags(
          } while(cSetSamples != iSample);
       }
 
-      const size_t * pCountOccurrences = aCountOccurrences;
-      const FloatFast * pWeight = aWeights;
-
       double total;
-      if(nullptr == pWeight) {
+      if(nullptr == aWeights) {
          total = static_cast<double>(cSetSamples);
-         if(nullptr != pCountOccurrences) {
+         if(nullptr != aCountOccurrences) {
+            const size_t * pCountOccurrences = aCountOccurrences;
             DataSubsetBoosting * pSubset = m_aSubsets;
             do {
                EBM_ASSERT(nullptr != pSubset->m_aInnerBags);
@@ -776,14 +774,14 @@ ErrorEbm DataSetBoosting::InitializeBags(
                   free(aCountOccurrences);
                   return Error_OutOfMemory;
                }
-               FloatFast * aWeightsInternal = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSubsetSamples));
-               if(nullptr == aWeightsInternal) {
-                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeBags nullptr == aWeightsInternal");
+               FloatFast * pWeightsInternal = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSubsetSamples));
+               if(nullptr == pWeightsInternal) {
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeBags nullptr == pWeightsInternal");
                   free(aWeights);
                   free(aCountOccurrences);
                   return Error_OutOfMemory;
                }
-               pInnerBag->m_aWeights = aWeightsInternal;
+               pInnerBag->m_aWeights = pWeightsInternal;
 
                EBM_ASSERT(cSubsetSamples <= cSetSamples);
 
@@ -795,20 +793,24 @@ ErrorEbm DataSetBoosting::InitializeBags(
                   return Error_OutOfMemory;
                }
                pInnerBag->m_aCountOccurrences = pOccurrences;
-               const size_t * const pCountOccurrencesEnd = &pOccurrences[cSubsetSamples];
 
-               FloatFast * pWeightsInternal = aWeightsInternal;
+               const FloatFast * const pWeightsInternalEnd = pWeightsInternal + cSubsetSamples;
                do {
-                  *pOccurrences = *pCountOccurrences;
-                  ++pOccurrences;
-                  *pWeightsInternal = static_cast<FloatFast>(*pCountOccurrences);
-                  ++pWeightsInternal;
+                  const size_t cOccurrences = *pCountOccurrences;
+                  *pOccurrences = cOccurrences;
+                  *pWeightsInternal = static_cast<FloatFast>(cOccurrences);
+
                   ++pCountOccurrences;
-               } while(pCountOccurrencesEnd != pOccurrences);
+                  ++pOccurrences;
+                  ++pWeightsInternal;
+               } while(pWeightsInternalEnd != pWeightsInternal);
+
                ++pSubset;
             } while(pSubsetsEnd != pSubset);
          }
       } else {
+         const size_t * pCountOccurrences = aCountOccurrences;
+         const FloatFast * pWeight = aWeights;
          DataSubsetBoosting * pSubset = m_aSubsets;
          total = 0.0;
          do {
@@ -824,23 +826,19 @@ ErrorEbm DataSetBoosting::InitializeBags(
                free(aCountOccurrences);
                return Error_OutOfMemory;
             }
-            FloatFast * aWeightsInternal = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSubsetSamples));
-            if(nullptr == aWeightsInternal) {
-               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeBags nullptr == aWeightsInternal");
+            FloatFast * pWeightsInternal = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSubsetSamples));
+            if(nullptr == pWeightsInternal) {
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeBags nullptr == pWeightsInternal");
                free(aWeights);
                free(aCountOccurrences);
                return Error_OutOfMemory;
             }
-            pInnerBag->m_aWeights = aWeightsInternal;
+            pInnerBag->m_aWeights = pWeightsInternal;
 
-            if(nullptr == pCountOccurrences) {
-               static_assert(sizeof(*aWeightsInternal) == sizeof(*pWeight), "size needs to be the same for memcpy");
-               memcpy(aWeightsInternal, pWeight, sizeof(*pWeight) * cSubsetSamples);
-               pWeight += cSubsetSamples;
-            } else {
+            size_t * pOccurrences = nullptr;
+            if(nullptr != pCountOccurrences) {
                EBM_ASSERT(cSubsetSamples <= cSetSamples);
-
-               size_t * pOccurrences = static_cast<size_t *>(malloc(sizeof(size_t) * cSubsetSamples));
+               pOccurrences = static_cast<size_t *>(malloc(sizeof(size_t) * cSubsetSamples));
                if(nullptr == pOccurrences) {
                   LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeBags nullptr == aCountOccurrences");
                   free(aWeights);
@@ -848,19 +846,28 @@ ErrorEbm DataSetBoosting::InitializeBags(
                   return Error_OutOfMemory;
                }
                pInnerBag->m_aCountOccurrences = pOccurrences;
-               const size_t * const pCountOccurrencesEnd = &pOccurrences[cSubsetSamples];
-
-               FloatFast * pWeightsInternal = aWeightsInternal;
-               do {
-                  *pOccurrences = *pCountOccurrences;
-                  ++pOccurrences;
-                  *pWeightsInternal = *pWeight * static_cast<FloatFast>(*pCountOccurrences);
-                  ++pWeight;
-                  ++pWeightsInternal;
-                  ++pCountOccurrences;
-               } while(pCountOccurrencesEnd != pOccurrences);
             }
-            total += AddPositiveFloatsSafe<double>(cSubsetSamples, aWeightsInternal);
+
+            const FloatFast * const pWeightsInternalEnd = pWeightsInternal + cSubsetSamples;
+            do {
+               FloatFast result = *pWeight;
+               ++pWeight;
+
+               if(nullptr != pCountOccurrences) {
+                  const size_t cOccurrences = *pCountOccurrences;
+                  ++pCountOccurrences;
+
+                  *pOccurrences = cOccurrences;
+                  ++pOccurrences;
+
+                  result *= static_cast<FloatFast>(cOccurrences);
+               }
+               *pWeightsInternal = result;
+               ++pWeightsInternal;
+            } while(pWeightsInternalEnd != pWeightsInternal);
+
+            total += AddPositiveFloatsSafe<double>(cSubsetSamples, pInnerBag->m_aWeights);
+            
             ++pSubset;
          } while(pSubsetsEnd != pSubset);
 
