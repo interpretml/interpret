@@ -136,22 +136,22 @@ struct DataSetBoosting final {
 
 private:
 
-   ErrorEbm ConstructGradientsAndHessians(const bool bAllocateHessians, const size_t cScores);
+   ErrorEbm InitializeGradientsAndHessians(const bool bAllocateHessians, const size_t cScores);
 
-   ErrorEbm ConstructSampleScores(
+   ErrorEbm InitializeSampleScores(
       const size_t cScores,
       const BagEbm direction,
       const BagEbm * const aBag,
       const double * const aInitScores
    );
 
-   ErrorEbm ConstructTargetData(
+   ErrorEbm InitializeTargetData(
       const unsigned char * const pDataSetShared,
       const BagEbm direction,
       const BagEbm * const aBag
    );
 
-   ErrorEbm ConstructInputData(
+   ErrorEbm InitializeInputData(
       const unsigned char * const pDataSetShared,
       const size_t cSharedSamples,
       const BagEbm direction,
