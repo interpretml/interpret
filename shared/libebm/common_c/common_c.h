@@ -12,8 +12,10 @@
 #ifdef __cplusplus
 extern "C" {
 #define EBM_NOEXCEPT noexcept
+#define REINTERPRET_CAST(type, val)  (reinterpret_cast<type>(val))
 #else // __cplusplus
 #define EBM_NOEXCEPT
+#define REINTERPRET_CAST(type, val)  ((type)(val))
 #endif // __cplusplus
 
 #define UNUSED(x) (void)(x)
@@ -164,9 +166,35 @@ INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * const dest, const char * c
 #define FAST_EXP
 #define FAST_LOG
 
-typedef double FloatBig;
 // TODO: someday flip FloatFast to float32
+//#define FLOAT_FAST_32
+#define FLOAT_FAST_64
+//#define FLOAT_BIG_32
+#define FLOAT_BIG_64
+
+#if defined(FLOAT_FAST_32)
+typedef float FloatFast;
+#elif defined(FLOAT_FAST_64)
 typedef double FloatFast;
+#else
+#error either FLOAT_FAST_32 or FLOAT_FAST_64 must be defined
+#endif
+
+#if defined(FLOAT_BIG_32)
+typedef float FloatBig;
+#elif defined(FLOAT_BIG_64)
+typedef double FloatBig;
+#else
+#error either FLOAT_BIG_32 or FLOAT_BIG_64 must be defined
+#endif
+
+// 16 byte alignment works for *most* SIMD implementation, but it's even better to align with the 64 byte cache!
+#define SIMD_BITS_ALIGNMENT (STATIC_CAST(size_t, 6))
+#define SIMD_BYTE_ALIGNMENT (STATIC_CAST(size_t, 1 << SIMD_BITS_ALIGNMENT))
+
+extern void * AlignedAlloc(const size_t cBytes);
+extern void AlignedFree(void * const p);
+extern void * AlignedRealloc(void * const p, const size_t cOldBytes, const size_t cNewBytes);
 
 static const char k_registrationSeparator = ',';
 

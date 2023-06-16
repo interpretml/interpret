@@ -89,6 +89,46 @@ extern BoolEbm IsStringEqualsForgiving(const char * sMain, const char * sLabel) 
    return EBM_TRUE;
 }
 
+extern void * AlignedAlloc(const size_t cBytes) {
+   static_assert(STATIC_CAST(size_t, 1 << SIMD_BITS_ALIGNMENT) == SIMD_BYTE_ALIGNMENT, "alignments must match");
+
+   EBM_ASSERT(0 != cBytes);
+   if(SIZE_MAX - (sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1) < cBytes) {
+      return NULL;
+   }
+   const size_t cPaddedBytes = sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1 + cBytes;
+   void * const p = malloc(cPaddedBytes);
+   if(NULL == p) {
+      return NULL;
+   }
+
+   uintptr_t pointer = REINTERPRET_CAST(uintptr_t, p);
+   pointer = (pointer + STATIC_CAST(uintptr_t, sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1)) & ~STATIC_CAST(uintptr_t, SIMD_BYTE_ALIGNMENT - 1);
+   *(REINTERPRET_CAST(void **, pointer) - 1) = p;
+   return REINTERPRET_CAST(void *, pointer);
+}
+extern void AlignedFree(void * const p) {
+   if(NULL != p) {
+      free(*(REINTERPRET_CAST(void **, p) - 1));
+   }
+}
+extern void * AlignedRealloc(void * const p, const size_t cOldBytes, const size_t cNewBytes) {
+   EBM_ASSERT(NULL != p);
+   EBM_ASSERT(0 != cOldBytes);
+   EBM_ASSERT(0 != cNewBytes);
+   EBM_ASSERT(cOldBytes < cNewBytes);
+
+   void * const pNew = AlignedAlloc(cNewBytes);
+   if(pNew == NULL) {
+      // identically to realloc, we do NOT free the old memory if there is not enough memory
+      return NULL;
+   }
+   memcpy(pNew, p, cOldBytes);
+
+   AlignedFree(p);
+   return pNew;
+}
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus

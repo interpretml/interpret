@@ -10,6 +10,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <stdlib.h> // malloc
 
+#include "logging.h"
 #include "common_c.h"
 
 #include "zones.h"
@@ -422,8 +423,9 @@ static_assert(!IsConvertError<uint8_t>(uint16_t { 0 }), "automated test with com
 
 template<typename T>
 constexpr static size_t CountBitsRequired(const T maxValue) noexcept {
+   static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
    // this is a bit inefficient when called in the runtime, but we don't call it anywhere that's important performance wise.
-   return T { 0 } == maxValue ? size_t { 0 } : size_t { 1 } + CountBitsRequired<T>(maxValue / T { 2 });
+   return T { 0 } == maxValue ? size_t { 0 } : size_t { 1 } + CountBitsRequired<T>(maxValue >> 1);
 }
 
 template<typename T>
@@ -434,10 +436,6 @@ static_assert(CountBitsRequiredPositiveMax<uint8_t>() == 8, "automated test with
 static_assert(CountBitsRequiredPositiveMax<uint16_t>() == 16, "automated test with compiler");
 static_assert(CountBitsRequiredPositiveMax<uint32_t>() == 32, "automated test with compiler");
 static_assert(CountBitsRequiredPositiveMax<uint64_t>() == 64, "automated test with compiler");
-static_assert(CountBitsRequiredPositiveMax<int8_t>() == 7, "automated test with compiler");
-static_assert(CountBitsRequiredPositiveMax<int16_t>() == 15, "automated test with compiler");
-static_assert(CountBitsRequiredPositiveMax<int32_t>() == 31, "automated test with compiler");
-static_assert(CountBitsRequiredPositiveMax<int64_t>() == 63, "automated test with compiler");
 
 template<typename T>
 inline constexpr static T MaxFromCountBits(const size_t cBits) noexcept {
@@ -452,6 +450,29 @@ static_assert(MaxFromCountBits<uint8_t>(8) == 255, "automated test with compiler
 static_assert(MaxFromCountBits<uint64_t>(64) == uint64_t { 18446744073709551615u }, "automated test with compiler");
 
 static constexpr size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
+
+template<typename T>
+inline static size_t GetCountItemsBitPacked(const size_t cBits) noexcept {
+   static_assert(std::is_unsigned<T>::value, "T must be unsigned");
+   EBM_ASSERT(size_t { 1 } <= cBits);
+   EBM_ASSERT(cBits <= CountBitsRequiredPositiveMax<T>());
+   return CountBitsRequiredPositiveMax<T>() / cBits;
+}
+template<typename T>
+inline constexpr static size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
+   static_assert(std::is_unsigned<T>::value, "T must be unsigned");
+   return CountBitsRequiredPositiveMax<T>() / cItemsBitPacked;
+}
+template<typename T>
+inline constexpr static T MakeLowMask(const size_t cBits) noexcept {
+   static_assert(std::is_unsigned<T>::value, "T must be unsigned");
+   return (~T { 0 }) >> (CountBitsRequiredPositiveMax<T>() - cBits);
+}
+
+inline static bool IsAligned(const void * const p) {
+   static constexpr uintptr_t mask = MakeLowMask<uintptr_t>(SIMD_BITS_ALIGNMENT);
+   return uintptr_t { 0 } == (reinterpret_cast<uintptr_t>(p) & mask);
+}
 
 // It is impossible for us to have tensors with more than k_cDimensionsMax dimensions.  
 // Our public C interface passes tensors back and forth with our caller with each dimension having
