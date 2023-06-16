@@ -161,19 +161,19 @@ ErrorEbm DataSetBoosting::InitializeSampleScores(
 
       const BagEbm * pSampleReplication = aBag;
       const double * pInitScore = aInitScores;
-      const bool isLoopTraining = BagEbm { 0 } < direction;
+      const bool isLoopValidation = direction < BagEbm { 0 };
       while(true) {
          BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
-            bool isItemTraining;
+            bool isItemValidation;
             do {
                do {
                   replication = *pSampleReplication;
                   ++pSampleReplication;
                } while(BagEbm { 0 } == replication);
-               isItemTraining = BagEbm { 0 } < replication;
+               isItemValidation = replication < BagEbm { 0 };
                pInitScore += cScores;
-            } while(isLoopTraining != isItemTraining);
+            } while(isLoopValidation != isItemValidation);
             pInitScore -= cScores;
          }
 
@@ -243,8 +243,8 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
    EBM_ASSERT(nullptr != aTargets); // we previously called GetDataSetSharedTarget and got back non-null result
 
    const BagEbm * pSampleReplication = aBag;
-   const bool isLoopTraining = BagEbm { 0 } < direction;
-   EBM_ASSERT(nullptr != aBag || isLoopTraining); // if aBag is nullptr then we have no validation samples
+   const bool isLoopValidation = direction < BagEbm { 0 };
+   EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if aBag is nullptr then we have no validation samples
 
    if(IsClassification(cClasses)) {
       const size_t countClasses = static_cast<size_t>(cClasses);
@@ -266,15 +266,15 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
       while(true) {
          BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
-            bool isItemTraining;
+            bool isItemValidation;
             do {
                do {
                   replication = *pSampleReplication;
                   ++pSampleReplication;
                   ++pTargetFrom;
                } while(BagEbm { 0 } == replication);
-               isItemTraining = BagEbm { 0 } < replication;
-            } while(isLoopTraining != isItemTraining);
+               isItemValidation = replication < BagEbm { 0 };
+            } while(isLoopValidation != isItemValidation);
             --pTargetFrom;
          }
          const SharedStorageDataType data = *pTargetFrom;
@@ -341,15 +341,15 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
       while(true) {
          BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
-            bool isItemTraining;
+            bool isItemValidation;
             do {
                do {
                   replication = *pSampleReplication;
                   ++pSampleReplication;
                   ++pTargetFrom;
                } while(BagEbm { 0 } == replication);
-               isItemTraining = BagEbm { 0 } < replication;
-            } while(isLoopTraining != isItemTraining);
+               isItemValidation = replication < BagEbm { 0 };
+            } while(isLoopValidation != isItemValidation);
             --pTargetFrom;
          }
          const FloatFast data = *pTargetFrom;
@@ -439,7 +439,7 @@ ErrorEbm DataSetBoosting::InitializeInputData(
 
    const DataSubsetBoosting * const pSubsetsEnd = m_aSubsets + m_cSubsets;
 
-   const bool isLoopTraining = BagEbm { 0 } < direction;
+   const bool isLoopValidation = direction < BagEbm { 0 };
    const IntEbm * piTermFeatures = aiTermFeatures;
    size_t iTerm = 0;
    do {
@@ -526,7 +526,7 @@ ErrorEbm DataSetBoosting::InitializeInputData(
          } while(pTermFeaturesEnd != pTermFeature);
          EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pTerm->GetCountRealDimensions()]);
 
-         EBM_ASSERT(nullptr != aBag || isLoopTraining); // if aBag is nullptr then we have no validation samples
+         EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if aBag is nullptr then we have no validation samples
          const BagEbm * pSampleReplication = aBag;
          BagEbm replication = 0;
          StorageDataType iTensor;
@@ -570,14 +570,14 @@ ErrorEbm DataSetBoosting::InitializeInputData(
                      replication = 1;
                      if(nullptr != pSampleReplication) {
                         const BagEbm * pSampleReplicationOriginal = pSampleReplication;
-                        bool isItemTraining;
+                        bool isItemValidation;
                         do {
                            do {
                               replication = *pSampleReplication;
                               ++pSampleReplication;
                            } while(BagEbm { 0 } == replication);
-                           isItemTraining = BagEbm { 0 } < replication;
-                        } while(isLoopTraining != isItemTraining);
+                           isItemValidation = replication < BagEbm { 0 };
+                        } while(isLoopValidation != isItemValidation);
                         const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
                         if(0 != cAdvances) {
                            InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
@@ -730,8 +730,8 @@ ErrorEbm DataSetBoosting::InitializeBags(
       }
    }
 
-   const bool isLoopTraining = BagEbm { 0 } <= direction;
-   EBM_ASSERT(nullptr != aBag || isLoopTraining); // if aBag is nullptr then we have no validation samples
+   const bool isLoopValidation = direction < BagEbm { 0 };
+   EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if aBag is nullptr then we have no validation samples
 
    EBM_ASSERT(1 <= m_cSubsets);
    const DataSubsetBoosting * const pSubsetsEnd = m_aSubsets + m_cSubsets;
@@ -842,15 +842,15 @@ ErrorEbm DataSetBoosting::InitializeBags(
          while(true) {
             BagEbm replication = 1;
             if(nullptr != pSampleReplication) {
-               bool isItemTraining;
+               bool isItemValidation;
                do {
                   do {
                      replication = *pSampleReplication;
                      ++pSampleReplication;
                      ++pWeightFrom;
                   } while(BagEbm { 0 } == replication);
-                  isItemTraining = BagEbm { 0 } <= replication;
-               } while(isLoopTraining != isItemTraining);
+                  isItemValidation = replication < BagEbm { 0 };
+               } while(isLoopValidation != isItemValidation);
                --pWeightFrom;
             }
 

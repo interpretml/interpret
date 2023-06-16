@@ -49,8 +49,8 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
 
    const BagEbm * pSampleReplication = aBag;
-   const bool isLoopTraining = BagEbm { 0 } < direction;
-   EBM_ASSERT(nullptr != aBag || isLoopTraining); // if pSampleReplication is nullptr then we have no validation samples
+   const bool isLoopValidation = direction < BagEbm { 0 };
+   EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if pSampleReplication is nullptr then we have no validation samples
 
    const FloatFast * pTargetData = static_cast<const FloatFast *>(aTargets);
    const double * pInitScore = aInitScores;
@@ -64,16 +64,16 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
       BagEbm replication = 1;
       size_t cInitAdvances = 1;
       if(nullptr != pSampleReplication) {
-         bool isItemTraining;
+         bool isItemValidation;
          do {
             do {
                replication = *pSampleReplication;
                ++pSampleReplication;
                ++pTargetData;
             } while(BagEbm { 0 } == replication);
-            isItemTraining = BagEbm { 0 } < replication;
+            isItemValidation = replication < BagEbm { 0 };
             ++cInitAdvances;
-         } while(isLoopTraining != isItemTraining);
+         } while(isLoopValidation != isItemValidation);
          --pTargetData;
          --cInitAdvances;
       }

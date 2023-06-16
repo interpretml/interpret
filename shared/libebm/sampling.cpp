@@ -487,26 +487,26 @@ extern bool CheckWeightsEqual(
    EBM_ASSERT(nullptr != pWeights);
 
    FloatFast firstWeight = std::numeric_limits<FloatFast>::quiet_NaN();
-   const bool isLoopTraining = BagEbm { 0 } < direction;
+   const bool isLoopValidation = direction < BagEbm { 0 };
    ptrdiff_t cSetSamplesRemaining = static_cast<ptrdiff_t>(cSetSamples);
-   if(!isLoopTraining) {
+   if(isLoopValidation) {
       // make cSetSamplesRemaining the same sign as the bags we want to match
       cSetSamplesRemaining = -cSetSamplesRemaining;
    }
    const BagEbm * pSampleReplication = aBag;
-   EBM_ASSERT(nullptr != aBag || isLoopTraining); // if pSampleReplication is nullptr then we have no validation samples
+   EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if pSampleReplication is nullptr then we have no validation samples
    do {
       BagEbm replication = 1;
       if(nullptr != pSampleReplication) {
-         bool isItemTraining;
+         bool isItemValidation;
          do {
             do {
                replication = *pSampleReplication;
                ++pSampleReplication;
                ++pWeights;
             } while(BagEbm { 0 } == replication);
-            isItemTraining = BagEbm { 0 } < replication;
-         } while(isLoopTraining != isItemTraining);
+            isItemValidation = replication < BagEbm { 0 };
+         } while(isLoopValidation != isItemValidation);
          --pWeights;
       }
 
@@ -558,20 +558,20 @@ extern ErrorEbm ExtractWeights(
       const FloatFast * pWeightFrom = aWeights;
       FloatFast * pWeightTo = aRet;
       FloatFast * pWeightToEnd = aRet + cSetSamples;
-      const bool isLoopTraining = BagEbm { 0 } < direction;
-      EBM_ASSERT(nullptr != aBag || isLoopTraining); // if aBag is nullptr then we have no validation samples
+      const bool isLoopValidation = direction < BagEbm { 0 };
+      EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if aBag is nullptr then we have no validation samples
       do {
          BagEbm replication = 1;
          if(nullptr != pSampleReplication) {
-            bool isItemTraining;
+            bool isItemValidation;
             do {
                do {
                   replication = *pSampleReplication;
                   ++pSampleReplication;
                   ++pWeightFrom;
                } while(BagEbm { 0 } == replication);
-               isItemTraining = BagEbm { 0 } < replication;
-            } while(isLoopTraining != isItemTraining);
+               isItemValidation = replication < BagEbm { 0 };
+            } while(isLoopValidation != isItemValidation);
             --pWeightFrom;
          }
 
