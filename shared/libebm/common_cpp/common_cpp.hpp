@@ -469,8 +469,11 @@ inline constexpr static T MakeLowMask(const size_t cBits) noexcept {
    return (~T { 0 }) >> (CountBitsRequiredPositiveMax<T>() - cBits);
 }
 
-inline static bool IsAligned(const void * const p) {
-   static constexpr uintptr_t mask = MakeLowMask<uintptr_t>(SIMD_BITS_ALIGNMENT);
+inline static bool IsAligned(const void * const p, const size_t cBytesAlignment = SIMD_BYTE_ALIGNMENT) {
+   EBM_ASSERT(1 <= cBytesAlignment);
+   const size_t cBits = CountBitsRequired(cBytesAlignment - 1);
+   EBM_ASSERT(size_t { 1 } << cBits == cBytesAlignment);
+   const uintptr_t mask = MakeLowMask<uintptr_t>(cBits);
    return uintptr_t { 0 } == (reinterpret_cast<uintptr_t>(p) & mask);
 }
 

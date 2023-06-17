@@ -33,13 +33,13 @@ namespace DEFINED_ZONE_NAME {
 struct Sse_32_Int final {
    static constexpr int cPack = 4;
    using T = uint32_t;
+   using TPack = __m128i;
 
    inline Sse_32_Int(const T val) noexcept : m_data(_mm_set1_epi32(static_cast<T>(val))) {
-      UNUSED(m_data);
    }
 
 private:
-   __m128i m_data;
+   TPack m_data;
 };
 static_assert(std::is_standard_layout<Sse_32_Int>::value && std::is_trivially_copyable<Sse_32_Int>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
@@ -48,6 +48,7 @@ struct Sse_32_Float final {
    static constexpr bool bCpu = false;
    static constexpr int cPack = 4;
    using T = float;
+   using TPack = __m128;
    using TInt = Sse_32_Int;
 
    WARNING_PUSH
@@ -143,16 +144,12 @@ struct Sse_32_Float final {
    }
 
    inline void LoadAligned(const T * const a) noexcept {
-      // TODO: since we use these with arrays that we progress on, we'll find ourselves not on 64 byte alignment
-      // after we've moved forward one item. We should instead check for alignment based on the SIMD vector size
-      EBM_ASSERT(IsAligned(a));
+      EBM_ASSERT(IsAligned(a, sizeof(TPack)));
       m_data = _mm_load_ps(a);
    }
 
    inline void SaveAligned(T * const a) const noexcept {
-      // TODO: since we use these with arrays that we progress on, we'll find ourselves not on 64 byte alignment
-      // after we've moved forward one item. We should instead check for alignment based on the SIMD vector size
-      EBM_ASSERT(IsAligned(a));
+      EBM_ASSERT(IsAligned(a, sizeof(TPack)));
       _mm_store_ps(a, m_data);
    }
 
@@ -171,16 +168,16 @@ struct Sse_32_Float final {
    }
 
    friend inline Sse_32_Float IfGreater(const Sse_32_Float & cmp1, const Sse_32_Float & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept {
-      __m128 mask = _mm_cmpgt_ps(cmp1.m_data, cmp2.m_data);
-      __m128 maskedTrue = _mm_and_ps(mask, trueVal.m_data);
-      __m128 maskedFalse = _mm_andnot_ps(mask, falseVal.m_data);
+      TPack mask = _mm_cmpgt_ps(cmp1.m_data, cmp2.m_data);
+      TPack maskedTrue = _mm_and_ps(mask, trueVal.m_data);
+      TPack maskedFalse = _mm_andnot_ps(mask, falseVal.m_data);
       return Sse_32_Float(_mm_or_ps(maskedTrue, maskedFalse));
    }
 
    friend inline Sse_32_Float IfLess(const Sse_32_Float & cmp1, const Sse_32_Float & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept {
-      __m128 mask = _mm_cmplt_ps(cmp1.m_data, cmp2.m_data);
-      __m128 maskedTrue = _mm_and_ps(mask, trueVal.m_data);
-      __m128 maskedFalse = _mm_andnot_ps(mask, falseVal.m_data);
+      TPack mask = _mm_cmplt_ps(cmp1.m_data, cmp2.m_data);
+      TPack maskedTrue = _mm_and_ps(mask, trueVal.m_data);
+      TPack maskedFalse = _mm_andnot_ps(mask, falseVal.m_data);
       return Sse_32_Float(_mm_or_ps(maskedTrue, maskedFalse));
    }
 
@@ -221,10 +218,10 @@ struct Sse_32_Float final {
 
 private:
 
-   inline Sse_32_Float(const __m128 & data) noexcept : m_data(data) {
+   inline Sse_32_Float(const TPack & data) noexcept : m_data(data) {
    }
 
-   __m128 m_data;
+   TPack m_data;
 };
 static_assert(std::is_standard_layout<Sse_32_Float>::value && std::is_trivially_copyable<Sse_32_Float>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");

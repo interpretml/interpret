@@ -610,8 +610,8 @@ protected:
       pObjectiveWrapperOut->m_pObjective = this;
 
 
-      pObjectiveWrapperOut->cFloatBytes = sizeof(TFloat::T);
-      pObjectiveWrapperOut->cIntBytes = sizeof(TFloat::TInt::T); // we overwrite this with 0 for CPU to use size_t
+      pObjectiveWrapperOut->cFloatBytes = sizeof(typename TFloat::T);
+      pObjectiveWrapperOut->cIntBytes = sizeof(typename TFloat::TInt::T); // we overwrite this with 0 for CPU to use size_t
 
       SetCpu<TObjective, TFloat>(pObjectiveWrapperOut);
    }

@@ -37,13 +37,13 @@ GPU_GLOBAL void TestGpuAdd(const Objective * const pObjective, const int * const
 struct Cuda_32_Int final {
    static constexpr int cPack = 1;
    using T = uint32_t;
+   using TPack = uint32_t;
 
-   GPU_BOTH inline Cuda_32_Int(const uint32_t val) noexcept : m_data(val) {
-      UNUSED(m_data);
+   GPU_BOTH inline Cuda_32_Int(const T val) noexcept : m_data(val) {
    }
 
 private:
-   uint32_t m_data;
+   TPack m_data;
 };
 static_assert(std::is_standard_layout<Cuda_32_Int>::value && std::is_trivially_copyable<Cuda_32_Int>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
@@ -56,6 +56,7 @@ struct Cuda_32_Float final {
    static constexpr bool bCpu = false;
    static constexpr int cPack = 1;
    using T = float;
+   using TPack = float;
    using TInt = Cuda_32_Int;
 
    WARNING_PUSH
@@ -313,7 +314,7 @@ struct Cuda_32_Float final {
 
 private:
 
-   float m_data;
+   TPack m_data;
 };
 static_assert(std::is_standard_layout<Cuda_32_Float>::value && std::is_trivially_copyable<Cuda_32_Float>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");

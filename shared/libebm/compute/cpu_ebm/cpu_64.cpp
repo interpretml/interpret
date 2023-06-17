@@ -33,13 +33,13 @@ struct Cpu_64_Int final {
    // use StorageDataType which is always a size_t
    
    using T = StorageDataType;
+   using TPack = StorageDataType;
 
-   inline Cpu_64_Int(const StorageDataType val) noexcept : m_data(val) {
-      UNUSED(m_data);
+   inline Cpu_64_Int(const T val) noexcept : m_data(val) {
    }
 
 private:
-   StorageDataType m_data;
+   TPack m_data;
 };
 static_assert(std::is_standard_layout<Cpu_64_Int>::value && std::is_trivially_copyable<Cpu_64_Int>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
@@ -48,6 +48,7 @@ struct Cpu_64_Float final {
    static constexpr bool bCpu = true;
    static constexpr int cPack = 1;
    using T = double;
+   using TPack = double;
    using TInt = Cpu_64_Int;
 
    WARNING_PUSH
@@ -189,7 +190,7 @@ struct Cpu_64_Float final {
 
 private:
 
-   double m_data;
+   TPack m_data;
 };
 static_assert(std::is_standard_layout<Cpu_64_Float>::value && std::is_trivially_copyable<Cpu_64_Float>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
