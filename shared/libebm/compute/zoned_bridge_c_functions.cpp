@@ -13,6 +13,7 @@
 #include "bridge_c.h" // INTERNAL_IMPORT_EXPORT_BODY
 #include "zones.h"
 
+#include "common_cpp.hpp"
 #include "zoned_bridge_c_functions.h"
 #include "zoned_bridge_cpp_functions.hpp"
 
@@ -33,6 +34,16 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate) (
    const Objective * const pObjective = static_cast<const Objective *>(pObjectiveWrapper->m_pObjective);
    const APPLY_UPDATE_CPP pApplyUpdateCpp = 
       (static_cast<FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pApplyUpdateCpp;
+
+   // all our memory should be aligned. It is required by SIMD for correctness or performance
+   EBM_ASSERT(IsAligned(pData->m_aMulticlassMidwayTemp));
+   EBM_ASSERT(IsAligned(pData->m_aUpdateTensorScores));
+   EBM_ASSERT(IsAligned(pData->m_aPacked));
+   EBM_ASSERT(IsAligned(pData->m_aTargets));
+   EBM_ASSERT(IsAligned(pData->m_aWeights));
+   EBM_ASSERT(IsAligned(pData->m_aSampleScores));
+   EBM_ASSERT(IsAligned(pData->m_aGradientsAndHessians));
+
    return (*pApplyUpdateCpp)(pObjective, pData);
 }
 

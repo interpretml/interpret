@@ -143,18 +143,18 @@ struct Sse_32_Float final {
    }
 
    inline void LoadAligned(const T * const a) noexcept {
-      // WARNING: 'a' must be aligned memory with:    alignas(16) T a[cPack];
+      // WARNING: 'a' must be aligned memory with:    alignas(SIMD_BYTE_ALIGNMENT) T a[cPack];
       m_data = _mm_load_ps(a);
    }
 
    inline void SaveAligned(T * const a) const noexcept {
-      // WARNING: 'a' must be aligned memory with:    alignas(16) T a[cPack];
+      // WARNING: 'a' must be aligned memory with:    alignas(SIMD_BYTE_ALIGNMENT) T a[cPack];
       _mm_store_ps(a, m_data);
    }
 
    template<typename TFunc>
    friend inline Sse_32_Float ApplyFunction(const Sse_32_Float & val, const TFunc & func) noexcept {
-      alignas(16) T aTemp[cPack];
+      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[cPack];
       val.SaveAligned(aTemp);
 
       for(int i = 0; i < cPack; ++i) {
@@ -198,7 +198,7 @@ struct Sse_32_Float final {
    friend inline T Sum(const Sse_32_Float & val) noexcept {
       // TODO: this could be written to be more efficient
 
-      alignas(16) T aTemp[cPack];
+      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[cPack];
       val.SaveAligned(aTemp);
 
       T sum = 0.0;

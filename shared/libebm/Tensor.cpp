@@ -43,7 +43,7 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
    pTensor->m_cTensorScoreCapacity = cTensorScoreCapacity;
    pTensor->m_bExpanded = false;
 
-   FloatFast * const aTensorScores = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cTensorScoreCapacity));
+   FloatFast * const aTensorScores = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cTensorScoreCapacity));
    if(UNLIKELY(nullptr == aTensorScores)) {
       LOG_0(Trace_Warning, "WARNING Allocate nullptr == aTensorScores");
       free(pTensor); // don't need to call the full Free(*) yet
@@ -88,7 +88,7 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
 
 void Tensor::Free(Tensor * const pTensor) {
    if(LIKELY(nullptr != pTensor)) {
-      free(pTensor->m_aTensorScores);
+      AlignedFree(pTensor->m_aTensorScores);
       if(LIKELY(0 != pTensor->m_cDimensionsMax)) {
          const DimensionInfo * pDimensionInfo = pTensor->GetDimensions();
          const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pTensor->m_cDimensionsMax];
@@ -168,7 +168,7 @@ ErrorEbm Tensor::EnsureTensorScoreCapacity(const size_t cTensorScores) {
          return Error_OutOfMemory;
       }
       size_t cBytes = sizeof(FloatFast) * cNewTensorScoreCapacity;
-      FloatFast * const aNewTensorScores = static_cast<FloatFast *>(realloc(m_aTensorScores, cBytes));
+      FloatFast * const aNewTensorScores = static_cast<FloatFast *>(AlignedRealloc(m_aTensorScores, sizeof(FloatFast) * m_cTensorScoreCapacity, cBytes));
       if(UNLIKELY(nullptr == aNewTensorScores)) {
          // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
          // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor

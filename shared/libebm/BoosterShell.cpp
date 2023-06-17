@@ -39,11 +39,11 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
    if(nullptr != pBoosterShell) {
       Tensor::Free(pBoosterShell->m_pTermUpdate);
       Tensor::Free(pBoosterShell->m_pInnerTermUpdate);
-      free(pBoosterShell->m_aBoostingFastBinsTemp);
-      free(pBoosterShell->m_aBoostingBigBins);
-      free(pBoosterShell->m_aMulticlassMidwayTemp);
-      free(pBoosterShell->m_aSplitPositionsTemp);
-      free(pBoosterShell->m_aTreeNodesTemp);
+      AlignedFree(pBoosterShell->m_aBoostingFastBinsTemp);
+      AlignedFree(pBoosterShell->m_aBoostingBigBins);
+      AlignedFree(pBoosterShell->m_aMulticlassMidwayTemp);
+      AlignedFree(pBoosterShell->m_aSplitPositionsTemp);
+      AlignedFree(pBoosterShell->m_aTreeNodesTemp);
       BoosterCore::Free(pBoosterShell->m_pBoosterCore);
 
       // before we free our memory, indicate it was freed so if our higher level language attempts to use it we have
@@ -91,14 +91,14 @@ ErrorEbm BoosterShell::FillAllocations() {
       }
 
       if(0 != m_pBoosterCore->GetCountBytesFastBins()) {
-         m_aBoostingFastBinsTemp = static_cast<BinBase *>(malloc(m_pBoosterCore->GetCountBytesFastBins()));
+         m_aBoostingFastBinsTemp = static_cast<BinBase *>(AlignedAlloc(m_pBoosterCore->GetCountBytesFastBins()));
          if(nullptr == m_aBoostingFastBinsTemp) {
             goto failed_allocation;
          }
       }
 
       if(0 != m_pBoosterCore->GetCountBytesBigBins()) {
-         m_aBoostingBigBins = static_cast<BinBase *>(malloc(m_pBoosterCore->GetCountBytesBigBins()));
+         m_aBoostingBigBins = static_cast<BinBase *>(AlignedAlloc(m_pBoosterCore->GetCountBytesBigBins()));
          if(nullptr == m_aBoostingBigBins) {
             goto failed_allocation;
          }
@@ -108,21 +108,21 @@ ErrorEbm BoosterShell::FillAllocations() {
          if(IsMultiplyError(sizeof(FloatFast), cScores)) {
             goto failed_allocation;
          }
-         m_aMulticlassMidwayTemp = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cScores));
+         m_aMulticlassMidwayTemp = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cScores));
          if(nullptr == m_aMulticlassMidwayTemp) {
             goto failed_allocation;
          }
       }
 
       if(0 != m_pBoosterCore->GetCountBytesSplitPositions()) {
-         m_aSplitPositionsTemp = malloc(m_pBoosterCore->GetCountBytesSplitPositions());
+         m_aSplitPositionsTemp = AlignedAlloc(m_pBoosterCore->GetCountBytesSplitPositions());
          if(nullptr == m_aSplitPositionsTemp) {
             goto failed_allocation;
          }
       }
 
       if(0 != m_pBoosterCore->GetCountBytesTreeNodes()) {
-         m_aTreeNodesTemp = malloc(m_pBoosterCore->GetCountBytesTreeNodes());
+         m_aTreeNodesTemp = AlignedAlloc(m_pBoosterCore->GetCountBytesTreeNodes());
          if(nullptr == m_aTreeNodesTemp) {
             goto failed_allocation;
          }

@@ -29,8 +29,8 @@ void InteractionShell::Free(InteractionShell * const pInteractionShell) {
    LOG_0(Trace_Info, "Entered InteractionShell::Free");
 
    if(nullptr != pInteractionShell) {
-      free(pInteractionShell->m_aInteractionFastBinsTemp);
-      free(pInteractionShell->m_aInteractionBigBins);
+      AlignedFree(pInteractionShell->m_aInteractionFastBinsTemp);
+      AlignedFree(pInteractionShell->m_aInteractionBigBins);
       InteractionCore::Free(pInteractionShell->m_pInteractionCore);
       
       // before we free our memory, indicate it was freed so if our higher level language attempts to use it we have
@@ -63,7 +63,7 @@ BinBase * InteractionShell::GetInteractionFastBinsTemp(const size_t cBytesPerFas
 
    BinBase * aBuffer = m_aInteractionFastBinsTemp;
    if(UNLIKELY(m_cAllocatedFastBins < cFastBins)) {
-      free(aBuffer);
+      AlignedFree(aBuffer);
       m_aInteractionFastBinsTemp = nullptr;
 
       const size_t cItemsGrowth = (cFastBins >> 2) + 16; // cannot overflow
@@ -80,7 +80,7 @@ BinBase * InteractionShell::GetInteractionFastBinsTemp(const size_t cBytesPerFas
          LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp IsMultiplyError(cBytesPerFastBin, cNewAllocatedFastBins)");
          return nullptr;
       }
-      aBuffer = static_cast<BinBase *>(malloc(cBytesPerFastBin * cNewAllocatedFastBins));
+      aBuffer = static_cast<BinBase *>(AlignedAlloc(cBytesPerFastBin * cNewAllocatedFastBins));
       if(nullptr == aBuffer) {
          LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp OutOfMemory");
          return nullptr;
@@ -95,7 +95,7 @@ BinBase * InteractionShell::GetInteractionBigBins(const size_t cBytesPerBigBin, 
 
    BinBase * aBuffer = m_aInteractionBigBins;
    if(UNLIKELY(m_cAllocatedBigBins < cBigBins)) {
-      free(aBuffer);
+      AlignedFree(aBuffer);
       m_aInteractionBigBins = nullptr;
 
       const size_t cItemsGrowth = (cBigBins >> 2) + 16; // cannot overflow
@@ -112,7 +112,7 @@ BinBase * InteractionShell::GetInteractionBigBins(const size_t cBytesPerBigBin, 
          LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionBigBins IsMultiplyError(cBytesPerBigBin, cNewAllocatedBigBins)");
          return nullptr;
       }
-      aBuffer = static_cast<BinBase *>(malloc(cBytesPerBigBin * cNewAllocatedBigBins));
+      aBuffer = static_cast<BinBase *>(AlignedAlloc(cBytesPerBigBin * cNewAllocatedBigBins));
       if(nullptr == aBuffer) {
          LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionBigBins OutOfMemory");
          return nullptr;

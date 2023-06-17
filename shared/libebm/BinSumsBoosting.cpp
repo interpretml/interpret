@@ -225,6 +225,13 @@ struct CountClasses<bHessian, k_cCompilerScoresMax + 1> final {
 extern ErrorEbm BinSumsBoosting(BinSumsBoostingBridge * const pParams) {
    LOG_0(Trace_Verbose, "Entered BinSumsBoosting");
 
+   // all our memory should be aligned. It is required by SIMD for correctness or performance
+   EBM_ASSERT(IsAligned(pParams->m_aGradientsAndHessians));
+   EBM_ASSERT(IsAligned(pParams->m_aWeights));
+   EBM_ASSERT(IsAligned(pParams->m_pCountOccurrences));
+   EBM_ASSERT(IsAligned(pParams->m_aPacked));
+   EBM_ASSERT(IsAligned(pParams->m_aFastBins));
+
    ErrorEbm error;
 
    EBM_ASSERT(1 <= pParams->m_cScores);

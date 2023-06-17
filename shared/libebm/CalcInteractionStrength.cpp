@@ -303,7 +303,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    binSums.m_aGradientsAndHessians = pDataSet->GetGradientsAndHessiansPointer();
    binSums.m_aWeights = pDataSet->GetWeights();
 
-   binSums.m_aFastBins = pInteractionShell->GetInteractionFastBinsTemp();
+   binSums.m_aFastBins = aFastBins;
 
    error = BinSumsInteraction(&binSums);
    if(Error_None != error) {

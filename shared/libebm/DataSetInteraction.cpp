@@ -49,7 +49,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm ConstructGradientsAndHessians(
    const size_t cBytesGradientsAndHessians = sizeof(FloatFast) * cScores * cStorageItems * cSetSamples;
    ANALYSIS_ASSERT(0 != cBytesGradientsAndHessians);
 
-   FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(malloc(cBytesGradientsAndHessians));
+   FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(AlignedAlloc(cBytesGradientsAndHessians));
    if(UNLIKELY(nullptr == aGradientsAndHessians)) {
       LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
       return Error_OutOfMemory;
@@ -161,7 +161,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
             goto free_all;
          }
-         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnitsTo));
+         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cDataUnitsTo));
          if(nullptr == pInputDataTo) {
             LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::ConstructInputData nullptr == pInputDataTo");
             goto free_all;
@@ -238,7 +238,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 free_all:
    while(aaInputDataTo != paInputDataTo) {
       --paInputDataTo;
-      free(*paInputDataTo);
+      AlignedFree(*paInputDataTo);
    }
    free(aaInputDataTo);
    return nullptr;
@@ -248,14 +248,14 @@ WARNING_POP
 void DataSubsetInteraction::Destruct() {
    LOG_0(Trace_Info, "Entered DataSubsetInteraction::Destruct");
 
-   free(m_aGradientsAndHessians);
-   free(m_aWeights);
+   AlignedFree(m_aGradientsAndHessians);
+   AlignedFree(m_aWeights);
    if(nullptr != m_aaInputData) {
       EBM_ASSERT(1 <= m_cFeatures);
       StorageDataType ** paInputData = m_aaInputData;
       const StorageDataType * const * const paInputDataEnd = m_aaInputData + m_cFeatures;
       do {
-         free(*paInputData);
+         AlignedFree(*paInputData);
          ++paInputData;
       } while(paInputDataEnd != paInputData);
       free(m_aaInputData);

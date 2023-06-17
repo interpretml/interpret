@@ -293,14 +293,14 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       ANALYSIS_ASSERT(0 != cBytesScores);
       const size_t cBytesAllScores = cBytesScores * cSetSamples;
 
-      FloatFast * pSampleScoreTo = static_cast<FloatFast *>(malloc(cBytesAllScores));
+      FloatFast * pSampleScoreTo = static_cast<FloatFast *>(AlignedAlloc(cBytesAllScores));
       if(UNLIKELY(nullptr == pSampleScoreTo)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == pSampleScoreTo");
          return Error_OutOfMemory;
       }
       data.m_aSampleScores = pSampleScoreTo;
 
-      FloatFast * const aUpdateScores = static_cast<FloatFast *>(malloc(cBytesScores));
+      FloatFast * const aUpdateScores = static_cast<FloatFast *>(AlignedAlloc(cBytesScores));
       if(UNLIKELY(nullptr == aUpdateScores)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aUpdateScores");
          error = Error_OutOfMemory;
@@ -317,7 +317,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             error = Error_OutOfMemory;
             goto free_tensor_scores;
          }
-         StorageDataType * pTargetTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSetSamples));
+         StorageDataType * pTargetTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cSetSamples));
          if(UNLIKELY(nullptr == pTargetTo)) {
             LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == pTargetTo");
             error = Error_OutOfMemory;
@@ -326,7 +326,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          data.m_aTargets = pTargetTo;
 
          if(IsMulticlass(cClasses)) {
-            FloatFast * const aMulticlassMidwayTemp = static_cast<FloatFast *>(malloc(cBytesScores));
+            FloatFast * const aMulticlassMidwayTemp = static_cast<FloatFast *>(AlignedAlloc(cBytesScores));
             if(UNLIKELY(nullptr == aMulticlassMidwayTemp)) {
                LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aMulticlassMidwayTemp");
                error = Error_OutOfMemory;
@@ -395,7 +395,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             error = Error_OutOfMemory;
             goto free_tensor_scores;
          }
-         FloatFast * pTargetTo = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSetSamples));
+         FloatFast * pTargetTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSetSamples));
          if(UNLIKELY(nullptr == pTargetTo)) {
             LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == pTargetTo");
             error = Error_OutOfMemory;
@@ -463,13 +463,13 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       // reuse the same code that we use for boosting in order to generate our gradients and hessians
       error = ObjectiveApplyUpdate(&data);
 
-      free(data.m_aMulticlassMidwayTemp); // nullptr ok
+      AlignedFree(data.m_aMulticlassMidwayTemp); // nullptr ok
    free_targets:
-      free(const_cast<void *>(data.m_aTargets));
+      AlignedFree(const_cast<void *>(data.m_aTargets));
    free_tensor_scores:
-      free(const_cast<void *>(data.m_aUpdateTensorScores));
+      AlignedFree(const_cast<void *>(data.m_aUpdateTensorScores));
    free_sample_scores:
-      free(data.m_aSampleScores);
+      AlignedFree(data.m_aSampleScores);
    }
    return error;
 }

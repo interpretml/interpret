@@ -358,7 +358,7 @@ protected:
       size_t maskBits;
       const StorageDataType * pInputData;
 
-      alignas(16) typename TFloat::T updateScores[TFloat::cPack];
+      alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::T updateScores[TFloat::cPack];
       TFloat updateScore;
 
       if(bCompilerZeroDimensional) {
@@ -398,7 +398,7 @@ protected:
          metricSum = 0.0;
       }
       do {
-         alignas(16) StorageDataType iTensorBinCombined[TFloat::cPack];
+         alignas(SIMD_BYTE_ALIGNMENT) StorageDataType iTensorBinCombined[TFloat::cPack];
          if(!bCompilerZeroDimensional) {
             // we store the already multiplied dimensional value in *pInputData
             // TODO: once we've added some complexity to ensure that the pInputData is the same size as 

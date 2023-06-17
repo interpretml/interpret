@@ -547,7 +547,7 @@ extern ErrorEbm ExtractWeights(
          LOG_0(Trace_Warning, "WARNING ExtractWeights IsMultiplyError(sizeof(FloatFast), cSetSamples)");
          return Error_OutOfMemory;
       }
-      FloatFast * const aRet = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSetSamples));
+      FloatFast * const aRet = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSetSamples));
       if(UNLIKELY(nullptr == aRet)) {
          LOG_0(Trace_Warning, "WARNING ExtractWeights nullptr == aRet");
          return Error_OutOfMemory;

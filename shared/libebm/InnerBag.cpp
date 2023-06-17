@@ -9,6 +9,7 @@
 #include <string.h> // memcpy
 
 #include "logging.h" // EBM_ASSERT
+#include "common_c.h" // AlignedFree
 
 #include "ebm_internal.hpp"
 #include "InnerBag.hpp"
@@ -29,8 +30,8 @@ void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag * const aInnerBag
       InnerBag * pInnerBag = aInnerBags;
       const InnerBag * const pInnerBagsEnd = aInnerBags + cInnerBagsAfterZero;
       do {
-         free(pInnerBag->m_aCountOccurrences);
-         free(pInnerBag->m_aWeights);
+         AlignedFree(pInnerBag->m_aCountOccurrences);
+         AlignedFree(pInnerBag->m_aWeights);
          ++pInnerBag;
       } while(pInnerBagsEnd != pInnerBag);
       free(aInnerBags);

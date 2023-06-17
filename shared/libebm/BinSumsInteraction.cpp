@@ -279,6 +279,16 @@ struct CountClasses<bHessian, k_cCompilerScoresMax + 1> final {
 extern ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pParams) {
    LOG_0(Trace_Verbose, "Entered BinSumsInteraction");
 
+#ifndef NDEBUG
+   // all our memory should be aligned. It is required by SIMD for correctness or performance
+   EBM_ASSERT(IsAligned(pParams->m_aGradientsAndHessians));
+   EBM_ASSERT(IsAligned(pParams->m_aWeights));
+   EBM_ASSERT(IsAligned(pParams->m_aFastBins));
+   for(size_t i = 0 ; i < pParams->m_cRuntimeRealDimensions; ++i) {
+      EBM_ASSERT(IsAligned(pParams->m_aaPacked[i]));
+   }
+#endif // NDEBUG
+
    ErrorEbm error;
 
    EBM_ASSERT(1 <= pParams->m_cScores);

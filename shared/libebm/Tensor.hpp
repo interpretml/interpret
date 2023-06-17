@@ -6,9 +6,7 @@
 #define TENSOR_HPP
 
 #include <type_traits> // std::is_standard_layout
-#include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
-#include <string.h> // memcpy
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT

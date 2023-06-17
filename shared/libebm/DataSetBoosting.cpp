@@ -35,16 +35,16 @@ void DataSubsetBoosting::Destruct(const size_t cTerms, const size_t cInnerBags) 
 
    InnerBag::FreeInnerBags(cInnerBags, m_aInnerBags);
 
-   free(m_aGradientsAndHessians);
-   free(m_aSampleScores);
-   free(m_aTargetData);
+   AlignedFree(m_aGradientsAndHessians);
+   AlignedFree(m_aSampleScores);
+   AlignedFree(m_aTargetData);
 
    if(nullptr != m_aaInputData) {
       EBM_ASSERT(1 <= cTerms);
       StorageDataType ** paInputData = m_aaInputData;
       const StorageDataType * const * const paInputDataEnd = m_aaInputData + cTerms;
       do {
-         free(*paInputData);
+         AlignedFree(*paInputData);
          ++paInputData;
       } while(paInputDataEnd != paInputData);
       free(m_aaInputData);
@@ -79,7 +79,7 @@ ErrorEbm DataSetBoosting::InitializeGradientsAndHessians(const bool bAllocateHes
       const size_t cBytesGradientsAndHessians = cElementBytes * cSubsetSamples;
       ANALYSIS_ASSERT(0 != cBytesGradientsAndHessians);
 
-      FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(malloc(cBytesGradientsAndHessians));
+      FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(AlignedAlloc(cBytesGradientsAndHessians));
       if(nullptr == aGradientsAndHessians) {
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
          return Error_OutOfMemory;
@@ -129,7 +129,7 @@ ErrorEbm DataSetBoosting::InitializeSampleScores(
          }
          const size_t cBytes = cBytesOneElement * cSubsetSamples;
          ANALYSIS_ASSERT(0 != cBytes);
-         FloatFast * pSampleScore = static_cast<FloatFast *>(malloc(cBytes));
+         FloatFast * pSampleScore = static_cast<FloatFast *>(AlignedAlloc(cBytes));
          if(nullptr == pSampleScore) {
             LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == pSampleScore");
             return Error_OutOfMemory;
@@ -150,7 +150,7 @@ ErrorEbm DataSetBoosting::InitializeSampleScores(
       }
       const size_t cBytesInit = cBytesOneElement * cSubsetSamplesInit;
       ANALYSIS_ASSERT(0 != cBytesInit);
-      FloatFast * pSampleScore = static_cast<FloatFast *>(malloc(cBytesInit));
+      FloatFast * pSampleScore = static_cast<FloatFast *>(AlignedAlloc(cBytesInit));
       if(nullptr == pSampleScore) {
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == pSampleScore");
          return Error_OutOfMemory;
@@ -202,7 +202,7 @@ ErrorEbm DataSetBoosting::InitializeSampleScores(
                   return Error_OutOfMemory;
                }
                const size_t cBytes = cBytesOneElement * cSubsetSamples;
-               pSampleScore = static_cast<FloatFast *>(malloc(cBytes));
+               pSampleScore = static_cast<FloatFast *>(AlignedAlloc(cBytes));
                if(nullptr == pSampleScore) {
                   LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == pSampleScore");
                   return Error_OutOfMemory;
@@ -255,7 +255,7 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSubsetSamplesInit)");
          return Error_OutOfMemory;
       }
-      StorageDataType * pTargetTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSubsetSamplesInit));
+      StorageDataType * pTargetTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cSubsetSamplesInit));
       if(nullptr == pTargetTo) {
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
          return Error_OutOfMemory;
@@ -310,7 +310,7 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
                   LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSubsetSamples)");
                   return Error_OutOfMemory;
                }
-               pTargetTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cSubsetSamples));
+               pTargetTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cSubsetSamples));
                if(nullptr == pTargetTo) {
                   LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
                   return Error_OutOfMemory;
@@ -330,7 +330,7 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(FloatFast), cSubsetSamplesInit)");
          return Error_OutOfMemory;
       }
-      FloatFast * pTargetTo = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSubsetSamplesInit));
+      FloatFast * pTargetTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamplesInit));
       if(nullptr == pTargetTo) {
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
          return Error_OutOfMemory;
@@ -383,7 +383,7 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
                   LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(FloatFast), cSubsetSamples)");
                   return Error_OutOfMemory;
                }
-               pTargetTo = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSubsetSamples));
+               pTargetTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamples));
                if(nullptr == pTargetTo) {
                   LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
                   return Error_OutOfMemory;
@@ -551,7 +551,7 @@ ErrorEbm DataSetBoosting::InitializeInputData(
                LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
                return Error_OutOfMemory;
             }
-            StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(sizeof(StorageDataType) * cDataUnitsTo));
+            StorageDataType * pInputDataTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cDataUnitsTo));
             if(nullptr == pInputDataTo) {
                LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == pInputDataTo");
                return Error_OutOfMemory;
@@ -767,7 +767,7 @@ ErrorEbm DataSetBoosting::InitializeBags(
                   free(aOccurrencesFrom);
                   return Error_OutOfMemory;
                }
-               FloatFast * pWeightTo = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSubsetSamples));
+               FloatFast * pWeightTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamples));
                if(nullptr == pWeightTo) {
                   LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeBags nullptr == pWeightsInternal");
                   free(aOccurrencesFrom);
@@ -777,7 +777,7 @@ ErrorEbm DataSetBoosting::InitializeBags(
 
                EBM_ASSERT(cSubsetSamples <= cSetSamples);
 
-               size_t * pOccurrencesTo = static_cast<size_t *>(malloc(sizeof(size_t) * cSubsetSamples));
+               size_t * pOccurrencesTo = static_cast<size_t *>(AlignedAlloc(sizeof(size_t) * cSubsetSamples));
                if(nullptr == pOccurrencesTo) {
                   LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeBags nullptr == pOccurrences");
                   free(aOccurrencesFrom);
@@ -817,7 +817,7 @@ ErrorEbm DataSetBoosting::InitializeBags(
             free(aOccurrencesFrom);
             return Error_OutOfMemory;
          }
-         FloatFast * pWeightTo = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSubsetSamplesInit));
+         FloatFast * pWeightTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamplesInit));
          if(nullptr == pWeightTo) {
             LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeBags nullptr == pWeightsInternal");
             free(aOccurrencesFrom);
@@ -828,7 +828,7 @@ ErrorEbm DataSetBoosting::InitializeBags(
          size_t * pOccurrencesTo = nullptr;
          if(nullptr != pOccurrencesFrom) {
             EBM_ASSERT(cSubsetSamplesInit <= cSetSamples);
-            pOccurrencesTo = static_cast<size_t *>(malloc(sizeof(size_t) * cSubsetSamplesInit));
+            pOccurrencesTo = static_cast<size_t *>(AlignedAlloc(sizeof(size_t) * cSubsetSamplesInit));
             if(nullptr == pOccurrencesTo) {
                LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeBags nullptr == aCountOccurrences");
                free(aOccurrencesFrom);
@@ -892,7 +892,7 @@ ErrorEbm DataSetBoosting::InitializeBags(
                      free(aOccurrencesFrom);
                      return Error_OutOfMemory;
                   }
-                  pWeightTo = static_cast<FloatFast *>(malloc(sizeof(FloatFast) * cSubsetSamples));
+                  pWeightTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamples));
                   if(nullptr == pWeightTo) {
                      LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeBags nullptr == pWeightsInternal");
                      free(aOccurrencesFrom);
@@ -902,7 +902,7 @@ ErrorEbm DataSetBoosting::InitializeBags(
 
                   if(nullptr != pOccurrencesFrom) {
                      EBM_ASSERT(cSubsetSamples <= cSetSamples);
-                     pOccurrencesTo = static_cast<size_t *>(malloc(sizeof(size_t) * cSubsetSamples));
+                     pOccurrencesTo = static_cast<size_t *>(AlignedAlloc(sizeof(size_t) * cSubsetSamples));
                      if(nullptr == pOccurrencesTo) {
                         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeBags nullptr == aCountOccurrences");
                         free(aOccurrencesFrom);
