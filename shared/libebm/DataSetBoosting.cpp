@@ -54,12 +54,16 @@ void DataSubsetBoosting::Destruct(const size_t cTerms, const size_t cInnerBags) 
 }
 
 
-ErrorEbm DataSetBoosting::InitializeGradientsAndHessians(const bool bAllocateHessians, const size_t cScores) {
+ErrorEbm DataSetBoosting::InitializeGradientsAndHessians(const ObjectiveWrapper * const pObjective, const bool bAllocateHessians, const size_t cScores) {
    LOG_0(Trace_Info, "Entered ConstructGradientsAndHessians");
+
+   UNUSED(pObjective);
 
    EBM_ASSERT(1 <= cScores);
 
    const size_t cStorageItems = bAllocateHessians ? size_t { 2 } : size_t { 1 };
+
+   EBM_ASSERT(sizeof(FloatFast) == pObjective->cFloatBytes); // TODO: add this check elsewhere that FloatFast is used
    if(IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)) {
       LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructGradientsAndHessians IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)");
       return Error_OutOfMemory;
@@ -947,6 +951,7 @@ ErrorEbm DataSetBoosting::InitializeBags(
 }
 
 ErrorEbm DataSetBoosting::Initialize(
+   const ObjectiveWrapper * const pObjective,
    const size_t cSubsetItemsMax,
    const size_t cScores,
    const bool bAllocateGradients,
@@ -979,6 +984,8 @@ ErrorEbm DataSetBoosting::Initialize(
    if(0 != cSetSamples) {
       m_cSamples = cSetSamples;
 
+      // TODO: add this check elsewhere that StorageDataType is used
+      EBM_ASSERT(0 == pObjective->cIntBytes); // must be 0 to use StorageDataType
       if(IsMultiplyError(sizeof(StorageDataType *), cTerms)) {
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize IsMultiplyError(sizeof(StorageDataType *), cTerms)");
          return Error_OutOfMemory;
@@ -1043,7 +1050,7 @@ ErrorEbm DataSetBoosting::Initialize(
       } while(pSubsetsEnd != pSubsetInit);
 
       if(bAllocateGradients) {
-         error = InitializeGradientsAndHessians(bAllocateHessians, cScores);
+         error = InitializeGradientsAndHessians(pObjective, bAllocateHessians, cScores);
          if(Error_None != error) {
             return error;
          }

@@ -99,6 +99,7 @@ struct DataSetBoosting final {
    void Destruct(const size_t cTerms, const size_t cInnerBags);
 
    ErrorEbm Initialize(
+      const ObjectiveWrapper * const pObjective,
       const size_t cSubsetItemsMax,
       const size_t cScores,
       const bool bAllocateGradients,
@@ -136,7 +137,7 @@ struct DataSetBoosting final {
 
 private:
 
-   ErrorEbm InitializeGradientsAndHessians(const bool bAllocateHessians, const size_t cScores);
+   ErrorEbm InitializeGradientsAndHessians(const ObjectiveWrapper * const pObjective, const bool bAllocateHessians, const size_t cScores);
 
    ErrorEbm InitializeSampleScores(
       const size_t cScores,

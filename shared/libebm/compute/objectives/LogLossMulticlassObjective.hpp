@@ -88,6 +88,11 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
       static constexpr bool bGetExp = bCalcMetric || bKeepGradHess;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
+#ifndef GPU_COMPILE
+      EBM_ASSERT(nullptr != pData);
+      EBM_ASSERT(nullptr != pData->m_aMulticlassMidwayTemp);
+#endif // GPU_COMPILE
+
       FloatFast aLocalExpVector[bDynamic ? size_t { 1 } : cCompilerScores];
       FloatFast * aExps;
       if(bGetExp) {
@@ -106,6 +111,13 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
 
       FloatFast * pSampleScore = reinterpret_cast<FloatFast *>(pData->m_aSampleScores);
       const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples * cScores;
+
+#ifndef GPU_COMPILE
+      EBM_ASSERT(3 <= cScores);
+      EBM_ASSERT(nullptr != aUpdateTensorScores);
+      EBM_ASSERT(1 <= cSamples);
+      EBM_ASSERT(nullptr != pSampleScore);
+#endif // GPU_COMPILE
 
       size_t cBitsPerItemMax;
       ptrdiff_t cShift;
@@ -131,21 +143,38 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
          maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
 
          pInputData = pData->m_aPacked;
+#ifndef GPU_COMPILE
+         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
+         EBM_ASSERT(1 <= cItemsPerBitPack);
+         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+         EBM_ASSERT(1 <= cBitsPerItemMax);
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+         EBM_ASSERT(nullptr != pInputData);
+#endif // GPU_COMPILE
       }
 
       const StorageDataType * pTargetData;
       if(bGetTarget) {
          pTargetData = reinterpret_cast<const StorageDataType *>(pData->m_aTargets);
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pTargetData);
+#endif // GPU_COMPILE
       }
 
       FloatFast * pGradientAndHessian;
       if(bKeepGradHess) {
          pGradientAndHessian = reinterpret_cast<FloatFast *>(pData->m_aGradientsAndHessians);
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pGradientAndHessian);
+#endif // GPU_COMPILE
       }
 
       const FloatFast * pWeight;
       if(bWeight) {
          pWeight = reinterpret_cast<const FloatFast *>(pData->m_aWeights);
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pWeight);
+#endif // GPU_COMPILE
       }
 
       FloatFast sumLogLoss;

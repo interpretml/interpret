@@ -29,15 +29,17 @@ namespace DEFINED_ZONE_NAME {
 
 struct Cpu_64_Int final {
    static constexpr int cPack = 1;
-   // TODO: for just the CPU version, should we make the integer a size_t since we never pack it
-   using T = uint64_t;
+   // CPU is very special in part because cPack is always 1 and we know the CPU can handle size_t, so 
+   // use StorageDataType which is always a size_t
+   
+   using T = StorageDataType;
 
-   inline Cpu_64_Int(const uint64_t val) noexcept : m_data(val) {
+   inline Cpu_64_Int(const StorageDataType val) noexcept : m_data(val) {
       UNUSED(m_data);
    }
 
 private:
-   uint64_t m_data;
+   StorageDataType m_data;
 };
 static_assert(std::is_standard_layout<Cpu_64_Int>::value && std::is_trivially_copyable<Cpu_64_Int>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");

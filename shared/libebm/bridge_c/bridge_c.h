@@ -30,7 +30,7 @@ struct ApplyUpdateBridge {
 
    BoolEbm m_bHessianNeeded;
 
-   bool m_bCalcMetric; // TODO: should this be BoolEbm?
+   BoolEbm m_bCalcMetric;
    void * m_aMulticlassMidwayTemp;
    const void * m_aUpdateTensorScores;
    size_t m_cSamples;
@@ -77,6 +77,10 @@ struct ObjectiveWrapper {
    double m_hessianConstant;
    BoolEbm m_bObjectiveHasHessian;
    BoolEbm m_bRmse;
+
+   // TODO: use these values to change the bit packing and float arrays passed into our functions
+   size_t cFloatBytes;
+   size_t cIntBytes;
 
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface
    void * m_pFunctionPointersCpp;

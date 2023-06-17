@@ -143,12 +143,16 @@ struct Sse_32_Float final {
    }
 
    inline void LoadAligned(const T * const a) noexcept {
-      // WARNING: 'a' must be aligned memory with:    alignas(SIMD_BYTE_ALIGNMENT) T a[cPack];
+      // TODO: since we use these with arrays that we progress on, we'll find ourselves not on 64 byte alignment
+      // after we've moved forward one item. We should instead check for alignment based on the SIMD vector size
+      EBM_ASSERT(IsAligned(a));
       m_data = _mm_load_ps(a);
    }
 
    inline void SaveAligned(T * const a) const noexcept {
-      // WARNING: 'a' must be aligned memory with:    alignas(SIMD_BYTE_ALIGNMENT) T a[cPack];
+      // TODO: since we use these with arrays that we progress on, we'll find ourselves not on 64 byte alignment
+      // after we've moved forward one item. We should instead check for alignment based on the SIMD vector size
+      EBM_ASSERT(IsAligned(a));
       _mm_store_ps(a, m_data);
    }
 

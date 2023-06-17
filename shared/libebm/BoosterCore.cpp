@@ -617,6 +617,7 @@ ErrorEbm BoosterCore::Create(
 
       pBoosterCore->m_cInnerBags = cInnerBags; // this is used to destruct m_trainingSet, so store it first
       error = pBoosterCore->m_trainingSet.Initialize(
+         &pBoosterCore->m_objective,
          cTrainingSamples, // TODO: reduce these to make multiple sets
          cScores,
          true,
@@ -641,6 +642,7 @@ ErrorEbm BoosterCore::Create(
       }
 
       error = pBoosterCore->m_validationSet.Initialize(
+         &pBoosterCore->m_objective,
          cValidationSamples, // TODO: reduce these to make multiple sets
          cScores,
          pBoosterCore->IsRmse(),
@@ -696,7 +698,7 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
       data.m_cScores = cScores;
       data.m_cPack = k_cItemsPerBitPackNone;
       data.m_bHessianNeeded = EBM_TRUE;
-      data.m_bCalcMetric = false;
+      data.m_bCalcMetric = EBM_FALSE;
       data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
       data.m_aUpdateTensorScores = aUpdateScores;
       data.m_cSamples = pSubset->GetCountSamples();

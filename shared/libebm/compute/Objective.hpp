@@ -218,7 +218,7 @@ private:
          static constexpr bool bKeepGradHess = true;
 
          // if we are updating the gradients then we are doing training and do not need to calculate the metric
-         EBM_ASSERT(!pData->m_bCalcMetric);
+         EBM_ASSERT(EBM_FALSE == pData->m_bCalcMetric);
          static constexpr bool bCalcMetric = false;
 
          if(nullptr != pData->m_aWeights) {
@@ -234,7 +234,7 @@ private:
       } else {
          static constexpr bool bKeepGradHess = false;
 
-         if(pData->m_bCalcMetric) {
+         if(EBM_FALSE != pData->m_bCalcMetric) {
             static constexpr bool bCalcMetric = true;
 
             if(nullptr != pData->m_aWeights) {
@@ -263,7 +263,7 @@ private:
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
       static constexpr bool bKeepGradHess = true;
 
-      if(pData->m_bCalcMetric) {
+      if(EBM_FALSE != pData->m_bCalcMetric) {
          static constexpr bool bCalcMetric = true;
 
          if(nullptr != pData->m_aWeights) {
@@ -345,6 +345,14 @@ protected:
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
+#ifndef GPU_COMPILE
+      EBM_ASSERT(nullptr != pObjective);
+      EBM_ASSERT(nullptr != pData);
+      EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
+      EBM_ASSERT(1 <= pData->m_cSamples);
+      EBM_ASSERT(nullptr != pData->m_aSampleScores);
+#endif // GPU_COMPILE
+
       const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
@@ -376,21 +384,38 @@ protected:
          maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
 
          pInputData = pData->m_aPacked;
+#ifndef GPU_COMPILE
+         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
+         EBM_ASSERT(1 <= cItemsPerBitPack);
+         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+         EBM_ASSERT(1 <= cBitsPerItemMax);
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+         EBM_ASSERT(nullptr != pInputData);
+#endif // GPU_COMPILE
       }
 
       const typename TFloat::T * pTargetData;
       if(bGetTarget) {
          pTargetData = reinterpret_cast<const typename TFloat::T *>(pData->m_aTargets);
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pTargetData);
+#endif // GPU_COMPILE
       }
 
       typename TFloat::T * pGradientAndHessian;
       if(bKeepGradHess) {
          pGradientAndHessian = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians);
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pGradientAndHessian);
+#endif // GPU_COMPILE
       }
 
       const typename TFloat::T * pWeight;
       if(bWeight) {
          pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pWeight);
+#endif // GPU_COMPILE
       }
 
       TFloat metricSum;
@@ -512,12 +537,16 @@ protected:
    }
 
    template<typename TObjective, typename TFloat, typename std::enable_if<TFloat::bCpu, void>::type * = nullptr>
-   INLINE_RELEASE_TEMPLATED static void SetCpuFunctions(FunctionPointersCpp * const pFunctionPointers) noexcept {
+   INLINE_RELEASE_TEMPLATED static void SetCpu(ObjectiveWrapper * const pObjectiveWrapper) noexcept {
+      pObjectiveWrapper->cIntBytes = 0; // this is a signal to use size_t which is not a fixed size across machines
+
+      FunctionPointersCpp * const pFunctionPointers = static_cast<FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp);
       pFunctionPointers->m_pFinishMetricCpp = &TObjective::StaticFinishMetric;
       pFunctionPointers->m_pCheckTargetsCpp = &TObjective::StaticCheckTargets;
    }
    template<typename TObjective, typename TFloat, typename std::enable_if<!TFloat::bCpu, void>::type * = nullptr>
-   INLINE_RELEASE_TEMPLATED static void SetCpuFunctions(FunctionPointersCpp * const pFunctionPointers) noexcept {
+   INLINE_RELEASE_TEMPLATED static void SetCpu(ObjectiveWrapper * const pObjectiveWrapper) noexcept {
+      FunctionPointersCpp * const pFunctionPointers = static_cast<FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp);
       pFunctionPointers->m_pFinishMetricCpp = nullptr;
       pFunctionPointers->m_pCheckTargetsCpp = nullptr;
    }
@@ -580,7 +609,11 @@ protected:
 
       pObjectiveWrapperOut->m_pObjective = this;
 
-      SetCpuFunctions<TObjective, TFloat>(pFunctionPointers);
+
+      pObjectiveWrapperOut->cFloatBytes = sizeof(TFloat::T);
+      pObjectiveWrapperOut->cIntBytes = sizeof(TFloat::TInt::T); // we overwrite this with 0 for CPU to use size_t
+
+      SetCpu<TObjective, TFloat>(pObjectiveWrapperOut);
    }
 
    Objective() = default;

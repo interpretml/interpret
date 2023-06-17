@@ -142,7 +142,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
          data.m_cScores = GetCountScores(pBoosterCore->GetCountClasses());
          data.m_cPack = pTerm->GetTermBitPack();
          data.m_bHessianNeeded = EBM_TRUE;
-         data.m_bCalcMetric = false;
+         data.m_bCalcMetric = EBM_FALSE;
          data.m_aMulticlassMidwayTemp = pBoosterShell->GetMulticlassMidwayTemp();
          data.m_aUpdateTensorScores = aUpdateScores;
          data.m_cSamples = pSubset->GetCountSamples();
@@ -182,7 +182,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
          data.m_cScores = GetCountScores(pBoosterCore->GetCountClasses());
          data.m_cPack = pTerm->GetTermBitPack();
          data.m_bHessianNeeded = EBM_TRUE;
-         data.m_bCalcMetric = true;
+         data.m_bCalcMetric = EBM_TRUE;
          data.m_aMulticlassMidwayTemp = pBoosterShell->GetMulticlassMidwayTemp();
          data.m_aUpdateTensorScores = aUpdateScores;
          data.m_cSamples = pSubset->GetCountSamples();

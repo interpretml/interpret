@@ -115,6 +115,13 @@ public:
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
 
+#ifndef GPU_COMPILE
+      EBM_ASSERT(nullptr != pData);
+      EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
+      EBM_ASSERT(1 <= pData->m_cSamples);
+      EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians);
+#endif // GPU_COMPILE
+
       const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
@@ -146,11 +153,23 @@ public:
          maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
 
          pInputData = pData->m_aPacked;
+
+#ifndef GPU_COMPILE
+         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
+         EBM_ASSERT(1 <= cItemsPerBitPack);
+         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+         EBM_ASSERT(1 <= cBitsPerItemMax);
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+         EBM_ASSERT(nullptr != pInputData);
+#endif // GPU_COMPILE
       }
 
       const typename TFloat::T * pWeight;
       if(bWeight) {
          pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pWeight);
+#endif // GPU_COMPILE
       }
 
       TFloat metricSum;

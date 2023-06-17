@@ -454,7 +454,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       data.m_cScores = cScores;
       data.m_cPack = k_cItemsPerBitPackNone;
       data.m_bHessianNeeded = EBM_TRUE;
-      data.m_bCalcMetric = false;
+      data.m_bCalcMetric = EBM_FALSE;
       data.m_cSamples = cSetSamples;
       data.m_aPacked = nullptr;
       data.m_aWeights = m_dataFrame.GetWeights();

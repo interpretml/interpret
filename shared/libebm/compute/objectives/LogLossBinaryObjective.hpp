@@ -78,6 +78,13 @@ struct LogLossBinaryObjective final : public BinaryObjective {
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
+#ifndef GPU_COMPILE
+      EBM_ASSERT(nullptr != pData);
+      EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
+      EBM_ASSERT(1 <= pData->m_cSamples);
+      EBM_ASSERT(nullptr != pData->m_aSampleScores);
+#endif // GPU_COMPILE
+
       const FloatFast * const aUpdateTensorScores = reinterpret_cast<const FloatFast *>(pData->m_aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
@@ -108,21 +115,38 @@ struct LogLossBinaryObjective final : public BinaryObjective {
          maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
 
          pInputData = pData->m_aPacked;
+#ifndef GPU_COMPILE
+         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
+         EBM_ASSERT(1 <= cItemsPerBitPack);
+         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+         EBM_ASSERT(1 <= cBitsPerItemMax);
+         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+         EBM_ASSERT(nullptr != pInputData);
+#endif // GPU_COMPILE
       }
 
       const StorageDataType * pTargetData;
       if(bGetTarget) {
          pTargetData = reinterpret_cast<const StorageDataType *>(pData->m_aTargets);
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pTargetData);
+#endif // GPU_COMPILE
       }
 
       FloatFast * pGradientAndHessian;
       if(bKeepGradHess) {
          pGradientAndHessian = reinterpret_cast<FloatFast *>(pData->m_aGradientsAndHessians);
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pGradientAndHessian);
+#endif // GPU_COMPILE
       }
 
       const FloatFast * pWeight;
       if(bWeight) {
          pWeight = reinterpret_cast<const FloatFast *>(pData->m_aWeights);
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pWeight);
+#endif // GPU_COMPILE
       }
 
       FloatFast sumLogLoss;

@@ -17,6 +17,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 #ifdef __CUDACC__
+#define GPU_COMPILE
 #define GPU_GLOBAL            __global__
 #define GPU_DEVICE            __device__
 #define GPU_BOTH              __host__ __device__
