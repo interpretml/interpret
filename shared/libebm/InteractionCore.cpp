@@ -273,6 +273,11 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
    ErrorEbm error = Error_None;
    const size_t cSetSamples = m_dataFrame.GetCountSamples();
    if(size_t { 0 } != cSetSamples) {
+      // TODO: in the future cycle though our datasubsets and find the maximum number of samples
+      size_t cSamplesMax = cSetSamples;
+
+
+
       const BagEbm * pSampleReplication = aBag;
 
       ApplyUpdateBridge data;
@@ -285,20 +290,20 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       const size_t cScores = GetCountScores(cClasses);
       EBM_ASSERT(1 <= cScores);
 
-      if(IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)) {
-         LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores, cSetSamples)");
+      if(IsMultiplyError(sizeof(FloatFast), cScores, cSamplesMax)) {
+         LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores, cSamplesMax)");
          return Error_OutOfMemory;
       }
       const size_t cBytesScores = sizeof(FloatFast) * cScores;
       ANALYSIS_ASSERT(0 != cBytesScores);
-      const size_t cBytesAllScores = cBytesScores * cSetSamples;
+      const size_t cBytesAllScores = cBytesScores * cSamplesMax;
 
-      FloatFast * pSampleScoreTo = static_cast<FloatFast *>(AlignedAlloc(cBytesAllScores));
-      if(UNLIKELY(nullptr == pSampleScoreTo)) {
-         LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == pSampleScoreTo");
+      FloatFast * const aSampleScoreTo = static_cast<FloatFast *>(AlignedAlloc(cBytesAllScores));
+      if(UNLIKELY(nullptr == aSampleScoreTo)) {
+         LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aSampleScoreTo");
          return Error_OutOfMemory;
       }
-      data.m_aSampleScores = pSampleScoreTo;
+      data.m_aSampleScores = aSampleScoreTo;
 
       FloatFast * const aUpdateScores = static_cast<FloatFast *>(AlignedAlloc(cBytesScores));
       if(UNLIKELY(nullptr == aUpdateScores)) {
@@ -312,18 +317,18 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
 
       data.m_aMulticlassMidwayTemp = nullptr;
       if(IsClassification(cClasses)) {
-         if(IsMultiplyError(sizeof(StorageDataType), cSetSamples)) {
-            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(StorageDataType), cSetSamples)");
+         if(IsMultiplyError(sizeof(StorageDataType), cSamplesMax)) {
+            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(StorageDataType), cSamplesMax)");
             error = Error_OutOfMemory;
             goto free_tensor_scores;
          }
-         StorageDataType * pTargetTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cSetSamples));
-         if(UNLIKELY(nullptr == pTargetTo)) {
-            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == pTargetTo");
+         StorageDataType * const aTargetTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cSamplesMax));
+         if(UNLIKELY(nullptr == aTargetTo)) {
+            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aTargetTo");
             error = Error_OutOfMemory;
             goto free_tensor_scores;
          }
-         data.m_aTargets = pTargetTo;
+         data.m_aTargets = aTargetTo;
 
          if(IsMulticlass(cClasses)) {
             FloatFast * const aMulticlassMidwayTemp = static_cast<FloatFast *>(AlignedAlloc(cBytesScores));
@@ -336,134 +341,182 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          }
 
          const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargetsFrom);
-         const StorageDataType * const pTargetToEnd = &pTargetTo[cSetSamples];
 
          const double * pInitScoreFrom = aInitScores;
+         BagEbm replication = 0;
+         const double * pInitScoreFromOld = nullptr;
+         StorageDataType target = 0;
+
+
+         StorageDataType * pTargetTo = aTargetTo;
+         FloatFast * pSampleScoreTo = aSampleScoreTo;
+
+
+         // TODO: change cSetSamples to pSubset->GetCountSamples()
+         const StorageDataType * const pTargetToEnd = &aTargetTo[cSetSamples];
+
+
+
          do {
-            BagEbm replication = 1;
-            size_t cAdvance = cScores;
-            if(nullptr != pSampleReplication) {
-               cAdvance = 0; // we'll add this now inside the loop below
-               do {
+            if(BagEbm { 0 } == replication) {
+               replication = 1;
+               size_t cAdvance = cScores;
+               if(nullptr != pSampleReplication) {
+                  cAdvance = 0; // we'll add this now inside the loop below
                   do {
-                     replication = *pSampleReplication;
-                     ++pSampleReplication;
-                     ++pTargetFrom;
-                  } while(BagEbm { 0 } == replication);
-                  cAdvance += cScores;
-               } while(replication < BagEbm { 0 });
-               --pTargetFrom;
+                     do {
+                        replication = *pSampleReplication;
+                        ++pSampleReplication;
+                        ++pTargetFrom;
+                     } while(BagEbm { 0 } == replication);
+                     cAdvance += cScores;
+                  } while(replication < BagEbm { 0 });
+                  --pTargetFrom;
+               }
+
+               if(nullptr != pInitScoreFrom) {
+                  pInitScoreFrom += cAdvance;
+                  pInitScoreFromOld = pInitScoreFrom - cScores;
+               }
+
+               const SharedStorageDataType targetOriginal = *pTargetFrom;
+               ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
+
+               // the shared data storage structure ensures that all target values are less than the number of classes
+               // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
+               // so we do not need the runtime to check this
+               EBM_ASSERT(targetOriginal < static_cast<SharedStorageDataType>(cClasses));
+               // since cClasses must be below StorageDataType, it follows that..
+               EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
+               target = static_cast<StorageDataType>(targetOriginal);
             }
 
-            const double * pInitScoreFromOld = nullptr;
-            if(nullptr != pInitScoreFrom) {
-               pInitScoreFrom += cAdvance;
-               pInitScoreFromOld = pInitScoreFrom - cScores;
-            }
+            *pTargetTo = target;
+            ++pTargetTo;
 
-            const SharedStorageDataType targetOriginal = *pTargetFrom;
-            ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
-
-            // the shared data storage structure ensures that all target values are less than the number of classes
-            // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
-            // so we do not need the runtime to check this
-            EBM_ASSERT(targetOriginal < static_cast<SharedStorageDataType>(cClasses));
-            // since cClasses must be below StorageDataType, it follows that..
-            EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
-            const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
+            const double * pInitScoreFromLoop = pInitScoreFromOld;
+            const FloatFast * const pSampleScoreToEnd = pSampleScoreTo + cScores;
             do {
-               *pTargetTo = target;
-               ++pTargetTo;
+               FloatFast initScore = 0;
+               if(nullptr != pInitScoreFromLoop) {
+                  initScore = SafeConvertFloat<FloatFast>(*pInitScoreFromLoop);
+                  ++pInitScoreFromLoop;
+               }
+               *pSampleScoreTo = initScore;
+               ++pSampleScoreTo;
+            } while(pSampleScoreToEnd != pSampleScoreTo);
+            --replication;
 
-               const double * pInitScoreFromLoop = pInitScoreFromOld;
-               const FloatFast * pSampleScoreToEnd = pSampleScoreTo + cScores;
-               do {
-                  FloatFast initScore = 0;
-                  if(nullptr != pInitScoreFromLoop) {
-                     initScore = SafeConvertFloat<FloatFast>(*pInitScoreFromLoop);
-                     ++pInitScoreFromLoop;
-                  }
-                  *pSampleScoreTo = initScore;
-                  ++pSampleScoreTo;
-               } while(pSampleScoreToEnd != pSampleScoreTo);
-               --replication;
-            } while(BagEbm { 0 } != replication);
          } while(pTargetToEnd != pTargetTo);
+
+         data.m_cScores = cScores;
+         data.m_cPack = k_cItemsPerBitPackNone;
+         data.m_bHessianNeeded = EBM_TRUE;
+         data.m_bCalcMetric = EBM_FALSE;
+         data.m_cSamples = cSetSamples;  // TODO: set to the subset count
+         data.m_aPacked = nullptr;
+         data.m_aWeights = m_dataFrame.GetWeights();
+         data.m_aGradientsAndHessians = m_dataFrame.GetGradientsAndHessiansPointer();
+         // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
+         // reuse the same code that we use for boosting in order to generate our gradients and hessians
+         error = ObjectiveApplyUpdate(&data);
+         if(Error_None != error) {
+            goto free_temp;
+         }
+
+      free_temp:
+         AlignedFree(data.m_aMulticlassMidwayTemp); // nullptr ok
       } else {
-         if(IsMultiplyError(sizeof(FloatFast), cSetSamples)) {
-            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cSetSamples)");
+         if(IsMultiplyError(sizeof(FloatFast), cSamplesMax)) {
+            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cSamplesMax)");
             error = Error_OutOfMemory;
             goto free_tensor_scores;
          }
-         FloatFast * pTargetTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSetSamples));
-         if(UNLIKELY(nullptr == pTargetTo)) {
-            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == pTargetTo");
+         FloatFast * const aTargetTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSamplesMax));
+         if(UNLIKELY(nullptr == aTargetTo)) {
+            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aTargetTo");
             error = Error_OutOfMemory;
             goto free_tensor_scores;
          }
-         data.m_aTargets = pTargetTo;
+         data.m_aTargets = aTargetTo;
 
          const FloatFast * pTargetFrom = static_cast<const FloatFast *>(aTargetsFrom);
-         const FloatFast * const pTargetToEnd = &pTargetTo[cSetSamples];
 
          const double * pInitScoreFrom = aInitScores;
+         BagEbm replication = 0;
+         FloatFast target = 0;
+         const double * pInitScoreFromOld = nullptr;
+
+         FloatFast * pTargetTo = aTargetTo;
+         FloatFast * pSampleScoreTo = aSampleScoreTo;
+
+
+
+         // TODO: change cSetSamples to pSubset->GetCountSamples()
+         const FloatFast * const pTargetToEnd = &aTargetTo[cSetSamples];
+
+
+
          do {
-            BagEbm replication = 1;
-            size_t cAdvance = cScores;
-            if(nullptr != pSampleReplication) {
-               cAdvance = 0; // we'll add this now inside the loop below
-               do {
+            if(BagEbm { 0 } == replication) {
+               replication = 1;
+               size_t cAdvance = cScores;
+               if(nullptr != pSampleReplication) {
+                  cAdvance = 0; // we'll add this now inside the loop below
                   do {
-                     replication = *pSampleReplication;
-                     ++pSampleReplication;
-                     ++pTargetFrom;
-                  } while(BagEbm { 0 } == replication);
-                  cAdvance += cScores;
-               } while(replication < BagEbm { 0 });
-               --pTargetFrom;
+                     do {
+                        replication = *pSampleReplication;
+                        ++pSampleReplication;
+                        ++pTargetFrom;
+                     } while(BagEbm { 0 } == replication);
+                     cAdvance += cScores;
+                  } while(replication < BagEbm { 0 });
+                  --pTargetFrom;
+               }
+
+               if(nullptr != pInitScoreFrom) {
+                  pInitScoreFrom += cAdvance;
+                  pInitScoreFromOld = pInitScoreFrom - cScores;
+               }
+
+               target = *pTargetFrom;
+               ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
             }
 
-            const double * pInitScoreFromOld = nullptr;
-            if(nullptr != pInitScoreFrom) {
-               pInitScoreFrom += cAdvance;
-               pInitScoreFromOld = pInitScoreFrom - cScores;
-            }
+            *pTargetTo = target;
+            ++pTargetTo;
 
-            const FloatFast target = *pTargetFrom;
-            ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
+            const double * pInitScoreFromLoop = pInitScoreFromOld;
+            const FloatFast * const pSampleScoreToEnd = pSampleScoreTo + cScores;
             do {
-               *pTargetTo = target;
-               ++pTargetTo;
+               FloatFast initScore = 0;
+               if(nullptr != pInitScoreFromLoop) {
+                  initScore = SafeConvertFloat<FloatFast>(*pInitScoreFromLoop);
+                  ++pInitScoreFromLoop;
+               }
+               *pSampleScoreTo = initScore;
+               ++pSampleScoreTo;
+            } while(pSampleScoreToEnd != pSampleScoreTo);
+            --replication;
 
-               const double * pInitScoreFromLoop = pInitScoreFromOld;
-               const FloatFast * pSampleScoreToEnd = pSampleScoreTo + cScores;
-               do {
-                  FloatFast initScore = 0;
-                  if(nullptr != pInitScoreFromLoop) {
-                     initScore = SafeConvertFloat<FloatFast>(*pInitScoreFromLoop);
-                     ++pInitScoreFromLoop;
-                  }
-                  *pSampleScoreTo = initScore;
-                  ++pSampleScoreTo;
-               } while(pSampleScoreToEnd != pSampleScoreTo);
-               --replication;
-            } while(BagEbm { 0 } != replication);
          } while(pTargetToEnd != pTargetTo);
+
+         data.m_cScores = cScores;
+         data.m_cPack = k_cItemsPerBitPackNone;
+         data.m_bHessianNeeded = EBM_TRUE;
+         data.m_bCalcMetric = EBM_FALSE;
+         data.m_cSamples = cSetSamples;  // TODO: set to the subset count
+         data.m_aPacked = nullptr;
+         data.m_aWeights = m_dataFrame.GetWeights();
+         data.m_aGradientsAndHessians = m_dataFrame.GetGradientsAndHessiansPointer();
+         // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
+         // reuse the same code that we use for boosting in order to generate our gradients and hessians
+         error = ObjectiveApplyUpdate(&data);
+         if(Error_None != error) {
+            goto free_targets;
+         }
       }
 
-      data.m_cScores = cScores;
-      data.m_cPack = k_cItemsPerBitPackNone;
-      data.m_bHessianNeeded = EBM_TRUE;
-      data.m_bCalcMetric = EBM_FALSE;
-      data.m_cSamples = cSetSamples;
-      data.m_aPacked = nullptr;
-      data.m_aWeights = m_dataFrame.GetWeights();
-      data.m_aGradientsAndHessians = m_dataFrame.GetGradientsAndHessiansPointer();
-      // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
-      // reuse the same code that we use for boosting in order to generate our gradients and hessians
-      error = ObjectiveApplyUpdate(&data);
-
-      AlignedFree(data.m_aMulticlassMidwayTemp); // nullptr ok
    free_targets:
       AlignedFree(const_cast<void *>(data.m_aTargets));
    free_tensor_scores:
