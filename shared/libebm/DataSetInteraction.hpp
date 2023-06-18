@@ -21,8 +21,11 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class FeatureInteraction;
+struct DataSetInteraction;
 
 class DataSubsetInteraction final {
+   friend DataSetInteraction;
+
    FloatFast * m_aGradientsAndHessians;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
@@ -90,6 +93,61 @@ static_assert(std::is_standard_layout<DataSubsetInteraction>::value,
 static_assert(std::is_trivial<DataSubsetInteraction>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<DataSubsetInteraction>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
+
+
+struct DataSetInteraction final {
+   DataSetInteraction() = default; // preserve our POD status
+   ~DataSetInteraction() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
+   inline void InitializeUnfailing() {
+      m_cSamples = 0;
+      m_cSubsets = 0;
+      m_aSubsets = nullptr;
+      m_weightTotal = 0.0;
+   }
+
+   void Destruct();
+
+   ErrorEbm Initialize(
+      const size_t cScores,
+      const bool bAllocateHessians,
+      const unsigned char * const pDataSetShared,
+      const size_t cSharedSamples,
+      const BagEbm * const aBag,
+      const size_t cSetSamples,
+      const size_t cWeights,
+      const size_t cFeatures
+   );
+
+   inline size_t GetCountSamples() const {
+      return m_cSamples;
+   }
+   inline size_t GetCountSubsets() const {
+      return m_cSubsets;
+   }
+   inline DataSubsetInteraction * GetSubsets() {
+      EBM_ASSERT(nullptr != m_aSubsets);
+      return m_aSubsets;
+   }
+   inline double GetWeightTotal() const {
+      return m_weightTotal;
+   }
+
+private:
+
+   size_t m_cSamples;
+   size_t m_cSubsets;
+   DataSubsetInteraction * m_aSubsets;
+   double m_weightTotal;
+};
+static_assert(std::is_standard_layout<DataSetInteraction>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<DataSetInteraction>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<DataSetInteraction>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 } // DEFINED_ZONE_NAME

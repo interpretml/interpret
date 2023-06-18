@@ -346,4 +346,106 @@ ErrorEbm DataSubsetInteraction::Initialize(
    return Error_None;
 }
 
+
+ErrorEbm DataSetInteraction::Initialize(
+   const size_t cScores,
+   const bool bAllocateHessians,
+   const unsigned char * const pDataSetShared,
+   const size_t cSharedSamples,
+   const BagEbm * const aBag,
+   const size_t cSetSamples,
+   const size_t cWeights,
+   const size_t cFeatures
+) {
+   EBM_ASSERT(1 <= cScores);
+   EBM_ASSERT(nullptr != pDataSetShared);
+
+   EBM_ASSERT(0 == m_cSamples);
+   EBM_ASSERT(0 == m_cSubsets);
+   EBM_ASSERT(nullptr == m_aSubsets);
+   EBM_ASSERT(0.0 == m_weightTotal);
+
+   LOG_0(Trace_Info, "Entered DataSetInteraction::Initialize");
+
+   ErrorEbm error;
+
+   if(0 != cSetSamples) {
+      m_cSamples = cSetSamples;
+
+
+
+      // TODO: allow more than 1 subset
+      size_t cSubsets = 1;
+
+
+
+      if(IsMultiplyError(sizeof(DataSubsetInteraction), cSubsets)) {
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize IsMultiplyError(sizeof(DataSubsetInteraction), cSubsets)");
+         return Error_OutOfMemory;
+      }
+      DataSubsetInteraction * pSubset = static_cast<DataSubsetInteraction *>(malloc(sizeof(DataSubsetInteraction) * cSubsets));
+      if(nullptr == pSubset) {
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize nullptr == pSubset");
+         return Error_OutOfMemory;
+      }
+      m_aSubsets = pSubset;
+      m_cSubsets = cSubsets;
+
+      EBM_ASSERT(1 <= cSubsets);
+      const DataSubsetInteraction * const pSubsetsEnd = pSubset + cSubsets;
+
+      DataSubsetInteraction * pSubsetInit = pSubset;
+      do {
+         pSubsetInit->InitializeUnfailing();
+         ++pSubsetInit;
+      } while(pSubsetsEnd != pSubsetInit);
+
+      double totalWeight = 0.0;
+
+
+
+      {
+         // TODO: allow more than 1 subset (this entire block needs to change)
+         error = pSubset->Initialize(
+            cScores,
+            bAllocateHessians,
+            pDataSetShared,
+            cSharedSamples,
+            aBag,
+            cSetSamples,
+            cWeights,
+            cFeatures
+         );
+         if(Error_None != error) {
+            return error;
+         }
+         totalWeight += pSubset->GetWeightTotal();
+      }
+
+
+
+      m_weightTotal = totalWeight;
+   }
+
+   LOG_0(Trace_Info, "Exited DataSetInteraction::Initialize");
+   return Error_None;
+}
+
+void DataSetInteraction::Destruct() {
+   LOG_0(Trace_Info, "Entered DataSetInteraction::Destruct");
+
+   DataSubsetInteraction * pSubset = m_aSubsets;
+   if(nullptr != pSubset) {
+      EBM_ASSERT(1 <= m_cSubsets);
+      const DataSubsetInteraction * const pSubsetsEnd = pSubset + m_cSubsets;
+      do {
+         pSubset->Destruct();
+         ++pSubset;
+      } while(pSubsetsEnd != pSubset);
+      free(m_aSubsets);
+   }
+
+   LOG_0(Trace_Info, "Exited DataSetInteraction::Destruct");
+}
+
 } // DEFINED_ZONE_NAME

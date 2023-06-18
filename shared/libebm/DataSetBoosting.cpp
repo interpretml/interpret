@@ -997,29 +997,28 @@ ErrorEbm DataSetBoosting::Initialize(
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize IsMultiplyError(sizeof(DataSubsetBoosting), cSubsets)");
          return Error_OutOfMemory;
       }
-      DataSubsetBoosting * aSubsets = static_cast<DataSubsetBoosting *>(malloc(sizeof(DataSubsetBoosting) * cSubsets));
-      if(nullptr == aSubsets) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == aSubsets");
+      DataSubsetBoosting * pSubset = static_cast<DataSubsetBoosting *>(malloc(sizeof(DataSubsetBoosting) * cSubsets));
+      if(nullptr == pSubset) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == pSubset");
          return Error_OutOfMemory;
       }
-      m_aSubsets = aSubsets;
+      m_aSubsets = pSubset;
       m_cSubsets = cSubsets;
 
       EBM_ASSERT(1 <= cSubsets);
-      const DataSubsetBoosting * const pSubsetsEnd = aSubsets + cSubsets;
+      const DataSubsetBoosting * const pSubsetsEnd = pSubset + cSubsets;
 
-      DataSubsetBoosting * pSubsetUnfailingInit = aSubsets;
+      DataSubsetBoosting * pSubsetInit = pSubset;
       do {
-         pSubsetUnfailingInit->InitializeUnfailing();
-         ++pSubsetUnfailingInit;
-      } while(pSubsetsEnd != pSubsetUnfailingInit);
+         pSubsetInit->InitializeUnfailing();
+         ++pSubsetInit;
+      } while(pSubsetsEnd != pSubsetInit);
 
       size_t cSetSamplesRemaining = cSetSamples;
-      DataSubsetBoosting * pSubsetInit = aSubsets;
       do {
          const size_t cSubsetSamples = cSetSamplesRemaining <= cSubsetItemsMax ? cSetSamplesRemaining : cSubsetItemsMax;
          EBM_ASSERT(1 <= cSubsetSamples);
-         pSubsetInit->m_cSamples = cSubsetSamples;
+         pSubset->m_cSamples = cSubsetSamples;
 
          cSetSamplesRemaining -= cSubsetItemsMax; // this will overflow on last loop, but that's ok
 
@@ -1030,7 +1029,7 @@ ErrorEbm DataSetBoosting::Initialize(
                return Error_OutOfMemory;
             }
 
-            pSubsetInit->m_aaInputData = paData;
+            pSubset->m_aaInputData = paData;
 
             const StorageDataType * const * const paDataEnd = paData + cTerms;
             do {
@@ -1044,10 +1043,10 @@ ErrorEbm DataSetBoosting::Initialize(
             LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize nullptr == aInnerBags");
             return Error_OutOfMemory;
          }
-         pSubsetInit->m_aInnerBags = aInnerBags;
+         pSubset->m_aInnerBags = aInnerBags;
 
-         ++pSubsetInit;
-      } while(pSubsetsEnd != pSubsetInit);
+         ++pSubset;
+      } while(pSubsetsEnd != pSubset);
 
       if(bAllocateGradients) {
          error = InitializeGradientsAndHessians(pObjective, bAllocateHessians, cScores);
