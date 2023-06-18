@@ -62,31 +62,23 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm ConstructGradientsAndHessians(
 
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
-INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
+ErrorEbm DataSetInteraction::InitializeInputData(
    const unsigned char * const pDataSetShared,
    const size_t cSharedSamples,
    const BagEbm * const aBag,
-   const size_t cSetSamples,
    const size_t cFeatures
 ) {
-   LOG_0(Trace_Info, "Entered DataSubsetInteraction::ConstructInputData");
+   LOG_0(Trace_Info, "Entered DataSetInteraction::InitializeInputData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(1 <= cSetSamples);
+   EBM_ASSERT(1 <= cSharedSamples);
    EBM_ASSERT(1 <= cFeatures);
 
-   if(IsMultiplyError(sizeof(StorageDataType *), cFeatures)) {
-      LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType *), cFeatures)");
-      return nullptr;
-   }
-   StorageDataType ** const aaInputDataTo = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cFeatures));
-   if(nullptr == aaInputDataTo) {
-      LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::ConstructInputData nullptr == aaInputDataTo");
-      return nullptr;
-   }
+   EBM_ASSERT(nullptr != m_aSubsets);
+   EBM_ASSERT(1 <= m_cSubsets);
+   const DataSubsetInteraction * const pSubsetsEnd = m_aSubsets + m_cSubsets;
 
    size_t iFeature = 0;
-   StorageDataType ** paInputDataTo = aaInputDataTo;
    do {
       bool bMissing;
       bool bUnknown;
@@ -112,16 +104,15 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       EBM_ASSERT(!IsConvertError<size_t>(countBins)); // checked in a previous call to GetDataSetSharedFeature
       const size_t cBins = static_cast<size_t>(countBins);
 
-      if(cBins <= size_t { 1 }) {
+      if(size_t { 1 } < cBins) {
          // we don't need any bits to store 1 bin since it's always going to be the only bin available, and also 
          // we return 0.0 on interactions whenever we find a feature with 1 bin before further processing
-         *paInputDataTo = nullptr;
-      } else {
-         if(IsConvertError<StorageDataType>(cBins - 1)) {
+      
+         if(IsConvertError<StorageDataType>(cBins - size_t { 1 })) {
             // if we check this here, we can be guaranteed that any inputData will convert to StorageDataType
             // since the shared datastructure would not allow data items equal or greater than cBins
-            LOG_0(Trace_Error, "ERROR DataSubsetInteraction::ConstructInputData IsConvertError<StorageDataType>(cBins - 1)");
-            goto free_all;
+            LOG_0(Trace_Error, "ERROR DataSetInteraction::InitializeInputData IsConvertError<StorageDataType>(cBins - 1)");
+            return Error_OutOfMemory;
          }
 
          const size_t cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
@@ -145,115 +136,112 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          // result would be forced to be 64 bits or less since we use the maximum number of bits per item possible
          const StorageDataType maskBitsFrom = static_cast<StorageDataType>(MakeLowMask<SharedStorageDataType>(cBitsPerItemMaxFrom));
 
-         const size_t cItemsPerBitPackTo = GetCountItemsBitPacked<StorageDataType>(cBitsRequiredMin);
-         EBM_ASSERT(1 <= cItemsPerBitPackTo);
-         EBM_ASSERT(cItemsPerBitPackTo <= k_cBitsForStorageType);
-
-         const size_t cBitsPerItemMaxTo = GetCountBits<StorageDataType>(cItemsPerBitPackTo);
-         EBM_ASSERT(1 <= cBitsPerItemMaxTo);
-         EBM_ASSERT(cBitsPerItemMaxTo <= k_cBitsForStorageType);
-
-         EBM_ASSERT(1 <= cSetSamples);
-         const size_t cDataUnitsTo = (cSetSamples - 1) / cItemsPerBitPackTo + 1; // this can't overflow or underflow
-
-
-         if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
-            LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
-            goto free_all;
-         }
-         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cDataUnitsTo));
-         if(nullptr == pInputDataTo) {
-            LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::ConstructInputData nullptr == pInputDataTo");
-            goto free_all;
-         }
-         *paInputDataTo = pInputDataTo;
+         ptrdiff_t iShiftFrom = static_cast<ptrdiff_t>((cSharedSamples - size_t { 1 }) % cItemsPerBitPackFrom);
 
          const BagEbm * pSampleReplication = aBag;
-
          const SharedStorageDataType * pInputDataFrom = static_cast<const SharedStorageDataType *>(aInputDataFrom);
-         const StorageDataType * const pInputDataToEnd = &pInputDataTo[cDataUnitsTo];
 
          BagEbm replication = 0;
          StorageDataType inputData;
 
-         ptrdiff_t iShiftFrom = static_cast<ptrdiff_t>((cSharedSamples - 1) % cItemsPerBitPackFrom);
-
-         ptrdiff_t cShiftTo = static_cast<ptrdiff_t>((cSetSamples - 1) % cItemsPerBitPackTo * cBitsPerItemMaxTo);
-         const ptrdiff_t cShiftResetTo = static_cast<ptrdiff_t>((cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo);
+         DataSubsetInteraction * pSubset = m_aSubsets;
          do {
-            StorageDataType bits = 0;
-            do {
-               if(BagEbm { 0 } == replication) {
-                  replication = 1;
-                  if(nullptr != pSampleReplication) {
-                     const BagEbm * pSampleReplicationOriginal = pSampleReplication;
-                     do {
-                        replication = *pSampleReplication;
-                        ++pSampleReplication;
-                     } while(replication <= BagEbm { 0 });
-                     const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
+            const size_t cItemsPerBitPackTo = GetCountItemsBitPacked<StorageDataType>(cBitsRequiredMin);
+            EBM_ASSERT(1 <= cItemsPerBitPackTo);
+            EBM_ASSERT(cItemsPerBitPackTo <= k_cBitsForStorageType);
 
-                     size_t cCompleteAdvanced = cAdvances / cItemsPerBitPackFrom;
-                     iShiftFrom -= static_cast<ptrdiff_t>(cAdvances % cItemsPerBitPackFrom);
+            const size_t cBitsPerItemMaxTo = GetCountBits<StorageDataType>(cItemsPerBitPackTo);
+            EBM_ASSERT(1 <= cBitsPerItemMaxTo);
+            EBM_ASSERT(cBitsPerItemMaxTo <= k_cBitsForStorageType);
+
+            const size_t cSubsetSamples = pSubset->GetCountSamples();
+            EBM_ASSERT(1 <= cSubsetSamples);
+            const size_t cDataUnitsTo = (cSubsetSamples - size_t { 1 }) / cItemsPerBitPackTo + size_t { 1 }; // this can't overflow or underflow
+
+            if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
+               LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
+               return Error_OutOfMemory;
+            }
+            StorageDataType * pInputDataTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cDataUnitsTo));
+            if(nullptr == pInputDataTo) {
+               LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeInputData nullptr == pInputDataTo");
+               return Error_OutOfMemory;
+            }
+            pSubset->m_aaInputData[iFeature] = pInputDataTo;
+
+            const StorageDataType * const pInputDataToEnd = &pInputDataTo[cDataUnitsTo];
+
+
+            ptrdiff_t cShiftTo = static_cast<ptrdiff_t>((cSubsetSamples - 1) % cItemsPerBitPackTo * cBitsPerItemMaxTo);
+            const ptrdiff_t cShiftResetTo = static_cast<ptrdiff_t>((cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo);
+            do {
+               StorageDataType bits = 0;
+               do {
+                  if(BagEbm { 0 } == replication) {
+                     replication = 1;
+                     if(nullptr != pSampleReplication) {
+                        const BagEbm * pSampleReplicationOriginal = pSampleReplication;
+                        do {
+                           replication = *pSampleReplication;
+                           ++pSampleReplication;
+                        } while(replication <= BagEbm { 0 });
+                        const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
+
+                        size_t cCompleteAdvanced = cAdvances / cItemsPerBitPackFrom;
+                        iShiftFrom -= static_cast<ptrdiff_t>(cAdvances % cItemsPerBitPackFrom);
+                        if(iShiftFrom < ptrdiff_t { 0 }) {
+                           ++cCompleteAdvanced;
+                           iShiftFrom += cItemsPerBitPackFrom;
+                        }
+                        pInputDataFrom += cCompleteAdvanced;
+                     }
+                     EBM_ASSERT(0 <= iShiftFrom);
+                     EBM_ASSERT(static_cast<size_t>(iShiftFrom * cBitsPerItemMaxFrom) < k_cBitsForSharedStorageType);
+
+                     const SharedStorageDataType dataFrom = *pInputDataFrom;
+                     inputData = static_cast<StorageDataType>(dataFrom >> (iShiftFrom * cBitsPerItemMaxFrom)) & maskBitsFrom;
+                     EBM_ASSERT(static_cast<size_t>(inputData) < cBins);
+                     --iShiftFrom;
                      if(iShiftFrom < ptrdiff_t { 0 }) {
-                        ++cCompleteAdvanced;
+                        ++pInputDataFrom;
                         iShiftFrom += cItemsPerBitPackFrom;
                      }
-                     pInputDataFrom += cCompleteAdvanced;
                   }
-                  EBM_ASSERT(0 <= iShiftFrom);
-                  EBM_ASSERT(static_cast<size_t>(iShiftFrom * cBitsPerItemMaxFrom) < k_cBitsForSharedStorageType);
 
-                  SharedStorageDataType dataFrom = *pInputDataFrom;
-                  inputData = static_cast<StorageDataType>(dataFrom >> (iShiftFrom * cBitsPerItemMaxFrom)) & maskBitsFrom;
-                  EBM_ASSERT(static_cast<size_t>(inputData) < cBins);
-                  --iShiftFrom;
-                  if(iShiftFrom < ptrdiff_t { 0 }) {
-                     ++pInputDataFrom;
-                     iShiftFrom += cItemsPerBitPackFrom;
-                  }
-               }
+                  EBM_ASSERT(1 <= replication);
+                  --replication;
 
-               EBM_ASSERT(1 <= replication);
-               --replication;
+                  EBM_ASSERT(0 <= cShiftTo);
+                  EBM_ASSERT(static_cast<size_t>(cShiftTo) < k_cBitsForStorageType);
+                  bits |= inputData << cShiftTo;
+                  cShiftTo -= cBitsPerItemMaxTo;
+               } while(ptrdiff_t { 0 } <= cShiftTo);
+               cShiftTo = cShiftResetTo;
+               *pInputDataTo = bits;
+               ++pInputDataTo;
+            } while(pInputDataToEnd != pInputDataTo);
 
-               EBM_ASSERT(0 <= cShiftTo);
-               EBM_ASSERT(static_cast<size_t>(cShiftTo) < k_cBitsForStorageType);
-               bits |= inputData << cShiftTo;
-               cShiftTo -= cBitsPerItemMaxTo;
-            } while(ptrdiff_t { 0 } <= cShiftTo);
-            cShiftTo = cShiftResetTo;
-            *pInputDataTo = bits;
-            ++pInputDataTo;
-         } while(pInputDataToEnd != pInputDataTo);
+            ++pSubset;
+         } while(pSubsetsEnd != pSubset);
          EBM_ASSERT(0 == replication);
       }
-      ++paInputDataTo;
       ++iFeature;
    } while(cFeatures != iFeature);
 
-   LOG_0(Trace_Info, "Exited DataSubsetInteraction::ConstructInputData");
-   return aaInputDataTo;
-
-free_all:
-   while(aaInputDataTo != paInputDataTo) {
-      --paInputDataTo;
-      AlignedFree(*paInputDataTo);
-   }
-   free(aaInputDataTo);
-   return nullptr;
+   LOG_0(Trace_Info, "Exited DataSetInteraction::InitializeInputData");
+   return Error_None;
 }
 WARNING_POP
 
-void DataSubsetInteraction::Destruct() {
+void DataSubsetInteraction::Destruct(const size_t cFeatures) {
    LOG_0(Trace_Info, "Entered DataSubsetInteraction::Destruct");
 
    AlignedFree(m_aGradientsAndHessians);
    AlignedFree(m_aWeights);
    if(nullptr != m_aaInputData) {
-      EBM_ASSERT(1 <= m_cFeatures);
+      EBM_ASSERT(1 <= cFeatures);
       StorageDataType ** paInputData = m_aaInputData;
-      const StorageDataType * const * const paInputDataEnd = m_aaInputData + m_cFeatures;
+      const StorageDataType * const * const paInputDataEnd = m_aaInputData + cFeatures;
       do {
          AlignedFree(*paInputData);
          ++paInputData;
@@ -268,11 +256,9 @@ ErrorEbm DataSubsetInteraction::Initialize(
    const size_t cScores,
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
-   const size_t cSharedSamples,
    const BagEbm * const aBag,
    const size_t cSetSamples,
-   const size_t cWeights,
-   const size_t cFeatures
+   const size_t cWeights
 ) {
    EBM_ASSERT(nullptr != pDataSetShared);
 
@@ -325,20 +311,6 @@ ErrorEbm DataSubsetInteraction::Initialize(
          return error;
       }
 
-      if(0 != cFeatures) {
-         StorageDataType ** const aaInputData = ConstructInputData(
-            pDataSetShared,
-            cSharedSamples,
-            aBag,
-            cSetSamples,
-            cFeatures
-         );
-         if(nullptr == aaInputData) {
-            return Error_OutOfMemory;
-         }
-         m_aaInputData = aaInputData;
-         m_cFeatures = cFeatures; // only needed if nullptr != m_aaInputData
-      }
       m_cSamples = cSetSamples;
    }
 
@@ -372,6 +344,13 @@ ErrorEbm DataSetInteraction::Initialize(
    if(0 != cSetSamples) {
       m_cSamples = cSetSamples;
 
+      if(IsMultiplyError(sizeof(StorageDataType *), cFeatures)) {
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize IsMultiplyError(sizeof(StorageDataType *), cFeatures)");
+         return Error_OutOfMemory;
+      }
+
+
+
 
 
       // TODO: allow more than 1 subset
@@ -404,34 +383,67 @@ ErrorEbm DataSetInteraction::Initialize(
 
 
 
-      {
+      { // while loop
          // TODO: allow more than 1 subset (this entire block needs to change)
          error = pSubset->Initialize(
             cScores,
             bAllocateHessians,
             pDataSetShared,
-            cSharedSamples,
             aBag,
             cSetSamples,
-            cWeights,
+            cWeights
+         );
+         if(Error_None != error) {
+            return error;
+         }
+
+         if(0 != cFeatures) {
+            StorageDataType ** paData = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cFeatures));
+            if(nullptr == paData) {
+               LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize nullptr == paData");
+               return Error_OutOfMemory;
+            }
+            pSubset->m_aaInputData = paData;
+
+            const StorageDataType * const * const paDataEnd = paData + cFeatures;
+            do {
+               *paData = nullptr;
+               ++paData;
+            } while(paDataEnd != paData);
+         }
+
+
+
+         // TODO: does this work here or are we adding zeros?
+         totalWeight += pSubset->GetWeightTotal();
+      }
+      m_weightTotal = totalWeight;
+
+
+
+
+
+
+
+
+      if(0 != cFeatures) {
+         error = InitializeInputData(
+            pDataSetShared,
+            cSharedSamples,
+            aBag,
             cFeatures
          );
          if(Error_None != error) {
             return error;
          }
-         totalWeight += pSubset->GetWeightTotal();
       }
-
-
-
-      m_weightTotal = totalWeight;
    }
 
    LOG_0(Trace_Info, "Exited DataSetInteraction::Initialize");
    return Error_None;
 }
 
-void DataSetInteraction::Destruct() {
+void DataSetInteraction::Destruct(const size_t cFeatures) {
    LOG_0(Trace_Info, "Entered DataSetInteraction::Destruct");
 
    DataSubsetInteraction * pSubset = m_aSubsets;
@@ -439,7 +451,7 @@ void DataSetInteraction::Destruct() {
       EBM_ASSERT(1 <= m_cSubsets);
       const DataSubsetInteraction * const pSubsetsEnd = pSubset + m_cSubsets;
       do {
-         pSubset->Destruct();
+         pSubset->Destruct(cFeatures);
          ++pSubset;
       } while(pSubsetsEnd != pSubset);
       free(m_aSubsets);

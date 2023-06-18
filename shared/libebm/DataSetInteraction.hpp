@@ -29,7 +29,6 @@ class DataSubsetInteraction final {
    FloatFast * m_aGradientsAndHessians;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
-   size_t m_cFeatures;
 
    FloatFast * m_aWeights;
    double m_weightTotal;
@@ -41,13 +40,12 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   void Destruct();
+   void Destruct(const size_t cFeatures);
 
    INLINE_ALWAYS void InitializeUnfailing() {
       m_aGradientsAndHessians = nullptr;
       m_aaInputData = nullptr;
       m_cSamples = 0;
-      m_cFeatures = 0;
       m_aWeights = nullptr;
       m_weightTotal = 0;
    }
@@ -56,11 +54,9 @@ public:
       const size_t cScores,
       const bool bAllocateHessians,
       const unsigned char * const pDataSetShared,
-      const size_t cSharedSamples,
       const BagEbm * const aBag,
       const size_t cSetSamples,
-      const size_t cWeights,
-      const size_t cFeatures
+      const size_t cWeights
    );
 
    INLINE_ALWAYS const FloatFast * GetWeights() const {
@@ -80,7 +76,6 @@ public:
    }
 
    INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const size_t iFeature) const {
-      EBM_ASSERT(iFeature < m_cFeatures);
       EBM_ASSERT(nullptr != m_aaInputData);
       return m_aaInputData[iFeature];
    }
@@ -109,7 +104,7 @@ struct DataSetInteraction final {
       m_weightTotal = 0.0;
    }
 
-   void Destruct();
+   void Destruct(const size_t cFeatures);
 
    ErrorEbm Initialize(
       const size_t cScores,
@@ -137,6 +132,13 @@ struct DataSetInteraction final {
    }
 
 private:
+
+   ErrorEbm InitializeInputData(
+      const unsigned char * const pDataSetShared,
+      const size_t cSharedSamples,
+      const BagEbm * const aBag,
+      const size_t cFeatures
+   );
 
    size_t m_cSamples;
    size_t m_cSubsets;
