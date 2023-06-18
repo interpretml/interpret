@@ -273,10 +273,18 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
    ErrorEbm error = Error_None;
    const size_t cSetSamples = m_dataFrame.GetCountSamples();
    if(size_t { 0 } != cSetSamples) {
-      // TODO: in the future cycle though our datasubsets and find the maximum number of samples
-      size_t cSamplesMax = cSetSamples;
-
-
+      size_t cSamplesMax = 1;
+      DataSubsetInteraction * pSubsetInit = GetDataSetInteraction()->GetSubsets();
+      EBM_ASSERT(1 <= GetDataSetInteraction()->GetCountSubsets());
+      const DataSubsetInteraction * const pSubsetsEnd = pSubsetInit + GetDataSetInteraction()->GetCountSubsets();
+      do {
+         size_t cSamples = pSubsetInit->GetCountSamples();
+         EBM_ASSERT(1 <= cSamples);
+         if(cSamplesMax < cSamples) {
+            cSamplesMax = cSamples;
+         }
+         ++pSubsetInit;
+      } while(pSubsetsEnd != pSubsetInit);
 
       const BagEbm * pSampleReplication = aBag;
 
@@ -347,82 +355,80 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          const double * pInitScoreFromOld = nullptr;
          StorageDataType target = 0;
 
-
-         StorageDataType * pTargetTo = aTargetTo;
-         FloatFast * pSampleScoreTo = aSampleScoreTo;
-
-
-         // TODO: change cSetSamples to pSubset->GetCountSamples()
-         const StorageDataType * const pTargetToEnd = &aTargetTo[cSetSamples];
-
-
-
+         DataSubsetInteraction * pSubset = GetDataSetInteraction()->GetSubsets();
          do {
-            if(BagEbm { 0 } == replication) {
-               replication = 1;
-               size_t cAdvance = cScores;
-               if(nullptr != pSampleReplication) {
-                  cAdvance = 0; // we'll add this now inside the loop below
-                  do {
-                     do {
-                        replication = *pSampleReplication;
-                        ++pSampleReplication;
-                        ++pTargetFrom;
-                     } while(BagEbm { 0 } == replication);
-                     cAdvance += cScores;
-                  } while(replication < BagEbm { 0 });
-                  --pTargetFrom;
-               }
-
-               if(nullptr != pInitScoreFrom) {
-                  pInitScoreFrom += cAdvance;
-                  pInitScoreFromOld = pInitScoreFrom - cScores;
-               }
-
-               const SharedStorageDataType targetOriginal = *pTargetFrom;
-               ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
-
-               // the shared data storage structure ensures that all target values are less than the number of classes
-               // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
-               // so we do not need the runtime to check this
-               EBM_ASSERT(targetOriginal < static_cast<SharedStorageDataType>(cClasses));
-               // since cClasses must be below StorageDataType, it follows that..
-               EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
-               target = static_cast<StorageDataType>(targetOriginal);
-            }
-
-            *pTargetTo = target;
-            ++pTargetTo;
-
-            const double * pInitScoreFromLoop = pInitScoreFromOld;
-            const FloatFast * const pSampleScoreToEnd = pSampleScoreTo + cScores;
+            EBM_ASSERT(1 <= pSubset->GetCountSamples());
+            StorageDataType * pTargetTo = aTargetTo;
+            FloatFast * pSampleScoreTo = aSampleScoreTo;
+            const StorageDataType * const pTargetToEnd = &aTargetTo[pSubset->GetCountSamples()];
             do {
-               FloatFast initScore = 0;
-               if(nullptr != pInitScoreFromLoop) {
-                  initScore = SafeConvertFloat<FloatFast>(*pInitScoreFromLoop);
-                  ++pInitScoreFromLoop;
+               if(BagEbm { 0 } == replication) {
+                  replication = 1;
+                  size_t cAdvance = cScores;
+                  if(nullptr != pSampleReplication) {
+                     cAdvance = 0; // we'll add this now inside the loop below
+                     do {
+                        do {
+                           replication = *pSampleReplication;
+                           ++pSampleReplication;
+                           ++pTargetFrom;
+                        } while(BagEbm { 0 } == replication);
+                        cAdvance += cScores;
+                     } while(replication < BagEbm { 0 });
+                     --pTargetFrom;
+                  }
+
+                  if(nullptr != pInitScoreFrom) {
+                     pInitScoreFrom += cAdvance;
+                     pInitScoreFromOld = pInitScoreFrom - cScores;
+                  }
+
+                  const SharedStorageDataType targetOriginal = *pTargetFrom;
+                  ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
+
+                  // the shared data storage structure ensures that all target values are less than the number of classes
+                  // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
+                  // so we do not need the runtime to check this
+                  EBM_ASSERT(targetOriginal < static_cast<SharedStorageDataType>(cClasses));
+                  // since cClasses must be below StorageDataType, it follows that..
+                  EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
+                  target = static_cast<StorageDataType>(targetOriginal);
                }
-               *pSampleScoreTo = initScore;
-               ++pSampleScoreTo;
-            } while(pSampleScoreToEnd != pSampleScoreTo);
-            --replication;
 
-         } while(pTargetToEnd != pTargetTo);
+               *pTargetTo = target;
+               ++pTargetTo;
 
-         data.m_cScores = cScores;
-         data.m_cPack = k_cItemsPerBitPackNone;
-         data.m_bHessianNeeded = EBM_TRUE;
-         data.m_bCalcMetric = EBM_FALSE;
-         data.m_cSamples = cSetSamples;  // TODO: set to the subset count
-         data.m_aPacked = nullptr;
-         data.m_aWeights = m_dataFrame.GetWeights();
-         data.m_aGradientsAndHessians = m_dataFrame.GetGradientsAndHessiansPointer();
-         // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
-         // reuse the same code that we use for boosting in order to generate our gradients and hessians
-         error = ObjectiveApplyUpdate(&data);
-         if(Error_None != error) {
-            goto free_temp;
-         }
+               const double * pInitScoreFromLoop = pInitScoreFromOld;
+               const FloatFast * const pSampleScoreToEnd = pSampleScoreTo + cScores;
+               do {
+                  FloatFast initScore = 0;
+                  if(nullptr != pInitScoreFromLoop) {
+                     initScore = SafeConvertFloat<FloatFast>(*pInitScoreFromLoop);
+                     ++pInitScoreFromLoop;
+                  }
+                  *pSampleScoreTo = initScore;
+                  ++pSampleScoreTo;
+               } while(pSampleScoreToEnd != pSampleScoreTo);
+               --replication;
+
+            } while(pTargetToEnd != pTargetTo);
+
+            data.m_cScores = cScores;
+            data.m_cPack = k_cItemsPerBitPackNone;
+            data.m_bHessianNeeded = EBM_TRUE;
+            data.m_bCalcMetric = EBM_FALSE;
+            data.m_cSamples = pSubset->GetCountSamples();
+            data.m_aPacked = nullptr;
+            data.m_aWeights = pSubset->GetWeights();
+            data.m_aGradientsAndHessians = pSubset->GetGradientsAndHessiansPointer();
+            // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
+            // reuse the same code that we use for boosting in order to generate our gradients and hessians
+            error = ObjectiveApplyUpdate(&data);
+            if(Error_None != error) {
+               goto free_temp;
+            }
+            ++pSubset;
+         } while(pSubsetsEnd != pSubset);
 
       free_temp:
          AlignedFree(data.m_aMulticlassMidwayTemp); // nullptr ok
@@ -447,74 +453,72 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          FloatFast target = 0;
          const double * pInitScoreFromOld = nullptr;
 
-         FloatFast * pTargetTo = aTargetTo;
-         FloatFast * pSampleScoreTo = aSampleScoreTo;
-
-
-
-         // TODO: change cSetSamples to pSubset->GetCountSamples()
-         const FloatFast * const pTargetToEnd = &aTargetTo[cSetSamples];
-
-
-
+         DataSubsetInteraction * pSubset = GetDataSetInteraction()->GetSubsets();
          do {
-            if(BagEbm { 0 } == replication) {
-               replication = 1;
-               size_t cAdvance = cScores;
-               if(nullptr != pSampleReplication) {
-                  cAdvance = 0; // we'll add this now inside the loop below
-                  do {
-                     do {
-                        replication = *pSampleReplication;
-                        ++pSampleReplication;
-                        ++pTargetFrom;
-                     } while(BagEbm { 0 } == replication);
-                     cAdvance += cScores;
-                  } while(replication < BagEbm { 0 });
-                  --pTargetFrom;
-               }
-
-               if(nullptr != pInitScoreFrom) {
-                  pInitScoreFrom += cAdvance;
-                  pInitScoreFromOld = pInitScoreFrom - cScores;
-               }
-
-               target = *pTargetFrom;
-               ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
-            }
-
-            *pTargetTo = target;
-            ++pTargetTo;
-
-            const double * pInitScoreFromLoop = pInitScoreFromOld;
-            const FloatFast * const pSampleScoreToEnd = pSampleScoreTo + cScores;
+            EBM_ASSERT(1 <= pSubset->GetCountSamples());
+            FloatFast * pTargetTo = aTargetTo;
+            FloatFast * pSampleScoreTo = aSampleScoreTo;
+            const FloatFast * const pTargetToEnd = &aTargetTo[pSubset->GetCountSamples()];
             do {
-               FloatFast initScore = 0;
-               if(nullptr != pInitScoreFromLoop) {
-                  initScore = SafeConvertFloat<FloatFast>(*pInitScoreFromLoop);
-                  ++pInitScoreFromLoop;
+               if(BagEbm { 0 } == replication) {
+                  replication = 1;
+                  size_t cAdvance = cScores;
+                  if(nullptr != pSampleReplication) {
+                     cAdvance = 0; // we'll add this now inside the loop below
+                     do {
+                        do {
+                           replication = *pSampleReplication;
+                           ++pSampleReplication;
+                           ++pTargetFrom;
+                        } while(BagEbm { 0 } == replication);
+                        cAdvance += cScores;
+                     } while(replication < BagEbm { 0 });
+                     --pTargetFrom;
+                  }
+
+                  if(nullptr != pInitScoreFrom) {
+                     pInitScoreFrom += cAdvance;
+                     pInitScoreFromOld = pInitScoreFrom - cScores;
+                  }
+
+                  target = *pTargetFrom;
+                  ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
                }
-               *pSampleScoreTo = initScore;
-               ++pSampleScoreTo;
-            } while(pSampleScoreToEnd != pSampleScoreTo);
-            --replication;
 
-         } while(pTargetToEnd != pTargetTo);
+               *pTargetTo = target;
+               ++pTargetTo;
 
-         data.m_cScores = cScores;
-         data.m_cPack = k_cItemsPerBitPackNone;
-         data.m_bHessianNeeded = EBM_TRUE;
-         data.m_bCalcMetric = EBM_FALSE;
-         data.m_cSamples = cSetSamples;  // TODO: set to the subset count
-         data.m_aPacked = nullptr;
-         data.m_aWeights = m_dataFrame.GetWeights();
-         data.m_aGradientsAndHessians = m_dataFrame.GetGradientsAndHessiansPointer();
-         // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
-         // reuse the same code that we use for boosting in order to generate our gradients and hessians
-         error = ObjectiveApplyUpdate(&data);
-         if(Error_None != error) {
-            goto free_targets;
-         }
+               const double * pInitScoreFromLoop = pInitScoreFromOld;
+               const FloatFast * const pSampleScoreToEnd = pSampleScoreTo + cScores;
+               do {
+                  FloatFast initScore = 0;
+                  if(nullptr != pInitScoreFromLoop) {
+                     initScore = SafeConvertFloat<FloatFast>(*pInitScoreFromLoop);
+                     ++pInitScoreFromLoop;
+                  }
+                  *pSampleScoreTo = initScore;
+                  ++pSampleScoreTo;
+               } while(pSampleScoreToEnd != pSampleScoreTo);
+               --replication;
+
+            } while(pTargetToEnd != pTargetTo);
+
+            data.m_cScores = cScores;
+            data.m_cPack = k_cItemsPerBitPackNone;
+            data.m_bHessianNeeded = EBM_TRUE;
+            data.m_bCalcMetric = EBM_FALSE;
+            data.m_cSamples = pSubset->GetCountSamples();
+            data.m_aPacked = nullptr;
+            data.m_aWeights = pSubset->GetWeights();
+            data.m_aGradientsAndHessians = pSubset->GetGradientsAndHessiansPointer();
+            // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
+            // reuse the same code that we use for boosting in order to generate our gradients and hessians
+            error = ObjectiveApplyUpdate(&data);
+            if(Error_None != error) {
+               goto free_targets;
+            }
+            ++pSubset;
+         } while(pSubsetsEnd != pSubset);
       }
 
    free_targets:

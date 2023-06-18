@@ -36,7 +36,7 @@ class InteractionCore final {
    size_t m_cFeatures;
    FeatureInteraction * m_aFeatures;
 
-   DataSubsetInteraction m_dataFrame;
+   DataSetInteraction m_dataFrame;
 
    ObjectiveWrapper m_objective;
 
@@ -71,10 +71,10 @@ public:
       return m_cClasses;
    }
 
-   inline const DataSubsetInteraction * GetDataSetInteraction() const {
+   inline const DataSetInteraction * GetDataSetInteraction() const {
       return &m_dataFrame;
    }
-   inline DataSubsetInteraction * GetDataSetInteraction() {
+   inline DataSetInteraction * GetDataSetInteraction() {
       return &m_dataFrame;
    }
 

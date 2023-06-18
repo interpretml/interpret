@@ -22,7 +22,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
    const double * const aInitScores,
-   DataSubsetInteraction * const pDataSet
+   DataSetInteraction * const pDataSet
 );
 
 void InteractionShell::Free(InteractionShell * const pInteractionShell) {

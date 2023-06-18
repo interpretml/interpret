@@ -181,7 +181,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       return Error_None;
    }
 
-   const DataSubsetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
+   const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
    EBM_ASSERT(nullptr != pDataSet);
 
    if(size_t { 0 } == pDataSet->GetCountSamples()) {
@@ -232,8 +232,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       }
       binSums.m_acBins[iDimension] = cBins;
 
-      binSums.m_aaPacked[iDimension] = pDataSet->GetInputDataPointer(iFeature);
-
       // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBinsForBuildFastTotals
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins) at runtime
       EBM_ASSERT(0 == cTensorBins || cAuxillaryBinsForBuildFastTotals < cTensorBins);
@@ -257,11 +255,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins) at runtime
       EBM_ASSERT(0 == cTensorBins || cAuxillaryBinsForBuildFastTotals < cTensorBins);
 
-      // GetFeatureBitPack could be negative, but converting negative to unsigned is legal in C++ and when
-      // GetFeatureBitPack is negative we exit right after the loop, so we don't use the value
-      EBM_ASSERT(1 <= pFeature->GetFeatureBitPack());
-      binSums.m_acItemsPerBitPack[iDimension] = static_cast<size_t>(pFeature->GetFeatureBitPack());
-
       ++iDimension;
    } while(cDimensions != iDimension);
 
@@ -275,44 +268,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
    const size_t cScores = GetCountScores(cClasses);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pInteractionCore->IsHessian(), cScores)); // checked in CreateInteractionDetector
-   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pInteractionCore->IsHessian(), cScores);
-   if(IsMultiplyError(cBytesPerFastBin, cTensorBins)) {
-      LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTensorBins)");
-      return Error_OutOfMemory;
-   }
-
-   // this doesn't need to be freed since it's tracked and re-used by the class InteractionShell
-   BinBase * const aFastBins = pInteractionShell->GetInteractionFastBinsTemp(cBytesPerFastBin, cTensorBins);
-   if(UNLIKELY(nullptr == aFastBins)) {
-      // already logged
-      return Error_OutOfMemory;
-   }
-   aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
-
-#ifndef NDEBUG
-   binSums.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
-#endif // NDEBUG
-
-   binSums.m_cRuntimeRealDimensions = cDimensions;
-
-   binSums.m_bHessian = pInteractionCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
-   binSums.m_cScores = cScores;
-
-   binSums.m_cSamples = pDataSet->GetCountSamples();
-   binSums.m_aGradientsAndHessians = pDataSet->GetGradientsAndHessiansPointer();
-   binSums.m_aWeights = pDataSet->GetWeights();
-
-   binSums.m_aFastBins = aFastBins;
-
-   error = BinSumsInteraction(&binSums);
-   if(Error_None != error) {
-      return error;
-   }
-
    static constexpr size_t cAuxillaryBinsForSplitting = 4;
    const size_t cAuxillaryBins = EbmMax(cAuxillaryBinsForBuildFastTotals, cAuxillaryBinsForSplitting);
-   
+
    if(IsAddError(cTensorBins, cAuxillaryBins)) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsAddError(cTensorBins, cAuxillaryBins)");
       return Error_OutOfMemory;
@@ -337,16 +295,73 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 #endif // NDEBUG
 
    memset(aBigBins, 0, cBytesPerBigBin * cTensorBins);
-   ConvertAddBin(
-      cScores,
-      pInteractionCore->IsHessian(),
-      cTensorBins,
-      std::is_same<FloatBig, double>::value,
-      aBigBins,
-      std::is_same<FloatFast, double>::value,
-      aFastBins
-   );
 
+   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pInteractionCore->IsHessian(), cScores)); // checked in CreateInteractionDetector
+   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pInteractionCore->IsHessian(), cScores);
+   if(IsMultiplyError(cBytesPerFastBin, cTensorBins)) {
+      LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTensorBins)");
+      return Error_OutOfMemory;
+   }
+
+   // this doesn't need to be freed since it's tracked and re-used by the class InteractionShell
+   BinBase * const aFastBins = pInteractionShell->GetInteractionFastBinsTemp(cBytesPerFastBin, cTensorBins);
+   if(UNLIKELY(nullptr == aFastBins)) {
+      // already logged
+      return Error_OutOfMemory;
+   }
+
+   EBM_ASSERT(1 <= pInteractionCore->GetDataSetInteraction()->GetCountSubsets());
+   DataSubsetInteraction * pSubset = pInteractionCore->GetDataSetInteraction()->GetSubsets();
+   const DataSubsetInteraction * const pSubsetsEnd = pSubset + pInteractionCore->GetDataSetInteraction()->GetCountSubsets();
+   do {
+      aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
+
+#ifndef NDEBUG
+      binSums.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
+#endif // NDEBUG
+
+      size_t iDimensionLoop = 0;
+      do {
+         const IntEbm indexFeature = featureIndexes[iDimensionLoop];
+         const size_t iFeature = static_cast<size_t>(indexFeature);
+         const FeatureInteraction * const pFeature = &aFeatures[iFeature];
+
+         binSums.m_aaPacked[iDimensionLoop] = pSubset->GetInputDataPointer(iFeature);
+
+         EBM_ASSERT(1 <= pFeature->GetFeatureBitPack());
+         binSums.m_acItemsPerBitPack[iDimensionLoop] = static_cast<size_t>(pFeature->GetFeatureBitPack());
+
+         ++iDimensionLoop;
+      } while(cDimensions != iDimensionLoop);
+
+      binSums.m_cRuntimeRealDimensions = cDimensions;
+
+      binSums.m_bHessian = pInteractionCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
+      binSums.m_cScores = cScores;
+
+      binSums.m_cSamples = pSubset->GetCountSamples();
+      binSums.m_aGradientsAndHessians = pSubset->GetGradientsAndHessiansPointer();
+      binSums.m_aWeights = pSubset->GetWeights();
+
+      binSums.m_aFastBins = aFastBins;
+
+      error = BinSumsInteraction(&binSums);
+      if(Error_None != error) {
+         return error;
+      }
+
+      ConvertAddBin(
+         cScores,
+         pInteractionCore->IsHessian(),
+         cTensorBins,
+         std::is_same<FloatBig, double>::value,
+         aBigBins,
+         std::is_same<FloatFast, double>::value,
+         aFastBins
+      );
+
+      ++pSubset;
+   } while(pSubsetsEnd != pSubset);
 
 
 

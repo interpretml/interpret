@@ -121,7 +121,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
    const double * const aInitScores,
-   DataSubsetInteraction * const pDataSet
+   DataSetInteraction * const pDataSet
 ) {
    // RMSE regression is super super special in that we do not need to keep the scores and we can just use gradients
 
@@ -132,22 +132,25 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
    EBM_ASSERT(nullptr != aTargets); // we previously called GetDataSetSharedTarget and got back non-null result
    EBM_ASSERT(IsRegression(cRuntimeClasses));
 
-   const size_t cSetSamples = pDataSet->GetCountSamples();
-   FloatFast * const aGradientAndHessian = pDataSet->GetGradientsAndHessiansPointer();
-   const FloatFast * const aWeight = pDataSet->GetWeights();
-
-   EBM_ASSERT(1 <= cSetSamples);
-   EBM_ASSERT(nullptr != aGradientAndHessian);
-
-   const FloatFast * pWeight = aWeight; // has been expanded to match the length of our output (aGradientAndHessian)
+   EBM_ASSERT(1 <= pDataSet->GetCountSamples());
+   EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
+   DataSubsetInteraction * pSubset = pDataSet->GetSubsets();
+   EBM_ASSERT(nullptr != pSubset);
+   const DataSubsetInteraction * const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
 
    const BagEbm * pSampleReplication = aBag;
 
    const FloatFast * pTargetData = static_cast<const FloatFast *>(aTargets);
    const double * pInitScore = aInitScores;
-   FloatFast * pGradientAndHessian = aGradientAndHessian;
-   const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples;
-   do {
+
+   EBM_ASSERT(1 <= pSubset->GetCountSamples());
+   FloatFast * pGradientAndHessian = pSubset->GetGradientsAndHessiansPointer();
+   EBM_ASSERT(nullptr != pGradientAndHessian);
+   const FloatFast * pGradientAndHessianEnd = pGradientAndHessian + pSubset->GetCountSamples();
+
+   const FloatFast * pWeight = pSubset->GetWeights();
+
+   while(true) {
       BagEbm replication = 1;
       size_t cInitAdvances = 1;
       if(nullptr != pSampleReplication) {
@@ -188,16 +191,30 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
          // Whether this multiplication happens or not is controlled by the caller by passing in the
          // weight array or not.
          gradient *= *pWeight;
-         pWeight += EbmAbs(replication);
+         pWeight += replication;
       }
       do {
          EBM_ASSERT(pGradientAndHessian < pGradientAndHessianEnd);
          *pGradientAndHessian = gradient;
          ++pGradientAndHessian;
 
+         if(pGradientAndHessianEnd == pGradientAndHessian) {
+            ++pSubset;
+            if(pSubsetsEnd == pSubset) {
+               LOG_0(Trace_Info, "Exited InitializeRmseGradientsAndHessiansInteraction");
+               return;
+            }
+            EBM_ASSERT(1 <= pSubset->GetCountSamples());
+            pGradientAndHessian = pSubset->GetGradientsAndHessiansPointer();
+            EBM_ASSERT(nullptr != pGradientAndHessian);
+            pGradientAndHessianEnd = pGradientAndHessian + pSubset->GetCountSamples();
+
+            pWeight = pSubset->GetWeights();
+         }
+
          --replication;
       } while(BagEbm { 0 } != replication);
-   } while(pGradientAndHessianEnd != pGradientAndHessian);
+   }
 
    LOG_0(Trace_Info, "Exited InitializeRmseGradientsAndHessiansInteraction");
 }
