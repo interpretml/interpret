@@ -31,7 +31,6 @@ class DataSubsetInteraction final {
    size_t m_cSamples;
 
    FloatFast * m_aWeights;
-   double m_weightTotal;
 
 public:
 
@@ -47,21 +46,10 @@ public:
       m_aaInputData = nullptr;
       m_cSamples = 0;
       m_aWeights = nullptr;
-      m_weightTotal = 0;
    }
-
-   ErrorEbm Initialize(
-      const unsigned char * const pDataSetShared,
-      const BagEbm * const aBag,
-      const size_t cSetSamples,
-      const size_t cWeights
-   );
 
    INLINE_ALWAYS const FloatFast * GetWeights() const {
       return m_aWeights;
-   }
-   INLINE_ALWAYS double GetWeightTotal() const {
-      return m_weightTotal;
    }
 
    INLINE_ALWAYS const FloatFast * GetGradientsAndHessiansPointer() const {
@@ -106,6 +94,7 @@ struct DataSetInteraction final {
 
    ErrorEbm Initialize(
       const ObjectiveWrapper * const pObjective,
+      const size_t cSubsetItemsMax,
       const size_t cScores,
       const bool bAllocateHessians,
       const unsigned char * const pDataSetShared,
@@ -143,6 +132,12 @@ private:
       const size_t cSharedSamples,
       const BagEbm * const aBag,
       const size_t cFeatures
+   );
+
+   ErrorEbm InitializeWeights(
+      const unsigned char * const pDataSetShared,
+      const BagEbm * const aBag,
+      const size_t cSetSamples
    );
 
    size_t m_cSamples;

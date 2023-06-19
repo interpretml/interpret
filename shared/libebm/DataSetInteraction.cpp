@@ -20,12 +20,11 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern ErrorEbm ExtractWeights(
-   const unsigned char * const pDataSetShared,
+extern bool CheckWeightsEqual(
    const BagEbm direction,
    const BagEbm * const aBag,
-   const size_t cSetSamples,
-   FloatFast ** ppWeightsOut
+   const FloatFast * pWeights,
+   const size_t cSetSamples
 );
 
 ErrorEbm DataSetInteraction::InitializeGradientsAndHessians(
@@ -249,6 +248,89 @@ ErrorEbm DataSetInteraction::InitializeInputData(
 }
 WARNING_POP
 
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
+ErrorEbm DataSetInteraction::InitializeWeights(
+   const unsigned char * const pDataSetShared,
+   const BagEbm * const aBag,
+   const size_t cSetSamples
+) {
+   LOG_0(Trace_Info, "Entered DataSetInteraction::InitializeWeights");
+
+   EBM_ASSERT(nullptr != pDataSetShared);
+   EBM_ASSERT(1 <= cSetSamples);
+
+   const FloatFast * pWeightFrom = GetDataSetSharedWeight(pDataSetShared, 0);
+   EBM_ASSERT(nullptr != pWeightFrom);
+   if(CheckWeightsEqual(BagEbm { 1 }, aBag, pWeightFrom, cSetSamples)) {
+      LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeWeights all weights identical, so ignoring weights");
+      return Error_None;
+   }
+
+   EBM_ASSERT(nullptr != m_aSubsets);
+   EBM_ASSERT(1 <= m_cSubsets);
+   DataSubsetInteraction * pSubset = m_aSubsets;
+   const DataSubsetInteraction * const pSubsetsEnd = pSubset + m_cSubsets;
+
+   const BagEbm * pSampleReplication = aBag;
+
+   double totalWeight = 0.0;
+
+   BagEbm replication = 0;
+   FloatFast weight;
+   do {
+      const size_t cSubsetSamples = pSubset->m_cSamples;
+      EBM_ASSERT(1 <= cSubsetSamples);
+
+      if(IsMultiplyError(sizeof(FloatFast), cSubsetSamples)) {
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeWeights IsMultiplyError(sizeof(FloatFast), cSubsetSamples)");
+         return Error_OutOfMemory;
+      }
+      FloatFast * pWeightTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamples));
+      if(nullptr == pWeightTo) {
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeWeights nullptr == pWeightTo");
+         return Error_OutOfMemory;
+      }
+      pSubset->m_aWeights = pWeightTo;
+      const FloatFast * const pWeightsToEnd = pWeightTo + cSubsetSamples;
+      do {
+         if(BagEbm { 0 } == replication) {
+            replication = 1;
+            if(nullptr != pSampleReplication) {
+               do {
+                  replication = *pSampleReplication;
+                  ++pSampleReplication;
+                  ++pWeightFrom;
+               } while(replication <= BagEbm { 0 });
+               --pWeightFrom;
+            }
+            weight = *pWeightFrom;
+            ++pWeightFrom;
+         }
+         *pWeightTo = weight;
+         ++pWeightTo;
+
+         --replication;
+      } while(pWeightsToEnd != pWeightTo);
+
+      totalWeight += AddPositiveFloatsSafe<double>(cSubsetSamples, pSubset->m_aWeights);
+
+      ++pSubset;
+   } while(pSubsetsEnd != pSubset);
+   EBM_ASSERT(0 == replication);
+
+   if(std::isnan(totalWeight) || std::isinf(totalWeight) || totalWeight < std::numeric_limits<double>::min()) {
+      LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeWeights std::isnan(totalWeight) || std::isinf(totalWeight) || totalWeight < std::numeric_limits<double>::min()");
+      return Error_UserParamVal;
+   }
+
+   m_weightTotal = totalWeight;
+
+   LOG_0(Trace_Info, "Exited DataSetInteraction::InitializeWeights");
+   return Error_None;
+}
+WARNING_POP
+
 void DataSubsetInteraction::Destruct(const size_t cFeatures) {
    LOG_0(Trace_Info, "Entered DataSubsetInteraction::Destruct");
 
@@ -268,62 +350,9 @@ void DataSubsetInteraction::Destruct(const size_t cFeatures) {
    LOG_0(Trace_Info, "Exited DataSubsetInteraction::Destruct");
 }
 
-ErrorEbm DataSubsetInteraction::Initialize(
-   const unsigned char * const pDataSetShared,
-   const BagEbm * const aBag,
-   const size_t cSetSamples,
-   const size_t cWeights
-) {
-   EBM_ASSERT(nullptr != pDataSetShared);
-
-   EBM_ASSERT(nullptr == m_aGradientsAndHessians); // we expect to start with zeroed values
-   EBM_ASSERT(nullptr == m_aaInputData); // we expect to start with zeroed values
-   EBM_ASSERT(0 == m_cSamples); // we expect to start with zeroed values
-
-   LOG_0(Trace_Info, "Entered DataSubsetInteraction::Initialize");
-
-   ErrorEbm error;
-
-   if(0 != cSetSamples) {
-      // if cSamples is zero, then we don't need to allocate anything since we won't use them anyways
-
-      EBM_ASSERT(nullptr == m_aWeights);
-      m_weightTotal = static_cast<double>(cSetSamples);
-      if(0 != cWeights) {
-         error = ExtractWeights(
-            pDataSetShared,
-            BagEbm { 1 },
-            aBag,
-            cSetSamples,
-            &m_aWeights
-         );
-         if(Error_None != error) {
-            // error already logged
-            return error;
-         }
-         if(nullptr != m_aWeights) {
-            const double total = AddPositiveFloatsSafe<double>(cSetSamples, m_aWeights);
-            if(std::isnan(total) || std::isinf(total) || total < std::numeric_limits<double>::min()) {
-               LOG_0(Trace_Warning, "WARNING DataSubsetInteraction::Initialize std::isnan(total) || std::isinf(total) || total < std::numeric_limits<double>::min()");
-               return Error_UserParamVal;
-            }
-            // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
-            // to zero though so check it after checking for negative
-            EBM_ASSERT(0 != total);
-            m_weightTotal = total;
-         }
-      }
-
-      m_cSamples = cSetSamples;
-   }
-
-   LOG_0(Trace_Info, "Exited DataSubsetInteraction::Initialize");
-   return Error_None;
-}
-
-
 ErrorEbm DataSetInteraction::Initialize(
    const ObjectiveWrapper * const pObjective,
+   const size_t cSubsetItemsMax,
    const size_t cScores,
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
@@ -353,14 +382,7 @@ ErrorEbm DataSetInteraction::Initialize(
          return Error_OutOfMemory;
       }
 
-
-
-
-
-      // TODO: allow more than 1 subset
-      size_t cSubsets = 1;
-
-
+      const size_t cSubsets = (cSetSamples - size_t { 1 }) / cSubsetItemsMax + size_t { 1 };
 
       if(IsMultiplyError(sizeof(DataSubsetInteraction), cSubsets)) {
          LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize IsMultiplyError(sizeof(DataSubsetInteraction), cSubsets)");
@@ -383,19 +405,13 @@ ErrorEbm DataSetInteraction::Initialize(
          ++pSubsetInit;
       } while(pSubsetsEnd != pSubsetInit);
 
-      double totalWeight = 0.0;
+      size_t cSetSamplesRemaining = cSetSamples;
+      do {
+         const size_t cSubsetSamples = cSetSamplesRemaining <= cSubsetItemsMax ? cSetSamplesRemaining : cSubsetItemsMax;
+         EBM_ASSERT(1 <= cSubsetSamples);
+         pSubset->m_cSamples = cSubsetSamples;
 
-      { // while loop
-         // TODO: allow more than 1 subset (this entire block needs to change)
-         error = pSubset->Initialize(
-            pDataSetShared,
-            aBag,
-            cSetSamples,
-            cWeights
-         );
-         if(Error_None != error) {
-            return error;
-         }
+         cSetSamplesRemaining -= cSubsetItemsMax; // this will overflow on last loop, but that's ok
 
          if(0 != cFeatures) {
             StorageDataType ** paData = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cFeatures));
@@ -412,17 +428,8 @@ ErrorEbm DataSetInteraction::Initialize(
             } while(paDataEnd != paData);
          }
 
-
-
-         // TODO: does this work here or are we adding zeros?
-         totalWeight += pSubset->GetWeightTotal();
-      }
-      m_weightTotal = totalWeight;
-
-
-
-
-
+         ++pSubset;
+      } while(pSubsetsEnd != pSubset);
 
       error = InitializeGradientsAndHessians(
          pObjective,
@@ -439,6 +446,18 @@ ErrorEbm DataSetInteraction::Initialize(
             cSharedSamples,
             aBag,
             cFeatures
+         );
+         if(Error_None != error) {
+            return error;
+         }
+      }
+
+      m_weightTotal = static_cast<double>(cSetSamples); // this is the default if there are no weights
+      if(0 != cWeights) {
+         error = InitializeWeights(
+            pDataSetShared,
+            aBag,
+            cSetSamples
          );
          if(Error_None != error) {
             return error;
