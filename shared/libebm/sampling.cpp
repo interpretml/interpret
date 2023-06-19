@@ -480,18 +480,18 @@ extern bool CheckWeightsEqual(
    const BagEbm direction,
    const BagEbm * const aBag,
    const FloatFast * pWeights,
-   const size_t cSetSamples
+   const size_t cIncludedSamples
 ) {
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
-   EBM_ASSERT(1 <= cSetSamples);
+   EBM_ASSERT(1 <= cIncludedSamples);
    EBM_ASSERT(nullptr != pWeights);
 
    FloatFast firstWeight = std::numeric_limits<FloatFast>::quiet_NaN();
    const bool isLoopValidation = direction < BagEbm { 0 };
-   ptrdiff_t cSetSamplesRemaining = static_cast<ptrdiff_t>(cSetSamples);
+   ptrdiff_t cIncludedSamplesRemaining = static_cast<ptrdiff_t>(cIncludedSamples);
    if(isLoopValidation) {
-      // make cSetSamplesRemaining the same sign as the bags we want to match
-      cSetSamplesRemaining = -cSetSamplesRemaining;
+      // make cIncludedSamplesRemaining the same sign as the bags we want to match
+      cIncludedSamplesRemaining = -cIncludedSamplesRemaining;
    }
    const BagEbm * pSampleReplication = aBag;
    EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if pSampleReplication is nullptr then we have no validation samples
@@ -522,8 +522,8 @@ extern bool CheckWeightsEqual(
          }
          firstWeight = weight;
       }
-      cSetSamplesRemaining -= static_cast<ptrdiff_t>(replication);
-   } while(LIKELY(0 != cSetSamplesRemaining));
+      cIncludedSamplesRemaining -= static_cast<ptrdiff_t>(replication);
+   } while(LIKELY(0 != cIncludedSamplesRemaining));
    return true;
 }
 

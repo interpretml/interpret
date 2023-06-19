@@ -7,11 +7,8 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "common_cpp.hpp" // INLINE_RELEASE_UNTEMPLATED
-
 #include "ebm_internal.hpp" // AddPositiveFloatsSafe
 
-#include "Feature.hpp"
 #include "dataset_shared.hpp" // SharedStorageDataType
 #include "DataSetInteraction.hpp"
 
@@ -24,7 +21,7 @@ extern bool CheckWeightsEqual(
    const BagEbm direction,
    const BagEbm * const aBag,
    const FloatFast * pWeights,
-   const size_t cSetSamples
+   const size_t cIncludedSamples
 );
 
 ErrorEbm DataSetInteraction::InitGradHess(
@@ -253,16 +250,16 @@ WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 ErrorEbm DataSetInteraction::InitWeights(
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
-   const size_t cSetSamples
+   const size_t cIncludedSamples
 ) {
    LOG_0(Trace_Info, "Entered DataSetInteraction::InitWeights");
 
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(1 <= cSetSamples);
+   EBM_ASSERT(1 <= cIncludedSamples);
 
    const FloatFast * pWeightFrom = GetDataSetSharedWeight(pDataSetShared, 0);
    EBM_ASSERT(nullptr != pWeightFrom);
-   if(CheckWeightsEqual(BagEbm { 1 }, aBag, pWeightFrom, cSetSamples)) {
+   if(CheckWeightsEqual(BagEbm { 1 }, aBag, pWeightFrom, cIncludedSamples)) {
       LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitWeights all weights identical, so ignoring weights");
       return Error_None;
    }
@@ -358,7 +355,7 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
    const unsigned char * const pDataSetShared,
    const size_t cSharedSamples,
    const BagEbm * const aBag,
-   const size_t cSetSamples,
+   const size_t cIncludedSamples,
    const size_t cWeights,
    const size_t cFeatures
 ) {
@@ -374,15 +371,15 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
 
    ErrorEbm error;
 
-   if(0 != cSetSamples) {
-      m_cSamples = cSetSamples;
+   if(0 != cIncludedSamples) {
+      m_cSamples = cIncludedSamples;
 
       if(IsMultiplyError(sizeof(StorageDataType *), cFeatures)) {
          LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitDataSetInteraction IsMultiplyError(sizeof(StorageDataType *), cFeatures)");
          return Error_OutOfMemory;
       }
 
-      const size_t cSubsets = (cSetSamples - size_t { 1 }) / cSubsetItemsMax + size_t { 1 };
+      const size_t cSubsets = (cIncludedSamples - size_t { 1 }) / cSubsetItemsMax + size_t { 1 };
 
       if(IsMultiplyError(sizeof(DataSubsetInteraction), cSubsets)) {
          LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitDataSetInteraction IsMultiplyError(sizeof(DataSubsetInteraction), cSubsets)");
@@ -405,13 +402,13 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
          ++pSubsetInit;
       } while(pSubsetsEnd != pSubsetInit);
 
-      size_t cSetSamplesRemaining = cSetSamples;
+      size_t cIncludedSamplesRemaining = cIncludedSamples;
       do {
-         const size_t cSubsetSamples = cSetSamplesRemaining <= cSubsetItemsMax ? cSetSamplesRemaining : cSubsetItemsMax;
+         const size_t cSubsetSamples = cIncludedSamplesRemaining <= cSubsetItemsMax ? cIncludedSamplesRemaining : cSubsetItemsMax;
          EBM_ASSERT(1 <= cSubsetSamples);
          pSubset->m_cSamples = cSubsetSamples;
 
-         cSetSamplesRemaining -= cSubsetItemsMax; // this will overflow on last loop, but that's ok
+         cIncludedSamplesRemaining -= cSubsetItemsMax; // this will overflow on last loop, but that's ok
 
          if(0 != cFeatures) {
             StorageDataType ** paData = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cFeatures));
@@ -452,12 +449,12 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
          }
       }
 
-      m_weightTotal = static_cast<double>(cSetSamples); // this is the default if there are no weights
+      m_weightTotal = static_cast<double>(cIncludedSamples); // this is the default if there are no weights
       if(0 != cWeights) {
          error = InitWeights(
             pDataSetShared,
             aBag,
-            cSetSamples
+            cIncludedSamples
          );
          if(Error_None != error) {
             return error;

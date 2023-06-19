@@ -88,7 +88,7 @@ struct DataSetInteraction final {
       const unsigned char * const pDataSetShared,
       const size_t cSharedSamples,
       const BagEbm * const aBag,
-      const size_t cSetSamples,
+      const size_t cIncludedSamples,
       const size_t cWeights,
       const size_t cFeatures
    );
@@ -125,7 +125,7 @@ private:
    ErrorEbm InitWeights(
       const unsigned char * const pDataSetShared,
       const BagEbm * const aBag,
-      const size_t cSetSamples
+      const size_t cIncludedSamples
    );
 
    size_t m_cSamples;
