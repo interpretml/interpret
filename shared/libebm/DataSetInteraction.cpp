@@ -374,6 +374,8 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
    if(0 != cIncludedSamples) {
       m_cSamples = cIncludedSamples;
 
+      // TODO: add this check elsewhere that StorageDataType is used
+      EBM_ASSERT(sizeof(StorageDataType) == pObjective->cUIntBytes);
       if(IsMultiplyError(sizeof(StorageDataType *), cFeatures)) {
          LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitDataSetInteraction IsMultiplyError(sizeof(StorageDataType *), cFeatures)");
          return Error_OutOfMemory;

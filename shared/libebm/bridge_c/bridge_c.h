@@ -21,7 +21,11 @@ extern "C" {
 #define INTERNAL_IMPORT_EXPORT_INCLUDE extern
 
 
-typedef size_t StorageDataType;
+typedef double FloatExceed;
+typedef uint64_t UIntExceed;
+
+
+typedef UIntExceed StorageDataType; // TODO: eventually eliminate this and replace it entirely with using cMatchedBytes
 typedef UIntEbm ActiveDataType; // TODO: in most places we could use size_t for this and only use the uint64 version where we have cross-platform considerations.
 
 struct ApplyUpdateBridge {
@@ -79,8 +83,8 @@ struct ObjectiveWrapper {
    BoolEbm m_bRmse;
 
    // TODO: use these values to change the bit packing and float arrays passed into our functions
-   size_t cFloatBytes;
-   size_t cIntBytes;
+   size_t cFloatBytes; // the type FloatExceed is guaranteed to be able to hold any value of this size
+   size_t cUIntBytes; // the type UIntExceed is guaranteed to be able to hold any value of this size
 
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface
    void * m_pFunctionPointersCpp;

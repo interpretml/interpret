@@ -38,6 +38,8 @@ struct Cuda_32_Int final {
    static constexpr int cPack = 1;
    using T = uint32_t;
    using TPack = uint32_t;
+   static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
+   static_assert(std::numeric_limits<T>::max() <= std::numeric_limits<UIntExceed>::max(), "UIntExceed must be able to hold a T");
 
    GPU_BOTH inline Cuda_32_Int(const T val) noexcept : m_data(val) {
    }
@@ -58,6 +60,7 @@ struct Cuda_32_Float final {
    using T = float;
    using TPack = float;
    using TInt = Cuda_32_Int;
+   static_assert(sizeof(T) <= sizeof(FloatExceed), "FloatExceed must be able to hold a T");
 
    WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER

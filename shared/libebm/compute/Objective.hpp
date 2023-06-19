@@ -538,8 +538,6 @@ protected:
 
    template<typename TObjective, typename TFloat, typename std::enable_if<TFloat::bCpu, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED static void SetCpu(ObjectiveWrapper * const pObjectiveWrapper) noexcept {
-      pObjectiveWrapper->cIntBytes = 0; // this is a signal to use size_t which is not a fixed size across machines
-
       FunctionPointersCpp * const pFunctionPointers = static_cast<FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp);
       pFunctionPointers->m_pFinishMetricCpp = &TObjective::StaticFinishMetric;
       pFunctionPointers->m_pCheckTargetsCpp = &TObjective::StaticCheckTargets;
@@ -610,8 +608,14 @@ protected:
       pObjectiveWrapperOut->m_pObjective = this;
 
 
+      static_assert(std::is_unsigned<typename TFloat::TInt::T>::value, 
+         "TFloat::TInt::T must be an unsigned integer type");
+      static_assert(std::numeric_limits<typename TFloat::TInt::T>::max() <= std::numeric_limits<UIntExceed>::max(), 
+         "UIntExceed must be able to hold a TFloat::TInt::T");
+      static_assert(sizeof(typename TFloat::T) <= sizeof(FloatExceed), 
+         "FloatExceed must be able to hold a TFloat::T");
       pObjectiveWrapperOut->cFloatBytes = sizeof(typename TFloat::T);
-      pObjectiveWrapperOut->cIntBytes = sizeof(typename TFloat::TInt::T); // we overwrite this with 0 for CPU to use size_t
+      pObjectiveWrapperOut->cUIntBytes = sizeof(typename TFloat::TInt::T);
 
       SetCpu<TObjective, TFloat>(pObjectiveWrapperOut);
    }

@@ -948,7 +948,7 @@ ErrorEbm DataSetBoosting::Initialize(
       m_cSamples = cSetSamples;
 
       // TODO: add this check elsewhere that StorageDataType is used
-      EBM_ASSERT(0 == pObjective->cIntBytes); // must be 0 to use StorageDataType
+      EBM_ASSERT(sizeof(StorageDataType) == pObjective->cUIntBytes);
       if(IsMultiplyError(sizeof(StorageDataType *), cTerms)) {
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::Initialize IsMultiplyError(sizeof(StorageDataType *), cTerms)");
          return Error_OutOfMemory;

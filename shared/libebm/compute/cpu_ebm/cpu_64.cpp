@@ -32,8 +32,10 @@ struct Cpu_64_Int final {
    // CPU is very special in part because cPack is always 1 and we know the CPU can handle size_t, so 
    // use StorageDataType which is always a size_t
    
-   using T = StorageDataType;
-   using TPack = StorageDataType;
+   using T = uint64_t;
+   using TPack = uint64_t;
+   static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
+   static_assert(std::numeric_limits<T>::max() <= std::numeric_limits<UIntExceed>::max(), "UIntExceed must be able to hold a T");
 
    inline Cpu_64_Int(const T val) noexcept : m_data(val) {
    }
@@ -50,6 +52,7 @@ struct Cpu_64_Float final {
    using T = double;
    using TPack = double;
    using TInt = Cpu_64_Int;
+   static_assert(sizeof(T) <= sizeof(FloatExceed), "FloatExceed must be able to hold a T");
 
    WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
