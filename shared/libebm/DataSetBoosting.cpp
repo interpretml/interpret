@@ -54,7 +54,11 @@ void DataSubsetBoosting::Destruct(const size_t cTerms, const size_t cInnerBags) 
 }
 
 
-ErrorEbm DataSetBoosting::InitializeGradientsAndHessians(const ObjectiveWrapper * const pObjective, const bool bAllocateHessians, const size_t cScores) {
+ErrorEbm DataSetBoosting::InitializeGradientsAndHessians(
+   const ObjectiveWrapper * const pObjective, 
+   const size_t cScores,
+   const bool bAllocateHessians
+) {
    LOG_0(Trace_Info, "Entered DataSetBoosting::InitializeGradientsAndHessians");
 
    UNUSED(pObjective);
@@ -65,7 +69,7 @@ ErrorEbm DataSetBoosting::InitializeGradientsAndHessians(const ObjectiveWrapper 
 
    EBM_ASSERT(sizeof(FloatFast) == pObjective->cFloatBytes); // TODO: add this check elsewhere that FloatFast is used
    if(IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::DataSetBoosting::InitializeGradientsAndHessians IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)");
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeGradientsAndHessians IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)");
       return Error_OutOfMemory;
    }
    const size_t cElementBytes = sizeof(FloatFast) * cStorageItems * cScores;
@@ -77,7 +81,7 @@ ErrorEbm DataSetBoosting::InitializeGradientsAndHessians(const ObjectiveWrapper 
       EBM_ASSERT(1 <= cSubsetSamples);
 
       if(IsMultiplyError(cElementBytes, cSubsetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::DataSetBoosting::InitializeGradientsAndHessians IsMultiplyError(cElementBytes, cSubsetSamples)");
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeGradientsAndHessians IsMultiplyError(cElementBytes, cSubsetSamples)");
          return Error_OutOfMemory;
       }
       const size_t cBytesGradientsAndHessians = cElementBytes * cSubsetSamples;
@@ -85,7 +89,7 @@ ErrorEbm DataSetBoosting::InitializeGradientsAndHessians(const ObjectiveWrapper 
 
       FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(AlignedAlloc(cBytesGradientsAndHessians));
       if(nullptr == aGradientsAndHessians) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::DataSetBoosting::InitializeGradientsAndHessians nullptr == aGradientsAndHessians");
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeGradientsAndHessians nullptr == aGradientsAndHessians");
          return Error_OutOfMemory;
       }
       pSubset->m_aGradientsAndHessians = aGradientsAndHessians;
@@ -1049,7 +1053,7 @@ ErrorEbm DataSetBoosting::Initialize(
       } while(pSubsetsEnd != pSubset);
 
       if(bAllocateGradients) {
-         error = InitializeGradientsAndHessians(pObjective, bAllocateHessians, cScores);
+         error = InitializeGradientsAndHessians(pObjective, cScores, bAllocateHessians);
          if(Error_None != error) {
             return error;
          }

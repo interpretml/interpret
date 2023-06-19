@@ -28,35 +28,51 @@ extern ErrorEbm ExtractWeights(
    FloatFast ** ppWeightsOut
 );
 
-INLINE_RELEASE_UNTEMPLATED static ErrorEbm ConstructGradientsAndHessians(
+ErrorEbm DataSetInteraction::InitializeGradientsAndHessians(
+   const ObjectiveWrapper * const pObjective,
    const size_t cScores,
-   const bool bAllocateHessians,
-   const size_t cSetSamples,
-   FloatFast ** paGradientsAndHessiansOut
+   const bool bAllocateHessians
 ) {
-   LOG_0(Trace_Info, "Entered ConstructGradientsAndHessians");
+   LOG_0(Trace_Info, "Entered DataSetInteraction::InitializeGradientsAndHessians");
 
+   UNUSED(pObjective);
+
+   EBM_ASSERT(nullptr != pObjective);
    EBM_ASSERT(1 <= cScores);
-   EBM_ASSERT(1 <= cSetSamples);
-   EBM_ASSERT(nullptr != paGradientsAndHessiansOut);
-   EBM_ASSERT(nullptr == *paGradientsAndHessiansOut);
 
    const size_t cStorageItems = bAllocateHessians ? size_t { 2 } : size_t { 1 };
-   if(IsMultiplyError(sizeof(FloatFast), cScores, cStorageItems, cSetSamples)) {
-      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores, cStorageItems, cSamples)");
+
+   EBM_ASSERT(sizeof(FloatFast) == pObjective->cFloatBytes); // TODO: add this check elsewhere that FloatFast is used
+   if(IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)) {
+      LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeGradientsAndHessians IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesGradientsAndHessians = sizeof(FloatFast) * cScores * cStorageItems * cSetSamples;
-   ANALYSIS_ASSERT(0 != cBytesGradientsAndHessians);
+   const size_t cElementBytes = sizeof(FloatFast) * cStorageItems * cScores;
 
-   FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(AlignedAlloc(cBytesGradientsAndHessians));
-   if(UNLIKELY(nullptr == aGradientsAndHessians)) {
-      LOG_0(Trace_Warning, "WARNING ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
-      return Error_OutOfMemory;
-   }
-   *paGradientsAndHessiansOut = aGradientsAndHessians; // transfer ownership for future deletion
+   DataSubsetInteraction * pSubset = m_aSubsets;
+   const DataSubsetInteraction * const pSubsetsEnd = pSubset + m_cSubsets;
+   do {
+      const size_t cSubsetSamples = pSubset->m_cSamples;
+      EBM_ASSERT(1 <= cSubsetSamples);
 
-   LOG_0(Trace_Info, "Exited ConstructGradientsAndHessians");
+      if(IsMultiplyError(cElementBytes, cSubsetSamples)) {
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeGradientsAndHessians IsMultiplyError(cElementBytes, cSubsetSamples)");
+         return Error_OutOfMemory;
+      }
+      const size_t cBytesGradientsAndHessians = cElementBytes * cSubsetSamples;
+      ANALYSIS_ASSERT(0 != cBytesGradientsAndHessians);
+
+      FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(AlignedAlloc(cBytesGradientsAndHessians));
+      if(nullptr == aGradientsAndHessians) {
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeGradientsAndHessians nullptr == aGradientsAndHessians");
+         return Error_OutOfMemory;
+      }
+      pSubset->m_aGradientsAndHessians = aGradientsAndHessians;
+
+      ++pSubset;
+   } while(pSubsetsEnd != pSubset);
+
+   LOG_0(Trace_Info, "Exited DataSetInteraction::InitializeGradientsAndHessians");
    return Error_None;
 }
 
@@ -253,8 +269,6 @@ void DataSubsetInteraction::Destruct(const size_t cFeatures) {
 }
 
 ErrorEbm DataSubsetInteraction::Initialize(
-   const size_t cScores,
-   const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
    const size_t cSetSamples,
@@ -300,17 +314,6 @@ ErrorEbm DataSubsetInteraction::Initialize(
          }
       }
 
-      error = ConstructGradientsAndHessians(
-         cScores,
-         bAllocateHessians,
-         cSetSamples,
-         &m_aGradientsAndHessians
-      );
-      if(Error_None != error) {
-         // we should have already logged the failure
-         return error;
-      }
-
       m_cSamples = cSetSamples;
    }
 
@@ -320,6 +323,7 @@ ErrorEbm DataSubsetInteraction::Initialize(
 
 
 ErrorEbm DataSetInteraction::Initialize(
+   const ObjectiveWrapper * const pObjective,
    const size_t cScores,
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
@@ -381,13 +385,9 @@ ErrorEbm DataSetInteraction::Initialize(
 
       double totalWeight = 0.0;
 
-
-
       { // while loop
          // TODO: allow more than 1 subset (this entire block needs to change)
          error = pSubset->Initialize(
-            cScores,
-            bAllocateHessians,
             pDataSetShared,
             aBag,
             cSetSamples,
@@ -424,7 +424,14 @@ ErrorEbm DataSetInteraction::Initialize(
 
 
 
-
+      error = InitializeGradientsAndHessians(
+         pObjective,
+         cScores,
+         bAllocateHessians
+      );
+      if(Error_None != error) {
+         return error;
+      }
 
       if(0 != cFeatures) {
          error = InitializeInputData(

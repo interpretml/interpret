@@ -51,8 +51,6 @@ public:
    }
 
    ErrorEbm Initialize(
-      const size_t cScores,
-      const bool bAllocateHessians,
       const unsigned char * const pDataSetShared,
       const BagEbm * const aBag,
       const size_t cSetSamples,
@@ -107,6 +105,7 @@ struct DataSetInteraction final {
    void Destruct(const size_t cFeatures);
 
    ErrorEbm Initialize(
+      const ObjectiveWrapper * const pObjective,
       const size_t cScores,
       const bool bAllocateHessians,
       const unsigned char * const pDataSetShared,
@@ -132,6 +131,12 @@ struct DataSetInteraction final {
    }
 
 private:
+
+   ErrorEbm InitializeGradientsAndHessians(
+      const ObjectiveWrapper * const pObjective,
+      const size_t cScores,
+      const bool bAllocateHessians
+   );
 
    ErrorEbm InitializeInputData(
       const unsigned char * const pDataSetShared,

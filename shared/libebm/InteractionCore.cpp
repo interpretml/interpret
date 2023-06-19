@@ -247,6 +247,7 @@ ErrorEbm InteractionCore::Create(
       }
 
       error = pInteractionCore->m_dataFrame.Initialize(
+         &pInteractionCore->m_objective,
          cScores,
          bHessian,
          pDataSetShared,

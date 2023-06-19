@@ -137,7 +137,11 @@ struct DataSetBoosting final {
 
 private:
 
-   ErrorEbm InitializeGradientsAndHessians(const ObjectiveWrapper * const pObjective, const bool bAllocateHessians, const size_t cScores);
+   ErrorEbm InitializeGradientsAndHessians(
+      const ObjectiveWrapper * const pObjective, 
+      const size_t cScores,
+      const bool bAllocateHessians
+   );
 
    ErrorEbm InitializeSampleScores(
       const size_t cScores,
