@@ -231,17 +231,14 @@ ErrorEbm DataSetBoosting::InitializeSampleScores(
 WARNING_POP
 
 
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 ErrorEbm DataSetBoosting::InitializeTargetData(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
    const BagEbm * const aBag
 ) {
    LOG_0(Trace_Info, "Entered DataSetBoosting::InitializeTargetData");
-
-   DataSubsetBoosting * pSubset = m_aSubsets;
-   const DataSubsetBoosting * const pSubsetsEnd = pSubset + m_cSubsets;
-   const size_t cSubsetSamplesInit = pSubset->m_cSamples;
-   EBM_ASSERT(1 <= cSubsetSamplesInit);
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
@@ -250,161 +247,123 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
    const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
    EBM_ASSERT(nullptr != aTargets); // we previously called GetDataSetSharedTarget and got back non-null result
 
+   EBM_ASSERT(nullptr != m_aSubsets);
+   EBM_ASSERT(1 <= m_cSubsets);
+   DataSubsetBoosting * pSubset = m_aSubsets;
+   const DataSubsetBoosting * const pSubsetsEnd = pSubset + m_cSubsets;
+
    const BagEbm * pSampleReplication = aBag;
    const bool isLoopValidation = direction < BagEbm { 0 };
    EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if aBag is nullptr then we have no validation samples
 
+   BagEbm replication = 0;
    if(IsClassification(cClasses)) {
       const size_t countClasses = static_cast<size_t>(cClasses);
       const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargets);
+      StorageDataType iData;
+      do {
+         const size_t cSubsetSamples = pSubset->m_cSamples;
+         EBM_ASSERT(1 <= cSubsetSamples);
 
-
-      if(IsMultiplyError(sizeof(StorageDataType), cSubsetSamplesInit)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData IsMultiplyError(sizeof(StorageDataType), cSubsetSamplesInit)");
-         return Error_OutOfMemory;
-      }
-      StorageDataType * pTargetTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cSubsetSamplesInit));
-      if(nullptr == pTargetTo) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData nullptr == pTargetTo");
-         return Error_OutOfMemory;
-      }
-      pSubset->m_aTargetData = pTargetTo;
-      const StorageDataType * pTargetToEnd = pTargetTo + cSubsetSamplesInit;
-
-      while(true) {
-         BagEbm replication = 1;
-         if(nullptr != pSampleReplication) {
-            bool isItemValidation;
-            do {
-               do {
-                  replication = *pSampleReplication;
-                  ++pSampleReplication;
-                  ++pTargetFrom;
-               } while(BagEbm { 0 } == replication);
-               isItemValidation = replication < BagEbm { 0 };
-            } while(isLoopValidation != isItemValidation);
-            --pTargetFrom;
+         if(IsMultiplyError(sizeof(StorageDataType), cSubsetSamples)) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData IsMultiplyError(sizeof(StorageDataType), cSubsetSamples)");
+            return Error_OutOfMemory;
          }
-         const SharedStorageDataType data = *pTargetFrom;
-         ++pTargetFrom;
-         EBM_ASSERT(!IsConvertError<size_t>(data));
-         if(IsConvertError<StorageDataType>(data)) {
-            // this shouldn't be possible since we previously checked that we could convert our target,
-            // so if this is failing then we'll be larger than the maximum number of classes
-            LOG_0(Trace_Error, "ERROR DataSetBoosting::InitializeTargetData data target too big to reference memory");
-            return Error_UnexpectedInternal;
+         StorageDataType * pTargetTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cSubsetSamples));
+         if(nullptr == pTargetTo) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData nullptr == pTargetTo");
+            return Error_OutOfMemory;
          }
-         const StorageDataType iData = static_cast<StorageDataType>(data);
-         if(countClasses <= static_cast<size_t>(iData)) {
-            LOG_0(Trace_Error, "ERROR DataSetBoosting::InitializeTargetData target value larger than number of classes");
-            return Error_UnexpectedInternal;
-         }
+         pSubset->m_aTargetData = pTargetTo;
+         const StorageDataType * const pTargetToEnd = pTargetTo + cSubsetSamples;
          do {
+            if(BagEbm { 0 } == replication) {
+               replication = 1;
+               if(nullptr != pSampleReplication) {
+                  bool isItemValidation;
+                  do {
+                     do {
+                        replication = *pSampleReplication;
+                        ++pSampleReplication;
+                        ++pTargetFrom;
+                     } while(BagEbm { 0 } == replication);
+                     isItemValidation = replication < BagEbm { 0 };
+                  } while(isLoopValidation != isItemValidation);
+                  --pTargetFrom;
+               }
+               const SharedStorageDataType data = *pTargetFrom;
+               ++pTargetFrom;
+               EBM_ASSERT(!IsConvertError<size_t>(data));
+               if(IsConvertError<StorageDataType>(data)) {
+                  // this shouldn't be possible since we previously checked that we could convert our target,
+                  // so if this is failing then we'll be larger than the maximum number of classes
+                  LOG_0(Trace_Error, "ERROR DataSetBoosting::InitializeTargetData data target too big to reference memory");
+                  return Error_UnexpectedInternal;
+               }
+               iData = static_cast<StorageDataType>(data);
+               if(countClasses <= static_cast<size_t>(iData)) {
+                  LOG_0(Trace_Error, "ERROR DataSetBoosting::InitializeTargetData target value larger than number of classes");
+                  return Error_UnexpectedInternal;
+               }
+            }
             *pTargetTo = iData;
             ++pTargetTo;
 
-            if(pTargetToEnd == pTargetTo) {
-               ++pSubset;
-               if(pSubsetsEnd == pSubset) {
-                  EBM_ASSERT(replication == direction);
-                  LOG_0(Trace_Info, "Exited DataSetBoosting::InitializeTargetData");
-                  return Error_None;
-               }
-
-               const size_t cSubsetSamples = pSubset->m_cSamples;
-               EBM_ASSERT(1 <= cSubsetSamples);
-
-               if(IsMultiplyError(sizeof(StorageDataType), cSubsetSamples)) {
-                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData IsMultiplyError(sizeof(StorageDataType), cSubsetSamples)");
-                  return Error_OutOfMemory;
-               }
-               pTargetTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cSubsetSamples));
-               if(nullptr == pTargetTo) {
-                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData nullptr == pTargetTo");
-                  return Error_OutOfMemory;
-               }
-               pSubset->m_aTargetData = pTargetTo;
-               pTargetToEnd = pTargetTo + cSubsetSamples;
-            }
-
             replication -= direction;
-         } while(BagEbm { 0 } != replication);
-      }
+         } while(pTargetToEnd != pTargetTo);
+         
+         ++pSubset;
+      } while(pSubsetsEnd != pSubset);
    } else {
       const FloatFast * pTargetFrom = static_cast<const FloatFast *>(aTargets);
+      FloatFast data;
+      do {
+         const size_t cSubsetSamples = pSubset->m_cSamples;
+         EBM_ASSERT(1 <= cSubsetSamples);
 
-
-      if(IsMultiplyError(sizeof(FloatFast), cSubsetSamplesInit)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData IsMultiplyError(sizeof(FloatFast), cSubsetSamplesInit)");
-         return Error_OutOfMemory;
-      }
-      FloatFast * pTargetTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamplesInit));
-      if(nullptr == pTargetTo) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData nullptr == pTargetTo");
-         return Error_OutOfMemory;
-      }
-      pSubset->m_aTargetData = pTargetTo;
-      const FloatFast * pTargetToEnd = pTargetTo + cSubsetSamplesInit;
-
-      while(true) {
-         BagEbm replication = 1;
-         if(nullptr != pSampleReplication) {
-            bool isItemValidation;
-            do {
-               do {
-                  replication = *pSampleReplication;
-                  ++pSampleReplication;
-                  ++pTargetFrom;
-               } while(BagEbm { 0 } == replication);
-               isItemValidation = replication < BagEbm { 0 };
-            } while(isLoopValidation != isItemValidation);
-            --pTargetFrom;
+         if(IsMultiplyError(sizeof(FloatFast), cSubsetSamples)) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData IsMultiplyError(sizeof(FloatFast), cSubsetSamples)");
+            return Error_OutOfMemory;
          }
-         const FloatFast data = *pTargetFrom;
-         ++pTargetFrom;
-
-         // TODO : our caller should handle NaN *pTargetFrom values, which means that the target is missing, which means we should delete that sample 
-         //   from the input data
-
-         // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
-         // There is no need to check it here since we already have graceful detection later for other reasons.
-
-         // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
-         //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
-
+         FloatFast * pTargetTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamples));
+         if(nullptr == pTargetTo) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData nullptr == pTargetTo");
+            return Error_OutOfMemory;
+         }
+         pSubset->m_aTargetData = pTargetTo;
+         const FloatFast * const pTargetToEnd = pTargetTo + cSubsetSamples;
          do {
+            if(BagEbm { 0 } == replication) {
+               replication = 1;
+               if(nullptr != pSampleReplication) {
+                  bool isItemValidation;
+                  do {
+                     do {
+                        replication = *pSampleReplication;
+                        ++pSampleReplication;
+                        ++pTargetFrom;
+                     } while(BagEbm { 0 } == replication);
+                     isItemValidation = replication < BagEbm { 0 };
+                  } while(isLoopValidation != isItemValidation);
+                  --pTargetFrom;
+               }
+               data = *pTargetFrom;
+               ++pTargetFrom;
+            }
             *pTargetTo = data;
             ++pTargetTo;
 
-            if(pTargetToEnd == pTargetTo) {
-               ++pSubset;
-               if(pSubsetsEnd == pSubset) {
-                  EBM_ASSERT(replication == direction);
-                  LOG_0(Trace_Info, "Exited DataSetBoosting::InitializeTargetData");
-                  return Error_None;
-               }
-
-               const size_t cSubsetSamples = pSubset->m_cSamples;
-               EBM_ASSERT(1 <= cSubsetSamples);
-
-               if(IsMultiplyError(sizeof(FloatFast), cSubsetSamples)) {
-                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData IsMultiplyError(sizeof(FloatFast), cSubsetSamples)");
-                  return Error_OutOfMemory;
-               }
-               pTargetTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamples));
-               if(nullptr == pTargetTo) {
-                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData nullptr == pTargetTo");
-                  return Error_OutOfMemory;
-               }
-               pSubset->m_aTargetData = pTargetTo;
-               pTargetToEnd = pTargetTo + cSubsetSamples;
-            }
-
             replication -= direction;
-         } while(BagEbm { 0 } != replication);
-      }
+         } while(pTargetToEnd != pTargetTo);
+
+         ++pSubset;
+      } while(pSubsetsEnd != pSubset);
    }
+   EBM_ASSERT(0 == replication);
+   LOG_0(Trace_Info, "Exited DataSetBoosting::InitializeTargetData");
+   return Error_None;
 }
+WARNING_POP
 
 struct InputDataPointerAndCountBins {
    InputDataPointerAndCountBins() = default; // preserve our POD status

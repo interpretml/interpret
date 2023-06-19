@@ -1585,7 +1585,29 @@ static IntEbm AppendTarget(
                const double * pTarget = reinterpret_cast<const double *>(aTargets);
                const double * const pTargetsEnd = &pTarget[cSamples];
                do {
-                  *pFill = SafeConvertFloat<FloatFast>(*pTarget);
+                  const double target = *pTarget;
+                  const double cleaned = CleanFloat(target);
+                  if(std::isnan(cleaned)) {
+                     LOG_0(Trace_Error, "ERROR AppendTarget target is NaN");
+                     goto return_bad;
+                  }
+                  if(std::isinf(cleaned)) {
+                     LOG_0(Trace_Error, "ERROR AppendTarget target is infinity");
+                     goto return_bad;
+                  }
+                  const FloatFast converted = SafeConvertFloat<FloatFast>(cleaned);
+
+                  // TODO: clean this float in float32 format
+
+                  if(std::isnan(converted)) {
+                     LOG_0(Trace_Error, "ERROR AppendTarget target is NaN after conversion to float32");
+                     goto return_bad;
+                  }
+                  if(std::isinf(converted)) {
+                     LOG_0(Trace_Error, "ERROR AppendTarget target is infinity after conversion to float32");
+                     goto return_bad;
+                  }
+                  *pFill = converted;
                   ++pFill;
                   ++pTarget;
                } while(pTargetsEnd != pTarget);
