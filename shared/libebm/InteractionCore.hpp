@@ -43,7 +43,7 @@ class InteractionCore final {
    inline ~InteractionCore() {
       // this only gets called after our reference count has been decremented to zero
 
-      m_dataFrame.Destruct(m_cFeatures);
+      m_dataFrame.DestructDataSetInteraction(m_cFeatures);
       free(m_aFeatures);
       FreeObjectiveWrapperInternals(&m_objective);
    };
@@ -54,7 +54,7 @@ class InteractionCore final {
       m_cFeatures(0),
       m_aFeatures(nullptr)
    {
-      m_dataFrame.InitializeUnfailing();
+      m_dataFrame.SafeInitDataSetInteraction();
       InitializeObjectiveWrapperUnfailing(&m_objective);
    }
 

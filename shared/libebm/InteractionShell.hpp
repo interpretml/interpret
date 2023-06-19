@@ -5,8 +5,7 @@
 #ifndef INTERACTION_SHELL_HPP
 #define INTERACTION_SHELL_HPP
 
-#include <stdlib.h> // free
-#include <stddef.h> // size_t, ptrdiff_t
+#include <stddef.h> // size_t
 
 #include "libebm.h" // InteractionHandle
 #include "logging.h" // LOG_0

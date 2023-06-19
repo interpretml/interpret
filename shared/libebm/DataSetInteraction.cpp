@@ -27,12 +27,12 @@ extern bool CheckWeightsEqual(
    const size_t cSetSamples
 );
 
-ErrorEbm DataSetInteraction::InitializeGradientsAndHessians(
+ErrorEbm DataSetInteraction::InitGradHess(
    const ObjectiveWrapper * const pObjective,
    const size_t cScores,
    const bool bAllocateHessians
 ) {
-   LOG_0(Trace_Info, "Entered DataSetInteraction::InitializeGradientsAndHessians");
+   LOG_0(Trace_Info, "Entered DataSetInteraction::InitGradHess");
 
    UNUSED(pObjective);
 
@@ -43,7 +43,7 @@ ErrorEbm DataSetInteraction::InitializeGradientsAndHessians(
 
    EBM_ASSERT(sizeof(FloatFast) == pObjective->cFloatBytes); // TODO: add this check elsewhere that FloatFast is used
    if(IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)) {
-      LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeGradientsAndHessians IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)");
+      LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitGradHess IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)");
       return Error_OutOfMemory;
    }
    const size_t cElementBytes = sizeof(FloatFast) * cStorageItems * cScores;
@@ -55,35 +55,35 @@ ErrorEbm DataSetInteraction::InitializeGradientsAndHessians(
       EBM_ASSERT(1 <= cSubsetSamples);
 
       if(IsMultiplyError(cElementBytes, cSubsetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeGradientsAndHessians IsMultiplyError(cElementBytes, cSubsetSamples)");
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitGradHess IsMultiplyError(cElementBytes, cSubsetSamples)");
          return Error_OutOfMemory;
       }
-      const size_t cBytesGradientsAndHessians = cElementBytes * cSubsetSamples;
-      ANALYSIS_ASSERT(0 != cBytesGradientsAndHessians);
+      const size_t cBytesGradHess = cElementBytes * cSubsetSamples;
+      ANALYSIS_ASSERT(0 != cBytesGradHess);
 
-      FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(AlignedAlloc(cBytesGradientsAndHessians));
-      if(nullptr == aGradientsAndHessians) {
-         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeGradientsAndHessians nullptr == aGradientsAndHessians");
+      FloatFast * const aGradHess = static_cast<FloatFast *>(AlignedAlloc(cBytesGradHess));
+      if(nullptr == aGradHess) {
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitGradHess nullptr == aGradHess");
          return Error_OutOfMemory;
       }
-      pSubset->m_aGradientsAndHessians = aGradientsAndHessians;
+      pSubset->m_aGradHess = aGradHess;
 
       ++pSubset;
    } while(pSubsetsEnd != pSubset);
 
-   LOG_0(Trace_Info, "Exited DataSetInteraction::InitializeGradientsAndHessians");
+   LOG_0(Trace_Info, "Exited DataSetInteraction::InitGradHess");
    return Error_None;
 }
 
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
-ErrorEbm DataSetInteraction::InitializeInputData(
+ErrorEbm DataSetInteraction::InitFeatureData(
    const unsigned char * const pDataSetShared,
    const size_t cSharedSamples,
    const BagEbm * const aBag,
    const size_t cFeatures
 ) {
-   LOG_0(Trace_Info, "Entered DataSetInteraction::InitializeInputData");
+   LOG_0(Trace_Info, "Entered DataSetInteraction::InitFeatureData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(1 <= cSharedSamples);
@@ -102,7 +102,7 @@ ErrorEbm DataSetInteraction::InitializeInputData(
       SharedStorageDataType countBins;
       SharedStorageDataType defaultValSparse;
       size_t cNonDefaultsSparse;
-      const void * aInputDataFrom = GetDataSetSharedFeature(
+      const void * aFeatureDataFrom = GetDataSetSharedFeature(
          pDataSetShared,
          iFeature,
          &bMissing,
@@ -113,7 +113,7 @@ ErrorEbm DataSetInteraction::InitializeInputData(
          &defaultValSparse,
          &cNonDefaultsSparse
       );
-      EBM_ASSERT(nullptr != aInputDataFrom);
+      EBM_ASSERT(nullptr != aFeatureDataFrom);
       EBM_ASSERT(!bSparse); // we don't support sparse yet
 
       EBM_ASSERT(!IsConvertError<size_t>(countBins)); // checked in a previous call to GetDataSetSharedFeature
@@ -124,9 +124,9 @@ ErrorEbm DataSetInteraction::InitializeInputData(
          // we return 0.0 on interactions whenever we find a feature with 1 bin before further processing
       
          if(IsConvertError<StorageDataType>(cBins - size_t { 1 })) {
-            // if we check this here, we can be guaranteed that any inputData will convert to StorageDataType
+            // if we check this here, we can be guaranteed that any feature data will convert to StorageDataType
             // since the shared datastructure would not allow data items equal or greater than cBins
-            LOG_0(Trace_Error, "ERROR DataSetInteraction::InitializeInputData IsConvertError<StorageDataType>(cBins - 1)");
+            LOG_0(Trace_Error, "ERROR DataSetInteraction::InitFeatureData IsConvertError<StorageDataType>(cBins - 1)");
             return Error_OutOfMemory;
          }
 
@@ -154,10 +154,10 @@ ErrorEbm DataSetInteraction::InitializeInputData(
          ptrdiff_t iShiftFrom = static_cast<ptrdiff_t>((cSharedSamples - size_t { 1 }) % cItemsPerBitPackFrom);
 
          const BagEbm * pSampleReplication = aBag;
-         const SharedStorageDataType * pInputDataFrom = static_cast<const SharedStorageDataType *>(aInputDataFrom);
+         const SharedStorageDataType * pFeatureDataFrom = static_cast<const SharedStorageDataType *>(aFeatureDataFrom);
 
          BagEbm replication = 0;
-         StorageDataType inputData;
+         StorageDataType featureData;
 
          DataSubsetInteraction * pSubset = m_aSubsets;
          do {
@@ -174,23 +174,23 @@ ErrorEbm DataSetInteraction::InitializeInputData(
             const size_t cDataUnitsTo = (cSubsetSamples - size_t { 1 }) / cItemsPerBitPackTo + size_t { 1 }; // this can't overflow or underflow
 
             if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
-               LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
+               LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitFeatureData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
                return Error_OutOfMemory;
             }
-            StorageDataType * pInputDataTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cDataUnitsTo));
-            if(nullptr == pInputDataTo) {
-               LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeInputData nullptr == pInputDataTo");
+            StorageDataType * pFeatureDataTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cDataUnitsTo));
+            if(nullptr == pFeatureDataTo) {
+               LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitFeatureData nullptr == pFeatureDataTo");
                return Error_OutOfMemory;
             }
-            pSubset->m_aaInputData[iFeature] = pInputDataTo;
+            pSubset->m_aaFeatureData[iFeature] = pFeatureDataTo;
 
-            const StorageDataType * const pInputDataToEnd = &pInputDataTo[cDataUnitsTo];
+            const StorageDataType * const pFeatureDataToEnd = &pFeatureDataTo[cDataUnitsTo];
 
 
             ptrdiff_t cShiftTo = static_cast<ptrdiff_t>((cSubsetSamples - 1) % cItemsPerBitPackTo * cBitsPerItemMaxTo);
             const ptrdiff_t cShiftResetTo = static_cast<ptrdiff_t>((cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo);
             do {
-               StorageDataType bits = 0;
+               StorageDataType bitsTo = 0;
                do {
                   if(BagEbm { 0 } == replication) {
                      replication = 1;
@@ -208,17 +208,17 @@ ErrorEbm DataSetInteraction::InitializeInputData(
                            ++cCompleteAdvanced;
                            iShiftFrom += cItemsPerBitPackFrom;
                         }
-                        pInputDataFrom += cCompleteAdvanced;
+                        pFeatureDataFrom += cCompleteAdvanced;
                      }
                      EBM_ASSERT(0 <= iShiftFrom);
                      EBM_ASSERT(static_cast<size_t>(iShiftFrom * cBitsPerItemMaxFrom) < k_cBitsForSharedStorageType);
 
-                     const SharedStorageDataType dataFrom = *pInputDataFrom;
-                     inputData = static_cast<StorageDataType>(dataFrom >> (iShiftFrom * cBitsPerItemMaxFrom)) & maskBitsFrom;
-                     EBM_ASSERT(static_cast<size_t>(inputData) < cBins);
+                     const SharedStorageDataType bitsFrom = *pFeatureDataFrom;
+                     featureData = static_cast<StorageDataType>(bitsFrom >> (iShiftFrom * cBitsPerItemMaxFrom)) & maskBitsFrom;
+                     EBM_ASSERT(static_cast<size_t>(featureData) < cBins);
                      --iShiftFrom;
                      if(iShiftFrom < ptrdiff_t { 0 }) {
-                        ++pInputDataFrom;
+                        ++pFeatureDataFrom;
                         iShiftFrom += cItemsPerBitPackFrom;
                      }
                   }
@@ -228,13 +228,13 @@ ErrorEbm DataSetInteraction::InitializeInputData(
 
                   EBM_ASSERT(0 <= cShiftTo);
                   EBM_ASSERT(static_cast<size_t>(cShiftTo) < k_cBitsForStorageType);
-                  bits |= inputData << cShiftTo;
+                  bitsTo |= featureData << cShiftTo;
                   cShiftTo -= cBitsPerItemMaxTo;
                } while(ptrdiff_t { 0 } <= cShiftTo);
                cShiftTo = cShiftResetTo;
-               *pInputDataTo = bits;
-               ++pInputDataTo;
-            } while(pInputDataToEnd != pInputDataTo);
+               *pFeatureDataTo = bitsTo;
+               ++pFeatureDataTo;
+            } while(pFeatureDataToEnd != pFeatureDataTo);
 
             ++pSubset;
          } while(pSubsetsEnd != pSubset);
@@ -243,19 +243,19 @@ ErrorEbm DataSetInteraction::InitializeInputData(
       ++iFeature;
    } while(cFeatures != iFeature);
 
-   LOG_0(Trace_Info, "Exited DataSetInteraction::InitializeInputData");
+   LOG_0(Trace_Info, "Exited DataSetInteraction::InitFeatureData");
    return Error_None;
 }
 WARNING_POP
 
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
-ErrorEbm DataSetInteraction::InitializeWeights(
+ErrorEbm DataSetInteraction::InitWeights(
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
    const size_t cSetSamples
 ) {
-   LOG_0(Trace_Info, "Entered DataSetInteraction::InitializeWeights");
+   LOG_0(Trace_Info, "Entered DataSetInteraction::InitWeights");
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(1 <= cSetSamples);
@@ -263,7 +263,7 @@ ErrorEbm DataSetInteraction::InitializeWeights(
    const FloatFast * pWeightFrom = GetDataSetSharedWeight(pDataSetShared, 0);
    EBM_ASSERT(nullptr != pWeightFrom);
    if(CheckWeightsEqual(BagEbm { 1 }, aBag, pWeightFrom, cSetSamples)) {
-      LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeWeights all weights identical, so ignoring weights");
+      LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitWeights all weights identical, so ignoring weights");
       return Error_None;
    }
 
@@ -283,12 +283,12 @@ ErrorEbm DataSetInteraction::InitializeWeights(
       EBM_ASSERT(1 <= cSubsetSamples);
 
       if(IsMultiplyError(sizeof(FloatFast), cSubsetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeWeights IsMultiplyError(sizeof(FloatFast), cSubsetSamples)");
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitWeights IsMultiplyError(sizeof(FloatFast), cSubsetSamples)");
          return Error_OutOfMemory;
       }
       FloatFast * pWeightTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamples));
       if(nullptr == pWeightTo) {
-         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeWeights nullptr == pWeightTo");
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitWeights nullptr == pWeightTo");
          return Error_OutOfMemory;
       }
       pSubset->m_aWeights = pWeightTo;
@@ -320,37 +320,37 @@ ErrorEbm DataSetInteraction::InitializeWeights(
    EBM_ASSERT(0 == replication);
 
    if(std::isnan(totalWeight) || std::isinf(totalWeight) || totalWeight < std::numeric_limits<double>::min()) {
-      LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitializeWeights std::isnan(totalWeight) || std::isinf(totalWeight) || totalWeight < std::numeric_limits<double>::min()");
+      LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitWeights std::isnan(totalWeight) || std::isinf(totalWeight) || totalWeight < std::numeric_limits<double>::min()");
       return Error_UserParamVal;
    }
 
    m_weightTotal = totalWeight;
 
-   LOG_0(Trace_Info, "Exited DataSetInteraction::InitializeWeights");
+   LOG_0(Trace_Info, "Exited DataSetInteraction::InitWeights");
    return Error_None;
 }
 WARNING_POP
 
-void DataSubsetInteraction::Destruct(const size_t cFeatures) {
-   LOG_0(Trace_Info, "Entered DataSubsetInteraction::Destruct");
+void DataSubsetInteraction::DestructDataSubsetInteraction(const size_t cFeatures) {
+   LOG_0(Trace_Info, "Entered DataSubsetInteraction::DestructDataSubsetInteraction");
 
-   AlignedFree(m_aGradientsAndHessians);
    AlignedFree(m_aWeights);
-   if(nullptr != m_aaInputData) {
+   StorageDataType ** paFeatureData = m_aaFeatureData;
+   if(nullptr != paFeatureData) {
       EBM_ASSERT(1 <= cFeatures);
-      StorageDataType ** paInputData = m_aaInputData;
-      const StorageDataType * const * const paInputDataEnd = m_aaInputData + cFeatures;
+      const StorageDataType * const * const paFeatureDataEnd = paFeatureData + cFeatures;
       do {
-         AlignedFree(*paInputData);
-         ++paInputData;
-      } while(paInputDataEnd != paInputData);
-      free(m_aaInputData);
+         AlignedFree(*paFeatureData);
+         ++paFeatureData;
+      } while(paFeatureDataEnd != paFeatureData);
+      free(m_aaFeatureData);
    }
+   AlignedFree(m_aGradHess);
 
-   LOG_0(Trace_Info, "Exited DataSubsetInteraction::Destruct");
+   LOG_0(Trace_Info, "Exited DataSubsetInteraction::DestructDataSubsetInteraction");
 }
 
-ErrorEbm DataSetInteraction::Initialize(
+ErrorEbm DataSetInteraction::InitDataSetInteraction(
    const ObjectiveWrapper * const pObjective,
    const size_t cSubsetItemsMax,
    const size_t cScores,
@@ -370,7 +370,7 @@ ErrorEbm DataSetInteraction::Initialize(
    EBM_ASSERT(nullptr == m_aSubsets);
    EBM_ASSERT(0.0 == m_weightTotal);
 
-   LOG_0(Trace_Info, "Entered DataSetInteraction::Initialize");
+   LOG_0(Trace_Info, "Entered DataSetInteraction::InitDataSetInteraction");
 
    ErrorEbm error;
 
@@ -378,19 +378,19 @@ ErrorEbm DataSetInteraction::Initialize(
       m_cSamples = cSetSamples;
 
       if(IsMultiplyError(sizeof(StorageDataType *), cFeatures)) {
-         LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize IsMultiplyError(sizeof(StorageDataType *), cFeatures)");
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitDataSetInteraction IsMultiplyError(sizeof(StorageDataType *), cFeatures)");
          return Error_OutOfMemory;
       }
 
       const size_t cSubsets = (cSetSamples - size_t { 1 }) / cSubsetItemsMax + size_t { 1 };
 
       if(IsMultiplyError(sizeof(DataSubsetInteraction), cSubsets)) {
-         LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize IsMultiplyError(sizeof(DataSubsetInteraction), cSubsets)");
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitDataSetInteraction IsMultiplyError(sizeof(DataSubsetInteraction), cSubsets)");
          return Error_OutOfMemory;
       }
       DataSubsetInteraction * pSubset = static_cast<DataSubsetInteraction *>(malloc(sizeof(DataSubsetInteraction) * cSubsets));
       if(nullptr == pSubset) {
-         LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize nullptr == pSubset");
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitDataSetInteraction nullptr == pSubset");
          return Error_OutOfMemory;
       }
       m_aSubsets = pSubset;
@@ -401,7 +401,7 @@ ErrorEbm DataSetInteraction::Initialize(
 
       DataSubsetInteraction * pSubsetInit = pSubset;
       do {
-         pSubsetInit->InitializeUnfailing();
+         pSubsetInit->SafeInitDataSubsetInteraction();
          ++pSubsetInit;
       } while(pSubsetsEnd != pSubsetInit);
 
@@ -416,10 +416,10 @@ ErrorEbm DataSetInteraction::Initialize(
          if(0 != cFeatures) {
             StorageDataType ** paData = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cFeatures));
             if(nullptr == paData) {
-               LOG_0(Trace_Warning, "WARNING DataSetInteraction::Initialize nullptr == paData");
+               LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitDataSetInteraction nullptr == paData");
                return Error_OutOfMemory;
             }
-            pSubset->m_aaInputData = paData;
+            pSubset->m_aaFeatureData = paData;
 
             const StorageDataType * const * const paDataEnd = paData + cFeatures;
             do {
@@ -431,7 +431,7 @@ ErrorEbm DataSetInteraction::Initialize(
          ++pSubset;
       } while(pSubsetsEnd != pSubset);
 
-      error = InitializeGradientsAndHessians(
+      error = InitGradHess(
          pObjective,
          cScores,
          bAllocateHessians
@@ -441,7 +441,7 @@ ErrorEbm DataSetInteraction::Initialize(
       }
 
       if(0 != cFeatures) {
-         error = InitializeInputData(
+         error = InitFeatureData(
             pDataSetShared,
             cSharedSamples,
             aBag,
@@ -454,7 +454,7 @@ ErrorEbm DataSetInteraction::Initialize(
 
       m_weightTotal = static_cast<double>(cSetSamples); // this is the default if there are no weights
       if(0 != cWeights) {
-         error = InitializeWeights(
+         error = InitWeights(
             pDataSetShared,
             aBag,
             cSetSamples
@@ -465,25 +465,25 @@ ErrorEbm DataSetInteraction::Initialize(
       }
    }
 
-   LOG_0(Trace_Info, "Exited DataSetInteraction::Initialize");
+   LOG_0(Trace_Info, "Exited DataSetInteraction::InitDataSetInteraction");
    return Error_None;
 }
 
-void DataSetInteraction::Destruct(const size_t cFeatures) {
-   LOG_0(Trace_Info, "Entered DataSetInteraction::Destruct");
+void DataSetInteraction::DestructDataSetInteraction(const size_t cFeatures) {
+   LOG_0(Trace_Info, "Entered DataSetInteraction::DestructDataSetInteraction");
 
    DataSubsetInteraction * pSubset = m_aSubsets;
    if(nullptr != pSubset) {
       EBM_ASSERT(1 <= m_cSubsets);
       const DataSubsetInteraction * const pSubsetsEnd = pSubset + m_cSubsets;
       do {
-         pSubset->Destruct(cFeatures);
+         pSubset->DestructDataSubsetInteraction(cFeatures);
          ++pSubset;
       } while(pSubsetsEnd != pSubset);
       free(m_aSubsets);
    }
 
-   LOG_0(Trace_Info, "Exited DataSetInteraction::Destruct");
+   LOG_0(Trace_Info, "Exited DataSetInteraction::DestructDataSetInteraction");
 }
 
 } // DEFINED_ZONE_NAME

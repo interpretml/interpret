@@ -13,6 +13,7 @@
 #include "GradientPair.hpp"
 #include "Bin.hpp"
 
+#include "ebm_internal.hpp"
 #include "ebm_stats.hpp"
 #include "TensorTotalsSum.hpp"
 #include "InteractionCore.hpp"

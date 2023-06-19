@@ -144,7 +144,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
    const double * pInitScore = aInitScores;
 
    EBM_ASSERT(1 <= pSubset->GetCountSamples());
-   FloatFast * pGradientAndHessian = pSubset->GetGradientsAndHessiansPointer();
+   FloatFast * pGradientAndHessian = pSubset->GetGradHess();
    EBM_ASSERT(nullptr != pGradientAndHessian);
    const FloatFast * pGradientAndHessianEnd = pGradientAndHessian + pSubset->GetCountSamples();
 
@@ -205,7 +205,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
                return;
             }
             EBM_ASSERT(1 <= pSubset->GetCountSamples());
-            pGradientAndHessian = pSubset->GetGradientsAndHessiansPointer();
+            pGradientAndHessian = pSubset->GetGradHess();
             EBM_ASSERT(nullptr != pGradientAndHessian);
             pGradientAndHessianEnd = pGradientAndHessian + pSubset->GetCountSamples();
 

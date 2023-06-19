@@ -326,7 +326,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          const size_t iFeature = static_cast<size_t>(indexFeature);
          const FeatureInteraction * const pFeature = &aFeatures[iFeature];
 
-         binSums.m_aaPacked[iDimensionLoop] = pSubset->GetInputDataPointer(iFeature);
+         binSums.m_aaPacked[iDimensionLoop] = pSubset->GetFeatureData(iFeature);
 
          EBM_ASSERT(1 <= pFeature->GetFeatureBitPack());
          binSums.m_acItemsPerBitPack[iDimensionLoop] = static_cast<size_t>(pFeature->GetFeatureBitPack());
@@ -340,7 +340,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       binSums.m_cScores = cScores;
 
       binSums.m_cSamples = pSubset->GetCountSamples();
-      binSums.m_aGradientsAndHessians = pSubset->GetGradientsAndHessiansPointer();
+      binSums.m_aGradientsAndHessians = pSubset->GetGradHess();
       binSums.m_aWeights = pSubset->GetWeights();
 
       binSums.m_aFastBins = aFastBins;

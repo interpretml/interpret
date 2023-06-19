@@ -246,7 +246,7 @@ ErrorEbm InteractionCore::Create(
          return Error_OutOfMemory;
       }
 
-      error = pInteractionCore->m_dataFrame.Initialize(
+      error = pInteractionCore->m_dataFrame.InitDataSetInteraction(
          &pInteractionCore->m_objective,
          cTrainingSamples,
          cScores,
@@ -422,7 +422,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             data.m_cSamples = pSubset->GetCountSamples();
             data.m_aPacked = nullptr;
             data.m_aWeights = pSubset->GetWeights();
-            data.m_aGradientsAndHessians = pSubset->GetGradientsAndHessiansPointer();
+            data.m_aGradientsAndHessians = pSubset->GetGradHess();
             // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
             // reuse the same code that we use for boosting in order to generate our gradients and hessians
             error = ObjectiveApplyUpdate(&data);
@@ -512,7 +512,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             data.m_cSamples = pSubset->GetCountSamples();
             data.m_aPacked = nullptr;
             data.m_aWeights = pSubset->GetWeights();
-            data.m_aGradientsAndHessians = pSubset->GetGradientsAndHessiansPointer();
+            data.m_aGradientsAndHessians = pSubset->GetGradHess();
             // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
             // reuse the same code that we use for boosting in order to generate our gradients and hessians
             error = ObjectiveApplyUpdate(&data);
