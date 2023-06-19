@@ -55,7 +55,7 @@ void DataSubsetBoosting::Destruct(const size_t cTerms, const size_t cInnerBags) 
 
 
 ErrorEbm DataSetBoosting::InitializeGradientsAndHessians(const ObjectiveWrapper * const pObjective, const bool bAllocateHessians, const size_t cScores) {
-   LOG_0(Trace_Info, "Entered ConstructGradientsAndHessians");
+   LOG_0(Trace_Info, "Entered DataSetBoosting::InitializeGradientsAndHessians");
 
    UNUSED(pObjective);
 
@@ -65,7 +65,7 @@ ErrorEbm DataSetBoosting::InitializeGradientsAndHessians(const ObjectiveWrapper 
 
    EBM_ASSERT(sizeof(FloatFast) == pObjective->cFloatBytes); // TODO: add this check elsewhere that FloatFast is used
    if(IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructGradientsAndHessians IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)");
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::DataSetBoosting::InitializeGradientsAndHessians IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)");
       return Error_OutOfMemory;
    }
    const size_t cElementBytes = sizeof(FloatFast) * cStorageItems * cScores;
@@ -77,7 +77,7 @@ ErrorEbm DataSetBoosting::InitializeGradientsAndHessians(const ObjectiveWrapper 
       EBM_ASSERT(1 <= cSubsetSamples);
 
       if(IsMultiplyError(cElementBytes, cSubsetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructGradientsAndHessians IsMultiplyError(cElementBytes, cSubsetSamples)");
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::DataSetBoosting::InitializeGradientsAndHessians IsMultiplyError(cElementBytes, cSubsetSamples)");
          return Error_OutOfMemory;
       }
       const size_t cBytesGradientsAndHessians = cElementBytes * cSubsetSamples;
@@ -85,7 +85,7 @@ ErrorEbm DataSetBoosting::InitializeGradientsAndHessians(const ObjectiveWrapper 
 
       FloatFast * const aGradientsAndHessians = static_cast<FloatFast *>(AlignedAlloc(cBytesGradientsAndHessians));
       if(nullptr == aGradientsAndHessians) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::DataSetBoosting::InitializeGradientsAndHessians nullptr == aGradientsAndHessians");
          return Error_OutOfMemory;
       }
       pSubset->m_aGradientsAndHessians = aGradientsAndHessians;
@@ -93,7 +93,7 @@ ErrorEbm DataSetBoosting::InitializeGradientsAndHessians(const ObjectiveWrapper 
       ++pSubset;
    } while(pSubsetsEnd != pSubset);
 
-   LOG_0(Trace_Info, "Exited ConstructGradientsAndHessians");
+   LOG_0(Trace_Info, "Exited DataSetBoosting::InitializeGradientsAndHessians");
    return Error_None;
 }
 
@@ -106,7 +106,7 @@ ErrorEbm DataSetBoosting::InitializeSampleScores(
    const BagEbm * const aBag,
    const double * const aInitScores
 ) {
-   LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructSampleScores");
+   LOG_0(Trace_Info, "Entered DataSetBoosting::InitializeSampleScores");
 
    DataSubsetBoosting * pSubset = m_aSubsets;
    const DataSubsetBoosting * const pSubsetsEnd = pSubset + m_cSubsets;
@@ -116,7 +116,7 @@ ErrorEbm DataSetBoosting::InitializeSampleScores(
    EBM_ASSERT(nullptr != aBag || BagEbm { 1 } == direction);  // if aBag is nullptr then we have no validation samples
 
    if(IsMultiplyError(sizeof(FloatFast), cScores)) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(sizeof(FloatFast), cScores)");
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeSampleScores IsMultiplyError(sizeof(FloatFast), cScores)");
       return Error_OutOfMemory;
    }
    const size_t cBytesOneElement = sizeof(FloatFast) * cScores;
@@ -128,14 +128,14 @@ ErrorEbm DataSetBoosting::InitializeSampleScores(
          EBM_ASSERT(1 <= cSubsetSamples);
 
          if(IsMultiplyError(cBytesOneElement, cSubsetSamples)) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(cBytesOneElement, cSubsetSamples)");
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeSampleScores IsMultiplyError(cBytesOneElement, cSubsetSamples)");
             return Error_OutOfMemory;
          }
          const size_t cBytes = cBytesOneElement * cSubsetSamples;
          ANALYSIS_ASSERT(0 != cBytes);
          FloatFast * pSampleScore = static_cast<FloatFast *>(AlignedAlloc(cBytes));
          if(nullptr == pSampleScore) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == pSampleScore");
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeSampleScores nullptr == pSampleScore");
             return Error_OutOfMemory;
          }
          pSubset->m_aSampleScores = pSampleScore;
@@ -149,14 +149,14 @@ ErrorEbm DataSetBoosting::InitializeSampleScores(
       EBM_ASSERT(1 <= cSubsetSamplesInit);
 
       if(IsMultiplyError(cBytesOneElement, cSubsetSamplesInit)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(cBytesOneElement, cSubsetSamplesInit)");
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeSampleScores IsMultiplyError(cBytesOneElement, cSubsetSamplesInit)");
          return Error_OutOfMemory;
       }
       const size_t cBytesInit = cBytesOneElement * cSubsetSamplesInit;
       ANALYSIS_ASSERT(0 != cBytesInit);
       FloatFast * pSampleScore = static_cast<FloatFast *>(AlignedAlloc(cBytesInit));
       if(nullptr == pSampleScore) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == pSampleScore");
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeSampleScores nullptr == pSampleScore");
          return Error_OutOfMemory;
       }
       pSubset->m_aSampleScores = pSampleScore;
@@ -194,7 +194,7 @@ ErrorEbm DataSetBoosting::InitializeSampleScores(
                ++pSubset;
                if(pSubsetsEnd == pSubset) {
                   EBM_ASSERT(replication == direction);
-                  LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
+                  LOG_0(Trace_Info, "Exited DataSetBoosting::InitializeSampleScores");
                   return Error_None;
                }
 
@@ -202,13 +202,13 @@ ErrorEbm DataSetBoosting::InitializeSampleScores(
                EBM_ASSERT(1 <= cSubsetSamples);
 
                if(IsMultiplyError(cBytesOneElement, cSubsetSamples)) {
-                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(cBytesOneElement, cSubsetSamples)");
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeSampleScores IsMultiplyError(cBytesOneElement, cSubsetSamples)");
                   return Error_OutOfMemory;
                }
                const size_t cBytes = cBytesOneElement * cSubsetSamples;
                pSampleScore = static_cast<FloatFast *>(AlignedAlloc(cBytes));
                if(nullptr == pSampleScore) {
-                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == pSampleScore");
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeSampleScores nullptr == pSampleScore");
                   return Error_OutOfMemory;
                }
                pSubset->m_aSampleScores = pSampleScore;
@@ -221,7 +221,7 @@ ErrorEbm DataSetBoosting::InitializeSampleScores(
       }
    }
 
-   LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructSampleScores");
+   LOG_0(Trace_Info, "Exited DataSetBoosting::InitializeSampleScores");
    return Error_None;
 }
 WARNING_POP
@@ -232,7 +232,7 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
    const BagEbm direction,
    const BagEbm * const aBag
 ) {
-   LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructTargetData");
+   LOG_0(Trace_Info, "Entered DataSetBoosting::InitializeTargetData");
 
    DataSubsetBoosting * pSubset = m_aSubsets;
    const DataSubsetBoosting * const pSubsetsEnd = pSubset + m_cSubsets;
@@ -256,12 +256,12 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
 
 
       if(IsMultiplyError(sizeof(StorageDataType), cSubsetSamplesInit)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSubsetSamplesInit)");
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData IsMultiplyError(sizeof(StorageDataType), cSubsetSamplesInit)");
          return Error_OutOfMemory;
       }
       StorageDataType * pTargetTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cSubsetSamplesInit));
       if(nullptr == pTargetTo) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData nullptr == pTargetTo");
          return Error_OutOfMemory;
       }
       pSubset->m_aTargetData = pTargetTo;
@@ -287,12 +287,12 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
          if(IsConvertError<StorageDataType>(data)) {
             // this shouldn't be possible since we previously checked that we could convert our target,
             // so if this is failing then we'll be larger than the maximum number of classes
-            LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
+            LOG_0(Trace_Error, "ERROR DataSetBoosting::InitializeTargetData data target too big to reference memory");
             return Error_UnexpectedInternal;
          }
          const StorageDataType iData = static_cast<StorageDataType>(data);
          if(countClasses <= static_cast<size_t>(iData)) {
-            LOG_0(Trace_Error, "ERROR DataSetBoosting::ConstructTargetData target value larger than number of classes");
+            LOG_0(Trace_Error, "ERROR DataSetBoosting::InitializeTargetData target value larger than number of classes");
             return Error_UnexpectedInternal;
          }
          do {
@@ -303,7 +303,7 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
                ++pSubset;
                if(pSubsetsEnd == pSubset) {
                   EBM_ASSERT(replication == direction);
-                  LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
+                  LOG_0(Trace_Info, "Exited DataSetBoosting::InitializeTargetData");
                   return Error_None;
                }
 
@@ -311,12 +311,12 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
                EBM_ASSERT(1 <= cSubsetSamples);
 
                if(IsMultiplyError(sizeof(StorageDataType), cSubsetSamples)) {
-                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(StorageDataType), cSubsetSamples)");
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData IsMultiplyError(sizeof(StorageDataType), cSubsetSamples)");
                   return Error_OutOfMemory;
                }
                pTargetTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cSubsetSamples));
                if(nullptr == pTargetTo) {
-                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData nullptr == pTargetTo");
                   return Error_OutOfMemory;
                }
                pSubset->m_aTargetData = pTargetTo;
@@ -331,12 +331,12 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
 
 
       if(IsMultiplyError(sizeof(FloatFast), cSubsetSamplesInit)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(FloatFast), cSubsetSamplesInit)");
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData IsMultiplyError(sizeof(FloatFast), cSubsetSamplesInit)");
          return Error_OutOfMemory;
       }
       FloatFast * pTargetTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamplesInit));
       if(nullptr == pTargetTo) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData nullptr == pTargetTo");
          return Error_OutOfMemory;
       }
       pSubset->m_aTargetData = pTargetTo;
@@ -376,7 +376,7 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
                ++pSubset;
                if(pSubsetsEnd == pSubset) {
                   EBM_ASSERT(replication == direction);
-                  LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructTargetData");
+                  LOG_0(Trace_Info, "Exited DataSetBoosting::InitializeTargetData");
                   return Error_None;
                }
 
@@ -384,12 +384,12 @@ ErrorEbm DataSetBoosting::InitializeTargetData(
                EBM_ASSERT(1 <= cSubsetSamples);
 
                if(IsMultiplyError(sizeof(FloatFast), cSubsetSamples)) {
-                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData IsMultiplyError(sizeof(FloatFast), cSubsetSamples)");
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData IsMultiplyError(sizeof(FloatFast), cSubsetSamples)");
                   return Error_OutOfMemory;
                }
                pTargetTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamples));
                if(nullptr == pTargetTo) {
-                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructTargetData nullptr == pTargetTo");
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeTargetData nullptr == pTargetTo");
                   return Error_OutOfMemory;
                }
                pSubset->m_aTargetData = pTargetTo;
@@ -434,7 +434,7 @@ ErrorEbm DataSetBoosting::InitializeInputData(
    const size_t cTerms,
    const Term * const * const apTerms
 ) {
-   LOG_0(Trace_Info, "Entered DataSetBoosting::ConstructInputData");
+   LOG_0(Trace_Info, "Entered DataSetBoosting::InitializeInputData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
@@ -552,12 +552,12 @@ ErrorEbm DataSetBoosting::InitializeInputData(
             const size_t cDataUnitsTo = (cSubsetSamples - 1) / cItemsPerBitPackTo + 1; // this can't overflow or underflow
 
             if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
-               LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeInputData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
                return Error_OutOfMemory;
             }
             StorageDataType * pInputDataTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cDataUnitsTo));
             if(nullptr == pInputDataTo) {
-               LOG_0(Trace_Warning, "WARNING DataSetBoosting::ConstructInputData nullptr == pInputDataTo");
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitializeInputData nullptr == pInputDataTo");
                return Error_OutOfMemory;
             }
             pSubset->m_aaInputData[iTerm] = pInputDataTo;
@@ -655,7 +655,7 @@ ErrorEbm DataSetBoosting::InitializeInputData(
       ++iTerm;
    } while(cTerms != iTerm);
 
-   LOG_0(Trace_Info, "Exited DataSetBoosting::ConstructInputData");
+   LOG_0(Trace_Info, "Exited DataSetBoosting::InitializeInputData");
    return Error_None;
 }
 WARNING_POP
