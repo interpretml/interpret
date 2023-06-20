@@ -916,12 +916,18 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
    ErrorEbm error;
 
    EBM_ASSERT(1 <= cScores);
+   EBM_ASSERT(nullptr != pObjective);
+   EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
-   EBM_ASSERT(nullptr == m_aSubsets);
-   EBM_ASSERT(0 == m_cSubsets);
+
    EBM_ASSERT(0 == m_cSamples);
+   EBM_ASSERT(0 == m_cSubsets);
+   EBM_ASSERT(nullptr == m_aSubsets);
+   EBM_ASSERT(nullptr == m_aBagWeightTotals);
 
    if(0 != cIncludedSamples) {
+      EBM_ASSERT(1 <= cSharedSamples);
+
       m_cSamples = cIncludedSamples;
 
       // TODO: add this check elsewhere that StorageDataType is used
@@ -963,19 +969,18 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
          cIncludedSamplesRemaining -= cSubsetItemsMax; // this will overflow on last loop, but that's ok
 
          if(0 != cTerms) {
-            StorageDataType ** paData = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cTerms));
-            if(nullptr == paData) {
-               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting nullptr == paData");
+            StorageDataType ** paTermData = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cTerms));
+            if(nullptr == paTermData) {
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting nullptr == paTermData");
                return Error_OutOfMemory;
             }
+            pSubset->m_aaTermData = paTermData;
 
-            pSubset->m_aaTermData = paData;
-
-            const StorageDataType * const * const paDataEnd = paData + cTerms;
+            const StorageDataType * const * const paTermDataEnd = paTermData + cTerms;
             do {
-               *paData = nullptr;
-               ++paData;
-            } while(paDataEnd != paData);
+               *paTermData = nullptr;
+               ++paTermData;
+            } while(paTermDataEnd != paTermData);
          }
 
          InnerBag * const aInnerBags = InnerBag::AllocateInnerBags(cInnerBags);

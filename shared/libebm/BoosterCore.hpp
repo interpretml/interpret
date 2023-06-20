@@ -26,7 +26,7 @@ namespace DEFINED_ZONE_NAME {
 class RandomDeterministic;
 class FeatureBoosting;
 class Term;
-class InnerBag;
+struct InnerBag;
 class Tensor;
 
 class BoosterCore final {

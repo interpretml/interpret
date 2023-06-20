@@ -19,6 +19,33 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+InnerBag * InnerBag::AllocateInnerBags(const size_t cInnerBags) {
+   LOG_0(Trace_Info, "Entered InnerBag::AllocateInnerBags");
+
+   const size_t cInnerBagsAfterZero = size_t { 0 } == cInnerBags ? size_t { 1 } : cInnerBags;
+
+   if(IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)) {
+      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)");
+      return nullptr;
+   }
+   InnerBag * aInnerBag = static_cast<InnerBag *>(malloc(sizeof(InnerBag) * cInnerBagsAfterZero));
+   if(UNLIKELY(nullptr == aInnerBag)) {
+      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == aInnerBag");
+      return nullptr;
+   }
+
+   InnerBag * pInnerBag = aInnerBag;
+   const InnerBag * const pInnerBagsEnd = &aInnerBag[cInnerBagsAfterZero];
+   do {
+      pInnerBag->m_aWeights = nullptr;
+      pInnerBag->m_aCountOccurrences = nullptr;
+      ++pInnerBag;
+   } while(pInnerBagsEnd != pInnerBag);
+
+   LOG_0(Trace_Info, "Exited InnerBag::AllocateInnerBags");
+   return aInnerBag;
+}
+
 // Visual Studio compiler seems to not like the index addition by 1 to make cInnerBagsAfterZero
 WARNING_PUSH
 WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
@@ -40,32 +67,5 @@ void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag * const aInnerBag
    LOG_0(Trace_Info, "Exited InnerBag::FreeInnerBags");
 }
 WARNING_POP
-
-InnerBag * InnerBag::AllocateInnerBags(const size_t cInnerBags) {
-   LOG_0(Trace_Info, "Entered InnerBag::AllocateInnerBags");
-
-   const size_t cInnerBagsAfterZero = size_t { 0 } == cInnerBags ? size_t { 1 } : cInnerBags;
-
-   if(IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)) {
-      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)");
-      return nullptr;
-   }
-   InnerBag * aInnerBag = static_cast<InnerBag *>(malloc(sizeof(InnerBag) * cInnerBagsAfterZero));
-   if(UNLIKELY(nullptr == aInnerBag)) {
-      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == aInnerBag");
-      return nullptr;
-   }
-
-   InnerBag * pInnerBag = aInnerBag;
-   const InnerBag * const pInnerBagsEnd = &aInnerBag[cInnerBagsAfterZero];
-   do {
-      pInnerBag->m_aCountOccurrences = nullptr;
-      pInnerBag->m_aWeights = nullptr;
-      ++pInnerBag;
-   } while(pInnerBagsEnd != pInnerBag);
-
-   LOG_0(Trace_Info, "Exited InnerBag::AllocateInnerBags");
-   return aInnerBag;
-}
 
 } // DEFINED_ZONE_NAME
