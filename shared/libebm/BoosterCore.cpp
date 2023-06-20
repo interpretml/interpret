@@ -697,7 +697,7 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
       ApplyUpdateBridge data;
       data.m_cScores = cScores;
       data.m_cPack = k_cItemsPerBitPackNone;
-      data.m_bHessianNeeded = EBM_TRUE;
+      data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
       data.m_bCalcMetric = EBM_FALSE;
       data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
       data.m_aUpdateTensorScores = aUpdateScores;

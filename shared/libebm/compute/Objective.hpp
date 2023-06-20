@@ -208,6 +208,7 @@ private:
    }
    template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, typename std::enable_if<!HasHessian<TObjective>(), void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm HessianApplyUpdate(ApplyUpdateBridge * const pData) const {
+      EBM_ASSERT(!pData->m_bHessianNeeded);
       return OptionsApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, false>(pData);
    }
 
