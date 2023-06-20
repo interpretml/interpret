@@ -630,6 +630,8 @@ ErrorEbm DataSetBoosting::InitTermData(
 WARNING_POP
 
 
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 ErrorEbm DataSetBoosting::InitBags(
    void * const rng,
    const unsigned char * const pDataSetShared,
@@ -773,66 +775,70 @@ ErrorEbm DataSetBoosting::InitBags(
             } while(pSubsetsEnd != pSubset);
          }
       } else {
-         const BagEbm * pSampleReplication = aBag;
          const size_t * pOccurrencesFrom = aOccurrencesFrom;
+         const BagEbm * pSampleReplication = aBag;
          const FloatFast * pWeightFrom = aWeightsFrom;
          DataSubsetBoosting * pSubset = m_aSubsets;
          total = 0.0;
-            
-         EBM_ASSERT(nullptr != pSubset->m_aInnerBags);
-         InnerBag * pInnerBag = &pSubset->m_aInnerBags[iBag];
 
-         const size_t cSubsetSamplesInit = pSubset->GetCountSamples();
-         EBM_ASSERT(1 <= cSubsetSamplesInit);
+         BagEbm replication = 0;
+         FloatFast weight;
+         do {
+            EBM_ASSERT(nullptr != pSubset->m_aInnerBags);
+            InnerBag * pInnerBag = &pSubset->m_aInnerBags[iBag];
 
-         if(IsMultiplyError(sizeof(FloatFast), cSubsetSamplesInit)) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags IsMultiplyError(sizeof(FloatFast), cSubsetSamplesInit)");
-            free(aOccurrencesFrom);
-            return Error_OutOfMemory;
-         }
-         FloatFast * pWeightTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamplesInit));
-         if(nullptr == pWeightTo) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags nullptr == pWeightsInternal");
-            free(aOccurrencesFrom);
-            return Error_OutOfMemory;
-         }
-         pInnerBag->m_aWeights = pWeightTo;
+            const size_t cSubsetSamples = pSubset->GetCountSamples();
+            EBM_ASSERT(1 <= cSubsetSamples);
 
-         size_t * pOccurrencesTo = nullptr;
-         if(nullptr != pOccurrencesFrom) {
-            EBM_ASSERT(cSubsetSamplesInit <= cIncludedSamples);
-            pOccurrencesTo = static_cast<size_t *>(AlignedAlloc(sizeof(size_t) * cSubsetSamplesInit));
-            if(nullptr == pOccurrencesTo) {
-               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags nullptr == aCountOccurrences");
+            if(IsMultiplyError(sizeof(FloatFast), cSubsetSamples)) {
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags IsMultiplyError(sizeof(FloatFast), cSubsetSamples)");
                free(aOccurrencesFrom);
                return Error_OutOfMemory;
             }
-            pInnerBag->m_aCountOccurrences = pOccurrencesTo;
-         }
+            FloatFast * pWeightTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamples));
+            if(nullptr == pWeightTo) {
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags nullptr == pWeightTo");
+               free(aOccurrencesFrom);
+               return Error_OutOfMemory;
+            }
+            pInnerBag->m_aWeights = pWeightTo;
 
-         const FloatFast * pWeightsToEnd = pWeightTo + cSubsetSamplesInit;
-
-         while(true) {
-            BagEbm replication = 1;
-            if(nullptr != pSampleReplication) {
-               bool isItemValidation;
-               do {
-                  do {
-                     replication = *pSampleReplication;
-                     ++pSampleReplication;
-                     ++pWeightFrom;
-                  } while(BagEbm { 0 } == replication);
-                  isItemValidation = replication < BagEbm { 0 };
-               } while(isLoopValidation != isItemValidation);
-               --pWeightFrom;
+            size_t * pOccurrencesTo = nullptr;
+            if(nullptr != pOccurrencesFrom) {
+               EBM_ASSERT(cSubsetSamples <= cIncludedSamples);
+               pOccurrencesTo = static_cast<size_t *>(AlignedAlloc(sizeof(size_t) * cSubsetSamples));
+               if(nullptr == pOccurrencesTo) {
+                  LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags nullptr == aCountOccurrences");
+                  free(aOccurrencesFrom);
+                  return Error_OutOfMemory;
+               }
+               pInnerBag->m_aCountOccurrences = pOccurrencesTo;
             }
 
-            const FloatFast weight = *pWeightFrom;
-            ++pWeightFrom;
-
+            const FloatFast * const pWeightsToEnd = pWeightTo + cSubsetSamples;
             do {
+               if(BagEbm { 0 } == replication) {
+                  replication = 1;
+                  if(nullptr != pSampleReplication) {
+                     bool isItemValidation;
+                     do {
+                        do {
+                           replication = *pSampleReplication;
+                           ++pSampleReplication;
+                           ++pWeightFrom;
+                        } while(BagEbm { 0 } == replication);
+                        isItemValidation = replication < BagEbm { 0 };
+                     } while(isLoopValidation != isItemValidation);
+                     --pWeightFrom;
+                  }
+
+                  weight = *pWeightFrom;
+                  ++pWeightFrom;
+               }
+
                FloatFast result = weight;
                if(nullptr != pOccurrencesFrom) {
+                  EBM_ASSERT(nullptr != pOccurrencesTo);
                   const size_t cOccurrences = *pOccurrencesFrom;
                   ++pOccurrencesFrom;
 
@@ -840,57 +846,21 @@ ErrorEbm DataSetBoosting::InitBags(
                   ++pOccurrencesTo;
 
                   result *= static_cast<FloatFast>(cOccurrences);
+               } else {
+                  EBM_ASSERT(nullptr == pOccurrencesTo);
                }
 
                *pWeightTo = result;
                ++pWeightTo;
 
-               if(pWeightsToEnd == pWeightTo) {
-                  total += AddPositiveFloatsSafe<double>(pSubset->GetCountSamples(), pInnerBag->m_aWeights);
-
-                  ++pSubset;
-                  if(pSubsetsEnd == pSubset) {
-                     EBM_ASSERT(replication == direction);
-                     goto next_bag;
-                  }
-
-                  EBM_ASSERT(nullptr != pSubset->m_aInnerBags);
-                  pInnerBag = &pSubset->m_aInnerBags[iBag];
-
-                  const size_t cSubsetSamples = pSubset->GetCountSamples();
-                  EBM_ASSERT(1 <= cSubsetSamples);
-
-                  if(IsMultiplyError(sizeof(FloatFast), cSubsetSamples)) {
-                     LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags IsMultiplyError(sizeof(FloatFast), cSubsetSamples)");
-                     free(aOccurrencesFrom);
-                     return Error_OutOfMemory;
-                  }
-                  pWeightTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSubsetSamples));
-                  if(nullptr == pWeightTo) {
-                     LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags nullptr == pWeightsInternal");
-                     free(aOccurrencesFrom);
-                     return Error_OutOfMemory;
-                  }
-                  pInnerBag->m_aWeights = pWeightTo;
-
-                  if(nullptr != pOccurrencesFrom) {
-                     EBM_ASSERT(cSubsetSamples <= cIncludedSamples);
-                     pOccurrencesTo = static_cast<size_t *>(AlignedAlloc(sizeof(size_t) * cSubsetSamples));
-                     if(nullptr == pOccurrencesTo) {
-                        LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags nullptr == aCountOccurrences");
-                        free(aOccurrencesFrom);
-                        return Error_OutOfMemory;
-                     }
-                     pInnerBag->m_aCountOccurrences = pOccurrencesTo;
-                  }
-
-                  pWeightsToEnd = pWeightTo + cSubsetSamples;
-               }
-
                replication -= direction;
-            } while(BagEbm { 0 } != replication);
-         }
-      next_bag:;
+            } while(pWeightsToEnd != pWeightTo);
+
+            total += AddPositiveFloatsSafe<double>(pSubset->GetCountSamples(), pInnerBag->m_aWeights);
+
+            ++pSubset;
+         } while(pSubsetsEnd != pSubset);
+         EBM_ASSERT(0 == replication);
 
          if(std::isnan(total) || std::isinf(total) || total < std::numeric_limits<double>::min()) {
             LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags std::isnan(total) || std::isinf(total) || total < std::numeric_limits<double>::min()");
@@ -918,6 +888,7 @@ ErrorEbm DataSetBoosting::InitBags(
 
    return Error_None;
 }
+WARNING_POP
 
 ErrorEbm DataSetBoosting::InitDataSetBoosting(
    const bool bAllocateGradients,

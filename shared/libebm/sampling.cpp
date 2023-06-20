@@ -483,8 +483,8 @@ extern bool CheckWeightsEqual(
    const size_t cIncludedSamples
 ) {
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
-   EBM_ASSERT(1 <= cIncludedSamples);
    EBM_ASSERT(nullptr != pWeights);
+   EBM_ASSERT(1 <= cIncludedSamples);
 
    FloatFast firstWeight = std::numeric_limits<FloatFast>::quiet_NaN();
    const bool isLoopValidation = direction < BagEbm { 0 };
