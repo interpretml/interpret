@@ -247,10 +247,10 @@ ErrorEbm InteractionCore::Create(
       }
 
       error = pInteractionCore->m_dataFrame.InitDataSetInteraction(
-         &pInteractionCore->m_objective,
-         cTrainingSamples,
-         cScores,
          bHessian,
+         cScores,
+         cTrainingSamples, // TODO: set this to a number of samples that will not get us in trouble when adding float32 values incrementally
+         &pInteractionCore->m_objective,
          pDataSetShared,
          cSamples,
          aBag,
@@ -273,8 +273,8 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
    const double * const aInitScores
 ) {
    ErrorEbm error = Error_None;
-   const size_t cSetSamples = m_dataFrame.GetCountSamples();
-   if(size_t { 0 } != cSetSamples) {
+   const size_t cIncludedSamples = m_dataFrame.GetCountSamples();
+   if(size_t { 0 } != cIncludedSamples) {
       size_t cSamplesMax = 1;
       DataSubsetInteraction * pSubsetInit = GetDataSetInteraction()->GetSubsets();
       EBM_ASSERT(1 <= GetDataSetInteraction()->GetCountSubsets());

@@ -617,50 +617,50 @@ ErrorEbm BoosterCore::Create(
 
       pBoosterCore->m_cInnerBags = cInnerBags; // this is used to destruct m_trainingSet, so store it first
       error = pBoosterCore->m_trainingSet.InitDataSetBoosting(
-         &pBoosterCore->m_objective,
-         cTrainingSamples, // TODO: reduce these to make multiple sets
-         cScores,
          true,
          bHessian,
          !pBoosterCore->IsRmse(),
          !pBoosterCore->IsRmse(),
+         rng,
+         cScores,
+         cTrainingSamples, // TODO: reduce these to make multiple sets
+         &pBoosterCore->m_objective,
          pDataSetShared,
-         cSamples,
          BagEbm { 1 },
+         cSamples,
          aBag,
          aInitScores,
          cTrainingSamples,
-         rng,
          cInnerBags,
          cWeights,
-         aiTermFeatures,
          cTerms,
-         pBoosterCore->m_apTerms
+         pBoosterCore->m_apTerms,
+         aiTermFeatures
       );
       if(Error_None != error) {
          return error;
       }
 
       error = pBoosterCore->m_validationSet.InitDataSetBoosting(
-         &pBoosterCore->m_objective,
-         cValidationSamples, // TODO: reduce these to make multiple sets
-         cScores,
          pBoosterCore->IsRmse(),
          false,
          !pBoosterCore->IsRmse(),
          !pBoosterCore->IsRmse(),
+         rng,
+         cScores,
+         cValidationSamples, // TODO: reduce these to make multiple sets
+         &pBoosterCore->m_objective,
          pDataSetShared,
-         cSamples,
          BagEbm { -1 },
+         cSamples,
          aBag,
          aInitScores,
          cValidationSamples,
-         rng,
          0,
          cWeights,
-         aiTermFeatures,
          cTerms,
-         pBoosterCore->m_apTerms
+         pBoosterCore->m_apTerms,
+         aiTermFeatures
       );
       if(Error_None != error) {
          return error;

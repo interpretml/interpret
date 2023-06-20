@@ -44,9 +44,9 @@ void DataSubsetInteraction::DestructDataSubsetInteraction(const size_t cFeatures
 }
 
 ErrorEbm DataSetInteraction::InitGradHess(
-   const ObjectiveWrapper * const pObjective,
+   const bool bAllocateHessians,
    const size_t cScores,
-   const bool bAllocateHessians
+   const ObjectiveWrapper * const pObjective
 ) {
    LOG_0(Trace_Info, "Entered DataSetInteraction::InitGradHess");
 
@@ -348,10 +348,10 @@ ErrorEbm DataSetInteraction::InitWeights(
 WARNING_POP
 
 ErrorEbm DataSetInteraction::InitDataSetInteraction(
-   const ObjectiveWrapper * const pObjective,
-   const size_t cSubsetItemsMax,
-   const size_t cScores,
    const bool bAllocateHessians,
+   const size_t cScores,
+   const size_t cSubsetItemsMax,
+   const ObjectiveWrapper * const pObjective,
    const unsigned char * const pDataSetShared,
    const size_t cSharedSamples,
    const BagEbm * const aBag,
@@ -431,9 +431,9 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
       } while(pSubsetsEnd != pSubset);
 
       error = InitGradHess(
-         pObjective,
+         bAllocateHessians,
          cScores,
-         bAllocateHessians
+         pObjective
       );
       if(Error_None != error) {
          return error;

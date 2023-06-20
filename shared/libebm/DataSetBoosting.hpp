@@ -91,25 +91,25 @@ struct DataSetBoosting final {
    }
 
    ErrorEbm InitDataSetBoosting(
-      const ObjectiveWrapper * const pObjective,
-      const size_t cSubsetItemsMax,
-      const size_t cScores,
       const bool bAllocateGradients,
       const bool bAllocateHessians,
       const bool bAllocateSampleScores,
       const bool bAllocateTargetData,
+      void * const rng,
+      const size_t cScores,
+      const size_t cSubsetItemsMax,
+      const ObjectiveWrapper * const pObjective,
       const unsigned char * const pDataSetShared,
-      const size_t cSharedSamples,
       const BagEbm direction,
+      const size_t cSharedSamples,
       const BagEbm * const aBag,
       const double * const aInitScores,
-      const size_t cSetSamples,
-      void * const rng,
+      const size_t cIncludedSamples,
       const size_t cInnerBags,
       const size_t cWeights,
-      const IntEbm * const aiTermFeatures,
       const size_t cTerms,
-      const Term * const * const apTerms
+      const Term * const * const apTerms,
+      const IntEbm * const aiTermFeatures
    );
 
    void DestructDataSetBoosting(const size_t cTerms, const size_t cInnerBags);
@@ -132,9 +132,9 @@ struct DataSetBoosting final {
 private:
 
    ErrorEbm InitGradHess(
-      const ObjectiveWrapper * const pObjective, 
+      const bool bAllocateHessians,
       const size_t cScores,
-      const bool bAllocateHessians
+      const ObjectiveWrapper * const pObjective
    );
 
    ErrorEbm InitSampleScores(
@@ -152,19 +152,19 @@ private:
 
    ErrorEbm InitTermData(
       const unsigned char * const pDataSetShared,
-      const size_t cSharedSamples,
       const BagEbm direction,
+      const size_t cSharedSamples,
       const BagEbm * const aBag,
-      const IntEbm * const aiTermFeatures,
       const size_t cTerms,
-      const Term * const * const apTerms
+      const Term * const * const apTerms,
+      const IntEbm * const aiTermFeatures
    );
 
    ErrorEbm InitBags(
+      void * const rng,
       const unsigned char * const pDataSetShared,
       const BagEbm direction,
       const BagEbm * const aBag,
-      void * const rng,
       const size_t cInnerBags,
       const size_t cWeights
    );
