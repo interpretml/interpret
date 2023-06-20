@@ -24,6 +24,25 @@ extern bool CheckWeightsEqual(
    const size_t cIncludedSamples
 );
 
+void DataSubsetInteraction::DestructDataSubsetInteraction(const size_t cFeatures) {
+   LOG_0(Trace_Info, "Entered DataSubsetInteraction::DestructDataSubsetInteraction");
+
+   AlignedFree(m_aWeights);
+   StorageDataType ** paFeatureData = m_aaFeatureData;
+   if(nullptr != paFeatureData) {
+      EBM_ASSERT(1 <= cFeatures);
+      const StorageDataType * const * const paFeatureDataEnd = paFeatureData + cFeatures;
+      do {
+         AlignedFree(*paFeatureData);
+         ++paFeatureData;
+      } while(paFeatureDataEnd != paFeatureData);
+      free(m_aaFeatureData);
+   }
+   AlignedFree(m_aGradHess);
+
+   LOG_0(Trace_Info, "Exited DataSubsetInteraction::DestructDataSubsetInteraction");
+}
+
 ErrorEbm DataSetInteraction::InitGradHess(
    const ObjectiveWrapper * const pObjective,
    const size_t cScores,
@@ -327,25 +346,6 @@ ErrorEbm DataSetInteraction::InitWeights(
    return Error_None;
 }
 WARNING_POP
-
-void DataSubsetInteraction::DestructDataSubsetInteraction(const size_t cFeatures) {
-   LOG_0(Trace_Info, "Entered DataSubsetInteraction::DestructDataSubsetInteraction");
-
-   AlignedFree(m_aWeights);
-   StorageDataType ** paFeatureData = m_aaFeatureData;
-   if(nullptr != paFeatureData) {
-      EBM_ASSERT(1 <= cFeatures);
-      const StorageDataType * const * const paFeatureDataEnd = paFeatureData + cFeatures;
-      do {
-         AlignedFree(*paFeatureData);
-         ++paFeatureData;
-      } while(paFeatureDataEnd != paFeatureData);
-      free(m_aaFeatureData);
-   }
-   AlignedFree(m_aGradHess);
-
-   LOG_0(Trace_Info, "Exited DataSubsetInteraction::DestructDataSubsetInteraction");
-}
 
 ErrorEbm DataSetInteraction::InitDataSetInteraction(
    const ObjectiveWrapper * const pObjective,

@@ -91,8 +91,8 @@ class BoosterCore final {
       m_cBytesSplitPositions(0),
       m_cBytesTreeNodes(0)
    {
-      m_trainingSet.InitializeUnfailing();
-      m_validationSet.InitializeUnfailing();
+      m_trainingSet.SafeInitDataSetBoosting();
+      m_validationSet.SafeInitDataSetBoosting();
       InitializeObjectiveWrapperUnfailing(&m_objective);
    }
 

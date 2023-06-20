@@ -232,6 +232,7 @@ private:
             return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
          }
       } else {
+         // the validation set will have no gradients or hessians
          static constexpr bool bKeepGradHess = false;
 
          if(EBM_FALSE != pData->m_bCalcMetric) {

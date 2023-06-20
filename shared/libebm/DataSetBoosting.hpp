@@ -5,7 +5,6 @@
 #ifndef DATA_SET_BOOSTING_HPP
 #define DATA_SET_BOOSTING_HPP
 
-#include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "libebm.h" // ErrorEbm
@@ -32,36 +31,32 @@ struct DataSubsetBoosting final {
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   inline void InitializeUnfailing() {
+   inline void SafeInitDataSubsetBoosting() {
       m_cSamples = 0;
-      m_aGradientsAndHessians = nullptr;
+      m_aGradHess = nullptr;
       m_aSampleScores = nullptr;
       m_aTargetData = nullptr;
-      m_aaInputData = nullptr;
+      m_aaTermData = nullptr;
       m_aInnerBags = nullptr;
    }
 
-   void Destruct(const size_t cTerms, const size_t cInnerBags);
+   void DestructDataSubsetBoosting(const size_t cTerms, const size_t cInnerBags);
 
    inline size_t GetCountSamples() const {
       return m_cSamples;
    }
-   inline FloatFast * GetGradientsAndHessiansPointer() {
-      return m_aGradientsAndHessians;
-   }
-   inline const FloatFast * GetGradientsAndHessiansPointer() const {
-      EBM_ASSERT(nullptr != m_aGradientsAndHessians);
-      return m_aGradientsAndHessians;
+   inline FloatFast * GetGradHess() {
+      return m_aGradHess;
    }
    inline FloatFast * GetSampleScores() {
       return m_aSampleScores;
    }
-   inline const void * GetTargetDataPointer() const {
+   inline const void * GetTargetData() const {
       return m_aTargetData;
    }
-   inline const StorageDataType * GetInputDataPointer(const size_t iTerm) const {
-      EBM_ASSERT(nullptr != m_aaInputData);
-      return m_aaInputData[iTerm];
+   inline const StorageDataType * GetTermData(const size_t iTerm) const {
+      EBM_ASSERT(nullptr != m_aaTermData);
+      return m_aaTermData[iTerm];
    }
    inline const InnerBag * GetInnerBag(const size_t iBag) const {
       EBM_ASSERT(nullptr != m_aInnerBags);
@@ -69,19 +64,18 @@ struct DataSubsetBoosting final {
    }
 
 private:
+
    size_t m_cSamples;
-   FloatFast * m_aGradientsAndHessians;
+   FloatFast * m_aGradHess;
    FloatFast * m_aSampleScores;
    void * m_aTargetData;
-   StorageDataType ** m_aaInputData;
+   StorageDataType ** m_aaTermData;
    InnerBag * m_aInnerBags;
 };
 static_assert(std::is_standard_layout<DataSubsetBoosting>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
 static_assert(std::is_trivial<DataSubsetBoosting>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<DataSubsetBoosting>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
 
 struct DataSetBoosting final {
    DataSetBoosting() = default; // preserve our POD status
@@ -89,16 +83,14 @@ struct DataSetBoosting final {
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   inline void InitializeUnfailing() {
+   inline void SafeInitDataSetBoosting() {
       m_cSamples = 0;
       m_cSubsets = 0;
       m_aSubsets = nullptr;
       m_aBagWeightTotals = nullptr;
    }
 
-   void Destruct(const size_t cTerms, const size_t cInnerBags);
-
-   ErrorEbm Initialize(
+   ErrorEbm InitDataSetBoosting(
       const ObjectiveWrapper * const pObjective,
       const size_t cSubsetItemsMax,
       const size_t cScores,
@@ -120,6 +112,8 @@ struct DataSetBoosting final {
       const Term * const * const apTerms
    );
 
+   void DestructDataSetBoosting(const size_t cTerms, const size_t cInnerBags);
+
    inline size_t GetCountSamples() const {
       return m_cSamples;
    }
@@ -137,26 +131,26 @@ struct DataSetBoosting final {
 
 private:
 
-   ErrorEbm InitializeGradientsAndHessians(
+   ErrorEbm InitGradHess(
       const ObjectiveWrapper * const pObjective, 
       const size_t cScores,
       const bool bAllocateHessians
    );
 
-   ErrorEbm InitializeSampleScores(
+   ErrorEbm InitSampleScores(
       const size_t cScores,
       const BagEbm direction,
       const BagEbm * const aBag,
       const double * const aInitScores
    );
 
-   ErrorEbm InitializeTargetData(
+   ErrorEbm InitTargetData(
       const unsigned char * const pDataSetShared,
       const BagEbm direction,
       const BagEbm * const aBag
    );
 
-   ErrorEbm InitializeInputData(
+   ErrorEbm InitTermData(
       const unsigned char * const pDataSetShared,
       const size_t cSharedSamples,
       const BagEbm direction,
@@ -166,7 +160,7 @@ private:
       const Term * const * const apTerms
    );
 
-   ErrorEbm InitializeBags(
+   ErrorEbm InitBags(
       const unsigned char * const pDataSetShared,
       const BagEbm direction,
       const BagEbm * const aBag,
@@ -184,8 +178,6 @@ static_assert(std::is_standard_layout<DataSetBoosting>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
 static_assert(std::is_trivial<DataSetBoosting>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<DataSetBoosting>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
 
 } // DEFINED_ZONE_NAME
 

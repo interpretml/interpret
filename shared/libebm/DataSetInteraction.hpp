@@ -28,14 +28,14 @@ struct DataSubsetInteraction final {
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   void DestructDataSubsetInteraction(const size_t cFeatures);
-
    inline void SafeInitDataSubsetInteraction() {
       m_cSamples = 0;
       m_aGradHess = nullptr;
       m_aaFeatureData = nullptr;
       m_aWeights = nullptr;
    }
+
+   void DestructDataSubsetInteraction(const size_t cFeatures);
 
    inline size_t GetCountSamples() const {
       return m_cSamples;
@@ -78,8 +78,6 @@ struct DataSetInteraction final {
       m_weightTotal = 0.0;
    }
 
-   void DestructDataSetInteraction(const size_t cFeatures);
-
    ErrorEbm InitDataSetInteraction(
       const ObjectiveWrapper * const pObjective,
       const size_t cSubsetItemsMax,
@@ -92,6 +90,8 @@ struct DataSetInteraction final {
       const size_t cWeights,
       const size_t cFeatures
    );
+
+   void DestructDataSetInteraction(const size_t cFeatures);
 
    inline size_t GetCountSamples() const {
       return m_cSamples;

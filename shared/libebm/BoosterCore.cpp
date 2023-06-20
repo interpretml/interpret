@@ -121,8 +121,8 @@ ErrorEbm BoosterCore::InitializeTensors(
 BoosterCore::~BoosterCore() {
    // this only gets called after our reference count has been decremented to zero
 
-   m_trainingSet.Destruct(m_cTerms, m_cInnerBags);
-   m_validationSet.Destruct(m_cTerms, 0);
+   m_trainingSet.DestructDataSetBoosting(m_cTerms, m_cInnerBags);
+   m_validationSet.DestructDataSetBoosting(m_cTerms, 0);
 
    Term::FreeTerms(m_cTerms, m_apTerms);
 
@@ -616,7 +616,7 @@ ErrorEbm BoosterCore::Create(
       }
 
       pBoosterCore->m_cInnerBags = cInnerBags; // this is used to destruct m_trainingSet, so store it first
-      error = pBoosterCore->m_trainingSet.Initialize(
+      error = pBoosterCore->m_trainingSet.InitDataSetBoosting(
          &pBoosterCore->m_objective,
          cTrainingSamples, // TODO: reduce these to make multiple sets
          cScores,
@@ -641,7 +641,7 @@ ErrorEbm BoosterCore::Create(
          return error;
       }
 
-      error = pBoosterCore->m_validationSet.Initialize(
+      error = pBoosterCore->m_validationSet.InitDataSetBoosting(
          &pBoosterCore->m_objective,
          cValidationSamples, // TODO: reduce these to make multiple sets
          cScores,
@@ -703,10 +703,10 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
       data.m_aUpdateTensorScores = aUpdateScores;
       data.m_cSamples = pSubset->GetCountSamples();
       data.m_aPacked = nullptr;
-      data.m_aTargets = pSubset->GetTargetDataPointer();
+      data.m_aTargets = pSubset->GetTargetData();
       data.m_aWeights = nullptr;
       data.m_aSampleScores = pSubset->GetSampleScores();
-      data.m_aGradientsAndHessians = pSubset->GetGradientsAndHessiansPointer();
+      data.m_aGradientsAndHessians = pSubset->GetGradHess();
       error = ObjectiveApplyUpdate(&data);
       if(Error_None != error) {
          return error;
