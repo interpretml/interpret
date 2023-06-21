@@ -18,6 +18,18 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+// This maximum is chosen for 2 reasons:
+//   1) We use float32 in many places for speed. float32 values have exact representations for lower integers
+//      but this property breaks down at 2^24. If you add 1.0 to a float32 it will stop incrementing at 2^24
+//      which is a problem for us when we're adding items in a loop. By breaking the data into larger subsets
+//      we can sidestep this problem. If we were only adding 1.0 each time we could go all the way to 2^24 within
+//      a subset, but if sample weights are specified we can be adding non-integer values. We don't want to skew
+//      our results, so keep the size of the subsets limited such that the later float32 values we add will only
+//      get skewed by 1/128.
+//   2) We want to store integer counts in uint32_t integers to match the size of our float32 values. uint32 values
+//      have a maximum of 2^32, which is much lower than the 2^24/128 that we've set for the float considerations.
+static constexpr size_t k_cSubsetSamplesMax = REPRESENTABLE_INT32_AS_FLOAT32_MAX / 128;
+
 inline constexpr static bool IsRegression(const ptrdiff_t cClasses) noexcept {
    return ptrdiff_t { OutputType_Regression } == cClasses;
 }

@@ -33,6 +33,7 @@ struct DataSubsetBoosting final {
 
    inline void SafeInitDataSubsetBoosting() {
       m_cSamples = 0;
+      m_pObjective = nullptr;
       m_aGradHess = nullptr;
       m_aSampleScores = nullptr;
       m_aTargetData = nullptr;
@@ -44,6 +45,13 @@ struct DataSubsetBoosting final {
 
    inline size_t GetCountSamples() const {
       return m_cSamples;
+   }
+   inline ErrorEbm ObjectiveApplyUpdate(ApplyUpdateBridge * const pData) {
+      EBM_ASSERT(nullptr != pData);
+      EBM_ASSERT(nullptr != m_pObjective);
+      EBM_ASSERT(nullptr != m_pObjective->m_pApplyUpdateC);
+      EBM_ASSERT(0 == m_cSamples % m_pObjective->m_cSIMDPack);
+      return (*m_pObjective->m_pApplyUpdateC)(m_pObjective, pData);
    }
    inline FloatFast * GetGradHess() {
       return m_aGradHess;
@@ -66,6 +74,7 @@ struct DataSubsetBoosting final {
 private:
 
    size_t m_cSamples;
+   const ObjectiveWrapper * m_pObjective;
    FloatFast * m_aGradHess;
    FloatFast * m_aSampleScores;
    void * m_aTargetData;
@@ -98,7 +107,8 @@ struct DataSetBoosting final {
       void * const rng,
       const size_t cScores,
       const size_t cSubsetItemsMax,
-      const ObjectiveWrapper * const pObjective,
+      const ObjectiveWrapper * const pObjectiveCpu,
+      const ObjectiveWrapper * const pObjectiveSIMD,
       const unsigned char * const pDataSetShared,
       const BagEbm direction,
       const size_t cSharedSamples,
@@ -133,8 +143,7 @@ private:
 
    ErrorEbm InitGradHess(
       const bool bAllocateHessians,
-      const size_t cScores,
-      const ObjectiveWrapper * const pObjective
+      const size_t cScores
    );
 
    ErrorEbm InitSampleScores(

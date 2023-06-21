@@ -30,6 +30,7 @@ struct DataSubsetInteraction final {
 
    inline void SafeInitDataSubsetInteraction() {
       m_cSamples = 0;
+      m_pObjective = nullptr;
       m_aGradHess = nullptr;
       m_aaFeatureData = nullptr;
       m_aWeights = nullptr;
@@ -39,6 +40,13 @@ struct DataSubsetInteraction final {
 
    inline size_t GetCountSamples() const {
       return m_cSamples;
+   }
+   inline ErrorEbm ObjectiveApplyUpdate(ApplyUpdateBridge * const pData) {
+      EBM_ASSERT(nullptr != pData);
+      EBM_ASSERT(nullptr != m_pObjective);
+      EBM_ASSERT(nullptr != m_pObjective->m_pApplyUpdateC);
+      EBM_ASSERT(0 == m_cSamples % m_pObjective->m_cSIMDPack);
+      return (*m_pObjective->m_pApplyUpdateC)(m_pObjective, pData);
    }
    inline FloatFast * GetGradHess() {
       EBM_ASSERT(nullptr != m_aGradHess);
@@ -55,6 +63,7 @@ struct DataSubsetInteraction final {
 private:
 
    size_t m_cSamples;
+   const ObjectiveWrapper * m_pObjective;
    FloatFast * m_aGradHess;
    StorageDataType ** m_aaFeatureData;
    FloatFast * m_aWeights;
@@ -82,7 +91,8 @@ struct DataSetInteraction final {
       const bool bAllocateHessians,
       const size_t cScores,
       const size_t cSubsetItemsMax,
-      const ObjectiveWrapper * const pObjective,
+      const ObjectiveWrapper * const pObjectiveCpu,
+      const ObjectiveWrapper * const pObjectiveSIMD,
       const unsigned char * const pDataSetShared,
       const size_t cSharedSamples,
       const BagEbm * const aBag,
@@ -111,8 +121,7 @@ private:
 
    ErrorEbm InitGradHess(
       const bool bAllocateHessians,
-      const size_t cScores,
-      const ObjectiveWrapper * const pObjective
+      const size_t cScores
    );
 
    ErrorEbm InitFeatureData(

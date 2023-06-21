@@ -38,14 +38,16 @@ class InteractionCore final {
 
    DataSetInteraction m_dataFrame;
 
-   ObjectiveWrapper m_objective;
+   ObjectiveWrapper m_objectiveCpu;
+   ObjectiveWrapper m_objectiveSIMD;
 
    inline ~InteractionCore() {
       // this only gets called after our reference count has been decremented to zero
 
       m_dataFrame.DestructDataSetInteraction(m_cFeatures);
       free(m_aFeatures);
-      FreeObjectiveWrapperInternals(&m_objective);
+      FreeObjectiveWrapperInternals(&m_objectiveCpu);
+      FreeObjectiveWrapperInternals(&m_objectiveSIMD);
    };
 
    inline InteractionCore() noexcept :
@@ -55,7 +57,8 @@ class InteractionCore final {
       m_aFeatures(nullptr)
    {
       m_dataFrame.SafeInitDataSetInteraction();
-      InitializeObjectiveWrapperUnfailing(&m_objective);
+      InitializeObjectiveWrapperUnfailing(&m_objectiveCpu);
+      InitializeObjectiveWrapperUnfailing(&m_objectiveSIMD);
    }
 
 public:
@@ -102,36 +105,41 @@ public:
       const double * const aInitScores
    );
 
-   inline ErrorEbm ObjectiveApplyUpdate(ApplyUpdateBridge * const pData) {
-      return (*m_objective.m_pApplyUpdateC)(&m_objective, pData);
-   }
-
    inline BoolEbm CheckTargets(const size_t c, const void * const aTargets) const noexcept {
-      return (*m_objective.m_pCheckTargetsC)(&m_objective, c, aTargets);
+      EBM_ASSERT(nullptr != aTargets);
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pCheckTargetsC);
+      return (*m_objectiveCpu.m_pCheckTargetsC)(&m_objectiveCpu, c, aTargets);
    }
 
    inline bool IsRmse() {
-      return EBM_FALSE != m_objective.m_bRmse;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return EBM_FALSE != m_objectiveCpu.m_bRmse;
    }
 
    inline bool IsHessian() {
-      return EBM_FALSE != m_objective.m_bObjectiveHasHessian;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return EBM_FALSE != m_objectiveCpu.m_bObjectiveHasHessian;
    }
 
    inline double GainAdjustmentGradientBoosting() const noexcept {
-      return m_objective.m_gainAdjustmentGradientBoosting;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return m_objectiveCpu.m_gainAdjustmentGradientBoosting;
    }
 
    inline double GainAdjustmentHessianBoosting() const noexcept {
-      return m_objective.m_gainAdjustmentHessianBoosting;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return m_objectiveCpu.m_gainAdjustmentHessianBoosting;
    }
 
    inline double GradientConstant() {
-      return m_objective.m_gradientConstant;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return m_objectiveCpu.m_gradientConstant;
    }
 
    inline double HessianConstant() {
-      return m_objective.m_hessianConstant;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return m_objectiveCpu.m_hessianConstant;
    }
 };
 

@@ -82,16 +82,36 @@ struct ObjectiveWrapper {
    BoolEbm m_bObjectiveHasHessian;
    BoolEbm m_bRmse;
 
+   size_t m_cSIMDPack;
+
    // TODO: use these values to change the bit packing and float arrays passed into our functions
-   size_t cFloatBytes; // the type FloatExceed is guaranteed to be able to hold any value of this size
-   size_t cUIntBytes; // the type UIntExceed is guaranteed to be able to hold any value of this size
+   size_t m_cFloatBytes; // the type FloatExceed is guaranteed to be able to hold any value of this size
+   size_t m_cUIntBytes; // the type UIntExceed is guaranteed to be able to hold any value of this size
 
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface
    void * m_pFunctionPointersCpp;
 };
 
 inline static void InitializeObjectiveWrapperUnfailing(ObjectiveWrapper * const pObjectiveWrapper) {
+   pObjectiveWrapper->m_pApplyUpdateC = NULL;
+   pObjectiveWrapper->m_pFinishMetricC = NULL;
+   pObjectiveWrapper->m_pCheckTargetsC = NULL;
    pObjectiveWrapper->m_pObjective = NULL;
+   pObjectiveWrapper->m_bMaximizeMetric = EBM_FALSE;
+   pObjectiveWrapper->m_linkFunction = Link_ERROR;
+   pObjectiveWrapper->m_linkParam = 0.0;
+   pObjectiveWrapper->m_learningRateAdjustmentDifferentialPrivacy = 0.0;
+   pObjectiveWrapper->m_learningRateAdjustmentGradientBoosting = 0.0;
+   pObjectiveWrapper->m_learningRateAdjustmentHessianBoosting = 0.0;
+   pObjectiveWrapper->m_gainAdjustmentGradientBoosting = 0.0;
+   pObjectiveWrapper->m_gainAdjustmentHessianBoosting = 0.0;
+   pObjectiveWrapper->m_gradientConstant = 0.0;
+   pObjectiveWrapper->m_hessianConstant = 0.0;
+   pObjectiveWrapper->m_bObjectiveHasHessian = EBM_FALSE;
+   pObjectiveWrapper->m_bRmse = EBM_FALSE;
+   pObjectiveWrapper->m_cSIMDPack = 0;
+   pObjectiveWrapper->m_cFloatBytes = 0;
+   pObjectiveWrapper->m_cUIntBytes = 0;
    pObjectiveWrapper->m_pFunctionPointersCpp = NULL;
 }
 

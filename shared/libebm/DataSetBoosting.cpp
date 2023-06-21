@@ -56,24 +56,13 @@ void DataSubsetBoosting::DestructDataSubsetBoosting(const size_t cTerms, const s
 
 ErrorEbm DataSetBoosting::InitGradHess(
    const bool bAllocateHessians,
-   const size_t cScores,
-   const ObjectiveWrapper * const pObjective
+   const size_t cScores
 ) {
    LOG_0(Trace_Info, "Entered DataSetBoosting::InitGradHess");
 
-   UNUSED(pObjective);
-
    EBM_ASSERT(1 <= cScores);
-   EBM_ASSERT(nullptr != pObjective);
 
    const size_t cStorageItems = bAllocateHessians ? size_t { 2 } : size_t { 1 };
-
-   EBM_ASSERT(sizeof(FloatFast) == pObjective->cFloatBytes); // TODO: add this check elsewhere that FloatFast is used
-   if(IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)) {
-      LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitGradHess IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)");
-      return Error_OutOfMemory;
-   }
-   const size_t cElementBytes = sizeof(FloatFast) * cStorageItems * cScores;
 
    DataSubsetBoosting * pSubset = m_aSubsets;
    const DataSubsetBoosting * const pSubsetsEnd = pSubset + m_cSubsets;
@@ -81,11 +70,13 @@ ErrorEbm DataSetBoosting::InitGradHess(
       const size_t cSubsetSamples = pSubset->m_cSamples;
       EBM_ASSERT(1 <= cSubsetSamples);
 
-      if(IsMultiplyError(cElementBytes, cSubsetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitGradHess IsMultiplyError(cElementBytes, cSubsetSamples)");
+      EBM_ASSERT(nullptr != pSubset->m_pObjective);
+      EBM_ASSERT(sizeof(FloatFast) == pSubset->m_pObjective->m_cFloatBytes); // TODO: add this check elsewhere that FloatFast is used
+      if(IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores, cSubsetSamples)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitGradHess IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores, cSubsetSamples)");
          return Error_OutOfMemory;
       }
-      const size_t cBytesGradHess = cElementBytes * cSubsetSamples;
+      const size_t cBytesGradHess = sizeof(FloatFast) * cStorageItems * cScores * cSubsetSamples;
       ANALYSIS_ASSERT(0 != cBytesGradHess);
 
       FloatFast * const aGradHess = static_cast<FloatFast *>(AlignedAlloc(cBytesGradHess));
@@ -878,7 +869,8 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
    void * const rng,
    const size_t cScores,
    const size_t cSubsetItemsMax,
-   const ObjectiveWrapper * const pObjective,
+   const ObjectiveWrapper * const pObjectiveCpu,
+   const ObjectiveWrapper * const pObjectiveSIMD,
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
    const size_t cSharedSamples,
@@ -896,7 +888,12 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
    ErrorEbm error;
 
    EBM_ASSERT(1 <= cScores);
-   EBM_ASSERT(nullptr != pObjective);
+   EBM_ASSERT(1 <= cSubsetItemsMax);
+   EBM_ASSERT(nullptr != pObjectiveCpu);
+   EBM_ASSERT(nullptr != pObjectiveCpu->m_pObjective);
+   EBM_ASSERT(1 == pObjectiveCpu->m_cSIMDPack);
+   EBM_ASSERT(nullptr != pObjectiveSIMD);
+   EBM_ASSERT(nullptr == pObjectiveSIMD->m_pObjective || 2 <= pObjectiveSIMD->m_cSIMDPack);
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
 
@@ -910,14 +907,25 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
 
       m_cSamples = cIncludedSamples;
 
-      // TODO: add this check elsewhere that StorageDataType is used
-      EBM_ASSERT(sizeof(StorageDataType) == pObjective->cUIntBytes);
-      if(IsMultiplyError(sizeof(StorageDataType *), cTerms)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting IsMultiplyError(sizeof(StorageDataType *), cTerms)");
-         return Error_OutOfMemory;
-      }
+      const size_t cSIMDPack = nullptr == pObjectiveSIMD->m_pObjective ? size_t { 0 } : pObjectiveSIMD->m_cSIMDPack;
 
-      const size_t cSubsets = (cIncludedSamples - size_t { 1 }) / cSubsetItemsMax + size_t { 1 };
+      size_t cSubsets = 0;
+      size_t cIncludedSamplesRemainingInit = cIncludedSamples;
+      do {
+         size_t cSubsetSamples = EbmMin(cIncludedSamplesRemainingInit, cSubsetItemsMax);
+
+         if(size_t { 0 } == cSIMDPack || cSubsetSamples < cSIMDPack) {
+            // these remaing items cannot be processed with the SIMD compute, so they go into the CPU compute
+         } else {
+            // drop any items which cannot fit into the SIMD pack
+            cSubsetSamples = cSubsetSamples - cSubsetSamples % cSIMDPack;
+         }
+         ++cSubsets;
+         EBM_ASSERT(1 <= cSubsetSamples);
+         EBM_ASSERT(cSubsetSamples <= cIncludedSamplesRemainingInit);
+         cIncludedSamplesRemainingInit -= cSubsetSamples;
+      } while(size_t { 0 } != cIncludedSamplesRemainingInit);
+      EBM_ASSERT(1 <= cSubsets);
 
       if(IsMultiplyError(sizeof(DataSubsetBoosting), cSubsets)) {
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting IsMultiplyError(sizeof(DataSubsetBoosting), cSubsets)");
@@ -931,7 +939,6 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
       m_aSubsets = pSubset;
       m_cSubsets = cSubsets;
 
-      EBM_ASSERT(1 <= cSubsets);
       const DataSubsetBoosting * const pSubsetsEnd = pSubset + cSubsets;
 
       DataSubsetBoosting * pSubsetInit = pSubset;
@@ -942,13 +949,33 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
 
       size_t cIncludedSamplesRemaining = cIncludedSamples;
       do {
-         const size_t cSubsetSamples = cIncludedSamplesRemaining <= cSubsetItemsMax ? cIncludedSamplesRemaining : cSubsetItemsMax;
+         EBM_ASSERT(1 <= cIncludedSamplesRemaining);
+
+         size_t cSubsetSamples = EbmMin(cIncludedSamplesRemaining, cSubsetItemsMax);
+
+         if(size_t { 0 } == cSIMDPack || cSubsetSamples < cSIMDPack) {
+            // these remaing items cannot be processed with the SIMD compute, so they go into the CPU compute
+            pSubset->m_pObjective = pObjectiveCpu;
+         } else {
+            // drop any items which cannot fit into the SIMD pack
+            cSubsetSamples = cSubsetSamples - cSubsetSamples % cSIMDPack;
+            pSubset->m_pObjective = pObjectiveSIMD;
+         }
+         EBM_ASSERT(nullptr != pSubset->m_pObjective->m_pObjective);
          EBM_ASSERT(1 <= cSubsetSamples);
+         EBM_ASSERT(0 == cSubsetSamples % pSubset->m_pObjective->m_cSIMDPack);
+         EBM_ASSERT(cSubsetSamples <= cIncludedSamplesRemaining);
+         cIncludedSamplesRemaining -= cSubsetSamples;
+
          pSubset->m_cSamples = cSubsetSamples;
 
-         cIncludedSamplesRemaining -= cSubsetItemsMax; // this will overflow on last loop, but that's ok
-
          if(0 != cTerms) {
+            // TODO: add this check elsewhere that StorageDataType is used
+            EBM_ASSERT(sizeof(StorageDataType) == pSubset->m_pObjective->m_cUIntBytes);
+            if(IsMultiplyError(sizeof(StorageDataType *), cTerms)) {
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting IsMultiplyError(sizeof(StorageDataType *), cTerms)");
+               return Error_OutOfMemory;
+            }
             StorageDataType ** paTermData = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cTerms));
             if(nullptr == paTermData) {
                LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting nullptr == paTermData");
@@ -972,9 +999,10 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
 
          ++pSubset;
       } while(pSubsetsEnd != pSubset);
+      EBM_ASSERT(0 == cIncludedSamplesRemaining);
 
       if(bAllocateGradients) {
-         error = InitGradHess(bAllocateHessians, cScores, pObjective);
+         error = InitGradHess(bAllocateHessians, cScores);
          if(Error_None != error) {
             return error;
          }

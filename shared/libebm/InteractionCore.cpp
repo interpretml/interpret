@@ -213,14 +213,14 @@ ErrorEbm InteractionCore::Create(
       Config config;
       config.cOutputs = cScores;
       config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
-      error = GetObjective(&config, sObjective, &pInteractionCore->m_objective);
+      error = GetObjective(&config, sObjective, &pInteractionCore->m_objectiveCpu);
       if(Error_None != error) {
          // already logged
          return error;
       }
       LOG_0(Trace_Info, "INFO InteractionCore::Create Objective determined");
 
-      const OutputType outputType = GetOutputType(pInteractionCore->m_objective.m_linkFunction);
+      const OutputType outputType = GetOutputType(pInteractionCore->m_objectiveCpu.m_linkFunction);
       if(IsClassification(cClasses)) {
          if(outputType < OutputType_GeneralClassification) {
             LOG_0(Trace_Error, "ERROR InteractionCore::Create mismatch in objective class model type");
@@ -249,8 +249,9 @@ ErrorEbm InteractionCore::Create(
       error = pInteractionCore->m_dataFrame.InitDataSetInteraction(
          bHessian,
          cScores,
-         cTrainingSamples, // TODO: set this to a number of samples that will not get us in trouble when adding float32 values incrementally
-         &pInteractionCore->m_objective,
+         SIZE_MAX, // TODO: use k_cSubsetSamplesMax (and also use k_cSubsetSamplesMax everywhere else too)
+         &pInteractionCore->m_objectiveCpu,
+         &pInteractionCore->m_objectiveSIMD,
          pDataSetShared,
          cSamples,
          aBag,
@@ -425,7 +426,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             data.m_aGradientsAndHessians = pSubset->GetGradHess();
             // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
             // reuse the same code that we use for boosting in order to generate our gradients and hessians
-            error = ObjectiveApplyUpdate(&data);
+            error = pSubset->ObjectiveApplyUpdate(&data);
             if(Error_None != error) {
                goto free_temp;
             }
@@ -515,7 +516,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             data.m_aGradientsAndHessians = pSubset->GetGradHess();
             // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
             // reuse the same code that we use for boosting in order to generate our gradients and hessians
-            error = ObjectiveApplyUpdate(&data);
+            error = pSubset->ObjectiveApplyUpdate(&data);
             if(Error_None != error) {
                goto free_targets;
             }

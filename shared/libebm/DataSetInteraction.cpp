@@ -45,24 +45,13 @@ void DataSubsetInteraction::DestructDataSubsetInteraction(const size_t cFeatures
 
 ErrorEbm DataSetInteraction::InitGradHess(
    const bool bAllocateHessians,
-   const size_t cScores,
-   const ObjectiveWrapper * const pObjective
+   const size_t cScores
 ) {
    LOG_0(Trace_Info, "Entered DataSetInteraction::InitGradHess");
 
-   UNUSED(pObjective);
-
-   EBM_ASSERT(nullptr != pObjective);
    EBM_ASSERT(1 <= cScores);
 
    const size_t cStorageItems = bAllocateHessians ? size_t { 2 } : size_t { 1 };
-
-   EBM_ASSERT(sizeof(FloatFast) == pObjective->cFloatBytes); // TODO: add this check elsewhere that FloatFast is used
-   if(IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)) {
-      LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitGradHess IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores)");
-      return Error_OutOfMemory;
-   }
-   const size_t cElementBytes = sizeof(FloatFast) * cStorageItems * cScores;
 
    DataSubsetInteraction * pSubset = m_aSubsets;
    const DataSubsetInteraction * const pSubsetsEnd = pSubset + m_cSubsets;
@@ -70,11 +59,13 @@ ErrorEbm DataSetInteraction::InitGradHess(
       const size_t cSubsetSamples = pSubset->m_cSamples;
       EBM_ASSERT(1 <= cSubsetSamples);
 
-      if(IsMultiplyError(cElementBytes, cSubsetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitGradHess IsMultiplyError(cElementBytes, cSubsetSamples)");
+      EBM_ASSERT(nullptr != pSubset->m_pObjective);
+      EBM_ASSERT(sizeof(FloatFast) == pSubset->m_pObjective->m_cFloatBytes); // TODO: add this check elsewhere that FloatFast is used
+      if(IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores, cSubsetSamples)) {
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitGradHess IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores, cSubsetSamples)");
          return Error_OutOfMemory;
       }
-      const size_t cBytesGradHess = cElementBytes * cSubsetSamples;
+      const size_t cBytesGradHess = sizeof(FloatFast) * cStorageItems * cScores * cSubsetSamples;
       ANALYSIS_ASSERT(0 != cBytesGradHess);
 
       FloatFast * const aGradHess = static_cast<FloatFast *>(AlignedAlloc(cBytesGradHess));
@@ -351,7 +342,8 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
    const bool bAllocateHessians,
    const size_t cScores,
    const size_t cSubsetItemsMax,
-   const ObjectiveWrapper * const pObjective,
+   const ObjectiveWrapper * const pObjectiveCpu,
+   const ObjectiveWrapper * const pObjectiveSIMD,
    const unsigned char * const pDataSetShared,
    const size_t cSharedSamples,
    const BagEbm * const aBag,
@@ -359,7 +351,17 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
    const size_t cWeights,
    const size_t cFeatures
 ) {
+   LOG_0(Trace_Info, "Entered DataSetInteraction::InitDataSetInteraction");
+
+   ErrorEbm error;
+
    EBM_ASSERT(1 <= cScores);
+   EBM_ASSERT(1 <= cSubsetItemsMax);
+   EBM_ASSERT(nullptr != pObjectiveCpu);
+   EBM_ASSERT(nullptr != pObjectiveCpu->m_pObjective); // the objective for the CPU zone cannot be null unlike SIMD
+   EBM_ASSERT(1 == pObjectiveCpu->m_cSIMDPack);
+   EBM_ASSERT(nullptr != pObjectiveSIMD);
+   EBM_ASSERT(nullptr == pObjectiveSIMD->m_pObjective || 2 <= pObjectiveSIMD->m_cSIMDPack);
    EBM_ASSERT(nullptr != pDataSetShared);
 
    EBM_ASSERT(0 == m_cSamples);
@@ -367,21 +369,30 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
    EBM_ASSERT(nullptr == m_aSubsets);
    EBM_ASSERT(0.0 == m_weightTotal);
 
-   LOG_0(Trace_Info, "Entered DataSetInteraction::InitDataSetInteraction");
-
-   ErrorEbm error;
-
    if(0 != cIncludedSamples) {
+      EBM_ASSERT(1 <= cSharedSamples);
+
       m_cSamples = cIncludedSamples;
 
-      // TODO: add this check elsewhere that StorageDataType is used
-      EBM_ASSERT(sizeof(StorageDataType) == pObjective->cUIntBytes);
-      if(IsMultiplyError(sizeof(StorageDataType *), cFeatures)) {
-         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitDataSetInteraction IsMultiplyError(sizeof(StorageDataType *), cFeatures)");
-         return Error_OutOfMemory;
-      }
+      const size_t cSIMDPack = nullptr == pObjectiveSIMD->m_pObjective ? size_t { 0 } : pObjectiveSIMD->m_cSIMDPack;
 
-      const size_t cSubsets = (cIncludedSamples - size_t { 1 }) / cSubsetItemsMax + size_t { 1 };
+      size_t cSubsets = 0;
+      size_t cIncludedSamplesRemainingInit = cIncludedSamples;
+      do {
+         size_t cSubsetSamples = EbmMin(cIncludedSamplesRemainingInit, cSubsetItemsMax);
+
+         if(size_t { 0 } == cSIMDPack || cSubsetSamples < cSIMDPack) {
+            // these remaing items cannot be processed with the SIMD compute, so they go into the CPU compute
+         } else {
+            // drop any items which cannot fit into the SIMD pack
+            cSubsetSamples = cSubsetSamples - cSubsetSamples % cSIMDPack;
+         }
+         ++cSubsets;
+         EBM_ASSERT(1 <= cSubsetSamples);
+         EBM_ASSERT(cSubsetSamples <= cIncludedSamplesRemainingInit);
+         cIncludedSamplesRemainingInit -= cSubsetSamples;
+      } while(size_t { 0 } != cIncludedSamplesRemainingInit);
+      EBM_ASSERT(1 <= cSubsets);
 
       if(IsMultiplyError(sizeof(DataSubsetInteraction), cSubsets)) {
          LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitDataSetInteraction IsMultiplyError(sizeof(DataSubsetInteraction), cSubsets)");
@@ -395,7 +406,6 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
       m_aSubsets = pSubset;
       m_cSubsets = cSubsets;
 
-      EBM_ASSERT(1 <= cSubsets);
       const DataSubsetInteraction * const pSubsetsEnd = pSubset + cSubsets;
 
       DataSubsetInteraction * pSubsetInit = pSubset;
@@ -406,34 +416,54 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
 
       size_t cIncludedSamplesRemaining = cIncludedSamples;
       do {
-         const size_t cSubsetSamples = cIncludedSamplesRemaining <= cSubsetItemsMax ? cIncludedSamplesRemaining : cSubsetItemsMax;
+         EBM_ASSERT(1 <= cIncludedSamplesRemaining);
+
+         size_t cSubsetSamples = EbmMin(cIncludedSamplesRemaining, cSubsetItemsMax);
+
+         if(size_t { 0 } == cSIMDPack || cSubsetSamples < cSIMDPack) {
+            // these remaing items cannot be processed with the SIMD compute, so they go into the CPU compute
+            pSubset->m_pObjective = pObjectiveCpu;
+         } else {
+            // drop any items which cannot fit into the SIMD pack
+            cSubsetSamples = cSubsetSamples - cSubsetSamples % cSIMDPack;
+            pSubset->m_pObjective = pObjectiveSIMD;
+         }
+         EBM_ASSERT(nullptr != pSubset->m_pObjective->m_pObjective);
          EBM_ASSERT(1 <= cSubsetSamples);
+         EBM_ASSERT(0 == cSubsetSamples % pSubset->m_pObjective->m_cSIMDPack);
+         EBM_ASSERT(cSubsetSamples <= cIncludedSamplesRemaining);
+         cIncludedSamplesRemaining -= cSubsetSamples;
+
          pSubset->m_cSamples = cSubsetSamples;
 
-         cIncludedSamplesRemaining -= cSubsetItemsMax; // this will overflow on last loop, but that's ok
-
          if(0 != cFeatures) {
-            StorageDataType ** paData = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cFeatures));
-            if(nullptr == paData) {
+            // TODO: add this check elsewhere that StorageDataType is used
+            EBM_ASSERT(sizeof(StorageDataType) == pSubset->m_pObjective->m_cUIntBytes);
+            if(IsMultiplyError(sizeof(StorageDataType *), cFeatures)) {
+               LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitDataSetInteraction IsMultiplyError(sizeof(StorageDataType *), cFeatures)");
+               return Error_OutOfMemory;
+            }
+            StorageDataType ** paFeatureData = static_cast<StorageDataType **>(malloc(sizeof(StorageDataType *) * cFeatures));
+            if(nullptr == paFeatureData) {
                LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitDataSetInteraction nullptr == paData");
                return Error_OutOfMemory;
             }
-            pSubset->m_aaFeatureData = paData;
+            pSubset->m_aaFeatureData = paFeatureData;
 
-            const StorageDataType * const * const paDataEnd = paData + cFeatures;
+            const StorageDataType * const * const paFeatureDataEnd = paFeatureData + cFeatures;
             do {
-               *paData = nullptr;
-               ++paData;
-            } while(paDataEnd != paData);
+               *paFeatureData = nullptr;
+               ++paFeatureData;
+            } while(paFeatureDataEnd != paFeatureData);
          }
 
          ++pSubset;
       } while(pSubsetsEnd != pSubset);
+      EBM_ASSERT(0 == cIncludedSamplesRemaining);
 
       error = InitGradHess(
          bAllocateHessians,
-         cScores,
-         pObjective
+         cScores
       );
       if(Error_None != error) {
          return error;

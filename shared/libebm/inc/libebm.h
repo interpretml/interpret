@@ -135,7 +135,12 @@ typedef struct _InteractionHandle {
 // 9007199254740992 is unsafe if checking as a double.
 // https://stackoverflow.com/questions/1848700/biggest-integer-that-can-be-stored-in-a-double
 // R has a lower maximum index of 4503599627370496 (R_XLEN_T_MAX) probably to store a bit somewhere.
-#define SAFE_FLOAT64_AS_INT64_MAX                  9007199254740991
+#define SAFE_FLOAT64_AS_INT64_MAX                  (9007199254740992 - 1)
+// float32 values have identical considerations. 2^24 is the last float32 value that has an exact integer
+// representation as a float. But the float 2^24 + 1 rounds down to 2^24, so 2^24 - 1 is the last float32 that
+// is safe to assume has a unique integer that represents it
+#define REPRESENTABLE_INT32_AS_FLOAT32_MAX         16777216
+#define SAFE_FLOAT32_AS_INT32_MAX                  (REPRESENTABLE_INT32_AS_FLOAT32_MAX - 1)
 
 // The maximum signed int64 value is 9223372036854775807, but doubles above 9223372036854775295 round in IEEE-754
 // to a number above that, so if we're converting from a float64 to an int64, the maximum safe number is 

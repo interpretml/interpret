@@ -131,7 +131,8 @@ BoosterCore::~BoosterCore() {
    DeleteTensors(m_cTerms, m_apCurrentTermTensors);
    DeleteTensors(m_cTerms, m_apBestTermTensors);
 
-   FreeObjectiveWrapperInternals(&m_objective);
+   FreeObjectiveWrapperInternals(&m_objectiveCpu);
+   FreeObjectiveWrapperInternals(&m_objectiveSIMD);
 };
 
 void BoosterCore::Free(BoosterCore * const pBoosterCore) {
@@ -515,14 +516,14 @@ ErrorEbm BoosterCore::Create(
       Config config;
       config.cOutputs = cScores;
       config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
-      error = GetObjective(&config, sObjective, &pBoosterCore->m_objective);
+      error = GetObjective(&config, sObjective, &pBoosterCore->m_objectiveCpu);
       if (Error_None != error) {
          // already logged
          return error;
       }
       LOG_0(Trace_Info, "INFO BoosterCore::Create Objective determined");
 
-      const OutputType outputType = GetOutputType(pBoosterCore->m_objective.m_linkFunction);
+      const OutputType outputType = GetOutputType(pBoosterCore->m_objectiveCpu.m_linkFunction);
       if(IsClassification(cClasses)) {
          if(outputType < OutputType_GeneralClassification) {
             LOG_0(Trace_Error, "ERROR BoosterCore::Create mismatch in objective class model type");
@@ -623,8 +624,9 @@ ErrorEbm BoosterCore::Create(
          !pBoosterCore->IsRmse(),
          rng,
          cScores,
-         cTrainingSamples, // TODO: reduce these to make multiple sets
-         &pBoosterCore->m_objective,
+         SIZE_MAX, // TODO: use k_cSubsetSamplesMax (and also use k_cSubsetSamplesMax everywhere else too)
+         &pBoosterCore->m_objectiveCpu,
+         &pBoosterCore->m_objectiveSIMD,
          pDataSetShared,
          BagEbm { 1 },
          cSamples,
@@ -648,8 +650,9 @@ ErrorEbm BoosterCore::Create(
          !pBoosterCore->IsRmse(),
          rng,
          cScores,
-         cValidationSamples, // TODO: reduce these to make multiple sets
-         &pBoosterCore->m_objective,
+         SIZE_MAX, // TODO: use k_cSubsetSamplesMax (and also use k_cSubsetSamplesMax everywhere else too)
+         &pBoosterCore->m_objectiveCpu,
+         &pBoosterCore->m_objectiveSIMD,
          pDataSetShared,
          BagEbm { -1 },
          cSamples,
@@ -707,7 +710,7 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
       data.m_aWeights = nullptr;
       data.m_aSampleScores = pSubset->GetSampleScores();
       data.m_aGradientsAndHessians = pSubset->GetGradHess();
-      error = ObjectiveApplyUpdate(&data);
+      error = pSubset->ObjectiveApplyUpdate(&data);
       if(Error_None != error) {
          return error;
       }

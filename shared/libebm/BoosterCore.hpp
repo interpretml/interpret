@@ -62,7 +62,8 @@ class BoosterCore final {
    DataSetBoosting m_trainingSet;
    DataSetBoosting m_validationSet;
 
-   ObjectiveWrapper m_objective;
+   ObjectiveWrapper m_objectiveCpu;
+   ObjectiveWrapper m_objectiveSIMD;
 
    static void DeleteTensors(const size_t cTerms, Tensor ** const apTensors);
 
@@ -93,7 +94,8 @@ class BoosterCore final {
    {
       m_trainingSet.SafeInitDataSetBoosting();
       m_validationSet.SafeInitDataSetBoosting();
-      InitializeObjectiveWrapperUnfailing(&m_objective);
+      InitializeObjectiveWrapperUnfailing(&m_objectiveCpu);
+      InitializeObjectiveWrapperUnfailing(&m_objectiveSIMD);
    }
 
 public:
@@ -183,58 +185,67 @@ public:
       FloatFast * const aUpdateScores
    );
 
-   inline ErrorEbm ObjectiveApplyUpdate(ApplyUpdateBridge * const pData) {
-      return (*m_objective.m_pApplyUpdateC)(&m_objective, pData);
-   }
-
    inline double FinishMetric(const double metricSum) {
-      return (*m_objective.m_pFinishMetricC)(&m_objective, metricSum);
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pFinishMetricC);
+      return (*m_objectiveCpu.m_pFinishMetricC)(&m_objectiveCpu, metricSum);
    }
 
    inline BoolEbm CheckTargets(const size_t c, const void * const aTargets) const noexcept {
-      EBM_ASSERT(nullptr != m_objective.m_pCheckTargetsC);
       EBM_ASSERT(nullptr != aTargets);
-      return (*m_objective.m_pCheckTargetsC)(&m_objective, c, aTargets);
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pCheckTargetsC);
+      return (*m_objectiveCpu.m_pCheckTargetsC)(&m_objectiveCpu, c, aTargets);
    }
 
    inline bool IsRmse() {
-      return EBM_FALSE != m_objective.m_bRmse;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return EBM_FALSE != m_objectiveCpu.m_bRmse;
    }
 
    inline bool IsHessian() {
-      return EBM_FALSE != m_objective.m_bObjectiveHasHessian;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return EBM_FALSE != m_objectiveCpu.m_bObjectiveHasHessian;
    }
 
    inline double LearningRateAdjustmentDifferentialPrivacy() const noexcept {
-      return m_objective.m_learningRateAdjustmentDifferentialPrivacy;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return m_objectiveCpu.m_learningRateAdjustmentDifferentialPrivacy;
    }
 
    inline double LearningRateAdjustmentGradientBoosting() const noexcept {
-      return m_objective.m_learningRateAdjustmentGradientBoosting;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return m_objectiveCpu.m_learningRateAdjustmentGradientBoosting;
    }
 
    inline double LearningRateAdjustmentHessianBoosting() const noexcept {
-      return m_objective.m_learningRateAdjustmentHessianBoosting;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return m_objectiveCpu.m_learningRateAdjustmentHessianBoosting;
    }
 
    inline double GainAdjustmentGradientBoosting() const noexcept {
-      return m_objective.m_gainAdjustmentGradientBoosting;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return m_objectiveCpu.m_gainAdjustmentGradientBoosting;
    }
 
    inline double GainAdjustmentHessianBoosting() const noexcept {
-      return m_objective.m_gainAdjustmentHessianBoosting;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return m_objectiveCpu.m_gainAdjustmentHessianBoosting;
    }
 
    inline double GradientConstant() {
-      return m_objective.m_gradientConstant;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return m_objectiveCpu.m_gradientConstant;
    }
 
    inline double HessianConstant() {
-      return m_objective.m_hessianConstant;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return m_objectiveCpu.m_hessianConstant;
    }
 
    inline BoolEbm MaximizeMetric() {
-      return m_objective.m_bMaximizeMetric;
+      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
+      return m_objectiveCpu.m_bMaximizeMetric;
    }
 };
 
