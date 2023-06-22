@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-
 #include "precompiled_header_cpp.hpp"
 
 #include <stddef.h> // size_t, ptrdiff_t
@@ -12,7 +11,7 @@
 #include "common_c.h" // FloatFast
 #include "zones.h"
 
-#include "ebm_internal.hpp"
+#include "ebm_internal.hpp" //SafeConvertFloat
 
 #include "ebm_stats.hpp"
 #include "dataset_shared.hpp" // GetDataSetSharedTarget
@@ -24,6 +23,15 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+extern bool CheckWeightsEqual(
+   const BagEbm direction,
+   const BagEbm * const aBag,
+   const FloatFast * pWeights,
+   const size_t cIncludedSamples
+);
+
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 extern void InitializeRmseGradientsAndHessiansBoosting(
    const unsigned char * const pDataSetShared,
    const BagEbm direction,
@@ -35,88 +43,91 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
 
    LOG_0(Trace_Info, "Entered InitializeRmseGradientsAndHessiansBoosting");
 
-   ptrdiff_t cRuntimeClasses;
-   const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses);
-   EBM_ASSERT(nullptr != aTargets); // we previously called GetDataSetSharedTarget and got back non-null result
-   EBM_ASSERT(IsRegression(cRuntimeClasses));
-
-   EBM_ASSERT(1 <= pDataSet->GetCountSamples());
-   EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
-   DataSubsetBoosting * pSubset = pDataSet->GetSubsets();
-   EBM_ASSERT(nullptr != pSubset);
-   const DataSubsetBoosting * const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
-
+   EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
+   EBM_ASSERT(nullptr != pDataSet);
 
-   const BagEbm * pSampleReplication = aBag;
-   const bool isLoopValidation = direction < BagEbm { 0 };
-   EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if pSampleReplication is nullptr then we have no validation samples
+   if(size_t { 0 } != pDataSet->GetCountSamples()) {
+      ptrdiff_t cRuntimeClasses;
+      const FloatFast * pTargetData =
+         static_cast<const FloatFast *>(GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses));
+      EBM_ASSERT(nullptr != pTargetData); // we previously called GetDataSetSharedTarget and got back non-null result
+      EBM_ASSERT(IsRegression(cRuntimeClasses));
 
-   const FloatFast * pTargetData = static_cast<const FloatFast *>(aTargets);
-   const double * pInitScore = aInitScores;
+      const BagEbm * pSampleReplication = aBag;
+      const double * pInitScore = aInitScores;
 
-   EBM_ASSERT(1 <= pSubset->GetCountSamples());
-   FloatFast * pGradientAndHessian = pSubset->GetGradHess();
-   EBM_ASSERT(nullptr != pGradientAndHessian);
-   const FloatFast * pGradientAndHessianEnd = pGradientAndHessian + pSubset->GetCountSamples();
+      const bool isLoopValidation = direction < BagEbm { 0 };
+      EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if pSampleReplication is nullptr then we have no validation samples
 
-   while(true) {
-      BagEbm replication = 1;
-      size_t cInitAdvances = 1;
-      if(nullptr != pSampleReplication) {
-         bool isItemValidation;
-         do {
-            do {
-               replication = *pSampleReplication;
-               ++pSampleReplication;
-               ++pTargetData;
-            } while(BagEbm { 0 } == replication);
-            isItemValidation = replication < BagEbm { 0 };
-            ++cInitAdvances;
-         } while(isLoopValidation != isItemValidation);
-         --pTargetData;
-         --cInitAdvances;
-      }
-      const FloatFast data = *pTargetData;
-      ++pTargetData;
+      EBM_ASSERT(1 <= pDataSet->GetCountSamples());
+      EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
+      DataSubsetBoosting * pSubset = pDataSet->GetSubsets();
+      EBM_ASSERT(nullptr != pSubset);
+      const DataSubsetBoosting * const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
 
-      FloatFast initScore = 0;
-      if(nullptr != pInitScore) {
-         pInitScore += cInitAdvances;
-         initScore = SafeConvertFloat<FloatFast>(*(pInitScore - 1));
-      }
-
-      // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 
-      //   from the input data
-
-      // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
-      // There is no need to check it here since we already have graceful detection later for other reasons.
-
-      // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
-      //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
-      FloatFast gradient = EbmStats::ComputeGradientRegressionRmseInit(initScore, data);
+      BagEbm replication = 0;
+      FloatFast gradient;
       do {
-         EBM_ASSERT(pGradientAndHessian < pGradientAndHessianEnd);
-         *pGradientAndHessian = gradient;
-         ++pGradientAndHessian;
+         EBM_ASSERT(1 <= pSubset->GetCountSamples());
+         FloatFast * pGradHess = pSubset->GetGradHess();
+         EBM_ASSERT(nullptr != pGradHess);
+         const FloatFast * const pGradHessEnd = pGradHess + pSubset->GetCountSamples();
 
-         if(pGradientAndHessianEnd == pGradientAndHessian) {
-            ++pSubset;
-            if(pSubsetsEnd == pSubset) {
-               LOG_0(Trace_Info, "Exited InitializeRmseGradientsAndHessiansBoosting");
-               return;
+         do {
+            if(BagEbm { 0 } == replication) {
+               replication = 1;
+               size_t cInitAdvances = 1;
+               if(nullptr != pSampleReplication) {
+                  cInitAdvances = 0;
+                  bool isItemValidation;
+                  do {
+                     do {
+                        replication = *pSampleReplication;
+                        ++pSampleReplication;
+                        ++pTargetData;
+                     } while(BagEbm { 0 } == replication);
+                     isItemValidation = replication < BagEbm { 0 };
+                     ++cInitAdvances;
+                  } while(isLoopValidation != isItemValidation);
+                  --pTargetData;
+               }
+               const FloatFast data = *pTargetData;
+               ++pTargetData;
+
+               FloatFast initScore = 0;
+               if(nullptr != pInitScore) {
+                  pInitScore += cInitAdvances;
+                  initScore = SafeConvertFloat<FloatFast>(pInitScore[-1]);
+               }
+
+               // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 
+               //   from the input data
+
+               // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
+               // There is no need to check it here since we already have graceful detection later for other reasons.
+
+               // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
+               //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
+               gradient = EbmStats::ComputeGradientRegressionRmseInit(initScore, data);
             }
-            EBM_ASSERT(1 <= pSubset->GetCountSamples());
-            pGradientAndHessian = pSubset->GetGradHess();
-            EBM_ASSERT(nullptr != pGradientAndHessian);
-            pGradientAndHessianEnd = pGradientAndHessian + pSubset->GetCountSamples();
-         }
 
-         replication -= direction;
-      } while(BagEbm { 0 } != replication);
+            *pGradHess = gradient;
+            ++pGradHess;
+
+            replication -= direction;
+         } while(pGradHessEnd != pGradHess);
+
+         ++pSubset;
+      } while(pSubsetsEnd != pSubset);
+      EBM_ASSERT(0 == replication);
    }
+   LOG_0(Trace_Info, "Exited InitializeRmseGradientsAndHessiansBoosting");
 }
+WARNING_POP
 
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 extern void InitializeRmseGradientsAndHessiansInteraction(
    const unsigned char * const pDataSetShared,
    const BagEbm * const aBag,
@@ -127,96 +138,102 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
 
    LOG_0(Trace_Info, "Entered InitializeRmseGradientsAndHessiansInteraction");
 
-   ptrdiff_t cRuntimeClasses;
-   const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses);
-   EBM_ASSERT(nullptr != aTargets); // we previously called GetDataSetSharedTarget and got back non-null result
-   EBM_ASSERT(IsRegression(cRuntimeClasses));
+   EBM_ASSERT(nullptr != pDataSetShared);
+   EBM_ASSERT(nullptr != pDataSet);
 
-   EBM_ASSERT(1 <= pDataSet->GetCountSamples());
-   EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
-   DataSubsetInteraction * pSubset = pDataSet->GetSubsets();
-   EBM_ASSERT(nullptr != pSubset);
-   const DataSubsetInteraction * const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
+   size_t cIncludedSamples = pDataSet->GetCountSamples();
+   if(size_t { 0 } != cIncludedSamples) {
+      ptrdiff_t cRuntimeClasses;
+      const FloatFast * pTargetData =
+         static_cast<const FloatFast *>(GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses));
+      EBM_ASSERT(nullptr != pTargetData); // we previously called GetDataSetSharedTarget and got back non-null result
+      EBM_ASSERT(IsRegression(cRuntimeClasses));
 
-   const BagEbm * pSampleReplication = aBag;
-
-   const FloatFast * pTargetData = static_cast<const FloatFast *>(aTargets);
-   const double * pInitScore = aInitScores;
-
-   EBM_ASSERT(1 <= pSubset->GetCountSamples());
-   FloatFast * pGradientAndHessian = pSubset->GetGradHess();
-   EBM_ASSERT(nullptr != pGradientAndHessian);
-   const FloatFast * pGradientAndHessianEnd = pGradientAndHessian + pSubset->GetCountSamples();
-
-   const FloatFast * pWeight = pSubset->GetWeights();
-
-   while(true) {
-      BagEbm replication = 1;
-      size_t cInitAdvances = 1;
-      if(nullptr != pSampleReplication) {
-         do {
-            do {
-               replication = *pSampleReplication;
-               ++pSampleReplication;
-               ++pTargetData;
-            } while(BagEbm { 0 } == replication);
-            ++cInitAdvances;
-         } while(replication < BagEbm { 0 });
-         --pTargetData;
-         --cInitAdvances;
-      }
-      const FloatFast data = *pTargetData;
-      ++pTargetData;
-
-      FloatFast initScore = 0;
-      if(nullptr != pInitScore) {
-         pInitScore += cInitAdvances;
-         initScore = SafeConvertFloat<FloatFast>(*(pInitScore - 1));
+      const FloatFast * pWeight = GetDataSetSharedWeight(pDataSetShared, 0);
+      EBM_ASSERT(nullptr != pWeight);
+      if(CheckWeightsEqual(BagEbm { 1 }, aBag, pWeight, cIncludedSamples)) {
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitWeights all weights identical, so ignoring weights");
+         pWeight = nullptr;
       }
 
-      // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 
-      //   from the input data
+      const BagEbm * pSampleReplication = aBag;
+      const double * pInitScore = aInitScores;
 
-      // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
-      // There is no need to check it here since we already have graceful detection later for other reasons.
+      EBM_ASSERT(1 <= pDataSet->GetCountSamples());
+      EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
+      DataSubsetInteraction * pSubset = pDataSet->GetSubsets();
+      EBM_ASSERT(nullptr != pSubset);
+      const DataSubsetInteraction * const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
 
-      // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
-      //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
-      FloatFast gradient = EbmStats::ComputeGradientRegressionRmseInit(initScore, data);
-
-      if(nullptr != pWeight) {
-         // This is only used during the initialization of interaction detection. For boosting
-         // we currently multiply by the weight during bin summation instead since we use the weight
-         // there to include the inner bagging counts of occurences.
-         // Whether this multiplication happens or not is controlled by the caller by passing in the
-         // weight array or not.
-         gradient *= *pWeight;
-         pWeight += replication;
-      }
+      BagEbm replication = 0;
+      FloatFast gradient;
       do {
-         EBM_ASSERT(pGradientAndHessian < pGradientAndHessianEnd);
-         *pGradientAndHessian = gradient;
-         ++pGradientAndHessian;
+         EBM_ASSERT(1 <= pSubset->GetCountSamples());
+         FloatFast * pGradHess = pSubset->GetGradHess();
+         EBM_ASSERT(nullptr != pGradHess);
+         const FloatFast * const pGradHessEnd = pGradHess + pSubset->GetCountSamples();
 
-         if(pGradientAndHessianEnd == pGradientAndHessian) {
-            ++pSubset;
-            if(pSubsetsEnd == pSubset) {
-               LOG_0(Trace_Info, "Exited InitializeRmseGradientsAndHessiansInteraction");
-               return;
+         EBM_ASSERT(nullptr == pWeight && nullptr == pSubset->GetWeights() ||
+            nullptr != pWeight && nullptr != pSubset->GetWeights());
+         do {
+            if(BagEbm { 0 } == replication) {
+               replication = 1;
+               size_t cInitAdvances = 1;
+               size_t cSharedAdvances = 1;
+               if(nullptr != pSampleReplication) {
+                  cInitAdvances = 0;
+                  cSharedAdvances = 0;
+                  do {
+                     do {
+                        replication = pSampleReplication[cSharedAdvances];
+                        ++cSharedAdvances;
+                     } while(BagEbm { 0 } == replication);
+                     ++cInitAdvances;
+                  } while(replication < BagEbm { 0 });
+                  pSampleReplication += cSharedAdvances;
+               }
+               pTargetData += cSharedAdvances;
+               const FloatFast data = pTargetData[-1];
+
+               FloatFast initScore = 0;
+               if(nullptr != pInitScore) {
+                  pInitScore += cInitAdvances;
+                  initScore = SafeConvertFloat<FloatFast>(pInitScore[-1]);
+               }
+
+               // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 
+               //   from the input data
+
+               // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
+               // There is no need to check it here since we already have graceful detection later for other reasons.
+
+               // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
+               //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
+               gradient = EbmStats::ComputeGradientRegressionRmseInit(initScore, data);
+
+               if(nullptr != pWeight) {
+                  // This is only used during the initialization of interaction detection. For boosting
+                  // we currently multiply by the weight during bin summation instead since we use the weight
+                  // there to include the inner bagging counts of occurences.
+                  // Whether this multiplication happens or not is controlled by the caller by passing in the
+                  // weight array or not.
+                  pWeight += cSharedAdvances;
+                  gradient *= pWeight[-1];
+               }
             }
-            EBM_ASSERT(1 <= pSubset->GetCountSamples());
-            pGradientAndHessian = pSubset->GetGradHess();
-            EBM_ASSERT(nullptr != pGradientAndHessian);
-            pGradientAndHessianEnd = pGradientAndHessian + pSubset->GetCountSamples();
 
-            pWeight = pSubset->GetWeights();
-         }
+            *pGradHess = gradient;
+            ++pGradHess;
 
-         --replication;
-      } while(BagEbm { 0 } != replication);
+            --replication;
+         } while(pGradHessEnd != pGradHess);
+
+         ++pSubset;
+      } while(pSubsetsEnd != pSubset);
+      EBM_ASSERT(0 == replication);
    }
-
    LOG_0(Trace_Info, "Exited InitializeRmseGradientsAndHessiansInteraction");
 }
+WARNING_POP
 
 } // DEFINED_ZONE_NAME

@@ -198,14 +198,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
             return error;
          }
       } else {
-         if(size_t { 0 } != pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
-            InitializeRmseGradientsAndHessiansInteraction(
-               static_cast<const unsigned char *>(dataSet),
-               bag,
-               initScores,
-               pInteractionCore->GetDataSetInteraction()
-            );
-         }
+         InitializeRmseGradientsAndHessiansInteraction(
+            static_cast<const unsigned char *>(dataSet),
+            bag,
+            initScores,
+            pInteractionCore->GetDataSetInteraction()
+         );
       }
    }
 

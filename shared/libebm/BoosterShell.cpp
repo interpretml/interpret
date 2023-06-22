@@ -253,35 +253,29 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
 
    if(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() && ptrdiff_t { 1 } != pBoosterCore->GetCountClasses()) {
       if(!pBoosterCore->IsRmse()) {
-         if(0 != pBoosterCore->GetTrainingSet()->GetCountSamples()) {
-            error = pBoosterCore->InitializeBoosterGradientsAndHessians(
-               pBoosterShell->GetMulticlassMidwayTemp(),
-               pBoosterShell->GetTermUpdate()->GetTensorScoresPointer() // initialized to zero at this point
-            );
-            if(UNLIKELY(Error_None != error)) {
-               BoosterShell::Free(pBoosterShell);
-               return error;
-            }
+         error = pBoosterCore->InitializeBoosterGradientsAndHessians(
+            pBoosterShell->GetMulticlassMidwayTemp(),
+            pBoosterShell->GetTermUpdate()->GetTensorScoresPointer() // initialized to zero at this point
+         );
+         if(UNLIKELY(Error_None != error)) {
+            BoosterShell::Free(pBoosterShell);
+            return error;
          }
       } else {
-         if(0 != pBoosterCore->GetTrainingSet()->GetCountSamples()) {
-            InitializeRmseGradientsAndHessiansBoosting(
-               static_cast<const unsigned char *>(dataSet),
-               BagEbm { 1 },
-               bag,
-               initScores,
-               pBoosterCore->GetTrainingSet()
-            );
-         }
-         if(0 != pBoosterCore->GetValidationSet()->GetCountSamples()) {
-            InitializeRmseGradientsAndHessiansBoosting(
-               static_cast<const unsigned char *>(dataSet),
-               BagEbm { -1 },
-               bag,
-               initScores,
-               pBoosterCore->GetValidationSet()
-            );
-         }
+         InitializeRmseGradientsAndHessiansBoosting(
+            static_cast<const unsigned char *>(dataSet),
+            BagEbm { 1 },
+            bag,
+            initScores,
+            pBoosterCore->GetTrainingSet()
+         );
+         InitializeRmseGradientsAndHessiansBoosting(
+            static_cast<const unsigned char *>(dataSet),
+            BagEbm { -1 },
+            bag,
+            initScores,
+            pBoosterCore->GetValidationSet()
+         );
       }
    }
 

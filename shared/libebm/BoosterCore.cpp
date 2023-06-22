@@ -678,46 +678,46 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
    FloatFast * const aMulticlassMidwayTemp,
    FloatFast * const aUpdateScores
 ) {
-   const size_t cScores = GetCountScores(GetCountClasses());
+   DataSetBoosting * const pDataSet = GetTrainingSet();
+   if(size_t { 0 } != pDataSet->GetCountSamples()) {
+      const size_t cScores = GetCountScores(GetCountClasses());
 
 #ifndef NDEBUG
-   // we should be initted to zero
-   for(size_t iScore = 0; iScore < cScores; ++iScore) {
-      EBM_ASSERT(0 == aUpdateScores[iScore]);
-   }
+      // we should be initted to zero
+      for(size_t iScore = 0; iScore < cScores; ++iScore) {
+         EBM_ASSERT(0 == aUpdateScores[iScore]);
+      }
 #endif // NDEBUG
 
-   ErrorEbm error;
 
-   EBM_ASSERT(1 <= GetTrainingSet()->GetCountSamples());
-   EBM_ASSERT(1 <= GetTrainingSet()->GetCountSubsets());
+      EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
 
-   DataSubsetBoosting * pSubset = GetTrainingSet()->GetSubsets();
-   const DataSubsetBoosting * const pSubsetsEnd = pSubset + GetTrainingSet()->GetCountSubsets();
-   do {
-      EBM_ASSERT(1 <= pSubset->GetCountSamples());
+      DataSubsetBoosting * pSubset = pDataSet->GetSubsets();
+      const DataSubsetBoosting * const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
+      do {
+         EBM_ASSERT(1 <= pSubset->GetCountSamples());
 
-      ApplyUpdateBridge data;
-      data.m_cScores = cScores;
-      data.m_cPack = k_cItemsPerBitPackNone;
-      data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
-      data.m_bCalcMetric = EBM_FALSE;
-      data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
-      data.m_aUpdateTensorScores = aUpdateScores;
-      data.m_cSamples = pSubset->GetCountSamples();
-      data.m_aPacked = nullptr;
-      data.m_aTargets = pSubset->GetTargetData();
-      data.m_aWeights = nullptr;
-      data.m_aSampleScores = pSubset->GetSampleScores();
-      data.m_aGradientsAndHessians = pSubset->GetGradHess();
-      error = pSubset->ObjectiveApplyUpdate(&data);
-      if(Error_None != error) {
-         return error;
-      }
+         ApplyUpdateBridge data;
+         data.m_cScores = cScores;
+         data.m_cPack = k_cItemsPerBitPackNone;
+         data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
+         data.m_bCalcMetric = EBM_FALSE;
+         data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
+         data.m_aUpdateTensorScores = aUpdateScores;
+         data.m_cSamples = pSubset->GetCountSamples();
+         data.m_aPacked = nullptr;
+         data.m_aTargets = pSubset->GetTargetData();
+         data.m_aWeights = nullptr;
+         data.m_aSampleScores = pSubset->GetSampleScores();
+         data.m_aGradientsAndHessians = pSubset->GetGradHess();
+         const ErrorEbm error = pSubset->ObjectiveApplyUpdate(&data);
+         if(Error_None != error) {
+            return error;
+         }
 
-      ++pSubset;
-   } while(pSubsetsEnd != pSubset);
-
+         ++pSubset;
+      } while(pSubsetsEnd != pSubset);
+   }
    return Error_None;
 }
 
