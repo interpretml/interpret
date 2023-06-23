@@ -10,12 +10,17 @@
 static constexpr TestPriority k_filePriority = TestPriority::BoostingUnusualInputs;
 
 TEST_CASE("zero learning rate, boosting, regression") {
-   TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({});
-   test.AddTerms({ {} });
-   test.AddTrainingSamples({ TestSample({}, 10) });
-   test.AddValidationSamples({ TestSample({}, 12) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_Regression,
+      {},
+      { {} },
+      { 
+         TestSample({}, 10) 
+      },
+      { 
+         TestSample({}, 12) 
+      }
+   );
 
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
@@ -33,12 +38,20 @@ TEST_CASE("zero learning rate, boosting, regression") {
 }
 
 TEST_CASE("zero learning rate, boosting, binary") {
-   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-   test.AddFeatures({});
-   test.AddTerms({ {} });
-   test.AddTrainingSamples({ TestSample({}, 0) });
-   test.AddValidationSamples({ TestSample({}, 0) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(OutputType_BinaryClassification,
+      {},
+      { {} },
+      { 
+         TestSample({}, 0) 
+      },
+      { 
+         TestSample({}, 0) 
+      },
+      k_countInnerBagsDefault,
+      EBM_FALSE,
+      nullptr,
+      0
+   );
 
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
@@ -60,12 +73,17 @@ TEST_CASE("zero learning rate, boosting, binary") {
 }
 
 TEST_CASE("zero learning rate, boosting, multiclass") {
-   TestApi test = TestApi(3);
-   test.AddFeatures({});
-   test.AddTerms({ {} });
-   test.AddTrainingSamples({ TestSample({}, 0) });
-   test.AddValidationSamples({ TestSample({}, 0) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      3, 
+      {},
+      { {} },
+      { 
+         TestSample({}, 0) 
+      },
+      { 
+         TestSample({}, 0) 
+      }
+   );
 
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
@@ -91,12 +109,17 @@ TEST_CASE("zero learning rate, boosting, multiclass") {
 }
 
 TEST_CASE("negative learning rate, boosting, regression") {
-   TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({});
-   test.AddTerms({ {} });
-   test.AddTrainingSamples({ TestSample({}, 10) });
-   test.AddValidationSamples({ TestSample({}, 12) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_Regression,
+      {}, 
+      { {} }, 
+      { 
+         TestSample({}, 10) 
+      }, 
+      { 
+         TestSample({}, 12) 
+      }
+   );
 
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
@@ -121,12 +144,21 @@ TEST_CASE("negative learning rate, boosting, regression") {
 }
 
 TEST_CASE("negative learning rate, boosting, binary") {
-   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-   test.AddFeatures({});
-   test.AddTerms({ {} });
-   test.AddTrainingSamples({ TestSample({}, 0) });
-   test.AddValidationSamples({ TestSample({}, 0) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_BinaryClassification,
+      {}, 
+      { {} }, 
+      { 
+         TestSample({}, 0) 
+      }, 
+      { 
+         TestSample({}, 0) 
+      },
+      k_countInnerBagsDefault,
+      EBM_FALSE, 
+      nullptr, 
+      0
+   );
 
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
@@ -158,12 +190,17 @@ TEST_CASE("negative learning rate, boosting, binary") {
 }
 
 TEST_CASE("negative learning rate, boosting, multiclass") {
-   TestApi test = TestApi(3);
-   test.AddFeatures({});
-   test.AddTerms({ {} });
-   test.AddTrainingSamples({ TestSample({}, 0) });
-   test.AddValidationSamples({ TestSample({}, 0) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      3, 
+      {}, 
+      { {} },
+      { 
+         TestSample({}, 0) 
+      }, 
+      { 
+         TestSample({}, 0) 
+      }
+   );
 
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
@@ -200,15 +237,18 @@ TEST_CASE("zero minSamplesLeaf, boosting, regression") {
    // TODO : call test.Boost many more times in a loop, and verify the output remains the same as previous runs
    // TODO : add classification binary and multiclass versions of this
 
-   TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({ FeatureTest(2) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({
-      TestSample({ 0 }, 10),
-      TestSample({ 1 }, 10),
-      });
-   test.AddValidationSamples({ TestSample({ 1 }, 12) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 10),
+         TestSample({ 1 }, 10),
+      }, 
+      { 
+         TestSample({ 1 }, 12) 
+      }
+   );
 
    double validationMetric = test.Boost(0, BoostFlags_Default, k_learningRateDefault, 0).validationMetric;
    CHECK_APPROX(validationMetric, 141.61);
@@ -219,54 +259,59 @@ TEST_CASE("zero minSamplesLeaf, boosting, regression") {
 }
 
 TEST_CASE("weights are proportional, boosting, regression") {
-   TestApi test1 = TestApi(OutputType_Regression);
-   test1.AddFeatures({ FeatureTest(2) });
-   test1.AddTerms({ { 0 } });
-   test1.AddTrainingSamples({
-      TestSample({ 0 }, 10, FloatTickIncrementTest(0.3)),
-      TestSample({ 1 }, 10, 0.3),
-      });
-   test1.AddValidationSamples({ 
-      TestSample({ 1 }, 12, FloatTickIncrementTest(0.3)),
-      TestSample({ 1 }, 12, 0.3)
-      });
-   test1.InitializeBoosting();
+   TestBoost test1 = TestBoost(
+      OutputType_Regression,
+      { FeatureTest(2) },
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 10, FloatTickIncrementTest(0.3)),
+         TestSample({ 1 }, 10, 0.3),
+      }, 
+      { 
+         TestSample({ 1 }, 12, FloatTickIncrementTest(0.3)),
+         TestSample({ 1 }, 12, 0.3)
+      }
+   );
+
    double validationMetric1 = test1.Boost(0).validationMetric;
    double termScore1;
    termScore1 = test1.GetCurrentTermScore(0, { 0 }, 0);
    CHECK_APPROX(termScore1, test1.GetCurrentTermScore(0, { 1 }, 0));
 
 
-   TestApi test2 = TestApi(OutputType_Regression);
-   test2.AddFeatures({ FeatureTest(2) });
-   test2.AddTerms({ { 0 } });
-   test2.AddTrainingSamples({
-      TestSample({ 0 }, 10, FloatTickIncrementTest(2)),
-      TestSample({ 1 }, 10, 2),
-      });
-   test2.AddValidationSamples({ 
-      TestSample({ 1 }, 12, FloatTickIncrementTest(2)),
-      TestSample({ 1 }, 12, 2)
-      });
-   test2.InitializeBoosting();
+   TestBoost test2 = TestBoost(OutputType_Regression, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 10, FloatTickIncrementTest(2)),
+         TestSample({ 1 }, 10, 2),
+      }, 
+      { 
+         TestSample({ 1 }, 12, FloatTickIncrementTest(2)),
+         TestSample({ 1 }, 12, 2)
+      }
+   );
+
    double validationMetric2 = test2.Boost(0).validationMetric;
    double termScore2;
    termScore2 = test2.GetCurrentTermScore(0, { 0 }, 0);
    CHECK_APPROX(termScore2, test2.GetCurrentTermScore(0, { 1 }, 0));
 
 
-   TestApi test3 = TestApi(OutputType_Regression);
-   test3.AddFeatures({ FeatureTest(2) });
-   test3.AddTerms({ { 0 } });
-   test3.AddTrainingSamples({
-      TestSample({ 0 }, 10, 0),
-      TestSample({ 1 }, 10, 0),
-      });
-   test3.AddValidationSamples({ 
-      TestSample({ 1 }, 12, 0),
-      TestSample({ 1 }, 12, 0)
-      });
-   test3.InitializeBoosting();
+   TestBoost test3 = TestBoost(
+      OutputType_Regression,
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 10, 0),
+         TestSample({ 1 }, 10, 0),
+      }, 
+      { 
+         TestSample({ 1 }, 12, 0),
+         TestSample({ 1 }, 12, 0)
+      }
+   );
+
    double validationMetric3 = test3.Boost(0).validationMetric;
    double termScore3;
    termScore3 = test3.GetCurrentTermScore(0, { 0 }, 0);
@@ -280,54 +325,60 @@ TEST_CASE("weights are proportional, boosting, regression") {
 }
 
 TEST_CASE("weights are proportional, boosting, binary") {
-   TestApi test1 = TestApi(OutputType_BinaryClassification);
-   test1.AddFeatures({ FeatureTest(2) });
-   test1.AddTerms({ { 0 } });
-   test1.AddTrainingSamples({
-      TestSample({ 0 }, 0, FloatTickIncrementTest(0.3)),
-      TestSample({ 1 }, 0, 0.3),
-      });
-   test1.AddValidationSamples({ 
-      TestSample({ 1 }, 0, FloatTickIncrementTest(0.3)),
-      TestSample({ 1 }, 0, 0.3)
-      });
-   test1.InitializeBoosting();
+   TestBoost test1 = TestBoost(
+      OutputType_BinaryClassification, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 0, FloatTickIncrementTest(0.3)),
+         TestSample({ 1 }, 0, 0.3),
+      }, 
+      { 
+         TestSample({ 1 }, 0, FloatTickIncrementTest(0.3)),
+         TestSample({ 1 }, 0, 0.3)
+      }
+   );
+
    double validationMetric1 = test1.Boost(0).validationMetric;
    double termScore1;
    termScore1 = test1.GetCurrentTermScore(0, { 0 }, 0);
    CHECK_APPROX(termScore1, test1.GetCurrentTermScore(0, { 1 }, 0));
 
 
-   TestApi test2 = TestApi(OutputType_BinaryClassification);
-   test2.AddFeatures({ FeatureTest(2) });
-   test2.AddTerms({ { 0 } });
-   test2.AddTrainingSamples({
-      TestSample({ 0 }, 1, FloatTickIncrementTest(2)),
-      TestSample({ 1 }, 1, 2),
-      });
-   test2.AddValidationSamples({ 
-      TestSample({ 1 }, 1, FloatTickIncrementTest(2)),
-      TestSample({ 1 }, 1, 2)
-      });
-   test2.InitializeBoosting();
+   TestBoost test2 = TestBoost(
+      OutputType_BinaryClassification, 
+      { FeatureTest(2) },
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 1, FloatTickIncrementTest(2)),
+         TestSample({ 1 }, 1, 2),
+      }, 
+      { 
+         TestSample({ 1 }, 1, FloatTickIncrementTest(2)),
+         TestSample({ 1 }, 1, 2)
+      }
+   );
+
    double validationMetric2 = test2.Boost(0).validationMetric;
    double termScore2;
    termScore2 = test2.GetCurrentTermScore(0, { 0 }, 0);
    CHECK_APPROX(termScore2, test2.GetCurrentTermScore(0, { 1 }, 0));
 
 
-   TestApi test3 = TestApi(OutputType_BinaryClassification);
-   test3.AddFeatures({ FeatureTest(2) });
-   test3.AddTerms({ { 0 } });
-   test3.AddTrainingSamples({
-      TestSample({ 0 }, 0, 0),
-      TestSample({ 1 }, 0, 0),
-      });
-   test3.AddValidationSamples({ 
-      TestSample({ 1 }, 0, 0),
-      TestSample({ 1 }, 0, 0)
-      });
-   test3.InitializeBoosting();
+   TestBoost test3 = TestBoost(
+      OutputType_BinaryClassification, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 0, 0),
+         TestSample({ 1 }, 0, 0),
+      }, 
+      { 
+         TestSample({ 1 }, 0, 0),
+         TestSample({ 1 }, 0, 0)
+      }
+   );
+
    double validationMetric3 = test3.Boost(0).validationMetric;
    double termScore3;
    termScore3 = test3.GetCurrentTermScore(0, { 0 }, 0);
@@ -341,54 +392,60 @@ TEST_CASE("weights are proportional, boosting, binary") {
 }
 
 TEST_CASE("weights are proportional, boosting, multiclass") {
-   TestApi test1 = TestApi(3);
-   test1.AddFeatures({ FeatureTest(2) });
-   test1.AddTerms({ { 0 } });
-   test1.AddTrainingSamples({
-      TestSample({ 0 }, 0, FloatTickIncrementTest(0.3)),
-      TestSample({ 1 }, 0, 0.3),
-      });
-   test1.AddValidationSamples({ 
-      TestSample({ 1 }, 0, FloatTickIncrementTest(0.3)),
-      TestSample({ 1 }, 0, 0.3)
-      });
-   test1.InitializeBoosting();
+   TestBoost test1 = TestBoost(
+      3, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 0, FloatTickIncrementTest(0.3)),
+         TestSample({ 1 }, 0, 0.3),
+      }, 
+      { 
+         TestSample({ 1 }, 0, FloatTickIncrementTest(0.3)),
+         TestSample({ 1 }, 0, 0.3)
+      }
+   );
+
    double validationMetric1 = test1.Boost(0).validationMetric;
    double termScore1;
    termScore1 = test1.GetCurrentTermScore(0, { 0 }, 0);
    CHECK_APPROX(termScore1, test1.GetCurrentTermScore(0, { 1 }, 0));
 
 
-   TestApi test2 = TestApi(3);
-   test2.AddFeatures({ FeatureTest(2) });
-   test2.AddTerms({ { 0 } });
-   test2.AddTrainingSamples({
-      TestSample({ 0 }, 1, FloatTickIncrementTest(2)),
-      TestSample({ 1 }, 1, 2),
-      });
-   test2.AddValidationSamples({ 
-      TestSample({ 1 }, 1, FloatTickIncrementTest(2)),
-      TestSample({ 1 }, 1, 2)
-      });
-   test2.InitializeBoosting();
+   TestBoost test2 = TestBoost(
+      3, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 1, FloatTickIncrementTest(2)),
+         TestSample({ 1 }, 1, 2),
+      }, 
+      { 
+         TestSample({ 1 }, 1, FloatTickIncrementTest(2)),
+         TestSample({ 1 }, 1, 2)
+      }
+   );
+
    double validationMetric2 = test2.Boost(0).validationMetric;
    double termScore2;
    termScore2 = test2.GetCurrentTermScore(0, { 0 }, 1);
    CHECK_APPROX(termScore2, test2.GetCurrentTermScore(0, { 1 }, 1));
 
 
-   TestApi test3 = TestApi(3);
-   test3.AddFeatures({ FeatureTest(2) });
-   test3.AddTerms({ { 0 } });
-   test3.AddTrainingSamples({
-      TestSample({ 0 }, 2, 0),
-      TestSample({ 1 }, 2, 0),
-      });
-   test3.AddValidationSamples({ 
-      TestSample({ 1 }, 2, 0),
-      TestSample({ 1 }, 2, 0)
-      });
-   test3.InitializeBoosting();
+   TestBoost test3 = TestBoost(
+      3, 
+      { FeatureTest(2) }, 
+      { { 0 } },
+      {
+         TestSample({ 0 }, 2, 0),
+         TestSample({ 1 }, 2, 0),
+      }, 
+      { 
+         TestSample({ 1 }, 2, 0),
+         TestSample({ 1 }, 2, 0)
+      }
+   );
+
    double validationMetric3 = test3.Boost(0).validationMetric;
    double termScore3;
    termScore3 = test3.GetCurrentTermScore(0, { 0 }, 2);
@@ -402,37 +459,41 @@ TEST_CASE("weights are proportional, boosting, multiclass") {
 }
 
 TEST_CASE("weights totals equivalence, boosting, regression") {
-   TestApi test1 = TestApi(OutputType_Regression);
-   test1.AddFeatures({ FeatureTest(2) });
-   test1.AddTerms({ { 0 } });
-   test1.AddTrainingSamples({
-      TestSample({ 0 }, 10, 0.15),
-      TestSample({ 0 }, 10, 0.15),
-      TestSample({ 1 }, 12, 1.2),
-      });
-   test1.AddValidationSamples({ 
-      TestSample({ 0 }, 10, 0.6),
-      TestSample({ 1 }, 12, 0.3)
-      });
-   test1.InitializeBoosting();
+   TestBoost test1 = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 10, 0.15),
+         TestSample({ 0 }, 10, 0.15),
+         TestSample({ 1 }, 12, 1.2),
+      }, 
+      { 
+         TestSample({ 0 }, 10, 0.6),
+         TestSample({ 1 }, 12, 0.3)
+      }
+   );
+
    double validationMetric1 = test1.Boost(0).validationMetric;
    double termScore1;
    termScore1 = test1.GetCurrentTermScore(0, { 0 }, 0);
 
 
-   TestApi test2 = TestApi(OutputType_Regression);
-   test2.AddFeatures({ FeatureTest(2) });
-   test2.AddTerms({ { 0 } });
-   test2.AddTrainingSamples({
-      TestSample({ 0 }, 10, 0.5),
-      TestSample({ 1 }, 12, 2),
-      });
-   test2.AddValidationSamples({ 
-      TestSample({ 0 }, 10, 1),
-      TestSample({ 0 }, 10, 1),
-      TestSample({ 1 }, 12, 1)
-      });
-   test2.InitializeBoosting();
+   TestBoost test2 = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 10, 0.5),
+         TestSample({ 1 }, 12, 2),
+      }, 
+      { 
+         TestSample({ 0 }, 10, 1),
+         TestSample({ 0 }, 10, 1),
+         TestSample({ 1 }, 12, 1)
+      }
+   );
+
    double validationMetric2 = test2.Boost(0).validationMetric;
    double termScore2;
    termScore2 = test2.GetCurrentTermScore(0, { 0 }, 0);
@@ -442,37 +503,41 @@ TEST_CASE("weights totals equivalence, boosting, regression") {
 }
 
 TEST_CASE("weights totals equivalence, boosting, binary") {
-   TestApi test1 = TestApi(OutputType_BinaryClassification);
-   test1.AddFeatures({ FeatureTest(2) });
-   test1.AddTerms({ { 0 } });
-   test1.AddTrainingSamples({
-      TestSample({ 0 }, 0, 0.15),
-      TestSample({ 0 }, 0, 0.15),
-      TestSample({ 1 }, 1, 1.2),
-      });
-   test1.AddValidationSamples({ 
-      TestSample({ 0 }, 0, 0.6),
-      TestSample({ 1 }, 1, 0.3)
-      });
-   test1.InitializeBoosting();
+   TestBoost test1 = TestBoost(
+      OutputType_BinaryClassification, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 0, 0.15),
+         TestSample({ 0 }, 0, 0.15),
+         TestSample({ 1 }, 1, 1.2),
+      }, 
+      { 
+         TestSample({ 0 }, 0, 0.6),
+         TestSample({ 1 }, 1, 0.3)
+      }
+   );
+
    double validationMetric1 = test1.Boost(0).validationMetric;
    double termScore1;
    termScore1 = test1.GetCurrentTermScore(0, { 0 }, 1);
 
 
-   TestApi test2 = TestApi(OutputType_BinaryClassification);
-   test2.AddFeatures({ FeatureTest(2) });
-   test2.AddTerms({ { 0 } });
-   test2.AddTrainingSamples({
-      TestSample({ 0 }, 0, 0.5),
-      TestSample({ 1 }, 1, 2),
-      });
-   test2.AddValidationSamples({ 
-      TestSample({ 0 }, 0, 1),
-      TestSample({ 0 }, 0, 1),
-      TestSample({ 1 }, 1, 1)
-      });
-   test2.InitializeBoosting();
+   TestBoost test2 = TestBoost(
+      OutputType_BinaryClassification, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 0, 0.5),
+         TestSample({ 1 }, 1, 2),
+      }, 
+      { 
+         TestSample({ 0 }, 0, 1),
+         TestSample({ 0 }, 0, 1),
+         TestSample({ 1 }, 1, 1)
+      }
+   );
+
    double validationMetric2 = test2.Boost(0).validationMetric;
    double termScore2;
    termScore2 = test2.GetCurrentTermScore(0, { 0 }, 1);
@@ -483,37 +548,41 @@ TEST_CASE("weights totals equivalence, boosting, binary") {
 }
 
 TEST_CASE("weights totals equivalence, boosting, multiclass") {
-   TestApi test1 = TestApi(3);
-   test1.AddFeatures({ FeatureTest(2) });
-   test1.AddTerms({ { 0 } });
-   test1.AddTrainingSamples({
-      TestSample({ 0 }, 0, 0.15),
-      TestSample({ 0 }, 0, 0.15),
-      TestSample({ 1 }, 2, 1.2),
-      });
-   test1.AddValidationSamples({ 
-      TestSample({ 0 }, 0, 0.6),
-      TestSample({ 1 }, 2, 0.3)
-      });
-   test1.InitializeBoosting();
+   TestBoost test1 = TestBoost(
+      3, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 0, 0.15),
+         TestSample({ 0 }, 0, 0.15),
+         TestSample({ 1 }, 2, 1.2),
+      }, 
+      { 
+         TestSample({ 0 }, 0, 0.6),
+         TestSample({ 1 }, 2, 0.3)
+      }
+   );
+
    double validationMetric1 = test1.Boost(0).validationMetric;
    double termScore1;
    termScore1 = test1.GetCurrentTermScore(0, { 0 }, 1);
 
 
-   TestApi test2 = TestApi(3);
-   test2.AddFeatures({ FeatureTest(2) });
-   test2.AddTerms({ { 0 } });
-   test2.AddTrainingSamples({
-      TestSample({ 0 }, 0, 0.5),
-      TestSample({ 1 }, 2, 2),
-      });
-   test2.AddValidationSamples({
-      TestSample({ 0 }, 0, 1),
-      TestSample({ 0 }, 0, 1),
-      TestSample({ 1 }, 2, 1)
-      });
-   test2.InitializeBoosting();
+   TestBoost test2 = TestBoost(
+      3, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 0, 0.5),
+         TestSample({ 1 }, 2, 2),
+      }, 
+      {
+         TestSample({ 0 }, 0, 1),
+         TestSample({ 0 }, 0, 1),
+         TestSample({ 1 }, 2, 1)
+      }
+   );
+
    double validationMetric2 = test2.Boost(0).validationMetric;
    double termScore2;
    termScore2 = test2.GetCurrentTermScore(0, { 0 }, 1);
@@ -530,15 +599,18 @@ TEST_CASE("one leavesMax, boosting, regression") {
       IntEbm { 1 }
    };
 
-   TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({ FeatureTest(2) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({
-      TestSample({ 0 }, 10),
-      TestSample({ 1 }, 10),
-      });
-   test.AddValidationSamples({ TestSample({ 1 }, 12) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 10),
+         TestSample({ 1 }, 10),
+      }, 
+      { 
+         TestSample({ 1 }, 12) 
+      }
+   );
 
    double validationMetric = test.Boost(0, BoostFlags_Default, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax).validationMetric;
    CHECK_APPROX(validationMetric, 141.61);
@@ -549,18 +621,19 @@ TEST_CASE("one leavesMax, boosting, regression") {
 }
 
 TEST_CASE("mono-classification") {
-   TestApi test = TestApi(OutputType_MonoClassification);
-   test.AddFeatures({ FeatureTest(2) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({
-      TestSample({ 0 }, 0),
-      TestSample({ 1 }, 0),
-   });
-   test.AddValidationSamples({ 
-      TestSample({ 1 }, 0), 
-      TestSample({ 0 }, 0),
-   });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_MonoClassification, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 0),
+         TestSample({ 1 }, 0),
+      }, 
+      { 
+         TestSample({ 1 }, 0), 
+         TestSample({ 0 }, 0),
+      }
+   );
 
    ErrorEbm error;
 
@@ -602,12 +675,15 @@ TEST_CASE("mono-classification") {
 }
 
 TEST_CASE("Zero training samples, boosting, regression") {
-   TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({ FeatureTest(2) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({});
-   test.AddValidationSamples({ TestSample({ 1 }, 12) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2) }, 
+      { { 0 } },
+      {}, 
+      { 
+         TestSample({ 1 }, 12) 
+      }
+   );
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       double validationMetric = test.Boost(0).validationMetric;
@@ -620,12 +696,19 @@ TEST_CASE("Zero training samples, boosting, regression") {
 }
 
 TEST_CASE("Zero training samples, boosting, binary") {
-   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-   test.AddFeatures({ FeatureTest(2) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({});
-   test.AddValidationSamples({ TestSample({ 1 }, 0) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_BinaryClassification, 
+      { FeatureTest(2) }, 
+      { { 0 } },
+      {}, 
+      { 
+         TestSample({ 1 }, 0) 
+      },
+      k_countInnerBagsDefault,
+      EBM_FALSE, 
+      nullptr, 
+      0
+   );
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       double validationMetric = test.Boost(0).validationMetric;
@@ -642,12 +725,15 @@ TEST_CASE("Zero training samples, boosting, binary") {
 }
 
 TEST_CASE("Zero training samples, boosting, multiclass") {
-   TestApi test = TestApi(3);
-   test.AddFeatures({ FeatureTest(2) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({});
-   test.AddValidationSamples({ TestSample({ 1 }, 0) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      3, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {}, 
+      { 
+         TestSample({ 1 }, 0) 
+      }
+   );
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       double validationMetric = test.Boost(0).validationMetric;
@@ -667,12 +753,15 @@ TEST_CASE("Zero training samples, boosting, multiclass") {
 }
 
 TEST_CASE("Zero validation samples, boosting, regression") {
-   TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({ FeatureTest(2) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({ TestSample({ 1 }, 10) });
-   test.AddValidationSamples({});
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      { 
+         TestSample({ 1 }, 10) 
+      }, 
+      {}
+   );
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       double validationMetric = test.Boost(0).validationMetric;
@@ -696,12 +785,19 @@ TEST_CASE("Zero validation samples, boosting, regression") {
 }
 
 TEST_CASE("Zero validation samples, boosting, binary") {
-   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-   test.AddFeatures({ FeatureTest(2) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({ TestSample({ 1 }, 0) });
-   test.AddValidationSamples({});
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_BinaryClassification, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      { 
+         TestSample({ 1 }, 0) 
+      }, 
+      {},
+      k_countInnerBagsDefault,
+      EBM_FALSE, 
+      nullptr, 
+      0
+   );
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       double validationMetric = test.Boost(0).validationMetric;
@@ -734,12 +830,15 @@ TEST_CASE("Zero validation samples, boosting, binary") {
 }
 
 TEST_CASE("Zero validation samples, boosting, multiclass") {
-   TestApi test = TestApi(3);
-   test.AddFeatures({ FeatureTest(2) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({ TestSample({ 1 }, 0) });
-   test.AddValidationSamples({});
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      3, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      { 
+         TestSample({ 1 }, 0) 
+      }, 
+      {}
+   );
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       double validationMetric = test.Boost(0).validationMetric;
@@ -779,16 +878,15 @@ TEST_CASE("Zero validation samples, boosting, multiclass") {
    }
 }
 
-// TODO: reinstate this AFTER we have moved missing value handling into C++
-#ifdef NEVER
 TEST_CASE("features with 0 states, boosting") {
    // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
-   TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({ FeatureTest(2, false, false) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({});
-   test.AddValidationSamples({});
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2, false, false) }, 
+      { { 0 } }, 
+      {}, 
+      {}
+   );
 
    double validationMetric = test.Boost(0).validationMetric;
    CHECK(std::numeric_limits<double>::infinity() == validationMetric);
@@ -804,42 +902,43 @@ TEST_CASE("features with 0 states, boosting") {
    test.GetCurrentTermScoresRaw(0, termScores);
    CHECK(9.99 == termScores[0]); // the term is a tensor with zero values since one of the dimensions is non-existant
 }
-#endif
-
 
 TEST_CASE("features with 1 state in various positions, boosting") {
-   TestApi test0 = TestApi(OutputType_Regression);
-   test0.AddFeatures({
-      FeatureTest(2, true, false),
-      FeatureTest(2),
-      FeatureTest(2)
-      });
-   test0.AddTerms({ { 0 }, { 1 }, { 2 } });
-   test0.AddTrainingSamples({ TestSample({ 0, 1, 1 }, 10) });
-   test0.AddValidationSamples({ TestSample({ 0, 1, 1 }, 12) });
-   test0.InitializeBoosting();
+   TestBoost test0 = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2, true, false), FeatureTest(2), FeatureTest(2) }, 
+      { { 0 }, { 1 }, { 2 } }, 
+      { 
+         TestSample({ 0, 1, 1 }, 10) 
+      }, 
+      { 
+         TestSample({ 0, 1, 1 }, 12) 
+      }
+   );
 
-   TestApi test1 = TestApi(OutputType_Regression);
-   test1.AddFeatures({
-      FeatureTest(2),
-      FeatureTest(2, true, false),
-      FeatureTest(2)
-      });
-   test1.AddTerms({ { 0 }, { 1 }, { 2 } });
-   test1.AddTrainingSamples({ TestSample({ 1, 0, 1 }, 10) });
-   test1.AddValidationSamples({ TestSample({ 1, 0, 1 }, 12) });
-   test1.InitializeBoosting();
+   TestBoost test1 = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2), FeatureTest(2, true, false), FeatureTest(2) }, 
+      { { 0 }, { 1 }, { 2 } }, 
+      { 
+         TestSample({ 1, 0, 1 }, 10) 
+      }, 
+      { 
+         TestSample({ 1, 0, 1 }, 12) 
+      }
+   );
 
-   TestApi test2 = TestApi(OutputType_Regression);
-   test2.AddFeatures({
-      FeatureTest(2),
-      FeatureTest(2),
-      FeatureTest(2, true, false)
-      });
-   test2.AddTerms({ { 0 }, { 1 }, { 2 } });
-   test2.AddTrainingSamples({ TestSample({ 1, 1, 0 }, 10) });
-   test2.AddValidationSamples({ TestSample({ 1, 1, 0 }, 12) });
-   test2.InitializeBoosting();
+   TestBoost test2 = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2), FeatureTest(2), FeatureTest(2, true, false) }, 
+      { { 0 }, { 1 }, { 2 } }, 
+      { 
+         TestSample({ 1, 1, 0 }, 10) 
+      }, 
+      { 
+         TestSample({ 1, 1, 0 }, 12) 
+      }
+   );
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       double validationMetric00 = test0.Boost(0).validationMetric;
@@ -891,48 +990,72 @@ TEST_CASE("features with 1 state in various positions, boosting") {
 }
 
 TEST_CASE("zero terms, boosting, regression") {
-   TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({});
-   test.AddTerms({});
-   test.AddTrainingSamples({ TestSample({}, 10) });
-   test.AddValidationSamples({ TestSample({}, 12) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_Regression, 
+      {}, 
+      {}, 
+      { 
+         TestSample({}, 10) 
+      }, 
+      { 
+         TestSample({}, 12) 
+      }
+   );
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
    // boosting isn't legal since we'd need to specify a term index
 }
 
 TEST_CASE("zero terms, boosting, binary") {
-   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-   test.AddFeatures({});
-   test.AddTerms({});
-   test.AddTrainingSamples({ TestSample({}, 1) });
-   test.AddValidationSamples({ TestSample({}, 1) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_BinaryClassification, 
+      {}, 
+      {}, 
+      { 
+         TestSample({}, 1) 
+      }, 
+      { 
+         TestSample({}, 1) 
+      },
+      k_countInnerBagsDefault,
+      EBM_FALSE, 
+      nullptr, 
+      0
+   );
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
    // boosting isn't legal since we'd need to specify a term index
 }
 
 TEST_CASE("zero terms, boosting, multiclass") {
-   TestApi test = TestApi(3);
-   test.AddFeatures({});
-   test.AddTerms({});
-   test.AddTrainingSamples({ TestSample({}, 2) });
-   test.AddValidationSamples({ TestSample({}, 2) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      3, 
+      {}, 
+      {}, 
+      { 
+         TestSample({}, 2) 
+      }, 
+      { 
+         TestSample({}, 2) 
+      }
+   );
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
    // boosting isn't legal since we'd need to specify a term index
 }
 
 TEST_CASE("Term with zero features, boosting, regression") {
-   TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({});
-   test.AddTerms({ {} });
-   test.AddTrainingSamples({ TestSample({}, 10) });
-   test.AddValidationSamples({ TestSample({}, 12) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_Regression, 
+      {}, 
+      { {} }, 
+      { 
+         TestSample({}, 10) 
+      }, 
+      { 
+         TestSample({}, 12) 
+      }
+   );
 
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
@@ -957,12 +1080,21 @@ TEST_CASE("Term with zero features, boosting, regression") {
 }
 
 TEST_CASE("Term with zero features, boosting, binary") {
-   TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-   test.AddFeatures({});
-   test.AddTerms({ {} });
-   test.AddTrainingSamples({ TestSample({}, 0) });
-   test.AddValidationSamples({ TestSample({}, 0) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_BinaryClassification, 
+      {}, 
+      { {} }, 
+      { 
+         TestSample({}, 0) 
+      }, 
+      { 
+         TestSample({}, 0) 
+      },
+      k_countInnerBagsDefault,
+      EBM_FALSE, 
+      nullptr, 
+      0
+   );
 
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
@@ -993,12 +1125,17 @@ TEST_CASE("Term with zero features, boosting, binary") {
 }
 
 TEST_CASE("Term with zero features, boosting, multiclass") {
-   TestApi test = TestApi(3);
-   test.AddFeatures({});
-   test.AddTerms({ {} });
-   test.AddTrainingSamples({ TestSample({}, 0) });
-   test.AddValidationSamples({ TestSample({}, 0) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      3, 
+      {}, 
+      { {} }, 
+      { 
+         TestSample({}, 0) 
+      }, 
+      { 
+         TestSample({}, 0) 
+      }
+   );
 
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
@@ -1032,26 +1169,41 @@ TEST_CASE("Term with zero features, boosting, multiclass") {
 }
 
 TEST_CASE("Term with one feature with one or two states is the exact same as zero terms, boosting, regression") {
-   TestApi testZeroDimensions = TestApi(OutputType_Regression);
-   testZeroDimensions.AddFeatures({});
-   testZeroDimensions.AddTerms({ {} });
-   testZeroDimensions.AddTrainingSamples({ TestSample({}, 10) });
-   testZeroDimensions.AddValidationSamples({ TestSample({}, 12) });
-   testZeroDimensions.InitializeBoosting();
+   TestBoost testZeroDimensions = TestBoost(
+      OutputType_Regression, 
+      {}, 
+      { {} }, 
+      { 
+         TestSample({}, 10) 
+      }, 
+      { 
+         TestSample({}, 12) 
+      }
+   );
 
-   TestApi testOneState = TestApi(OutputType_Regression);
-   testOneState.AddFeatures({ FeatureTest(2, true, false) });
-   testOneState.AddTerms({ { 0 } });
-   testOneState.AddTrainingSamples({ TestSample({ 0 }, 10) });
-   testOneState.AddValidationSamples({ TestSample({ 0 }, 12) });
-   testOneState.InitializeBoosting();
+   TestBoost testOneState = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2, true, false) }, 
+      { { 0 } }, 
+      { 
+         TestSample({ 0 }, 10) 
+      }, 
+      { 
+         TestSample({ 0 }, 12) 
+      }
+   );
 
-   TestApi testTwoStates = TestApi(OutputType_Regression);
-   testTwoStates.AddFeatures({ FeatureTest(2) });
-   testTwoStates.AddTerms({ { 0 } });
-   testTwoStates.AddTrainingSamples({ TestSample({ 1 }, 10) });
-   testTwoStates.AddValidationSamples({ TestSample({ 1 }, 12) });
-   testTwoStates.InitializeBoosting();
+   TestBoost testTwoStates = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      { 
+         TestSample({ 1 }, 10) 
+      }, 
+      { 
+         TestSample({ 1 }, 12) 
+      }
+   );
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(testZeroDimensions.GetCountTerms() == testOneState.GetCountTerms());
@@ -1073,26 +1225,53 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
 }
 
 TEST_CASE("Term with one feature with one or two states is the exact same as zero terms, boosting, binary") {
-   TestApi testZeroDimensions = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-   testZeroDimensions.AddFeatures({});
-   testZeroDimensions.AddTerms({ {} });
-   testZeroDimensions.AddTrainingSamples({ TestSample({}, 0) });
-   testZeroDimensions.AddValidationSamples({ TestSample({}, 0) });
-   testZeroDimensions.InitializeBoosting();
+   TestBoost testZeroDimensions = TestBoost(
+      OutputType_BinaryClassification,
+      {}, 
+      { {} }, 
+      { 
+         TestSample({}, 0) 
+      }, 
+      { 
+         TestSample({}, 0) 
+      },
+      k_countInnerBagsDefault,
+      EBM_FALSE, 
+      nullptr, 
+      0
+   );
 
-   TestApi testOneState = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-   testOneState.AddFeatures({ FeatureTest(2, true, false) });
-   testOneState.AddTerms({ { 0 } });
-   testOneState.AddTrainingSamples({ TestSample({ 0 }, 0) });
-   testOneState.AddValidationSamples({ TestSample({ 0 }, 0) });
-   testOneState.InitializeBoosting();
+   TestBoost testOneState = TestBoost(
+      OutputType_BinaryClassification, 
+      { FeatureTest(2, true, false) }, 
+      { { 0 } }, 
+      { 
+         TestSample({ 0 }, 0) 
+      }, 
+      { 
+         TestSample({ 0 }, 0) 
+      },
+      k_countInnerBagsDefault,
+      EBM_FALSE, 
+      nullptr, 
+      0
+   );
 
-   TestApi testTwoStates = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-   testTwoStates.AddFeatures({ FeatureTest(2) });
-   testTwoStates.AddTerms({ { 0 } });
-   testTwoStates.AddTrainingSamples({ TestSample({ 1 }, 0) });
-   testTwoStates.AddValidationSamples({ TestSample({ 1 }, 0) });
-   testTwoStates.InitializeBoosting();
+   TestBoost testTwoStates = TestBoost(
+      OutputType_BinaryClassification, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      { 
+         TestSample({ 1 }, 0) 
+      }, 
+      { 
+         TestSample({ 1 }, 0) 
+      },
+      k_countInnerBagsDefault,
+      EBM_FALSE, 
+      nullptr, 
+      0
+   );
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(testZeroDimensions.GetCountTerms() == testOneState.GetCountTerms());
@@ -1120,26 +1299,41 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
 }
 
 TEST_CASE("Term with one feature with one or two states is the exact same as zero terms, boosting, multiclass") {
-   TestApi testZeroDimensions = TestApi(3);
-   testZeroDimensions.AddFeatures({});
-   testZeroDimensions.AddTerms({ {} });
-   testZeroDimensions.AddTrainingSamples({ TestSample({}, 0) });
-   testZeroDimensions.AddValidationSamples({ TestSample({}, 0) });
-   testZeroDimensions.InitializeBoosting();
+   TestBoost testZeroDimensions = TestBoost(
+      3, 
+      {}, 
+      { {} }, 
+      { 
+         TestSample({}, 0) 
+      }, 
+      { 
+         TestSample({}, 0) 
+      }
+   );
 
-   TestApi testOneState = TestApi(3);
-   testOneState.AddFeatures({ FeatureTest(2, true, false) });
-   testOneState.AddTerms({ { 0 } });
-   testOneState.AddTrainingSamples({ TestSample({ 0 }, 0) });
-   testOneState.AddValidationSamples({ TestSample({ 0 }, 0) });
-   testOneState.InitializeBoosting();
+   TestBoost testOneState = TestBoost(
+      3, 
+      { FeatureTest(2, true, false) }, 
+      { { 0 } }, 
+      { 
+         TestSample({ 0 }, 0) 
+      }, 
+      { 
+         TestSample({ 0 }, 0) 
+      }
+   );
 
-   TestApi testTwoStates = TestApi(3);
-   testTwoStates.AddFeatures({ FeatureTest(2) });
-   testTwoStates.AddTerms({ { 0 } });
-   testTwoStates.AddTrainingSamples({ TestSample({ 1 }, 0) });
-   testTwoStates.AddValidationSamples({ TestSample({ 1 }, 0) });
-   testTwoStates.InitializeBoosting();
+   TestBoost testTwoStates = TestBoost(
+      3, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      { 
+         TestSample({ 1 }, 0) 
+      }, 
+      { 
+         TestSample({ 1 }, 0) 
+      }
+   );
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(testZeroDimensions.GetCountTerms() == testOneState.GetCountTerms());
@@ -1173,41 +1367,50 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
 }
 
 TEST_CASE("3 dimensional term with one dimension reduced in different ways, boosting, regression") {
-   TestApi test0 = TestApi(OutputType_Regression);
-   test0.AddFeatures({ FeatureTest(2, true, false), FeatureTest(2), FeatureTest(2) });
-   test0.AddTerms({ { 0, 1, 2 } });
-   test0.AddTrainingSamples({
-      TestSample({ 0, 0, 0 }, 9),
-      TestSample({ 0, 1, 0 }, 10),
-      TestSample({ 0, 0, 1 }, 11),
-      TestSample({ 0, 1, 1 }, 12),
-      });
-   test0.AddValidationSamples({ TestSample({ 0, 1, 0 }, 12) });
-   test0.InitializeBoosting();
+   TestBoost test0 = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2, true, false), FeatureTest(2), FeatureTest(2) }, 
+      { { 0, 1, 2 } }, 
+      {
+         TestSample({ 0, 0, 0 }, 9),
+         TestSample({ 0, 1, 0 }, 10),
+         TestSample({ 0, 0, 1 }, 11),
+         TestSample({ 0, 1, 1 }, 12),
+      }, 
+      { 
+         TestSample({ 0, 1, 0 }, 12) 
+      }
+   );
 
-   TestApi test1 = TestApi(OutputType_Regression);
-   test1.AddFeatures({ FeatureTest(2), FeatureTest(2, true, false), FeatureTest(2) });
-   test1.AddTerms({ { 0, 1, 2 } });
-   test1.AddTrainingSamples({
-      TestSample({ 0, 0, 0 }, 9),
-      TestSample({ 0, 0, 1 }, 10),
-      TestSample({ 1, 0, 0 }, 11),
-      TestSample({ 1, 0, 1 }, 12),
-      });
-   test1.AddValidationSamples({ TestSample({ 0, 0, 1 }, 12) });
-   test1.InitializeBoosting();
+   TestBoost test1 = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2), FeatureTest(2, true, false), FeatureTest(2) }, 
+      { { 0, 1, 2 } }, 
+      {
+         TestSample({ 0, 0, 0 }, 9),
+         TestSample({ 0, 0, 1 }, 10),
+         TestSample({ 1, 0, 0 }, 11),
+         TestSample({ 1, 0, 1 }, 12),
+      }, 
+      { 
+         TestSample({ 0, 0, 1 }, 12) 
+      }
+   );
 
-   TestApi test2 = TestApi(OutputType_Regression);
-   test2.AddFeatures({ FeatureTest(2), FeatureTest(2), FeatureTest(2, true, false) });
-   test2.AddTerms({ { 0, 1, 2 } });
-   test2.AddTrainingSamples({
-      TestSample({ 0, 0, 0 }, 9),
-      TestSample({ 1, 0, 0 }, 10),
-      TestSample({ 0, 1, 0 }, 11),
-      TestSample({ 1, 1, 0 }, 12),
-      });
-   test2.AddValidationSamples({ TestSample({ 1, 0, 0 }, 12) });
-   test2.InitializeBoosting();
+   TestBoost test2 = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2), FeatureTest(2), FeatureTest(2, true, false) }, 
+      { { 0, 1, 2 } }, 
+      {
+         TestSample({ 0, 0, 0 }, 9),
+         TestSample({ 1, 0, 0 }, 10),
+         TestSample({ 0, 1, 0 }, 11),
+         TestSample({ 1, 1, 0 }, 12),
+      }, 
+      { 
+         TestSample({ 1, 0, 0 }, 12) 
+      }
+   );
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(test0.GetCountTerms() == test1.GetCountTerms());
@@ -1250,17 +1453,20 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
       IntEbm { 3 }
    };
 
-   TestApi test = TestApi(3);
-   test.AddFeatures({ FeatureTest(4) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({
-      TestSample({ 0 }, 0),
-      TestSample({ 1 }, 1),
-      TestSample({ 2 }, 1),
-      TestSample({ 3 }, 2)
-   });
-   test.AddValidationSamples({ TestSample({ 1 }, 0) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      3, 
+      { FeatureTest(4) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 0),
+         TestSample({ 1 }, 1),
+         TestSample({ 2 }, 1),
+         TestSample({ 3 }, 2)
+      }, 
+      { 
+         TestSample({ 1 }, 0) 
+      }
+   );
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
@@ -1285,17 +1491,20 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
       IntEbm { 3 }
    };
 
-   TestApi test = TestApi(3);
-   test.AddFeatures({ FeatureTest(4) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({
-      TestSample({ 0 }, 0),
-      TestSample({ 1 }, 1),
-      TestSample({ 2 }, 1),
-      TestSample({ 3 }, 2)
-      });
-   test.AddValidationSamples({ TestSample({ 1 }, 0) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      3, 
+      { FeatureTest(4) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 0),
+         TestSample({ 1 }, 1),
+         TestSample({ 2 }, 1),
+         TestSample({ 3 }, 2)
+      }, 
+      { 
+         TestSample({ 1 }, 0) 
+      }
+   );
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
@@ -1326,9 +1535,6 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
       IntEbm { 3 }
    };
 
-   TestApi test = TestApi(3);
-   test.AddFeatures({ FeatureTest(cStates), FeatureTest(2, true, false), FeatureTest(cStates) });
-   test.AddTerms({ { 0, 1, 2 } });
    std::vector<TestSample> samples;
    for(IntEbm i0 = 0; i0 < cStates; ++i0) {
       for(IntEbm i2 = 0; i2 < cStates; ++i2) {
@@ -1343,9 +1549,13 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
       }
    }
 
-   test.AddTrainingSamples(samples);
-   test.AddValidationSamples(samples); // evaluate on the train set
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      3, 
+      { FeatureTest(cStates), FeatureTest(2, true, false), FeatureTest(cStates) }, 
+      { { 0, 1, 2 } },
+      samples,
+      samples // evaluate on the train set
+   );
 
    double validationMetric = double { 0 };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -1383,9 +1593,6 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
       IntEbm { 3 }
    };
 
-   TestApi test = TestApi(3);
-   test.AddFeatures({ FeatureTest(cStates), FeatureTest(cStates), FeatureTest(cStates) });
-   test.AddTerms({ { 0, 1, 2 } });
    std::vector<TestSample> samples;
    for(IntEbm i0 = 0; i0 < cStates; ++i0) {
       for(IntEbm i1 = 0; i1 < cStates; ++i1) {
@@ -1401,9 +1608,13 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
       }
    }
 
-   test.AddTrainingSamples(samples);
-   test.AddValidationSamples(samples); // evaluate on the train set
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      3, 
+      { FeatureTest(cStates), FeatureTest(cStates), FeatureTest(cStates) }, 
+      { { 0, 1, 2 } },
+      samples,
+      samples // evaluate on the train set
+   );
 
    double validationMetric = double { 0 };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -1442,9 +1653,6 @@ TEST_CASE("Random splitting, pure tripples, regression") {
       IntEbm { 3 }
    };
 
-   TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({ FeatureTest(cStates), FeatureTest(cStates), FeatureTest(cStates) });
-   test.AddTerms({ { 0, 1, 2 } });
    std::vector<TestSample> samples;
    for(IntEbm i0 = 0; i0 < cStates; ++i0) {
       for(IntEbm i1 = 0; i1 < cStates; ++i1) {
@@ -1460,9 +1668,13 @@ TEST_CASE("Random splitting, pure tripples, regression") {
       }
    }
 
-   test.AddTrainingSamples(samples);
-   test.AddValidationSamples(samples); // evaluate on the train set
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(cStates), FeatureTest(cStates), FeatureTest(cStates) }, 
+      { { 0, 1, 2 } },
+      samples,
+      samples // evaluate on the train set
+   );
 
    double validationMetric = double { 0 };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -1497,9 +1709,6 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
       IntEbm { 1 }
    };
 
-   TestApi test = TestApi(3);
-   test.AddFeatures({ FeatureTest(k_cStates), FeatureTest(k_cStates), FeatureTest(k_cStates) });
-   test.AddTerms({ { 0, 1, 2 } });
    std::vector<TestSample> samples;
    for(IntEbm i0 = 0; i0 < k_cStates; ++i0) {
       for(IntEbm i1 = 0; i1 < k_cStates; ++i1) {
@@ -1515,9 +1724,13 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
       }
    }
 
-   test.AddTrainingSamples(samples);
-   test.AddValidationSamples(samples); // evaluate on the train set
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      3, 
+      { FeatureTest(k_cStates), FeatureTest(k_cStates), FeatureTest(k_cStates) }, 
+      { { 0, 1, 2 } },
+      samples,
+      samples // evaluate on the train set
+   );
 
    double validationMetric = double { 0 };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -1562,18 +1775,21 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
       IntEbm { 3 }
    };
 
-   TestApi test = TestApi(OutputType_BinaryClassification);
-   test.AddFeatures({ FeatureTest(2, true, false) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({
-      TestSample({ 0 }, 0),
-      TestSample({ 0 }, 0),
-      TestSample({ 0 }, 1),
-      TestSample({ 0 }, 1),
-      TestSample({ 0 }, 1),
-      });
-   test.AddValidationSamples({ TestSample({ 0 }, 0) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_BinaryClassification, 
+      { FeatureTest(2, true, false) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 0),
+         TestSample({ 0 }, 0),
+         TestSample({ 0 }, 1),
+         TestSample({ 0 }, 1),
+         TestSample({ 0 }, 1),
+      }, 
+      { 
+         TestSample({ 0 }, 0) 
+      }
+   );
 
    double validationMetric = 0;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -1603,15 +1819,16 @@ TEST_CASE("zero gain, boosting, regression") {
    // we start with a singular bin that has 5 cases, and split it to two bins with 2 and 3 cases respectively.
    // We can arbitrarily set the gradient totals to 4 and 7, and then calculate what the 
 
-   TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({ FeatureTest(2) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({
-      TestSample({ 0 }, 10.75, 1.5),
-      TestSample({ 1 }, 10.75, 2.25),
-      });
-   test.AddValidationSamples({ });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 10.75, 1.5),
+         TestSample({ 1 }, 10.75, 2.25),
+      }, 
+      {}
+   );
 
    double gainAvg = test.Boost(0, BoostFlags_Default, k_learningRateDefault, 0).gainAvg;
    CHECK(0 <= gainAvg && gainAvg < 0.0000001);
@@ -1622,28 +1839,32 @@ TEST_CASE("pair and main gain identical, boosting, regression") {
    // for the split on both sides into the pair are zero, then the gain from the pair boosting
    // should be identical to the gain from the main if we were to combine the pairs into mains
 
-   TestApi test1 = TestApi(OutputType_Regression);
-   test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
-   test1.AddTerms({ { 0, 1 } });
-   test1.AddTrainingSamples({
-      TestSample({ 0, 0 }, 10.75, 1.5),
-      TestSample({ 0, 1 }, 10.75, 2.25),
-      TestSample({ 1, 0 }, 11.25, 3.25),
-      TestSample({ 1, 1 }, 11.25, 4.5),
-      });
-   test1.AddValidationSamples({});
-   test1.InitializeBoosting(0);
+   TestBoost test1 = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2), FeatureTest(2) }, 
+      { { 0, 1 } }, 
+      {
+         TestSample({ 0, 0 }, 10.75, 1.5),
+         TestSample({ 0, 1 }, 10.75, 2.25),
+         TestSample({ 1, 0 }, 11.25, 3.25),
+         TestSample({ 1, 1 }, 11.25, 4.5),
+      }, 
+      {},
+      0
+   );
+
    const double gainAvg1 = test1.Boost(0).gainAvg;
 
-   TestApi test2 = TestApi(OutputType_Regression);
-   test2.AddFeatures({ FeatureTest(2) });
-   test2.AddTerms({ { 0 } });
-   test2.AddTrainingSamples({
-      TestSample({ 0 }, 10.75, 1.5 + 2.25),
-      TestSample({ 1 }, 11.25, 3.25 + 4.5),
-      });
-   test2.AddValidationSamples({});
-   test2.InitializeBoosting();
+   TestBoost test2 = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2) }, 
+      { { 0 } }, 
+      {
+         TestSample({ 0 }, 10.75, 1.5 + 2.25),
+         TestSample({ 1 }, 11.25, 3.25 + 4.5),
+      }, 
+      {}
+   );
 
    double gainAvg2 = test2.Boost(0).gainAvg;
 
@@ -1651,12 +1872,20 @@ TEST_CASE("pair and main gain identical, boosting, regression") {
 }
 
 TEST_CASE("tweedie, boosting") {
-   TestApi test = TestApi(OutputType_Regression, EBM_FALSE, "tweedie_deviance:variance_power=1.3");
-   test.AddFeatures({ FeatureTest(2, true, false) });
-   test.AddTerms({ { 0 } });
-   test.AddTrainingSamples({ TestSample({ 0 }, 10) });
-   test.AddValidationSamples({ TestSample({ 0 }, 12) });
-   test.InitializeBoosting();
+   TestBoost test = TestBoost(
+      OutputType_Regression, 
+      { FeatureTest(2, true, false) }, 
+      { { 0 } }, 
+      { 
+         TestSample({ 0 }, 10) 
+      }, 
+      { 
+         TestSample({ 0 }, 12) 
+      },
+      k_countInnerBagsDefault,
+      EBM_FALSE, 
+      "tweedie_deviance:variance_power=1.3"
+   );
 
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };

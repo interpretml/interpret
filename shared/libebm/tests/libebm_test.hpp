@@ -64,9 +64,11 @@ inline static double FloatTickDecrementTest(const double v) noexcept {
       return -std::numeric_limits<double>::min();
    }
 }
-inline static double DenormalizeTest(const double v) noexcept {
-   return v <= -std::numeric_limits<double>::min() ||
-      std::numeric_limits<double>::min() <= v ? v : double { 0 };
+inline static double DenormalizeTest(const double val) noexcept {
+   double deprecisioned[1];
+   deprecisioned[0] = val;
+   CleanFloats(1, deprecisioned);
+   return deprecisioned[0];
 }
 
 class TestCaseHidden;
@@ -177,29 +179,132 @@ public:
 
 class TestSample final {
 public:
+   const bool m_bBag;
+   BagEbm m_bagCount;
    const std::vector<IntEbm> m_sampleBinIndexes;
    const double m_target;
-   const bool m_bNullWeight;
+   const bool m_bWeight;
    const double m_weight;
+   const bool m_bScores;
    const std::vector<double> m_initScores;
-
-   inline TestSample(const std::vector<IntEbm> sampleBinIndexes, const double target) :
-      m_sampleBinIndexes(sampleBinIndexes),
-      m_target(target),
-      m_bNullWeight(true),
-      m_weight(1.0) {
-   }
 
    inline TestSample(
       const std::vector<IntEbm> sampleBinIndexes, 
-      const double target,
-      const double weight,
-      const std::vector<double> initScores = {}
+      const double target
    ) :
+      m_bBag(false),
+      m_bagCount(0),
       m_sampleBinIndexes(sampleBinIndexes),
       m_target(target),
-      m_bNullWeight(false),
+      m_bWeight(false),
+      m_weight(1.0),
+      m_bScores(false) {
+   }
+
+   inline TestSample(
+      const std::vector<IntEbm> sampleBinIndexes,
+      const double target,
+      const double weight
+   ) :
+      m_bBag(false),
+      m_bagCount(0),
+      m_sampleBinIndexes(sampleBinIndexes),
+      m_target(target),
+      m_bWeight(true),
       m_weight(weight),
+      m_bScores(false) {
+   }
+
+   inline TestSample(
+      const std::vector<IntEbm> sampleBinIndexes,
+      const double target,
+      const std::vector<double> initScores
+   ) :
+      m_bBag(false),
+      m_bagCount(0),
+      m_sampleBinIndexes(sampleBinIndexes),
+      m_target(target),
+      m_bWeight(false),
+      m_weight(1.0),
+      m_bScores(true),
+      m_initScores(initScores) {
+   }
+
+   inline TestSample(
+      const std::vector<IntEbm> sampleBinIndexes,
+      const double target,
+      const double weight,
+      const std::vector<double> initScores
+   ) :
+      m_bBag(false),
+      m_bagCount(0),
+      m_sampleBinIndexes(sampleBinIndexes),
+      m_target(target),
+      m_bWeight(true),
+      m_weight(weight),
+      m_bScores(true),
+      m_initScores(initScores) {
+   }
+
+   inline TestSample(
+      BagEbm bagCount, 
+      const std::vector<IntEbm> sampleBinIndexes, 
+      const double target
+   ) :
+      m_bBag(true),
+      m_bagCount(bagCount),
+      m_sampleBinIndexes(sampleBinIndexes),
+      m_target(target),
+      m_bWeight(false),
+      m_weight(1.0),
+      m_bScores(false) {
+   }
+
+   inline TestSample(
+      BagEbm bagCount,
+      const std::vector<IntEbm> sampleBinIndexes,
+      const double target,
+      const double weight
+   ) :
+      m_bBag(true),
+      m_bagCount(bagCount),
+      m_sampleBinIndexes(sampleBinIndexes),
+      m_target(target),
+      m_bWeight(true),
+      m_weight(weight),
+      m_bScores(false) {
+   }
+
+   inline TestSample(
+      BagEbm bagCount,
+      const std::vector<IntEbm> sampleBinIndexes,
+      const double target,
+      const std::vector<double> initScores
+   ) :
+      m_bBag(true),
+      m_bagCount(bagCount),
+      m_sampleBinIndexes(sampleBinIndexes),
+      m_target(target),
+      m_bWeight(false),
+      m_weight(1.0),
+      m_bScores(true),
+      m_initScores(initScores) {
+   }
+
+   inline TestSample(
+      BagEbm bagCount,
+      const std::vector<IntEbm> sampleBinIndexes,
+      const double target,
+      const double weight,
+      const std::vector<double> initScores
+   ) :
+      m_bBag(true),
+      m_bagCount(bagCount),
+      m_sampleBinIndexes(sampleBinIndexes),
+      m_target(target),
+      m_bWeight(true),
+      m_weight(weight),
+      m_bScores(true),
       m_initScores(initScores) {
    }
 };
@@ -418,6 +523,81 @@ public:
       const IntEbm minSamplesLeaf = k_minSamplesLeafDefault
    ) const;
 };
+
+class TestBoost {
+   const OutputType m_cClasses;
+   const std::vector<FeatureTest> m_features;
+   const std::vector<std::vector<IntEbm>> m_termFeatures;
+   const std::vector<TestSample> m_train;
+   const std::vector<TestSample> m_validation;
+   const IntEbm m_countInnerBags;
+   const BoolEbm m_bDifferentiallyPrivate;
+   const ptrdiff_t m_iZeroClassificationLogit;
+
+   std::vector<unsigned char> m_rng;
+   BoosterHandle m_boosterHandle;
+
+   const double * GetTermScores(
+      const size_t iTerm,
+      const double * const aTermScores,
+      const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures
+   ) const;
+
+   double GetTermScore(
+      const size_t iTerm,
+      const double * const aTermScores,
+      const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures,
+      const size_t iClassOrZero
+   ) const;
+
+public:
+
+   TestBoost(
+      const OutputType cClasses,
+      const std::vector<FeatureTest> features,
+      const std::vector<std::vector<IntEbm>> termFeatures,
+      const std::vector<TestSample> train,
+      const std::vector<TestSample> validation,
+      const IntEbm countInnerBags = k_countInnerBagsDefault,
+      const BoolEbm bDifferentiallyPrivate = EBM_FALSE,
+      const char * const sObjective = nullptr,
+      const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault
+   );
+   ~TestBoost();
+
+   inline size_t GetCountTerms() const {
+      return m_termFeatures.size();
+   }
+
+   inline BoosterHandle GetBoosterHandle() {
+      return m_boosterHandle;
+   }
+
+   BoostRet Boost(
+      const IntEbm indexTerm,
+      const BoostFlags flags = BoostFlags_Default,
+      const double learningRate = k_learningRateDefault,
+      const IntEbm minSamplesLeaf = k_minSamplesLeafDefault,
+      const std::vector<IntEbm> leavesMax = k_leavesMaxDefault
+   );
+
+   double GetBestTermScore(
+      const size_t iTerm,
+      const std::vector<size_t> indexes,
+      const size_t iScore
+   ) const;
+
+   void GetBestTermScoresRaw(const size_t iTerm, double * const aTermScores) const;
+
+   double GetCurrentTermScore(
+      const size_t iTerm,
+      const std::vector<size_t> indexes,
+      const size_t iScore
+   ) const;
+
+   void GetCurrentTermScoresRaw(const size_t iTerm, double * const aTermScores) const;
+};
+
 
 void DisplayCuts(
    IntEbm countSamples,
