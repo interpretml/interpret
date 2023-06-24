@@ -388,150 +388,10 @@ struct BoostRet {
    double validationMetric;
 };
 
-class TestApi {
-   enum class Stage {
-      Beginning, 
-      FeaturesAdded, 
-      TermsAdded, 
-      TrainingAdded, 
-      ValidationAdded, 
-      InitializedBoosting, 
-      InteractionAdded, 
-      InitializedInteraction
-   };
-
-   std::vector<unsigned char> m_rng;
-
-   Stage m_stage;
-   const OutputType m_cClasses;
-   const ptrdiff_t m_iZeroClassificationLogit;
-
-   BoolEbm m_bDifferentiallyPrivate;
-   const char * m_sObjective;
-
-   std::vector<BoolEbm> m_featureMissings;
-   std::vector<BoolEbm> m_featureUnknowns;
-   std::vector<BoolEbm> m_featureNominals;
-   std::vector<IntEbm> m_featureBinCounts;
-   std::vector<IntEbm> m_dimensionCounts;
-   std::vector<IntEbm> m_featureIndexes;
-
-   std::vector<std::vector<size_t>> m_termBinCounts;
-
-   std::vector<double> m_trainingRegressionTargets;
-   std::vector<IntEbm> m_trainingClassificationTargets;
-   // TODO: make this a vector of vectors.  The first vector being indexed by iFeature
-   std::vector<IntEbm> m_trainingBinIndexes;
-   std::vector<double> m_trainingWeights;
-   std::vector<double> m_trainingInitScores;
-   bool m_bNullTrainingWeights;
-   bool m_bNullTrainingInitScores;
-
-   std::vector<double> m_validationRegressionTargets;
-   std::vector<IntEbm> m_validationClassificationTargets;
-   // TODO: make this a vector of vectors.  The first vector being indexed by iFeature
-   std::vector<IntEbm> m_validationBinIndexes;
-   std::vector<double> m_validationWeights;
-   std::vector<double> m_validationInitScores;
-   bool m_bNullValidationWeights;
-   bool m_bNullValidationInitScores;
-
-   BoosterHandle m_boosterHandle;
-
-   std::vector<double> m_interactionRegressionTargets;
-   std::vector<IntEbm> m_interactionClassificationTargets;
-   std::vector<IntEbm> m_interactionBinIndexes;
-   std::vector<double> m_interactionWeights;
-   std::vector<double> m_interactionInitScores;
-   bool m_bNullInteractionWeights;
-   bool m_bNullInteractionInitScores;
-
-   InteractionHandle m_interactionHandle;
-
-   const double * GetTermScores(
-      const size_t iTerm,
-      const double * const aTermScores,
-      const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures)
-      const;
-
-   double GetTermScore(
-      const size_t iTerm,
-      const double * const aTermScores,
-      const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures,
-      const size_t iClassOrZero)
-      const;
-
-public:
-
-   TestApi(
-      const OutputType cClasses,
-      const BoolEbm m_bDifferentiallyPrivate = EBM_FALSE,
-      const char * const m_sObjective = nullptr,
-      const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault
-   );
-   ~TestApi();
-
-   inline size_t GetCountTerms() const {
-      return m_dimensionCounts.size();
-   }
-
-   inline BoosterHandle GetBoosterHandle() {
-      return m_boosterHandle;
-   }
-
-   inline InteractionHandle GetInteractionHandle() {
-      return m_interactionHandle;
-   }
-
-   void AddFeatures(const std::vector<FeatureTest> features);
-   void AddTerms(const std::vector<std::vector<size_t>> termFeatures);
-   void AddTrainingSamples(const std::vector<TestSample> samples);
-   void AddValidationSamples(const std::vector<TestSample> samples);
-   void InitializeBoosting(const IntEbm countInnerBags = k_countInnerBagsDefault);
-   
-   BoostRet Boost(
-      const IntEbm indexTerm,
-      const BoostFlags flags = BoostFlags_Default,
-      const double learningRate = k_learningRateDefault,
-      const IntEbm minSamplesLeaf = k_minSamplesLeafDefault,
-      const std::vector<IntEbm> leavesMax = k_leavesMaxDefault
-   );
-
-   double GetBestTermScore(
-      const size_t iTerm, 
-      const std::vector<size_t> indexes, 
-      const size_t iScore
-   ) const;
-   
-   void GetBestTermScoresRaw(const size_t iTerm, double * const aTermScores) const;
-
-   double GetCurrentTermScore(
-      const size_t iTerm,
-      const std::vector<size_t> indexes,
-      const size_t iScore
-   ) const;
-
-   void GetCurrentTermScoresRaw(const size_t iTerm, double * const aTermScores) const;
-
-   void AddInteractionSamples(const std::vector<TestSample> samples);
-
-   void InitializeInteraction();
-
-   double TestCalcInteractionStrength(
-      const std::vector<IntEbm> features, 
-      const InteractionFlags flags = InteractionFlags_Default,
-      const IntEbm minSamplesLeaf = k_minSamplesLeafDefault
-   ) const;
-};
-
 class TestBoost {
    const OutputType m_cClasses;
    const std::vector<FeatureTest> m_features;
    const std::vector<std::vector<IntEbm>> m_termFeatures;
-   const std::vector<TestSample> m_train;
-   const std::vector<TestSample> m_validation;
-   const IntEbm m_countInnerBags;
-   const BoolEbm m_bDifferentiallyPrivate;
    const ptrdiff_t m_iZeroClassificationLogit;
 
    std::vector<unsigned char> m_rng;
@@ -598,6 +458,32 @@ public:
    void GetCurrentTermScoresRaw(const size_t iTerm, double * const aTermScores) const;
 };
 
+
+class TestInteraction {
+   InteractionHandle m_interactionHandle;
+
+public:
+
+   TestInteraction(
+      const OutputType cClasses,
+      const std::vector<FeatureTest> features,
+      const std::vector<TestSample> samples,
+      const BoolEbm bDifferentiallyPrivate = EBM_FALSE,
+      const char * const sObjective = nullptr,
+      const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault
+   );
+   ~TestInteraction();
+
+   inline InteractionHandle GetInteractionHandle() {
+      return m_interactionHandle;
+   }
+
+   double TestCalcInteractionStrength(
+      const std::vector<IntEbm> features,
+      const InteractionFlags flags = InteractionFlags_Default,
+      const IntEbm minSamplesLeaf = k_minSamplesLeafDefault
+   ) const;
+};
 
 void DisplayCuts(
    IntEbm countSamples,

@@ -335,19 +335,22 @@ TEST_CASE("SampleWithoutReplacement, stress test") {
 }
 
 TEST_CASE("test random number generator equivalency") {
-   TestApi test = TestApi(OutputType_Regression);
-   test.AddFeatures({ FeatureTest(2) });
-   test.AddTerms({ { 0 } });
-
    std::vector<TestSample> samples;
    for(int i = 0; i < 1000; ++i) {
       samples.push_back(TestSample({ 0 == (i * 7) % 3 }, i % 2));
    }
 
-   test.AddTrainingSamples(samples);
-   test.AddValidationSamples({ TestSample({ 0 }, 0), TestSample({ 1 }, 1) });
-
-   test.InitializeBoosting(2);
+   TestBoost test = TestBoost(
+      OutputType_Regression,
+      { FeatureTest(2) },
+      { { 0 } },
+      samples,
+      { 
+         TestSample({ 0 }, 0), 
+         TestSample({ 1 }, 1) 
+      },
+      2
+   );
 
    for(int iEpoch = 0; iEpoch < 100; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {

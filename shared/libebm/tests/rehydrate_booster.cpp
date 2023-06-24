@@ -10,12 +10,17 @@
 static constexpr TestPriority k_filePriority = TestPriority::Rehydration;
 
 TEST_CASE("Test Rehydration, boosting, regression") {
-   TestApi testContinuous = TestApi(OutputType_Regression);
-   testContinuous.AddFeatures({});
-   testContinuous.AddTerms({ {} });
-   testContinuous.AddTrainingSamples({ TestSample({}, 10) });
-   testContinuous.AddValidationSamples({ TestSample({}, 12) });
-   testContinuous.InitializeBoosting();
+   TestBoost testContinuous = TestBoost(
+      OutputType_Regression,
+      {},
+      { {} },
+      { 
+         TestSample({}, 10) 
+      },
+      { 
+         TestSample({}, 12) 
+      }
+   );
 
    double termScore0 = 0;
 
@@ -23,12 +28,17 @@ TEST_CASE("Test Rehydration, boosting, regression") {
    double termScoreContinuous;
    double validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      TestApi testRestart = TestApi(OutputType_Regression);
-      testRestart.AddFeatures({});
-      testRestart.AddTerms({ {} });
-      testRestart.AddTrainingSamples({ TestSample({}, 10, 1, { termScore0 }) });
-      testRestart.AddValidationSamples({ TestSample({}, 12, 1, { termScore0 }) });
-      testRestart.InitializeBoosting();
+      TestBoost testRestart = TestBoost(
+         OutputType_Regression,
+         {},
+         { {} },
+         { 
+            TestSample({}, 10, 1, { termScore0 }) 
+         },
+         { 
+            TestSample({}, 12, 1, { termScore0 }) 
+         }
+      );
 
       validationMetricRestart = testRestart.Boost(0).validationMetric;
       validationMetricContinuous = testContinuous.Boost(0).validationMetric;
@@ -41,12 +51,21 @@ TEST_CASE("Test Rehydration, boosting, regression") {
 }
 
 TEST_CASE("Test Rehydration, boosting, binary") {
-   TestApi testContinuous = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-   testContinuous.AddFeatures({});
-   testContinuous.AddTerms({ {} });
-   testContinuous.AddTrainingSamples({ TestSample({}, 0) });
-   testContinuous.AddValidationSamples({ TestSample({}, 0) });
-   testContinuous.InitializeBoosting();
+   TestBoost testContinuous = TestBoost(
+      OutputType_BinaryClassification, 
+      {},
+      { {} },
+      { 
+         TestSample({}, 0) 
+      },
+      { 
+         TestSample({}, 0) 
+      },
+      k_countInnerBagsDefault, 
+      EBM_FALSE, 
+      nullptr, 
+      0
+   );
 
    double termScore0 = 0;
    double termScore1 = 0;
@@ -55,12 +74,21 @@ TEST_CASE("Test Rehydration, boosting, binary") {
    double termScoreContinuous;
    double validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      TestApi testRestart = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
-      testRestart.AddFeatures({});
-      testRestart.AddTerms({ {} });
-      testRestart.AddTrainingSamples({ TestSample({}, 0, 1, { termScore0, termScore1 }) });
-      testRestart.AddValidationSamples({ TestSample({}, 0, 1, { termScore0, termScore1 }) });
-      testRestart.InitializeBoosting();
+      TestBoost testRestart = TestBoost(
+         OutputType_BinaryClassification, 
+         {},
+         { {} },
+         { 
+            TestSample({}, 0, 1, { termScore0, termScore1 }) 
+         },
+         { 
+            TestSample({}, 0, 1, { termScore0, termScore1 }) 
+         },
+         k_countInnerBagsDefault,
+         EBM_FALSE, 
+         nullptr, 
+         0
+      );
 
       validationMetricRestart = testRestart.Boost(0).validationMetric;
       validationMetricContinuous = testContinuous.Boost(0).validationMetric;
@@ -77,12 +105,17 @@ TEST_CASE("Test Rehydration, boosting, binary") {
 }
 
 TEST_CASE("Test Rehydration, boosting, multiclass") {
-   TestApi testContinuous = TestApi(3);
-   testContinuous.AddFeatures({});
-   testContinuous.AddTerms({ {} });
-   testContinuous.AddTrainingSamples({ TestSample({}, 0) });
-   testContinuous.AddValidationSamples({ TestSample({}, 0) });
-   testContinuous.InitializeBoosting();
+   TestBoost testContinuous = TestBoost(
+      3,
+      {},
+      { {} },
+      { 
+         TestSample({}, 0) 
+      }, 
+      { 
+         TestSample({}, 0) 
+      }
+   );
 
    double termScore0 = 0;
    double termScore1 = 0;
@@ -92,12 +125,17 @@ TEST_CASE("Test Rehydration, boosting, multiclass") {
    double termScoreContinuous;
    double validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      TestApi testRestart = TestApi(3);
-      testRestart.AddFeatures({});
-      testRestart.AddTerms({ {} });
-      testRestart.AddTrainingSamples({ TestSample({}, 0, 1, { termScore0, termScore1, termScore2 }) });
-      testRestart.AddValidationSamples({ TestSample({}, 0, 1, { termScore0, termScore1, termScore2 }) });
-      testRestart.InitializeBoosting();
+      TestBoost testRestart = TestBoost(
+         3,
+         {},
+         { {} },
+         { 
+            TestSample({}, 0, 1, { termScore0, termScore1, termScore2 }) 
+         },
+         { 
+            TestSample({}, 0, 1, { termScore0, termScore1, termScore2 }) 
+         }
+      );
 
       validationMetricRestart = testRestart.Boost(0).validationMetric;
       validationMetricContinuous = testContinuous.Boost(0).validationMetric;

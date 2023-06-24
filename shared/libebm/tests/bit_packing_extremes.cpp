@@ -18,11 +18,8 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 
          // 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
-            TestApi test = TestApi(OutputType_Regression);
             // add one to the bins because our interface needs missing and unknown bins but 
             // internally drop the unknown bin to make it possible to have 1 bin
-            test.AddFeatures({ FeatureTest(cBins + 1, true, false) });
-            test.AddTerms({ { 0 } });
 
             std::vector<TestSample> trainingSamples;
             std::vector<TestSample> validationSamples;
@@ -30,10 +27,15 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
                trainingSamples.push_back(TestSample({ cBins - 1 }, 7));
                validationSamples.push_back(TestSample({ cBins - 1 }, 8));
             }
-            test.AddTrainingSamples(trainingSamples);
-            test.AddValidationSamples(validationSamples);
-            test.InitializeBoosting();
 
+            TestBoost test = TestBoost(
+               OutputType_Regression,
+               { FeatureTest(cBins + 1, true, false) },
+               { { 0 } },
+               trainingSamples,
+               validationSamples
+            );
+           
             double validationMetric = test.Boost(0).validationMetric;
             CHECK_APPROX(validationMetric, 62.8849);
             double termScore = test.GetCurrentTermScore(0, { static_cast<size_t>(cBins - 1) }, 0);
@@ -52,11 +54,8 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
          // a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
-            TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
             // add one to the bins because our interface needs missing and unknown bins but 
             // internally drop the unknown bin to make it possible to have 1 bin
-            test.AddFeatures({ FeatureTest(cBins + 1, true, false) });
-            test.AddTerms({ { 0 } });
 
             std::vector<TestSample> trainingSamples;
             std::vector<TestSample> validationSamples;
@@ -64,9 +63,18 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
                trainingSamples.push_back(TestSample({ cBins - 1 }, 0));
                validationSamples.push_back(TestSample({ cBins - 1 }, 1));
             }
-            test.AddTrainingSamples(trainingSamples);
-            test.AddValidationSamples(validationSamples);
-            test.InitializeBoosting();
+
+            TestBoost test = TestBoost(
+               OutputType_BinaryClassification, 
+               { FeatureTest(cBins + 1, true, false) },
+               { { 0 } },
+               trainingSamples,
+               validationSamples,
+               k_countInnerBagsDefault,
+               EBM_FALSE, 
+               nullptr, 
+               0
+            );
 
             double validationMetric = test.Boost(0).validationMetric;
             CHECK_APPROX_TOLERANCE(validationMetric, 0.70319717972663420, double { 1e-1 });
@@ -90,17 +98,19 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
          // a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
-            TestApi test = TestApi(OutputType_Regression);
             // add one to the bins because our interface needs missing and unknown bins but 
             // internally drop the unknown bin to make it possible to have 1 bin
-            test.AddFeatures({ FeatureTest(2), FeatureTest(cBins + 1, true, false) });
 
             std::vector<TestSample> samples;
             for(size_t iSample = 0; iSample < cSamples; ++iSample) {
                samples.push_back(TestSample({ 0, cBins - 1 }, 7));
             }
-            test.AddInteractionSamples(samples);
-            test.InitializeInteraction();
+
+            TestInteraction test = TestInteraction(
+               OutputType_Regression,
+               { FeatureTest(2), FeatureTest(cBins + 1, true, false) },
+               samples
+            );
 
             double metric = test.TestCalcInteractionStrength({ 0, 1 });
             CHECK_APPROX(metric, 0);
@@ -118,17 +128,22 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
          // a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
-            TestApi test = TestApi(OutputType_BinaryClassification, EBM_FALSE, nullptr, 0);
             // add one to the bins because our interface needs missing and unknown bins but 
             // internally drop the unknown bin to make it possible to have 1 bin
-            test.AddFeatures({ FeatureTest(2), FeatureTest(cBins + 1, true, false) });
 
             std::vector<TestSample> samples;
             for(size_t iSample = 0; iSample < cSamples; ++iSample) {
                samples.push_back(TestSample({ 0, cBins - 1 }, 1));
             }
-            test.AddInteractionSamples(samples);
-            test.InitializeInteraction();
+
+            TestInteraction test = TestInteraction(
+               OutputType_BinaryClassification, 
+               { FeatureTest(2), FeatureTest(cBins + 1, true, false) },
+               samples,
+               EBM_FALSE, 
+               nullptr, 
+               0
+            );
 
             double metric = test.TestCalcInteractionStrength({ 0, 1 });
 

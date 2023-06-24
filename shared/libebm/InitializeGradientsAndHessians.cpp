@@ -149,21 +149,27 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
       EBM_ASSERT(nullptr != pTargetData); // we previously called GetDataSetSharedTarget and got back non-null result
       EBM_ASSERT(IsRegression(cRuntimeClasses));
 
-      const FloatFast * pWeight = GetDataSetSharedWeight(pDataSetShared, 0);
-      EBM_ASSERT(nullptr != pWeight);
-      if(CheckWeightsEqual(BagEbm { 1 }, aBag, pWeight, cIncludedSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitWeights all weights identical, so ignoring weights");
-         pWeight = nullptr;
+      EBM_ASSERT(1 <= pDataSet->GetCountSamples());
+
+      DataSubsetInteraction * pSubset = pDataSet->GetSubsets();
+      EBM_ASSERT(nullptr != pSubset);
+
+      const FloatFast * pWeight = nullptr;
+      // check the first subset to see if weights were specified
+      if(nullptr != pSubset->GetWeights()) {
+         pWeight = GetDataSetSharedWeight(pDataSetShared, 0);
+         EBM_ASSERT(nullptr != pWeight);
+         if(CheckWeightsEqual(BagEbm { 1 }, aBag, pWeight, cIncludedSamples)) {
+            LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitWeights all weights identical, so ignoring weights");
+            pWeight = nullptr;
+         }
       }
+
+      EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
+      const DataSubsetInteraction * const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
 
       const BagEbm * pSampleReplication = aBag;
       const double * pInitScore = aInitScores;
-
-      EBM_ASSERT(1 <= pDataSet->GetCountSamples());
-      EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
-      DataSubsetInteraction * pSubset = pDataSet->GetSubsets();
-      EBM_ASSERT(nullptr != pSubset);
-      const DataSubsetInteraction * const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
 
       BagEbm replication = 0;
       FloatFast gradient;
