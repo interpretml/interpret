@@ -123,7 +123,7 @@ extern void * AlignedRealloc(void * const p, const size_t cOldBytes, const size_
       // identically to realloc, we do NOT free the old memory if there is not enough memory
       return NULL;
    }
-   memcpy(pNew, p, cOldBytes);
+   memcpy(pNew, p, cOldBytes); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 
    AlignedFree(p);
    return pNew;

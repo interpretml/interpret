@@ -259,13 +259,11 @@ WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 ErrorEbm DataSetInteraction::InitWeights(
    const unsigned char * const pDataSetShared,
-   const BagEbm * const aBag,
-   const size_t cIncludedSamples
+   const BagEbm * const aBag
 ) {
    LOG_0(Trace_Info, "Entered DataSetInteraction::InitWeights");
 
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(1 <= cIncludedSamples);
 
    const FloatFast * pWeightFrom = GetDataSetSharedWeight(pDataSetShared, 0);
    EBM_ASSERT(nullptr != pWeightFrom);
@@ -482,8 +480,7 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
       if(0 != cWeights) {
          error = InitWeights(
             pDataSetShared,
-            aBag,
-            cIncludedSamples
+            aBag
          );
          if(Error_None != error) {
             return error;

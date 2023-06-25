@@ -152,7 +152,7 @@ const double * TestBoost::GetTermScores(
    size_t iDimension = 0;
    for(const IntEbm indexFeature : featureIndexes) {
       const size_t iFeature = static_cast<size_t>(indexFeature);
-      const size_t cBins = m_features[iFeature].m_countBins;
+      const size_t cBins = static_cast<size_t>(m_features[iFeature].m_countBins);
 
       if(cBins <= perDimensionIndexArrayForBinnedFeatures[iDimension]) {
          exit(1);
@@ -602,8 +602,8 @@ BoostRet TestBoost::Boost(
       const std::vector<IntEbm> & featureIndexes = m_termFeatures[static_cast<size_t>(indexTerm)];
 
       for(size_t iDimension = 0; iDimension < featureIndexes.size(); ++iDimension) {
-         size_t iFeature = featureIndexes[iDimension];
-         size_t cBins = m_features[iFeature].m_countBins;
+         const size_t iFeature = static_cast<size_t>(featureIndexes[iDimension]);
+         const size_t cBins = static_cast<size_t>(m_features[iFeature].m_countBins);
          cUpdateScores *= cBins;
       }
 
@@ -648,8 +648,8 @@ double TestBoost::GetBestTermScore(
    const std::vector<IntEbm> & featureIndexes = m_termFeatures[static_cast<size_t>(iTerm)];
 
    for(size_t iDimension = 0; iDimension < featureIndexes.size(); ++iDimension) {
-      size_t iFeature = featureIndexes[iDimension];
-      size_t cBins = m_features[iFeature].m_countBins;
+      const size_t iFeature = static_cast<size_t>(featureIndexes[iDimension]);
+      const size_t cBins = static_cast<size_t>(m_features[iFeature].m_countBins);
       multiple *= cBins;
    }
 
@@ -691,8 +691,8 @@ double TestBoost::GetCurrentTermScore(
    const std::vector<IntEbm> & featureIndexes = m_termFeatures[static_cast<size_t>(iTerm)];
 
    for(size_t iDimension = 0; iDimension < featureIndexes.size(); ++iDimension) {
-      size_t iFeature = featureIndexes[iDimension];
-      size_t cBins = m_features[iFeature].m_countBins;
+      const size_t iFeature = static_cast<size_t>(featureIndexes[iDimension]);
+      const size_t cBins = static_cast<size_t>(m_features[iFeature].m_countBins);
       multiple *= cBins;
    }
 
@@ -731,6 +731,8 @@ TestInteraction::TestInteraction(
 ) :
    m_interactionHandle(nullptr) 
 {
+   UNUSED(bDifferentiallyPrivate);
+
    ErrorEbm error = Error_None;
 
    if(IsClassification(cClasses)) {

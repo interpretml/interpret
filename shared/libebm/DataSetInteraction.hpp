@@ -133,8 +133,7 @@ private:
 
    ErrorEbm InitWeights(
       const unsigned char * const pDataSetShared,
-      const BagEbm * const aBag,
-      const size_t cIncludedSamples
+      const BagEbm * const aBag
    );
 
    size_t m_cSamples;
