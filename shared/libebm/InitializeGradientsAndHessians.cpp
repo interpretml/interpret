@@ -23,13 +23,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern bool CheckWeightsEqual(
-   const BagEbm direction,
-   const BagEbm * const aBag,
-   const FloatFast * pWeights,
-   const size_t cIncludedSamples
-);
-
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 extern void InitializeRmseGradientsAndHessiansBoosting(
@@ -155,14 +148,10 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
       EBM_ASSERT(nullptr != pSubset);
 
       const FloatFast * pWeight = nullptr;
-      // check the first subset to see if weights were specified
+      // check the first subset just to see if weights were specified
       if(nullptr != pSubset->GetWeights()) {
          pWeight = GetDataSetSharedWeight(pDataSetShared, 0);
          EBM_ASSERT(nullptr != pWeight);
-         if(CheckWeightsEqual(BagEbm { 1 }, aBag, pWeight, cIncludedSamples)) {
-            LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitWeights all weights identical, so ignoring weights");
-            pWeight = nullptr;
-         }
       }
 
       EBM_ASSERT(1 <= pDataSet->GetCountSubsets());

@@ -23,13 +23,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern bool CheckWeightsEqual(
-   const BagEbm direction,
-   const BagEbm * const aBag,
-   const FloatFast * pWeights,
-   const size_t cIncludedSamples
-);
-
 void DataSubsetBoosting::DestructDataSubsetBoosting(const size_t cTerms, const size_t cInnerBags) {
    LOG_0(Trace_Info, "Entered DataSubsetBoosting::DestructDataSubsetBoosting");
 
@@ -62,7 +55,14 @@ ErrorEbm DataSetBoosting::InitGradHess(
 
    EBM_ASSERT(1 <= cScores);
 
-   const size_t cStorageItems = bAllocateHessians ? size_t { 2 } : size_t { 1 };
+   size_t cTotalScores = cScores;
+   if(bAllocateHessians) {
+      if(IsMultiplyError(size_t { 2 }, cScores)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitGradHess IsMultiplyError(size_t { 2 }, cScores)");
+         return Error_OutOfMemory;
+      }
+      cTotalScores = size_t { 2 } * cScores;
+   }
 
    DataSubsetBoosting * pSubset = m_aSubsets;
    const DataSubsetBoosting * const pSubsetsEnd = pSubset + m_cSubsets;
@@ -72,11 +72,11 @@ ErrorEbm DataSetBoosting::InitGradHess(
 
       EBM_ASSERT(nullptr != pSubset->m_pObjective);
       EBM_ASSERT(sizeof(FloatFast) == pSubset->m_pObjective->m_cFloatBytes); // TODO: add this check elsewhere that FloatFast is used
-      if(IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores, cSubsetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitGradHess IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores, cSubsetSamples)");
+      if(IsMultiplyError(sizeof(FloatFast), cTotalScores, cSubsetSamples)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitGradHess IsMultiplyError(sizeof(FloatFast), cTotalScores, cSubsetSamples)");
          return Error_OutOfMemory;
       }
-      const size_t cBytesGradHess = sizeof(FloatFast) * cStorageItems * cScores * cSubsetSamples;
+      const size_t cBytesGradHess = sizeof(FloatFast) * cTotalScores * cSubsetSamples;
       ANALYSIS_ASSERT(0 != cBytesGradHess);
 
       FloatFast * const aGradHess = static_cast<FloatFast *>(AlignedAlloc(cBytesGradHess));
@@ -671,9 +671,6 @@ ErrorEbm DataSetBoosting::InitBags(
    if(size_t { 0 } != cWeights) {
       aWeightsFrom = GetDataSetSharedWeight(pDataSetShared, 0);
       EBM_ASSERT(nullptr != aWeightsFrom);
-      if(CheckWeightsEqual(direction, aBag, aWeightsFrom, cIncludedSamples)) {
-         aWeightsFrom = nullptr;
-      }
    }
 
    const bool isLoopValidation = direction < BagEbm { 0 };
@@ -891,9 +888,7 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
    EBM_ASSERT(1 <= cSubsetItemsMax);
    EBM_ASSERT(nullptr != pObjectiveCpu);
    EBM_ASSERT(nullptr != pObjectiveCpu->m_pObjective);
-   EBM_ASSERT(1 == pObjectiveCpu->m_cSIMDPack);
    EBM_ASSERT(nullptr != pObjectiveSIMD);
-   EBM_ASSERT(nullptr == pObjectiveSIMD->m_pObjective || 2 <= pObjectiveSIMD->m_cSIMDPack);
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
 
@@ -907,7 +902,10 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
 
       m_cSamples = cIncludedSamples;
 
-      const size_t cSIMDPack = nullptr == pObjectiveSIMD->m_pObjective ? size_t { 0 } : pObjectiveSIMD->m_cSIMDPack;
+      EBM_ASSERT(1 == pObjectiveCpu->m_cSIMDPack);
+      EBM_ASSERT(nullptr == pObjectiveSIMD->m_pObjective && 0 == pObjectiveSIMD->m_cSIMDPack ||
+         nullptr != pObjectiveSIMD->m_pObjective && 2 <= pObjectiveSIMD->m_cSIMDPack);
+      const size_t cSIMDPack = pObjectiveSIMD->m_cSIMDPack;
 
       size_t cSubsets = 0;
       size_t cIncludedSamplesRemainingInit = cIncludedSamples;

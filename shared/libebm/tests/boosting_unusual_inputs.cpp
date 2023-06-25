@@ -303,12 +303,12 @@ TEST_CASE("weights are proportional, boosting, regression") {
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
-         TestSample({ 0 }, 10, 0),
-         TestSample({ 1 }, 10, 0),
+         TestSample({ 0 }, 10, 0.125),
+         TestSample({ 1 }, 10, 0.125),
       }, 
       { 
-         TestSample({ 1 }, 12, 0),
-         TestSample({ 1 }, 12, 0)
+         TestSample({ 1 }, 12, 0.125),
+         TestSample({ 1 }, 12, 0.125)
       }
    );
 
@@ -370,12 +370,12 @@ TEST_CASE("weights are proportional, boosting, binary") {
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
-         TestSample({ 0 }, 0, 0),
-         TestSample({ 1 }, 0, 0),
+         TestSample({ 0 }, 0, 0.125),
+         TestSample({ 1 }, 0, 0.125),
       }, 
       { 
-         TestSample({ 1 }, 0, 0),
-         TestSample({ 1 }, 0, 0)
+         TestSample({ 1 }, 0, 0.125),
+         TestSample({ 1 }, 0, 0.125)
       }
    );
 
@@ -437,12 +437,12 @@ TEST_CASE("weights are proportional, boosting, multiclass") {
       { FeatureTest(2) }, 
       { { 0 } },
       {
-         TestSample({ 0 }, 2, 0),
-         TestSample({ 1 }, 2, 0),
+         TestSample({ 0 }, 2, 0.125),
+         TestSample({ 1 }, 2, 0.125),
       }, 
       { 
-         TestSample({ 1 }, 2, 0),
-         TestSample({ 1 }, 2, 0)
+         TestSample({ 1 }, 2, 0.125),
+         TestSample({ 1 }, 2, 0.125)
       }
    );
 

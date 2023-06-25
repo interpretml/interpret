@@ -187,10 +187,10 @@ TEST_CASE("weights are proportional, interaction, regression") {
       OutputType_Regression,
       { FeatureTest(2), FeatureTest(2) },
       {
-         TestSample({ 0, 0 }, 10.1, 0),
-         TestSample({ 0, 1 }, 20.2, 0),
-         TestSample({ 1, 0 }, 30.3, 0),
-         TestSample({ 1, 1 }, 40.4, 0),
+         TestSample({ 0, 0 }, 10.1, 0.125),
+         TestSample({ 0, 1 }, 20.2, 0.125),
+         TestSample({ 1, 0 }, 30.3, 0.125),
+         TestSample({ 1, 1 }, 40.4, 0.125),
       }
    );
 
@@ -231,10 +231,10 @@ TEST_CASE("weights are proportional, interaction, binary") {
       OutputType_BinaryClassification,
       { FeatureTest(2), FeatureTest(2) },
       {
-         TestSample({ 0, 0 }, 0, 0),
-         TestSample({ 0, 1 }, 1, 0),
-         TestSample({ 1, 0 }, 1, 0),
-         TestSample({ 1, 1 }, 0, 0),
+         TestSample({ 0, 0 }, 0, 0.125),
+         TestSample({ 0, 1 }, 1, 0.125),
+         TestSample({ 1, 0 }, 1, 0.125),
+         TestSample({ 1, 1 }, 0, 0.125),
       }
    );
 
@@ -275,10 +275,10 @@ TEST_CASE("weights are proportional, interaction, multiclass") {
       3,
       { FeatureTest(2), FeatureTest(2) },
       {
-         TestSample({ 0, 0 }, 0, 0),
-         TestSample({ 0, 1 }, 1, 0),
-         TestSample({ 1, 0 }, 2, 0),
-         TestSample({ 1, 1 }, 0, 0),
+         TestSample({ 0, 0 }, 0, 0.125),
+         TestSample({ 0, 1 }, 1, 0.125),
+         TestSample({ 1, 0 }, 2, 0.125),
+         TestSample({ 1, 1 }, 0, 0.125),
       }
    );
 

@@ -17,13 +17,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern bool CheckWeightsEqual(
-   const BagEbm direction,
-   const BagEbm * const aBag,
-   const FloatFast * pWeights,
-   const size_t cIncludedSamples
-);
-
 void DataSubsetInteraction::DestructDataSubsetInteraction(const size_t cFeatures) {
    LOG_0(Trace_Info, "Entered DataSubsetInteraction::DestructDataSubsetInteraction");
 
@@ -51,7 +44,14 @@ ErrorEbm DataSetInteraction::InitGradHess(
 
    EBM_ASSERT(1 <= cScores);
 
-   const size_t cStorageItems = bAllocateHessians ? size_t { 2 } : size_t { 1 };
+   size_t cTotalScores = cScores;
+   if(bAllocateHessians) {
+      if(IsMultiplyError(size_t { 2 }, cScores)) {
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitGradHess IsMultiplyError(size_t { 2 }, cScores)");
+         return Error_OutOfMemory;
+      }
+      cTotalScores = size_t { 2 } *cScores;
+   }
 
    DataSubsetInteraction * pSubset = m_aSubsets;
    const DataSubsetInteraction * const pSubsetsEnd = pSubset + m_cSubsets;
@@ -61,11 +61,11 @@ ErrorEbm DataSetInteraction::InitGradHess(
 
       EBM_ASSERT(nullptr != pSubset->m_pObjective);
       EBM_ASSERT(sizeof(FloatFast) == pSubset->m_pObjective->m_cFloatBytes); // TODO: add this check elsewhere that FloatFast is used
-      if(IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores, cSubsetSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitGradHess IsMultiplyError(sizeof(FloatFast) * cStorageItems, cScores, cSubsetSamples)");
+      if(IsMultiplyError(sizeof(FloatFast), cTotalScores, cSubsetSamples)) {
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitGradHess IsMultiplyError(sizeof(FloatFast), cTotalScores, cSubsetSamples)");
          return Error_OutOfMemory;
       }
-      const size_t cBytesGradHess = sizeof(FloatFast) * cStorageItems * cScores * cSubsetSamples;
+      const size_t cBytesGradHess = sizeof(FloatFast) * cTotalScores * cSubsetSamples;
       ANALYSIS_ASSERT(0 != cBytesGradHess);
 
       FloatFast * const aGradHess = static_cast<FloatFast *>(AlignedAlloc(cBytesGradHess));
@@ -193,7 +193,6 @@ ErrorEbm DataSetInteraction::InitFeatureData(
 
             const StorageDataType * const pFeatureDataToEnd = &pFeatureDataTo[cDataUnitsTo];
 
-
             ptrdiff_t cShiftTo = static_cast<ptrdiff_t>((cSubsetSamples - 1) % cItemsPerBitPackTo * cBitsPerItemMaxTo);
             const ptrdiff_t cShiftResetTo = static_cast<ptrdiff_t>((cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo);
             do {
@@ -226,6 +225,7 @@ ErrorEbm DataSetInteraction::InitFeatureData(
                      --iShiftFrom;
                      if(iShiftFrom < ptrdiff_t { 0 }) {
                         ++pFeatureDataFrom;
+                        EBM_ASSERT(ptrdiff_t { -1 } == iShiftFrom);
                         iShiftFrom += cItemsPerBitPackFrom;
                      }
                   }
@@ -269,10 +269,6 @@ ErrorEbm DataSetInteraction::InitWeights(
 
    const FloatFast * pWeightFrom = GetDataSetSharedWeight(pDataSetShared, 0);
    EBM_ASSERT(nullptr != pWeightFrom);
-   if(CheckWeightsEqual(BagEbm { 1 }, aBag, pWeightFrom, cIncludedSamples)) {
-      LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitWeights all weights identical, so ignoring weights");
-      return Error_None;
-   }
 
    EBM_ASSERT(nullptr != m_aSubsets);
    EBM_ASSERT(1 <= m_cSubsets);
@@ -359,9 +355,7 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
    EBM_ASSERT(1 <= cSubsetItemsMax);
    EBM_ASSERT(nullptr != pObjectiveCpu);
    EBM_ASSERT(nullptr != pObjectiveCpu->m_pObjective); // the objective for the CPU zone cannot be null unlike SIMD
-   EBM_ASSERT(1 == pObjectiveCpu->m_cSIMDPack);
    EBM_ASSERT(nullptr != pObjectiveSIMD);
-   EBM_ASSERT(nullptr == pObjectiveSIMD->m_pObjective || 2 <= pObjectiveSIMD->m_cSIMDPack);
    EBM_ASSERT(nullptr != pDataSetShared);
 
    EBM_ASSERT(0 == m_cSamples);
@@ -374,7 +368,10 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
 
       m_cSamples = cIncludedSamples;
 
-      const size_t cSIMDPack = nullptr == pObjectiveSIMD->m_pObjective ? size_t { 0 } : pObjectiveSIMD->m_cSIMDPack;
+      EBM_ASSERT(1 == pObjectiveCpu->m_cSIMDPack);
+      EBM_ASSERT(nullptr == pObjectiveSIMD->m_pObjective && 0 == pObjectiveSIMD->m_cSIMDPack ||
+         nullptr != pObjectiveSIMD->m_pObjective && 2 <= pObjectiveSIMD->m_cSIMDPack);
+      const size_t cSIMDPack = pObjectiveSIMD->m_cSIMDPack;
 
       size_t cSubsets = 0;
       size_t cIncludedSamplesRemainingInit = cIncludedSamples;
