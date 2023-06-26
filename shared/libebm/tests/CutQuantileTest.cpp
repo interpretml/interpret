@@ -1204,7 +1204,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
 
    RandomStreamTest randomStream(k_seed);
    if(!randomStream.IsSuccess()) {
-      exit(1);
+      throw TestException("RandomStreamTest");
    }
 
    static constexpr bool bSmart = true;
@@ -1336,7 +1336,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
 
    RandomStreamTest randomStream(k_seed);
    if(!randomStream.IsSuccess()) {
-      exit(1);
+      throw TestException("RandomStreamTest");
    }
 
    static constexpr bool bSmart = true;

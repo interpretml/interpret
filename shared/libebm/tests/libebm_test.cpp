@@ -56,7 +56,7 @@ extern void FAILED(const double val, TestCaseHidden * const pTestCaseHidden, con
 #pragma optimize("", on)
 #endif // _MSC_VER
 
-void EBM_CALLING_CONVENTION LogCallback(TraceEbm traceLevel, const char * message) {
+void EBM_CALLING_CONVENTION LogCallback(const TraceEbm traceLevel, const char * const message) {
    const size_t cChars = strlen(message); // test that the string memory is accessible
    UNUSED(cChars);
    if(traceLevel <= Trace_Off) {
@@ -137,14 +137,11 @@ const double * TestBoost::GetTermScores(
 ) const {
    const size_t cScores = GetCountScores(m_cClasses);
 
-   if(m_termFeatures.size() <= iTerm) {
-      exit(1);
-   }
    const std::vector<IntEbm> featureIndexes = m_termFeatures[iTerm];
 
    const size_t cDimensions = perDimensionIndexArrayForBinnedFeatures.size();
    if(cDimensions != featureIndexes.size()) {
-      exit(1);
+      throw TestException("dimension mismatch");
    }
    size_t iVal = 0;
    size_t multiple = cScores;
@@ -155,7 +152,7 @@ const double * TestBoost::GetTermScores(
       const size_t cBins = static_cast<size_t>(m_features[iFeature].m_countBins);
 
       if(cBins <= perDimensionIndexArrayForBinnedFeatures[iDimension]) {
-         exit(1);
+         throw TestException("bin index beyond count of bins");
       }
       iVal += perDimensionIndexArrayForBinnedFeatures[iDimension] * multiple;
       multiple *= cBins;
@@ -179,12 +176,12 @@ double TestBoost::GetTermScore(
    );
    if(!IsClassification(m_cClasses)) {
       if(0 != iClassOrZero) {
-         exit(1);
+         throw TestException("iClassOrZero cannot be non-zero for regression");
       }
       return aScores[0];
    }
    if(static_cast<size_t>(m_cClasses) <= iClassOrZero) {
-      exit(1);
+      throw TestException("iClassOrZero beyond the number of classes");
    }
    if(OutputType_BinaryClassification == m_cClasses) {
       // binary classification
@@ -240,15 +237,15 @@ TestBoost::TestBoost(
    m_iZeroClassificationLogit(iZeroClassificationLogit),
    m_boosterHandle(nullptr) 
 {
-   ErrorEbm error = Error_None;
+   ErrorEbm error;
 
    if(IsClassification(cClasses)) {
       if(static_cast<ptrdiff_t>(cClasses) <= iZeroClassificationLogit) {
-         exit(1);
+         throw TestException("bad iZeroClassificationLogit value for classification");
       }
    } else {
       if(ptrdiff_t { -1 } != iZeroClassificationLogit) {
-         exit(1);
+         throw TestException("bad iZeroClassificationLogit value for regression");
       }
    }
 
@@ -284,7 +281,13 @@ TestBoost::TestBoost(
       }
    }
 
-   IntEbm size = MeasureDataSetHeader(features.size(), bWeight ? 1 : 0, 1);
+   IntEbm size = 0;
+   IntEbm sizeChange = MeasureDataSetHeader(features.size(), bWeight ? 1 : 0, 1);
+   if(sizeChange < 0) {
+      throw TestException(static_cast<ErrorEbm>(sizeChange), "MeasureDataSetHeader");
+   }
+   size += sizeChange;
+
    size_t iFeature = 0;
    for(const FeatureTest & feature : features) {
       std::vector<IntEbm> binIndexes;
@@ -294,7 +297,7 @@ TestBoost::TestBoost(
       for(const TestSample & sample : validation) {
          binIndexes.push_back(sample.m_sampleBinIndexes[iFeature]);
       }
-      size += MeasureFeature(
+      sizeChange = MeasureFeature(
          feature.m_countBins, 
          feature.m_bMissing ? EBM_TRUE : EBM_FALSE, 
          feature.m_bUnknown ? EBM_TRUE : EBM_FALSE,
@@ -302,6 +305,11 @@ TestBoost::TestBoost(
          cSamples, 
          0 == binIndexes.size() ? nullptr : &binIndexes[0]
       );
+      if(sizeChange < 0) {
+         throw TestException(static_cast<ErrorEbm>(sizeChange), "MeasureFeature");
+      }
+      size += sizeChange;
+
       ++iFeature;
    }
 
@@ -313,10 +321,14 @@ TestBoost::TestBoost(
       for(const TestSample & sample : validation) {
          weights.push_back(sample.m_weight);
       }
-      size += MeasureWeight(weights.size(), &weights[0]);
+      sizeChange = MeasureWeight(weights.size(), &weights[0]);
+      if(sizeChange < 0) {
+         throw TestException(static_cast<ErrorEbm>(sizeChange), "MeasureWeight");
+      }
+      size += sizeChange;
    }
 
-   if(IsClassification(m_cClasses)) {
+   if(IsClassification(cClasses)) {
       std::vector<IntEbm> targets;
       for(const TestSample & sample : train) {
          targets.push_back(static_cast<IntEbm>(sample.m_target));
@@ -324,7 +336,11 @@ TestBoost::TestBoost(
       for(const TestSample & sample : validation) {
          targets.push_back(static_cast<IntEbm>(sample.m_target));
       }
-      size += MeasureClassificationTarget(m_cClasses, targets.size(), 0 == targets.size() ? nullptr : &targets[0]);
+      sizeChange = MeasureClassificationTarget(cClasses, targets.size(), 0 == targets.size() ? nullptr : &targets[0]);
+      if(sizeChange < 0) {
+         throw TestException(static_cast<ErrorEbm>(sizeChange), "MeasureClassificationTarget");
+      }
+      size += sizeChange;
    } else {
       std::vector<double> targets;
       for(const TestSample & sample : train) {
@@ -333,12 +349,20 @@ TestBoost::TestBoost(
       for(const TestSample & sample : validation) {
          targets.push_back(sample.m_target);
       }
-      size += MeasureRegressionTarget(targets.size(), 0 == targets.size() ? nullptr : &targets[0]);
+      sizeChange = MeasureRegressionTarget(targets.size(), 0 == targets.size() ? nullptr : &targets[0]);
+      if(sizeChange < 0) {
+         throw TestException(static_cast<ErrorEbm>(sizeChange), "MeasureRegressionTarget");
+      }
+      size += sizeChange;
    }
 
-   void * pDataSet = malloc(static_cast<size_t>(size));
+   std::vector<unsigned char> dataset(static_cast<size_t>(size));
 
-   error = FillDataSetHeader(features.size(), bWeight ? 1 : 0, 1, size, pDataSet);
+   error = FillDataSetHeader(features.size(), bWeight ? 1 : 0, 1, size, &dataset[0]);
+   if(Error_None != error) {
+      throw TestException(error, "FillDataSetHeader");
+   }
+
    iFeature = 0;
    for(const FeatureTest & feature : features) {
       std::vector<IntEbm> binIndexes;
@@ -356,8 +380,11 @@ TestBoost::TestBoost(
          cSamples,
          0 == binIndexes.size() ? nullptr : &binIndexes[0], 
          size, 
-         pDataSet
+         &dataset[0]
       );
+      if(Error_None != error) {
+         throw TestException(error, "FillFeature");
+      }
       ++iFeature;
    }
 
@@ -369,10 +396,13 @@ TestBoost::TestBoost(
       for(const TestSample & sample : validation) {
          weights.push_back(sample.m_weight);
       }
-      error = FillWeight(weights.size(), &weights[0], size, pDataSet);
+      error = FillWeight(weights.size(), &weights[0], size, &dataset[0]);
+      if(Error_None != error) {
+         throw TestException(error, "FillWeight");
+      }
    }
 
-   if(IsClassification(m_cClasses)) {
+   if(IsClassification(cClasses)) {
       std::vector<IntEbm> targets;
       for(const TestSample & sample : train) {
          targets.push_back(static_cast<IntEbm>(sample.m_target));
@@ -380,7 +410,10 @@ TestBoost::TestBoost(
       for(const TestSample & sample : validation) {
          targets.push_back(static_cast<IntEbm>(sample.m_target));
       }
-      error = FillClassificationTarget(m_cClasses, targets.size(), 0 == targets.size() ? nullptr : &targets[0], size, pDataSet);
+      error = FillClassificationTarget(cClasses, targets.size(), 0 == targets.size() ? nullptr : &targets[0], size, &dataset[0]);
+      if(Error_None != error) {
+         throw TestException(error, "FillClassificationTarget");
+      }
    } else {
       std::vector<double> targets;
       for(const TestSample & sample : train) {
@@ -389,51 +422,48 @@ TestBoost::TestBoost(
       for(const TestSample & sample : validation) {
          targets.push_back(sample.m_target);
       }
-      error = FillRegressionTarget(targets.size(), 0 == targets.size() ? nullptr : &targets[0], size, pDataSet);
+      error = FillRegressionTarget(targets.size(), 0 == targets.size() ? nullptr : &targets[0], size, &dataset[0]);
+      if(Error_None != error) {
+         throw TestException(error, "FillRegressionTarget");
+      }
    }
 
-   const size_t cScores = GetCountScores(m_cClasses);
+   const size_t cScores = GetCountScores(cClasses);
    std::vector<double> initScores;
    if(bInitScores) {
-      if(IsClassification(m_cClasses)) {
+      if(IsClassification(cClasses)) {
          for(const TestSample & sample : train) {
             if(sample.m_bScores) {
-               if(static_cast<size_t>(m_cClasses) != sample.m_initScores.size()) {
-                  exit(1);
+               if(static_cast<size_t>(cClasses) != sample.m_initScores.size()) {
+                  throw TestException(error, "cClasses mismatch with sample.m_initScores");
                }
                ptrdiff_t iLogit = 0;
                for(const double oneLogit : sample.m_initScores) {
-                  if(std::isnan(oneLogit)) {
-                     exit(1);
-                  }
-                  if(std::isinf(oneLogit)) {
-                     exit(1);
-                  }
-                  if(OutputType_BinaryClassification == m_cClasses) {
+                  if(OutputType_BinaryClassification == cClasses) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
-                     if(m_iZeroClassificationLogit < 0) {
+                     if(iZeroClassificationLogit < 0) {
                         initScores.push_back(oneLogit);
                      } else {
-                        initScores.push_back(oneLogit - sample.m_initScores[m_iZeroClassificationLogit]);
+                        initScores.push_back(oneLogit - sample.m_initScores[iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
-                     if(m_iZeroClassificationLogit < 0) {
+                     if(iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
                            initScores.push_back(oneLogit - sample.m_initScores[0]);
                         }
                      } else {
-                        if(m_iZeroClassificationLogit != iLogit) {
-                           initScores.push_back(oneLogit - sample.m_initScores[m_iZeroClassificationLogit]);
+                        if(iZeroClassificationLogit != iLogit) {
+                           initScores.push_back(oneLogit - sample.m_initScores[iZeroClassificationLogit]);
                         }
                      }
 #endif // EXPAND_BINARY_LOGITS
                   } else {
                      // multiclass
-                     if(m_iZeroClassificationLogit < 0) {
+                     if(iZeroClassificationLogit < 0) {
                         initScores.push_back(oneLogit);
                      } else {
-                        initScores.push_back(oneLogit - sample.m_initScores[m_iZeroClassificationLogit]);
+                        initScores.push_back(oneLogit - sample.m_initScores[iZeroClassificationLogit]);
                      }
                   }
                   ++iLogit;
@@ -444,42 +474,36 @@ TestBoost::TestBoost(
          }
          for(const TestSample & sample : validation) {
             if(sample.m_bScores) {
-               if(static_cast<size_t>(m_cClasses) != sample.m_initScores.size()) {
-                  exit(1);
+               if(static_cast<size_t>(cClasses) != sample.m_initScores.size()) {
+                  throw TestException(error, "cClasses mismatch with sample.m_initScores");
                }
                ptrdiff_t iLogit = 0;
                for(const double oneLogit : sample.m_initScores) {
-                  if(std::isnan(oneLogit)) {
-                     exit(1);
-                  }
-                  if(std::isinf(oneLogit)) {
-                     exit(1);
-                  }
-                  if(OutputType_BinaryClassification == m_cClasses) {
+                  if(OutputType_BinaryClassification == cClasses) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
-                     if(m_iZeroClassificationLogit < 0) {
+                     if(iZeroClassificationLogit < 0) {
                         initScores.push_back(oneLogit);
                      } else {
-                        initScores.push_back(oneLogit - sample.m_initScores[m_iZeroClassificationLogit]);
+                        initScores.push_back(oneLogit - sample.m_initScores[iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
-                     if(m_iZeroClassificationLogit < 0) {
+                     if(iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
                            initScores.push_back(oneLogit - sample.m_initScores[0]);
                         }
                      } else {
-                        if(m_iZeroClassificationLogit != iLogit) {
-                           initScores.push_back(oneLogit - sample.m_initScores[m_iZeroClassificationLogit]);
+                        if(iZeroClassificationLogit != iLogit) {
+                           initScores.push_back(oneLogit - sample.m_initScores[iZeroClassificationLogit]);
                         }
                      }
 #endif // EXPAND_BINARY_LOGITS
                   } else {
                      // multiclass
-                     if(m_iZeroClassificationLogit < 0) {
+                     if(iZeroClassificationLogit < 0) {
                         initScores.push_back(oneLogit);
                      } else {
-                        initScores.push_back(oneLogit - sample.m_initScores[m_iZeroClassificationLogit]);
+                        initScores.push_back(oneLogit - sample.m_initScores[iZeroClassificationLogit]);
                      }
                   }
                   ++iLogit;
@@ -491,22 +515,10 @@ TestBoost::TestBoost(
       } else {
          for(const TestSample & sample : train) {
             const double score = sample.m_initScores[0];
-            if(std::isnan(score)) {
-               exit(1);
-            }
-            if(std::isinf(score)) {
-               exit(1);
-            }
             initScores.push_back(score);
          }
          for(const TestSample & sample : validation) {
             const double score = sample.m_initScores[0];
-            if(std::isnan(score)) {
-               exit(1);
-            }
-            if(std::isinf(score)) {
-               exit(1);
-            }
             initScores.push_back(score);
          }
       }
@@ -514,7 +526,7 @@ TestBoost::TestBoost(
 
    std::vector<IntEbm> dimensionCounts;
    std::vector<IntEbm> allFeatureIndexes;
-   for(const std::vector<IntEbm> & featureIndexes : m_termFeatures) {
+   for(const std::vector<IntEbm> & featureIndexes : termFeatures) {
       dimensionCounts.push_back(featureIndexes.size());
       for(const IntEbm indexFeature : featureIndexes) {
          allFeatureIndexes.push_back(indexFeature);
@@ -523,7 +535,7 @@ TestBoost::TestBoost(
 
    error = CreateBooster(
       &m_rng[0],
-      pDataSet,
+      &dataset[0],
       0 == bag.size() ? nullptr : &bag[0],
       bInitScores ? &initScores[0] : nullptr,
       dimensionCounts.size(),
@@ -531,20 +543,15 @@ TestBoost::TestBoost(
       0 == allFeatureIndexes.size() ? nullptr : &allFeatureIndexes[0],
       countInnerBags,
       bDifferentiallyPrivate,
-      nullptr == sObjective ? (IsClassification(m_cClasses) ? "log_loss" : "rmse") : sObjective,
+      nullptr == sObjective ? (IsClassification(cClasses) ? "log_loss" : "rmse") : sObjective,
       nullptr,
       &m_boosterHandle
    );
-
-   free(pDataSet);
-
    if(Error_None != error) {
-      printf("\nClean exit with nullptr from InitializeBoosting*.\n");
-      exit(1);
+      throw TestException(error, "CreateBooster");
    }
    if(nullptr == m_boosterHandle) {
-      printf("\nClean exit with nullptr from InitializeBoosting*.\n");
-      exit(1);
+      throw TestException("Clean exit with nullptr from CreateBooster.");
    }
 }
 
@@ -563,22 +570,6 @@ BoostRet TestBoost::Boost(
 ) {
    ErrorEbm error;
 
-   if(indexTerm < IntEbm { 0 }) {
-      exit(1);
-   }
-   if(m_termFeatures.size() <= static_cast<size_t>(indexTerm)) {
-      exit(1);
-   }
-   if(std::isnan(learningRate)) {
-      exit(1);
-   }
-   if(std::isinf(learningRate)) {
-      exit(1);
-   }
-   if(minSamplesLeaf < double { 0 }) {
-      exit(1);
-   }
-
    double gainAvg = std::numeric_limits<double>::quiet_NaN();
    double validationMetricAvg = std::numeric_limits<double>::quiet_NaN();
 
@@ -593,43 +584,37 @@ BoostRet TestBoost::Boost(
       &gainAvg
    );
    if(Error_None != error) {
-      exit(1);
+      throw TestException(error, "GenerateTermUpdate");
    }
    if(0 != (BoostFlags_GradientSums & flags)) {
       // if sums are on, then we MUST change the term update
 
       size_t cUpdateScores = GetCountScores(m_cClasses);
-      const std::vector<IntEbm> & featureIndexes = m_termFeatures[static_cast<size_t>(indexTerm)];
 
-      for(size_t iDimension = 0; iDimension < featureIndexes.size(); ++iDimension) {
-         const size_t iFeature = static_cast<size_t>(featureIndexes[iDimension]);
-         const size_t cBins = static_cast<size_t>(m_features[iFeature].m_countBins);
+      for(const IntEbm iFeature : m_termFeatures[static_cast<size_t>(indexTerm)]) {
+         const size_t cBins = static_cast<size_t>(m_features[static_cast<size_t>(iFeature)].m_countBins);
          cUpdateScores *= cBins;
       }
 
-      double * aUpdateScores = nullptr;
+      std::vector<double> scoreTensor(cUpdateScores);
       if(0 != cUpdateScores) {
-         aUpdateScores = new double[cUpdateScores];
-         memset(aUpdateScores, 0, sizeof(*aUpdateScores) * cUpdateScores);
+         memset(&scoreTensor[0], 0, sizeof(double) * cUpdateScores);
       }
 
       error = SetTermUpdate(
          m_boosterHandle,
          indexTerm,
-         aUpdateScores
+         &scoreTensor[0]
       );
-
-      delete[] aUpdateScores;
-
       if(Error_None != error) {
-         exit(1);
+         throw TestException(error, "SetTermUpdate");
       }
    }
    error = ApplyTermUpdate(m_boosterHandle, &validationMetricAvg);
-
    if(Error_None != error) {
-      exit(1);
+      throw TestException(error, "ApplyTermUpdate");
    }
+
    return BoostRet { gainAvg, validationMetricAvg };
 }
 
@@ -639,26 +624,17 @@ double TestBoost::GetBestTermScore(
    const std::vector<size_t> indexes,
    const size_t iScore
 ) const {
-   ErrorEbm error;
-
-   if(m_termFeatures.size() <= iTerm) {
-      exit(1);
-   }
    size_t multiple = GetCountScores(m_cClasses);
-   const std::vector<IntEbm> & featureIndexes = m_termFeatures[static_cast<size_t>(iTerm)];
-
-   for(size_t iDimension = 0; iDimension < featureIndexes.size(); ++iDimension) {
-      const size_t iFeature = static_cast<size_t>(featureIndexes[iDimension]);
-      const size_t cBins = static_cast<size_t>(m_features[iFeature].m_countBins);
+   for(const IntEbm iFeature : m_termFeatures[static_cast<size_t>(iTerm)]) {
+      const size_t cBins = static_cast<size_t>(m_features[static_cast<size_t>(iFeature)].m_countBins);
       multiple *= cBins;
    }
 
-   std::vector<double> termScores;
-   termScores.resize(multiple);
+   std::vector<double> termScores(multiple);
 
-   error = GetBestTermScores(m_boosterHandle, iTerm, &termScores[0]);
+   const ErrorEbm error = GetBestTermScores(m_boosterHandle, iTerm, &termScores[0]);
    if(Error_None != error) {
-      exit(1);
+      throw TestException(error, "GetBestTermScores");
    }
 
    const double termScore = GetTermScore(iTerm, &termScores[0], indexes, iScore);
@@ -666,14 +642,9 @@ double TestBoost::GetBestTermScore(
 }
 
 void TestBoost::GetBestTermScoresRaw(const size_t iTerm, double * const aTermScores) const {
-   ErrorEbm error;
-
-   if(m_termFeatures.size() <= iTerm) {
-      exit(1);
-   }
-   error = GetBestTermScores(m_boosterHandle, iTerm, aTermScores);
+   const ErrorEbm error = GetBestTermScores(m_boosterHandle, iTerm, aTermScores);
    if(Error_None != error) {
-      exit(1);
+      throw TestException(error, "GetBestTermScores");
    }
 }
 
@@ -682,26 +653,17 @@ double TestBoost::GetCurrentTermScore(
    const std::vector<size_t> indexes,
    const size_t iScore
 ) const {
-   ErrorEbm error;
-
-   if(m_termFeatures.size() <= iTerm) {
-      exit(1);
-   }
    size_t multiple = GetCountScores(m_cClasses);
-   const std::vector<IntEbm> & featureIndexes = m_termFeatures[static_cast<size_t>(iTerm)];
-
-   for(size_t iDimension = 0; iDimension < featureIndexes.size(); ++iDimension) {
-      const size_t iFeature = static_cast<size_t>(featureIndexes[iDimension]);
-      const size_t cBins = static_cast<size_t>(m_features[iFeature].m_countBins);
+   for(const IntEbm iFeature : m_termFeatures[static_cast<size_t>(iTerm)]) {
+      const size_t cBins = static_cast<size_t>(m_features[static_cast<size_t>(iFeature)].m_countBins);
       multiple *= cBins;
    }
 
-   std::vector<double> termScores;
-   termScores.resize(multiple);
+   std::vector<double> termScores(multiple);
 
-   error = GetCurrentTermScores(m_boosterHandle, iTerm, &termScores[0]);
+   const ErrorEbm error = GetCurrentTermScores(m_boosterHandle, iTerm, &termScores[0]);
    if(Error_None != error) {
-      exit(1);
+      throw TestException(error, "GetCurrentTermScores");
    }
 
    const double termScore = GetTermScore(iTerm, &termScores[0], indexes, iScore);
@@ -709,14 +671,9 @@ double TestBoost::GetCurrentTermScore(
 }
 
 void TestBoost::GetCurrentTermScoresRaw(const size_t iTerm, double * const aTermScores) const {
-   ErrorEbm error;
-
-   if(m_termFeatures.size() <= iTerm) {
-      exit(1);
-   }
-   error = GetCurrentTermScores(m_boosterHandle, iTerm, aTermScores);
+   const ErrorEbm error = GetCurrentTermScores(m_boosterHandle, iTerm, aTermScores);
    if(Error_None != error) {
-      exit(1);
+      throw TestException(error, "GetCurrentTermScores");
    }
 }
 
@@ -733,15 +690,15 @@ TestInteraction::TestInteraction(
 {
    UNUSED(bDifferentiallyPrivate);
 
-   ErrorEbm error = Error_None;
+   ErrorEbm error;
 
    if(IsClassification(cClasses)) {
       if(static_cast<ptrdiff_t>(cClasses) <= iZeroClassificationLogit) {
-         exit(1);
+         throw TestException("bad iZeroClassificationLogit value for classification");
       }
    } else {
       if(ptrdiff_t { -1 } != iZeroClassificationLogit) {
-         exit(1);
+         throw TestException("bad iZeroClassificationLogit value for regression");
       }
    }
 
@@ -763,14 +720,20 @@ TestInteraction::TestInteraction(
       }
    }
 
-   IntEbm size = MeasureDataSetHeader(features.size(), bWeight ? 1 : 0, 1);
+   IntEbm size = 0;
+   IntEbm sizeChange = MeasureDataSetHeader(features.size(), bWeight ? 1 : 0, 1);
+   if(sizeChange < 0) {
+      throw TestException(static_cast<ErrorEbm>(sizeChange), "MeasureDataSetHeader");
+   }
+   size += sizeChange;
+
    size_t iFeature = 0;
    for(const FeatureTest & feature : features) {
       std::vector<IntEbm> binIndexes;
       for(const TestSample & sample : samples) {
          binIndexes.push_back(sample.m_sampleBinIndexes[iFeature]);
       }
-      size += MeasureFeature(
+      sizeChange = MeasureFeature(
          feature.m_countBins,
          feature.m_bMissing ? EBM_TRUE : EBM_FALSE,
          feature.m_bUnknown ? EBM_TRUE : EBM_FALSE,
@@ -778,6 +741,11 @@ TestInteraction::TestInteraction(
          cSamples,
          0 == binIndexes.size() ? nullptr : &binIndexes[0]
       );
+      if(sizeChange < 0) {
+         throw TestException(static_cast<ErrorEbm>(sizeChange), "MeasureFeature");
+      }
+      size += sizeChange;
+
       ++iFeature;
    }
 
@@ -786,7 +754,11 @@ TestInteraction::TestInteraction(
       for(const TestSample & sample : samples) {
          weights.push_back(sample.m_weight);
       }
-      size += MeasureWeight(weights.size(), &weights[0]);
+      sizeChange = MeasureWeight(weights.size(), &weights[0]);
+      if(sizeChange < 0) {
+         throw TestException(static_cast<ErrorEbm>(sizeChange), "MeasureWeight");
+      }
+      size += sizeChange;
    }
 
    if(IsClassification(cClasses)) {
@@ -794,18 +766,30 @@ TestInteraction::TestInteraction(
       for(const TestSample & sample : samples) {
          targets.push_back(static_cast<IntEbm>(sample.m_target));
       }
-      size += MeasureClassificationTarget(cClasses, targets.size(), 0 == targets.size() ? nullptr : &targets[0]);
+      sizeChange = MeasureClassificationTarget(cClasses, targets.size(), 0 == targets.size() ? nullptr : &targets[0]);
+      if(sizeChange < 0) {
+         throw TestException(static_cast<ErrorEbm>(sizeChange), "MeasureClassificationTarget");
+      }
+      size += sizeChange;
    } else {
       std::vector<double> targets;
       for(const TestSample & sample : samples) {
          targets.push_back(sample.m_target);
       }
-      size += MeasureRegressionTarget(targets.size(), 0 == targets.size() ? nullptr : &targets[0]);
+      sizeChange = MeasureRegressionTarget(targets.size(), 0 == targets.size() ? nullptr : &targets[0]);
+      if(sizeChange < 0) {
+         throw TestException(static_cast<ErrorEbm>(sizeChange), "MeasureRegressionTarget");
+      }
+      size += sizeChange;
    }
 
-   void * pDataSet = malloc(static_cast<size_t>(size));
+   std::vector<unsigned char> dataset(static_cast<size_t>(size));
 
-   error = FillDataSetHeader(features.size(), bWeight ? 1 : 0, 1, size, pDataSet);
+   error = FillDataSetHeader(features.size(), bWeight ? 1 : 0, 1, size, &dataset[0]);
+   if(Error_None != error) {
+      throw TestException(error, "FillDataSetHeader");
+   }
+
    iFeature = 0;
    for(const FeatureTest & feature : features) {
       std::vector<IntEbm> binIndexes;
@@ -820,8 +804,11 @@ TestInteraction::TestInteraction(
          cSamples,
          0 == binIndexes.size() ? nullptr : &binIndexes[0],
          size,
-         pDataSet
+         &dataset[0]
       );
+      if(Error_None != error) {
+         throw TestException(error, "FillFeature");
+      }
       ++iFeature;
    }
 
@@ -830,7 +817,10 @@ TestInteraction::TestInteraction(
       for(const TestSample & sample : samples) {
          weights.push_back(sample.m_weight);
       }
-      error = FillWeight(weights.size(), &weights[0], size, pDataSet);
+      error = FillWeight(weights.size(), &weights[0], size, &dataset[0]);
+      if(Error_None != error) {
+         throw TestException(error, "FillWeight");
+      }
    }
 
    if(IsClassification(cClasses)) {
@@ -838,13 +828,19 @@ TestInteraction::TestInteraction(
       for(const TestSample & sample : samples) {
          targets.push_back(static_cast<IntEbm>(sample.m_target));
       }
-      error = FillClassificationTarget(cClasses, targets.size(), 0 == targets.size() ? nullptr : &targets[0], size, pDataSet);
+      error = FillClassificationTarget(cClasses, targets.size(), 0 == targets.size() ? nullptr : &targets[0], size, &dataset[0]);
+      if(Error_None != error) {
+         throw TestException(error, "FillClassificationTarget");
+      }
    } else {
       std::vector<double> targets;
       for(const TestSample & sample : samples) {
          targets.push_back(sample.m_target);
       }
-      error = FillRegressionTarget(targets.size(), 0 == targets.size() ? nullptr : &targets[0], size, pDataSet);
+      error = FillRegressionTarget(targets.size(), 0 == targets.size() ? nullptr : &targets[0], size, &dataset[0]);
+      if(Error_None != error) {
+         throw TestException(error, "FillRegressionTarget");
+      }
    }
 
    const size_t cScores = GetCountScores(cClasses);
@@ -854,16 +850,10 @@ TestInteraction::TestInteraction(
          for(const TestSample & sample : samples) {
             if(sample.m_bScores) {
                if(static_cast<size_t>(cClasses) != sample.m_initScores.size()) {
-                  exit(1);
+                  throw TestException(error, "cClasses mismatch with sample.m_initScores");
                }
                ptrdiff_t iLogit = 0;
                for(const double oneLogit : sample.m_initScores) {
-                  if(std::isnan(oneLogit)) {
-                     exit(1);
-                  }
-                  if(std::isinf(oneLogit)) {
-                     exit(1);
-                  }
                   if(OutputType_BinaryClassification == cClasses) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
@@ -900,19 +890,13 @@ TestInteraction::TestInteraction(
       } else {
          for(const TestSample & sample : samples) {
             const double score = sample.m_initScores[0];
-            if(std::isnan(score)) {
-               exit(1);
-            }
-            if(std::isinf(score)) {
-               exit(1);
-            }
             initScores.push_back(score);
          }
       }
    }
 
    error = CreateInteractionDetector(
-      pDataSet,
+      &dataset[0],
       0 == bag.size() ? nullptr : &bag[0],
       0 == initScores.size() ? nullptr : &initScores[0],
       EBM_FALSE,
@@ -921,15 +905,11 @@ TestInteraction::TestInteraction(
       &m_interactionHandle
    );
 
-   free(pDataSet);
-
    if(Error_None != error) {
-      printf("\nClean exit with nullptr from InitializeBoosting*.\n");
-      exit(1);
+      throw TestException(error, "CreateInteractionDetector");
    }
    if(nullptr == m_interactionHandle) {
-      printf("\nClean exit with nullptr from InitializeBoosting*.\n");
-      exit(1);
+      throw TestException("Clean exit with nullptr from CreateInteractionDetector.");
    }
 }
 
@@ -944,10 +924,8 @@ double TestInteraction::TestCalcInteractionStrength(
    const InteractionFlags flags,
    const IntEbm minSamplesLeaf
 ) const {
-   ErrorEbm error;
-
    double avgInteractionStrength = double { 0 };
-   error = CalcInteractionStrength(
+   const ErrorEbm error = CalcInteractionStrength(
       m_interactionHandle,
       features.size(),
       0 == features.size() ? nullptr : &features[0],
@@ -957,7 +935,7 @@ double TestInteraction::TestCalcInteractionStrength(
       &avgInteractionStrength
    );
    if(Error_None != error) {
-      exit(1);
+      throw TestException(error, "CalcInteractionStrength");
    }
    return avgInteractionStrength;
 }
@@ -1034,12 +1012,29 @@ int main() {
    bool bPassed = true;
    for(TestCaseHidden& testCaseHidden : g_allTestsHidden) {
       std::cout << "Starting test: " << testCaseHidden.m_description;
-      testCaseHidden.m_pTestFunction(testCaseHidden);
-      if(testCaseHidden.m_bPassed) {
-         std::cout << " PASSED" << std::endl;
-      } else {
+      try {
+         testCaseHidden.m_pTestFunction(testCaseHidden);
+         if(testCaseHidden.m_bPassed) {
+            std::cout << " PASSED" << std::endl;
+         } else {
+            bPassed = false;
+            // any failures (there can be multiple) have already been written out
+            std::cout << std::endl;
+         }
+      } catch(const TestException & except) {
          bPassed = false;
-         // any failures (there can be multiple) have already been written out
+         std::cout << " FAILED on \"" << except.GetMessage() << "\"" << std::endl;
+      } catch(const std::bad_alloc &) {
+         bPassed = false;
+         std::cout << "out of memory";
+         std::cout << std::endl;
+      } catch(const std::exception &) {
+         bPassed = false;
+         std::cout << "generic exception in the test framework";
+         std::cout << std::endl;
+      } catch(...) {
+         bPassed = false;
+         std::cout << "unknown exception in the test framework";
          std::cout << std::endl;
       }
    }

@@ -31,6 +31,27 @@ enum class TestPriority {
    Discretize
 };
 
+class TestException final : public std::exception {
+   const ErrorEbm m_error;
+   const std::string m_message;
+
+public:
+   TestException() : m_error(Error_None) {
+   }
+   TestException(const ErrorEbm error) : m_error(error) {
+   }
+   TestException(const char * const message) : m_error(Error_None), m_message(message) {
+   }
+   TestException(const ErrorEbm error, const char * const message) : m_error(error), m_message(message) {
+   }
+
+   const std::string & GetMessage() const {
+      return m_message;
+   }
+   const ErrorEbm GetError() const {
+      return m_error;
+   }
+};
 
 inline static double FloatTickIncrementTest(const double v) noexcept {
    // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
@@ -171,16 +192,13 @@ public:
       m_bUnknown(bUnknown),
       m_bNominal(bNominal)
    {
-      if(countBins < 0) {
-         exit(1);
-      }
    }
 };
 
 class TestSample final {
 public:
    const bool m_bBag;
-   BagEbm m_bagCount;
+   const BagEbm m_bagCount;
    const std::vector<IntEbm> m_sampleBinIndexes;
    const double m_target;
    const bool m_bWeight;

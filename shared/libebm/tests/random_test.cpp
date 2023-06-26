@@ -153,7 +153,7 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
 
    RandomStreamTest randomStream(k_seed);
    if(!randomStream.IsSuccess()) {
-      exit(1);
+      throw TestException("RandomStreamTest");
    }
 
    SeedEbm seed = k_seed;
@@ -296,7 +296,7 @@ TEST_CASE("SampleWithoutReplacement, stress test") {
 
       RandomStreamTest randomStream(k_seed);
       if(!randomStream.IsSuccess()) {
-         exit(1);
+         throw TestException("RandomStreamTest");
       }
 
       std::vector<unsigned char> rng(static_cast<size_t>(MeasureRNG()));
