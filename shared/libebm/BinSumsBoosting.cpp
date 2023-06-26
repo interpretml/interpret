@@ -73,7 +73,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
       pInputData = pParams->m_aPacked;
    }
 
-   const size_t * pCountOccurrences;
+   const uint8_t * pCountOccurrences;
    if(bReplication) {
       pCountOccurrences = pParams->m_pCountOccurrences;
    }
@@ -110,7 +110,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
          }
 
          if(bReplication) {
-            const size_t cOccurences = *pCountOccurrences;
+            const uint8_t cOccurences = *pCountOccurrences;
             pBin->SetCountSamples(pBin->GetCountSamples() + cOccurences);
             ++pCountOccurrences;
          } else {

@@ -139,7 +139,7 @@ struct BinSumsBoostingBridge {
    size_t m_cSamples;
    const FloatFast * m_aGradientsAndHessians;
    const FloatFast * m_aWeights;
-   const size_t * m_pCountOccurrences;
+   const uint8_t * m_pCountOccurrences;
    const StorageDataType * m_aPacked;
 
    BinBase * m_aFastBins;

@@ -31,7 +31,7 @@ struct InnerBag final {
    const FloatFast * GetWeights() const {
       return m_aWeights;
    }
-   const size_t * GetCountOccurrences() const {
+   const uint8_t * GetCountOccurrences() const {
       return m_aCountOccurrences;
    }
 
@@ -48,7 +48,7 @@ private:
    // FractionalType or both, and perf how this changes things.  We don't get a benefit anywhere by storing 
    // the raw data in both formats since it is never converted anyways, but this count is!
    FloatFast * m_aWeights;
-   size_t * m_aCountOccurrences;
+   uint8_t * m_aCountOccurrences;
 };
 static_assert(std::is_standard_layout<InnerBag>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");

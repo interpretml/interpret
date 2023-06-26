@@ -634,7 +634,7 @@ ErrorEbm DataSetBoosting::InitBags(
 
    // the compiler understands the internal state of this RNG and can locate its internal state into CPU registers
    RandomDeterministic cpuRng;
-   size_t * aOccurrencesFrom = nullptr;
+   uint8_t * aOccurrencesFrom = nullptr;
    if(size_t { 0 } != cInnerBags) {
       if(nullptr == rng) {
          // Inner bags are not used when building a differentially private model, so
@@ -656,11 +656,11 @@ ErrorEbm DataSetBoosting::InitBags(
          cpuRng.Initialize(*pRng); // move the RNG from memory into CPU registers
       }
 
-      if(IsMultiplyError(sizeof(size_t), cIncludedSamples)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags IsMultiplyError(sizeof(size_t), cIncludedSamples)");
+      if(IsMultiplyError(sizeof(uint8_t), cIncludedSamples)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags IsMultiplyError(sizeof(uint8_t), cIncludedSamples)");
          return Error_OutOfMemory;
       }
-      aOccurrencesFrom = static_cast<size_t *>(malloc(sizeof(size_t) * cIncludedSamples));
+      aOccurrencesFrom = static_cast<uint8_t *>(malloc(sizeof(uint8_t) * cIncludedSamples));
       if(nullptr == aOccurrencesFrom) {
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags nullptr == aCountOccurrences");
          return Error_OutOfMemory;
@@ -687,7 +687,13 @@ ErrorEbm DataSetBoosting::InitBags(
          size_t cSamplesRemaining = cIncludedSamples;
          do {
             const size_t iSample = cpuRng.NextFast(cIncludedSamples);
-            ++aOccurrencesFrom[iSample];
+            const uint8_t existing = aOccurrencesFrom[iSample];
+            if(std::numeric_limits<uint8_t>::max() == existing) {
+               // it should be essentially impossible for sampling with replacement to get to 255 items in the bin
+               // but check it anyways..
+               continue;
+            }
+            aOccurrencesFrom[iSample] = existing + uint8_t { 1 };
             --cSamplesRemaining;
          } while(size_t { 0 } != cSamplesRemaining);
       }
@@ -696,7 +702,7 @@ ErrorEbm DataSetBoosting::InitBags(
       if(nullptr == aWeightsFrom) {
          totalWeight = static_cast<double>(cIncludedSamples);
          if(nullptr != aOccurrencesFrom) {
-            const size_t * pOccurrencesFrom = aOccurrencesFrom;
+            const uint8_t * pOccurrencesFrom = aOccurrencesFrom;
             DataSubsetBoosting * pSubset = m_aSubsets;
             do {
                EBM_ASSERT(nullptr != pSubset->m_aInnerBags);
@@ -720,7 +726,7 @@ ErrorEbm DataSetBoosting::InitBags(
 
                EBM_ASSERT(cSubsetSamples <= cIncludedSamples);
 
-               size_t * pOccurrencesTo = static_cast<size_t *>(AlignedAlloc(sizeof(size_t) * cSubsetSamples));
+               uint8_t * pOccurrencesTo = static_cast<uint8_t *>(AlignedAlloc(sizeof(uint8_t) * cSubsetSamples));
                if(nullptr == pOccurrencesTo) {
                   LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags nullptr == pOccurrences");
                   free(aOccurrencesFrom);
@@ -730,7 +736,7 @@ ErrorEbm DataSetBoosting::InitBags(
 
                const FloatFast * const pWeightsToEnd = pWeightTo + cSubsetSamples;
                do {
-                  const size_t cOccurrences = *pOccurrencesFrom;
+                  const uint8_t cOccurrences = *pOccurrencesFrom;
                   *pOccurrencesTo = cOccurrences;
                   *pWeightTo = static_cast<FloatFast>(cOccurrences);
 
@@ -743,7 +749,7 @@ ErrorEbm DataSetBoosting::InitBags(
             } while(pSubsetsEnd != pSubset);
          }
       } else {
-         const size_t * pOccurrencesFrom = aOccurrencesFrom;
+         const uint8_t * pOccurrencesFrom = aOccurrencesFrom;
          const BagEbm * pSampleReplication = aBag;
          const FloatFast * pWeightFrom = aWeightsFrom;
          DataSubsetBoosting * pSubset = m_aSubsets;
@@ -770,10 +776,10 @@ ErrorEbm DataSetBoosting::InitBags(
             InnerBag * pInnerBag = &pSubset->m_aInnerBags[iBag];
             pInnerBag->m_aWeights = pWeightTo;
 
-            size_t * pOccurrencesTo = nullptr;
+            uint8_t * pOccurrencesTo = nullptr;
             if(nullptr != pOccurrencesFrom) {
                EBM_ASSERT(cSubsetSamples <= cIncludedSamples);
-               pOccurrencesTo = static_cast<size_t *>(AlignedAlloc(sizeof(size_t) * cSubsetSamples));
+               pOccurrencesTo = static_cast<uint8_t *>(AlignedAlloc(sizeof(uint8_t) * cSubsetSamples));
                if(nullptr == pOccurrencesTo) {
                   LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags nullptr == aCountOccurrences");
                   free(aOccurrencesFrom);
@@ -814,7 +820,7 @@ ErrorEbm DataSetBoosting::InitBags(
                double result = weight;
                if(nullptr != pOccurrencesFrom) {
                   EBM_ASSERT(nullptr != pOccurrencesTo);
-                  const size_t cOccurrences = *pOccurrencesFrom;
+                  const uint8_t cOccurrences = *pOccurrencesFrom;
                   ++pOccurrencesFrom;
 
                   *pOccurrencesTo = cOccurrences;
