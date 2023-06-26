@@ -7,8 +7,7 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_internal.hpp" // AddPositiveFloatsSafe
-
+#include "ebm_internal.hpp" // SafeConvertFloat
 #include "dataset_shared.hpp" // SharedStorageDataType
 #include "DataSetInteraction.hpp"
 
@@ -21,6 +20,7 @@ void DataSubsetInteraction::DestructDataSubsetInteraction(const size_t cFeatures
    LOG_0(Trace_Info, "Entered DataSubsetInteraction::DestructDataSubsetInteraction");
 
    AlignedFree(m_aWeights);
+
    StorageDataType ** paFeatureData = m_aaFeatureData;
    if(nullptr != paFeatureData) {
       EBM_ASSERT(1 <= cFeatures);
@@ -31,6 +31,7 @@ void DataSubsetInteraction::DestructDataSubsetInteraction(const size_t cFeatures
       } while(paFeatureDataEnd != paFeatureData);
       free(m_aaFeatureData);
    }
+
    AlignedFree(m_aGradHess);
 
    LOG_0(Trace_Info, "Exited DataSubsetInteraction::DestructDataSubsetInteraction");
@@ -50,7 +51,7 @@ ErrorEbm DataSetInteraction::InitGradHess(
          LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitGradHess IsMultiplyError(size_t { 2 }, cScores)");
          return Error_OutOfMemory;
       }
-      cTotalScores = size_t { 2 } *cScores;
+      cTotalScores = size_t { 2 } * cScores;
    }
 
    DataSubsetInteraction * pSubset = m_aSubsets;
@@ -160,11 +161,10 @@ ErrorEbm DataSetInteraction::InitFeatureData(
 
          ptrdiff_t iShiftFrom = static_cast<ptrdiff_t>((cSharedSamples - size_t { 1 }) % cItemsPerBitPackFrom);
 
-         const BagEbm * pSampleReplication = aBag;
          const SharedStorageDataType * pFeatureDataFrom = static_cast<const SharedStorageDataType *>(aFeatureDataFrom);
-
+         const BagEbm * pSampleReplication = aBag;
          BagEbm replication = 0;
-         StorageDataType featureData;
+         StorageDataType iFeatureBin;
 
          DataSubsetInteraction * pSubset = m_aSubsets;
          do {
@@ -178,7 +178,9 @@ ErrorEbm DataSetInteraction::InitFeatureData(
 
             const size_t cSubsetSamples = pSubset->GetCountSamples();
             EBM_ASSERT(1 <= cSubsetSamples);
-            const size_t cDataUnitsTo = (cSubsetSamples - size_t { 1 }) / cItemsPerBitPackTo + size_t { 1 }; // this can't overflow or underflow
+
+            // this can't overflow or underflow
+            const size_t cDataUnitsTo = (cSubsetSamples - size_t { 1 }) / cItemsPerBitPackTo + size_t { 1 };
 
             if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
                LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitFeatureData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
@@ -211,22 +213,27 @@ ErrorEbm DataSetInteraction::InitFeatureData(
                         size_t cCompleteAdvanced = cAdvances / cItemsPerBitPackFrom;
                         iShiftFrom -= static_cast<ptrdiff_t>(cAdvances % cItemsPerBitPackFrom);
                         if(iShiftFrom < ptrdiff_t { 0 }) {
-                           ++cCompleteAdvanced;
                            iShiftFrom += cItemsPerBitPackFrom;
+                           ++cCompleteAdvanced;
                         }
                         pFeatureDataFrom += cCompleteAdvanced;
                      }
-                     EBM_ASSERT(0 <= iShiftFrom);
-                     EBM_ASSERT(static_cast<size_t>(iShiftFrom * cBitsPerItemMaxFrom) < k_cBitsForSharedStorageType);
 
                      const SharedStorageDataType bitsFrom = *pFeatureDataFrom;
-                     featureData = static_cast<StorageDataType>(bitsFrom >> (iShiftFrom * cBitsPerItemMaxFrom)) & maskBitsFrom;
-                     EBM_ASSERT(static_cast<size_t>(featureData) < cBins);
+
+                     EBM_ASSERT(0 <= iShiftFrom);
+                     EBM_ASSERT(static_cast<size_t>(iShiftFrom) * cBitsPerItemMaxFrom < k_cBitsForSharedStorageType);
+                     iFeatureBin = static_cast<StorageDataType>(bitsFrom >> 
+                        (static_cast<size_t>(iShiftFrom) * cBitsPerItemMaxFrom)) & maskBitsFrom;
+
+                     EBM_ASSERT(!IsConvertError<size_t>(iFeatureBin));
+                     EBM_ASSERT(static_cast<size_t>(iFeatureBin) < cBins);
+
                      --iShiftFrom;
                      if(iShiftFrom < ptrdiff_t { 0 }) {
-                        ++pFeatureDataFrom;
                         EBM_ASSERT(ptrdiff_t { -1 } == iShiftFrom);
                         iShiftFrom += cItemsPerBitPackFrom;
+                        ++pFeatureDataFrom;
                      }
                   }
 
@@ -235,7 +242,7 @@ ErrorEbm DataSetInteraction::InitFeatureData(
 
                   EBM_ASSERT(0 <= cShiftTo);
                   EBM_ASSERT(static_cast<size_t>(cShiftTo) < k_cBitsForStorageType);
-                  bitsTo |= featureData << cShiftTo;
+                  bitsTo |= iFeatureBin << cShiftTo;
                   cShiftTo -= cBitsPerItemMaxTo;
                } while(ptrdiff_t { 0 } <= cShiftTo);
                cShiftTo = cShiftResetTo;
@@ -293,6 +300,7 @@ ErrorEbm DataSetInteraction::InitWeights(
          return Error_OutOfMemory;
       }
       pSubset->m_aWeights = pWeightTo;
+
       const FloatFast * const pWeightsToEnd = pWeightTo + cSubsetSamples;
       // add the weights in 2 stages to preserve precision
       double subsetWeight = 0.0;
@@ -471,10 +479,7 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(
       } while(pSubsetsEnd != pSubset);
       EBM_ASSERT(0 == cIncludedSamplesRemaining);
 
-      error = InitGradHess(
-         bAllocateHessians,
-         cScores
-      );
+      error = InitGradHess(bAllocateHessians, cScores);
       if(Error_None != error) {
          return error;
       }

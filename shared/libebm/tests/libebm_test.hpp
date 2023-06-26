@@ -48,7 +48,7 @@ public:
    const std::string & GetMessage() const {
       return m_message;
    }
-   const ErrorEbm GetError() const {
+   ErrorEbm GetError() const {
       return m_error;
    }
 };

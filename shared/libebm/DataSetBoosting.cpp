@@ -6,11 +6,8 @@
 
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
-#include <string.h> // memcpy
 
-#include "common_cpp.hpp" // INLINE_RELEASE_UNTEMPLATED
-
-#include "ebm_internal.hpp" // SafeConvertFloat, AddPositiveFloatsSafe
+#include "ebm_internal.hpp" // SafeConvertFloat
 #include "RandomDeterministic.hpp" // RandomDeterministic
 #include "RandomNondeterministic.hpp" // RandomNondeterministic
 #include "Feature.hpp" // Feature
@@ -370,11 +367,13 @@ ErrorEbm DataSetBoosting::InitTermData(
    LOG_0(Trace_Info, "Entered DataSetBoosting::InitTermData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(1 <= cSharedSamples);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
+   EBM_ASSERT(1 <= cSharedSamples);
    EBM_ASSERT(1 <= cTerms);
    EBM_ASSERT(nullptr != apTerms);
 
+   EBM_ASSERT(nullptr != m_aSubsets);
+   EBM_ASSERT(1 <= m_cSubsets);
    const DataSubsetBoosting * const pSubsetsEnd = m_aSubsets + m_cSubsets;
 
    const bool isLoopValidation = direction < BagEbm { 0 };
@@ -424,9 +423,10 @@ ErrorEbm DataSetBoosting::InitTermData(
                   &cNonDefaultsSparse
                );
                EBM_ASSERT(nullptr != pFeatureDataFrom);
+               EBM_ASSERT(!bSparse); // we don't support sparse yet
+
                EBM_ASSERT(!IsConvertError<size_t>(cBinsUnused)); // since we previously extracted cBins and checked
                EBM_ASSERT(static_cast<size_t>(cBinsUnused) == cBins);
-               EBM_ASSERT(!bSparse); // we don't support sparse yet
 
                pDimensionInfoInit->m_pFeatureDataFrom = static_cast<const SharedStorageDataType *>(pFeatureDataFrom);
                pDimensionInfoInit->m_cBins = cBins;
@@ -479,10 +479,11 @@ ErrorEbm DataSetBoosting::InitTermData(
             EBM_ASSERT(1 <= cBitsPerItemMaxTo);
             EBM_ASSERT(cBitsPerItemMaxTo <= k_cBitsForStorageType);
 
-            const size_t cSubsetSamples = pSubset->m_cSamples;
+            const size_t cSubsetSamples = pSubset->GetCountSamples();
             EBM_ASSERT(1 <= cSubsetSamples);
 
-            const size_t cDataUnitsTo = (cSubsetSamples - 1) / cItemsPerBitPackTo + 1; // this can't overflow or underflow
+            // this can't overflow or underflow
+            const size_t cDataUnitsTo = (cSubsetSamples - size_t { 1 }) / cItemsPerBitPackTo + size_t { 1 };
 
             if(IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)) {
                LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitTermData IsMultiplyError(sizeof(StorageDataType), cDataUnitsTo)");
@@ -499,7 +500,6 @@ ErrorEbm DataSetBoosting::InitTermData(
 
             ptrdiff_t cShiftTo = static_cast<ptrdiff_t>((cSubsetSamples - 1) % cItemsPerBitPackTo * cBitsPerItemMaxTo);
             const ptrdiff_t cShiftResetTo = static_cast<ptrdiff_t>((cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo);
-
             do {
                StorageDataType bitsTo = 0;
                do {
@@ -541,15 +541,16 @@ ErrorEbm DataSetBoosting::InitTermData(
                      do {
                         const SharedStorageDataType * const pFeatureDataFrom = pDimensionInfo->m_pFeatureDataFrom;
                         const SharedStorageDataType bitsFrom = *pFeatureDataFrom;
+
                         ptrdiff_t iShiftFrom = pDimensionInfo->m_iShiftFrom;
                         EBM_ASSERT(0 <= iShiftFrom);
-                        EBM_ASSERT(iShiftFrom * pDimensionInfo->m_cBitsPerItemMaxFrom < k_cBitsForSharedStorageType);
-                        const size_t iBin = static_cast<size_t>(bitsFrom >>
-                           (iShiftFrom * pDimensionInfo->m_cBitsPerItemMaxFrom)) &
+                        EBM_ASSERT(static_cast<size_t>(iShiftFrom) * pDimensionInfo->m_cBitsPerItemMaxFrom < k_cBitsForSharedStorageType);
+                        const size_t iFeatureBin = static_cast<size_t>(bitsFrom >>
+                           (static_cast<size_t>(iShiftFrom) * pDimensionInfo->m_cBitsPerItemMaxFrom)) &
                            pDimensionInfo->m_maskBitsFrom;
 
                         // we check our dataSet when we get the header, and cBins has been checked to fit into size_t
-                        EBM_ASSERT(iBin < pDimensionInfo->m_cBins);
+                        EBM_ASSERT(iFeatureBin < pDimensionInfo->m_cBins);
 
                         --iShiftFrom;
                         pDimensionInfo->m_iShiftFrom = iShiftFrom;
@@ -563,7 +564,7 @@ ErrorEbm DataSetBoosting::InitTermData(
                         EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
 
                         // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
-                        tensorIndex += tensorMultiple * iBin;
+                        tensorIndex += tensorMultiple * iFeatureBin;
                         tensorMultiple *= pDimensionInfo->m_cBins;
 
                         ++pDimensionInfo;
@@ -603,6 +604,7 @@ WARNING_POP
 
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
+WARNING_DISABLE_UNINITIALIZED_LOCAL_POINTER
 ErrorEbm DataSetBoosting::InitBags(
    void * const rng,
    const unsigned char * const pDataSetShared,
@@ -676,6 +678,7 @@ ErrorEbm DataSetBoosting::InitBags(
    const bool isLoopValidation = direction < BagEbm { 0 };
    EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if aBag is nullptr then we have no validation samples
 
+   EBM_ASSERT(nullptr != m_aSubsets);
    EBM_ASSERT(1 <= m_cSubsets);
    const DataSubsetBoosting * const pSubsetsEnd = m_aSubsets + m_cSubsets;
 
@@ -776,7 +779,7 @@ ErrorEbm DataSetBoosting::InitBags(
             InnerBag * pInnerBag = &pSubset->m_aInnerBags[iBag];
             pInnerBag->m_aWeights = pWeightTo;
 
-            uint8_t * pOccurrencesTo = nullptr;
+            uint8_t * pOccurrencesTo;
             if(nullptr != pOccurrencesFrom) {
                EBM_ASSERT(cSubsetSamples <= cIncludedSamples);
                pOccurrencesTo = static_cast<uint8_t *>(AlignedAlloc(sizeof(uint8_t) * cSubsetSamples));
@@ -827,8 +830,6 @@ ErrorEbm DataSetBoosting::InitBags(
                   ++pOccurrencesTo;
 
                   result *= static_cast<double>(cOccurrences);
-               } else {
-                  EBM_ASSERT(nullptr == pOccurrencesTo);
                }
 
                subsetWeight += result;
@@ -871,7 +872,6 @@ ErrorEbm DataSetBoosting::InitBags(
    free(aOccurrencesFrom);
 
    LOG_0(Trace_Info, "Exited DataSetBoosting::InitBags");
-
    return Error_None;
 }
 WARNING_POP
@@ -1078,7 +1078,6 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
    }
 
    LOG_0(Trace_Info, "Exited DataSetBoosting::InitDataSetBoosting");
-
    return Error_None;
 }
 
