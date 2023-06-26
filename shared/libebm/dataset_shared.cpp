@@ -1365,7 +1365,28 @@ static IntEbm AppendWeight(
             const double * pWeight = aWeights;
             const double * const pWeightsEnd = &aWeights[cSamples];
             do {
-               *pFill = SafeConvertFloat<FloatFast>(*pWeight);
+               const double weight = *pWeight;
+
+               if(std::isnan(weight)) {
+                  LOG_0(Trace_Warning, "WARNING AppendWeight std::isnan(weight)");
+                  goto return_bad;
+               }
+               if(std::isinf(weight)) {
+                  LOG_0(Trace_Warning, "WARNING AppendWeight std::isinf(weight)");
+                  goto return_bad;
+               }
+               if(weight < double { std::numeric_limits<float>::min() }) {
+                  // we use floats internally in some places, so limit the weight to a float minimum
+                  LOG_0(Trace_Warning, "WARNING AppendWeight weight < double { std::numeric_limits<float>::min() }");
+                  goto return_bad;
+               }
+               if(double { std::numeric_limits<float>::max() } < weight) {
+                  // we use floats internally in some places, so limit the weight to a float maximum
+                  LOG_0(Trace_Warning, "WARNING AppendWeight double { std::numeric_limits<float>::max() } < weight");
+                  goto return_bad;
+               }
+
+               *pFill = SafeConvertFloat<FloatFast>(weight);
                ++pFill;
                ++pWeight;
             } while(pWeightsEnd != pWeight);

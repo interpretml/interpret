@@ -692,9 +692,9 @@ ErrorEbm DataSetBoosting::InitBags(
          } while(size_t { 0 } != cSamplesRemaining);
       }
 
-      double total;
+      double totalWeight;
       if(nullptr == aWeightsFrom) {
-         total = static_cast<double>(cIncludedSamples);
+         totalWeight = static_cast<double>(cIncludedSamples);
          if(nullptr != aOccurrencesFrom) {
             const size_t * pOccurrencesFrom = aOccurrencesFrom;
             DataSubsetBoosting * pSubset = m_aSubsets;
@@ -747,14 +747,11 @@ ErrorEbm DataSetBoosting::InitBags(
          const BagEbm * pSampleReplication = aBag;
          const FloatFast * pWeightFrom = aWeightsFrom;
          DataSubsetBoosting * pSubset = m_aSubsets;
-         total = 0.0;
+         totalWeight = 0.0;
 
          BagEbm replication = 0;
-         FloatFast weight;
+         double weight;
          do {
-            EBM_ASSERT(nullptr != pSubset->m_aInnerBags);
-            InnerBag * pInnerBag = &pSubset->m_aInnerBags[iBag];
-
             const size_t cSubsetSamples = pSubset->GetCountSamples();
             EBM_ASSERT(1 <= cSubsetSamples);
 
@@ -769,6 +766,8 @@ ErrorEbm DataSetBoosting::InitBags(
                free(aOccurrencesFrom);
                return Error_OutOfMemory;
             }
+            EBM_ASSERT(nullptr != pSubset->m_aInnerBags);
+            InnerBag * pInnerBag = &pSubset->m_aInnerBags[iBag];
             pInnerBag->m_aWeights = pWeightTo;
 
             size_t * pOccurrencesTo = nullptr;
@@ -784,6 +783,8 @@ ErrorEbm DataSetBoosting::InitBags(
             }
 
             const FloatFast * const pWeightsToEnd = pWeightTo + cSubsetSamples;
+            // add the weights in 2 stages to preserve precision
+            double subsetWeight = 0.0;
             do {
                if(BagEbm { 0 } == replication) {
                   replication = 1;
@@ -800,11 +801,17 @@ ErrorEbm DataSetBoosting::InitBags(
                      --pWeightFrom;
                   }
 
-                  weight = *pWeightFrom;
+                  weight = SafeConvertFloat<double>(*pWeightFrom);
                   ++pWeightFrom;
+
+                  // these were checked when creating the shared dataset
+                  EBM_ASSERT(!std::isnan(weight));
+                  EBM_ASSERT(!std::isinf(weight));
+                  EBM_ASSERT(double { std::numeric_limits<float>::min() } <= weight);
+                  EBM_ASSERT(weight <= double { std::numeric_limits<float>::max() });
                }
 
-               FloatFast result = weight;
+               double result = weight;
                if(nullptr != pOccurrencesFrom) {
                   EBM_ASSERT(nullptr != pOccurrencesTo);
                   const size_t cOccurrences = *pOccurrencesFrom;
@@ -813,31 +820,36 @@ ErrorEbm DataSetBoosting::InitBags(
                   *pOccurrencesTo = cOccurrences;
                   ++pOccurrencesTo;
 
-                  result *= static_cast<FloatFast>(cOccurrences);
+                  result *= static_cast<double>(cOccurrences);
                } else {
                   EBM_ASSERT(nullptr == pOccurrencesTo);
                }
 
-               *pWeightTo = result;
+               subsetWeight += result;
+
+               *pWeightTo = SafeConvertFloat<FloatFast>(result);
                ++pWeightTo;
 
                replication -= direction;
             } while(pWeightsToEnd != pWeightTo);
 
-            total += AddPositiveFloatsSafe<double>(pSubset->GetCountSamples(), pInnerBag->m_aWeights);
+            totalWeight += subsetWeight;
 
             ++pSubset;
          } while(pSubsetsEnd != pSubset);
          EBM_ASSERT(0 == replication);
 
-         if(std::isnan(total) || std::isinf(total) || total < std::numeric_limits<double>::min()) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags std::isnan(total) || std::isinf(total) || total < std::numeric_limits<double>::min()");
+         EBM_ASSERT(!std::isnan(totalWeight));
+         EBM_ASSERT(std::numeric_limits<double>::min() <= totalWeight);
+
+         if(std::isinf(totalWeight)) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags std::isinf(total)");
             free(aOccurrencesFrom);
             return Error_UserParamVal;
          }
       }
 
-      *pBagWeightTotals = total;
+      *pBagWeightTotals = totalWeight;
       ++pBagWeightTotals;
 
       ++iBag;

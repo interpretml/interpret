@@ -278,7 +278,7 @@ ErrorEbm DataSetInteraction::InitWeights(
    double totalWeight = 0.0;
 
    BagEbm replication = 0;
-   FloatFast weight;
+   double weight;
    do {
       const size_t cSubsetSamples = pSubset->m_cSamples;
       EBM_ASSERT(1 <= cSubsetSamples);
@@ -294,6 +294,8 @@ ErrorEbm DataSetInteraction::InitWeights(
       }
       pSubset->m_aWeights = pWeightTo;
       const FloatFast * const pWeightsToEnd = pWeightTo + cSubsetSamples;
+      // add the weights in 2 stages to preserve precision
+      double subsetWeight = 0.0;
       do {
          if(BagEbm { 0 } == replication) {
             replication = 1;
@@ -305,23 +307,36 @@ ErrorEbm DataSetInteraction::InitWeights(
                } while(replication <= BagEbm { 0 });
                --pWeightFrom;
             }
-            weight = *pWeightFrom;
+
+            weight = SafeConvertFloat<double>(*pWeightFrom);
             ++pWeightFrom;
+
+            // these were checked when creating the shared dataset
+            EBM_ASSERT(!std::isnan(weight));
+            EBM_ASSERT(!std::isinf(weight));
+            EBM_ASSERT(double { std::numeric_limits<float>::min() } <= weight);
+            EBM_ASSERT(weight <= double { std::numeric_limits<float>::max() });
          }
-         *pWeightTo = weight;
+
+         subsetWeight += weight;
+
+         *pWeightTo = SafeConvertFloat<FloatFast>(weight);
          ++pWeightTo;
 
          --replication;
       } while(pWeightsToEnd != pWeightTo);
 
-      totalWeight += AddPositiveFloatsSafe<double>(cSubsetSamples, pSubset->m_aWeights);
+      totalWeight += subsetWeight;
 
       ++pSubset;
    } while(pSubsetsEnd != pSubset);
    EBM_ASSERT(0 == replication);
 
-   if(std::isnan(totalWeight) || std::isinf(totalWeight) || totalWeight < std::numeric_limits<double>::min()) {
-      LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitWeights std::isnan(totalWeight) || std::isinf(totalWeight) || totalWeight < std::numeric_limits<double>::min()");
+   EBM_ASSERT(!std::isnan(totalWeight));
+   EBM_ASSERT(std::numeric_limits<double>::min() <= totalWeight);
+
+   if(std::isinf(totalWeight)) {
+      LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitWeights std::isinf(totalWeight)");
       return Error_UserParamVal;
    }
 
