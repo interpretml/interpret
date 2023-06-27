@@ -47,6 +47,45 @@ struct ApplyUpdateBridge {
    double m_metricOut;
 };
 
+struct BinSumsBoostingBridge {
+   BoolEbm m_bHessian;
+   size_t m_cScores;
+
+   ptrdiff_t m_cPack;
+
+   size_t m_cSamples;
+   const FloatFast * m_aGradientsAndHessians;
+   const FloatFast * m_aWeights;
+   const uint8_t * m_pCountOccurrences;
+   const StorageDataType * m_aPacked;
+
+   void * m_aFastBins;
+
+#ifndef NDEBUG
+   const void * m_pDebugFastBinsEnd;
+#endif // NDEBUG
+};
+
+struct BinSumsInteractionBridge {
+   BoolEbm m_bHessian;
+   size_t m_cScores;
+
+   size_t m_cSamples;
+   const FloatFast * m_aGradientsAndHessians;
+   const FloatFast * m_aWeights;
+
+   size_t m_cRuntimeRealDimensions;
+   size_t m_acBins[k_cDimensionsMax];
+   size_t m_acItemsPerBitPack[k_cDimensionsMax];
+   const StorageDataType * m_aaPacked[k_cDimensionsMax];
+
+   void * m_aFastBins;
+
+#ifndef NDEBUG
+   const void * m_pDebugFastBinsEnd;
+#endif // NDEBUG
+};
+
 struct ObjectiveWrapper;
 
 // these are extern "C" function pointers so we can't call anything other than an extern "C" function with them
@@ -54,10 +93,16 @@ typedef ErrorEbm (* APPLY_UPDATE_C)(const ObjectiveWrapper * const pObjectiveWra
 typedef double (* FINISH_METRIC_C)(const ObjectiveWrapper * const pObjectiveWrapper, const double metricSum);
 typedef BoolEbm (* CHECK_TARGETS_C)(const ObjectiveWrapper * const pObjectiveWrapper, const size_t c, const void * const aTargets);
 
+typedef ErrorEbm (* BIN_SUMS_BOOSTING_C)(const ObjectiveWrapper * const pObjectiveWrapper, BinSumsBoostingBridge * const pParams);
+typedef ErrorEbm (* BIN_SUMS_INTERACTION_C)(const ObjectiveWrapper * const pObjectiveWrapper, BinSumsInteractionBridge * const pParams);
+
 struct ObjectiveWrapper {
    APPLY_UPDATE_C m_pApplyUpdateC;
    FINISH_METRIC_C m_pFinishMetricC;
    CHECK_TARGETS_C m_pCheckTargetsC;
+
+   BIN_SUMS_BOOSTING_C m_pBinSumsBoostingC;
+   BIN_SUMS_INTERACTION_C m_pBinSumsInteractionC;
    // everything below here the C++ *Objective specific class needs to fill out
 
    // this needs to be void since our Registrable object is C++ visible and we cannot define it initially 
@@ -96,6 +141,8 @@ inline static void InitializeObjectiveWrapperUnfailing(ObjectiveWrapper * const 
    pObjectiveWrapper->m_pApplyUpdateC = NULL;
    pObjectiveWrapper->m_pFinishMetricC = NULL;
    pObjectiveWrapper->m_pCheckTargetsC = NULL;
+   pObjectiveWrapper->m_pBinSumsBoostingC = NULL;
+   pObjectiveWrapper->m_pBinSumsInteractionC = NULL;
    pObjectiveWrapper->m_pObjective = NULL;
    pObjectiveWrapper->m_bMaximizeMetric = EBM_FALSE;
    pObjectiveWrapper->m_linkFunction = Link_ERROR;

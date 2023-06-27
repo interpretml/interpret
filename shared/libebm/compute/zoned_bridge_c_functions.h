@@ -18,6 +18,16 @@ INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate)(
    ApplyUpdateBridge * const pData
 );
 
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(BinSumsBoosting)(
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   BinSumsBoostingBridge * const pParams
+);
+
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(BinSumsInteraction)(
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   BinSumsInteractionBridge * const pParams
+);
+
 #ifdef ZONE_cpu
 INTERNAL_IMPORT_EXPORT_INCLUDE double MAKE_ZONED_C_FUNCTION_NAME(FinishMetric) (
    const ObjectiveWrapper * const pObjectiveWrapper,

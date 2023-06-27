@@ -9,6 +9,8 @@
 #include "zones.h"
 
 struct ApplyUpdateBridge;
+struct BinSumsBoostingBridge;
+struct BinSumsInteractionBridge;
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -22,6 +24,8 @@ struct Objective;
 typedef ErrorEbm (* APPLY_UPDATE_CPP)(const Objective * const pObjective, ApplyUpdateBridge * const pData);
 typedef double (* FINISH_METRIC_CPP)(const Objective * const pObjective, const double metricSum);
 typedef BoolEbm (* CHECK_TARGETS_CPP)(const Objective * const pObjective, const size_t c, const void * const aTargets);
+typedef ErrorEbm (* BIN_SUMS_BOOSTING_CPP)(BinSumsBoostingBridge * const pParams);
+typedef ErrorEbm (* BIN_SUMS_INTERACTION_CPP)(BinSumsInteractionBridge * const pParams);
 
 struct FunctionPointersCpp {
    // unfortunately, function pointers are not interchangable with data pointers since in some architectures
@@ -31,6 +35,9 @@ struct FunctionPointersCpp {
    APPLY_UPDATE_CPP m_pApplyUpdateCpp;
    FINISH_METRIC_CPP m_pFinishMetricCpp;
    CHECK_TARGETS_CPP m_pCheckTargetsCpp;
+
+   BIN_SUMS_BOOSTING_CPP m_pBinSumsBoostingCpp;
+   BIN_SUMS_INTERACTION_CPP m_pBinSumsInteractionCpp;
 };
 
 } // DEFINED_ZONE_NAME

@@ -37,87 +37,80 @@ ErrorEbm Objective::CreateObjective(
    EBM_ASSERT('\0' == *sObjectiveEnd);
    EBM_ASSERT(nullptr != pObjectiveWrapperOut);
    EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
-   EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pFunctionPointersCpp);
+   EBM_ASSERT(nullptr != pObjectiveWrapperOut->m_pFunctionPointersCpp);
 
    LOG_0(Trace_Info, "Entered Objective::CreateObjective");
 
-   void * const pFunctionPointersCpp = malloc(sizeof(FunctionPointersCpp));
-   ErrorEbm error = Error_OutOfMemory;
-   if(nullptr != pFunctionPointersCpp) {
-      pObjectiveWrapperOut->m_pFunctionPointersCpp = pFunctionPointersCpp;
-      try {
-         const std::vector<std::shared_ptr<const Registration>> registrations = (*registerObjectivesFunction)();
-         const bool bFailed = Registration::CreateRegistrable(pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut, registrations);
-         if(!bFailed) {
-            EBM_ASSERT(nullptr != pObjectiveWrapperOut->m_pObjective);
-            pObjectiveWrapperOut->m_pApplyUpdateC = MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate);
+   ErrorEbm error;
+
+   try {
+      const std::vector<std::shared_ptr<const Registration>> registrations = (*registerObjectivesFunction)();
+      const bool bFailed = Registration::CreateRegistrable(pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut, registrations);
+      if(!bFailed) {
+         EBM_ASSERT(nullptr != pObjectiveWrapperOut->m_pObjective);
+         pObjectiveWrapperOut->m_pApplyUpdateC = MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate);
 #ifdef ZONE_cpu
-            pObjectiveWrapperOut->m_pFinishMetricC = MAKE_ZONED_C_FUNCTION_NAME(FinishMetric);
-            pObjectiveWrapperOut->m_pCheckTargetsC = MAKE_ZONED_C_FUNCTION_NAME(CheckTargets);
+         pObjectiveWrapperOut->m_pFinishMetricC = MAKE_ZONED_C_FUNCTION_NAME(FinishMetric);
+         pObjectiveWrapperOut->m_pCheckTargetsC = MAKE_ZONED_C_FUNCTION_NAME(CheckTargets);
 #else // ZONE_cpu
-            pObjectiveWrapperOut->m_pFinishMetricC = nullptr;
-            pObjectiveWrapperOut->m_pCheckTargetsC = nullptr;
+         pObjectiveWrapperOut->m_pFinishMetricC = nullptr;
+         pObjectiveWrapperOut->m_pCheckTargetsC = nullptr;
 #endif // ZONE_cpu
 
-            LOG_0(Trace_Info, "Exited Objective::CreateObjective");
-            return Error_None;
-         }
-         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
-         LOG_0(Trace_Info, "Exited Objective::CreateObjective unknown objective");
-         error = Error_ObjectiveUnknown;
-      } catch(const ParamValMalformedException &) {
-         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
-         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamValMalformedException");
-         error = Error_ObjectiveParamValMalformed;
-      } catch(const ParamUnknownException &) {
-         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
-         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamUnknownException");
-         error = Error_ObjectiveParamUnknown;
-      } catch(const RegistrationConstructorException &) {
-         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
-         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective RegistrationConstructorException");
-         error = Error_ObjectiveConstructorException;
-      } catch(const ParamValOutOfRangeException &) {
-         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
-         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamValOutOfRangeException");
-         error = Error_ObjectiveParamValOutOfRange;
-      } catch(const ParamMismatchWithConfigException &) {
-         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
-         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamMismatchWithConfigException");
-         error = Error_ObjectiveParamMismatchWithConfig;
-      } catch(const IllegalRegistrationNameException &) {
-         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
-         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective IllegalRegistrationNameException");
-         error = Error_ObjectiveIllegalRegistrationName;
-      } catch(const IllegalParamNameException &) {
-         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
-         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective IllegalParamNameException");
-         error = Error_ObjectiveIllegalParamName;
-      } catch(const DuplicateParamNameException &) {
-         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
-         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective DuplicateParamNameException");
-         error = Error_ObjectiveDuplicateParamName;
-      } catch(const NonPrivateRegistrationException &) {
-         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
-         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective NonPrivateRegistrationException");
-         error = Error_ObjectiveNonPrivate;
-      } catch(const NonPrivateParamException &) {
-         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
-         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective NonPrivateParamException");
-         error = Error_ObjectiveParamNonPrivate;
-      } catch(const std::bad_alloc &) {
-         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective Out of Memory");
-         error = Error_OutOfMemory;
-      } catch(...) {
-         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective internal error, unknown exception");
-         error = Error_UnexpectedInternal;
+         LOG_0(Trace_Info, "Exited Objective::CreateObjective");
+         return Error_None;
       }
-      free(pObjectiveWrapperOut->m_pObjective); // this is legal if pObjectiveWrapper->m_pObjective is nullptr
-      pObjectiveWrapperOut->m_pObjective = nullptr;
-
-      free(pObjectiveWrapperOut->m_pFunctionPointersCpp); // this is legal if pObjectiveWrapper->m_pFunctionPointersCpp is nullptr
-      pObjectiveWrapperOut->m_pFunctionPointersCpp = nullptr;
+      EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+      LOG_0(Trace_Info, "Exited Objective::CreateObjective unknown objective");
+      error = Error_ObjectiveUnknown;
+   } catch(const ParamValMalformedException &) {
+      EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+      LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamValMalformedException");
+      error = Error_ObjectiveParamValMalformed;
+   } catch(const ParamUnknownException &) {
+      EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+      LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamUnknownException");
+      error = Error_ObjectiveParamUnknown;
+   } catch(const RegistrationConstructorException &) {
+      EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+      LOG_0(Trace_Warning, "WARNING Objective::CreateObjective RegistrationConstructorException");
+      error = Error_ObjectiveConstructorException;
+   } catch(const ParamValOutOfRangeException &) {
+      EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+      LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamValOutOfRangeException");
+      error = Error_ObjectiveParamValOutOfRange;
+   } catch(const ParamMismatchWithConfigException &) {
+      EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+      LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamMismatchWithConfigException");
+      error = Error_ObjectiveParamMismatchWithConfig;
+   } catch(const IllegalRegistrationNameException &) {
+      EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+      LOG_0(Trace_Warning, "WARNING Objective::CreateObjective IllegalRegistrationNameException");
+      error = Error_ObjectiveIllegalRegistrationName;
+   } catch(const IllegalParamNameException &) {
+      EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+      LOG_0(Trace_Warning, "WARNING Objective::CreateObjective IllegalParamNameException");
+      error = Error_ObjectiveIllegalParamName;
+   } catch(const DuplicateParamNameException &) {
+      EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+      LOG_0(Trace_Warning, "WARNING Objective::CreateObjective DuplicateParamNameException");
+      error = Error_ObjectiveDuplicateParamName;
+   } catch(const NonPrivateRegistrationException &) {
+      EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+      LOG_0(Trace_Warning, "WARNING Objective::CreateObjective NonPrivateRegistrationException");
+      error = Error_ObjectiveNonPrivate;
+   } catch(const NonPrivateParamException &) {
+      EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+      LOG_0(Trace_Warning, "WARNING Objective::CreateObjective NonPrivateParamException");
+      error = Error_ObjectiveParamNonPrivate;
+   } catch(const std::bad_alloc &) {
+      LOG_0(Trace_Warning, "WARNING Objective::CreateObjective Out of Memory");
+      error = Error_OutOfMemory;
+   } catch(...) {
+      LOG_0(Trace_Warning, "WARNING Objective::CreateObjective internal error, unknown exception");
+      error = Error_UnexpectedInternal;
    }
+
    return error;
 }
 

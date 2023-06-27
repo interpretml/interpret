@@ -130,45 +130,6 @@ inline constexpr static OutputType GetOutputType(const LinkEbm link) noexcept {
       OutputType_Unknown;
 }
 
-struct BinSumsBoostingBridge {
-   BoolEbm m_bHessian;
-   size_t m_cScores;
-
-   ptrdiff_t m_cPack;
-
-   size_t m_cSamples;
-   const FloatFast * m_aGradientsAndHessians;
-   const FloatFast * m_aWeights;
-   const uint8_t * m_pCountOccurrences;
-   const StorageDataType * m_aPacked;
-
-   BinBase * m_aFastBins;
-
-#ifndef NDEBUG
-   const BinBase * m_pDebugFastBinsEnd;
-#endif // NDEBUG
-};
-
-struct BinSumsInteractionBridge {
-   BoolEbm m_bHessian;
-   size_t m_cScores;
-
-   size_t m_cSamples;
-   const FloatFast * m_aGradientsAndHessians;
-   const FloatFast * m_aWeights;
-
-   size_t m_cRuntimeRealDimensions;
-   size_t m_acBins[k_cDimensionsMax];
-   size_t m_acItemsPerBitPack[k_cDimensionsMax];
-   const StorageDataType * m_aaPacked[k_cDimensionsMax];
-
-   BinBase * m_aFastBins;
-
-#ifndef NDEBUG
-   const BinBase * m_pDebugFastBinsEnd;
-#endif // NDEBUG
-};
-
 } // DEFINED_ZONE_NAME
 
 #endif // BRIDGE_CPP_HPP

@@ -22,6 +22,8 @@
 #include "approximate_math.hpp"
 #include "compute_stats.hpp"
 
+#include "compute_wrapper.hpp"
+
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
@@ -215,7 +217,10 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Cpu_64(
    const char * const sObjectiveEnd,
    ObjectiveWrapper * const pObjectiveWrapperOut
 ) {
-   ErrorEbm error;
+   ErrorEbm error = ComputeWrapper<Cpu_64_Float>::FillWrapper(pObjectiveWrapperOut);
+   if(Error_None != error) {
+      return error;
+   }
    error = Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
    if(Error_None != error) {
       return error;

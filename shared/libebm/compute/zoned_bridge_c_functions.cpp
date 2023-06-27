@@ -47,6 +47,43 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate) (
    return (*pApplyUpdateCpp)(pObjective, pData);
 }
 
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(BinSumsBoosting)(
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   BinSumsBoostingBridge * const pParams
+) {
+   const BIN_SUMS_BOOSTING_CPP pBinSumsBoostingCpp =
+      (static_cast<FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pBinSumsBoostingCpp;
+
+   //// all our memory should be aligned. It is required by SIMD for correctness or performance
+   EBM_ASSERT(IsAligned(pParams->m_aGradientsAndHessians));
+   EBM_ASSERT(IsAligned(pParams->m_aWeights));
+   EBM_ASSERT(IsAligned(pParams->m_pCountOccurrences));
+   EBM_ASSERT(IsAligned(pParams->m_aPacked));
+   EBM_ASSERT(IsAligned(pParams->m_aFastBins));
+
+   return (*pBinSumsBoostingCpp)(pParams);
+}
+
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(BinSumsInteraction)(
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   BinSumsInteractionBridge * const pParams
+) {
+   const BIN_SUMS_INTERACTION_CPP pBinSumsInteractionCpp =
+      (static_cast<FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pBinSumsInteractionCpp;
+
+#ifndef NDEBUG
+   //// all our memory should be aligned. It is required by SIMD for correctness or performance
+   EBM_ASSERT(IsAligned(pParams->m_aGradientsAndHessians));
+   EBM_ASSERT(IsAligned(pParams->m_aWeights));
+   EBM_ASSERT(IsAligned(pParams->m_aFastBins));
+   for(size_t iDebug = 0; iDebug < pParams->m_cRuntimeRealDimensions; ++iDebug) {
+      EBM_ASSERT(IsAligned(pParams->m_aaPacked[iDebug]));
+   }
+#endif // NDEBUG
+
+   return (*pBinSumsInteractionCpp)(pParams);
+}
+
 #ifdef ZONE_cpu
 INTERNAL_IMPORT_EXPORT_BODY double MAKE_ZONED_C_FUNCTION_NAME(FinishMetric) (
    const ObjectiveWrapper * const pObjectiveWrapper,

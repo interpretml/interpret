@@ -609,17 +609,6 @@ protected:
 
       pObjectiveWrapperOut->m_pObjective = this;
 
-      pObjectiveWrapperOut->m_cSIMDPack = static_cast<size_t>(TFloat::cPack);
-
-      static_assert(std::is_unsigned<typename TFloat::TInt::T>::value, 
-         "TFloat::TInt::T must be an unsigned integer type");
-      static_assert(std::numeric_limits<typename TFloat::TInt::T>::max() <= std::numeric_limits<UIntExceed>::max(), 
-         "UIntExceed must be able to hold a TFloat::TInt::T");
-      static_assert(sizeof(typename TFloat::T) <= sizeof(FloatExceed), 
-         "FloatExceed must be able to hold a TFloat::T");
-      pObjectiveWrapperOut->m_cFloatBytes = sizeof(typename TFloat::T);
-      pObjectiveWrapperOut->m_cUIntBytes = sizeof(typename TFloat::TInt::T);
-
       SetCpu<TObjective, TFloat>(pObjectiveWrapperOut);
    }
 

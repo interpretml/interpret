@@ -476,19 +476,6 @@ inline static bool IsAligned(const void * const p, const size_t cBytesAlignment 
    return uintptr_t { 0 } == (reinterpret_cast<uintptr_t>(p) & mask);
 }
 
-// It is impossible for us to have tensors with more than k_cDimensionsMax dimensions.  
-// Our public C interface passes tensors back and forth with our caller with each dimension having
-// a minimum of two bins, which only occurs for categoricals with just a missing and unknown bin.
-// This should only occur for nominal cateogricals with only missing values.  Other feature types
-// will have more bins, and thus will be restricted to even less dimensions. If all dimensions had the minimum 
-// of two bins, we would need 2^N cells stored in the tensor.  If the tensor contained cells
-// of 1 byte and filled all memory on a 64 bit machine, then we could not have more than 64 dimensions.
-// On a real system, we can't fill all memory, and our interface requires tensors of double, so we  
-// can subtract bits for the # of bytes used in a double and subtract 1 more because we cannot use all memory.
-static constexpr size_t k_cDimensionsMax = k_cBitsForSizeT -
-   CountBitsRequired(sizeof(double) / sizeof(uint8_t) - 1) - 1;
-static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
-
 
 // there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerClassesMax value.  The bottleneck seems to be 
 // that setting it too high increases compile time and module size

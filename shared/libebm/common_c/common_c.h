@@ -218,6 +218,22 @@ extern BoolEbm IsStringEqualsForgiving(const char * sMain, const char * sLabel);
 // we can handle any number of items.
 static const size_t k_cFloatSumLimit = 524288;
 
+
+
+// It is impossible for us to have tensors with more than k_cDimensionsMax dimensions.  
+// Our public C interface passes tensors back and forth with our caller with each dimension having
+// a minimum of two bins, which only occurs for categoricals with just a missing and unknown bin.
+// This should only occur for nominal cateogricals with only missing values.  Other feature types
+// will have more bins, and thus will be restricted to even less dimensions. If all dimensions had the minimum 
+// of two bins, we would need 2^N cells stored in the tensor.  If the tensor contained cells
+// of 1 byte and filled all memory on a 64 bit machine, then we could not have more than 64 dimensions.
+// On a real system, we can't fill all memory, and our interface requires tensors of double, so we  
+// can subtract bits for the # of bytes used in a double and subtract 1 more because we cannot use all memory.
+// We can reduce the number of dimensions down from 64 for practical reasons like the need to use doubles (8 bytes)
+// and the need to have multiples ones and the need to have memory for other things
+#define k_cDimensionsMax      (STATIC_CAST(size_t, 30))
+
+
 #ifdef __cplusplus
 } // extern "C"
 #endif // __cplusplus

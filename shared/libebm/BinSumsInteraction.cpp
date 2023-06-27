@@ -53,7 +53,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
 
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
 
-   auto * const aBins = pParams->m_aFastBins->Specialize<FloatFast, bHessian, cArrayScores>();
+   auto * const aBins = reinterpret_cast<BinBase *>(pParams->m_aFastBins)->Specialize<FloatFast, bHessian, cArrayScores>();
    EBM_ASSERT(nullptr != aBins);
 
    const size_t cSamples = pParams->m_cSamples;

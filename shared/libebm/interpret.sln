@@ -72,6 +72,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3D
 		compute\approximate_math.hpp = compute\approximate_math.hpp
 		compute\compute.hpp = compute\compute.hpp
 		compute\compute_stats.hpp = compute\compute_stats.hpp
+		compute\compute_wrapper.hpp = compute\compute_wrapper.hpp
 		compute\Directory.Build.targets = compute\Directory.Build.targets
 		compute\Objective.cpp = compute\Objective.cpp
 		compute\Objective.hpp = compute\Objective.hpp
