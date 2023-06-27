@@ -70,6 +70,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3DB96E-A28F-4032-8E41-C6D2E408FC72}"
 	ProjectSection(SolutionItems) = preProject
 		compute\approximate_math.hpp = compute\approximate_math.hpp
+		compute\BinSumsBoosting.hpp = compute\BinSumsBoosting.hpp
+		compute\BinSumsInteraction.hpp = compute\BinSumsInteraction.hpp
 		compute\compute.hpp = compute\compute.hpp
 		compute\compute_stats.hpp = compute\compute_stats.hpp
 		compute\compute_wrapper.hpp = compute\compute_wrapper.hpp

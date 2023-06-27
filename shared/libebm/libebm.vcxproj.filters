@@ -2,8 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="ApplyTermUpdate.cpp" />
-    <ClCompile Include="BinSumsBoosting.cpp" />
-    <ClCompile Include="BinSumsInteraction.cpp" />
     <ClCompile Include="dataset_shared.cpp" />
     <ClCompile Include="CutQuantile.cpp" />
     <ClCompile Include="CutUniform.cpp" />
