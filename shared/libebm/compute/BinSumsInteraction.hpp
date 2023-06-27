@@ -49,7 +49,7 @@ namespace DEFINED_ZONE_NAME {
 //    of using the SIMD code pipeline.  Maybe we can simulate all the same access 
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
-INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams) {
+INLINE_RELEASE_TEMPLATED static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams) {
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
@@ -142,7 +142,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
             if(pGradientsAndHessiansEnd == pGradientAndHessian) {
                // we only need to check this for the first dimension since all dimensions will reach
                // this point simultaneously
-               goto done;
+               return;
             }
             pDimensionalData->m_iTensorBinCombined = *pDimensionalData->m_pData;
             pDimensionalData->m_pData = pDimensionalData->m_pData + 1;
@@ -219,7 +219,15 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInter
       } while(cScores != iScore);
       pGradientAndHessian += bHessian ? cScores << 1 : cScores;
    }
-done:;
+}
+
+
+template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
+INLINE_RELEASE_TEMPLATED ErrorEbm OperatorBinSumsInteraction(BinSumsInteractionBridge * const pParams) {
+   // TODO: in the future call back to the the operator class to allow it to inject the code into a GPU (see Objective.hpp for an example):
+   // return TFloat::template OperatorBinSumsInteraction<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
+   // and also return the error code returned from that call instead of always Error_None
+   BinSumsInteractionInternal<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
 
    return Error_None;
 }
@@ -229,10 +237,10 @@ template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompile
 INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptionsInteraction(BinSumsInteractionBridge * const pParams) {
    if(nullptr != pParams->m_aWeights) {
       static constexpr bool bWeight = true;
-      return BinSumsInteractionInternal<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
+      return OperatorBinSumsInteraction<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
    } else {
       static constexpr bool bWeight = false;
-      return BinSumsInteractionInternal<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
+      return OperatorBinSumsInteraction<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
    }
 }
 

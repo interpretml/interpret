@@ -20,7 +20,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores, ptrdiff_t compilerBitPack, bool bWeight, bool bReplication>
-INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
+INLINE_RELEASE_TEMPLATED static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
    static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
@@ -160,6 +160,15 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoostingInternal(BinSumsBoosting
       }
       cShift = cShiftReset;
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
+}
+
+
+template<typename TFloat, bool bHessian, size_t cCompilerScores, ptrdiff_t compilerBitPack, bool bWeight, bool bReplication>
+INLINE_RELEASE_TEMPLATED ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge * const pParams) {
+   // TODO: in the future call back to the the operator class to allow it to inject the code into a GPU (see Objective.hpp for an example):
+   // return TFloat::template OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
+   // and also return the error code returned from that call instead of always Error_None
+   BinSumsBoostingInternal<TFloat, bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
 
    return Error_None;
 }
@@ -172,10 +181,10 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptionsBoosting(BinSumsBoostingBri
 
       if(nullptr != pParams->m_pCountOccurrences) {
          static constexpr bool bReplication = true;
-         return BinSumsBoostingInternal<TFloat, bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
+         return OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
       } else {
          static constexpr bool bReplication = false;
-         return BinSumsBoostingInternal<TFloat, bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
+         return OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
       }
    } else {
       static constexpr bool bWeight = false;
@@ -184,7 +193,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptionsBoosting(BinSumsBoostingBri
       EBM_ASSERT(nullptr == pParams->m_pCountOccurrences);
       static constexpr bool bReplication = false;
 
-      return BinSumsBoostingInternal<TFloat, bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
+      return OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
    }
 }
 
