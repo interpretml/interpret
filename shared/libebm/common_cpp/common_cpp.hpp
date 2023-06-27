@@ -12,7 +12,6 @@
 
 #include "logging.h"
 #include "common_c.h"
-
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {
@@ -489,6 +488,35 @@ inline static bool IsAligned(const void * const p, const size_t cBytesAlignment 
 static constexpr size_t k_cDimensionsMax = k_cBitsForSizeT -
    CountBitsRequired(sizeof(double) / sizeof(uint8_t) - 1) - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
+
+
+// there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerClassesMax value.  The bottleneck seems to be 
+// that setting it too high increases compile time and module size
+// this is how much the runtime speeds up if you compile it with hard coded vector sizes
+// 200 => 2.65%
+// 32  => 3.28%
+// 16  => 5.12%
+// 8   => 5.34%
+// 4   => 8.31%
+// TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the 
+//   runtime looped version of our code
+static constexpr size_t k_cCompilerScoresMax = 8;
+static constexpr size_t k_cCompilerScoresStart = 3;
+
+static_assert(
+   2 <= k_cCompilerScoresMax,
+   "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would "
+   "output model files with two values instead of our special case 1");
+
+static constexpr size_t k_cCompilerOptimizedCountDimensionsMax = 3;
+
+static_assert(1 <= k_cCompilerOptimizedCountDimensionsMax,
+   "k_cCompilerOptimizedCountDimensionsMax can be 1 if we want to turn off dimension optimization, but 0 or less is disallowed.");
+static_assert(k_cCompilerOptimizedCountDimensionsMax <= k_cDimensionsMax,
+   "k_cCompilerOptimizedCountDimensionsMax cannot be larger than the maximum number of dimensions.");
+
+static constexpr size_t k_dynamicDimensions = 0;
+
 
 template<typename T>
 inline constexpr static bool IsMultiplyError(const T num1PreferredConstexpr, const T num2) noexcept {

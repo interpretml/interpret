@@ -27,25 +27,6 @@ namespace DEFINED_ZONE_NAME {
 #define GPU_BOTH
 #endif
 
-// there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerScoresMax value.  The bottleneck seems to be 
-// that setting it too high increases compile time and module size
-// this is how much the runtime speeds up if you compile it with hard coded vector sizes
-// 200 => 2.65%
-// 32  => 3.28%
-// 16  => 5.12%
-// 8   => 5.34%
-// 4   => 8.31%
-// TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the 
-//   runtime looped version of our code
-
-static constexpr size_t k_cCompilerScoresMax = 8;
-static constexpr size_t k_cCompilerScoresStart = 3;
-
-static_assert(
-   2 <= k_cCompilerScoresMax,
-   "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would "
-   "output model files with two values instead of our special case 1");
-
 // 64 for k_cItemsPerBitPackMax is too big since it'll replicate the objectives 64 times, and then 32, 21, etc..
 // 8 is nice for k_cItemsPerBitPackMax since 2^8 = 256 bins, which gets 8 items packed into each 64 bit number.
 static constexpr ptrdiff_t k_cItemsPerBitPackMax = ptrdiff_t { 8 };

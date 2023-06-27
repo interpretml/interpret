@@ -9,14 +9,9 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
+#include "bridge_cpp.hpp" // BinSumsBoostingBridge
 #include "GradientPair.hpp"
 #include "Bin.hpp"
-
-#include "ebm_internal.hpp"
-#include "Term.hpp"
-#include "InnerBag.hpp"
-#include "BoosterCore.hpp"
-#include "BoosterShell.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

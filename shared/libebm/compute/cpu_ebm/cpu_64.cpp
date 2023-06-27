@@ -215,7 +215,12 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Cpu_64(
    const char * const sObjectiveEnd,
    ObjectiveWrapper * const pObjectiveWrapperOut
 ) {
-   return Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
+   ErrorEbm error;
+   error = Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
+   if(Error_None != error) {
+      return error;
+   }
+   return Error_None;
 }
 
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateMetric_Cpu_64(

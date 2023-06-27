@@ -9,14 +9,10 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
+#include "common_cpp.hpp" // k_cDimensionsMax
 #include "bridge_cpp.hpp" // BinSumsInteractionBridge
 #include "GradientPair.hpp" // GradientPair
 #include "Bin.hpp" // Bin
-
-#include "ebm_internal.hpp" // k_cDimensionsMax
-#include "DataSetInteraction.hpp" // DataSetInteraction
-#include "InteractionCore.hpp" // InteractionCore
-#include "InteractionShell.hpp" // InteractionShell
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

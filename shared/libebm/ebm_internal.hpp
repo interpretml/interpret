@@ -60,27 +60,6 @@ static constexpr FloatBig k_illegalGainFloat = std::numeric_limits<FloatBig>::lo
 static constexpr double k_illegalGainDouble = std::numeric_limits<double>::lowest();
 static constexpr FloatBig k_epsilonNegativeGainAllowed = FloatBig { -1e-7 };
 
-// there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerClassesMax value.  The bottleneck seems to be 
-// that setting it too high increases compile time and module size
-// this is how much the runtime speeds up if you compile it with hard coded vector sizes
-// 200 => 2.65%
-// 32  => 3.28%
-// 16  => 5.12%
-// 8   => 5.34%
-// 4   => 8.31%
-// TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the 
-//   runtime looped version of our code
-static constexpr size_t k_cCompilerScoresMax = 8;
-static constexpr size_t k_cCompilerScoresStart = 3;
-
-static constexpr size_t k_cCompilerOptimizedCountDimensionsMax = 3;
-
-static_assert(1 <= k_cCompilerOptimizedCountDimensionsMax,
-   "k_cCompilerOptimizedCountDimensionsMax can be 1 if we want to turn off dimension optimization, but 0 or less is disallowed.");
-static_assert(k_cCompilerOptimizedCountDimensionsMax <= k_cDimensionsMax,
-   "k_cCompilerOptimizedCountDimensionsMax cannot be larger than the maximum number of dimensions.");
-
-static constexpr size_t k_dynamicDimensions = 0;
 
 static constexpr bool k_bUseLogitboost = false;
 
