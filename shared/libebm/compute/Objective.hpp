@@ -362,36 +362,42 @@ protected:
       typename TFloat::T * pSampleScore = reinterpret_cast<typename TFloat::T *>(pData->m_aSampleScores);
       const typename TFloat::T * const pSampleScoresEnd = pSampleScore + cSamples;
 
-      size_t cBitsPerItemMax;
-      ptrdiff_t cShift;
-      ptrdiff_t cShiftReset;
-      size_t maskBits;
-      const StorageDataType * pInputData;
+      int cBitsPerItemMax;
+      int cShift;
+      int cShiftReset;
+      typename TFloat::TInt maskBits;
+      const typename TFloat::TInt::T * pInputData;
 
-      alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::T updateScores[TFloat::k_cSIMDPack];
       TFloat updateScore;
 
       if(bCompilerZeroDimensional) {
          updateScore = aUpdateTensorScores[0];
       } else {
          const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
-
-         const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
-
-         cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
-
-         cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
-         cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
-
-         maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
-
-         pInputData = pData->m_aPacked;
 #ifndef GPU_COMPILE
          EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
+         EBM_ASSERT(1 <= cPack);
+#endif // GPU_COMPILE
+
+         const int cItemsPerBitPack = static_cast<int>(cPack);
+#ifndef GPU_COMPILE
          EBM_ASSERT(1 <= cItemsPerBitPack);
-         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+         EBM_ASSERT(static_cast<size_t>(cItemsPerBitPack) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
+#endif // GPU_COMPILE
+
+         cBitsPerItemMax = static_cast<int>(GetCountBits<typename TFloat::TInt::T>(static_cast<size_t>(cItemsPerBitPack)));
+#ifndef GPU_COMPILE
          EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+         EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
+#endif // GPU_COMPILE
+
+         cShift = static_cast<int>((cSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
+         cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+
+         maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
+
+         pInputData = reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aPacked);
+#ifndef GPU_COMPILE
          EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
       }
@@ -425,24 +431,15 @@ protected:
          metricSum = 0.0;
       }
       do {
-         alignas(SIMD_BYTE_ALIGNMENT) StorageDataType iTensorBinCombined[TFloat::k_cSIMDPack];
+         typename TFloat::TInt iTensorBinCombined;
          if(!bCompilerZeroDimensional) {
-            // we store the already multiplied dimensional value in *pInputData
-            // TODO: once we've added some complexity to ensure that the pInputData is the same size as 
-            // the integer mapping of TFloat we can load all the bit packs in a single SIMD instruction
-            for(int i = 0; i < TFloat::k_cSIMDPack; ++i) {
-               iTensorBinCombined[i] = pInputData[i];
-            }
+            iTensorBinCombined.LoadAligned(pInputData);
             pInputData += TFloat::k_cSIMDPack;
          }
          while(true) {
             if(!bCompilerZeroDimensional) {
-               // TODO: in later versions of SIMD there are scatter/gather intrinsics that do this in one operation
-               for(int i = 0; i < TFloat::k_cSIMDPack; ++i) {
-                  const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined[i] >> cShift) & maskBits;
-                  updateScores[i] = aUpdateTensorScores[iTensorBin];
-               }
-               updateScore.LoadAligned(updateScores);
+               typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
+               updateScore.LoadScattered(aUpdateTensorScores, iTensorBin);
             }
 
             TFloat target;
