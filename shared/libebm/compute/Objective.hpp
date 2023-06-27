@@ -314,8 +314,8 @@ protected:
          hessian *= weight;
       }
       gradient.SaveAligned(pGradientAndHessian);
-      hessian.SaveAligned(pGradientAndHessian + TFloat::cPack);
-      return pGradientAndHessian + (TFloat::cPack + TFloat::cPack);
+      hessian.SaveAligned(pGradientAndHessian + TFloat::k_cSIMDPack);
+      return pGradientAndHessian + (TFloat::k_cSIMDPack + TFloat::k_cSIMDPack);
    }
    template<typename TObjective, typename TFloat, bool bHessian, bool bWeight, typename std::enable_if<!bHessian, void>::type * = nullptr>
    GPU_DEVICE INLINE_ALWAYS typename TFloat::T * HandleGradHess(
@@ -335,7 +335,7 @@ protected:
          gradient *= weight;
       }
       gradient.SaveAligned(pGradientAndHessian);
-      return pGradientAndHessian + TFloat::cPack;
+      return pGradientAndHessian + TFloat::k_cSIMDPack;
    }
 
    template<typename TObjective, typename TFloat, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
@@ -368,7 +368,7 @@ protected:
       size_t maskBits;
       const StorageDataType * pInputData;
 
-      alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::T updateScores[TFloat::cPack];
+      alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::T updateScores[TFloat::k_cSIMDPack];
       TFloat updateScore;
 
       if(bCompilerZeroDimensional) {
@@ -425,20 +425,20 @@ protected:
          metricSum = 0.0;
       }
       do {
-         alignas(SIMD_BYTE_ALIGNMENT) StorageDataType iTensorBinCombined[TFloat::cPack];
+         alignas(SIMD_BYTE_ALIGNMENT) StorageDataType iTensorBinCombined[TFloat::k_cSIMDPack];
          if(!bCompilerZeroDimensional) {
             // we store the already multiplied dimensional value in *pInputData
             // TODO: once we've added some complexity to ensure that the pInputData is the same size as 
             // the integer mapping of TFloat we can load all the bit packs in a single SIMD instruction
-            for(int i = 0; i < TFloat::cPack; ++i) {
+            for(int i = 0; i < TFloat::k_cSIMDPack; ++i) {
                iTensorBinCombined[i] = pInputData[i];
             }
-            pInputData += TFloat::cPack;
+            pInputData += TFloat::k_cSIMDPack;
          }
          while(true) {
             if(!bCompilerZeroDimensional) {
                // TODO: in later versions of SIMD there are scatter/gather intrinsics that do this in one operation
-               for(int i = 0; i < TFloat::cPack; ++i) {
+               for(int i = 0; i < TFloat::k_cSIMDPack; ++i) {
                   const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined[i] >> cShift) & maskBits;
                   updateScores[i] = aUpdateTensorScores[iTensorBin];
                }
@@ -448,19 +448,19 @@ protected:
             TFloat target;
             if(bGetTarget) {
                target.LoadAligned(pTargetData);
-               pTargetData += TFloat::cPack;
+               pTargetData += TFloat::k_cSIMDPack;
             }
 
             TFloat sampleScore;
             sampleScore.LoadAligned(pSampleScore);
             sampleScore += updateScore;
             sampleScore.SaveAligned(pSampleScore);
-            pSampleScore += TFloat::cPack;
+            pSampleScore += TFloat::k_cSIMDPack;
 
             TFloat weight;
             if(bWeight) {
                weight.LoadAligned(pWeight);
-               pWeight += TFloat::cPack;
+               pWeight += TFloat::k_cSIMDPack;
             }
 
             if(bKeepGradHess) {

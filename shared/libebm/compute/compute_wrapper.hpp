@@ -43,7 +43,7 @@ struct ComputeWrapper final {
       pObjectiveWrapperOut->m_pBinSumsBoostingC = MAKE_ZONED_C_FUNCTION_NAME(BinSumsBoosting);
       pObjectiveWrapperOut->m_pBinSumsInteractionC = MAKE_ZONED_C_FUNCTION_NAME(BinSumsInteraction);
 
-      pObjectiveWrapperOut->m_cSIMDPack = static_cast<size_t>(TFloat::cPack);
+      pObjectiveWrapperOut->m_cSIMDPack = static_cast<size_t>(TFloat::k_cSIMDPack);
 
       static_assert(std::is_unsigned<typename TFloat::TInt::T>::value,
          "TFloat::TInt::T must be an unsigned integer type");

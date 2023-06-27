@@ -269,8 +269,6 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    printf "%s\n" "LDLIBS=${LDLIBS}"
 
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/ApplyTermUpdate.cpp" -o "$tmp_path/ApplyTermUpdate.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/BinSumsBoosting.cpp" -o "$tmp_path/BinSumsBoosting.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/BinSumsInteraction.cpp" -o "$tmp_path/BinSumsInteraction.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/BoosterCore.cpp" -o "$tmp_path/BoosterCore.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/BoosterShell.cpp" -o "$tmp_path/BoosterShell.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/CalcInteractionStrength.cpp" -o "$tmp_path/CalcInteractionStrength.o"
@@ -311,8 +309,6 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
 
    ${CXX} ${LDFLAGS} -shared \
    "$tmp_path/ApplyTermUpdate.o" \
-   "$tmp_path/BinSumsBoosting.o" \
-   "$tmp_path/BinSumsInteraction.o" \
    "$tmp_path/BoosterCore.o" \
    "$tmp_path/BoosterShell.o" \
    "$tmp_path/CalcInteractionStrength.o" \

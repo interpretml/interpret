@@ -34,14 +34,41 @@ GPU_GLOBAL void TestGpuAdd(const Objective * const pObjective, const int * const
 //   pResult[iGpuThread] = static_cast<int>(static_cast<float>(pObjectiveSpecific->CalculateGradient(static_cast<float>(pVal1[iGpuThread]), static_cast<float>(pVal2[iGpuThread]))));
 }
 
+struct Cuda_32_Float;
+
 struct Cuda_32_Int final {
-   static constexpr int cPack = 1;
+   friend Cuda_32_Float;
+
    using T = uint32_t;
    using TPack = uint32_t;
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
    static_assert(std::numeric_limits<T>::max() <= std::numeric_limits<UIntExceed>::max(), "UIntExceed must be able to hold a T");
+   static constexpr bool bCpu = false;
+   static constexpr int k_cSIMDPack = 1;
+
+   WARNING_PUSH
+   ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
+   GPU_BOTH inline Cuda_32_Int() noexcept {
+   }
+   WARNING_POP
 
    GPU_BOTH inline Cuda_32_Int(const T val) noexcept : m_data(val) {
+   }
+
+   GPU_BOTH inline void LoadAligned(const T * const a) noexcept {
+      m_data = *a;
+   }
+
+   GPU_BOTH inline void SaveAligned(T * const a) const noexcept {
+      *a = m_data;
+   }
+
+   GPU_BOTH inline Cuda_32_Int operator>> (int shift) const noexcept {
+      return Cuda_32_Int(m_data >> shift);
+   }
+
+   GPU_BOTH inline Cuda_32_Int operator& (const Cuda_32_Int & other) const noexcept {
+      return Cuda_32_Int(other.m_data & m_data);
    }
 
 private:
@@ -55,12 +82,12 @@ struct Cuda_32_Float final {
    // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__SINGLE.html#group__CUDA__MATH__SINGLE
    // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__DOUBLE.html#group__CUDA__MATH__DOUBLE
 
-   static constexpr bool bCpu = false;
-   static constexpr int cPack = 1;
    using T = float;
    using TPack = float;
    using TInt = Cuda_32_Int;
    static_assert(sizeof(T) <= sizeof(FloatExceed), "FloatExceed must be able to hold a T");
+   static constexpr bool bCpu = TInt::bCpu;
+   static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;
 
    WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
@@ -160,6 +187,10 @@ struct Cuda_32_Float final {
 
    GPU_BOTH inline void SaveAligned(T * const a) const noexcept {
       *a = m_data;
+   }
+
+   GPU_BOTH inline void LoadScattered(const T * const a, const TInt i) noexcept {
+      m_data = a[i.m_data];
    }
 
    template<typename TFunc>

@@ -30,29 +30,61 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+struct Sse_32_Float;
+
 struct Sse_32_Int final {
-   static constexpr int cPack = 4;
+   friend Sse_32_Float;
+
    using T = uint32_t;
    using TPack = __m128i;
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
    static_assert(std::numeric_limits<T>::max() <= std::numeric_limits<UIntExceed>::max(), "UIntExceed must be able to hold a T");
+   static constexpr bool bCpu = false;
+   static constexpr int k_cSIMDPack = 4;
+
+   WARNING_PUSH
+   ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
+   inline Sse_32_Int() noexcept {
+   }
+   WARNING_POP
 
    inline Sse_32_Int(const T val) noexcept : m_data(_mm_set1_epi32(static_cast<T>(val))) {
    }
 
+   inline void LoadAligned(const T * const a) noexcept {
+      EBM_ASSERT(IsAligned(a, sizeof(TPack)));
+      m_data = _mm_load_si128(reinterpret_cast<const TPack *>(a));
+   }
+
+   inline void SaveAligned(T * const a) const noexcept {
+      EBM_ASSERT(IsAligned(a, sizeof(TPack)));
+      _mm_store_si128(reinterpret_cast<TPack *>(a), m_data);
+   }
+
+   inline Sse_32_Int operator>> (int shift) const noexcept {
+      return Sse_32_Int(_mm_srli_epi32(m_data, shift));
+   }
+
+   inline Sse_32_Int operator& (const Sse_32_Int & other) const noexcept {
+      return Sse_32_Int(_mm_and_si128(other.m_data, m_data));
+   }
+
 private:
+   inline Sse_32_Int(const TPack & data) noexcept : m_data(data) {
+   }
+
    TPack m_data;
 };
 static_assert(std::is_standard_layout<Sse_32_Int>::value && std::is_trivially_copyable<Sse_32_Int>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 struct Sse_32_Float final {
-   static constexpr bool bCpu = false;
-   static constexpr int cPack = 4;
    using T = float;
    using TPack = __m128;
    using TInt = Sse_32_Int;
    static_assert(sizeof(T) <= sizeof(FloatExceed), "FloatExceed must be able to hold a T");
+   static constexpr bool bCpu = TInt::bCpu;
+   static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;
 
    WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
@@ -156,14 +188,34 @@ struct Sse_32_Float final {
       _mm_store_ps(a, m_data);
    }
 
+   inline void LoadScattered(const T * const a, const TInt i) noexcept {
+      EBM_ASSERT(IsAligned(a, sizeof(TPack)));
+
+      // TODO: in the future use _mm_i32gather_ps using a scale of sizeof(T)
+
+      alignas(SIMD_BYTE_ALIGNMENT) TInt::T ints[k_cSIMDPack];
+      alignas(SIMD_BYTE_ALIGNMENT) T floats[k_cSIMDPack];
+
+      i.SaveAligned(ints);
+
+      floats[0] = a[ints[0]];
+      floats[1] = a[ints[1]];
+      floats[2] = a[ints[2]];
+      floats[3] = a[ints[3]];
+
+      LoadAligned(floats);
+   }
+
    template<typename TFunc>
    friend inline Sse_32_Float ApplyFunction(const Sse_32_Float & val, const TFunc & func) noexcept {
-      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[cPack];
+      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
       val.SaveAligned(aTemp);
 
-      for(int i = 0; i < cPack; ++i) {
-         aTemp[i] = func(aTemp[i]);
-      }
+      // no loops because this will disable optimizations for loops in the caller
+      aTemp[0] = func(aTemp[0]);
+      aTemp[1] = func(aTemp[1]);
+      aTemp[2] = func(aTemp[2]);
+      aTemp[3] = func(aTemp[3]);
 
       Sse_32_Float result;
       result.LoadAligned(aTemp);
@@ -200,16 +252,12 @@ struct Sse_32_Float final {
    }
 
    friend inline T Sum(const Sse_32_Float & val) noexcept {
-      // TODO: this could be written to be more efficient
+      // TODO: use _mm_hadd_ps for SSE3 and later
 
-      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[cPack];
-      val.SaveAligned(aTemp);
-
-      T sum = 0.0;
-      for(int i = 0; i < cPack; ++i) {
-         sum += aTemp[i];
-      }
-      return sum;
+      TPack packed = val.m_data;
+      packed = _mm_add_ps(packed, _mm_shuffle_ps(packed, packed, _MM_SHUFFLE(2, 3, 0, 1)));
+      packed = _mm_add_ss(packed, _mm_shuffle_ps(packed, packed, _MM_SHUFFLE(1, 0, 3, 2)));
+      return _mm_cvtss_f32(packed);
    }
 
    template<typename TObjective, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>

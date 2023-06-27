@@ -135,7 +135,7 @@ public:
       size_t maskBits;
       const StorageDataType * pInputData;
 
-      alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::T updateScores[TFloat::cPack];
+      alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::T updateScores[TFloat::k_cSIMDPack];
       TFloat updateScore;
 
       if(bCompilerZeroDimensional) {
@@ -177,18 +177,18 @@ public:
          metricSum = 0.0;
       }
       do {
-         alignas(SIMD_BYTE_ALIGNMENT) StorageDataType iTensorBinCombined[TFloat::cPack];
+         alignas(SIMD_BYTE_ALIGNMENT) StorageDataType iTensorBinCombined[TFloat::k_cSIMDPack];
          if(!bCompilerZeroDimensional) {
             // we store the already multiplied dimensional value in *pInputData
-            for(int i = 0; i < TFloat::cPack; ++i) {
+            for(int i = 0; i < TFloat::k_cSIMDPack; ++i) {
                iTensorBinCombined[i] = pInputData[i];
             }
-            pInputData += TFloat::cPack;
+            pInputData += TFloat::k_cSIMDPack;
          }
          while(true) {
             if(!bCompilerZeroDimensional) {
                // in later versions of SIMD there are scatter/gather intrinsics that do this in one operation
-               for(int i = 0; i < TFloat::cPack; ++i) {
+               for(int i = 0; i < TFloat::k_cSIMDPack; ++i) {
                   const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined[i] >> cShift) & maskBits;
                   updateScores[i] = aUpdateTensorScores[iTensorBin];
                }
@@ -206,7 +206,7 @@ public:
             gradient.LoadAligned(pGradient);
             gradient += updateScore;
             gradient.SaveAligned(pGradient);
-            pGradient += TFloat::cPack;
+            pGradient += TFloat::k_cSIMDPack;
 
             if(bCalcMetric) {
                // we use RMSE so get the squared error part here
@@ -215,7 +215,7 @@ public:
                   TFloat weight;
                   weight.LoadAligned(pWeight);
                   metric *= weight;
-                  pWeight += TFloat::cPack;
+                  pWeight += TFloat::k_cSIMDPack;
                }
                metricSum += metric;
             }

@@ -29,17 +29,41 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+struct Cpu_64_Float;
+
 struct Cpu_64_Int final {
-   static constexpr int cPack = 1;
-   // CPU is very special in part because cPack is always 1 and we know the CPU can handle size_t, so 
-   // use StorageDataType which is always a size_t
-   
+   friend Cpu_64_Float;
+
    using T = uint64_t;
    using TPack = uint64_t;
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
    static_assert(std::numeric_limits<T>::max() <= std::numeric_limits<UIntExceed>::max(), "UIntExceed must be able to hold a T");
+   static constexpr bool bCpu = true;
+   static constexpr int k_cSIMDPack = 1;
+
+   WARNING_PUSH
+   ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
+   inline Cpu_64_Int() noexcept {
+   }
+   WARNING_POP
 
    inline Cpu_64_Int(const T val) noexcept : m_data(val) {
+   }
+
+   inline void LoadAligned(const T * const a) noexcept {
+      m_data = *a;
+   }
+
+   inline void SaveAligned(T * const a) const noexcept {
+      *a = m_data;
+   }
+
+   inline Cpu_64_Int operator>> (int shift) const noexcept {
+      return Cpu_64_Int(m_data >> shift);
+   }
+
+   inline Cpu_64_Int operator& (const Cpu_64_Int & other) const noexcept {
+      return Cpu_64_Int(other.m_data & m_data);
    }
 
 private:
@@ -49,12 +73,12 @@ static_assert(std::is_standard_layout<Cpu_64_Int>::value && std::is_trivially_co
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 struct Cpu_64_Float final {
-   static constexpr bool bCpu = true;
-   static constexpr int cPack = 1;
    using T = double;
    using TPack = double;
    using TInt = Cpu_64_Int;
    static_assert(sizeof(T) <= sizeof(FloatExceed), "FloatExceed must be able to hold a T");
+   static constexpr bool bCpu = TInt::bCpu;
+   static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;
 
    WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
@@ -154,6 +178,10 @@ struct Cpu_64_Float final {
 
    inline void SaveAligned(T * const a) const noexcept {
       *a = m_data;
+   }
+
+   inline void LoadScattered(const T * const a, const TInt i) noexcept {
+      m_data = a[i.m_data];
    }
 
    template<typename TFunc>
