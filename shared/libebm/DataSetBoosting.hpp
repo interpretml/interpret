@@ -46,6 +46,7 @@ struct DataSubsetBoosting final {
    inline size_t GetCountSamples() const {
       return m_cSamples;
    }
+
    inline ErrorEbm ObjectiveApplyUpdate(ApplyUpdateBridge * const pData) {
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != m_pObjective);
@@ -53,6 +54,14 @@ struct DataSubsetBoosting final {
       EBM_ASSERT(0 == m_cSamples % m_pObjective->m_cSIMDPack);
       return (*m_pObjective->m_pApplyUpdateC)(m_pObjective, pData);
    }
+   inline ErrorEbm BinSumsBoosting(BinSumsBoostingBridge * const pParams) {
+      EBM_ASSERT(nullptr != pParams);
+      EBM_ASSERT(nullptr != m_pObjective);
+      EBM_ASSERT(nullptr != m_pObjective->m_pBinSumsBoostingC);
+      EBM_ASSERT(0 == m_cSamples % m_pObjective->m_cSIMDPack);
+      return (*m_pObjective->m_pBinSumsBoostingC)(m_pObjective, pParams);
+   }
+
    inline FloatFast * GetGradHess() {
       return m_aGradHess;
    }

@@ -26,7 +26,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pBinSumsInteraction);
 extern void ConvertAddBin(
    const size_t cScores,
    const bool bHessian,
@@ -345,7 +344,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
       binSums.m_aFastBins = aFastBins;
 
-      error = BinSumsInteraction(&binSums);
+      error = pSubset->BinSumsInteraction(&binSums);
       if(Error_None != error) {
          return error;
       }

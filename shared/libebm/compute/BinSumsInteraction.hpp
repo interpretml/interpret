@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "precompiled_header_cpp.hpp"
+#ifndef BIN_SUMS_INTERACTION_HPP
+#define BIN_SUMS_INTERACTION_HPP
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -47,7 +48,7 @@ namespace DEFINED_ZONE_NAME {
 //  - allow the system to process all the data via CPU (which means it can be inside a single dataset) and compare this result to the result
 //    of using the SIMD code pipeline.  Maybe we can simulate all the same access 
 
-template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
+template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams) {
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
@@ -224,55 +225,55 @@ done:;
 }
 
 
-template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions>
-INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptions(BinSumsInteractionBridge * const pParams) {
+template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions>
+INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptionsInteraction(BinSumsInteractionBridge * const pParams) {
    if(nullptr != pParams->m_aWeights) {
       static constexpr bool bWeight = true;
-      return BinSumsInteractionInternal<bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
+      return BinSumsInteractionInternal<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
    } else {
       static constexpr bool bWeight = false;
-      return BinSumsInteractionInternal<bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
+      return BinSumsInteractionInternal<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
    }
 }
 
 
-template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensionsPossible>
-struct CountDimensions final {
+template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensionsPossible>
+struct CountDimensionsInteraction final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
       if(cCompilerDimensionsPossible == pParams->m_cRuntimeRealDimensions) {
-         return FinalOptions<bHessian, cCompilerScores, cCompilerDimensionsPossible>(pParams);
+         return FinalOptionsInteraction<TFloat, bHessian, cCompilerScores, cCompilerDimensionsPossible>(pParams);
       } else {
-         return CountDimensions<bHessian, cCompilerScores, cCompilerDimensionsPossible + 1>::Func(pParams);
+         return CountDimensionsInteraction<TFloat, bHessian, cCompilerScores, cCompilerDimensionsPossible + 1>::Func(pParams);
       }
    }
 };
-template<bool bHessian, size_t cCompilerScores>
-struct CountDimensions<bHessian, cCompilerScores, k_cCompilerOptimizedCountDimensionsMax + 1> final {
+template<typename TFloat, bool bHessian, size_t cCompilerScores>
+struct CountDimensionsInteraction<TFloat, bHessian, cCompilerScores, k_cCompilerOptimizedCountDimensionsMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
-      return FinalOptions<bHessian, cCompilerScores, k_dynamicDimensions>(pParams);
+      return FinalOptionsInteraction<TFloat, bHessian, cCompilerScores, k_dynamicDimensions>(pParams);
    }
 };
 
 
-template<bool bHessian, size_t cPossibleScores>
-struct CountClasses final {
+template<typename TFloat, bool bHessian, size_t cPossibleScores>
+struct CountClassesInteraction final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
       if(cPossibleScores == pParams->m_cScores) {
-         return CountDimensions<bHessian, cPossibleScores, 1>::Func(pParams);
+         return CountDimensionsInteraction<TFloat, bHessian, cPossibleScores, 1>::Func(pParams);
       } else {
-         return CountClasses<bHessian, cPossibleScores + 1>::Func(pParams);
+         return CountClassesInteraction<TFloat, bHessian, cPossibleScores + 1>::Func(pParams);
       }
    }
 };
-template<bool bHessian>
-struct CountClasses<bHessian, k_cCompilerScoresMax + 1> final {
+template<typename TFloat, bool bHessian>
+struct CountClassesInteraction<TFloat, bHessian, k_cCompilerScoresMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
-      return CountDimensions<bHessian, k_dynamicScores, 1>::Func(pParams);
+      return CountDimensionsInteraction<TFloat, bHessian, k_dynamicScores, 1>::Func(pParams);
    }
 };
 
-
-extern ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pParams) {
+template<typename TFloat>
+INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pParams) {
    LOG_0(Trace_Verbose, "Entered BinSumsInteraction");
 
 #ifndef NDEBUG
@@ -291,16 +292,16 @@ extern ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pParams) {
    if(EBM_FALSE != pParams->m_bHessian) {
       if(size_t { 1 } != pParams->m_cScores) {
          // muticlass
-         error = CountClasses<true, k_cCompilerScoresStart>::Func(pParams);
+         error = CountClassesInteraction<TFloat, true, k_cCompilerScoresStart>::Func(pParams);
       } else {
-         error = CountDimensions<true, k_oneScore, 1>::Func(pParams);
+         error = CountDimensionsInteraction<TFloat, true, k_oneScore, 1>::Func(pParams);
       }
    } else {
       if(size_t { 1 } != pParams->m_cScores) {
          // Odd: gradient multiclass. Allow it, but do not optimize for it
-         error = FinalOptions<false, k_dynamicScores, k_dynamicDimensions>(pParams);
+         error = FinalOptionsInteraction<TFloat, false, k_dynamicScores, k_dynamicDimensions>(pParams);
       } else {
-         error = CountDimensions<false, k_oneScore, 1>::Func(pParams);
+         error = CountDimensionsInteraction<TFloat, false, k_oneScore, 1>::Func(pParams);
       }
    }
 
@@ -310,3 +311,5 @@ extern ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pParams) {
 }
 
 } // DEFINED_ZONE_NAME
+
+#endif // BIN_SUMS_INTERACTION_HPP

@@ -9,6 +9,8 @@
 #include "zones.h"
 
 #include "zoned_bridge_c_functions.h"
+#include "BinSumsBoosting.hpp"
+#include "BinSumsInteraction.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -18,13 +20,11 @@ namespace DEFINED_ZONE_NAME {
 template<typename TFloat>
 struct ComputeWrapper final {
    static ErrorEbm StaticBinSumsBoosting(BinSumsBoostingBridge * const pParams) {
-      UNUSED(pParams);
-      return Error_None;
+      return BinSumsBoosting<TFloat>(pParams);
    }
 
    static ErrorEbm StaticBinSumsInteraction(BinSumsInteractionBridge * const pParams) {
-      UNUSED(pParams);
-      return Error_None;
+      return BinSumsInteraction<TFloat>(pParams);
    }
 
    INLINE_RELEASE_TEMPLATED static ErrorEbm FillWrapper(ObjectiveWrapper * const pObjectiveWrapperOut) noexcept {

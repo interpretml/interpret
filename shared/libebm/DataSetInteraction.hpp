@@ -48,6 +48,14 @@ struct DataSubsetInteraction final {
       EBM_ASSERT(0 == m_cSamples % m_pObjective->m_cSIMDPack);
       return (*m_pObjective->m_pApplyUpdateC)(m_pObjective, pData);
    }
+   inline ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pParams) {
+      EBM_ASSERT(nullptr != pParams);
+      EBM_ASSERT(nullptr != m_pObjective);
+      EBM_ASSERT(nullptr != m_pObjective->m_pBinSumsInteractionC);
+      EBM_ASSERT(0 == m_cSamples % m_pObjective->m_cSIMDPack);
+      return (*m_pObjective->m_pBinSumsInteractionC)(m_pObjective, pParams);
+   }
+
    inline FloatFast * GetGradHess() {
       EBM_ASSERT(nullptr != m_aGradHess);
       return m_aGradHess;

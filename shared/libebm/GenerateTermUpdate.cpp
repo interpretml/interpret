@@ -32,7 +32,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern ErrorEbm BinSumsBoosting(BinSumsBoostingBridge * const pParams);
 extern void ConvertAddBin(
    const size_t cScores,
    const bool bHessian,
@@ -755,7 +754,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    #ifndef NDEBUG
             params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
    #endif // NDEBUG
-            error = BinSumsBoosting(&params);
+            error = pSubset->BinSumsBoosting(&params);
             if(Error_None != error) {
                return error;
             }
