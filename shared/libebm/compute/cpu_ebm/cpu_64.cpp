@@ -33,6 +33,7 @@ struct Cpu_64_Float;
 
 struct Cpu_64_Int final {
    friend Cpu_64_Float;
+   friend inline Cpu_64_Float IfEqual(const Cpu_64_Int & cmp1, const Cpu_64_Int & cmp2, const Cpu_64_Float & trueVal, const Cpu_64_Float & falseVal) noexcept;
 
    using T = uint64_t;
    using TPack = uint64_t;
@@ -196,6 +197,14 @@ struct Cpu_64_Float final {
 
    friend inline Cpu_64_Float IfLess(const Cpu_64_Float & cmp1, const Cpu_64_Float & cmp2, const Cpu_64_Float & trueVal, const Cpu_64_Float & falseVal) noexcept {
       return cmp1.m_data < cmp2.m_data ? trueVal : falseVal;
+   }
+
+   friend inline Cpu_64_Float IfEqual(const Cpu_64_Int & cmp1, const Cpu_64_Int & cmp2, const Cpu_64_Float & trueVal, const Cpu_64_Float & falseVal) noexcept {
+      return Cpu_64_Float(cmp1.m_data == cmp2.m_data ? trueVal : falseVal);
+   }
+
+   friend inline Cpu_64_Float Abs(const Cpu_64_Float & val) noexcept {
+      return Cpu_64_Float(std::abs(val.m_data));
    }
 
    friend inline Cpu_64_Float Sqrt(const Cpu_64_Float & val) noexcept {

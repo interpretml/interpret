@@ -38,6 +38,7 @@ struct Cuda_32_Float;
 
 struct Cuda_32_Int final {
    friend Cuda_32_Float;
+   GPU_BOTH friend inline Cuda_32_Float IfEqual(const Cuda_32_Int & cmp1, const Cuda_32_Int & cmp2, const Cuda_32_Float & trueVal, const Cuda_32_Float & falseVal) noexcept;
 
    using T = uint32_t;
    using TPack = uint32_t;
@@ -205,6 +206,14 @@ struct Cuda_32_Float final {
 
    GPU_BOTH friend inline Cuda_32_Float IfLess(const Cuda_32_Float & cmp1, const Cuda_32_Float & cmp2, const Cuda_32_Float & trueVal, const Cuda_32_Float & falseVal) noexcept {
       return cmp1.m_data < cmp2.m_data ? trueVal : falseVal;
+   }
+
+   GPU_BOTH friend inline Cuda_32_Float IfEqual(const Cuda_32_Int & cmp1, const Cuda_32_Int & cmp2, const Cuda_32_Float & trueVal, const Cuda_32_Float & falseVal) noexcept {
+      return Cuda_32_Float(cmp1.m_data == cmp2.m_data ? trueVal : falseVal);
+   }
+
+   GPU_BOTH friend inline Cuda_32_Float Abs(const Cuda_32_Float & val) noexcept {
+      return Cuda_32_Float(std::abs(val.m_data));
    }
 
    GPU_BOTH friend inline Cuda_32_Float Sqrt(const Cuda_32_Float & val) noexcept {

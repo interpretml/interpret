@@ -34,6 +34,7 @@ struct Sse_32_Float;
 
 struct Sse_32_Int final {
    friend Sse_32_Float;
+   friend inline Sse_32_Float IfEqual(const Sse_32_Int & cmp1, const Sse_32_Int & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept;
 
    using T = uint32_t;
    using TPack = __m128i;
@@ -234,6 +235,17 @@ struct Sse_32_Float final {
       TPack maskedTrue = _mm_and_ps(mask, trueVal.m_data);
       TPack maskedFalse = _mm_andnot_ps(mask, falseVal.m_data);
       return Sse_32_Float(_mm_or_ps(maskedTrue, maskedFalse));
+   }
+
+   friend inline Sse_32_Float IfEqual(const Sse_32_Int & cmp1, const Sse_32_Int & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept {
+      TPack mask = _mm_castsi128_ps(_mm_cmpeq_epi32(cmp1.m_data, cmp2.m_data));
+      TPack maskedTrue = _mm_and_ps(mask, trueVal.m_data);
+      TPack maskedFalse = _mm_andnot_ps(mask, falseVal.m_data);
+      return Sse_32_Float(_mm_or_ps(maskedTrue, maskedFalse));
+   }
+
+   friend inline Sse_32_Float Abs(const Sse_32_Float & val) noexcept {
+      return Sse_32_Float(_mm_and_ps(val.m_data, _mm_castsi128_ps(_mm_set1_epi32(0x7FFFFFFF))));
    }
 
    friend inline Sse_32_Float Sqrt(const Sse_32_Float & val) noexcept {
