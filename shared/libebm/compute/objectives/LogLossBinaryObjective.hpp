@@ -75,6 +75,8 @@ struct LogLossBinaryObjective final : public BinaryObjective {
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
+      static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
+
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
@@ -82,6 +84,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
+      EBM_ASSERT(0 == pData->m_cSamples % TFloat::k_cSIMDPack);
       EBM_ASSERT(nullptr != pData->m_aSampleScores);
 #endif // GPU_COMPILE
 
@@ -118,7 +121,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
          cBitsPerItemMax = static_cast<int>(GetCountBits<typename TFloat::TInt::T>(static_cast<size_t>(cItemsPerBitPack)));
 #ifndef GPU_COMPILE
          EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
+         EBM_ASSERT(static_cast<size_t>(cBitsPerItemMax) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
 #endif // GPU_COMPILE
 
          cShift = static_cast<int>((cSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;

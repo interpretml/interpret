@@ -352,6 +352,7 @@ protected:
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
+      EBM_ASSERT(0 == pData->m_cSamples % TFloat::k_cSIMDPack);
       EBM_ASSERT(nullptr != pData->m_aSampleScores);
 #endif // GPU_COMPILE
 
@@ -388,7 +389,7 @@ protected:
          cBitsPerItemMax = static_cast<int>(GetCountBits<typename TFloat::TInt::T>(static_cast<size_t>(cItemsPerBitPack)));
 #ifndef GPU_COMPILE
          EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
+         EBM_ASSERT(static_cast<size_t>(cBitsPerItemMax) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
 #endif // GPU_COMPILE
 
          cShift = static_cast<int>((cSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
