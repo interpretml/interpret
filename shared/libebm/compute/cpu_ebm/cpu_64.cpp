@@ -51,12 +51,34 @@ struct Cpu_64_Int final {
    inline Cpu_64_Int(const T val) noexcept : m_data(val) {
    }
 
-   inline void LoadAligned(const T * const a) noexcept {
-      m_data = *a;
+   inline static Cpu_64_Int Load(const T * const a) noexcept {
+      return Cpu_64_Int(*a);
    }
 
-   inline void SaveAligned(T * const a) const noexcept {
+   inline void Store(T * const a) const noexcept {
       *a = m_data;
+   }
+
+   inline static Cpu_64_Int MakeIndexes() noexcept {
+      return Cpu_64_Int(0);
+   }
+
+   inline Cpu_64_Int operator+ (const Cpu_64_Int & other) const noexcept {
+      return Cpu_64_Int(m_data + other.m_data);
+   }
+
+   inline Cpu_64_Int & operator+= (const Cpu_64_Int & other) noexcept {
+      *this = (*this) + other;
+      return *this;
+   }
+
+   inline Cpu_64_Int operator* (const Cpu_64_Int & other) const noexcept {
+      return Cpu_64_Int(m_data * other.m_data);
+   }
+
+   inline Cpu_64_Int & operator*= (const Cpu_64_Int & other) noexcept {
+      *this = (*this) * other;
+      return *this;
    }
 
    inline Cpu_64_Int operator>> (int shift) const noexcept {
@@ -173,16 +195,20 @@ struct Cpu_64_Float final {
       return Cpu_64_Float(val) / other;
    }
 
-   inline void LoadAligned(const T * const a) noexcept {
-      m_data = *a;
+   inline static Cpu_64_Float Load(const T * const a) noexcept {
+      return Cpu_64_Float(*a);
    }
 
-   inline void SaveAligned(T * const a) const noexcept {
+   inline void Store(T * const a) const noexcept {
       *a = m_data;
    }
 
-   inline void LoadScattered(const T * const a, const TInt i) noexcept {
-      m_data = a[i.m_data];
+   inline static Cpu_64_Float Load(const T * const a, const TInt i) noexcept {
+      return Cpu_64_Float(a[i.m_data]);
+   }
+
+   inline void Store(T * const a, const TInt i) noexcept {
+      a[i.m_data] = m_data;
    }
 
    template<typename TFunc>

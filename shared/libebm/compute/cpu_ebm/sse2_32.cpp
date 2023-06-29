@@ -52,14 +52,36 @@ struct Sse_32_Int final {
    inline Sse_32_Int(const T val) noexcept : m_data(_mm_set1_epi32(static_cast<T>(val))) {
    }
 
-   inline void LoadAligned(const T * const a) noexcept {
+   inline static Sse_32_Int Load(const T * const a) noexcept {
       EBM_ASSERT(IsAligned(a, sizeof(TPack)));
-      m_data = _mm_load_si128(reinterpret_cast<const TPack *>(a));
+      return Sse_32_Int(_mm_load_si128(reinterpret_cast<const TPack *>(a)));
    }
 
-   inline void SaveAligned(T * const a) const noexcept {
+   inline void Store(T * const a) const noexcept {
       EBM_ASSERT(IsAligned(a, sizeof(TPack)));
       _mm_store_si128(reinterpret_cast<TPack *>(a), m_data);
+   }
+
+   inline static Sse_32_Int MakeIndexes() noexcept {
+      return Sse_32_Int(_mm_set_epi32(3, 2, 1, 0));
+   }
+
+   inline Sse_32_Int operator+ (const Sse_32_Int & other) const noexcept {
+      return Sse_32_Int(_mm_add_epi32(m_data, other.m_data));
+   }
+
+   inline Sse_32_Int & operator+= (const Sse_32_Int & other) noexcept {
+      *this = (*this) + other;
+      return *this;
+   }
+
+   inline Sse_32_Int operator* (const Sse_32_Int & other) const noexcept {
+      return Sse_32_Int(_mm_mullo_epi32(m_data, other.m_data));
+   }
+
+   inline Sse_32_Int & operator*= (const Sse_32_Int & other) noexcept {
+      *this = (*this) * other;
+      return *this;
    }
 
    inline Sse_32_Int operator>> (int shift) const noexcept {
@@ -179,17 +201,17 @@ struct Sse_32_Float final {
       return Sse_32_Float(val) / other;
    }
 
-   inline void LoadAligned(const T * const a) noexcept {
+   inline static Sse_32_Float Load(const T * const a) noexcept {
       EBM_ASSERT(IsAligned(a, sizeof(TPack)));
-      m_data = _mm_load_ps(a);
+      return Sse_32_Float(_mm_load_ps(a));
    }
 
-   inline void SaveAligned(T * const a) const noexcept {
+   inline void Store(T * const a) const noexcept {
       EBM_ASSERT(IsAligned(a, sizeof(TPack)));
       _mm_store_ps(a, m_data);
    }
 
-   inline void LoadScattered(const T * const a, const TInt i) noexcept {
+   inline static Sse_32_Float Load(const T * const a, const TInt i) noexcept {
       EBM_ASSERT(IsAligned(a, sizeof(TPack)));
 
       // TODO: in the future use _mm_i32gather_ps using a scale of sizeof(T)
@@ -197,20 +219,37 @@ struct Sse_32_Float final {
       alignas(SIMD_BYTE_ALIGNMENT) TInt::T ints[k_cSIMDPack];
       alignas(SIMD_BYTE_ALIGNMENT) T floats[k_cSIMDPack];
 
-      i.SaveAligned(ints);
+      i.Store(ints);
 
       floats[0] = a[ints[0]];
       floats[1] = a[ints[1]];
       floats[2] = a[ints[2]];
       floats[3] = a[ints[3]];
 
-      LoadAligned(floats);
+      return Load(floats);
+   }
+
+   inline void Store(T * const a, const TInt i) noexcept {
+      EBM_ASSERT(IsAligned(a, sizeof(TPack)));
+
+      // TODO: in the future use _mm_i32scatter_ps using a scale of sizeof(T)
+
+      alignas(SIMD_BYTE_ALIGNMENT) TInt::T ints[k_cSIMDPack];
+      alignas(SIMD_BYTE_ALIGNMENT) T floats[k_cSIMDPack];
+
+      i.Store(ints);
+      Store(floats);
+
+      a[ints[0]] = floats[0];
+      a[ints[1]] = floats[1];
+      a[ints[2]] = floats[2];
+      a[ints[3]] = floats[3];
    }
 
    template<typename TFunc>
    friend inline Sse_32_Float ApplyFunction(const Sse_32_Float & val, const TFunc & func) noexcept {
       alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
-      val.SaveAligned(aTemp);
+      val.Store(aTemp);
 
       // no loops because this will disable optimizations for loops in the caller
       aTemp[0] = func(aTemp[0]);
@@ -219,7 +258,7 @@ struct Sse_32_Float final {
       aTemp[3] = func(aTemp[3]);
 
       Sse_32_Float result;
-      result.LoadAligned(aTemp);
+      result.Load(aTemp);
       return result;
    }
 

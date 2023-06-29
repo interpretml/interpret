@@ -77,6 +77,8 @@ struct LogLossBinaryObjective final : public BinaryObjective {
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
       static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
+      static_assert(bKeepGradHess || !bHessian, "bHessian can only be true if bKeepGradHess is true");
+      static_assert(!bKeepGradHess || !bCalcMetric, "bKeepGradHess and bCalcMetric cannot both be true");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
@@ -166,25 +168,24 @@ struct LogLossBinaryObjective final : public BinaryObjective {
       do {
          typename TFloat::TInt iTensorBinCombined;
          if(!bCompilerZeroDimensional) {
-            iTensorBinCombined.LoadAligned(pInputData);
+            iTensorBinCombined = TFloat::TInt::Load(pInputData);
             pInputData += TFloat::k_cSIMDPack;
          }
          while(true) {
             if(!bCompilerZeroDimensional) {
                typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-               updateScore.LoadScattered(aUpdateTensorScores, iTensorBin);
+               updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
             }
 
             typename TFloat::TInt target;
             if(bGetTarget) {
-               target.LoadAligned(pTargetData);
+               target = TFloat::TInt::Load(pTargetData);
                pTargetData += TFloat::k_cSIMDPack;
             }
 
-            TFloat sampleScore;
-            sampleScore.LoadAligned(pSampleScore);
+            TFloat sampleScore = TFloat::Load(pSampleScore);
             sampleScore += updateScore;
-            sampleScore.SaveAligned(pSampleScore);
+            sampleScore.Store(pSampleScore);
             pSampleScore += TFloat::k_cSIMDPack;
 
             if(bKeepGradHess) {
@@ -293,11 +294,11 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                   const TFloat absGradient = Abs(gradient); // abs will return the same type that it is given, either float or double
                   const TFloat hessian = absGradient * (1.0 - absGradient);
 
-                  gradient.SaveAligned(pGradientAndHessian);
-                  hessian.SaveAligned(pGradientAndHessian + TFloat::k_cSIMDPack);
+                  gradient.Store(pGradientAndHessian);
+                  hessian.Store(pGradientAndHessian + TFloat::k_cSIMDPack);
                   pGradientAndHessian += TFloat::k_cSIMDPack + TFloat::k_cSIMDPack;
                } else {
-                  gradient.SaveAligned(pGradientAndHessian);
+                  gradient.Store(pGradientAndHessian);
                   pGradientAndHessian += TFloat::k_cSIMDPack;
                }
             }
@@ -315,8 +316,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                metric = ApplyFunction(metric, [](typename TFloat::T x) { return LogForLogLoss<false>(x); });
 
                if(bWeight) {
-                  TFloat weight;
-                  weight.LoadAligned(pWeight);
+                  const TFloat weight = TFloat::Load(pWeight);
                   pWeight += TFloat::k_cSIMDPack;
                   metric *= weight;
                }

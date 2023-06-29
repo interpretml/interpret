@@ -192,7 +192,7 @@ public:
                   const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined[i] >> cShift) & maskBits;
                   updateScores[i] = aUpdateTensorScores[iTensorBin];
                }
-               updateScore.LoadAligned(updateScores);
+               updateScore = TFloat::Load(updateScores);
             }
 
             // for RMSE regression we cannot put the weight into the gradient like we could with other objectives
@@ -202,18 +202,16 @@ public:
             // non-weight adjusted one and a weight adjusted one for when inner bags are used
             // NOTE: For interactions we can and do put the weight into the gradient because we never update it
 
-            TFloat gradient;
-            gradient.LoadAligned(pGradient);
+            TFloat gradient = TFloat::Load(pGradient);
             gradient += updateScore;
-            gradient.SaveAligned(pGradient);
+            gradient.Store(pGradient);
             pGradient += TFloat::k_cSIMDPack;
 
             if(bCalcMetric) {
                // we use RMSE so get the squared error part here
                TFloat metric = gradient * gradient;
                if(bWeight) {
-                  TFloat weight;
-                  weight.LoadAligned(pWeight);
+                  const TFloat weight = TFloat::Load(pWeight);
                   pWeight += TFloat::k_cSIMDPack;
                   metric *= weight;
                }

@@ -56,12 +56,34 @@ struct Cuda_32_Int final {
    GPU_BOTH inline Cuda_32_Int(const T val) noexcept : m_data(val) {
    }
 
-   GPU_BOTH inline void LoadAligned(const T * const a) noexcept {
-      m_data = *a;
+   GPU_BOTH inline static Cuda_32_Int Load(const T * const a) noexcept {
+      return Cuda_32_Int(*a);
    }
 
-   GPU_BOTH inline void SaveAligned(T * const a) const noexcept {
+   GPU_BOTH inline void Store(T * const a) const noexcept {
       *a = m_data;
+   }
+
+   GPU_BOTH inline static Cuda_32_Int MakeIndexes() noexcept {
+      return Cuda_32_Int(0);
+   }
+
+   GPU_BOTH inline Cuda_32_Int operator+ (const Cuda_32_Int & other) const noexcept {
+      return Cuda_32_Int(m_data + other.m_data);
+   }
+
+   GPU_BOTH inline Cuda_32_Int & operator+= (const Cuda_32_Int & other) noexcept {
+      *this = (*this) + other;
+      return *this;
+   }
+
+   GPU_BOTH inline Cuda_32_Int operator* (const Cuda_32_Int & other) const noexcept {
+      return Cuda_32_Int(m_data * other.m_data);
+   }
+
+   GPU_BOTH inline Cuda_32_Int & operator*= (const Cuda_32_Int & other) noexcept {
+      *this = (*this) * other;
+      return *this;
    }
 
    GPU_BOTH inline Cuda_32_Int operator>> (int shift) const noexcept {
@@ -182,16 +204,20 @@ struct Cuda_32_Float final {
       return Cuda_32_Float(val) / other;
    }
 
-   GPU_BOTH inline void LoadAligned(const T * const a) noexcept {
-      m_data = *a;
+   GPU_BOTH inline static Cuda_32_Float Load(const T * const a) noexcept {
+      return Cuda_32_Float(*a);
    }
 
-   GPU_BOTH inline void SaveAligned(T * const a) const noexcept {
+   GPU_BOTH inline void Store(T * const a) const noexcept {
       *a = m_data;
    }
 
-   GPU_BOTH inline void LoadScattered(const T * const a, const TInt i) noexcept {
-      m_data = a[i.m_data];
+   GPU_BOTH inline static Cuda_32_Float Load(const T * const a, const TInt i) noexcept {
+      return Cuda_32_Float(a[i.m_data]);
+   }
+
+   GPU_BOTH inline void Store(T * const a, const TInt i) noexcept {
+      a[i.m_data] = m_data;
    }
 
    template<typename TFunc>

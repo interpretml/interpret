@@ -297,8 +297,8 @@ protected:
       const GradientHessian<TFloat> gradientHessian = pObjective->CalcGradientHessian(sampleScore, target);
       TFloat gradient = gradientHessian.GetGradient();
       TFloat hessian = gradientHessian.GetHessian();
-      gradient.SaveAligned(pGradientAndHessian);
-      hessian.SaveAligned(pGradientAndHessian + TFloat::k_cSIMDPack);
+      gradient.Store(pGradientAndHessian);
+      hessian.Store(pGradientAndHessian + TFloat::k_cSIMDPack);
       return pGradientAndHessian + (TFloat::k_cSIMDPack + TFloat::k_cSIMDPack);
    }
    template<typename TObjective, typename TFloat, bool bHessian, typename std::enable_if<!bHessian, void>::type * = nullptr>
@@ -309,7 +309,7 @@ protected:
    ) const noexcept {
       const TObjective * const pObjective = static_cast<const TObjective *>(this);
       TFloat gradient = pObjective->CalcGradient(sampleScore, target);
-      gradient.SaveAligned(pGradientAndHessian);
+      gradient.Store(pGradientAndHessian);
       return pGradientAndHessian + TFloat::k_cSIMDPack;
    }
 
@@ -319,6 +319,8 @@ protected:
 
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
       static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
+      static_assert(bKeepGradHess || !bHessian, "bHessian can only be true if bKeepGradHess is true");
+      static_assert(!bKeepGradHess || !bCalcMetric, "bKeepGradHess and bCalcMetric cannot both be true");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
@@ -409,25 +411,24 @@ protected:
       do {
          typename TFloat::TInt iTensorBinCombined;
          if(!bCompilerZeroDimensional) {
-            iTensorBinCombined.LoadAligned(pInputData);
+            iTensorBinCombined = TFloat::TInt::Load(pInputData);
             pInputData += TFloat::k_cSIMDPack;
          }
          while(true) {
             if(!bCompilerZeroDimensional) {
                typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-               updateScore.LoadScattered(aUpdateTensorScores, iTensorBin);
+               updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
             }
 
             TFloat target;
             if(bGetTarget) {
-               target.LoadAligned(pTargetData);
+               target = TFloat::Load(pTargetData);
                pTargetData += TFloat::k_cSIMDPack;
             }
 
-            TFloat sampleScore;
-            sampleScore.LoadAligned(pSampleScore);
+            TFloat sampleScore = TFloat::Load(pSampleScore);
             sampleScore += updateScore;
-            sampleScore.SaveAligned(pSampleScore);
+            sampleScore.Store(pSampleScore);
             pSampleScore += TFloat::k_cSIMDPack;
 
             if(bKeepGradHess) {
@@ -437,8 +438,7 @@ protected:
             if(bCalcMetric) {
                TFloat metric = pObjective->CalcMetric(sampleScore, target);
                if(bWeight) {
-                  TFloat weight;
-                  weight.LoadAligned(pWeight);
+                  const TFloat weight = TFloat::Load(pWeight);
                   pWeight += TFloat::k_cSIMDPack;
                   metric *= weight;
                }
