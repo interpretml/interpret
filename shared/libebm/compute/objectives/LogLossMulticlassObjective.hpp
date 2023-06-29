@@ -81,7 +81,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
       return GradientHessian<TFloat>(0.0, 0.0);
    }
 
-   template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+   template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian>
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
 

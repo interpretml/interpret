@@ -223,10 +223,10 @@ struct Cpu_64_Float final {
       return val.m_data;
    }
 
-   template<typename TObjective, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
+   template<typename TObjective, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Objective * const pObjective, ApplyUpdateBridge * const pData) noexcept {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
-      RemoteApplyUpdate<TObjective, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pObjective, pData);
+      RemoteApplyUpdate<TObjective, cCompilerScores, cCompilerPack, bKeepGradHess, bCalcMetric, bWeight, bHessian>(pObjective, pData);
       return Error_None;
    }
 
