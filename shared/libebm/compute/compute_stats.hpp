@@ -425,8 +425,8 @@ namespace EbmStats {
       hessianOut = hessian;
    }
 
-   GPU_DEVICE INLINE_ALWAYS static FloatFast MulticlassFixTargetGradient(const FloatFast oldGradient, const FloatFast weight) {
-      return oldGradient - weight;
+   GPU_DEVICE INLINE_ALWAYS static FloatFast MulticlassFixTargetGradient(const FloatFast oldGradient) {
+      return oldGradient - FloatFast { 1 };
    }
 
    GPU_DEVICE INLINE_ALWAYS static FloatFast ComputeSingleSampleLogLossMulticlass(

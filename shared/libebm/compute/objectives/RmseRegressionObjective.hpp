@@ -110,6 +110,7 @@ public:
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_oneScore == cCompilerScores, "for RMSE regression there should always be one score");
+      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
       static_assert(!bHessian, "for RMSE regression we should never need the hessians");
       static_assert(bKeepGradHess, "for RMSE regression we should always keep the gradients");
 
@@ -165,15 +166,14 @@ public:
       }
 
       const typename TFloat::T * pWeight;
-      if(bWeight) {
-         pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
-#ifndef GPU_COMPILE
-         EBM_ASSERT(nullptr != pWeight);
-#endif // GPU_COMPILE
-      }
-
       TFloat metricSum;
       if(bCalcMetric) {
+         if(bWeight) {
+            pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
+#ifndef GPU_COMPILE
+            EBM_ASSERT(nullptr != pWeight);
+#endif // GPU_COMPILE
+         }
          metricSum = 0.0;
       }
       do {
@@ -214,8 +214,8 @@ public:
                if(bWeight) {
                   TFloat weight;
                   weight.LoadAligned(pWeight);
-                  metric *= weight;
                   pWeight += TFloat::k_cSIMDPack;
+                  metric *= weight;
                }
                metricSum += metric;
             }

@@ -10,6 +10,7 @@
 #include "common_cpp.hpp"
 #include "bridge_cpp.hpp"
 
+#include "dataset_shared.hpp" // GetDataSetSharedHeader
 #include "InteractionCore.hpp"
 #include "InteractionShell.hpp"
 
@@ -20,6 +21,7 @@ namespace DEFINED_ZONE_NAME {
 
 extern void InitializeRmseGradientsAndHessiansInteraction(
    const unsigned char * const pDataSetShared,
+   const size_t cWeights,
    const BagEbm * const aBag,
    const double * const aInitScores,
    DataSetInteraction * const pDataSet
@@ -162,9 +164,37 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       return Error_IllegalParamVal;
    }
 
+   SharedStorageDataType countSamples;
+   size_t cFeatures;
+   size_t cWeights;
+   size_t cTargets;
+   error = GetDataSetSharedHeader(static_cast<const unsigned char *>(dataSet), &countSamples, &cFeatures, &cWeights, &cTargets);
+   if(Error_None != error) {
+      // already logged
+      return error;
+   }
+
+   if(IsConvertError<size_t>(countSamples)) {
+      LOG_0(Trace_Error, "ERROR CreateInteractionDetector IsConvertError<size_t>(countSamples)");
+      return Error_IllegalParamVal;
+   }
+   size_t cSamples = static_cast<size_t>(countSamples);
+
+   if(size_t { 1 } < cWeights) {
+      LOG_0(Trace_Warning, "WARNING CreateInteractionDetector size_t { 1 } < cWeights");
+      return Error_IllegalParamVal;
+   }
+   if(size_t { 1 } != cTargets) {
+      LOG_0(Trace_Warning, "WARNING CreateInteractionDetector 1 != cTargets");
+      return Error_IllegalParamVal;
+   }
+
    InteractionCore * pInteractionCore = nullptr;
    error = InteractionCore::Create(
       static_cast<const unsigned char *>(dataSet),
+      cSamples, 
+      cFeatures,
+      cWeights,
       bag,
       isDifferentiallyPrivate,
       objective,
@@ -189,6 +219,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       if(!pInteractionCore->IsRmse()) {
          error = pInteractionCore->InitializeInteractionGradientsAndHessians(
             static_cast<const unsigned char *>(dataSet),
+            cWeights,
             bag,
             initScores
          );
@@ -200,6 +231,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       } else {
          InitializeRmseGradientsAndHessiansInteraction(
             static_cast<const unsigned char *>(dataSet),
+            cWeights,
             bag,
             initScores,
             pInteractionCore->GetDataSetInteraction()

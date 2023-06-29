@@ -54,11 +54,11 @@ ErrorEbm DataSetBoosting::InitGradHess(
 
    size_t cTotalScores = cScores;
    if(bAllocateHessians) {
-      if(IsMultiplyError(size_t { 2 }, cScores)) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitGradHess IsMultiplyError(size_t { 2 }, cScores)");
+      if(IsMultiplyError(size_t { 2 }, cTotalScores)) {
+         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitGradHess IsMultiplyError(size_t { 2 }, cTotalScores)");
          return Error_OutOfMemory;
       }
-      cTotalScores = size_t { 2 } * cScores;
+      cTotalScores = size_t { 2 } * cTotalScores;
    }
 
    DataSubsetBoosting * pSubset = m_aSubsets;

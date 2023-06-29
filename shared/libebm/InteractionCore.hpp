@@ -92,6 +92,9 @@ public:
    static void Free(InteractionCore * const pInteractionCore);
    static ErrorEbm Create(
       const unsigned char * const pDataSetShared,
+      const size_t cSamples,
+      const size_t cFeatures,
+      const size_t cWeights,
       const BagEbm * const aBag,
       const BoolEbm isDifferentiallyPrivate,
       const char * const sObjective,
@@ -101,6 +104,7 @@ public:
 
    ErrorEbm InitializeInteractionGradientsAndHessians(
       const unsigned char * const pDataSetShared,
+      const size_t cWeights,
       const BagEbm * const aBag,
       const double * const aInitScores
    );

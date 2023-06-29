@@ -47,11 +47,11 @@ ErrorEbm DataSetInteraction::InitGradHess(
 
    size_t cTotalScores = cScores;
    if(bAllocateHessians) {
-      if(IsMultiplyError(size_t { 2 }, cScores)) {
-         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitGradHess IsMultiplyError(size_t { 2 }, cScores)");
+      if(IsMultiplyError(size_t { 2 }, cTotalScores)) {
+         LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitGradHess IsMultiplyError(size_t { 2 }, cTotalScores)");
          return Error_OutOfMemory;
       }
-      cTotalScores = size_t { 2 } * cScores;
+      cTotalScores = size_t { 2 } * cTotalScores;
    }
 
    DataSubsetInteraction * pSubset = m_aSubsets;

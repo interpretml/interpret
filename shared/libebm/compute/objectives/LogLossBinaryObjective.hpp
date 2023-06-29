@@ -76,6 +76,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
+      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
@@ -152,15 +153,14 @@ struct LogLossBinaryObjective final : public BinaryObjective {
       }
 
       const typename TFloat::T * pWeight;
-      if(bWeight) {
-         pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
-#ifndef GPU_COMPILE
-         EBM_ASSERT(nullptr != pWeight);
-#endif // GPU_COMPILE
-      }
-
       TFloat metricSum;
       if(bCalcMetric) {
+         if(bWeight) {
+            pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
+#ifndef GPU_COMPILE
+            EBM_ASSERT(nullptr != pWeight);
+#endif // GPU_COMPILE
+         }
          metricSum = 0.0;
       }
       do {
@@ -186,12 +186,6 @@ struct LogLossBinaryObjective final : public BinaryObjective {
             sampleScore += updateScore;
             sampleScore.SaveAligned(pSampleScore);
             pSampleScore += TFloat::k_cSIMDPack;
-
-            TFloat weight;
-            if(bWeight) {
-               weight.LoadAligned(pWeight);
-               pWeight += TFloat::k_cSIMDPack;
-            }
 
             if(bKeepGradHess) {
 
@@ -236,7 +230,6 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                denominator += 1.0;
                TFloat gradient = numerator / denominator;
 
-               TFloat hessian;
                if(bHessian) {
                   // normally you would calculate the hessian from the class probability, but for classification it's possible
                   // to calculate from the gradient since our gradient is (r - p) where r is either 0 or 1, and our 
@@ -298,22 +291,8 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                   //   they are using t * (2 - t) since they have a 2 in their objective
 
                   const TFloat absGradient = Abs(gradient); // abs will return the same type that it is given, either float or double
-                  hessian = absGradient * (1.0 - absGradient);
-               }
+                  const TFloat hessian = absGradient * (1.0 - absGradient);
 
-               if(bWeight) {
-                  // This is only used during the initialization of interaction detection. For boosting
-                  // we currently multiply by the weight during bin summation instead since we use the weight
-                  // there to include the inner bagging counts of occurences.
-                  // Whether this multiplication happens or not is controlled by the caller by passing in the
-                  // weight array or not.
-                  gradient *= weight;
-                  if(bHessian) {
-                     hessian *= weight;
-                  }
-               }
-
-               if(bHessian) {
                   gradient.SaveAligned(pGradientAndHessian);
                   hessian.SaveAligned(pGradientAndHessian + TFloat::k_cSIMDPack);
                   pGradientAndHessian += TFloat::k_cSIMDPack + TFloat::k_cSIMDPack;
@@ -336,6 +315,9 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                metric = ApplyFunction(metric, [](typename TFloat::T x) { return LogForLogLoss<false>(x); });
 
                if(bWeight) {
+                  TFloat weight;
+                  weight.LoadAligned(pWeight);
+                  pWeight += TFloat::k_cSIMDPack;
                   metric *= weight;
                }
                metricSum += metric;

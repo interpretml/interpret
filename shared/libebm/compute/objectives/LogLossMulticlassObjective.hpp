@@ -83,6 +83,8 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian, bool bKeepGradHess, bool bCalcMetric, bool bWeight>
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
+      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
+
       static constexpr bool bDynamic = k_dynamicScores == cCompilerScores;
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetExp = bCalcMetric || bKeepGradHess;
@@ -170,16 +172,15 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
       }
 
       const FloatFast * pWeight;
-      if(bWeight) {
-         pWeight = reinterpret_cast<const FloatFast *>(pData->m_aWeights);
-#ifndef GPU_COMPILE
-         EBM_ASSERT(nullptr != pWeight);
-#endif // GPU_COMPILE
-      }
-
       FloatFast sumLogLoss;
       if(bCalcMetric) {
-         sumLogLoss = 0;
+         if(bWeight) {
+            pWeight = reinterpret_cast<const FloatFast *>(pData->m_aWeights);
+#ifndef GPU_COMPILE
+            EBM_ASSERT(nullptr != pWeight);
+#endif // GPU_COMPILE
+         }
+         sumLogLoss = 0.0;
       }
       do {
          StorageDataType iTensorBinCombined;
@@ -220,12 +221,6 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                ++pTargetData;
             }
 
-            FloatFast weight;
-            if(bWeight) {
-               weight = *pWeight;
-               ++pWeight;
-            }
-
             pSampleScore += cScores;
 
             if(bKeepGradHess) {
@@ -241,22 +236,13 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                      gradient,
                      hessian
                   );
-                  if(bWeight) {
-                     // This is only used during the initialization of interaction detection. For boosting
-                     // we currently multiply by the weight during bin summation instead since we use the weight
-                     // there to include the inner bagging counts of occurences.
-                     // Whether this multiplication happens or not is controlled by the caller by passing in the
-                     // weight array or not.
-                     gradient *= weight;
-                     hessian *= weight;
-                  }
                   pGradientAndHessian[iScore2 << 1] = gradient;
                   pGradientAndHessian[(iScore2 << 1) + 1] = hessian;
                   ++iScore2;
                } while(cScores != iScore2);
 
-               pGradientAndHessian[targetData << 1] = EbmStats::MulticlassFixTargetGradient(
-                  pGradientAndHessian[targetData << 1], bWeight ? weight : FloatFast { 1 });
+               pGradientAndHessian[targetData << 1] = 
+                  EbmStats::MulticlassFixTargetGradient(pGradientAndHessian[targetData << 1]);
 
                pGradientAndHessian += cScores << 1;
             }
@@ -267,6 +253,9 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(sumExp, itemExp);
 
                if(bWeight) {
+                  FloatFast weight;
+                  weight = *pWeight;
+                  ++pWeight;
                   sampleLogLoss *= weight;
                }
                sumLogLoss += sampleLogLoss;

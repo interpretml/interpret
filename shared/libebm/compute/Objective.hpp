@@ -222,16 +222,10 @@ private:
          EBM_ASSERT(EBM_FALSE == pData->m_bCalcMetric);
          static constexpr bool bCalcMetric = false;
 
-         if(nullptr != pData->m_aWeights) {
-            static constexpr bool bWeight = true;
+         EBM_ASSERT(nullptr == pData->m_aWeights);
+         static constexpr bool bWeight = false;
 
-            // this branch will only be taking during interaction initialization
-
-            return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
-         } else {
-            static constexpr bool bWeight = false;
-            return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
-         }
+         return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, cCompilerPack, bHessian, bKeepGradHess, bCalcMetric, bWeight>(pData);
       } else {
          // the validation set will have no gradients or hessians
          static constexpr bool bKeepGradHess = false;
@@ -293,47 +287,28 @@ private:
 
 protected:
 
-   template<typename TObjective, typename TFloat, bool bHessian, bool bWeight, typename std::enable_if<bHessian, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, bool bHessian, typename std::enable_if<bHessian, void>::type * = nullptr>
    GPU_DEVICE INLINE_ALWAYS typename TFloat::T * HandleGradHess(
       typename TFloat::T * const pGradientAndHessian,
       const TFloat sampleScore,
-      const TFloat target,
-      const TFloat weight
+      const TFloat target
    ) const noexcept {
       const TObjective * const pObjective = static_cast<const TObjective *>(this);
       const GradientHessian<TFloat> gradientHessian = pObjective->CalcGradientHessian(sampleScore, target);
       TFloat gradient = gradientHessian.GetGradient();
       TFloat hessian = gradientHessian.GetHessian();
-      if(bWeight) {
-         // This is only used during the initialization of interaction detection. For boosting
-         // we currently multiply by the weight during bin summation instead since we use the weight
-         // there to include the inner bagging counts of occurences.
-         // Whether this multiplication happens or not is controlled by the caller by passing in the
-         // weight array or not.
-         gradient *= weight;
-         hessian *= weight;
-      }
       gradient.SaveAligned(pGradientAndHessian);
       hessian.SaveAligned(pGradientAndHessian + TFloat::k_cSIMDPack);
       return pGradientAndHessian + (TFloat::k_cSIMDPack + TFloat::k_cSIMDPack);
    }
-   template<typename TObjective, typename TFloat, bool bHessian, bool bWeight, typename std::enable_if<!bHessian, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, bool bHessian, typename std::enable_if<!bHessian, void>::type * = nullptr>
    GPU_DEVICE INLINE_ALWAYS typename TFloat::T * HandleGradHess(
       typename TFloat::T * const pGradientAndHessian, 
       const TFloat sampleScore, 
-      const TFloat target,
-      const TFloat weight
+      const TFloat target
    ) const noexcept {
       const TObjective * const pObjective = static_cast<const TObjective *>(this);
       TFloat gradient = pObjective->CalcGradient(sampleScore, target);
-      if(bWeight) {
-         // This is only used during the initialization of interaction detection. For boosting
-         // we currently multiply by the weight during bin summation instead since we use the weight
-         // there to include the inner bagging counts of occurences.
-         // Whether this multiplication happens or not is controlled by the caller by passing in the
-         // weight array or not.
-         gradient *= weight;
-      }
       gradient.SaveAligned(pGradientAndHessian);
       return pGradientAndHessian + TFloat::k_cSIMDPack;
    }
@@ -343,7 +318,8 @@ protected:
       const TObjective * const pObjective = static_cast<const TObjective *>(this);
 
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
-      
+      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
+
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
@@ -420,15 +396,14 @@ protected:
       }
 
       const typename TFloat::T * pWeight;
-      if(bWeight) {
-         pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
-#ifndef GPU_COMPILE
-         EBM_ASSERT(nullptr != pWeight);
-#endif // GPU_COMPILE
-      }
-
       TFloat metricSum;
       if(bCalcMetric) {
+         if(bWeight) {
+            pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
+#ifndef GPU_COMPILE
+            EBM_ASSERT(nullptr != pWeight);
+#endif // GPU_COMPILE
+         }
          metricSum = 0.0;
       }
       do {
@@ -455,19 +430,16 @@ protected:
             sampleScore.SaveAligned(pSampleScore);
             pSampleScore += TFloat::k_cSIMDPack;
 
-            TFloat weight;
-            if(bWeight) {
-               weight.LoadAligned(pWeight);
-               pWeight += TFloat::k_cSIMDPack;
-            }
-
             if(bKeepGradHess) {
-               pGradientAndHessian = HandleGradHess<TObjective, TFloat, bHessian, bWeight>(pGradientAndHessian, sampleScore, target, weight);
+               pGradientAndHessian = HandleGradHess<TObjective, TFloat, bHessian>(pGradientAndHessian, sampleScore, target);
             }
 
             if(bCalcMetric) {
                TFloat metric = pObjective->CalcMetric(sampleScore, target);
                if(bWeight) {
+                  TFloat weight;
+                  weight.LoadAligned(pWeight);
+                  pWeight += TFloat::k_cSIMDPack;
                   metric *= weight;
                }
                metricSum += metric;

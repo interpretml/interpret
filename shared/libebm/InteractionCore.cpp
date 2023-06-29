@@ -59,6 +59,9 @@ void InteractionCore::Free(InteractionCore * const pInteractionCore) {
 
 ErrorEbm InteractionCore::Create(
    const unsigned char * const pDataSetShared,
+   const size_t cSamples,
+   const size_t cFeatures,
+   const size_t cWeights,
    const BagEbm * const aBag,
    const BoolEbm isDifferentiallyPrivate,
    const char * const sObjective,
@@ -94,31 +97,6 @@ ErrorEbm InteractionCore::Create(
    }
    // give ownership of our object back to the caller, even if there is a failure
    *ppInteractionCoreOut = pInteractionCore;
-
-   SharedStorageDataType countSamples;
-   size_t cFeatures;
-   size_t cWeights;
-   size_t cTargets;
-   error = GetDataSetSharedHeader(pDataSetShared, &countSamples, &cFeatures, &cWeights, &cTargets);
-   if(Error_None != error) {
-      // already logged
-      return error;
-   }
-
-   if(IsConvertError<size_t>(countSamples)) {
-      LOG_0(Trace_Error, "ERROR InteractionCore::Create IsConvertError<size_t>(countSamples)");
-      return Error_IllegalParamVal;
-   }
-   size_t cSamples = static_cast<size_t>(countSamples);
-
-   if(size_t { 1 } < cWeights) {
-      LOG_0(Trace_Warning, "WARNING InteractionCore::Create size_t { 1 } < cWeights");
-      return Error_IllegalParamVal;
-   }
-   if(size_t { 1 } != cTargets) {
-      LOG_0(Trace_Warning, "WARNING InteractionCore::Create 1 != cTargets");
-      return Error_IllegalParamVal;
-   }
 
    size_t cTrainingSamples;
    size_t cValidationSamples;
@@ -268,8 +246,11 @@ ErrorEbm InteractionCore::Create(
    return Error_None;
 }
 
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
    const unsigned char * const pDataSetShared,
+   const size_t cWeights,
    const BagEbm * const aBag,
    const double * const aInitScores
 ) {
@@ -288,8 +269,6 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          }
          ++pSubsetInit;
       } while(pSubsetsEnd != pSubsetInit);
-
-      const BagEbm * pSampleReplication = aBag;
 
       ApplyUpdateBridge data;
 
@@ -353,10 +332,11 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
 
          const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargetsFrom);
 
+         const BagEbm * pSampleReplication = aBag;
          const double * pInitScoreFrom = aInitScores;
          BagEbm replication = 0;
          const double * pInitScoreFromOld = nullptr;
-         StorageDataType target = 0;
+         StorageDataType target;
 
          DataSubsetInteraction * pSubset = GetDataSetInteraction()->GetSubsets();
          do {
@@ -422,7 +402,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             data.m_bCalcMetric = EBM_FALSE;
             data.m_cSamples = pSubset->GetCountSamples();
             data.m_aPacked = nullptr;
-            data.m_aWeights = pSubset->GetWeights();
+            data.m_aWeights = nullptr;
             data.m_aGradientsAndHessians = pSubset->GetGradHess();
             // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
             // reuse the same code that we use for boosting in order to generate our gradients and hessians
@@ -432,6 +412,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             }
             ++pSubset;
          } while(pSubsetsEnd != pSubset);
+         EBM_ASSERT(0 == replication);
 
       free_temp:
          AlignedFree(data.m_aMulticlassMidwayTemp); // nullptr ok
@@ -451,10 +432,11 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
 
          const FloatFast * pTargetFrom = static_cast<const FloatFast *>(aTargetsFrom);
 
+         const BagEbm * pSampleReplication = aBag;
          const double * pInitScoreFrom = aInitScores;
          BagEbm replication = 0;
-         FloatFast target = 0;
-         const double * pInitScoreFromOld = nullptr;
+         FloatFast initScore = 0;
+         FloatFast target;
 
          DataSubsetInteraction * pSubset = GetDataSetInteraction()->GetSubsets();
          do {
@@ -465,7 +447,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             do {
                if(BagEbm { 0 } == replication) {
                   replication = 1;
-                  size_t cAdvance = cScores;
+                  size_t cAdvance = 1;
                   if(nullptr != pSampleReplication) {
                      cAdvance = 0; // we'll add this now inside the loop below
                      do {
@@ -474,14 +456,14 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                            ++pSampleReplication;
                            ++pTargetFrom;
                         } while(BagEbm { 0 } == replication);
-                        cAdvance += cScores;
+                        ++cAdvance;
                      } while(replication < BagEbm { 0 });
                      --pTargetFrom;
                   }
 
                   if(nullptr != pInitScoreFrom) {
                      pInitScoreFrom += cAdvance;
-                     pInitScoreFromOld = pInitScoreFrom - cScores;
+                     initScore = SafeConvertFloat<FloatFast>(pInitScoreFrom[-1]);
                   }
 
                   target = *pTargetFrom;
@@ -491,19 +473,10 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                *pTargetTo = target;
                ++pTargetTo;
 
-               const double * pInitScoreFromLoop = pInitScoreFromOld;
-               const FloatFast * const pSampleScoreToEnd = pSampleScoreTo + cScores;
-               do {
-                  FloatFast initScore = 0;
-                  if(nullptr != pInitScoreFromLoop) {
-                     initScore = SafeConvertFloat<FloatFast>(*pInitScoreFromLoop);
-                     ++pInitScoreFromLoop;
-                  }
-                  *pSampleScoreTo = initScore;
-                  ++pSampleScoreTo;
-               } while(pSampleScoreToEnd != pSampleScoreTo);
+               *pSampleScoreTo = initScore;
+               ++pSampleScoreTo;
                --replication;
-
+            
             } while(pTargetToEnd != pTargetTo);
 
             data.m_cScores = cScores;
@@ -512,7 +485,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             data.m_bCalcMetric = EBM_FALSE;
             data.m_cSamples = pSubset->GetCountSamples();
             data.m_aPacked = nullptr;
-            data.m_aWeights = pSubset->GetWeights();
+            data.m_aWeights = nullptr;
             data.m_aGradientsAndHessians = pSubset->GetGradHess();
             // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to 
             // reuse the same code that we use for boosting in order to generate our gradients and hessians
@@ -522,6 +495,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             }
             ++pSubset;
          } while(pSubsetsEnd != pSubset);
+         EBM_ASSERT(0 == replication);
       }
 
    free_targets:
@@ -530,8 +504,66 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       AlignedFree(const_cast<void *>(data.m_aUpdateTensorScores));
    free_sample_scores:
       AlignedFree(data.m_aSampleScores);
+
+      if(size_t { 0 } != cWeights) {
+         // optimize by now multiplying the gradients and hessians by the weights. The gradients and hessians are constants
+         // after we exit this function and we just bin the non-changing values after this. By multiplying here
+         // we can avoid doing the multiplication each time we bin them.
+
+         const FloatFast * pWeight = GetDataSetSharedWeight(pDataSetShared, 0);
+         EBM_ASSERT(nullptr != pWeight);
+
+         size_t cTotalScores = cScores;
+         if(IsHessian()) {
+            if(IsMultiplyError(size_t { 2 }, cTotalScores)) {
+               LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(size_t { 2 }, cTotalScores)");
+               return Error_OutOfMemory;
+            }
+            cTotalScores = size_t { 2 } * cTotalScores;
+         }
+
+         const BagEbm * pSampleReplication = aBag;
+         BagEbm replication = 0;
+         FloatFast weight;
+
+         DataSubsetInteraction * pSubset = GetDataSetInteraction()->GetSubsets();
+         do {
+            EBM_ASSERT(1 <= pSubset->GetCountSamples());
+            FloatFast * pGradHess = pSubset->GetGradHess();
+            const FloatFast * const pGradHessEnd = &pGradHess[pSubset->GetCountSamples() * cTotalScores];
+            do {
+               if(BagEbm { 0 } == replication) {
+                  replication = 1;
+                  if(nullptr != pSampleReplication) {
+                     do {
+                        replication = *pSampleReplication;
+                        ++pSampleReplication;
+                        ++pWeight;
+                     } while(replication <= BagEbm { 0 });
+                     --pWeight;
+                  }
+                  weight = *pWeight;
+                  ++pWeight;
+               }
+
+               const FloatFast * const pLocalGradHessEnd = pGradHess + cTotalScores;
+               do {
+                  FloatFast gradHess = *pGradHess;
+                  gradHess *= weight;
+                  *pGradHess = gradHess;
+                  ++pGradHess;
+               } while(pLocalGradHessEnd != pGradHess);
+               --replication;
+
+            } while(pGradHessEnd != pGradHess);
+
+            ++pSubset;
+         } while(pSubsetsEnd != pSubset);
+         EBM_ASSERT(0 == replication);
+      }
    }
    return error;
 }
+WARNING_POP
 
 } // DEFINED_ZONE_NAME

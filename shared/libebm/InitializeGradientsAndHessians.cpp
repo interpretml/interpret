@@ -59,6 +59,7 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
       EBM_ASSERT(nullptr != pSubset);
       const DataSubsetBoosting * const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
 
+      FloatFast initScore = 0;
       BagEbm replication = 0;
       FloatFast gradient;
       do {
@@ -88,7 +89,6 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
                const FloatFast data = *pTargetData;
                ++pTargetData;
 
-               FloatFast initScore = 0;
                if(nullptr != pInitScore) {
                   pInitScore += cInitAdvances;
                   initScore = SafeConvertFloat<FloatFast>(pInitScore[-1]);
@@ -123,6 +123,7 @@ WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 extern void InitializeRmseGradientsAndHessiansInteraction(
    const unsigned char * const pDataSetShared,
+   const size_t cWeights,
    const BagEbm * const aBag,
    const double * const aInitScores,
    DataSetInteraction * const pDataSet
@@ -148,8 +149,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
       EBM_ASSERT(nullptr != pSubset);
 
       const FloatFast * pWeight = nullptr;
-      // check the first subset just to see if weights were specified
-      if(nullptr != pSubset->GetWeights()) {
+      if(size_t { 0 } != cWeights) {
          pWeight = GetDataSetSharedWeight(pDataSetShared, 0);
          EBM_ASSERT(nullptr != pWeight);
       }
@@ -160,6 +160,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
       const BagEbm * pSampleReplication = aBag;
       const double * pInitScore = aInitScores;
 
+      FloatFast initScore = 0;
       BagEbm replication = 0;
       FloatFast gradient;
       do {
@@ -190,7 +191,6 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
                pTargetData += cSharedAdvances;
                const FloatFast data = pTargetData[-1];
 
-               FloatFast initScore = 0;
                if(nullptr != pInitScore) {
                   pInitScore += cInitAdvances;
                   initScore = SafeConvertFloat<FloatFast>(pInitScore[-1]);
