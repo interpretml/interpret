@@ -83,9 +83,10 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
 
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian>
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
-      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
-      static_assert(bKeepGradHess || !bHessian, "bHessian can only be true if bKeepGradHess is true");
+      static_assert(k_dynamicScores == cCompilerScores || 2 <= cCompilerScores, "Multiclass needs more than 1 score");
       static_assert(!bKeepGradHess || !bCalcMetric, "bKeepGradHess and bCalcMetric cannot both be true");
+      static_assert(bKeepGradHess || !bHessian, "bHessian can only be true if bKeepGradHess is true");
+      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
 
       static constexpr bool bDynamic = k_dynamicScores == cCompilerScores;
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
@@ -95,172 +96,201 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != pData->m_aMulticlassMidwayTemp);
+      EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
+      EBM_ASSERT(1 <= pData->m_cSamples);
+      EBM_ASSERT(0 == pData->m_cSamples % TFloat::k_cSIMDPack);
+      EBM_ASSERT(nullptr != pData->m_aSampleScores);
+      EBM_ASSERT(2 <= pData->m_cScores);
+      EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == pData->m_cScores);
 #endif // GPU_COMPILE
 
-      FloatFast aLocalExpVector[bDynamic ? size_t { 1 } : cCompilerScores];
-      FloatFast * aExps;
+      alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::T 
+         aLocalExpVector[bDynamic ? size_t { 1 } : (cCompilerScores * size_t { TFloat::k_cSIMDPack })];
+      typename TFloat::T * aExps;
       if(bGetExp) {
          if(bDynamic) {
-            aExps = reinterpret_cast<FloatFast *>(pData->m_aMulticlassMidwayTemp);
+            aExps = reinterpret_cast<typename TFloat::T *>(pData->m_aMulticlassMidwayTemp);
          } else {
             aExps = aLocalExpVector;
          }
       }
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
+      const typename TFloat::TInt::T cCastScores = static_cast<typename TFloat::TInt::T>(cScores);
 
-      const FloatFast * const aUpdateTensorScores = reinterpret_cast<const FloatFast *>(pData->m_aUpdateTensorScores);
+
+      const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
 
-      FloatFast * pSampleScore = reinterpret_cast<FloatFast *>(pData->m_aSampleScores);
-      const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples * cScores;
+      typename TFloat::T * pSampleScore = reinterpret_cast<typename TFloat::T *>(pData->m_aSampleScores);
+      const typename TFloat::T * const pSampleScoresEnd = pSampleScore + cSamples * cScores;
 
-#ifndef GPU_COMPILE
-      EBM_ASSERT(3 <= cScores);
-      EBM_ASSERT(nullptr != aUpdateTensorScores);
-      EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(nullptr != pSampleScore);
-#endif // GPU_COMPILE
+      int cBitsPerItemMax;
+      int cShift;
+      int cShiftReset;
+      typename TFloat::TInt maskBits;
+      const typename TFloat::TInt::T * pInputData;
 
-      size_t cBitsPerItemMax;
-      ptrdiff_t cShift;
-      ptrdiff_t cShiftReset;
-      size_t maskBits;
-      const StorageDataType * pInputData;
-
-      FloatFast updateScore;
-      const FloatFast * aBinScores;
-
-      if(bCompilerZeroDimensional) {
-         aBinScores = aUpdateTensorScores;
-      } else {
+      if(!bCompilerZeroDimensional) {
          const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
-
-         const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
-
-         cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
-
-         cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
-         cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
-
-         maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
-
-         pInputData = pData->m_aPacked;
 #ifndef GPU_COMPILE
          EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
+         EBM_ASSERT(1 <= cPack);
+#endif // GPU_COMPILE
+
+         const int cItemsPerBitPack = static_cast<int>(cPack);
+#ifndef GPU_COMPILE
          EBM_ASSERT(1 <= cItemsPerBitPack);
-         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+         EBM_ASSERT(static_cast<size_t>(cItemsPerBitPack) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
+#endif // GPU_COMPILE
+
+         cBitsPerItemMax = static_cast<int>(GetCountBits<typename TFloat::TInt::T>(static_cast<size_t>(cItemsPerBitPack)));
+#ifndef GPU_COMPILE
          EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+         EBM_ASSERT(static_cast<size_t>(cBitsPerItemMax) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
+#endif // GPU_COMPILE
+
+         cShift = static_cast<int>((cSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
+         cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+
+         maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
+
+         pInputData = reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aPacked);
+#ifndef GPU_COMPILE
          EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
       }
 
-      const StorageDataType * pTargetData;
+      const typename TFloat::TInt::T * pTargetData;
       if(bGetTarget) {
-         pTargetData = reinterpret_cast<const StorageDataType *>(pData->m_aTargets);
+         pTargetData = reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aTargets);
 #ifndef GPU_COMPILE
          EBM_ASSERT(nullptr != pTargetData);
 #endif // GPU_COMPILE
       }
 
-      FloatFast * pGradientAndHessian;
+      typename TFloat::T * pGradientAndHessian;
       if(bKeepGradHess) {
-         pGradientAndHessian = reinterpret_cast<FloatFast *>(pData->m_aGradientsAndHessians);
+         pGradientAndHessian = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians);
 #ifndef GPU_COMPILE
          EBM_ASSERT(nullptr != pGradientAndHessian);
 #endif // GPU_COMPILE
       }
 
-      const FloatFast * pWeight;
-      FloatFast sumLogLoss;
+      const typename TFloat::T * pWeight;
+      TFloat metricSum;
       if(bCalcMetric) {
          if(bWeight) {
-            pWeight = reinterpret_cast<const FloatFast *>(pData->m_aWeights);
+            pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
 #ifndef GPU_COMPILE
             EBM_ASSERT(nullptr != pWeight);
 #endif // GPU_COMPILE
          }
-         sumLogLoss = 0.0;
+         metricSum = 0.0;
       }
       do {
-         StorageDataType iTensorBinCombined;
+         typename TFloat::TInt iTensorBinCombined;
          if(!bCompilerZeroDimensional) {
-            // we store the already multiplied dimensional value in *pInputData
-            iTensorBinCombined = *pInputData;
-            ++pInputData;
+            iTensorBinCombined = TFloat::TInt::Load(pInputData);
+            pInputData += TFloat::TInt::k_cSIMDPack;
          }
          while(true) {
+            typename TFloat::TInt iTensorBin;
             if(!bCompilerZeroDimensional) {
-               const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined >> cShift) & maskBits;
-               aBinScores = &aUpdateTensorScores[iTensorBin * cScores];
+               iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
+               iTensorBin *= cCastScores;
             }
 
-            FloatFast sumExp;
+            TFloat sumExp;
             if(bGetExp) {
-               sumExp = 0;
+               sumExp = 0.0;
             }
             size_t iScore1 = 0;
             do {
-               updateScore = aBinScores[iScore1];
+               TFloat updateScore;
+               if(!bCompilerZeroDimensional) {
+                  updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
+                  iTensorBin += 1;
+               } else {
+                  updateScore = aUpdateTensorScores[iScore1];
+               }
 
-               const FloatFast sampleScore = pSampleScore[iScore1] + updateScore;
-               pSampleScore[iScore1] = sampleScore;
+               TFloat sampleScore = TFloat::Load(pSampleScore);
+               sampleScore += updateScore;
+               sampleScore.Store(pSampleScore);
+               pSampleScore += TFloat::k_cSIMDPack;
 
                if(bGetExp) {
-                  const FloatFast oneExp = ExpForMulticlass<false>(sampleScore);
+                  const TFloat oneExp = ApplyFunction(sampleScore, [](typename TFloat::T x) { return ExpForMulticlass<false>(x); });
                   sumExp += oneExp;
-                  aExps[iScore1] = oneExp;
+                  oneExp.Store(&aExps[iScore1 * TFloat::k_cSIMDPack]);
                }
 
                ++iScore1;
             } while(cScores != iScore1);
 
-            size_t targetData;
+            typename TFloat::TInt target;
             if(bGetTarget) {
-               targetData = static_cast<size_t>(*pTargetData);
-               ++pTargetData;
+               target = TFloat::TInt::Load(pTargetData);
+               pTargetData += TFloat::TInt::k_cSIMDPack;
             }
 
-            pSampleScore += cScores;
-
             if(bKeepGradHess) {
-               const FloatFast sumExpInverted = FloatFast { 1 } / sumExp;
+               const TFloat sumExpInverted = TFloat { 1.0 } / sumExp;
 
                size_t iScore2 = 0;
                do {
-                  FloatFast gradient;
-                  FloatFast hessian;
-                  EbmStats::InverseLinkFunctionThenCalculateGradientAndHessianMulticlassForNonTarget(
-                     sumExpInverted,
-                     aExps[iScore2],
-                     gradient,
-                     hessian
-                  );
-                  pGradientAndHessian[iScore2 << 1] = gradient;
-                  pGradientAndHessian[(iScore2 << 1) + 1] = hessian;
+                  const TFloat itemExp = TFloat::Load(&aExps[iScore2 * TFloat::k_cSIMDPack]);
+                  const TFloat gradient = itemExp * sumExpInverted;
+
+                  if(bHessian) {
+                     const TFloat hessian = gradient * (TFloat { 1.0 } - gradient);
+                     gradient.Store(&pGradientAndHessian[iScore2 * (TFloat::k_cSIMDPack * 2)]);
+                     hessian.Store(&pGradientAndHessian[iScore2 * (TFloat::k_cSIMDPack * 2) + TFloat::k_cSIMDPack]);
+                  } else {
+                     gradient.Store(&pGradientAndHessian[iScore2 * TFloat::k_cSIMDPack]);
+                  }
+
                   ++iScore2;
                } while(cScores != iScore2);
 
-               pGradientAndHessian[targetData << 1] = 
-                  EbmStats::MulticlassFixTargetGradient(pGradientAndHessian[targetData << 1]);
+               if(bHessian) {
+                  target = target << (TFloat::k_cSIMDShift + 1);
+               } else {
+                  target = target << TFloat::k_cSIMDShift;
+               }
+               target += TFloat::TInt::MakeIndexes();
 
-               pGradientAndHessian += cScores << 1;
-            }
+               // TODO: after we finish sorting our dataset, all the target values in this datasubset will be
+               // identical, so instead of calling LoadScattered and SaveScattered we'll be able to call
+               // LoadAligned and SaveAligned
+               TFloat adjust = TFloat::Load(pGradientAndHessian, target);
+               adjust -= 1.0;
+               adjust.Store(pGradientAndHessian, target);
 
-            if(bCalcMetric) {
-               const FloatFast itemExp = aExps[targetData];
+               if(bHessian) {
+                  pGradientAndHessian += (TFloat::k_cSIMDPack + TFloat::k_cSIMDPack) * cScores;
+               } else {
+                  pGradientAndHessian += TFloat::k_cSIMDPack * cScores;
+               }
+            } else if(bCalcMetric) {
+               target = target << TFloat::k_cSIMDShift;
+               target += TFloat::TInt::MakeIndexes();
 
-               FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(sumExp, itemExp);
+               // TODO: after we finish sorting our dataset, all the target values in this datasubset will be
+               // identical, so instead of calling LoadScattered we'll be able to call LoadAligned
+               const TFloat itemExp = TFloat::Load(aExps, target);
+               const TFloat invertedProbability = sumExp / itemExp;
+               TFloat metric =
+                  ApplyFunction(invertedProbability, [](typename TFloat::T x) { return LogForLogLoss<false>(x); });
 
                if(bWeight) {
-                  FloatFast weight;
-                  weight = *pWeight;
-                  ++pWeight;
-                  sampleLogLoss *= weight;
+                  const TFloat weight = TFloat::Load(pWeight);
+                  pWeight += TFloat::k_cSIMDPack;
+                  metric *= weight;
                }
-               sumLogLoss += sampleLogLoss;
+               metricSum += metric;
             }
 
             if(bCompilerZeroDimensional) {
@@ -281,7 +311,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
       } while(pSampleScoresEnd != pSampleScore);
 
       if(bCalcMetric) {
-         pData->m_metricOut = static_cast<double>(sumLogLoss);
+         pData->m_metricOut = static_cast<double>(Sum(metricSum));
       }
    }
 };

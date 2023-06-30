@@ -20,7 +20,6 @@
 #include "Objective.hpp"
 
 #include "approximate_math.hpp"
-#include "compute_stats.hpp"
 
 #include "compute_wrapper.hpp"
 
@@ -40,7 +39,8 @@ struct Cpu_64_Int final {
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
    static_assert(std::numeric_limits<T>::max() <= std::numeric_limits<UIntExceed>::max(), "UIntExceed must be able to hold a T");
    static constexpr bool bCpu = true;
-   static constexpr int k_cSIMDPack = 1;
+   static constexpr int k_cSIMDShift = 0;
+   static constexpr int k_cSIMDPack = 1 << k_cSIMDShift;
 
    WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
@@ -85,6 +85,10 @@ struct Cpu_64_Int final {
       return Cpu_64_Int(m_data >> shift);
    }
 
+   inline Cpu_64_Int operator<< (int shift) const noexcept {
+      return Cpu_64_Int(m_data << shift);
+   }
+
    inline Cpu_64_Int operator& (const Cpu_64_Int & other) const noexcept {
       return Cpu_64_Int(other.m_data & m_data);
    }
@@ -101,6 +105,7 @@ struct Cpu_64_Float final {
    using TInt = Cpu_64_Int;
    static_assert(sizeof(T) <= sizeof(FloatExceed), "FloatExceed must be able to hold a T");
    static constexpr bool bCpu = TInt::bCpu;
+   static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;
 
    WARNING_PUSH

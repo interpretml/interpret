@@ -36,9 +36,7 @@ static_assert(
    "We can't even guarantee that infinity exists as a concept."
 );
 
-// TODO: we should make this the min() instead of the denorm_min().  We want denormals flushed to zero
-// because they either case non-determinism due to flush to zero or they cause performance issues, often.
-static constexpr FloatBig k_hessianMin = std::numeric_limits<FloatBig>::denorm_min();
+static constexpr FloatBig k_hessianMin = std::numeric_limits<FloatBig>::min();
 static constexpr FloatBig k_gainMin = 0;
 
 // HANDLING SPECIAL FLOATING POINT VALUES (NaN/infinities/denormals/-0):

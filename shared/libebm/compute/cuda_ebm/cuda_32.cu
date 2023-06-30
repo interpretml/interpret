@@ -20,7 +20,6 @@
 #include "Objective.hpp"
 
 #include "approximate_math.hpp"
-#include "compute_stats.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -45,7 +44,8 @@ struct Cuda_32_Int final {
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
    static_assert(std::numeric_limits<T>::max() <= std::numeric_limits<UIntExceed>::max(), "UIntExceed must be able to hold a T");
    static constexpr bool bCpu = false;
-   static constexpr int k_cSIMDPack = 1;
+   static constexpr int k_cSIMDShift = 0;
+   static constexpr int k_cSIMDPack = 1 << k_cSIMDShift;
 
    WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
@@ -90,6 +90,10 @@ struct Cuda_32_Int final {
       return Cuda_32_Int(m_data >> shift);
    }
 
+   GPU_BOTH inline Cuda_32_Int operator<< (int shift) const noexcept {
+      return Cuda_32_Int(m_data << shift);
+   }
+
    GPU_BOTH inline Cuda_32_Int operator& (const Cuda_32_Int & other) const noexcept {
       return Cuda_32_Int(other.m_data & m_data);
    }
@@ -110,6 +114,7 @@ struct Cuda_32_Float final {
    using TInt = Cuda_32_Int;
    static_assert(sizeof(T) <= sizeof(FloatExceed), "FloatExceed must be able to hold a T");
    static constexpr bool bCpu = TInt::bCpu;
+   static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;
 
    WARNING_PUSH

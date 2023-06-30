@@ -105,10 +105,11 @@ ErrorEbm BoosterShell::FillAllocations() {
       }
 
       if(IsMulticlass(cClasses)) {
-         if(IsMultiplyError(sizeof(FloatFast), cScores)) {
+         const size_t cSIMDPack = m_pBoosterCore->SIMDPackMax();
+         if(IsMultiplyError(sizeof(FloatFast) * cSIMDPack, cScores)) {
             goto failed_allocation;
          }
-         m_aMulticlassMidwayTemp = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cScores));
+         m_aMulticlassMidwayTemp = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSIMDPack * cScores));
          if(nullptr == m_aMulticlassMidwayTemp) {
             goto failed_allocation;
          }

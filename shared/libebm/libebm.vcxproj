@@ -293,7 +293,6 @@ EXIT /B 0
     <ClInclude Include="bridge_cpp\bridge_cpp.hpp" />
     <ClInclude Include="bridge_cpp\GradientPair.hpp" />
     <ClInclude Include="bridge_c\bridge_c.h" />
-    <ClInclude Include="common_cpp\ebm_stats.hpp" />
     <ClInclude Include="common_c\logging.h" />
     <ClInclude Include="bridge_c\zones.h" />
     <ClInclude Include="common_cpp\common_cpp.hpp" />

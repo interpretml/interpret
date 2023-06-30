@@ -177,18 +177,18 @@ public:
          metricSum = 0.0;
       }
       do {
-         alignas(SIMD_BYTE_ALIGNMENT) StorageDataType iTensorBinCombined[TFloat::k_cSIMDPack];
+         alignas(SIMD_BYTE_ALIGNMENT) StorageDataType iTensorBinCombined[TFloat::TInt::k_cSIMDPack];
          if(!bCompilerZeroDimensional) {
             // we store the already multiplied dimensional value in *pInputData
-            for(int i = 0; i < TFloat::k_cSIMDPack; ++i) {
+            for(int i = 0; i < TFloat::TInt::k_cSIMDPack; ++i) {
                iTensorBinCombined[i] = pInputData[i];
             }
-            pInputData += TFloat::k_cSIMDPack;
+            pInputData += TFloat::TInt::k_cSIMDPack;
          }
          while(true) {
             if(!bCompilerZeroDimensional) {
                // in later versions of SIMD there are scatter/gather intrinsics that do this in one operation
-               for(int i = 0; i < TFloat::k_cSIMDPack; ++i) {
+               for(int i = 0; i < TFloat::TInt::k_cSIMDPack; ++i) {
                   const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined[i] >> cShift) & maskBits;
                   updateScores[i] = aUpdateTensorScores[iTensorBin];
                }

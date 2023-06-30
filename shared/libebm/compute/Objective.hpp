@@ -412,7 +412,7 @@ protected:
          typename TFloat::TInt iTensorBinCombined;
          if(!bCompilerZeroDimensional) {
             iTensorBinCombined = TFloat::TInt::Load(pInputData);
-            pInputData += TFloat::k_cSIMDPack;
+            pInputData += TFloat::TInt::k_cSIMDPack;
          }
          while(true) {
             if(!bCompilerZeroDimensional) {

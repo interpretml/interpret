@@ -169,7 +169,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
          typename TFloat::TInt iTensorBinCombined;
          if(!bCompilerZeroDimensional) {
             iTensorBinCombined = TFloat::TInt::Load(pInputData);
-            pInputData += TFloat::k_cSIMDPack;
+            pInputData += TFloat::TInt::k_cSIMDPack;
          }
          while(true) {
             if(!bCompilerZeroDimensional) {
@@ -180,7 +180,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
             typename TFloat::TInt target;
             if(bGetTarget) {
                target = TFloat::TInt::Load(pTargetData);
-               pTargetData += TFloat::k_cSIMDPack;
+               pTargetData += TFloat::TInt::k_cSIMDPack;
             }
 
             TFloat sampleScore = TFloat::Load(pSampleScore);

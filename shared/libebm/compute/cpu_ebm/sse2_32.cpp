@@ -23,7 +23,6 @@
 #include "Objective.hpp"
 
 #include "approximate_math.hpp"
-#include "compute_stats.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -41,7 +40,8 @@ struct Sse_32_Int final {
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
    static_assert(std::numeric_limits<T>::max() <= std::numeric_limits<UIntExceed>::max(), "UIntExceed must be able to hold a T");
    static constexpr bool bCpu = false;
-   static constexpr int k_cSIMDPack = 4;
+   static constexpr int k_cSIMDShift = 2;
+   static constexpr int k_cSIMDPack = 1 << k_cSIMDShift;
 
    WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
@@ -75,17 +75,34 @@ struct Sse_32_Int final {
       return *this;
    }
 
-   inline Sse_32_Int operator* (const Sse_32_Int & other) const noexcept {
-      return Sse_32_Int(_mm_mullo_epi32(m_data, other.m_data));
+   inline Sse_32_Int operator* (const T & other) const noexcept {
+      // we'd really like to use _mm_mullo_epi32 since that multiplies 32 bit integers (either signed or unsigned 
+      // since the low 32 bit results are the same) in the SIMD register with another SIMD register... but 
+      // the issue is that it's only available in SSE4.1.
+
+      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
+      Store(aTemp);
+
+      // no loops because this will disable optimizations for loops in the caller
+      aTemp[0] *= other;
+      aTemp[1] *= other;
+      aTemp[2] *= other;
+      aTemp[3] *= other;
+
+      return Load(aTemp);
    }
 
-   inline Sse_32_Int & operator*= (const Sse_32_Int & other) noexcept {
+   inline Sse_32_Int & operator*= (const T & other) noexcept {
       *this = (*this) * other;
       return *this;
    }
 
    inline Sse_32_Int operator>> (int shift) const noexcept {
       return Sse_32_Int(_mm_srli_epi32(m_data, shift));
+   }
+
+   inline Sse_32_Int operator<< (int shift) const noexcept {
+      return Sse_32_Int(_mm_slli_epi32(m_data, shift));
    }
 
    inline Sse_32_Int operator& (const Sse_32_Int & other) const noexcept {
@@ -107,6 +124,7 @@ struct Sse_32_Float final {
    using TInt = Sse_32_Int;
    static_assert(sizeof(T) <= sizeof(FloatExceed), "FloatExceed must be able to hold a T");
    static constexpr bool bCpu = TInt::bCpu;
+   static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;
 
    WARNING_PUSH
@@ -257,9 +275,7 @@ struct Sse_32_Float final {
       aTemp[2] = func(aTemp[2]);
       aTemp[3] = func(aTemp[3]);
 
-      Sse_32_Float result;
-      result.Load(aTemp);
-      return result;
+      return Load(aTemp);
    }
 
    friend inline Sse_32_Float IfGreater(const Sse_32_Float & cmp1, const Sse_32_Float & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept {

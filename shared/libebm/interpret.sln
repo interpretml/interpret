@@ -73,7 +73,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3D
 		compute\BinSumsBoosting.hpp = compute\BinSumsBoosting.hpp
 		compute\BinSumsInteraction.hpp = compute\BinSumsInteraction.hpp
 		compute\compute.hpp = compute\compute.hpp
-		compute\compute_stats.hpp = compute\compute_stats.hpp
 		compute\compute_wrapper.hpp = compute\compute_wrapper.hpp
 		compute\Directory.Build.targets = compute\Directory.Build.targets
 		compute\Objective.cpp = compute\Objective.cpp

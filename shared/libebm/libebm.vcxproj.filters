@@ -96,9 +96,6 @@
       <Filter>bridge_cpp</Filter>
     </ClInclude>
     <ClInclude Include="Transpose.hpp" />
-    <ClInclude Include="common_cpp\ebm_stats.hpp">
-      <Filter>common_cpp</Filter>
-    </ClInclude>
     <ClInclude Include="ebm_stats.hpp" />
   </ItemGroup>
   <ItemGroup>
