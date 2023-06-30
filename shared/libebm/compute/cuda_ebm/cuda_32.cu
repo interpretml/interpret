@@ -264,7 +264,7 @@ struct Cuda_32_Float final {
    }
 
 
-   template<typename TObjective, size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian>
+   template<typename TObjective, size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Objective * const pObjective, ApplyUpdateBridge * const pData) noexcept {
       static constexpr size_t k_cItems = 5;
 
@@ -325,7 +325,7 @@ struct Cuda_32_Float final {
       }
 
       TestGpuAdd<TObjective><<<1, k_cItems>>>(static_cast<Objective *>(pDeviceObjective), aDeviceVal1, aDeviceVal2, aDeviceResult);
-      RemoteApplyUpdate<TObjective, cCompilerScores, cCompilerPack, bKeepGradHess, bCalcMetric, bWeight, bHessian><<<1, k_cItems>>>(pObjective, pData);
+      RemoteApplyUpdate<TObjective, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian, cCompilerPack><<<1, k_cItems>>>(pObjective, pData);
 
       error = cudaGetLastError();
       if(cudaSuccess != error) {

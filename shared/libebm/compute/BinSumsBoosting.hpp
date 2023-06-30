@@ -19,7 +19,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, ptrdiff_t compilerBitPack, bool bWeight, bool bReplication>
+template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t compilerBitPack>
 INLINE_RELEASE_TEMPLATED static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
    static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
@@ -163,28 +163,39 @@ INLINE_RELEASE_TEMPLATED static void BinSumsBoostingInternal(BinSumsBoostingBrid
 }
 
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, ptrdiff_t compilerBitPack, bool bWeight, bool bReplication>
+template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t compilerBitPack>
 INLINE_RELEASE_TEMPLATED ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge * const pParams) {
    // TODO: in the future call back to the the operator class to allow it to inject the code into a GPU (see Objective.hpp for an example):
-   // return TFloat::template OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
+   // return TFloat::template OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication, compilerBitPack>(pParams);
    // and also return the error code returned from that call instead of always Error_None
-   BinSumsBoostingInternal<TFloat, bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
+   BinSumsBoostingInternal<TFloat, bHessian, cCompilerScores, bWeight, bReplication, compilerBitPack>(pParams);
 
    return Error_None;
 }
 
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, ptrdiff_t compilerBitPack>
+template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication>
+INLINE_RELEASE_TEMPLATED static ErrorEbm BitPackBoosting(BinSumsBoostingBridge * const pParams) {
+   if(k_cItemsPerBitPackNone != pParams->m_cPack) {
+      return OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication, k_cItemsPerBitPackDynamic>(pParams);
+   } else {
+      // this needs to be special cased because otherwise we would inject comparisons into the dynamic version
+      return OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication, k_cItemsPerBitPackNone>(pParams);
+   }
+}
+
+
+template<typename TFloat, bool bHessian, size_t cCompilerScores>
 INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptionsBoosting(BinSumsBoostingBridge * const pParams) {
    if(nullptr != pParams->m_aWeights) {
       static constexpr bool bWeight = true;
 
       if(nullptr != pParams->m_pCountOccurrences) {
          static constexpr bool bReplication = true;
-         return OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
+         return BitPackBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication>(pParams);
       } else {
          static constexpr bool bReplication = false;
-         return OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
+         return BitPackBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication>(pParams);
       }
    } else {
       static constexpr bool bWeight = false;
@@ -193,18 +204,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptionsBoosting(BinSumsBoostingBri
       EBM_ASSERT(nullptr == pParams->m_pCountOccurrences);
       static constexpr bool bReplication = false;
 
-      return OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, compilerBitPack, bWeight, bReplication>(pParams);
-   }
-}
-
-
-template<typename TFloat, bool bHessian, size_t cCompilerScores>
-INLINE_RELEASE_TEMPLATED static ErrorEbm BitPackBoosting(BinSumsBoostingBridge * const pParams) {
-   if(k_cItemsPerBitPackNone != pParams->m_cPack) {
-      return FinalOptionsBoosting<TFloat, bHessian, cCompilerScores, k_cItemsPerBitPackDynamic>(pParams);
-   } else {
-      // this needs to be special cased because otherwise we would inject comparisons into the dynamic version
-      return FinalOptionsBoosting<TFloat, bHessian, cCompilerScores, k_cItemsPerBitPackNone>(pParams);
+      return BitPackBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication>(pParams);
    }
 }
 
@@ -213,7 +213,7 @@ template<typename TFloat, bool bHessian, size_t cPossibleScores>
 struct CountClassesBoosting final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsBoostingBridge * const pParams) {
       if(cPossibleScores == pParams->m_cScores) {
-         return BitPackBoosting<TFloat, bHessian, cPossibleScores>(pParams);
+         return FinalOptionsBoosting<TFloat, bHessian, cPossibleScores>(pParams);
       } else {
          return CountClassesBoosting<TFloat, bHessian, cPossibleScores + 1>::Func(pParams);
       }
@@ -222,7 +222,7 @@ struct CountClassesBoosting final {
 template<typename TFloat, bool bHessian>
 struct CountClassesBoosting<TFloat, bHessian, k_cCompilerScoresMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsBoostingBridge * const pParams) {
-      return BitPackBoosting<TFloat, bHessian, k_dynamicScores>(pParams);
+      return FinalOptionsBoosting<TFloat, bHessian, k_dynamicScores>(pParams);
    }
 };
 
@@ -245,14 +245,14 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoosting(BinSumsBoostingBridge *
          // muticlass
          error = CountClassesBoosting<TFloat, true, k_cCompilerScoresStart>::Func(pParams);
       } else {
-         error = BitPackBoosting<TFloat, true, k_oneScore>(pParams);
+         error = FinalOptionsBoosting<TFloat, true, k_oneScore>(pParams);
       }
    } else {
       if(size_t { 1 } != pParams->m_cScores) {
          // Odd: gradient multiclass. Allow it, but do not optimize for it
-         error = BitPackBoosting<TFloat, false, k_dynamicScores>(pParams);
+         error = FinalOptionsBoosting<TFloat, false, k_dynamicScores>(pParams);
       } else {
-         error = BitPackBoosting<TFloat, false, k_oneScore>(pParams);
+         error = FinalOptionsBoosting<TFloat, false, k_oneScore>(pParams);
       }
    }
 
