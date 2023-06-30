@@ -163,25 +163,24 @@ public:
       static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
       struct FastTotalState {
-         Bin<FloatBig, bHessian, cArrayScores> * m_pDimensionalCur;
-         Bin<FloatBig, bHessian, cArrayScores> * m_pDimensionalWrap;
-         Bin<FloatBig, bHessian, cArrayScores> * m_pDimensionalFirst;
+         Bin<FloatBig, StorageDataType, bHessian, cArrayScores> * m_pDimensionalCur;
+         Bin<FloatBig, StorageDataType, bHessian, cArrayScores> * m_pDimensionalWrap;
+         Bin<FloatBig, StorageDataType, bHessian, cArrayScores> * m_pDimensionalFirst;
          size_t m_iCur;
          size_t m_cBins;
       };
 
       LOG_0(Trace_Verbose, "Entered BuildFastTotals");
 
-      auto * pAuxiliaryBin = aAuxiliaryBinsBase->Specialize<FloatBig, bHessian, cArrayScores>();
+      auto * pAuxiliaryBin = aAuxiliaryBinsBase->Specialize<FloatBig, StorageDataType, bHessian, cArrayScores>();
 
-      auto * const aBins = aBinsBase->Specialize<FloatBig, bHessian, cArrayScores>();
+      auto * const aBins = aBinsBase->Specialize<FloatBig, StorageDataType, bHessian, cArrayScores>();
 
       const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
       EBM_ASSERT(1 <= cRealDimensions);
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
-      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bHessian, cScores)); // we're accessing allocated memory
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
+      const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
 
       FastTotalState fastTotalState[k_cDimensionsMax];
       FastTotalState * pFastTotalStateInitialize = fastTotalState;
@@ -237,9 +236,9 @@ public:
       UNUSED(aDebugCopyBinsBase);
 #ifdef CHECK_TENSORS
 
-      auto * const pDebugBin = static_cast<Bin<FloatBig, bHessian, cArrayScores> *>(malloc(cBytesPerBin));
+      auto * const pDebugBin = static_cast<Bin<FloatBig, StorageDataType, bHessian, cArrayScores> *>(malloc(cBytesPerBin));
 
-      auto * aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bHessian, cArrayScores>();
+      auto * aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, StorageDataType, bHessian, cArrayScores>();
 
 #endif // CHECK_TENSORS
 #endif // NDEBUG
@@ -582,7 +581,6 @@ extern void TensorTotalsBuild(
 //
 //   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
 //   const size_t cScores = GET_VECTOR_LENGTH(cCompilerClasses, cRuntimeClasses);
-//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(cCompilerClasses)>(cScores)); // we're accessing allocated memory
 //   const size_t cBytesPerBin = GetBinSize<IsClassification(cCompilerClasses)>(cScores);
 //
 //   size_t aiStart[k_cDimensionsMax];

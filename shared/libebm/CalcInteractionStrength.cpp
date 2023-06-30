@@ -31,8 +31,10 @@ extern void ConvertAddBin(
    const bool bHessian,
    const size_t cBins,
    const bool bDoubleDest,
+   const bool bUInt64Dest,
    void * const aAddDest,
    const bool bDoubleSrc,
+   const bool bUInt64Src,
    const void * const aSrc
 );
 
@@ -276,8 +278,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    }
    const size_t cTotalBigBins = cTensorBins + cAuxillaryBins;
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(pInteractionCore->IsHessian(), cScores)); // checked in CreateInteractionDetector
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig>(pInteractionCore->IsHessian(), cScores);
+   const size_t cBytesPerBigBin = GetBinSize<FloatBig, StorageDataType>(pInteractionCore->IsHessian(), cScores);
    if(IsMultiplyError(cBytesPerBigBin, cTotalBigBins)) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTotalBigBins)");
       return Error_OutOfMemory;
@@ -295,8 +296,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
    memset(aBigBins, 0, cBytesPerBigBin * cTensorBins);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(pInteractionCore->IsHessian(), cScores)); // checked in CreateInteractionDetector
-   const size_t cBytesPerFastBin = GetBinSize<FloatFast>(pInteractionCore->IsHessian(), cScores);
+   const size_t cBytesPerFastBin = GetBinSize<FloatFast, StorageDataType>(pInteractionCore->IsHessian(), cScores);
    if(IsMultiplyError(cBytesPerFastBin, cTensorBins)) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTensorBins)");
       return Error_OutOfMemory;
@@ -354,8 +354,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          pInteractionCore->IsHessian(),
          cTensorBins,
          std::is_same<FloatBig, double>::value,
+         std::is_same<StorageDataType, uint64_t>::value,
          aBigBins,
          std::is_same<FloatFast, double>::value,
+         std::is_same<StorageDataType, uint64_t>::value,
          aFastBins
       );
 

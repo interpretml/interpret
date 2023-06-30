@@ -36,18 +36,17 @@ static FloatBig SweepMultiDimensional(
    const size_t * const acBins,
    const size_t directionVectorLow,
    const size_t iDimensionSweep,
-   const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const aBins,
+   const Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> * const aBins,
    const size_t cSamplesLeafMin,
-   Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const pBinBestAndTemp,
+   Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> * const pBinBestAndTemp,
    size_t * const piBestSplit
 #ifndef NDEBUG
-   , const Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> * const aDebugCopyBins
+   , const Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> * const aDebugCopyBins
    , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bHessian, cScores)); // we're accessing allocated memory
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
 
    const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
    EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
@@ -76,8 +75,8 @@ static FloatBig SweepMultiDimensional(
    auto * const p_DO_NOT_USE_DIRECTLY_High = IndexBin(pBinBestAndTemp, cBytesPerBin * 3);
    ASSERT_BIN_OK(cBytesPerBin, p_DO_NOT_USE_DIRECTLY_High, pBinsEndDebug);
 
-   Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> binLow;
-   Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> binHigh;
+   Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> binLow;
+   Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> binHigh;
 
    // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
    static constexpr bool bUseStackMemory = k_dynamicScores != cCompilerScores;
@@ -198,17 +197,17 @@ public:
       ErrorEbm error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
       Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
       const size_t cRuntimeScores = GetCountScores(pBoosterCore->GetCountClasses());
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
+      const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
 
-      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
 
 #ifndef NDEBUG
-      const auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
+      const auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
 #endif // NDEBUG
 
       size_t aiStart[k_cDimensionsMax];

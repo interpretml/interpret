@@ -16,28 +16,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-// TODO: use this in place of the hessian and the count of samples and the weight total.. we want to be able to convert everything to a float
-//  to pass them on the network
-template<typename TFloat>
-union FloatAndInt {
-   static_assert(std::is_same<float, TFloat>::value || std::is_same<double, TFloat>::value,
-      "TFloat must be either float or double");
-   typedef typename std::conditional<std::is_same<float, TFloat>::value, uint32_t, uint64_t>::type TUint;
-
-   static_assert(sizeof(TFloat) == sizeof(TUint), "TFloat and TUint must be the same size");
-
-   // these are paired to be the same size
-   TFloat               m_float;
-   TUint                m_uint;
-};
-static_assert(std::is_standard_layout<FloatAndInt<float>>::value && std::is_trivial<FloatAndInt<float>>::value,
-   "This allows offsetof, memcpy, memset, the struct hack, inter-language, GPU or cross-machine");
-static_assert(std::is_standard_layout<FloatAndInt<double>>::value && std::is_trivial<FloatAndInt<double>>::value,
-   "This allows offsetof, memcpy, memset, the struct hack, inter-language, GPU or cross-machine");
-
-static_assert(sizeof(FloatAndInt<float>) == sizeof(float), "FloatAndInt<float> and float must be the same size");
-static_assert(sizeof(FloatAndInt<double>) == sizeof(double), "FloatAndInt<double> and double must be the same size");
-
 template<typename TFloat, bool bHessian>
 struct GradientPair;
 
@@ -102,15 +80,11 @@ static_assert(std::is_standard_layout<GradientPair<double, true>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
 static_assert(std::is_trivial<GradientPair<double, true>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<GradientPair<double, true>>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
 
 static_assert(std::is_standard_layout<GradientPair<float, true>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
 static_assert(std::is_trivial<GradientPair<float, true>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<GradientPair<float, true>>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<typename TFloat>
 struct GradientPair<TFloat, false> final {
@@ -161,15 +135,11 @@ static_assert(std::is_standard_layout<GradientPair<double, false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
 static_assert(std::is_trivial<GradientPair<double, false>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<GradientPair<double, false>>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
 
 static_assert(std::is_standard_layout<GradientPair<float, false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
 static_assert(std::is_trivial<GradientPair<float, false>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<GradientPair<float, false>>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<typename TFloat, bool bHessian>
 inline static void ZeroGradientPairs(

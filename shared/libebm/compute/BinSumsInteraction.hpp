@@ -54,7 +54,7 @@ INLINE_RELEASE_TEMPLATED static void BinSumsInteractionInternal(BinSumsInteracti
 
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
 
-   auto * const aBins = reinterpret_cast<BinBase *>(pParams->m_aFastBins)->Specialize<FloatFast, bHessian, cArrayScores>();
+   auto * const aBins = reinterpret_cast<BinBase *>(pParams->m_aFastBins)->Specialize<FloatFast, StorageDataType, bHessian, cArrayScores>();
    EBM_ASSERT(nullptr != aBins);
 
    const size_t cSamples = pParams->m_cSamples;
@@ -111,8 +111,7 @@ INLINE_RELEASE_TEMPLATED static void BinSumsInteractionInternal(BinSumsInteracti
    DimensionalData * const aDimensionalDataShifted = &aDimensionalData[1];
    const size_t cRealDimensionsMinusOne = cRealDimensions - 1;
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bHessian, cScores)); // we're accessing allocated memory
-   const size_t cBytesPerBin = GetBinSize<FloatFast>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatFast, StorageDataType>(bHessian, cScores);
 
    const FloatFast * pWeight;
    if(bWeight) {
@@ -188,7 +187,7 @@ INLINE_RELEASE_TEMPLATED static void BinSumsInteractionInternal(BinSumsInteracti
          } while(cRealDimensionsMinusOne != iDimension);
       }
 
-      auto * const pBin = reinterpret_cast<Bin<FloatFast, bHessian, cArrayScores> *>(pRawBin);
+      auto * const pBin = reinterpret_cast<Bin<FloatFast, StorageDataType, bHessian, cArrayScores> *>(pRawBin);
       ASSERT_BIN_OK(cBytesPerBin, pBin, pParams->m_pDebugFastBinsEnd);
 
       pBin->SetCountSamples(pBin->GetCountSamples() + size_t { 1 });

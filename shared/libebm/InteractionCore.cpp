@@ -219,7 +219,7 @@ ErrorEbm InteractionCore::Create(
 
       const bool bHessian = pInteractionCore->IsHessian();
 
-      if(IsOverflowBinSize<FloatFast>(bHessian, cScores) || IsOverflowBinSize<FloatBig>(bHessian, cScores)) {
+      if(IsOverflowBinSize<FloatFast, StorageDataType>(bHessian, cScores) || IsOverflowBinSize<FloatBig, StorageDataType>(bHessian, cScores)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsOverflowBinSize overflow");
          return Error_OutOfMemory;
       }

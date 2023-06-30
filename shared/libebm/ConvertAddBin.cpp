@@ -24,8 +24,10 @@ extern void ConvertAddBin(
    const bool bHessian,
    const size_t cBins,
    const bool bDoubleDest,
+   const bool bUInt64Dest,
    void * const aAddDest,
    const bool bDoubleSrc,
+   const bool bUInt64Src,
    const void * const aSrc
 ) {
    EBM_ASSERT(0 < cScores);
@@ -43,53 +45,109 @@ extern void ConvertAddBin(
 
    if(bDoubleDest) {
       typedef double TFloatSpecific;
-      cDestBinBytes = GetBinSize<TFloatSpecific>(bHessian, cScores);
-      if(bHessian) {
-         constexpr bool bHessianSpecific = true;
-         typedef Bin<TFloatSpecific, bHessianSpecific> BinSpecific;
+      if(bUInt64Dest) {
+         typedef uint64_t TUIntSpecific;
+         cDestBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
+         if(bHessian) {
+            constexpr bool bHessianSpecific = true;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
 
-         iDestSamples = offsetof(BinSpecific, m_cSamples);
-         iDestWeight = offsetof(BinSpecific, m_weight);
-         iDestArray = offsetof(BinSpecific, m_aGradientPairs);
-         cDestArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
-         using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
-         iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
-         iDestHessian = offsetof(GradientPairSpecific, m_sumHessians);
+            iDestSamples = offsetof(BinSpecific, m_cSamples);
+            iDestWeight = offsetof(BinSpecific, m_weight);
+            iDestArray = offsetof(BinSpecific, m_aGradientPairs);
+            cDestArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
+            iDestHessian = offsetof(GradientPairSpecific, m_sumHessians);
+         } else {
+            constexpr bool bHessianSpecific = false;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
+
+            iDestSamples = offsetof(BinSpecific, m_cSamples);
+            iDestWeight = offsetof(BinSpecific, m_weight);
+            iDestArray = offsetof(BinSpecific, m_aGradientPairs);
+            cDestArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
+         }
       } else {
-         constexpr bool bHessianSpecific = false;
-         typedef Bin<TFloatSpecific, bHessianSpecific> BinSpecific;
+         typedef uint32_t TUIntSpecific;
+         cDestBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
+         if(bHessian) {
+            constexpr bool bHessianSpecific = true;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
 
-         iDestSamples = offsetof(BinSpecific, m_cSamples);
-         iDestWeight = offsetof(BinSpecific, m_weight);
-         iDestArray = offsetof(BinSpecific, m_aGradientPairs);
-         cDestArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
-         using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
-         iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
+            iDestSamples = offsetof(BinSpecific, m_cSamples);
+            iDestWeight = offsetof(BinSpecific, m_weight);
+            iDestArray = offsetof(BinSpecific, m_aGradientPairs);
+            cDestArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
+            iDestHessian = offsetof(GradientPairSpecific, m_sumHessians);
+         } else {
+            constexpr bool bHessianSpecific = false;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
+
+            iDestSamples = offsetof(BinSpecific, m_cSamples);
+            iDestWeight = offsetof(BinSpecific, m_weight);
+            iDestArray = offsetof(BinSpecific, m_aGradientPairs);
+            cDestArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
+         }
       }
    } else {
       typedef float TFloatSpecific;
-      cDestBinBytes = GetBinSize<TFloatSpecific>(bHessian, cScores);
-      if(bHessian) {
-         constexpr bool bHessianSpecific = true;
-         typedef Bin<TFloatSpecific, bHessianSpecific> BinSpecific;
+      if(bUInt64Dest) {
+         typedef uint64_t TUIntSpecific;
+         cDestBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
+         if(bHessian) {
+            constexpr bool bHessianSpecific = true;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
 
-         iDestSamples = offsetof(BinSpecific, m_cSamples);
-         iDestWeight = offsetof(BinSpecific, m_weight);
-         iDestArray = offsetof(BinSpecific, m_aGradientPairs);
-         cDestArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
-         using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
-         iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
-         iDestHessian = offsetof(GradientPairSpecific, m_sumHessians);
+            iDestSamples = offsetof(BinSpecific, m_cSamples);
+            iDestWeight = offsetof(BinSpecific, m_weight);
+            iDestArray = offsetof(BinSpecific, m_aGradientPairs);
+            cDestArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
+            iDestHessian = offsetof(GradientPairSpecific, m_sumHessians);
+         } else {
+            constexpr bool bHessianSpecific = false;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
+
+            iDestSamples = offsetof(BinSpecific, m_cSamples);
+            iDestWeight = offsetof(BinSpecific, m_weight);
+            iDestArray = offsetof(BinSpecific, m_aGradientPairs);
+            cDestArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
+         }
       } else {
-         constexpr bool bHessianSpecific = false;
-         typedef Bin<TFloatSpecific, bHessianSpecific> BinSpecific;
+         typedef uint32_t TUIntSpecific;
+         cDestBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
+         if(bHessian) {
+            constexpr bool bHessianSpecific = true;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
 
-         iDestSamples = offsetof(BinSpecific, m_cSamples);
-         iDestWeight = offsetof(BinSpecific, m_weight);
-         iDestArray = offsetof(BinSpecific, m_aGradientPairs);
-         cDestArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
-         using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
-         iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
+            iDestSamples = offsetof(BinSpecific, m_cSamples);
+            iDestWeight = offsetof(BinSpecific, m_weight);
+            iDestArray = offsetof(BinSpecific, m_aGradientPairs);
+            cDestArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
+            iDestHessian = offsetof(GradientPairSpecific, m_sumHessians);
+         } else {
+            constexpr bool bHessianSpecific = false;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
+
+            iDestSamples = offsetof(BinSpecific, m_cSamples);
+            iDestWeight = offsetof(BinSpecific, m_weight);
+            iDestArray = offsetof(BinSpecific, m_aGradientPairs);
+            cDestArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
+         }
       }
    }
 
@@ -103,53 +161,109 @@ extern void ConvertAddBin(
 
    if(bDoubleSrc) {
       typedef double TFloatSpecific;
-      cSrcBinBytes = GetBinSize<TFloatSpecific>(bHessian, cScores);
-      if(bHessian) {
-         constexpr bool bHessianSpecific = true;
-         typedef Bin<TFloatSpecific, bHessianSpecific> BinSpecific;
+      if(bUInt64Src) {
+         typedef uint64_t TUIntSpecific;
+         cSrcBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
+         if(bHessian) {
+            constexpr bool bHessianSpecific = true;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
 
-         iSrcSamples = offsetof(BinSpecific, m_cSamples);
-         iSrcWeight = offsetof(BinSpecific, m_weight);
-         iSrcArray = offsetof(BinSpecific, m_aGradientPairs);
-         cSrcArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
-         using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
-         iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
-         iSrcHessian = offsetof(GradientPairSpecific, m_sumHessians);
+            iSrcSamples = offsetof(BinSpecific, m_cSamples);
+            iSrcWeight = offsetof(BinSpecific, m_weight);
+            iSrcArray = offsetof(BinSpecific, m_aGradientPairs);
+            cSrcArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
+            iSrcHessian = offsetof(GradientPairSpecific, m_sumHessians);
+         } else {
+            constexpr bool bHessianSpecific = false;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
+
+            iSrcSamples = offsetof(BinSpecific, m_cSamples);
+            iSrcWeight = offsetof(BinSpecific, m_weight);
+            iSrcArray = offsetof(BinSpecific, m_aGradientPairs);
+            cSrcArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
+         }
       } else {
-         constexpr bool bHessianSpecific = false;
-         typedef Bin<TFloatSpecific, bHessianSpecific> BinSpecific;
+         typedef uint32_t TUIntSpecific;
+         cSrcBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
+         if(bHessian) {
+            constexpr bool bHessianSpecific = true;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
 
-         iSrcSamples = offsetof(BinSpecific, m_cSamples);
-         iSrcWeight = offsetof(BinSpecific, m_weight);
-         iSrcArray = offsetof(BinSpecific, m_aGradientPairs);
-         cSrcArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
-         using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
-         iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
+            iSrcSamples = offsetof(BinSpecific, m_cSamples);
+            iSrcWeight = offsetof(BinSpecific, m_weight);
+            iSrcArray = offsetof(BinSpecific, m_aGradientPairs);
+            cSrcArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
+            iSrcHessian = offsetof(GradientPairSpecific, m_sumHessians);
+         } else {
+            constexpr bool bHessianSpecific = false;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
+
+            iSrcSamples = offsetof(BinSpecific, m_cSamples);
+            iSrcWeight = offsetof(BinSpecific, m_weight);
+            iSrcArray = offsetof(BinSpecific, m_aGradientPairs);
+            cSrcArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
+         }
       }
    } else {
       typedef float TFloatSpecific;
-      cSrcBinBytes = GetBinSize<TFloatSpecific>(bHessian, cScores);
-      if(bHessian) {
-         constexpr bool bHessianSpecific = true;
-         typedef Bin<TFloatSpecific, bHessianSpecific> BinSpecific;
+      if(bUInt64Src) {
+         typedef uint64_t TUIntSpecific;
+         cSrcBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
+         if(bHessian) {
+            constexpr bool bHessianSpecific = true;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
 
-         iSrcSamples = offsetof(BinSpecific, m_cSamples);
-         iSrcWeight = offsetof(BinSpecific, m_weight);
-         iSrcArray = offsetof(BinSpecific, m_aGradientPairs);
-         cSrcArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
-         using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
-         iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
-         iSrcHessian = offsetof(GradientPairSpecific, m_sumHessians);
+            iSrcSamples = offsetof(BinSpecific, m_cSamples);
+            iSrcWeight = offsetof(BinSpecific, m_weight);
+            iSrcArray = offsetof(BinSpecific, m_aGradientPairs);
+            cSrcArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
+            iSrcHessian = offsetof(GradientPairSpecific, m_sumHessians);
+         } else {
+            constexpr bool bHessianSpecific = false;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
+
+            iSrcSamples = offsetof(BinSpecific, m_cSamples);
+            iSrcWeight = offsetof(BinSpecific, m_weight);
+            iSrcArray = offsetof(BinSpecific, m_aGradientPairs);
+            cSrcArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
+         }
       } else {
-         constexpr bool bHessianSpecific = false;
-         typedef Bin<TFloatSpecific, bHessianSpecific> BinSpecific;
+         typedef uint32_t TUIntSpecific;
+         cSrcBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
+         if(bHessian) {
+            constexpr bool bHessianSpecific = true;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
 
-         iSrcSamples = offsetof(BinSpecific, m_cSamples);
-         iSrcWeight = offsetof(BinSpecific, m_weight);
-         iSrcArray = offsetof(BinSpecific, m_aGradientPairs);
-         cSrcArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
-         using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
-         iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
+            iSrcSamples = offsetof(BinSpecific, m_cSamples);
+            iSrcWeight = offsetof(BinSpecific, m_weight);
+            iSrcArray = offsetof(BinSpecific, m_aGradientPairs);
+            cSrcArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
+            iSrcHessian = offsetof(GradientPairSpecific, m_sumHessians);
+         } else {
+            constexpr bool bHessianSpecific = false;
+            typedef Bin<TFloatSpecific, TUIntSpecific, bHessianSpecific> BinSpecific;
+
+            iSrcSamples = offsetof(BinSpecific, m_cSamples);
+            iSrcWeight = offsetof(BinSpecific, m_weight);
+            iSrcArray = offsetof(BinSpecific, m_aGradientPairs);
+            cSrcArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
+            using GradientPairSpecific = typename std::remove_reference<decltype(BinSpecific::m_aGradientPairs[0])>::type;
+            iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
+         }
       }
    }
 

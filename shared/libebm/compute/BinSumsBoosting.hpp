@@ -19,14 +19,16 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t compilerBitPack>
+template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
 INLINE_RELEASE_TEMPLATED static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
-   static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == compilerBitPack;
+   static_assert(bWeight || !bReplication, "bReplication cannot be true if bWeight is false");
+
+   static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
 
-   auto * const aBins = reinterpret_cast<BinBase *>(pParams->m_aFastBins)->Specialize<FloatFast, bHessian, cArrayScores>();
+   auto * const aBins = reinterpret_cast<BinBase *>(pParams->m_aFastBins)->Specialize<FloatFast, StorageDataType, bHessian, cArrayScores>();
    EBM_ASSERT(nullptr != aBins);
 
    const size_t cSamples = pParams->m_cSamples;
@@ -42,15 +44,14 @@ INLINE_RELEASE_TEMPLATED static void BinSumsBoostingInternal(BinSumsBoostingBrid
    size_t maskBits;
    const StorageDataType * pInputData;
 
-   Bin<FloatFast, bHessian, cArrayScores> * pBin;
+   Bin<FloatFast, StorageDataType, bHessian, cArrayScores> * pBin;
 
    if(bCompilerZeroDimensional) {
       pBin = aBins;
    } else {
-      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bHessian, cScores)); // we're accessing allocated memory
-      cBytesPerBin = GetBinSize<FloatFast>(bHessian, cScores);
+      cBytesPerBin = GetBinSize<FloatFast, StorageDataType>(bHessian, cScores);
 
-      const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pParams->m_cPack);
+      const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
       EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
 
       const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
@@ -163,12 +164,12 @@ INLINE_RELEASE_TEMPLATED static void BinSumsBoostingInternal(BinSumsBoostingBrid
 }
 
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t compilerBitPack>
+template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
 INLINE_RELEASE_TEMPLATED ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge * const pParams) {
    // TODO: in the future call back to the the operator class to allow it to inject the code into a GPU (see Objective.hpp for an example):
-   // return TFloat::template OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication, compilerBitPack>(pParams);
+   // return TFloat::template OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
    // and also return the error code returned from that call instead of always Error_None
-   BinSumsBoostingInternal<TFloat, bHessian, cCompilerScores, bWeight, bReplication, compilerBitPack>(pParams);
+   BinSumsBoostingInternal<TFloat, bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
 
    return Error_None;
 }

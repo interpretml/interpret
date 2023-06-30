@@ -544,19 +544,19 @@ ErrorEbm BoosterCore::Create(
 
       const bool bHessian = pBoosterCore->IsHessian();
 
-      if(IsOverflowBinSize<FloatFast>(bHessian, cScores) || IsOverflowBinSize<FloatBig>(bHessian, cScores)) {
+      if(IsOverflowBinSize<FloatFast, StorageDataType>(bHessian, cScores) || IsOverflowBinSize<FloatBig, StorageDataType>(bHessian, cScores)) {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
          return Error_OutOfMemory;
       }
 
-      const size_t cBytesPerFastBin = GetBinSize<FloatFast>(bHessian, cScores);
+      const size_t cBytesPerFastBin = GetBinSize<FloatFast, StorageDataType>(bHessian, cScores);
       if(IsMultiplyError(cBytesPerFastBin, cFastBinsMax)) {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerFastBin, cFastBinsMax)");
          return Error_OutOfMemory;
       }
       pBoosterCore->m_cBytesFastBins = cBytesPerFastBin * cFastBinsMax;
 
-      const size_t cBytesPerBigBin = GetBinSize<FloatBig>(bHessian, cScores);
+      const size_t cBytesPerBigBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
       if(IsMultiplyError(cBytesPerBigBin, cBigBinsMax)) {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerBigBin, cBigBinsMax)");
          return Error_OutOfMemory;

@@ -23,7 +23,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores = 1>
+template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores = 1>
 struct Bin;
 
 struct BinBase {
@@ -32,13 +32,13 @@ struct BinBase {
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   template<typename TFloat, bool bHessian, size_t cCompilerScores = 1>
-   inline Bin<TFloat, bHessian, cCompilerScores> * Specialize() {
-      return static_cast<Bin<TFloat, bHessian, cCompilerScores> *>(this);
+   template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores = 1>
+   inline Bin<TFloat, TUInt, bHessian, cCompilerScores> * Specialize() {
+      return static_cast<Bin<TFloat, TUInt, bHessian, cCompilerScores> *>(this);
    }
-   template<typename TFloat, bool bHessian, size_t cCompilerScores = 1>
-   inline const Bin<TFloat, bHessian, cCompilerScores> * Specialize() const {
-      return static_cast<const Bin<TFloat, bHessian, cCompilerScores> *>(this);
+   template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores = 1>
+   inline const Bin<TFloat, TUInt, bHessian, cCompilerScores> * Specialize() const {
+      return static_cast<const Bin<TFloat, TUInt, bHessian, cCompilerScores> *>(this);
    }
 
    inline void ZeroMem(const size_t cBytesPerBin, const size_t cBins = 1, const size_t iBin = 0) {
@@ -60,32 +60,40 @@ static_assert(std::is_standard_layout<BinBase>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
 static_assert(std::is_trivial<BinBase>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<BinBase>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
 
 
-template<typename TFloat>
+template<typename TFloat, typename TUInt>
 static bool IsOverflowBinSize(const bool bHessian, const size_t cScores);
-template<typename TFloat>
+template<typename TFloat, typename TUInt>
 static size_t GetBinSize(const bool bHessian, const size_t cScores);
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores>
+template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
 struct Bin final : BinBase {
+   // TODO: Use the type std::nullptr_t for TUInt to indicate that the m_cSamples field should be dropped
+   //       and add a bool bWeight template parameter to indicate if weight should be kept
+
    friend void ConvertAddBin(
       const size_t,
       const bool,
       const size_t,
       const bool,
+      const bool,
       void * const,
+      const bool,
       const bool,
       const void * const
    );
-   template<typename> friend bool IsOverflowBinSize(const bool, const size_t);
-   template<typename> friend size_t GetBinSize(const bool, const size_t);
+   template<typename, typename> friend bool IsOverflowBinSize(const bool, const size_t);
+   template<typename, typename> friend size_t GetBinSize(const bool, const size_t);
+
+   
+   static_assert(std::is_floating_point<TFloat>::value, "TFloat must be a float type");
+   static_assert(std::is_integral<TUInt>::value, "TUInt must be an integer type");
+   static_assert(std::is_unsigned<TUInt>::value, "TUInt must be unsigned");
 
 private:
 
-   size_t m_cSamples;
+   TUInt m_cSamples;
    TFloat m_weight;
 
    // IMPORTANT: m_aGradientPairs must be in the last position for the struct hack and this must be standard layout
@@ -98,10 +106,10 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   inline size_t GetCountSamples() const {
+   inline TUInt GetCountSamples() const {
       return m_cSamples;
    }
-   inline void SetCountSamples(const size_t cSamples) {
+   inline void SetCountSamples(const TUInt cSamples) {
       m_cSamples = cSamples;
    }
 
@@ -119,11 +127,11 @@ public:
       return ArrayToPointer(m_aGradientPairs);
    }
 
-   inline const Bin<TFloat, bHessian, 1> * Downgrade() const {
-      return reinterpret_cast<const Bin<TFloat, bHessian, 1> *>(this);
+   inline const Bin<TFloat, TUInt, bHessian, 1> * Downgrade() const {
+      return reinterpret_cast<const Bin<TFloat, TUInt, bHessian, 1> *>(this);
    }
-   inline Bin<TFloat, bHessian, 1> * Downgrade() {
-      return reinterpret_cast<Bin<TFloat, bHessian, 1> *>(this);
+   inline Bin<TFloat, TUInt, bHessian, 1> * Downgrade() {
+      return reinterpret_cast<Bin<TFloat, TUInt, bHessian, 1> *>(this);
    }
 
    inline void Add(
@@ -259,21 +267,17 @@ public:
       AssertZero(cScores, GetGradientPairs());
    }
 };
-static_assert(std::is_standard_layout<Bin<float, true>>::value,
+static_assert(std::is_standard_layout<Bin<float, uint32_t, true>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<Bin<float, true>>::value,
+static_assert(std::is_trivial<Bin<float, uint32_t, true>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<Bin<float, true>>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
 
-static_assert(std::is_standard_layout<Bin<double, false>>::value,
+static_assert(std::is_standard_layout<Bin<double, uint64_t, false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<Bin<double, false>>::value,
+static_assert(std::is_trivial<Bin<double, uint64_t, false>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<Bin<double, false>>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
 
-template<typename TFloat>
+template<typename TFloat, typename TUInt>
 inline static bool IsOverflowBinSize(const bool bHessian, const size_t cScores) {
    const size_t cBytesPerGradientPair = GetGradientPairSize<TFloat>(bHessian);
 
@@ -283,10 +287,10 @@ inline static bool IsOverflowBinSize(const bool bHessian, const size_t cScores) 
 
    size_t cBytesBinComponent;
    if(bHessian) {
-      typedef Bin<TFloat, true> OffsetType;
+      typedef Bin<TFloat, TUInt, true> OffsetType;
       cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
    } else {
-      typedef Bin<TFloat, false> OffsetType;
+      typedef Bin<TFloat, TUInt, false> OffsetType;
       cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
    }
 
@@ -297,7 +301,7 @@ inline static bool IsOverflowBinSize(const bool bHessian, const size_t cScores) 
    return false;
 }
 
-template<typename TFloat>
+template<typename TFloat, typename TUInt>
 inline static size_t GetBinSize(const bool bHessian, const size_t cScores) {
    // TODO: someday try out bin sizes that are a power of two.  This would allow us to use a shift when using bins
    //       instead of using multiplications.  In that version return the number of bits to shift here to make it easy
@@ -307,27 +311,27 @@ inline static size_t GetBinSize(const bool bHessian, const size_t cScores) {
 
    size_t cBytesBinComponent;
    if(bHessian) {
-      typedef Bin<TFloat, true> OffsetType;
+      typedef Bin<TFloat, TUInt, true> OffsetType;
       cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
    } else {
-      typedef Bin<TFloat, false> OffsetType;
+      typedef Bin<TFloat, TUInt, false> OffsetType;
       cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
    }
 
    return cBytesBinComponent + cBytesPerGradientPair * cScores;
 }
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores>
-inline static Bin<TFloat, bHessian, cCompilerScores> * IndexBin(
-   Bin<TFloat, bHessian, cCompilerScores> * const aBins,
+template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
+inline static Bin<TFloat, TUInt, bHessian, cCompilerScores> * IndexBin(
+   Bin<TFloat, TUInt, bHessian, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
    return IndexByte(aBins, iByte);
 }
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores>
-inline static const Bin<TFloat, bHessian, cCompilerScores> * IndexBin(
-   const Bin<TFloat, bHessian, cCompilerScores> * const aBins,
+template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
+inline static const Bin<TFloat, TUInt, bHessian, cCompilerScores> * IndexBin(
+   const Bin<TFloat, TUInt, bHessian, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
    return IndexByte(aBins, iByte);
@@ -341,26 +345,26 @@ inline static const BinBase * IndexBin(const BinBase * const aBins, const size_t
    return IndexByte(aBins, iByte);
 }
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores>
-inline static const Bin<TFloat, bHessian, cCompilerScores> * NegativeIndexBin(
-   const Bin<TFloat, bHessian, cCompilerScores> * const aBins,
+template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
+inline static const Bin<TFloat, TUInt, bHessian, cCompilerScores> * NegativeIndexBin(
+   const Bin<TFloat, TUInt, bHessian, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
    return NegativeIndexByte(aBins, iByte);
 }
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores>
-inline static Bin<TFloat, bHessian, cCompilerScores> * NegativeIndexBin(
-   Bin<TFloat, bHessian, cCompilerScores> * const aBins,
+template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
+inline static Bin<TFloat, TUInt, bHessian, cCompilerScores> * NegativeIndexBin(
+   Bin<TFloat, TUInt, bHessian, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
    return NegativeIndexByte(aBins, iByte);
 }
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores>
+template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
 inline static size_t CountBins(
-   const Bin<TFloat, bHessian, cCompilerScores> * const pBinHigh,
-   const Bin<TFloat, bHessian, cCompilerScores> * const pBinLow,
+   const Bin<TFloat, TUInt, bHessian, cCompilerScores> * const pBinHigh,
+   const Bin<TFloat, TUInt, bHessian, cCompilerScores> * const pBinLow,
    const size_t cBytesPerBin
 ) {
    const size_t cBytesDiff = CountBytes(pBinHigh, pBinLow);

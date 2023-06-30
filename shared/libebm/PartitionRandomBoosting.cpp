@@ -56,10 +56,9 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pBoosterCore->GetCountClasses()));
-      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bHessian, cScores)); // we're accessing allocated memory
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
+      const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
 
-      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
 
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
@@ -355,7 +354,7 @@ public:
 
       // put the histograms right after our slice array
       auto * const aCollapsedBins =
-         reinterpret_cast<Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
+         reinterpret_cast<Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
 
       aCollapsedBins->ZeroMem(cBytesCollapsedTensor3);
       const auto * const pCollapsedBinEnd = IndexBin(aCollapsedBins, cBytesCollapsedTensor3);
@@ -528,8 +527,8 @@ public:
          } while(pCollapsedBinEnd != pCollapsedBin2);
       } else {
          do {
-            const size_t cSamples = pCollapsedBin2->GetCountSamples();
-            if(UNLIKELY(size_t { 0 } == cSamples)) {
+            const auto cSamples = pCollapsedBin2->GetCountSamples();
+            if(UNLIKELY(0 == cSamples)) {
                // TODO: this section can probably be eliminated since ComputeSinglePartitionUpdate now checks
                // for zero in the denominator, but I'm leaving it here to see how the removal of the 
                // GetCountSamples property works in the future in combination with the check on hessians

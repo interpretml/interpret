@@ -44,15 +44,15 @@ public:
    ) {
       static constexpr size_t cCompilerDimensions = 2;
 
-      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
-      auto * const aBins = aBinsBase->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aBins = aBinsBase->Specialize<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
 
 #ifndef NDEBUG
-      auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
 #endif // NDEBUG
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pInteractionCore->GetCountClasses()));
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bHessian, cScores);
+      const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
 
       const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
       EBM_ASSERT(k_dynamicDimensions == cCompilerDimensions || cCompilerDimensions == cRuntimeRealDimensions);
@@ -74,10 +74,10 @@ public:
       auto * const p_DO_NOT_USE_DIRECTLY_11 = IndexBin(aAuxiliaryBins, cBytesPerBin * 3);
       ASSERT_BIN_OK(cBytesPerBin, p_DO_NOT_USE_DIRECTLY_11, pBinsEndDebug);
 
-      Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> bin00;
-      Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> bin01;
-      Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> bin10;
-      Bin<FloatBig, bHessian, GetArrayScores(cCompilerScores)> bin11;
+      Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> bin00;
+      Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> bin01;
+      Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> bin10;
+      Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> bin11;
 
       // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
       static constexpr bool bUseStackMemory = k_dynamicScores != cCompilerScores;
