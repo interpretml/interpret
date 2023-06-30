@@ -76,9 +76,9 @@ struct LogLossBinaryObjective final : public BinaryObjective {
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian>
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
-      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
-      static_assert(bKeepGradHess || !bHessian, "bHessian can only be true if bKeepGradHess is true");
       static_assert(!bKeepGradHess || !bCalcMetric, "bKeepGradHess and bCalcMetric cannot both be true");
+      static_assert(bKeepGradHess || !bHessian, "bHessian can only be true if bKeepGradHess is true");
+      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
@@ -89,6 +89,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
       EBM_ASSERT(1 <= pData->m_cSamples);
       EBM_ASSERT(0 == pData->m_cSamples % TFloat::k_cSIMDPack);
       EBM_ASSERT(nullptr != pData->m_aSampleScores);
+      EBM_ASSERT(1 == pData->m_cScores);
 #endif // GPU_COMPILE
 
       const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
@@ -173,7 +174,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
          }
          while(true) {
             if(!bCompilerZeroDimensional) {
-               typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
+               const typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
                updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
             }
 
@@ -229,7 +230,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                TFloat denominator = IfEqual(typename TFloat::TInt(0), target, -sampleScore, sampleScore);
                denominator = ApplyFunction(denominator, [](typename TFloat::T x) { return ExpForBinaryClassification<false>(x); });
                denominator += 1.0;
-               TFloat gradient = numerator / denominator;
+               const TFloat gradient = numerator / denominator;
 
                if(bHessian) {
                   // normally you would calculate the hessian from the class probability, but for classification it's possible
@@ -291,7 +292,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                   // !!! IMPORTANT: Newton-Raphson step, as illustrated in Friedman's original paper (https://statweb.stanford.edu/~jhf/ftp/trebst.pdf, page 9). Note that
                   //   they are using t * (2 - t) since they have a 2 in their objective
 
-                  const TFloat absGradient = Abs(gradient); // abs will return the same type that it is given, either float or double
+                  const TFloat absGradient = Abs(gradient);
                   const TFloat hessian = absGradient * (1.0 - absGradient);
 
                   gradient.Store(pGradientAndHessian);
@@ -301,9 +302,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                   gradient.Store(pGradientAndHessian);
                   pGradientAndHessian += TFloat::k_cSIMDPack;
                }
-            }
-
-            if(bCalcMetric) {
+            } else if(bCalcMetric) {
                // TODO: similar to the gradient calculation above, once we sort our data by the target values we
                //       will be able to pass all the targets==0 and target==1 in to a single call to this function
                //       and we can therefore template the target value.  We can then call ExpForBinaryClassification

@@ -62,6 +62,20 @@ struct Sse_32_Int final {
       _mm_store_si128(reinterpret_cast<TPack *>(a), m_data);
    }
 
+   template<typename TFunc>
+   friend inline Sse_32_Int ApplyFunction(const Sse_32_Int & val, const TFunc & func) noexcept {
+      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
+      val.Store(aTemp);
+
+      // no loops because this will disable optimizations for loops in the caller
+      aTemp[0] = func(aTemp[0]);
+      aTemp[1] = func(aTemp[1]);
+      aTemp[2] = func(aTemp[2]);
+      aTemp[3] = func(aTemp[3]);
+
+      return Load(aTemp);
+   }
+
    inline static Sse_32_Int MakeIndexes() noexcept {
       return Sse_32_Int(_mm_set_epi32(3, 2, 1, 0));
    }
@@ -77,19 +91,10 @@ struct Sse_32_Int final {
 
    inline Sse_32_Int operator* (const T & other) const noexcept {
       // we'd really like to use _mm_mullo_epi32 since that multiplies 32 bit integers (either signed or unsigned 
-      // since the low 32 bit results are the same) in the SIMD register with another SIMD register... but 
-      // the issue is that it's only available in SSE4.1.
+      // since the low 32 bit results are the same) in the SIMD register with another SIMD register, but 
+      // it's only available in SSE4.1.
 
-      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
-      Store(aTemp);
-
-      // no loops because this will disable optimizations for loops in the caller
-      aTemp[0] *= other;
-      aTemp[1] *= other;
-      aTemp[2] *= other;
-      aTemp[3] *= other;
-
-      return Load(aTemp);
+      return ApplyFunction(*this, [other](T x) { return x * other; });
    }
 
    inline Sse_32_Int & operator*= (const T & other) noexcept {

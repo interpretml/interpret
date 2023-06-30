@@ -88,26 +88,25 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
       static_assert(bKeepGradHess || !bHessian, "bHessian can only be true if bKeepGradHess is true");
       static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
 
-      static constexpr bool bDynamic = k_dynamicScores == cCompilerScores;
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
-      static constexpr bool bGetExp = bCalcMetric || bKeepGradHess;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
+      static constexpr bool bDynamic = k_dynamicScores == cCompilerScores;
 
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pData);
-      EBM_ASSERT(nullptr != pData->m_aMulticlassMidwayTemp);
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
       EBM_ASSERT(0 == pData->m_cSamples % TFloat::k_cSIMDPack);
       EBM_ASSERT(nullptr != pData->m_aSampleScores);
       EBM_ASSERT(2 <= pData->m_cScores);
       EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == pData->m_cScores);
+      EBM_ASSERT(nullptr != pData->m_aMulticlassMidwayTemp);
 #endif // GPU_COMPILE
 
       alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::T 
          aLocalExpVector[bDynamic ? size_t { 1 } : (cCompilerScores * size_t { TFloat::k_cSIMDPack })];
       typename TFloat::T * aExps;
-      if(bGetExp) {
+      if(bGetTarget) {
          if(bDynamic) {
             aExps = reinterpret_cast<typename TFloat::T *>(pData->m_aMulticlassMidwayTemp);
          } else {
@@ -117,7 +116,6 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
       const typename TFloat::TInt::T cCastScores = static_cast<typename TFloat::TInt::T>(cScores);
-
 
       const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
 
@@ -199,11 +197,20 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
             typename TFloat::TInt iTensorBin;
             if(!bCompilerZeroDimensional) {
                iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
+               // TODO: this multiplication is expensive since there isn't a good SIMD multiplication until SSE 4.1
+               // and even then it has high latency and cost.  We could avoid it entirely by changing the memory
+               // layout of the tensor at aUpdateTensorScores.  If we made cScores separate tensors, where we put
+               // all the updates for each class, then we could use the non-multiplied indexes to fetch the
+               // tensor bins from the first class, then we would add cTensorBins * sizeof(TFloat) to the pointer
+               // that is the base of each tensor.  This elimaintes all multiplication and we just need to add
+               // the value in a register to a pointer each iteration.  It also reduces the amount of memory we
+               // need to access each load, which might be an issue for some big tensors.  It also eliminates the
+               // "iTensorBin += 1" instruction below since we'll be doing that to the pointer instead of the indexes
                iTensorBin *= cCastScores;
             }
 
             TFloat sumExp;
-            if(bGetExp) {
+            if(bGetTarget) {
                sumExp = 0.0;
             }
             size_t iScore1 = 0;
@@ -221,7 +228,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                sampleScore.Store(pSampleScore);
                pSampleScore += TFloat::k_cSIMDPack;
 
-               if(bGetExp) {
+               if(bGetTarget) {
                   const TFloat oneExp = ApplyFunction(sampleScore, [](typename TFloat::T x) { return ExpForMulticlass<false>(x); });
                   sumExp += oneExp;
                   oneExp.Store(&aExps[iScore1 * TFloat::k_cSIMDPack]);
@@ -275,6 +282,11 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                   pGradientAndHessian += TFloat::k_cSIMDPack * cScores;
                }
             } else if(bCalcMetric) {
+               // TODO: instead of writing the exp values to memory, since we just need 1 and the sum, 
+               // we could use an if selector to keep only the one that matches our target and we don't need
+               // to store (or re-load) from memory.  This also saves us a gathering load, which will be expensive
+               // in latency
+
                target = target << TFloat::k_cSIMDShift;
                target += TFloat::TInt::MakeIndexes();
 

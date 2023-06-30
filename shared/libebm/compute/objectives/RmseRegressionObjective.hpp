@@ -110,9 +110,9 @@ public:
    template<size_t cCompilerScores, ptrdiff_t cCompilerPack, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian>
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_oneScore == cCompilerScores, "for RMSE regression there should always be one score");
-      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
-      static_assert(!bHessian, "for RMSE regression we should never need the hessians");
       static_assert(bKeepGradHess, "for RMSE regression we should always keep the gradients");
+      static_assert(!bHessian, "for RMSE regression we should never need the hessians");
+      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
 
@@ -120,6 +120,9 @@ public:
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
+      EBM_ASSERT(0 == pData->m_cSamples % TFloat::k_cSIMDPack);
+      EBM_ASSERT(nullptr == pData->m_aSampleScores);
+      EBM_ASSERT(1 == pData->m_cScores);
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians);
 #endif // GPU_COMPILE
 
@@ -130,37 +133,42 @@ public:
       typename TFloat::T * pGradient = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians); // no hessians for regression
       const typename TFloat::T * const pGradientsEnd = pGradient + cSamples;
 
-      size_t cBitsPerItemMax;
-      ptrdiff_t cShift;
-      ptrdiff_t cShiftReset;
-      size_t maskBits;
-      const StorageDataType * pInputData;
+      int cBitsPerItemMax;
+      int cShift;
+      int cShiftReset;
+      typename TFloat::TInt maskBits;
+      const typename TFloat::TInt::T * pInputData;
 
-      alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::T updateScores[TFloat::k_cSIMDPack];
       TFloat updateScore;
 
       if(bCompilerZeroDimensional) {
          updateScore = aUpdateTensorScores[0];
       } else {
          const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
-
-         const size_t cItemsPerBitPack = static_cast<size_t>(cPack);
-
-         cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
-
-         cShift = static_cast<ptrdiff_t>((cSamples - 1) % cItemsPerBitPack * cBitsPerItemMax);
-         cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
-
-         maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
-
-         pInputData = pData->m_aPacked;
-
 #ifndef GPU_COMPILE
          EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
+         EBM_ASSERT(1 <= cPack);
+#endif // GPU_COMPILE
+
+         const int cItemsPerBitPack = static_cast<int>(cPack);
+#ifndef GPU_COMPILE
          EBM_ASSERT(1 <= cItemsPerBitPack);
-         EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+         EBM_ASSERT(static_cast<size_t>(cItemsPerBitPack) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
+#endif // GPU_COMPILE
+
+         cBitsPerItemMax = static_cast<int>(GetCountBits<typename TFloat::TInt::T>(static_cast<size_t>(cItemsPerBitPack)));
+#ifndef GPU_COMPILE
          EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+         EBM_ASSERT(static_cast<size_t>(cBitsPerItemMax) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
+#endif // GPU_COMPILE
+
+         cShift = static_cast<int>((cSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
+         cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+
+         maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
+
+         pInputData = reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aPacked);
+#ifndef GPU_COMPILE
          EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
       }
@@ -177,30 +185,16 @@ public:
          metricSum = 0.0;
       }
       do {
-         alignas(SIMD_BYTE_ALIGNMENT) StorageDataType iTensorBinCombined[TFloat::TInt::k_cSIMDPack];
+         typename TFloat::TInt iTensorBinCombined;
          if(!bCompilerZeroDimensional) {
-            // we store the already multiplied dimensional value in *pInputData
-            for(int i = 0; i < TFloat::TInt::k_cSIMDPack; ++i) {
-               iTensorBinCombined[i] = pInputData[i];
-            }
+            iTensorBinCombined = TFloat::TInt::Load(pInputData);
             pInputData += TFloat::TInt::k_cSIMDPack;
          }
          while(true) {
             if(!bCompilerZeroDimensional) {
-               // in later versions of SIMD there are scatter/gather intrinsics that do this in one operation
-               for(int i = 0; i < TFloat::TInt::k_cSIMDPack; ++i) {
-                  const size_t iTensorBin = static_cast<size_t>(iTensorBinCombined[i] >> cShift) & maskBits;
-                  updateScores[i] = aUpdateTensorScores[iTensorBin];
-               }
-               updateScore = TFloat::Load(updateScores);
+               const typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
+               updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
             }
-
-            // for RMSE regression we cannot put the weight into the gradient like we could with other objectives
-            // for regression or for classification because we only preserve the gradient and to calculate the
-            // square error we need the original gradient and not the weight multiplied gradient... well we could
-            // do it but it would require a division. A better way would be to have two TFloat arrays: a 
-            // non-weight adjusted one and a weight adjusted one for when inner bags are used
-            // NOTE: For interactions we can and do put the weight into the gradient because we never update it
 
             TFloat gradient = TFloat::Load(pGradient);
             gradient += updateScore;

@@ -318,9 +318,9 @@ protected:
       const TObjective * const pObjective = static_cast<const TObjective *>(this);
 
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
-      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
-      static_assert(bKeepGradHess || !bHessian, "bHessian can only be true if bKeepGradHess is true");
       static_assert(!bKeepGradHess || !bCalcMetric, "bKeepGradHess and bCalcMetric cannot both be true");
+      static_assert(bKeepGradHess || !bHessian, "bHessian can only be true if bKeepGradHess is true");
+      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
@@ -332,6 +332,7 @@ protected:
       EBM_ASSERT(1 <= pData->m_cSamples);
       EBM_ASSERT(0 == pData->m_cSamples % TFloat::k_cSIMDPack);
       EBM_ASSERT(nullptr != pData->m_aSampleScores);
+      EBM_ASSERT(1 == pData->m_cScores);
 #endif // GPU_COMPILE
 
       const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
@@ -416,7 +417,7 @@ protected:
          }
          while(true) {
             if(!bCompilerZeroDimensional) {
-               typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
+               const typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
                updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
             }
 
@@ -433,9 +434,7 @@ protected:
 
             if(bKeepGradHess) {
                pGradientAndHessian = HandleGradHess<TObjective, TFloat, bHessian>(pGradientAndHessian, sampleScore, target);
-            }
-
-            if(bCalcMetric) {
+            } else if(bCalcMetric) {
                TFloat metric = pObjective->CalcMetric(sampleScore, target);
                if(bWeight) {
                   const TFloat weight = TFloat::Load(pWeight);
