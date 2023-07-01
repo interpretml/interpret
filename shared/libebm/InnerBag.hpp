@@ -28,7 +28,7 @@ struct InnerBag final {
    static InnerBag * AllocateInnerBags(const size_t cInnerBags);
    static void FreeInnerBags(const size_t cInnerBags, InnerBag * const aInnerBags);
 
-   const FloatFast * GetWeights() const {
+   const void * GetWeights() const {
       return m_aWeights;
    }
    const uint8_t * GetCountOccurrences() const {
@@ -47,7 +47,7 @@ private:
    // TODO : make this a struct of FractionalType and size_t counts and use MACROS to have either size_t or 
    // FractionalType or both, and perf how this changes things.  We don't get a benefit anywhere by storing 
    // the raw data in both formats since it is never converted anyways, but this count is!
-   FloatFast * m_aWeights;
+   void * m_aWeights;
    uint8_t * m_aCountOccurrences;
 };
 static_assert(std::is_standard_layout<InnerBag>::value,

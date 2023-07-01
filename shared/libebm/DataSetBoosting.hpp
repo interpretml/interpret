@@ -67,16 +67,16 @@ struct DataSubsetBoosting final {
       return (*m_pObjective->m_pBinSumsBoostingC)(m_pObjective, pParams);
    }
 
-   inline FloatFast * GetGradHess() {
+   inline void * GetGradHess() {
       return m_aGradHess;
    }
-   inline FloatFast * GetSampleScores() {
+   inline void * GetSampleScores() {
       return m_aSampleScores;
    }
    inline const void * GetTargetData() const {
       return m_aTargetData;
    }
-   inline const StorageDataType * GetTermData(const size_t iTerm) const {
+   inline const void * GetTermData(const size_t iTerm) const {
       EBM_ASSERT(nullptr != m_aaTermData);
       return m_aaTermData[iTerm];
    }
@@ -89,10 +89,10 @@ private:
 
    size_t m_cSamples;
    const ObjectiveWrapper * m_pObjective;
-   FloatFast * m_aGradHess;
-   FloatFast * m_aSampleScores;
+   void * m_aGradHess;
+   void * m_aSampleScores;
    void * m_aTargetData;
-   StorageDataType ** m_aaTermData;
+   void ** m_aaTermData;
    InnerBag * m_aInnerBags;
 };
 static_assert(std::is_standard_layout<DataSubsetBoosting>::value,

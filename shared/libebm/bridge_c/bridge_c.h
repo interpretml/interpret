@@ -21,16 +21,13 @@ extern "C" {
 #define INTERNAL_IMPORT_EXPORT_INCLUDE extern
 
 // TODO: rename these to FloatBig, UIntBig, FloatSmall, UIntSmall once FloatBig and FloatFast have been eliminated
+typedef uint64_t UIntExceed;
 typedef double Float_Big;
 typedef uint64_t UInt_Big;
 typedef float Float_Small;
 typedef uint32_t UInt_Small;
-typedef double FloatExceed;
-typedef uint64_t UIntExceed;
 
-static_assert(sizeof(Float_Big) <= sizeof(FloatExceed), "FloatExceed must be able to contain Float_Big");
 static_assert(sizeof(UInt_Big) <= sizeof(UIntExceed), "UIntExceed must be able to contain UInt_Big");
-static_assert(sizeof(Float_Small) <= sizeof(FloatExceed), "FloatExceed must be able to contain Float_Small");
 static_assert(sizeof(UInt_Small) <= sizeof(UIntExceed), "UIntExceed must be able to contain UInt_Small");
 static_assert(sizeof(Float_Small) <= sizeof(Float_Big), "Float_Big must be able to contain Float_Small");
 static_assert(sizeof(UInt_Small) <= sizeof(UInt_Big), "UInt_Big must be able to contain UInt_Small");
@@ -45,14 +42,14 @@ struct ApplyUpdateBridge {
    BoolEbm m_bHessianNeeded;
 
    BoolEbm m_bCalcMetric;
-   void * m_aMulticlassMidwayTemp;
-   const void * m_aUpdateTensorScores;
+   void * m_aMulticlassMidwayTemp; // float or double
+   const void * m_aUpdateTensorScores; // float or double
    size_t m_cSamples;
-   const StorageDataType * m_aPacked;
-   const void * m_aTargets;
-   const void * m_aWeights;
-   void * m_aSampleScores;
-   void * m_aGradientsAndHessians;
+   const void * m_aPacked; // uint64_t or uint32_t
+   const void * m_aTargets; // uint64_t or uint32_t or float or double
+   const void * m_aWeights; // float or double
+   void * m_aSampleScores; // float or double
+   void * m_aGradientsAndHessians; // float or double
 
    double m_metricOut;
 };
@@ -64,12 +61,12 @@ struct BinSumsBoostingBridge {
    ptrdiff_t m_cPack;
 
    size_t m_cSamples;
-   const FloatFast * m_aGradientsAndHessians;
-   const FloatFast * m_aWeights;
+   const void * m_aGradientsAndHessians; // float or double
+   const void * m_aWeights; // float or double
    const uint8_t * m_pCountOccurrences;
-   const StorageDataType * m_aPacked;
+   const void * m_aPacked; // uint64_t or uint32_t
 
-   void * m_aFastBins;
+   void * m_aFastBins; // Bin<...> (can't use BinBase * since this is only C here)
 
 #ifndef NDEBUG
    const void * m_pDebugFastBinsEnd;
@@ -139,8 +136,7 @@ struct ObjectiveWrapper {
 
    size_t m_cSIMDPack;
 
-   // TODO: use these values to change the bit packing and float arrays passed into our functions
-   size_t m_cFloatBytes; // the type FloatExceed is guaranteed to be able to hold any value of this size
+   size_t m_cFloatBytes;
    size_t m_cUIntBytes; // the type UIntExceed is guaranteed to be able to hold any value of this size
 
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface

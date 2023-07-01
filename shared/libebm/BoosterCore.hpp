@@ -181,7 +181,7 @@ public:
    );
 
    ErrorEbm InitializeBoosterGradientsAndHessians(
-      FloatFast * const aMulticlassMidwayTemp,
+      void * const aMulticlassMidwayTemp,
       FloatFast * const aUpdateScores
    );
 

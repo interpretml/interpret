@@ -34,6 +34,7 @@ struct Cpu_64_Int final {
    friend Cpu_64_Float;
    friend inline Cpu_64_Float IfEqual(const Cpu_64_Int & cmp1, const Cpu_64_Int & cmp2, const Cpu_64_Float & trueVal, const Cpu_64_Float & falseVal) noexcept;
 
+   // TODO: WARNING: DO NOT CHANGE THIS TO uint32_t without switching from using SIZE_MAX to using k_cSubsetSamplesMax
    using T = uint64_t;
    using TPack = uint64_t;
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
@@ -100,10 +101,11 @@ static_assert(std::is_standard_layout<Cpu_64_Int>::value && std::is_trivially_co
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 struct Cpu_64_Float final {
+   // TODO: WARNING: DO NOT CHANGE THIS TO float without switching from using SIZE_MAX to using k_cSubsetSamplesMax
    using T = double;
    using TPack = double;
    using TInt = Cpu_64_Int;
-   static_assert(sizeof(T) <= sizeof(FloatExceed), "FloatExceed must be able to hold a T");
+   static_assert(sizeof(T) <= sizeof(Float_Big), "Float_Big must be able to hold a T");
    static constexpr bool bCpu = TInt::bCpu;
    static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;

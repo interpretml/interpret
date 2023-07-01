@@ -45,7 +45,7 @@ class BoosterShell final {
    BinBase * m_aBoostingBigBins;
 
    // TODO: I think this can share memory with m_aBoostingFastBinsTemp since the GradientPair always contains a FloatFast, and it always contains enough for the multiclass scores in the first bin, and we always have at least 1 bin, right?
-   FloatFast * m_aMulticlassMidwayTemp;
+   void * m_aMulticlassMidwayTemp;
 
    void * m_aTreeNodesTemp;
    void * m_aSplitPositionsTemp;
@@ -131,7 +131,7 @@ public:
       return m_aBoostingBigBins;
    }
 
-   INLINE_ALWAYS FloatFast * GetMulticlassMidwayTemp() {
+   INLINE_ALWAYS void * GetMulticlassMidwayTemp() {
       return m_aMulticlassMidwayTemp;
    }
 

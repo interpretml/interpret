@@ -112,7 +112,7 @@ struct Cuda_32_Float final {
    using T = float;
    using TPack = float;
    using TInt = Cuda_32_Int;
-   static_assert(sizeof(T) <= sizeof(FloatExceed), "FloatExceed must be able to hold a T");
+   static_assert(sizeof(T) <= sizeof(Float_Big), "Float_Big must be able to hold a T");
    static constexpr bool bCpu = TInt::bCpu;
    static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;

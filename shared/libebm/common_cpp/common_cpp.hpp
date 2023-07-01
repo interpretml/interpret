@@ -457,13 +457,19 @@ inline static unsigned int GetCountItemsBitPacked(const unsigned int cBits, cons
    EBM_ASSERT(cBits <= cTotalBits);
    return cTotalBits / cBits;
 }
-
 template<typename T>
 inline static size_t GetCountItemsBitPacked(const size_t cBits) noexcept {
    static_assert(std::is_unsigned<T>::value, "T must be unsigned");
    EBM_ASSERT(size_t { 1 } <= cBits);
    EBM_ASSERT(cBits <= CountBitsRequiredPositiveMax<T>());
    return CountBitsRequiredPositiveMax<T>() / cBits;
+}
+inline static unsigned int GetCountBits(const unsigned int cItemsBitPacked, const unsigned int cTotalBytes) noexcept {
+   EBM_ASSERT(1 <= cItemsBitPacked);
+   EBM_ASSERT(1 <= cTotalBytes);
+   const unsigned int cTotalBits = cTotalBytes * static_cast<unsigned int>(CountBitsRequiredPositiveMax<uint8_t>());
+   EBM_ASSERT(cItemsBitPacked <= cTotalBits);
+   return cTotalBits / cItemsBitPacked;
 }
 template<typename T>
 inline constexpr static size_t GetCountBits(const size_t cItemsBitPacked) noexcept {

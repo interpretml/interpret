@@ -35,6 +35,7 @@ struct Sse_32_Int final {
    friend Sse_32_Float;
    friend inline Sse_32_Float IfEqual(const Sse_32_Int & cmp1, const Sse_32_Int & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept;
 
+   // TODO: WARNING: DO NOT CHANGE TO using this uint32_t without switching from using SIZE_MAX to using k_cSubsetSamplesMax
    using T = uint32_t;
    using TPack = __m128i;
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
@@ -124,10 +125,11 @@ static_assert(std::is_standard_layout<Sse_32_Int>::value && std::is_trivially_co
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 struct Sse_32_Float final {
+   // TODO: WARNING: DO NOT CHANGE TO using this float without switching from using SIZE_MAX to using k_cSubsetSamplesMax
    using T = float;
    using TPack = __m128;
    using TInt = Sse_32_Int;
-   static_assert(sizeof(T) <= sizeof(FloatExceed), "FloatExceed must be able to hold a T");
+   static_assert(sizeof(T) <= sizeof(Float_Big), "Float_Big must be able to hold a T");
    static constexpr bool bCpu = TInt::bCpu;
    static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;

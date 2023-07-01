@@ -105,13 +105,36 @@ ErrorEbm BoosterShell::FillAllocations() {
       }
 
       if(IsMulticlass(cClasses)) {
-         const size_t cSIMDPack = m_pBoosterCore->SIMDPackMax();
-         if(IsMultiplyError(sizeof(FloatFast) * cSIMDPack, cScores)) {
-            goto failed_allocation;
+         size_t cFloatBytesMax = 0;
+
+         if(0 != GetBoosterCore()->GetTrainingSet()->GetCountSamples()) {
+            DataSubsetBoosting * pSubset = GetBoosterCore()->GetTrainingSet()->GetSubsets();
+            const DataSubsetBoosting * const pSubsetsEnd = pSubset + GetBoosterCore()->GetTrainingSet()->GetCountSubsets();
+            do {
+               cFloatBytesMax = EbmMax(pSubset->GetObjectiveWrapper()->m_cFloatBytes, cFloatBytesMax);
+               ++pSubset;
+            } while(pSubsetsEnd != pSubset);
          }
-         m_aMulticlassMidwayTemp = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSIMDPack * cScores));
-         if(nullptr == m_aMulticlassMidwayTemp) {
-            goto failed_allocation;
+
+         if(0 != GetBoosterCore()->GetValidationSet()->GetCountSamples()) {
+            DataSubsetBoosting * pSubset = GetBoosterCore()->GetValidationSet()->GetSubsets();
+            const DataSubsetBoosting * const pSubsetsEnd = pSubset + GetBoosterCore()->GetValidationSet()->GetCountSubsets();
+            do {
+               cFloatBytesMax = EbmMax(pSubset->GetObjectiveWrapper()->m_cFloatBytes, cFloatBytesMax);
+               ++pSubset;
+            } while(pSubsetsEnd != pSubset);
+         }
+
+         // if there are zero samples, cFloatBytesMax will be zero
+         if(0 != cFloatBytesMax) {
+            const size_t cSIMDPack = m_pBoosterCore->SIMDPackMax();
+            if(IsMultiplyError(cFloatBytesMax * cSIMDPack, cScores)) {
+               goto failed_allocation;
+            }
+            m_aMulticlassMidwayTemp = AlignedAlloc(cFloatBytesMax * cSIMDPack * cScores);
+            if(nullptr == m_aMulticlassMidwayTemp) {
+               goto failed_allocation;
+            }
          }
       }
 

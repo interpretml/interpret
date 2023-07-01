@@ -703,9 +703,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
 
       const size_t cScores = GetCountScores(cClasses);
 
-      const size_t cBytesPerFastBin = GetBinSize<FloatFast, StorageDataType>(pBoosterCore->IsHessian(), cScores);
-      EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTensorBins));
-
       BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
       EBM_ASSERT(nullptr != aFastBins);
 
@@ -747,6 +744,25 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
                cPack = GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes));
             }
 
+            size_t cBytesPerFastBin;
+            if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Big)) {
+               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big)) {
+                  cBytesPerFastBin = GetBinSize<Float_Big, UInt_Big>(pBoosterCore->IsHessian(), cScores);
+               } else {
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Small));
+                  cBytesPerFastBin = GetBinSize<Float_Big, UInt_Small>(pBoosterCore->IsHessian(), cScores);
+               }
+            } else {
+               EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Small));
+               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big)) {
+                  cBytesPerFastBin = GetBinSize<Float_Small, UInt_Big>(pBoosterCore->IsHessian(), cScores);
+               } else {
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Small));
+                  cBytesPerFastBin = GetBinSize<Float_Small, UInt_Small>(pBoosterCore->IsHessian(), cScores);
+               }
+            }
+            EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTensorBins));
+
             aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
 
             BinSumsBoostingBridge params;
@@ -758,7 +774,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             params.m_aWeights = pSubset->GetInnerBag(iBag)->GetWeights();
             params.m_pCountOccurrences = pSubset->GetInnerBag(iBag)->GetCountOccurrences();
             params.m_aPacked = pSubset->GetTermData(iTerm);
-            params.m_aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
+            params.m_aFastBins = aFastBins;
    #ifndef NDEBUG
             params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
    #endif // NDEBUG
@@ -774,8 +790,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
                std::is_same<FloatBig, double>::value,
                std::is_same<StorageDataType, uint64_t>::value,
                aBigBins,
-               std::is_same<FloatFast, double>::value,
-               std::is_same<StorageDataType, uint64_t>::value,
+               pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Big),
+               pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big),
                aFastBins
             );
             ++pSubset;

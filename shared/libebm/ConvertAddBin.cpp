@@ -280,7 +280,21 @@ extern void ConvertAddBin(
    const unsigned char * const pSrcEnd = pSrc + cSrcBinBytes * cBins;
    const size_t cSrcArrayTotalBytes = cSrcArrayItemBytes * cScores;
    do {
-      *reinterpret_cast<size_t *>(pAddDest + iDestSamples) += *reinterpret_cast<const size_t *>(pSrc + iSrcSamples);
+      if(bUInt64Src) {
+         const uint64_t src = *reinterpret_cast<const uint64_t *>(pSrc + iSrcSamples);
+         if(bUInt64Dest) {
+            *reinterpret_cast<uint64_t *>(pAddDest + iDestSamples) += src;
+         } else {
+            *reinterpret_cast<uint32_t *>(pAddDest + iDestSamples) += static_cast<uint32_t>(src);
+         }
+      } else {
+         const uint32_t src = *reinterpret_cast<const uint32_t *>(pSrc + iSrcSamples);
+         if(bUInt64Dest) {
+            *reinterpret_cast<uint64_t *>(pAddDest + iDestSamples) += src;
+         } else {
+            *reinterpret_cast<uint32_t *>(pAddDest + iDestSamples) += src;
+         }
+      }
 
       if(bDoubleSrc) {
          const double src = *reinterpret_cast<const double *>(pSrc + iSrcWeight);

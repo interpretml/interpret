@@ -59,14 +59,14 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
       EBM_ASSERT(nullptr != pSubset);
       const DataSubsetBoosting * const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
 
-      FloatFast initScore = 0;
+      double initScore = 0;
       BagEbm replication = 0;
-      FloatFast gradient;
+      double gradient;
       do {
          EBM_ASSERT(1 <= pSubset->GetCountSamples());
-         FloatFast * pGradHess = pSubset->GetGradHess();
+         void * pGradHess = pSubset->GetGradHess();
          EBM_ASSERT(nullptr != pGradHess);
-         const FloatFast * const pGradHessEnd = pGradHess + pSubset->GetCountSamples();
+         const void * const pGradHessEnd = IndexByte(pGradHess, pSubset->GetObjectiveWrapper()->m_cFloatBytes * pSubset->GetCountSamples());
 
          do {
             if(BagEbm { 0 } == replication) {
@@ -91,7 +91,7 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
 
                if(nullptr != pInitScore) {
                   pInitScore += cInitAdvances;
-                  initScore = SafeConvertFloat<FloatFast>(pInitScore[-1]);
+                  initScore = pInitScore[-1];
                }
 
                // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 
@@ -102,11 +102,21 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
 
                // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
                //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
-               gradient = EbmStats::ComputeGradientRegressionRmseInit(initScore, data);
+
+
+               // for RMSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
+               // to keep the original scores when computing the gradient updates.
+
+               gradient = initScore - SafeConvertFloat<double>(data);
             }
 
-            *pGradHess = gradient;
-            ++pGradHess;
+            if(sizeof(Float_Small) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+               *reinterpret_cast<Float_Small *>(pGradHess) = SafeConvertFloat<Float_Small>(gradient);
+            } else {
+               EBM_ASSERT(sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+               *reinterpret_cast<Float_Big *>(pGradHess) = SafeConvertFloat<Float_Big>(gradient);
+            }
+            pGradHess = IndexByte(pGradHess, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 
             replication -= direction;
          } while(pGradHessEnd != pGradHess);

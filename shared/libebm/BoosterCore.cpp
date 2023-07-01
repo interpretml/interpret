@@ -532,17 +532,234 @@ ErrorEbm BoosterCore::Create(
 
       const bool bHessian = pBoosterCore->IsHessian();
 
-      if(IsOverflowBinSize<FloatFast, StorageDataType>(bHessian, cScores) || IsOverflowBinSize<FloatBig, StorageDataType>(bHessian, cScores)) {
+      Term ** ppTerm = pBoosterCore->m_apTerms;
+      const Term * const * const ppTermsEnd = ppTerm + cTerms;
+      if(sizeof(UInt_Small) == pBoosterCore->m_objectiveCpu.m_cUIntBytes) {
+         if(IsClassification(cClasses)) {
+            // make sure the target indexes will fit
+            if(IsConvertError<UInt_Small>(cClasses - 1)) {
+               LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
+               return Error_IllegalParamVal;
+            }
+         }
+         for(; ppTermsEnd != ppTerm ; ++ppTerm) {
+            const size_t cTensorBins = (*ppTerm)->GetCountTensorBins();
+            // we need to fit the tensor index into a packed data unit, and we also use SIMD to index into the
+            // score tensors, so we need to multiply by cScores
+            if(0 != cTensorBins && IsConvertError<UInt_Small>(cTensorBins * cScores - 1)) {
+               LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UInt_Small>((*ppTerm)->GetCountTensorBins())");
+               return Error_IllegalParamVal;
+            }
+         }
+      } else {
+         EBM_ASSERT(sizeof(UInt_Big) == pBoosterCore->m_objectiveCpu.m_cUIntBytes);
+         if(IsClassification(cClasses)) {
+            // make sure the target indexes will fit
+            if(IsConvertError<UInt_Big>(cClasses - 1)) {
+               LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
+               return Error_IllegalParamVal;
+            }
+         }
+         for(; ppTermsEnd != ppTerm; ++ppTerm) {
+            const size_t cTensorBins = (*ppTerm)->GetCountTensorBins();
+            // we need to fit the tensor index into a packed data unit, and we also use SIMD to index into the
+            // score tensors, so we need to multiply by cScores
+            if(0 != cTensorBins && IsConvertError<UInt_Big>(cTensorBins * cScores - 1)) {
+               LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UInt_Small>((*ppTerm)->GetCountTensorBins())");
+               return Error_IllegalParamVal;
+            }
+         }
+      }
+
+      if(0 != pBoosterCore->m_objectiveSIMD.m_cUIntBytes) {
+         bool bRemoveSIMD = false;
+         if(sizeof(UInt_Small) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes) {
+            if(IsClassification(cClasses)) {
+               // make sure the target indexes will fit
+               if(IsConvertError<UInt_Small>(cClasses - 1)) {
+                  bRemoveSIMD = true;
+               }
+            }
+            for(; ppTermsEnd != ppTerm; ++ppTerm) {
+               const size_t cTensorBins = (*ppTerm)->GetCountTensorBins();
+               // we need to fit the tensor index into a packed data unit, and we also use SIMD to index into the
+               // score tensors, so we need to multiply by cScores
+               if(0 != cTensorBins && IsConvertError<UInt_Small>(cTensorBins * cScores - 1)) {
+                  bRemoveSIMD = true;
+               }
+            }
+         } else {
+            EBM_ASSERT(sizeof(UInt_Big) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes);
+            if(IsClassification(cClasses)) {
+               // make sure the target indexes will fit
+               if(IsConvertError<UInt_Big>(cClasses - 1)) {
+                  bRemoveSIMD = true;
+               }
+            }
+            for(; ppTermsEnd != ppTerm; ++ppTerm) {
+               const size_t cTensorBins = (*ppTerm)->GetCountTensorBins();
+               // we need to fit the tensor index into a packed data unit, and we also use SIMD to index into the
+               // score tensors, so we need to multiply by cScores
+               if(0 != cTensorBins && IsConvertError<UInt_Big>(cTensorBins * cScores - 1)) {
+                  bRemoveSIMD = true;
+               }
+            }
+         }
+         if(bRemoveSIMD) {
+            FreeObjectiveWrapperInternals(&pBoosterCore->m_objectiveSIMD);
+            InitializeObjectiveWrapperUnfailing(&pBoosterCore->m_objectiveSIMD);
+         }
+      }
+
+      pBoosterCore->m_cInnerBags = cInnerBags; // this is used to destruct m_trainingSet, so store it first
+      error = pBoosterCore->m_trainingSet.InitDataSetBoosting(
+         true,
+         bHessian,
+         !pBoosterCore->IsRmse(),
+         !pBoosterCore->IsRmse(),
+         rng,
+         cScores,
+         SIZE_MAX, // TODO: use k_cSubsetSamplesMax (and also use k_cSubsetSamplesMax everywhere else too)
+         &pBoosterCore->m_objectiveCpu,
+         &pBoosterCore->m_objectiveSIMD,
+         pDataSetShared,
+         BagEbm { 1 },
+         cSamples,
+         aBag,
+         aInitScores,
+         cTrainingSamples,
+         cInnerBags,
+         cWeights,
+         cTerms,
+         pBoosterCore->m_apTerms,
+         aiTermFeatures
+      );
+      if(Error_None != error) {
+         return error;
+      }
+
+      error = pBoosterCore->m_validationSet.InitDataSetBoosting(
+         pBoosterCore->IsRmse(),
+         false,
+         !pBoosterCore->IsRmse(),
+         !pBoosterCore->IsRmse(),
+         rng,
+         cScores,
+         SIZE_MAX, // TODO: use k_cSubsetSamplesMax (and also use k_cSubsetSamplesMax everywhere else too)
+         &pBoosterCore->m_objectiveCpu,
+         &pBoosterCore->m_objectiveSIMD,
+         pDataSetShared,
+         BagEbm { -1 },
+         cSamples,
+         aBag,
+         aInitScores,
+         cValidationSamples,
+         0,
+         cWeights,
+         cTerms,
+         pBoosterCore->m_apTerms,
+         aiTermFeatures
+      );
+      if(Error_None != error) {
+         return error;
+      }
+
+      size_t cBytesPerFastBinMax = 0;
+
+      if(0 != cTrainingSamples) {
+         DataSubsetBoosting * pSubset = pBoosterCore->GetTrainingSet()->GetSubsets();
+         const DataSubsetBoosting * const pSubsetsEnd = pSubset + pBoosterCore->GetTrainingSet()->GetCountSubsets();
+         do {
+            size_t cBytesPerFastBin;;
+            if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Big)) {
+               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big)) {
+                  if(IsOverflowBinSize<Float_Big, UInt_Big>(bHessian, cScores)) {
+                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
+                     return Error_OutOfMemory;
+                  }
+                  cBytesPerFastBin = GetBinSize<Float_Big, UInt_Big>(bHessian, cScores);
+               } else {
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Small));
+                  if(IsOverflowBinSize<Float_Big, UInt_Small>(bHessian, cScores)) {
+                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
+                     return Error_OutOfMemory;
+                  }
+                  cBytesPerFastBin = GetBinSize<Float_Big, UInt_Small>(bHessian, cScores);
+               }
+            } else {
+               EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Small));
+               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big)) {
+                  if(IsOverflowBinSize<Float_Small, UInt_Big>(bHessian, cScores)) {
+                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
+                     return Error_OutOfMemory;
+                  }
+                  cBytesPerFastBin = GetBinSize<Float_Small, UInt_Big>(bHessian, cScores);
+               } else {
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Small));
+                  if(IsOverflowBinSize<Float_Small, UInt_Small>(bHessian, cScores)) {
+                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
+                     return Error_OutOfMemory;
+                  }
+                  cBytesPerFastBin = GetBinSize<Float_Small, UInt_Small>(bHessian, cScores);
+               }
+            }
+            cBytesPerFastBinMax = EbmMax(cBytesPerFastBinMax, cBytesPerFastBin);
+            ++pSubset;
+         } while(pSubsetsEnd != pSubset);
+      }
+
+      if(0 != cValidationSamples) {
+         DataSubsetBoosting * pSubset = pBoosterCore->GetValidationSet()->GetSubsets();
+         const DataSubsetBoosting * const pSubsetsEnd = pSubset + pBoosterCore->GetValidationSet()->GetCountSubsets();
+         do {
+            size_t cBytesPerFastBin;;
+            if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Big)) {
+               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big)) {
+                  if(IsOverflowBinSize<Float_Big, UInt_Big>(bHessian, cScores)) {
+                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
+                     return Error_OutOfMemory;
+                  }
+                  cBytesPerFastBin = GetBinSize<Float_Big, UInt_Big>(bHessian, cScores);
+               } else {
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Small));
+                  if(IsOverflowBinSize<Float_Big, UInt_Small>(bHessian, cScores)) {
+                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
+                     return Error_OutOfMemory;
+                  }
+                  cBytesPerFastBin = GetBinSize<Float_Big, UInt_Small>(bHessian, cScores);
+               }
+            } else {
+               EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Small));
+               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big)) {
+                  if(IsOverflowBinSize<Float_Small, UInt_Big>(bHessian, cScores)) {
+                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
+                     return Error_OutOfMemory;
+                  }
+                  cBytesPerFastBin = GetBinSize<Float_Small, UInt_Big>(bHessian, cScores);
+               } else {
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Small));
+                  if(IsOverflowBinSize<Float_Small, UInt_Small>(bHessian, cScores)) {
+                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
+                     return Error_OutOfMemory;
+                  }
+                  cBytesPerFastBin = GetBinSize<Float_Small, UInt_Small>(bHessian, cScores);
+               }
+            }
+            cBytesPerFastBinMax = EbmMax(cBytesPerFastBinMax, cBytesPerFastBin);
+            ++pSubset;
+         } while(pSubsetsEnd != pSubset);
+      }
+
+      if(IsMultiplyError(cBytesPerFastBinMax, cFastBinsMax)) {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerFastBinMax, cFastBinsMax)");
+         return Error_OutOfMemory;
+      }
+      pBoosterCore->m_cBytesFastBins = cBytesPerFastBinMax * cFastBinsMax;
+
+      if(IsOverflowBinSize<FloatBig, StorageDataType>(bHessian, cScores)) {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
          return Error_OutOfMemory;
       }
-
-      const size_t cBytesPerFastBin = GetBinSize<FloatFast, StorageDataType>(bHessian, cScores);
-      if(IsMultiplyError(cBytesPerFastBin, cFastBinsMax)) {
-         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerFastBin, cFastBinsMax)");
-         return Error_OutOfMemory;
-      }
-      pBoosterCore->m_cBytesFastBins = cBytesPerFastBin * cFastBinsMax;
 
       const size_t cBytesPerBigBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
       if(IsMultiplyError(cBytesPerBigBin, cBigBinsMax)) {
@@ -603,59 +820,6 @@ ErrorEbm BoosterCore::Create(
             return error;
          }
       }
-
-      pBoosterCore->m_cInnerBags = cInnerBags; // this is used to destruct m_trainingSet, so store it first
-      error = pBoosterCore->m_trainingSet.InitDataSetBoosting(
-         true,
-         bHessian,
-         !pBoosterCore->IsRmse(),
-         !pBoosterCore->IsRmse(),
-         rng,
-         cScores,
-         SIZE_MAX, // TODO: use k_cSubsetSamplesMax (and also use k_cSubsetSamplesMax everywhere else too)
-         &pBoosterCore->m_objectiveCpu,
-         &pBoosterCore->m_objectiveSIMD,
-         pDataSetShared,
-         BagEbm { 1 },
-         cSamples,
-         aBag,
-         aInitScores,
-         cTrainingSamples,
-         cInnerBags,
-         cWeights,
-         cTerms,
-         pBoosterCore->m_apTerms,
-         aiTermFeatures
-      );
-      if(Error_None != error) {
-         return error;
-      }
-
-      error = pBoosterCore->m_validationSet.InitDataSetBoosting(
-         pBoosterCore->IsRmse(),
-         false,
-         !pBoosterCore->IsRmse(),
-         !pBoosterCore->IsRmse(),
-         rng,
-         cScores,
-         SIZE_MAX, // TODO: use k_cSubsetSamplesMax (and also use k_cSubsetSamplesMax everywhere else too)
-         &pBoosterCore->m_objectiveCpu,
-         &pBoosterCore->m_objectiveSIMD,
-         pDataSetShared,
-         BagEbm { -1 },
-         cSamples,
-         aBag,
-         aInitScores,
-         cValidationSamples,
-         0,
-         cWeights,
-         cTerms,
-         pBoosterCore->m_apTerms,
-         aiTermFeatures
-      );
-      if(Error_None != error) {
-         return error;
-      }
    }
 
    LOG_0(Trace_Info, "Exited BoosterCore::Create");
@@ -663,7 +827,7 @@ ErrorEbm BoosterCore::Create(
 }
 
 ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
-   FloatFast * const aMulticlassMidwayTemp,
+   void * const aMulticlassMidwayTemp,
    FloatFast * const aUpdateScores
 ) {
    DataSetBoosting * const pDataSet = GetTrainingSet();
