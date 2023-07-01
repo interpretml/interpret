@@ -205,6 +205,16 @@ INLINE_RELEASE_TEMPLATED static void BinSumsInteractionInternal(BinSumsInteracti
       auto * const aGradientPair = pBin->GetGradientPairs();
       size_t iScore = 0;
       do {
+         // TODO: unlike for BinSumsBoosting, we can re-arrange the values inside pGradientAndHessian to whatever
+         //       order works best for us. Right now we put k_cSIMDPack gradient values for each sample in the pack
+         //       next to eachother, then the k_cSIMDPack hessians, then we do the same for the next class if 
+         //       this is multi-class.  If we don't SIMD-ify this code (we could do that if we're willing to use
+         //       scattered writes and multiple histograms), then we'll probably want to move the gradient and hessian
+         //       for sample 0 to be adjacent, then the gradient & hessian for class 1 of sample 0 to follow that
+         //       to keep memory loads in order)
+         //       We can do this because we only calculate the gradients & hessians during initialization, unlike
+         //       boosting where they constantly change on each boost step
+
          auto * const pGradientPair = &aGradientPair[iScore];
          const FloatFast gradient = bHessian ? pGradientAndHessian[iScore << 1] : pGradientAndHessian[iScore];
          // DO NOT MULTIPLY gradient BY WEIGHT. WE PRE-MULTIPLIED WHEN WE ALLOCATED pGradientAndHessian
