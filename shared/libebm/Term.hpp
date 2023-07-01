@@ -26,11 +26,11 @@ struct TermFeature {
 };
 
 class Term final {
-   ptrdiff_t m_cItemsPerBitPack;
    size_t m_cDimensions;
    size_t m_cRealDimensions;
    size_t m_cTensorBins;
    size_t m_cAuxillaryBins;
+   unsigned int m_cBitsRequiredMin;
    int m_cLogEnterGenerateTermUpdateMessages;
    int m_cLogExitGenerateTermUpdateMessages;
    int m_cLogEnterApplyTermUpdateMessages;
@@ -66,15 +66,12 @@ public:
    static Term ** AllocateTerms(const size_t cTerms) noexcept;
    static void FreeTerms(const size_t cTerms, Term ** apTerms) noexcept;
 
-   inline void SetBitPack(const ptrdiff_t cItemsPerBitPack) noexcept {
-      EBM_ASSERT(k_cItemsPerBitPackDynamic != cItemsPerBitPack);
-      m_cItemsPerBitPack = cItemsPerBitPack;
+   inline void SetBitsRequiredMin(const unsigned int cBitsRequiredMin) noexcept {
+      m_cBitsRequiredMin = cBitsRequiredMin;
    }
 
-   inline ptrdiff_t GetTermBitPack() const noexcept {
-      // don't check the legal value for m_cItemsPerBitPack here since we call this function from a huge
-      // number of templates.  We check this value when SetBitPack is called
-      return m_cItemsPerBitPack;
+   inline unsigned int GetBitsRequiredMin() const noexcept {
+      return m_cBitsRequiredMin;
    }
 
    inline size_t GetCountDimensions() const noexcept {

@@ -470,8 +470,8 @@ ErrorEbm DataSetBoosting::InitTermData(
 
          DataSubsetBoosting * pSubset = m_aSubsets;
          do {
-            EBM_ASSERT(1 <= pTerm->GetTermBitPack());
-            const size_t cItemsPerBitPackTo = static_cast<size_t>(pTerm->GetTermBitPack());
+            const size_t cItemsPerBitPackTo = 
+               GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes));
             EBM_ASSERT(1 <= cItemsPerBitPackTo);
             EBM_ASSERT(cItemsPerBitPackTo <= k_cBitsForStorageType);
 

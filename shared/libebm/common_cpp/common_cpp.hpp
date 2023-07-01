@@ -450,6 +450,14 @@ static_assert(MaxFromCountBits<uint64_t>(64) == uint64_t { 18446744073709551615u
 
 static constexpr size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
 
+inline static unsigned int GetCountItemsBitPacked(const unsigned int cBits, const unsigned int cTotalBytes) noexcept {
+   EBM_ASSERT(size_t { 1 } <= cBits);
+   EBM_ASSERT(size_t { 1 } <= cTotalBytes);
+   const unsigned int cTotalBits = cTotalBytes * static_cast<unsigned int>(CountBitsRequiredPositiveMax<uint8_t>());
+   EBM_ASSERT(cBits <= cTotalBits);
+   return cTotalBits / cBits;
+}
+
 template<typename T>
 inline static size_t GetCountItemsBitPacked(const size_t cBits) noexcept {
    static_assert(std::is_unsigned<T>::value, "T must be unsigned");

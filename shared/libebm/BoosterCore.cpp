@@ -361,7 +361,7 @@ ErrorEbm BoosterCore::Create(
 
          size_t cAuxillaryBinsForBuildFastTotals = 0;
          size_t cRealDimensions = 0;
-         ptrdiff_t cItemsPerBitPack = k_cItemsPerBitPackNone;
+         unsigned int cBitsRequiredMin = 0;
          size_t cTensorBins = 1;
          if(UNLIKELY(0 == cDimensions)) {
             LOG_0(Trace_Info, "INFO BoosterCore::Create empty term");
@@ -450,21 +450,9 @@ ErrorEbm BoosterCore::Create(
                if(LIKELY(size_t { 1 } != cTensorBins)) {
                   EBM_ASSERT(1 <= cRealDimensions);
 
-                  const size_t iTensorBinMax = cTensorBins - size_t { 1 };
-
-                  if(IsConvertError<StorageDataType>(iTensorBinMax)) {
-                     LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsConvertError<StorageDataType>(iTensorBinMax)");
-                     return Error_OutOfMemory;
-                  }
-
-                  const size_t cBitsRequiredMin = CountBitsRequired(iTensorBinMax);
+                  cBitsRequiredMin = static_cast<unsigned int>(CountBitsRequired(cTensorBins - size_t { 1 }));
                   EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
                   EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT);
-                  EBM_ASSERT(cBitsRequiredMin <= k_cBitsForStorageType);
-
-                  cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked<StorageDataType>(cBitsRequiredMin));
-                  EBM_ASSERT(ptrdiff_t { 1 } <= cItemsPerBitPack);
-                  EBM_ASSERT(cItemsPerBitPack <= ptrdiff_t { k_cBitsForStorageType });
 
                   if(size_t { 1 } == cRealDimensions) {
                      cSingleDimensionBinsMax = EbmMax(cSingleDimensionBinsMax, cSingleDimensionBins);
@@ -490,7 +478,7 @@ ErrorEbm BoosterCore::Create(
             }
          }
          pTerm->SetCountRealDimensions(cRealDimensions);
-         pTerm->SetBitPack(cItemsPerBitPack);
+         pTerm->SetBitsRequiredMin(cBitsRequiredMin);
          pTerm->SetCountTensorBins(cTensorBins);
 
          ++iTerm;
