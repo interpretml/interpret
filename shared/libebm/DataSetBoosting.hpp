@@ -48,6 +48,7 @@ struct DataSubsetBoosting final {
    }
 
    inline const ObjectiveWrapper * GetObjectiveWrapper() const {
+      EBM_ASSERT(nullptr != m_pObjective);
       return m_pObjective;
    }
 

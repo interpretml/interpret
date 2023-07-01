@@ -41,6 +41,10 @@ struct DataSubsetInteraction final {
    inline size_t GetCountSamples() const {
       return m_cSamples;
    }
+   inline const ObjectiveWrapper * GetObjectiveWrapper() const {
+      EBM_ASSERT(nullptr != m_pObjective);
+      return m_pObjective;
+   }
    inline ErrorEbm ObjectiveApplyUpdate(ApplyUpdateBridge * const pData) {
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != m_pObjective);

@@ -70,7 +70,7 @@ class FeatureInteraction final {
    bool m_bMissing;
    bool m_bUnknown;
    bool m_bNominal;
-   ptrdiff_t m_cItemsPerBitPack;
+   unsigned int m_cBitsRequiredMin;
 
 public:
 
@@ -90,23 +90,17 @@ public:
       m_bUnknown = bUnknown;
       m_bNominal = bNominal;
 
-      ptrdiff_t cItemsPerBitPack = k_cItemsPerBitPackNone;
+      unsigned int cBitsRequiredMin = 0;
       if(size_t { 1 } < cBins) {
-         const size_t cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
+         cBitsRequiredMin = static_cast<unsigned int>(CountBitsRequired(cBins - size_t { 1 }));
          EBM_ASSERT(1 <= cBitsRequiredMin);
          EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT);
-         // we checked before calling Initialize that cBins - 1 could fit into StorageDataType
-         EBM_ASSERT(cBitsRequiredMin <= k_cBitsForStorageType);
-
-         cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked<StorageDataType>(cBitsRequiredMin));
-         EBM_ASSERT(ptrdiff_t { 1 } <= cItemsPerBitPack);
-         EBM_ASSERT(cItemsPerBitPack <= ptrdiff_t { k_cBitsForStorageType });
       }
-      m_cItemsPerBitPack = cItemsPerBitPack;
+      m_cBitsRequiredMin = cBitsRequiredMin;
    }
 
-   inline ptrdiff_t GetFeatureBitPack() const noexcept {
-      return m_cItemsPerBitPack;
+   inline unsigned int GetBitsRequiredMin() const noexcept {
+      return m_cBitsRequiredMin;
    }
 
    inline size_t GetCountBins() const noexcept {

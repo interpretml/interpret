@@ -327,9 +327,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
          binSums.m_aaPacked[iDimensionLoop] = pSubset->GetFeatureData(iFeature);
 
-         EBM_ASSERT(1 <= pFeature->GetFeatureBitPack());
-         binSums.m_acItemsPerBitPack[iDimensionLoop] = static_cast<size_t>(pFeature->GetFeatureBitPack());
-
+         EBM_ASSERT(1 <= pFeature->GetBitsRequiredMin());
+         binSums.m_acItemsPerBitPack[iDimensionLoop] =
+            GetCountItemsBitPacked(pFeature->GetBitsRequiredMin(), static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes));
+         
          ++iDimensionLoop;
       } while(cDimensions != iDimensionLoop);
 
