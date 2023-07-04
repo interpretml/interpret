@@ -23,12 +23,16 @@ namespace DEFINED_ZONE_NAME {
 INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetObjective(
    const Config * const pConfig,
    const char * sObjective,
-   ObjectiveWrapper * const pObjectiveWrapperOut
+   ObjectiveWrapper * const pCpuObjectiveWrapperOut,
+   ObjectiveWrapper * const pSIMDObjectiveWrapperOut
 ) noexcept {
    EBM_ASSERT(nullptr != pConfig);
-   EBM_ASSERT(nullptr != pObjectiveWrapperOut);
-   EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
-   EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pFunctionPointersCpp);
+   EBM_ASSERT(nullptr != pCpuObjectiveWrapperOut);
+   EBM_ASSERT(nullptr == pCpuObjectiveWrapperOut->m_pObjective);
+   EBM_ASSERT(nullptr == pCpuObjectiveWrapperOut->m_pFunctionPointersCpp);
+
+   EBM_ASSERT(nullptr == pSIMDObjectiveWrapperOut || nullptr == pSIMDObjectiveWrapperOut->m_pObjective);
+   EBM_ASSERT(nullptr == pSIMDObjectiveWrapperOut || nullptr == pSIMDObjectiveWrapperOut->m_pFunctionPointersCpp);
 
    if(nullptr == sObjective) {
       return Error_ObjectiveUnknown;
@@ -42,7 +46,12 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetObjective(
 
    ErrorEbm error;
 
-   error = CreateObjective_Cpu_64(pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
+   error = CreateObjective_Cpu_64(pConfig, sObjective, sObjectiveEnd, pCpuObjectiveWrapperOut);
+   if(Error_None != error) {
+      return error;
+   }
+
+   UNUSED(pSIMDObjectiveWrapperOut);
 
    return error;
 }

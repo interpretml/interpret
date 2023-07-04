@@ -23,6 +23,7 @@
 #include "Objective.hpp"
 
 #include "approximate_math.hpp"
+#include "compute_wrapper.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -65,6 +66,8 @@ struct Sse_32_Int final {
 
    template<typename TFunc>
    friend inline Sse_32_Int ApplyFunction(const Sse_32_Int & val, const TFunc & func) noexcept {
+      // TODO: use the equivalent of _mm_extract_epi32 in more advanced SIMD intrinsics
+
       alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
       val.Store(aTemp);
 
@@ -273,6 +276,8 @@ struct Sse_32_Float final {
 
    template<typename TFunc>
    friend inline Sse_32_Float ApplyFunction(const Sse_32_Float & val, const TFunc & func) noexcept {
+      // TODO: use the equivalent of _mm_cvtss_f32 with _mm_permute_ps in more advanced SIMD intrinsics
+
       alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
       val.Store(aTemp);
 
@@ -367,7 +372,15 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Sse_32(
    const char * const sObjectiveEnd,
    ObjectiveWrapper * const pObjectiveWrapperOut
 ) {
-   return Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
+   ErrorEbm error = ComputeWrapper<Sse_32_Float>::FillWrapper(pObjectiveWrapperOut);
+   if(Error_None != error) {
+      return error;
+   }
+   error = Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
+   if(Error_None != error) {
+      return error;
+   }
+   return Error_None;
 }
 
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateMetric_Sse_32(

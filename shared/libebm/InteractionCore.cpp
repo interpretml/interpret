@@ -191,7 +191,7 @@ ErrorEbm InteractionCore::Create(
       Config config;
       config.cOutputs = cScores;
       config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
-      error = GetObjective(&config, sObjective, &pInteractionCore->m_objectiveCpu);
+      error = GetObjective(&config, sObjective, &pInteractionCore->m_objectiveCpu, nullptr);
       if(Error_None != error) {
          // already logged
          return error;

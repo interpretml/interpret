@@ -504,7 +504,7 @@ ErrorEbm BoosterCore::Create(
       Config config;
       config.cOutputs = cScores;
       config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
-      error = GetObjective(&config, sObjective, &pBoosterCore->m_objectiveCpu);
+      error = GetObjective(&config, sObjective, &pBoosterCore->m_objectiveCpu, &pBoosterCore->m_objectiveSIMD);
       if (Error_None != error) {
          // already logged
          return error;

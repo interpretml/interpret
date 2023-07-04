@@ -225,7 +225,6 @@ ErrorEbm DataSetBoosting::InitTargetData(
 
    BagEbm replication = 0;
    if(IsClassification(cClasses)) {
-      const size_t countClasses = static_cast<size_t>(cClasses);
       const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargets);
       SharedStorageDataType iData;
       do {
@@ -264,13 +263,13 @@ ErrorEbm DataSetBoosting::InitTargetData(
 
 #ifndef NDEBUG
                // this was checked when creating the shared dataset
-               EBM_ASSERT(iData < static_cast<SharedStorageDataType>(countClasses));
-               EBM_ASSERT(!IsConvertError<size_t>(iData)); // since countClasses came from size_t
+               EBM_ASSERT(iData < static_cast<SharedStorageDataType>(cClasses));
+               EBM_ASSERT(!IsConvertError<size_t>(iData)); // since cClasses came from size_t
                if(sizeof(UInt_Small) == pSubset->m_pObjective->m_cUIntBytes) {
-                  // we checked earlier that countClasses - 1 would fit into UInt_Small
+                  // we checked earlier that cClasses - 1 would fit into UInt_Small
                   EBM_ASSERT(!IsConvertError<UInt_Small>(iData));
                } else {
-                  // we checked earlier that countClasses - 1 would fit into UInt_Big
+                  // we checked earlier that cClasses - 1 would fit into UInt_Big
                   EBM_ASSERT(sizeof(UInt_Big) == pSubset->m_pObjective->m_cFloatBytes);
                   EBM_ASSERT(!IsConvertError<UInt_Big>(iData));
                }
@@ -489,11 +488,19 @@ ErrorEbm DataSetBoosting::InitTermData(
             const unsigned int cBitsPerItemMaxTo = GetCountBits(cItemsPerBitPackTo, static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes));
             EBM_ASSERT(1 <= cBitsPerItemMaxTo);
 
+            const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
+            EBM_ASSERT(1 <= cSIMDPack);
+
             const size_t cSubsetSamples = pSubset->GetCountSamples();
             EBM_ASSERT(1 <= cSubsetSamples);
+            EBM_ASSERT(0 == cSubsetSamples % cSIMDPack);
+
+            const size_t cParallelSamples = cSubsetSamples / cSIMDPack;
+            EBM_ASSERT(1 <= cParallelSamples);
 
             // this can't overflow or underflow
-            const size_t cDataUnitsTo = (cSubsetSamples - size_t { 1 }) / static_cast<size_t>(cItemsPerBitPackTo) + size_t { 1 };
+            const size_t cParallelDataUnitsTo = (cParallelSamples - size_t { 1 }) / static_cast<size_t>(cItemsPerBitPackTo) + size_t { 1 };
+            const size_t cDataUnitsTo = cParallelDataUnitsTo * cSIMDPack;
 
             if(IsMultiplyError(pSubset->GetObjectiveWrapper()->m_cUIntBytes, cDataUnitsTo)) {
                LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitTermData IsMultiplyError(pSubset->GetObjectiveWrapper()->m_cUIntBytes, cDataUnitsTo)");
@@ -506,104 +513,110 @@ ErrorEbm DataSetBoosting::InitTermData(
                return Error_OutOfMemory;
             }
             pSubset->m_aaTermData[iTerm] = pTermDataTo;
-
             const void * const pTermDataToEnd = IndexByte(pTermDataTo, cBytes);
 
-            int cShiftTo = static_cast<int>((cSubsetSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPackTo)) * cBitsPerItemMaxTo;
+            memset(pTermDataTo, 0, cBytes);
+
+            int cShiftTo = static_cast<int>((cParallelSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPackTo)) * cBitsPerItemMaxTo;
             const unsigned int cShiftResetTo = (cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo;
             do {
-               UIntExceed bitsTo = 0;
                do {
-                  if(BagEbm { 0 } == replication) {
-                     replication = 1;
-                     if(nullptr != pSampleReplication) {
-                        const BagEbm * pSampleReplicationOriginal = pSampleReplication;
-                        bool isItemValidation;
-                        do {
+                  size_t iPartition = 0;
+                  do {
+                     if(BagEbm { 0 } == replication) {
+                        replication = 1;
+                        if(nullptr != pSampleReplication) {
+                           const BagEbm * pSampleReplicationOriginal = pSampleReplication;
+                           bool isItemValidation;
                            do {
-                              replication = *pSampleReplication;
-                              ++pSampleReplication;
-                           } while(BagEbm { 0 } == replication);
-                           isItemValidation = replication < BagEbm { 0 };
-                        } while(isLoopValidation != isItemValidation);
-                        const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
-                        if(0 != cAdvances) {
-                           FeatureDimension * pDimensionInfo = dimensionInfo;
-                           do {
-                              const size_t cItemsPerBitPackFrom = pDimensionInfo->m_cItemsPerBitPackFrom;
-                              size_t cCompleteAdvanced = cAdvances / cItemsPerBitPackFrom;
-                              ptrdiff_t iShiftFrom = pDimensionInfo->m_iShiftFrom;
-                              iShiftFrom -= static_cast<ptrdiff_t>(cAdvances % cItemsPerBitPackFrom);
-                              pDimensionInfo->m_iShiftFrom = iShiftFrom;
-                              if(iShiftFrom < ptrdiff_t { 0 }) {
-                                 pDimensionInfo->m_iShiftFrom = iShiftFrom + cItemsPerBitPackFrom;
-                                 ++cCompleteAdvanced;
-                              }
-                              pDimensionInfo->m_pFeatureDataFrom += cCompleteAdvanced;
+                              do {
+                                 replication = *pSampleReplication;
+                                 ++pSampleReplication;
+                              } while(BagEbm { 0 } == replication);
+                              isItemValidation = replication < BagEbm { 0 };
+                           } while(isLoopValidation != isItemValidation);
+                           const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
+                           if(0 != cAdvances) {
+                              FeatureDimension * pDimensionInfo = dimensionInfo;
+                              do {
+                                 const size_t cItemsPerBitPackFrom = pDimensionInfo->m_cItemsPerBitPackFrom;
+                                 size_t cCompleteAdvanced = cAdvances / cItemsPerBitPackFrom;
+                                 ptrdiff_t iShiftFrom = pDimensionInfo->m_iShiftFrom;
+                                 iShiftFrom -= static_cast<ptrdiff_t>(cAdvances % cItemsPerBitPackFrom);
+                                 pDimensionInfo->m_iShiftFrom = iShiftFrom;
+                                 if(iShiftFrom < ptrdiff_t { 0 }) {
+                                    pDimensionInfo->m_iShiftFrom = iShiftFrom + cItemsPerBitPackFrom;
+                                    ++cCompleteAdvanced;
+                                 }
+                                 pDimensionInfo->m_pFeatureDataFrom += cCompleteAdvanced;
 
-                              ++pDimensionInfo;
-                           } while(pDimensionInfoInit != pDimensionInfo);
+                                 ++pDimensionInfo;
+                              } while(pDimensionInfoInit != pDimensionInfo);
+                           }
                         }
+
+                        size_t tensorIndex = 0;
+                        size_t tensorMultiple = 1;
+                        FeatureDimension * pDimensionInfo = dimensionInfo;
+                        do {
+                           const SharedStorageDataType * const pFeatureDataFrom = pDimensionInfo->m_pFeatureDataFrom;
+                           const SharedStorageDataType bitsFrom = *pFeatureDataFrom;
+
+                           ptrdiff_t iShiftFrom = pDimensionInfo->m_iShiftFrom;
+                           EBM_ASSERT(0 <= iShiftFrom);
+                           EBM_ASSERT(static_cast<size_t>(iShiftFrom) * pDimensionInfo->m_cBitsPerItemMaxFrom < k_cBitsForSharedStorageType);
+                           const size_t iFeatureBin = static_cast<size_t>(bitsFrom >>
+                              (static_cast<size_t>(iShiftFrom) * pDimensionInfo->m_cBitsPerItemMaxFrom)) &
+                              pDimensionInfo->m_maskBitsFrom;
+
+                           // we check our dataSet when we get the header, and cBins has been checked to fit into size_t
+                           EBM_ASSERT(iFeatureBin < pDimensionInfo->m_cBins);
+
+                           --iShiftFrom;
+                           pDimensionInfo->m_iShiftFrom = iShiftFrom;
+                           if(iShiftFrom < ptrdiff_t { 0 }) {
+                              EBM_ASSERT(ptrdiff_t { -1 } == iShiftFrom);
+                              pDimensionInfo->m_iShiftFrom = iShiftFrom + pDimensionInfo->m_cItemsPerBitPackFrom;
+                              pDimensionInfo->m_pFeatureDataFrom = pFeatureDataFrom + 1;
+                           }
+
+                           // we check for overflows during Term construction, but let's check here again
+                           EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
+
+                           // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
+                           tensorIndex += tensorMultiple * iFeatureBin;
+                           tensorMultiple *= pDimensionInfo->m_cBins;
+
+                           ++pDimensionInfo;
+                        } while(pDimensionInfoInit != pDimensionInfo);
+
+                        EBM_ASSERT(tensorIndex < pTerm->GetCountTensorBins());
+                        // during term construction we checked that the maximum tensor index fits into the destination storage
+                        iTensor = static_cast<UIntExceed>(tensorIndex);
                      }
 
-                     size_t tensorIndex = 0;
-                     size_t tensorMultiple = 1;
-                     FeatureDimension * pDimensionInfo = dimensionInfo;
-                     do {
-                        const SharedStorageDataType * const pFeatureDataFrom = pDimensionInfo->m_pFeatureDataFrom;
-                        const SharedStorageDataType bitsFrom = *pFeatureDataFrom;
+                     EBM_ASSERT(0 != replication);
+                     EBM_ASSERT(0 < replication && 0 < direction || replication < 0 && direction < 0);
+                     replication -= direction;
 
-                        ptrdiff_t iShiftFrom = pDimensionInfo->m_iShiftFrom;
-                        EBM_ASSERT(0 <= iShiftFrom);
-                        EBM_ASSERT(static_cast<size_t>(iShiftFrom) * pDimensionInfo->m_cBitsPerItemMaxFrom < k_cBitsForSharedStorageType);
-                        const size_t iFeatureBin = static_cast<size_t>(bitsFrom >>
-                           (static_cast<size_t>(iShiftFrom) * pDimensionInfo->m_cBitsPerItemMaxFrom)) &
-                           pDimensionInfo->m_maskBitsFrom;
+                     EBM_ASSERT(0 <= cShiftTo);
+                     // the tensor index needs to fit in memory, but concivably bitsTo does not
+                     const UIntExceed bitsTo = iTensor << cShiftTo;
 
-                        // we check our dataSet when we get the header, and cBins has been checked to fit into size_t
-                        EBM_ASSERT(iFeatureBin < pDimensionInfo->m_cBins);
+                     if(sizeof(UInt_Small) == pSubset->m_pObjective->m_cUIntBytes) {
+                        *(reinterpret_cast<UInt_Small *>(pTermDataTo) + iPartition) |= static_cast<UInt_Small>(bitsTo);
+                     } else {
+                        EBM_ASSERT(sizeof(UInt_Big) == pSubset->m_pObjective->m_cUIntBytes);
+                        *(reinterpret_cast<UInt_Big *>(pTermDataTo) + iPartition) |= static_cast<UInt_Big>(bitsTo);
+                     }
 
-                        --iShiftFrom;
-                        pDimensionInfo->m_iShiftFrom = iShiftFrom;
-                        if(iShiftFrom < ptrdiff_t { 0 }) {
-                           EBM_ASSERT(ptrdiff_t { -1 } == iShiftFrom);
-                           pDimensionInfo->m_iShiftFrom = iShiftFrom + pDimensionInfo->m_cItemsPerBitPackFrom;
-                           pDimensionInfo->m_pFeatureDataFrom = pFeatureDataFrom + 1;
-                        }
-
-                        // we check for overflows during Term construction, but let's check here again
-                        EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
-
-                        // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
-                        tensorIndex += tensorMultiple * iFeatureBin;
-                        tensorMultiple *= pDimensionInfo->m_cBins;
-
-                        ++pDimensionInfo;
-                     } while(pDimensionInfoInit != pDimensionInfo);
-
-                     EBM_ASSERT(tensorIndex < pTerm->GetCountTensorBins());
-                     // during term construction we checked that the maximum tensor index fits into the destination storage
-                     iTensor = static_cast<UIntExceed>(tensorIndex);
-                  }
-
-                  EBM_ASSERT(0 != replication);
-                  EBM_ASSERT(0 < replication && 0 < direction || replication < 0 && direction < 0);
-                  replication -= direction;
-
-                  EBM_ASSERT(0 <= cShiftTo);
-                  // the tensor index needs to fit in memory, but concivably bitsTo does not
-                  bitsTo |= iTensor << cShiftTo;
+                     ++iPartition;
+                  } while(cSIMDPack != iPartition);
                   cShiftTo -= cBitsPerItemMaxTo;
                } while(ptrdiff_t { 0 } <= cShiftTo);
                cShiftTo = cShiftResetTo;
 
-               if(sizeof(UInt_Small) == pSubset->m_pObjective->m_cUIntBytes) {
-                  *reinterpret_cast<UInt_Small *>(pTermDataTo) = static_cast<UInt_Small>(bitsTo);
-               } else {
-                  EBM_ASSERT(sizeof(UInt_Big) == pSubset->m_pObjective->m_cUIntBytes);
-                  *reinterpret_cast<UInt_Big *>(pTermDataTo) = static_cast<UInt_Big>(bitsTo);
-               }
-               pTermDataTo = IndexByte(pTermDataTo, pSubset->m_pObjective->m_cUIntBytes);
+               pTermDataTo = IndexByte(pTermDataTo, pSubset->m_pObjective->m_cUIntBytes * cSIMDPack);
             } while(pTermDataToEnd != pTermDataTo);
 
             ++pSubset;

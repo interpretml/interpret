@@ -43,7 +43,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    Config config;
    config.cOutputs = 1; // this is kind of cheating, but it should work
    config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
-   const ErrorEbm error = GetObjective(&config, objective, &objectiveWrapper);
+   const ErrorEbm error = GetObjective(&config, objective, &objectiveWrapper, nullptr);
    if(Error_None != error) {
       LOG_0(Trace_Error, "ERROR DetermineLinkFunction GetObjective failed");
 

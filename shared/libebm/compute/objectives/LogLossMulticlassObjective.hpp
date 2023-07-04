@@ -149,7 +149,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
          EBM_ASSERT(static_cast<size_t>(cBitsPerItemMax) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
 #endif // GPU_COMPILE
 
-         cShift = static_cast<int>((cSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
+         cShift = static_cast<int>((cSamples / TFloat::k_cSIMDPack - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
          cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
          maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
