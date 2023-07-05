@@ -64,6 +64,11 @@ struct Cuda_32_Int final {
       *a = m_data;
    }
 
+   template<typename TFunc>
+   GPU_BOTH friend inline void ExecuteFunc(const Cuda_32_Int & val, const TFunc & func) noexcept {
+      func(0, val.m_data);
+   }
+
    GPU_BOTH inline static Cuda_32_Int MakeIndexes() noexcept {
       return Cuda_32_Int(0);
    }

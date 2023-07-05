@@ -60,6 +60,11 @@ struct Cpu_64_Int final {
       *a = m_data;
    }
 
+   template<typename TFunc>
+   friend inline void ExecuteFunc(const Cpu_64_Int & val, const TFunc & func) noexcept {
+      func(0, val.m_data);
+   }
+
    inline static Cpu_64_Int MakeIndexes() noexcept {
       return Cpu_64_Int(0);
    }

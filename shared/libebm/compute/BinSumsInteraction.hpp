@@ -49,7 +49,7 @@ namespace DEFINED_ZONE_NAME {
 //    of using the SIMD code pipeline.  Maybe we can simulate all the same access 
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
-INLINE_RELEASE_TEMPLATED static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams) {
+static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams) {
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);

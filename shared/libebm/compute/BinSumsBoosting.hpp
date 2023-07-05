@@ -20,7 +20,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
-INLINE_RELEASE_TEMPLATED static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
+static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
    static_assert(bWeight || !bReplication, "bReplication cannot be true if bWeight is false");
 
    static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
@@ -51,10 +51,10 @@ INLINE_RELEASE_TEMPLATED static void BinSumsBoostingInternal(BinSumsBoostingBrid
    typename TFloat::TInt maskBits;
    const typename TFloat::TInt::T * pInputData;
 
-   Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores> * pBin;
+   typename TFloat::TInt iTensorBin;
 
    if(bCompilerZeroDimensional) {
-      pBin = aBins;
+      iTensorBin = 0;
    } else {
       cBytesPerBin = GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cScores);
 
@@ -119,18 +119,10 @@ INLINE_RELEASE_TEMPLATED static void BinSumsBoostingInternal(BinSumsBoostingBrid
          pInputData += TFloat::TInt::k_cSIMDPack;
       }
       while(true) {
-         alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::TInt::T indexes[TFloat::TInt::k_cSIMDPack];
          if(!bCompilerZeroDimensional) {
-            const typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-            iTensorBin.Store(indexes);
+            iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
          }
-         // TODO: instead of executing a loop here, what we want to do is create something like the ApplyFunction
-         //       in the operator classes and build something like an ExecuteFunction which will not return a value
-         //       but will not return anything and we'll pass in the indexes array (or iTensorBin) and we'll 
-         //       compute the pBin inside of that ExecuteFunction and do everything below. The reason we want this
-         //       is to avoid having a loop which will require a counter and will have a branch misprediction on the
-         //       last loop
-         for(int i = 0; i < TFloat::TInt::k_cSIMDPack; ++i) {
+         ExecuteFunc(iTensorBin, [cScores, aBins, cBytesPerBin, pCountOccurrences, pWeight, pGradientAndHessian](int i, typename TFloat::TInt::T x) {
             // TODO: the ultimate version of this algorithm would:
             //   1) Write to k_cSIMDPack histograms simutaneously to avoid collisions of indexes
             //   2) Sum up the final histograms using SIMD operations in parallel.  If we hvae k_cSIMDPack
@@ -146,26 +138,26 @@ INLINE_RELEASE_TEMPLATED static void BinSumsBoostingInternal(BinSumsBoostingBrid
             //   We will need to rip apart the Bin class since we'll operate on multiple bins at a time. Maybe
             //   use offsetof to index float32/uint32 indexes inside the Bin classes in parallel.  (messy!)
 
+            Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores> * pBin;
             if(!bCompilerZeroDimensional) {
-               pBin = IndexBin(aBins, cBytesPerBin * static_cast<size_t>(indexes[i]));
-#ifndef GPU_COMPILE
-               ASSERT_BIN_OK(cBytesPerBin, pBin, pParams->m_pDebugFastBinsEnd);
-#endif // GPU_COMPILE
+               pBin = IndexBin(aBins, cBytesPerBin * static_cast<size_t>(x));
+            } else {
+               pBin = aBins;
             }
 
             if(bReplication) {
-               const uint8_t cOccurences = *pCountOccurrences;
+               // TODO: SIMD load this
+               const uint8_t cOccurences = pCountOccurrences[i];
                pBin->SetCountSamples(pBin->GetCountSamples() + cOccurences);
-               ++pCountOccurrences;
             } else {
                pBin->SetCountSamples(pBin->GetCountSamples() + typename TFloat::TInt::T { 1 });
             }
 
             typename TFloat::T weight;
             if(bWeight) {
-               weight = *pWeight;
+               // TODO: SIMD load this
+               weight = pWeight[i];
                pBin->SetWeight(pBin->GetWeight() + weight);
-               ++pWeight;
             } else {
                // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
                //       such that we can remove that field optionally
@@ -194,8 +186,14 @@ INLINE_RELEASE_TEMPLATED static void BinSumsBoostingInternal(BinSumsBoostingBrid
                }
                ++iScore;
             } while(cScores != iScore);
-         }
+         });
          pGradientAndHessian += bHessian ? (cScores << (TFloat::k_cSIMDShift + 1)) : (cScores << TFloat::k_cSIMDShift);
+         if(bReplication) {
+            pCountOccurrences += TFloat::k_cSIMDPack;
+         }
+         if(bWeight) {
+            pWeight += TFloat::k_cSIMDPack;
+         }
 
          if(bCompilerZeroDimensional) {
             if(pGradientsAndHessiansEnd == pGradientAndHessian) {

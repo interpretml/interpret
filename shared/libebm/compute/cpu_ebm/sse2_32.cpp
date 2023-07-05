@@ -80,6 +80,20 @@ struct Sse_32_Int final {
       return Load(aTemp);
    }
 
+   template<typename TFunc>
+   friend inline void ExecuteFunc(const Sse_32_Int & val, const TFunc & func) noexcept {
+      // TODO: use the equivalent of _mm_extract_epi32 in more advanced SIMD intrinsics
+
+      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
+      val.Store(aTemp);
+
+      // no loops because this will disable optimizations for loops in the caller
+      func(0, aTemp[0]);
+      func(1, aTemp[1]);
+      func(2, aTemp[2]);
+      func(3, aTemp[3]);
+   }
+
    inline static Sse_32_Int MakeIndexes() noexcept {
       return Sse_32_Int(_mm_set_epi32(3, 2, 1, 0));
    }
