@@ -64,6 +64,18 @@ struct Sse_32_Int final {
       _mm_store_si128(reinterpret_cast<TPack *>(a), m_data);
    }
 
+   inline static Sse_32_Int LoadBytes(const uint8_t * const a) noexcept {
+      EBM_ASSERT(IsAligned(a, sizeof(*a) * k_cSIMDPack));
+      // TODO: SSE 4.1 has _mm_cvtepu8_epi32 which can promote the bytes in the lower 32 bit part to 32 bit integers
+      // which we can use with "*reinterpret_cast<const uint32_t *>(a)" to make this work in 2 instructions
+      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
+      aTemp[0] = a[0];
+      aTemp[1] = a[1];
+      aTemp[2] = a[2];
+      aTemp[3] = a[3];
+      return Load(aTemp);
+   }
+
    template<typename TFunc>
    friend inline Sse_32_Int ApplyFunction(const Sse_32_Int & val, const TFunc & func) noexcept {
       // TODO: use the equivalent of _mm_extract_epi32 in more advanced SIMD intrinsics
@@ -302,6 +314,20 @@ struct Sse_32_Float final {
       aTemp[3] = func(aTemp[3]);
 
       return Load(aTemp);
+   }
+
+   template<typename TFunc>
+   friend inline void ExecuteFunc(const Sse_32_Float & val, const TFunc & func) noexcept {
+      // TODO: use the equivalent of _mm_extract_epi32 in more advanced SIMD intrinsics
+
+      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
+      val.Store(aTemp);
+
+      // no loops because this will disable optimizations for loops in the caller
+      func(0, aTemp[0]);
+      func(1, aTemp[1]);
+      func(2, aTemp[2]);
+      func(3, aTemp[3]);
    }
 
    friend inline Sse_32_Float IfGreater(const Sse_32_Float & cmp1, const Sse_32_Float & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept {

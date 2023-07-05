@@ -60,6 +60,10 @@ struct Cpu_64_Int final {
       *a = m_data;
    }
 
+   inline static Cpu_64_Int LoadBytes(const uint8_t * const a) noexcept {
+      return Cpu_64_Int(*a);
+   }
+
    template<typename TFunc>
    friend inline void ExecuteFunc(const Cpu_64_Int & val, const TFunc & func) noexcept {
       func(0, val.m_data);
@@ -227,6 +231,11 @@ struct Cpu_64_Float final {
    friend inline Cpu_64_Float ApplyFunction(const Cpu_64_Float & val, const TFunc & func) noexcept {
       // this function is more useful for a SIMD operator where it applies func() to all packed items
       return Cpu_64_Float(func(val.m_data));
+   }
+
+   template<typename TFunc>
+   friend inline void ExecuteFunc(const Cpu_64_Float & val, const TFunc & func) noexcept {
+      func(0, val.m_data);
    }
 
    friend inline Cpu_64_Float IfGreater(const Cpu_64_Float & cmp1, const Cpu_64_Float & cmp2, const Cpu_64_Float & trueVal, const Cpu_64_Float & falseVal) noexcept {
