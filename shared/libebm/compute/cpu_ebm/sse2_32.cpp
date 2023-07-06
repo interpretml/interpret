@@ -106,6 +106,38 @@ struct Sse_32_Int final {
       func(3, aTemp[3]);
    }
 
+   template<typename TFunc>
+   friend inline void ExecuteUnindexedFunc(const Sse_32_Int & val, const TFunc & func) noexcept {
+      // TODO: use the equivalent of _mm_extract_epi32 in more advanced SIMD intrinsics
+
+      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
+      val.Store(aTemp);
+
+      // no loops because this will disable optimizations for loops in the caller
+      func(aTemp[0]);
+      func(aTemp[1]);
+      func(aTemp[2]);
+      func(aTemp[3]);
+   }
+
+   template<typename TFunc>
+   static inline void EmptyExecuteFunc(const TFunc & func) noexcept {
+      // no loops because this will disable optimizations for loops in the caller
+      func(0);
+      func(1);
+      func(2);
+      func(3);
+   }
+
+   template<typename TFunc>
+   static inline void EmptyUnindexedExecuteFunc(const TFunc & func) noexcept {
+      // no loops because this will disable optimizations for loops in the caller
+      func();
+      func();
+      func();
+      func();
+   }
+
    inline static Sse_32_Int MakeIndexes() noexcept {
       return Sse_32_Int(_mm_set_epi32(3, 2, 1, 0));
    }
@@ -328,6 +360,38 @@ struct Sse_32_Float final {
       func(1, aTemp[1]);
       func(2, aTemp[2]);
       func(3, aTemp[3]);
+   }
+
+   template<typename TFunc>
+   friend inline void ExecuteUnindexedFunc(const Sse_32_Float & val, const TFunc & func) noexcept {
+      // TODO: use the equivalent of _mm_extract_epi32 in more advanced SIMD intrinsics
+
+      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
+      val.Store(aTemp);
+
+      // no loops because this will disable optimizations for loops in the caller
+      func(aTemp[0]);
+      func(aTemp[1]);
+      func(aTemp[2]);
+      func(aTemp[3]);
+   }
+
+   template<typename TFunc>
+   static inline void EmptyExecuteFunc(const TFunc & func) noexcept {
+      // no loops because this will disable optimizations for loops in the caller
+      func(0);
+      func(1);
+      func(2);
+      func(3);
+   }
+
+   template<typename TFunc>
+   static inline void EmptyUnindexedExecuteFunc(const TFunc & func) noexcept {
+      // no loops because this will disable optimizations for loops in the caller
+      func();
+      func();
+      func();
+      func();
    }
 
    friend inline Sse_32_Float IfGreater(const Sse_32_Float & cmp1, const Sse_32_Float & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept {

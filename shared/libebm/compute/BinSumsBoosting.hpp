@@ -120,34 +120,31 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
          pInputData += TFloat::TInt::k_cSIMDPack;
       }
       while(true) {
+         Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores> * apBins[TFloat::k_cSIMDPack];
          if(!bCompilerZeroDimensional) {
             iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
             iTensorBin = Multiply<typename TFloat::TInt, typename TFloat::TInt::T, k_dynamicScores != cCompilerScores, static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cCompilerScores))>(iTensorBin, cBytesPerBin);
+
+            ExecuteFunc(iTensorBin, [aBins, &apBins](int i, typename TFloat::TInt::T x) {
+               // TODO: the ultimate version of this algorithm would:
+               //   1) Write to k_cSIMDPack histograms simutaneously to avoid collisions of indexes
+               //   2) Sum up the final histograms using SIMD operations in parallel.  If we hvae k_cSIMDPack
+               //      histograms, then we're prefectly suited to sum them, and integers and float32 values shouldn't
+               //      have issues since we stay well away from 2^32 integers, and the float values don't have addition
+               //      issues anymore (where you can't add a 1 to more than 16 million floats)
+               //   But to do this, we need:
+               //   1) scattered reads
+               //   2) scattered writes
+               //   3) possibly parallel integer multiplication (?), which is from a later version of SIMD
+               //   4) the ability to index everything with uint32 indexes (for all histograms)
+               //   5) the scattered reads and writes to not be too slow (they at least must fit into L3 cache?)
+               //   We will need to rip apart the Bin class since we'll operate on multiple bins at a time. Maybe
+               //   use offsetof to index float32/uint32 indexes inside the Bin classes in parallel.  (messy!)
+
+               apBins[i] = IndexBin(aBins, static_cast<size_t>(x));
+            });
          }
 
-         Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores> * apBins[TFloat::k_cSIMDPack];
-         ExecuteFunc(iTensorBin, [aBins, &apBins](int i, typename TFloat::TInt::T x) {
-            // TODO: the ultimate version of this algorithm would:
-            //   1) Write to k_cSIMDPack histograms simutaneously to avoid collisions of indexes
-            //   2) Sum up the final histograms using SIMD operations in parallel.  If we hvae k_cSIMDPack
-            //      histograms, then we're prefectly suited to sum them, and integers and float32 values shouldn't
-            //      have issues since we stay well away from 2^32 integers, and the float values don't have addition
-            //      issues anymore (where you can't add a 1 to more than 16 million floats)
-            //   But to do this, we need:
-            //   1) scattered reads
-            //   2) scattered writes
-            //   3) possibly parallel integer multiplication (?), which is from a later version of SIMD
-            //   4) the ability to index everything with uint32 indexes (for all histograms)
-            //   5) the scattered reads and writes to not be too slow (they at least must fit into L3 cache?)
-            //   We will need to rip apart the Bin class since we'll operate on multiple bins at a time. Maybe
-            //   use offsetof to index float32/uint32 indexes inside the Bin classes in parallel.  (messy!)
-
-            if(!bCompilerZeroDimensional) {
-               apBins[i] = IndexBin(aBins, static_cast<size_t>(x));
-            } else {
-               apBins[i] = aBins;
-            }
-         });
 
          // TODO: the ultimate version of this algorithm would:
          //   1) Write to k_cSIMDPack histograms simutaneously to avoid collisions of indexes
@@ -164,33 +161,80 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
          //   We will need to rip apart the Bin class since we'll operate on multiple bins at a time. Maybe
          //   use offsetof to index float32/uint32 indexes inside the Bin classes in parallel.  (messy!)
 
-         typename TFloat::TInt cOccurences;
          if(bReplication) {
-            cOccurences = TFloat::TInt::LoadBytes(pCountOccurrences);
+            const typename TFloat::TInt cOccurences = TFloat::TInt::LoadBytes(pCountOccurrences);
             pCountOccurrences += TFloat::k_cSIMDPack;
+
+            if(!bCompilerZeroDimensional) {
+               ExecuteFunc(cOccurences, [apBins](int i, typename TFloat::TInt::T x) {
+                  auto * pBin = apBins[i];
+                  // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
+                  //       such that we can remove that field optionally
+                  pBin->SetCountSamples(pBin->GetCountSamples() + x);
+               });
+            } else {
+               ExecuteUnindexedFunc(cOccurences, [aBins](typename TFloat::TInt::T x) {
+                  auto * pBin = aBins;
+                  // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
+                  //       such that we can remove that field optionally
+                  pBin->SetCountSamples(pBin->GetCountSamples() + x);
+               });
+            }
          } else {
-            cOccurences = 1;
+            if(!bCompilerZeroDimensional) {
+               TFloat::EmptyExecuteFunc([apBins](int i) {
+                  auto * pBin = apBins[i];
+                  // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
+                  //       such that we can remove that field optionally
+                  pBin->SetCountSamples(pBin->GetCountSamples() + typename TFloat::TInt::T { 1 });
+               });
+            } else {
+               TFloat::EmptyUnindexedExecuteFunc([aBins]() {
+                  auto * pBin = aBins;
+                  // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
+                  //       such that we can remove that field optionally
+                  pBin->SetCountSamples(pBin->GetCountSamples() + typename TFloat::TInt::T { 1 });
+               });
+            }
          }
-         ExecuteFunc(cOccurences, [apBins](int i, typename TFloat::TInt::T x) {
-            auto pBin = apBins[i];
-            // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
-            //       such that we can remove that field optionally
-            pBin->SetCountSamples(pBin->GetCountSamples() + x);
-         });
 
          TFloat weight;
          if(bWeight) {
             weight = TFloat::Load(pWeight);
             pWeight += TFloat::k_cSIMDPack;
+
+            if(!bCompilerZeroDimensional) {
+               ExecuteFunc(weight, [apBins](int i, typename TFloat::T x) {
+                  auto * pBin = apBins[i];
+                  // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
+                  //       such that we can remove that field optionally
+                  pBin->SetWeight(pBin->GetWeight() + x);
+               });
+            } else {
+               ExecuteUnindexedFunc(weight, [aBins](typename TFloat::T x) {
+                  auto * pBin = aBins;
+                  // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
+                  //       such that we can remove that field optionally
+                  pBin->SetWeight(pBin->GetWeight() + x);
+               });
+            }
          } else {
-            weight = 1.0;
+            if(!bCompilerZeroDimensional) {
+               TFloat::EmptyExecuteFunc([apBins](int i) {
+                  auto * pBin = apBins[i];
+                  // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
+                  //       such that we can remove that field optionally
+                  pBin->SetWeight(pBin->GetWeight() + typename TFloat::T { 1.0 });
+               });
+            } else {
+               TFloat::EmptyUnindexedExecuteFunc([aBins]() {
+                  auto * pBin = aBins;
+                  // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
+                  //       such that we can remove that field optionally
+                  pBin->SetWeight(pBin->GetWeight() + typename TFloat::T { 1.0 });
+               });
+            }
          }
-         ExecuteFunc(weight, [apBins](int i, typename TFloat::T x) {
-            auto pBin = apBins[i];
-            // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
-            //       such that we can remove that field optionally
-            pBin->SetWeight(pBin->GetWeight() + x);
-         });
 
          // TODO: we probably want a templated version of this function for Bins with only 1 cScore so that
          //       we don't have a loop here, which will mean that the cCompilerPack will be the only loop which
@@ -202,23 +246,42 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
             if(bWeight) {
                gradient *= weight;
             }
-            ExecuteFunc(gradient, [apBins, iScore](int i, typename TFloat::T x) {
-               auto pBin = apBins[i];
-               auto * const aGradientPair = pBin->GetGradientPairs();
-               auto * const pGradientPair = &aGradientPair[iScore];
-               pGradientPair->m_sumGradients += x;
-            });
+            if(!bCompilerZeroDimensional) {
+               ExecuteFunc(gradient, [apBins, iScore](int i, typename TFloat::T x) {
+                  auto * pBin = apBins[i];
+                  auto * const aGradientPair = pBin->GetGradientPairs();
+                  auto * const pGradientPair = &aGradientPair[iScore];
+                  pGradientPair->m_sumGradients += x;
+               });
+            } else {
+               ExecuteUnindexedFunc(gradient, [aBins, iScore](typename TFloat::T x) {
+                  auto * pBin = aBins;
+                  auto * const aGradientPair = pBin->GetGradientPairs();
+                  auto * const pGradientPair = &aGradientPair[iScore];
+                  pGradientPair->m_sumGradients += x;
+               });
+            }
             if(bHessian) {
                TFloat hessian = TFloat::Load(&pGradientAndHessian[(iScore << (TFloat::k_cSIMDShift + 1)) + TFloat::k_cSIMDPack]);
                if(bWeight) {
                   hessian *= weight;
                }
-               ExecuteFunc(hessian, [apBins, iScore](int i, typename TFloat::T x) {
-                  auto pBin = apBins[i];
-                  auto * const aGradientPair = pBin->GetGradientPairs();
-                  auto * const pGradientPair = &aGradientPair[iScore];
-                  pGradientPair->SetHess(pGradientPair->GetHess() + x);
-               });
+
+               if(!bCompilerZeroDimensional) {
+                  ExecuteFunc(hessian, [apBins, iScore](int i, typename TFloat::T x) {
+                     auto * pBin = apBins[i];
+                     auto * const aGradientPair = pBin->GetGradientPairs();
+                     auto * const pGradientPair = &aGradientPair[iScore];
+                     pGradientPair->SetHess(pGradientPair->GetHess() + x);
+                  });
+               } else {
+                  ExecuteUnindexedFunc(hessian, [aBins, iScore](typename TFloat::T x) {
+                     auto * pBin = aBins;
+                     auto * const aGradientPair = pBin->GetGradientPairs();
+                     auto * const pGradientPair = &aGradientPair[iScore];
+                     pGradientPair->SetHess(pGradientPair->GetHess() + x);
+                  });
+               }
             }
             ++iScore;
          } while(cScores != iScore);

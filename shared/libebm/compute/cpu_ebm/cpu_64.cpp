@@ -69,6 +69,21 @@ struct Cpu_64_Int final {
       func(0, val.m_data);
    }
 
+   template<typename TFunc>
+   friend inline void ExecuteUnindexedFunc(const Cpu_64_Int & val, const TFunc & func) noexcept {
+      func(val.m_data);
+   }
+
+   template<typename TFunc>
+   static inline void EmptyExecuteFunc(const TFunc & func) noexcept {
+      func(0);
+   }
+
+   template<typename TFunc>
+   static inline void EmptyUnindexedExecuteFunc(const TFunc & func) noexcept {
+      func();
+   }
+
    inline static Cpu_64_Int MakeIndexes() noexcept {
       return Cpu_64_Int(0);
    }
@@ -236,6 +251,21 @@ struct Cpu_64_Float final {
    template<typename TFunc>
    friend inline void ExecuteFunc(const Cpu_64_Float & val, const TFunc & func) noexcept {
       func(0, val.m_data);
+   }
+
+   template<typename TFunc>
+   friend inline void ExecuteUnindexedFunc(const Cpu_64_Float & val, const TFunc & func) noexcept {
+      func(val.m_data);
+   }
+
+   template<typename TFunc>
+   static inline void EmptyExecuteFunc(const TFunc & func) noexcept {
+      func(0);
+   }
+
+   template<typename TFunc>
+   static inline void EmptyUnindexedExecuteFunc(const TFunc & func) noexcept {
+      func();
    }
 
    friend inline Cpu_64_Float IfGreater(const Cpu_64_Float & cmp1, const Cpu_64_Float & cmp2, const Cpu_64_Float & trueVal, const Cpu_64_Float & falseVal) noexcept {
