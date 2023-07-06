@@ -61,6 +61,40 @@ inline constexpr static ptrdiff_t GetNextBitPack(const ptrdiff_t cItemsBitPacked
       ptrdiff_t { k_cBitsForStorageType } / ((ptrdiff_t { k_cBitsForStorageType } / cItemsBitPackedPrev) + 1);
 }
 
+template<typename T, typename U, U multiplicator, int shiftEnd, int shift>
+struct Multiplier final {
+   GPU_DEVICE inline constexpr static T Multiply(const T val) {
+      return (U { 0 } != (multiplicator & (U { 1 } << shift)) ? (val << shift) : T { 0 }) + Multiplier<T, U, multiplicator, shiftEnd, shift + 1>::Multiply(val);
+   }
+};
+template<typename T, typename U, U multiplicator, int shiftEnd>
+struct Multiplier<T, U, multiplicator, shiftEnd, shiftEnd> final {
+   GPU_DEVICE inline constexpr static T Multiply(const T) {
+      return T { 0 };
+   }
+};
+template<typename T, typename U, U multiplicator, int shiftEnd = CountBitsRequiredPositiveMax<U>()>
+GPU_DEVICE inline constexpr static T Multiply(const T val) {
+   return Multiplier<T, U, multiplicator, shiftEnd, 0>::Multiply(val);
+}
+template<typename T, typename U, bool bCompileTime, U multiplicator, int shiftEnd = CountBitsRequiredPositiveMax<U>(), typename std::enable_if<bCompileTime, void>::type * = nullptr>
+GPU_DEVICE inline constexpr static T Multiply(const T val, const U) {
+   return Multiply<T, U, multiplicator, shiftEnd>(val);
+}
+template<typename T, typename U, bool bCompileTime, U multiplicator, int shiftEnd = CountBitsRequiredPositiveMax<U>(), typename std::enable_if<!bCompileTime, void>::type * = nullptr>
+GPU_DEVICE inline constexpr static T Multiply(const T val, const U runtimeMultiplicator) {
+   return val * runtimeMultiplicator;
+}
+
+static_assert(Multiply<uint32_t, uint32_t, true, 0>(7, 0) == uint32_t { 0 }, "failed Multiply");
+static_assert(Multiply<uint32_t, uint32_t, true, 7>(0, 0) == uint32_t { 0 }, "failed Multiply");
+static_assert(Multiply<uint32_t, uint32_t, true, 1>(7, 0) == uint32_t { 7 }, "failed Multiply");
+static_assert(Multiply<uint32_t, uint32_t, true, 7>(1, 0) == uint32_t { 7 }, "failed Multiply");
+static_assert(Multiply<uint32_t, uint32_t, true, 65280>(65536, 0) == uint32_t { 4278190080 }, "failed Multiply");
+static_assert(Multiply<uint32_t, uint32_t, true, 65536>(65280, 0) == uint32_t { 4278190080 }, "failed Multiply");
+static_assert(Multiply<uint32_t, uint32_t, true, 4294967295>(1, 0) == uint32_t { 4294967295 }, "failed Multiply");
+static_assert(Multiply<uint32_t, uint32_t, true, 1>(4294967295, 0) == uint32_t { 4294967295 }, "failed Multiply");
+
 } // DEFINED_ZONE_NAME
 
 #endif // COMPUTE_HPP

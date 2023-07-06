@@ -10,6 +10,7 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
+#include "common_cpp.hpp" // Multiply
 #include "bridge_cpp.hpp" // BinSumsBoostingBridge
 #include "GradientPair.hpp"
 #include "Bin.hpp"
@@ -121,7 +122,7 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
       while(true) {
          if(!bCompilerZeroDimensional) {
             iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-            iTensorBin *= cBytesPerBin;
+            iTensorBin = Multiply<typename TFloat::TInt, typename TFloat::TInt::T, k_dynamicScores != cCompilerScores, static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cCompilerScores))>(iTensorBin, cBytesPerBin);
          }
 
          Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores> * apBins[TFloat::k_cSIMDPack];

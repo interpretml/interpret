@@ -65,7 +65,7 @@ static_assert(std::is_trivial<BinBase>::value,
 template<typename TFloat, typename TUInt>
 static bool IsOverflowBinSize(const bool bHessian, const size_t cScores);
 template<typename TFloat, typename TUInt>
-static size_t GetBinSize(const bool bHessian, const size_t cScores);
+inline constexpr static size_t GetBinSize(const bool bHessian, const size_t cScores);
 
 template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
 struct Bin final : BinBase {
@@ -84,7 +84,7 @@ struct Bin final : BinBase {
       const void * const
    );
    template<typename, typename> friend bool IsOverflowBinSize(const bool, const size_t);
-   template<typename, typename> friend size_t GetBinSize(const bool, const size_t);
+   template<typename, typename> friend inline constexpr size_t GetBinSize(const bool, const size_t);
 
    
    static_assert(std::is_floating_point<TFloat>::value, "TFloat must be a float type");
@@ -302,24 +302,19 @@ inline static bool IsOverflowBinSize(const bool bHessian, const size_t cScores) 
 }
 
 template<typename TFloat, typename TUInt>
-inline static size_t GetBinSize(const bool bHessian, const size_t cScores) {
+inline constexpr static size_t GetBinSize(const bool bHessian, const size_t cScores) {
+   typedef Bin<TFloat, TUInt, true> OffsetTypeHt;
+   typedef Bin<TFloat, TUInt, false> OffsetTypeHf;
+
    // TODO: someday try out bin sizes that are a power of two.  This would allow us to use a shift when using bins
    //       instead of using multiplications.  In that version return the number of bits to shift here to make it easy
    //       to get either the shift required for indexing OR the number of bytes (shift 1 << num_bits)
 
-   const size_t cBytesPerGradientPair = GetGradientPairSize<TFloat>(bHessian);
-
-   size_t cBytesBinComponent;
-   if(bHessian) {
-      typedef Bin<TFloat, TUInt, true> OffsetType;
-      cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
-   } else {
-      typedef Bin<TFloat, TUInt, false> OffsetType;
-      cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
-   }
-
-   return cBytesBinComponent + cBytesPerGradientPair * cScores;
+   return (bHessian ? offsetof(OffsetTypeHt, m_aGradientPairs) : offsetof(OffsetTypeHf, m_aGradientPairs)) + GetGradientPairSize<TFloat>(bHessian) * cScores;
 }
+
+
+
 
 template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
 inline static Bin<TFloat, TUInt, bHessian, cCompilerScores> * IndexBin(

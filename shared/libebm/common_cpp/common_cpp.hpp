@@ -758,6 +758,7 @@ static_assert(AbsCast<uint8_t>(int16_t { -128 }) == uint8_t { 128 }, "failed Abs
 static_assert(AbsCast<uint8_t>(int16_t { -255 }) == uint8_t { 255 }, "failed AbsCast");
 
 
+
 /*
 * These are not used currently, but perhaps someday if our trick to use macros to merge compiler and runtime
 * values via templating (see GET_COUNT_CLASSES and GET_ITEMS_PER_BIT_PACK and GET_COUNT_DIMENSIONS) gets too many

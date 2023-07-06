@@ -155,12 +155,8 @@ inline static void ZeroGradientPairs(
 }
 
 template<typename TFloat>
-inline static size_t GetGradientPairSize(const bool bHessian) {
-   if(bHessian) {
-      return sizeof(GradientPair<TFloat, true>);
-   } else {
-      return sizeof(GradientPair<TFloat, false>);
-   }
+inline constexpr static size_t GetGradientPairSize(const bool bHessian) {
+   return bHessian ? sizeof(GradientPair<TFloat, true>) : sizeof(GradientPair<TFloat, false>);
 }
 
 } // DEFINED_ZONE_NAME

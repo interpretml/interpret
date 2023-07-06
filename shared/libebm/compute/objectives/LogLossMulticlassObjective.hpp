@@ -206,7 +206,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                // the value in a register to a pointer each iteration.  It also reduces the amount of memory we
                // need to access each load, which might be an issue for some big tensors.  It also eliminates the
                // "iTensorBin += 1" instruction below since we'll be doing that to the pointer instead of the indexes
-               iTensorBin *= cCastScores;
+               iTensorBin = Multiply<typename TFloat::TInt, typename TFloat::TInt::T, k_dynamicScores != cCompilerScores, static_cast<typename TFloat::TInt::T>(cCompilerScores)>(iTensorBin, cCastScores);
             }
 
             TFloat sumExp;
