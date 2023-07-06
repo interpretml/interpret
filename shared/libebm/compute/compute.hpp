@@ -73,15 +73,20 @@ struct Multiplier<T, U, multiplicator, shiftEnd, shiftEnd> final {
       return T { 0 };
    }
 };
-template<typename T, typename U, U multiplicator, int shiftEnd = CountBitsRequiredPositiveMax<U>()>
+template<typename T, typename U, U multiplicator>
 GPU_DEVICE inline constexpr static T Multiply(const T val) {
-   return Multiplier<T, U, multiplicator, shiftEnd, 0>::Multiply(val);
+   // Normally the compiler does a better job at choosing between multiplication or shifting, but it doesn't when
+   // T is a SIMD packed datatype. Some SIMD implementation do not have a scalar multiply option in which case
+   // this function will be a lot faster than the default of unpacking the SIMD type and multiplying the components.
+   // And even if the SIMD implemention has a scalar multiply I think this function will be faster for multiplications
+   // with less than 4 bits anywhere in multiplicator, which should most be the case for where we use it.
+   return Multiplier<T, U, multiplicator, CountBitsRequiredPositiveMax<U>(), 0>::Multiply(val);
 }
-template<typename T, typename U, bool bCompileTime, U multiplicator, int shiftEnd = CountBitsRequiredPositiveMax<U>(), typename std::enable_if<bCompileTime, void>::type * = nullptr>
+template<typename T, typename U, bool bCompileTime, U multiplicator, typename std::enable_if<bCompileTime, void>::type * = nullptr>
 GPU_DEVICE inline constexpr static T Multiply(const T val, const U) {
-   return Multiply<T, U, multiplicator, shiftEnd>(val);
+   return Multiply<T, U, multiplicator>(val);
 }
-template<typename T, typename U, bool bCompileTime, U multiplicator, int shiftEnd = CountBitsRequiredPositiveMax<U>(), typename std::enable_if<!bCompileTime, void>::type * = nullptr>
+template<typename T, typename U, bool bCompileTime, U multiplicator, typename std::enable_if<!bCompileTime, void>::type * = nullptr>
 GPU_DEVICE inline constexpr static T Multiply(const T val, const U runtimeMultiplicator) {
    return val * runtimeMultiplicator;
 }

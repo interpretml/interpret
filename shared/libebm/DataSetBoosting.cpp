@@ -854,8 +854,8 @@ ErrorEbm DataSetBoosting::InitBags(
                   // these were checked when creating the shared dataset
                   EBM_ASSERT(!std::isnan(weight));
                   EBM_ASSERT(!std::isinf(weight));
-                  EBM_ASSERT(double { std::numeric_limits<float>::min() } <= weight);
-                  EBM_ASSERT(weight <= double { std::numeric_limits<float>::max() });
+                  EBM_ASSERT(static_cast<double>(std::numeric_limits<float>::min()) <= weight);
+                  EBM_ASSERT(weight <= static_cast<double>(std::numeric_limits<float>::max()));
                }
 
                double result = weight;

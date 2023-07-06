@@ -1375,14 +1375,14 @@ static IntEbm AppendWeight(
                   LOG_0(Trace_Warning, "WARNING AppendWeight std::isinf(weight)");
                   goto return_bad;
                }
-               if(weight < double { std::numeric_limits<float>::min() }) {
+               if(weight < static_cast<double>(std::numeric_limits<float>::min())) {
                   // we use floats internally in some places, so limit the weight to a float minimum
-                  LOG_0(Trace_Warning, "WARNING AppendWeight weight < double { std::numeric_limits<float>::min() }");
+                  LOG_0(Trace_Warning, "WARNING AppendWeight weight < static_cast<double>(std::numeric_limits<float>::min())");
                   goto return_bad;
                }
-               if(double { std::numeric_limits<float>::max() } < weight) {
+               if(static_cast<double>(std::numeric_limits<float>::max()) < weight) {
                   // we use floats internally in some places, so limit the weight to a float maximum
-                  LOG_0(Trace_Warning, "WARNING AppendWeight double { std::numeric_limits<float>::max() } < weight");
+                  LOG_0(Trace_Warning, "WARNING AppendWeight static_cast<double>(std::numeric_limits<float>::max()) < weight");
                   goto return_bad;
                }
 
