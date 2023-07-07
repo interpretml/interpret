@@ -120,24 +120,6 @@ struct Sse_32_Int final {
       func(aTemp[3]);
    }
 
-   template<typename TFunc>
-   static inline void EmptyExecuteFunc(const TFunc & func) noexcept {
-      // no loops because this will disable optimizations for loops in the caller
-      func(0);
-      func(1);
-      func(2);
-      func(3);
-   }
-
-   template<typename TFunc>
-   static inline void EmptyUnindexedExecuteFunc(const TFunc & func) noexcept {
-      // no loops because this will disable optimizations for loops in the caller
-      func();
-      func();
-      func();
-      func();
-   }
-
    inline static Sse_32_Int MakeIndexes() noexcept {
       return Sse_32_Int(_mm_set_epi32(3, 2, 1, 0));
    }

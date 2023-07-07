@@ -78,16 +78,6 @@ struct Cuda_32_Int final {
       func(val.m_data);
    }
 
-   template<typename TFunc>
-   GPU_BOTH static inline void EmptyExecuteFunc(const TFunc & func) noexcept {
-      func(0);
-   }
-
-   template<typename TFunc>
-   GPU_BOTH static inline void EmptyUnindexedExecuteFunc(const TFunc & func) noexcept {
-      func();
-   }
-
    GPU_BOTH inline static Cuda_32_Int MakeIndexes() noexcept {
       return Cuda_32_Int(0);
    }

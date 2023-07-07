@@ -52,31 +52,40 @@ template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompile
 static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams) {
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
+#ifndef GPU_COMPILE
+   EBM_ASSERT(nullptr != pParams);
+   EBM_ASSERT(1 <= pParams->m_cSamples);
+   EBM_ASSERT(0 == pParams->m_cSamples % TFloat::k_cSIMDPack);
+   EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
+   EBM_ASSERT(nullptr != pParams->m_aFastBins);
+   EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == pParams->m_cScores);
+   EBM_ASSERT(k_dynamicDimensions == cCompilerDimensions || cCompilerDimensions == pParams->m_cRuntimeRealDimensions);
+   EBM_ASSERT(1 <= pParams->m_cRuntimeRealDimensions); // for interactions, we just return 0 for interactions with zero features
+   EBM_ASSERT(1 == cCompilerDimensions || 1 != pParams->m_cRuntimeRealDimensions); // 1 dimension must be templated
+#endif // GPU_COMPILE
+
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
 
-   auto * const aBins = reinterpret_cast<BinBase *>(pParams->m_aFastBins)->Specialize<FloatFast, StorageDataType, bHessian, cArrayScores>();
-   EBM_ASSERT(nullptr != aBins);
+   auto * const aBins = reinterpret_cast<BinBase *>(pParams->m_aFastBins)->Specialize<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores>();
 
    const size_t cSamples = pParams->m_cSamples;
-   EBM_ASSERT(1 <= cSamples);
 
-   const FloatFast * pGradientAndHessian = pParams->m_aGradientsAndHessians;
-   const FloatFast * const pGradientsAndHessiansEnd = pGradientAndHessian + (bHessian ? 2 : 1) * cScores * cSamples;
+   const typename TFloat::T * pGradientAndHessian = reinterpret_cast<const typename TFloat::T *>(pParams->m_aGradientsAndHessians);
+   const typename TFloat::T * const pGradientsAndHessiansEnd = pGradientAndHessian + (bHessian ? 2 : 1) * cScores * cSamples;
 
    struct DimensionalData {
-      ptrdiff_t m_cShift;
-      size_t m_cBitsPerItemMax;
-      StorageDataType m_iTensorBinCombined;
-      size_t m_maskBits;
+      int m_cShift;
+      int m_cBitsPerItemMax;
       size_t m_cBins;
-      const StorageDataType * m_pData;
-      ptrdiff_t m_cShiftReset;
+      const typename TFloat::TInt::T * m_pData;
+      int m_cShiftReset;
    };
+   alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::TInt aiBinCombined[(k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions)];
+   alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::TInt aMaskBits[(k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions)];
+   typename TFloat::TInt * const aiBinCombinedShifted = &aiBinCombined[1];
+   typename TFloat::TInt * const aMaskBitsShifted = &aMaskBits[1];
 
    const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, pParams->m_cRuntimeRealDimensions);
-   EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
-
-   EBM_ASSERT(1 == cCompilerDimensions || 1 != pParams->m_cRuntimeRealDimensions); // 1 dimension must be templated
 
    // this is on the stack and the compiler should be able to optimize these as if they were variables or registers
    DimensionalData aDimensionalData[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
@@ -84,24 +93,27 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
    do {
       DimensionalData * const pDimensionalData = &aDimensionalData[iDimensionInit];
 
-      const StorageDataType * const pData = pParams->m_aaPacked[iDimensionInit];
-      pDimensionalData->m_iTensorBinCombined = *pData;
-      pDimensionalData->m_pData = pData + 1;
+      const typename TFloat::TInt::T * const pData = reinterpret_cast<const typename TFloat::TInt::T *>(pParams->m_aaPacked[iDimensionInit]);
+      aiBinCombined[iDimensionInit] = TFloat::TInt::Load(pData);
+      pDimensionalData->m_pData = pData + TFloat::TInt::k_cSIMDPack;
 
-      const size_t cItemsPerBitPack = pParams->m_acItemsPerBitPack[iDimensionInit];
+      const int cItemsPerBitPack = static_cast<int>(pParams->m_acItemsPerBitPack[iDimensionInit]);
+#ifndef GPU_COMPILE
       EBM_ASSERT(1 <= cItemsPerBitPack);
-      EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+      EBM_ASSERT(static_cast<size_t>(cItemsPerBitPack) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
+#endif // GPU_COMPILE
 
-      const size_t cBitsPerItemMax = GetCountBits<StorageDataType>(cItemsPerBitPack);
+      const int cBitsPerItemMax = static_cast<int>(GetCountBits<typename TFloat::TInt::T>(static_cast<size_t>(cItemsPerBitPack)));;
+#ifndef GPU_COMPILE
       EBM_ASSERT(1 <= cBitsPerItemMax);
-      EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+      EBM_ASSERT(static_cast<size_t>(cBitsPerItemMax) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
+#endif // GPU_COMPILE
       pDimensionalData->m_cBitsPerItemMax = cBitsPerItemMax;
 
-      pDimensionalData->m_cShift = static_cast<ptrdiff_t>(((cSamples - 1) % cItemsPerBitPack + 1) * cBitsPerItemMax);
-      pDimensionalData->m_cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - 1) * cBitsPerItemMax);
+      pDimensionalData->m_cShift = (static_cast<int>((cSamples / TFloat::k_cSIMDPack - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) + 1) * cBitsPerItemMax;
+      pDimensionalData->m_cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
-      const size_t maskBits = static_cast<size_t>(MakeLowMask<StorageDataType>(cBitsPerItemMax));
-      pDimensionalData->m_maskBits = maskBits;
+      aMaskBits[iDimensionInit] = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
       pDimensionalData->m_cBins = pParams->m_acBins[iDimensionInit];
 
@@ -111,11 +123,14 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
    DimensionalData * const aDimensionalDataShifted = &aDimensionalData[1];
    const size_t cRealDimensionsMinusOne = cRealDimensions - 1;
 
-   const size_t cBytesPerBin = GetBinSize<FloatFast, StorageDataType>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cScores);
 
-   const FloatFast * pWeight;
+   const typename TFloat::T * pWeight;
    if(bWeight) {
-      pWeight = pParams->m_aWeights;
+      pWeight = reinterpret_cast<const typename TFloat::T *>(pParams->m_aWeights);
+#ifndef GPU_COMPILE
+      EBM_ASSERT(nullptr != pWeight);
+#endif // GPU_COMPILE
    }
 
    while(true) {
@@ -132,31 +147,42 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
       // want my tensors to be co-located into one big chunck of memory and the indexes will all index from the
       // base pointer!  I should be able to handle even very big tensors.  
 
-      unsigned char * pRawBin = reinterpret_cast<unsigned char *>(aBins);
+      Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores> * apBins[TFloat::k_cSIMDPack];
+      TFloat::EmptyExecuteFunc([aBins, &apBins](int i) {
+         apBins[i] = aBins;
+      });
       {
          DimensionalData * const pDimensionalData = &aDimensionalDataShifted[-1];
 
          pDimensionalData->m_cShift -= pDimensionalData->m_cBitsPerItemMax;
-         if(pDimensionalData->m_cShift < ptrdiff_t { 0 }) {
+         if(pDimensionalData->m_cShift < 0) {
             if(pGradientsAndHessiansEnd == pGradientAndHessian) {
                // we only need to check this for the first dimension since all dimensions will reach
                // this point simultaneously
                return;
             }
-            pDimensionalData->m_iTensorBinCombined = *pDimensionalData->m_pData;
-            pDimensionalData->m_pData = pDimensionalData->m_pData + 1;
+            aiBinCombinedShifted[-1] = TFloat::TInt::Load(pDimensionalData->m_pData);
+            pDimensionalData->m_pData = pDimensionalData->m_pData + TFloat::TInt::k_cSIMDPack;
             pDimensionalData->m_cShift = pDimensionalData->m_cShiftReset;
          }
 
-         const size_t iBin = static_cast<size_t>(
-            pDimensionalData->m_iTensorBinCombined >> pDimensionalData->m_cShift) & pDimensionalData->m_maskBits;
+         const typename TFloat::TInt iBin = (aiBinCombinedShifted[-1] >> pDimensionalData->m_cShift) & aMaskBitsShifted[-1];
 
          const size_t cBins = pDimensionalData->m_cBins;
          // earlier we return an interaction strength of 0.0 on any useless dimensions having 1 bin
+#ifndef NDEBUG
+#ifndef GPU_COMPILE
          EBM_ASSERT(size_t { 2 } <= cBins);
-         EBM_ASSERT(iBin < cBins);
+         ExecuteUnindexedFunc(iBin, [cBins](typename TFloat::TInt::T x) {
+            EBM_ASSERT(static_cast<size_t>(x) < cBins);
+         });
+#endif // GPU_COMPILE
+#endif // NDEBUG
 
-         pRawBin += iBin * cTensorBytes;
+         ExecuteFunc(iBin, [&apBins, cTensorBytes](int i, typename TFloat::TInt::T x) {
+            apBins[i] = IndexByte(apBins[i], static_cast<size_t>(x) * cTensorBytes);
+         });
+
          cTensorBytes *= cBins;
       }
       static constexpr bool isNotOneDimensional = 1 != cCompilerDimensions;
@@ -166,67 +192,91 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
             DimensionalData * const pDimensionalData = &aDimensionalDataShifted[iDimension];
 
             pDimensionalData->m_cShift -= pDimensionalData->m_cBitsPerItemMax;
-            if(pDimensionalData->m_cShift < ptrdiff_t { 0 }) {
-               pDimensionalData->m_iTensorBinCombined = *pDimensionalData->m_pData;
-               pDimensionalData->m_pData = pDimensionalData->m_pData + 1;
+            if(pDimensionalData->m_cShift < 0) {
+               aiBinCombinedShifted[iDimension] = TFloat::TInt::Load(pDimensionalData->m_pData);
+               pDimensionalData->m_pData = pDimensionalData->m_pData + TFloat::TInt::k_cSIMDPack;
                pDimensionalData->m_cShift = pDimensionalData->m_cShiftReset;
             }
 
-            const size_t iBin = static_cast<size_t>(
-               pDimensionalData->m_iTensorBinCombined >> pDimensionalData->m_cShift) & pDimensionalData->m_maskBits;
+            const typename TFloat::TInt iBin = (aiBinCombinedShifted[iDimension] >> pDimensionalData->m_cShift) & aMaskBitsShifted[iDimension];
 
             const size_t cBins = pDimensionalData->m_cBins;
             // earlier we return an interaction strength of 0.0 on any useless dimensions having 1 bin
+#ifndef NDEBUG
+#ifndef GPU_COMPILE
             EBM_ASSERT(size_t { 2 } <= cBins);
-            EBM_ASSERT(iBin < cBins);
+            ExecuteUnindexedFunc(iBin, [cBins](typename TFloat::TInt::T x) {
+               EBM_ASSERT(static_cast<size_t>(x) < cBins);
+            });
+#endif // GPU_COMPILE
+#endif // NDEBUG
 
-            pRawBin += iBin * cTensorBytes;
+            ExecuteFunc(iBin, [&apBins, cTensorBytes](int i, typename TFloat::TInt::T x) {
+               apBins[i] = IndexByte(apBins[i], static_cast<size_t>(x) * cTensorBytes);
+            });
+
             cTensorBytes *= cBins;
 
             ++iDimension;
          } while(cRealDimensionsMinusOne != iDimension);
       }
 
-      auto * const pBin = reinterpret_cast<Bin<FloatFast, StorageDataType, bHessian, cArrayScores> *>(pRawBin);
-      ASSERT_BIN_OK(cBytesPerBin, pBin, pParams->m_pDebugFastBinsEnd);
+#ifndef NDEBUG
+#ifndef GPU_COMPILE
+      TFloat::EmptyExecuteFunc([cBytesPerBin, apBins, pParams](int i) {
+         ASSERT_BIN_OK(cBytesPerBin, apBins[i], pParams->m_pDebugFastBinsEnd);
+      });
+#endif // GPU_COMPILE
+#endif // NDEBUG
 
-      pBin->SetCountSamples(pBin->GetCountSamples() + size_t { 1 });
-
-      if(bWeight) {
-         const FloatFast weight = *pWeight;
-         pBin->SetWeight(pBin->GetWeight() + weight);
-         ++pWeight;
-      } else {
+      TFloat::EmptyExecuteFunc([apBins](int i) {
+         auto * pBin = apBins[i];
          // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
          //       such that we can remove that field optionally
-         pBin->SetWeight(pBin->GetWeight() + FloatFast { 1 });
+         pBin->SetCountSamples(pBin->GetCountSamples() + typename TFloat::TInt::T { 1 });
+      });
+
+      if(bWeight) {
+         const TFloat weight = TFloat::Load(pWeight);
+         pWeight += TFloat::k_cSIMDPack;
+
+         ExecuteFunc(weight, [apBins](int i, typename TFloat::T x) {
+            auto * pBin = apBins[i];
+            // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
+            //       such that we can remove that field optionally
+            pBin->SetWeight(pBin->GetWeight() + x);
+         });
+      } else {
+         TFloat::EmptyExecuteFunc([apBins](int i) {
+            auto * pBin = apBins[i];
+            // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
+            //       such that we can remove that field optionally
+            pBin->SetWeight(pBin->GetWeight() + typename TFloat::T { 1.0 });
+         });
       }
 
-      auto * const aGradientPair = pBin->GetGradientPairs();
       size_t iScore = 0;
       do {
-         // TODO: unlike for BinSumsBoosting, we can re-arrange the values inside pGradientAndHessian to whatever
-         //       order works best for us. Right now we put k_cSIMDPack gradient values for each sample in the pack
-         //       next to eachother, then the k_cSIMDPack hessians, then we do the same for the next class if 
-         //       this is multi-class.  If we don't SIMD-ify this code (we could do that if we're willing to use
-         //       scattered writes and multiple histograms), then we'll probably want to move the gradient and hessian
-         //       for sample 0 to be adjacent, then the gradient & hessian for class 1 of sample 0 to follow that
-         //       to keep memory loads in order)
-         //       We can do this because we only calculate the gradients & hessians during initialization, unlike
-         //       boosting where they constantly change on each boost step
-
-         auto * const pGradientPair = &aGradientPair[iScore];
-         const FloatFast gradient = bHessian ? pGradientAndHessian[iScore << 1] : pGradientAndHessian[iScore];
-         // DO NOT MULTIPLY gradient BY WEIGHT. WE PRE-MULTIPLIED WHEN WE ALLOCATED pGradientAndHessian
-         pGradientPair->m_sumGradients += gradient;
+         const TFloat gradient = TFloat::Load(bHessian ? &pGradientAndHessian[iScore << (TFloat::k_cSIMDShift + 1)] : &pGradientAndHessian[iScore << TFloat::k_cSIMDShift]);
+         ExecuteFunc(gradient, [apBins, iScore](int i, typename TFloat::T x) {
+            auto * pBin = apBins[i];
+            auto * const aGradientPair = pBin->GetGradientPairs();
+            auto * const pGradientPair = &aGradientPair[iScore];
+            pGradientPair->m_sumGradients += x;
+         });
          if(bHessian) {
-            const FloatFast hessian = pGradientAndHessian[(iScore << 1) + 1];
-            // DO NOT MULTIPLY hessian BY WEIGHT. WE PRE-MULTIPLIED WHEN WE ALLOCATED pGradientAndHessian
-            pGradientPair->SetHess(pGradientPair->GetHess() + hessian);
+            const TFloat hessian = TFloat::Load(&pGradientAndHessian[(iScore << (TFloat::k_cSIMDShift + 1)) + TFloat::k_cSIMDPack]);
+            ExecuteFunc(hessian, [apBins, iScore](int i, typename TFloat::T x) {
+               auto * pBin = apBins[i];
+               auto * const aGradientPair = pBin->GetGradientPairs();
+               auto * const pGradientPair = &aGradientPair[iScore];
+               pGradientPair->SetHess(pGradientPair->GetHess() + x);
+            });
          }
          ++iScore;
       } while(cScores != iScore);
-      pGradientAndHessian += bHessian ? cScores << 1 : cScores;
+
+      pGradientAndHessian += bHessian ? (cScores << (TFloat::k_cSIMDShift + 1)) : (cScores << TFloat::k_cSIMDShift);
    }
 }
 

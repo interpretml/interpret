@@ -74,16 +74,6 @@ struct Cpu_64_Int final {
       func(val.m_data);
    }
 
-   template<typename TFunc>
-   static inline void EmptyExecuteFunc(const TFunc & func) noexcept {
-      func(0);
-   }
-
-   template<typename TFunc>
-   static inline void EmptyUnindexedExecuteFunc(const TFunc & func) noexcept {
-      func();
-   }
-
    inline static Cpu_64_Int MakeIndexes() noexcept {
       return Cpu_64_Int(0);
    }

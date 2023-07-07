@@ -123,6 +123,13 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
             ExecuteFunc(iTensorBin, [aBins, &apBins](int i, typename TFloat::TInt::T x) {
                apBins[i] = IndexBin(aBins, static_cast<size_t>(x));
             });
+#ifndef NDEBUG
+#ifndef GPU_COMPILE
+            TFloat::EmptyExecuteFunc([cBytesPerBin, apBins, pParams](int i) {
+               ASSERT_BIN_OK(cBytesPerBin, apBins[i], pParams->m_pDebugFastBinsEnd);
+            });
+#endif // GPU_COMPILE
+#endif // NDEBUG
          }
 
          // TODO: the ultimate version of this algorithm would:
