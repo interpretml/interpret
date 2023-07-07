@@ -52,11 +52,7 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
    typename TFloat::TInt maskBits;
    const typename TFloat::TInt::T * pInputData;
 
-   typename TFloat::TInt iTensorBin;
-
-   if(bCompilerZeroDimensional) {
-      iTensorBin = 0;
-   } else {
+   if(!bCompilerZeroDimensional) {
       cBytesPerBin = static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cScores));
 
       const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
@@ -122,29 +118,12 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
       while(true) {
          Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores> * apBins[TFloat::k_cSIMDPack];
          if(!bCompilerZeroDimensional) {
-            iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
+            typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
             iTensorBin = Multiply<typename TFloat::TInt, typename TFloat::TInt::T, k_dynamicScores != cCompilerScores, static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cCompilerScores))>(iTensorBin, cBytesPerBin);
-
             ExecuteFunc(iTensorBin, [aBins, &apBins](int i, typename TFloat::TInt::T x) {
-               // TODO: the ultimate version of this algorithm would:
-               //   1) Write to k_cSIMDPack histograms simutaneously to avoid collisions of indexes
-               //   2) Sum up the final histograms using SIMD operations in parallel.  If we hvae k_cSIMDPack
-               //      histograms, then we're prefectly suited to sum them, and integers and float32 values shouldn't
-               //      have issues since we stay well away from 2^32 integers, and the float values don't have addition
-               //      issues anymore (where you can't add a 1 to more than 16 million floats)
-               //   But to do this, we need:
-               //   1) scattered reads
-               //   2) scattered writes
-               //   3) possibly parallel integer multiplication (?), which is from a later version of SIMD
-               //   4) the ability to index everything with uint32 indexes (for all histograms)
-               //   5) the scattered reads and writes to not be too slow (they at least must fit into L3 cache?)
-               //   We will need to rip apart the Bin class since we'll operate on multiple bins at a time. Maybe
-               //   use offsetof to index float32/uint32 indexes inside the Bin classes in parallel.  (messy!)
-
                apBins[i] = IndexBin(aBins, static_cast<size_t>(x));
             });
          }
-
 
          // TODO: the ultimate version of this algorithm would:
          //   1) Write to k_cSIMDPack histograms simutaneously to avoid collisions of indexes

@@ -310,6 +310,11 @@ struct Cuda_32_Float final {
 
    template<typename TObjective, size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Objective * const pObjective, ApplyUpdateBridge * const pData) noexcept {
+      // TODO: currently we're duplicating all this code to interface with the GPU for each and every templated
+      //       set of options. We should instead call a single non-templated function to handle most of this where
+      //       the code can be shared accross instanciations, and then make the final call to RemoteApplyUpdate from 
+      //       this function
+
       static constexpr size_t k_cItems = 5;
 
       bool bExitError = true;
