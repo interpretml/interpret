@@ -149,7 +149,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
          EBM_ASSERT(static_cast<size_t>(cBitsPerItemMax) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
 #endif // GPU_COMPILE
 
-         cShift = static_cast<int>((cSamples / TFloat::k_cSIMDPack - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
+         cShift = static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
          cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
          maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
@@ -231,7 +231,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                if(bGetTarget) {
                   const TFloat oneExp = ApplyFunction(sampleScore, [](typename TFloat::T x) { return ExpForMulticlass<false>(x); });
                   sumExp += oneExp;
-                  oneExp.Store(&aExps[iScore1 * TFloat::k_cSIMDPack]);
+                  oneExp.Store(&aExps[iScore1 << TFloat::k_cSIMDShift]);
                }
 
                ++iScore1;
@@ -248,15 +248,15 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
 
                size_t iScore2 = 0;
                do {
-                  const TFloat itemExp = TFloat::Load(&aExps[iScore2 * TFloat::k_cSIMDPack]);
+                  const TFloat itemExp = TFloat::Load(&aExps[iScore2 << TFloat::k_cSIMDShift]);
                   const TFloat gradient = itemExp * sumExpInverted;
 
                   if(bHessian) {
                      const TFloat hessian = gradient * (TFloat { 1.0 } - gradient);
-                     gradient.Store(&pGradientAndHessian[iScore2 * (TFloat::k_cSIMDPack * 2)]);
-                     hessian.Store(&pGradientAndHessian[iScore2 * (TFloat::k_cSIMDPack * 2) + TFloat::k_cSIMDPack]);
+                     gradient.Store(&pGradientAndHessian[iScore2 << (TFloat::k_cSIMDShift + 1)]);
+                     hessian.Store(&pGradientAndHessian[(iScore2 << (TFloat::k_cSIMDShift + 1)) + TFloat::k_cSIMDPack]);
                   } else {
-                     gradient.Store(&pGradientAndHessian[iScore2 * TFloat::k_cSIMDPack]);
+                     gradient.Store(&pGradientAndHessian[iScore2 << TFloat::k_cSIMDShift]);
                   }
 
                   ++iScore2;
@@ -276,11 +276,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                adjust -= 1.0;
                adjust.Store(pGradientAndHessian, target);
 
-               if(bHessian) {
-                  pGradientAndHessian += (TFloat::k_cSIMDPack + TFloat::k_cSIMDPack) * cScores;
-               } else {
-                  pGradientAndHessian += TFloat::k_cSIMDPack * cScores;
-               }
+               pGradientAndHessian += cScores << (bHessian ? (TFloat::k_cSIMDShift + 1) : TFloat::k_cSIMDShift);
             } else if(bCalcMetric) {
                // TODO: instead of writing the exp values to memory, since we just need 1 and the sum, 
                // we could use an if selector to keep only the one that matches our target and we don't need

@@ -41,10 +41,12 @@ struct DataSubsetInteraction final {
    inline size_t GetCountSamples() const {
       return m_cSamples;
    }
+
    inline const ObjectiveWrapper * GetObjectiveWrapper() const {
       EBM_ASSERT(nullptr != m_pObjective);
       return m_pObjective;
    }
+
    inline ErrorEbm ObjectiveApplyUpdate(ApplyUpdateBridge * const pData) {
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != m_pObjective);
@@ -52,6 +54,7 @@ struct DataSubsetInteraction final {
       EBM_ASSERT(0 == m_cSamples % m_pObjective->m_cSIMDPack);
       return (*m_pObjective->m_pApplyUpdateC)(m_pObjective, pData);
    }
+
    inline ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pParams) {
       EBM_ASSERT(nullptr != pParams);
       EBM_ASSERT(nullptr != m_pObjective);
@@ -60,15 +63,17 @@ struct DataSubsetInteraction final {
       return (*m_pObjective->m_pBinSumsInteractionC)(m_pObjective, pParams);
    }
 
-   inline FloatFast * GetGradHess() {
+   inline void * GetGradHess() {
       EBM_ASSERT(nullptr != m_aGradHess);
       return m_aGradHess;
    }
-   inline const StorageDataType * GetFeatureData(const size_t iFeature) const {
+
+   inline const void * GetFeatureData(const size_t iFeature) const {
       EBM_ASSERT(nullptr != m_aaFeatureData);
       return m_aaFeatureData[iFeature];
    }
-   inline const FloatFast * GetWeights() const {
+
+   inline const void * GetWeights() const {
       return m_aWeights;
    }
 
@@ -76,9 +81,9 @@ private:
 
    size_t m_cSamples;
    const ObjectiveWrapper * m_pObjective;
-   FloatFast * m_aGradHess;
-   StorageDataType ** m_aaFeatureData;
-   FloatFast * m_aWeights;
+   void * m_aGradHess;
+   void ** m_aaFeatureData;
+   void * m_aWeights;
 };
 static_assert(std::is_standard_layout<DataSubsetInteraction>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");

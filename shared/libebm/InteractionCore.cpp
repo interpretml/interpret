@@ -72,7 +72,7 @@ ErrorEbm InteractionCore::Create(
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
    UNUSED(experimentalParams);
 
-   LOG_0(Trace_Info, "Entered InteractionCore::Allocate");
+   LOG_0(Trace_Info, "Entered InteractionCore::Create");
 
    EBM_ASSERT(nullptr != ppInteractionCoreOut);
    EBM_ASSERT(nullptr == *ppInteractionCoreOut);
@@ -106,17 +106,17 @@ ErrorEbm InteractionCore::Create(
       return error;
    }
 
-   LOG_0(Trace_Info, "InteractionCore::Allocate starting feature processing");
+   LOG_0(Trace_Info, "InteractionCore::Create starting feature processing");
    if(0 != cFeatures) {
       if(IsMultiplyError(sizeof(FeatureInteraction), cFeatures)) {
-         LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate IsMultiplyError(sizeof(Feature), cFeatures)");
+         LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsMultiplyError(sizeof(Feature), cFeatures)");
          return Error_OutOfMemory;
       }
       pInteractionCore->m_cFeatures = cFeatures;
       FeatureInteraction * const aFeatures =
          static_cast<FeatureInteraction *>(malloc(sizeof(FeatureInteraction) * cFeatures));
       if(nullptr == aFeatures) {
-         LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate nullptr == aFeatures");
+         LOG_0(Trace_Warning, "WARNING InteractionCore::Create nullptr == aFeatures");
          return Error_OutOfMemory;
       }
       pInteractionCore->m_aFeatures = aFeatures;
@@ -144,36 +144,30 @@ ErrorEbm InteractionCore::Create(
          EBM_ASSERT(!bSparse); // not handled yet
 
          if(IsConvertError<size_t>(countBins)) {
-            LOG_0(Trace_Error, "ERROR InteractionCore::Allocate IsConvertError<size_t>(countBins)");
+            LOG_0(Trace_Error, "ERROR InteractionCore::Create IsConvertError<size_t>(countBins)");
             return Error_IllegalParamVal;
          }
          const size_t cBins = static_cast<size_t>(countBins);
          if(0 == cBins) {
             if(0 != cSamples) {
-               LOG_0(Trace_Error, "ERROR InteractionCore::Allocate countBins cannot be zero if 0 < cSamples");
+               LOG_0(Trace_Error, "ERROR InteractionCore::Create countBins cannot be zero if 0 < cSamples");
                return Error_IllegalParamVal;
             }
             // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
             // can only occur if there were zero training and zero validation cases since the 
             // features would require a value, even if it was 0.
-            LOG_0(Trace_Info, "INFO InteractionCore::Allocate feature with 0 values");
+            LOG_0(Trace_Info, "INFO InteractionCore::Create feature with 0 values");
          } else if(1 == cBins) {
             // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on. 
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
-            LOG_0(Trace_Info, "INFO InteractionCore::Allocate feature with 1 value");
-         } else {
-            // can we fit iBin into a StorageDataType. We need to check this prior to calling Initialize
-            if(IsConvertError<StorageDataType>(cBins - size_t { 1 })) {
-               LOG_0(Trace_Warning, "WARNING InteractionCore::Allocate IsConvertError<StorageDataType>(cBins - size_t { 1 })");
-               return Error_OutOfMemory;
-            }
+            LOG_0(Trace_Info, "INFO InteractionCore::Create feature with 1 value");
          }
          aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnknown, bNominal);
 
          ++iFeatureInitialize;
       } while(cFeatures != iFeatureInitialize);
    }
-   LOG_0(Trace_Info, "InteractionCore::Allocate done feature processing");
+   LOG_0(Trace_Info, "InteractionCore::Create done feature processing");
 
 
    ptrdiff_t cClasses;
@@ -191,7 +185,7 @@ ErrorEbm InteractionCore::Create(
       Config config;
       config.cOutputs = cScores;
       config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
-      error = GetObjective(&config, sObjective, &pInteractionCore->m_objectiveCpu, nullptr);
+      error = GetObjective(&config, sObjective, &pInteractionCore->m_objectiveCpu, &pInteractionCore->m_objectiveSIMD);
       if(Error_None != error) {
          // already logged
          return error;
@@ -219,9 +213,178 @@ ErrorEbm InteractionCore::Create(
 
       const bool bHessian = pInteractionCore->IsHessian();
 
-      if(IsOverflowBinSize<FloatFast, StorageDataType>(bHessian, cScores) || IsOverflowBinSize<FloatBig, StorageDataType>(bHessian, cScores)) {
-         LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsOverflowBinSize overflow");
-         return Error_OutOfMemory;
+      FeatureInteraction * pFeature = pInteractionCore->m_aFeatures;
+      const FeatureInteraction * const pFeatureEnd = nullptr == pFeature ? nullptr : pFeature + cFeatures;
+      if(sizeof(UInt_Small) == pInteractionCore->m_objectiveCpu.m_cUIntBytes) {
+         if(sizeof(Float_Small) == pInteractionCore->m_objectiveCpu.m_cFloatBytes) {
+            if(IsOverflowBinSize<Float_Small, UInt_Small>(bHessian, cScores)) {
+               LOG_0(Trace_Warning, "WARNING InteractionCore::Create bin size overflow");
+               return Error_OutOfMemory;
+            }
+         } else {
+            EBM_ASSERT(sizeof(Float_Big) == pInteractionCore->m_objectiveCpu.m_cFloatBytes);
+            if(IsOverflowBinSize<Float_Big, UInt_Small>(bHessian, cScores)) {
+               LOG_0(Trace_Warning, "WARNING InteractionCore::Create bin size overflow");
+               return Error_OutOfMemory;
+            }
+         }
+         if(IsMulticlass(cClasses)) {
+            // TODO: we currently index into the gradient array using the target, but the gradient array is also
+            // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
+            // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
+            size_t cIndexes = static_cast<size_t>(cClasses);
+            if(bHessian) {
+               if(IsMultiplyError(size_t { 2 }, cIndexes)) {
+                  LOG_0(Trace_Error, "ERROR InteractionCore::Create target indexes cannot fit into compute zone indexes");
+                  return Error_IllegalParamVal;
+               }
+               cIndexes *= 2;
+            }
+            if(IsConvertError<UInt_Small>(cIndexes - size_t { 1 })) {
+               LOG_0(Trace_Error, "ERROR InteractionCore::Create target indexes cannot fit into compute zone indexes");
+               return Error_IllegalParamVal;
+            }
+         }
+         for(; pFeatureEnd != pFeature; ++pFeature) {
+            const size_t cBins = pFeature->GetCountBins();
+            if(0 != cBins && IsConvertError<UInt_Small>(cBins - 1)) {
+               LOG_0(Trace_Error, "ERROR InteractionCore::Create IsConvertError<UInt_Small>((*ppTerm)->GetCountTensorBins())");
+               return Error_IllegalParamVal;
+            }
+         }
+      } else {
+         EBM_ASSERT(sizeof(UInt_Big) == pInteractionCore->m_objectiveCpu.m_cUIntBytes);
+         if(sizeof(Float_Small) == pInteractionCore->m_objectiveCpu.m_cFloatBytes) {
+            if(IsOverflowBinSize<Float_Small, UInt_Big>(bHessian, cScores)) {
+               LOG_0(Trace_Warning, "WARNING InteractionCore::Create bin size overflow");
+               return Error_OutOfMemory;
+            }
+         } else {
+            EBM_ASSERT(sizeof(Float_Big) == pInteractionCore->m_objectiveCpu.m_cFloatBytes);
+            if(IsOverflowBinSize<Float_Big, UInt_Big>(bHessian, cScores)) {
+               LOG_0(Trace_Warning, "WARNING InteractionCore::Create bin size overflow");
+               return Error_OutOfMemory;
+            }
+         }
+         if(IsMulticlass(cClasses)) {
+            // TODO: we currently index into the gradient array using the target, but the gradient array is also
+            // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
+            // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
+            size_t cIndexes = static_cast<size_t>(cClasses);
+            if(bHessian) {
+               if(IsMultiplyError(size_t { 2 }, cIndexes)) {
+                  LOG_0(Trace_Error, "ERROR InteractionCore::Create target indexes cannot fit into compute zone indexes");
+                  return Error_IllegalParamVal;
+               }
+               cIndexes *= 2;
+            }
+            if(IsConvertError<UInt_Big>(cIndexes - size_t { 1 })) {
+               LOG_0(Trace_Error, "ERROR InteractionCore::Create target indexes cannot fit into compute zone indexes");
+               return Error_IllegalParamVal;
+            }
+         }
+         for(; pFeatureEnd != pFeature; ++pFeature) {
+            const size_t cBins = pFeature->GetCountBins();
+            if(0 != cBins && IsConvertError<UInt_Big>(cBins - 1)) {
+               LOG_0(Trace_Error, "ERROR InteractionCore::Create IsConvertError<UInt_Big>((*ppTerm)->GetCountTensorBins())");
+               return Error_IllegalParamVal;
+            }
+         }
+      }
+
+      if(0 != pInteractionCore->m_objectiveSIMD.m_cUIntBytes) {
+         bool bRemoveSIMD = false;
+         while(true) {
+            if(sizeof(UInt_Small) == pInteractionCore->m_objectiveSIMD.m_cUIntBytes) {
+               if(sizeof(Float_Small) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes) {
+                  if(IsOverflowBinSize<Float_Small, UInt_Small>(bHessian, cScores)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               } else {
+                  EBM_ASSERT(sizeof(Float_Big) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes);
+                  if(IsOverflowBinSize<Float_Big, UInt_Small>(bHessian, cScores)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               }
+               if(IsMulticlass(cClasses)) {
+                  // TODO: we currently index into the gradient array using the target, but the gradient array is also
+                  // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
+                  // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
+                  size_t cIndexes = static_cast<size_t>(cClasses);
+                  if(bHessian) {
+                     if(IsMultiplyError(size_t { 2 }, cIndexes)) {
+                        bRemoveSIMD = true;
+                        break;
+                     }
+                     cIndexes *= 2;
+                  }
+                  if(IsMultiplyError(cIndexes, pInteractionCore->m_objectiveSIMD.m_cSIMDPack)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+                  if(IsConvertError<UInt_Small>(cIndexes * pInteractionCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               }
+               for(; pFeatureEnd != pFeature; ++pFeature) {
+                  const size_t cBins = pFeature->GetCountBins();
+                  if(0 != cBins && IsConvertError<UInt_Small>(cBins - 1)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               }
+            } else {
+               EBM_ASSERT(sizeof(UInt_Big) == pInteractionCore->m_objectiveSIMD.m_cUIntBytes);
+               if(sizeof(Float_Small) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes) {
+                  if(IsOverflowBinSize<Float_Small, UInt_Big>(bHessian, cScores)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               } else {
+                  EBM_ASSERT(sizeof(Float_Big) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes);
+                  if(IsOverflowBinSize<Float_Big, UInt_Big>(bHessian, cScores)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               }
+               if(IsMulticlass(cClasses)) {
+                  // TODO: we currently index into the gradient array using the target, but the gradient array is also
+                  // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
+                  // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
+                  size_t cIndexes = static_cast<size_t>(cClasses);
+                  if(bHessian) {
+                     if(IsMultiplyError(size_t { 2 }, cIndexes)) {
+                        bRemoveSIMD = true;
+                        break;
+                     }
+                     cIndexes *= 2;
+                  }
+                  if(IsMultiplyError(cIndexes, pInteractionCore->m_objectiveSIMD.m_cSIMDPack)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+                  if(IsConvertError<UInt_Big>(cIndexes * pInteractionCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               }
+               for(; pFeatureEnd != pFeature; ++pFeature) {
+                  const size_t cBins = pFeature->GetCountBins();
+                  if(0 != cBins && IsConvertError<UInt_Big>(cBins - 1)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               }
+            }
+            break;
+         }
+         if(bRemoveSIMD) {
+            FreeObjectiveWrapperInternals(&pInteractionCore->m_objectiveSIMD);
+            InitializeObjectiveWrapperUnfailing(&pInteractionCore->m_objectiveSIMD);
+         }
       }
 
       error = pInteractionCore->m_dataFrame.InitDataSetInteraction(
@@ -240,6 +403,11 @@ ErrorEbm InteractionCore::Create(
       if(Error_None != error) {
          return error;
       }
+
+      if(IsOverflowBinSize<FloatBig, StorageDataType>(bHessian, cScores)) {
+         LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsOverflowBinSize overflow");
+         return Error_OutOfMemory;
+      }
    }
 
    LOG_0(Trace_Info, "Exited InteractionCore::Allocate");
@@ -255,23 +423,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
    const double * const aInitScores
 ) {
    ErrorEbm error = Error_None;
-   const size_t cIncludedSamples = m_dataFrame.GetCountSamples();
-   if(size_t { 0 } != cIncludedSamples) {
-      size_t cSamplesMax = 1;
-      DataSubsetInteraction * pSubsetInit = GetDataSetInteraction()->GetSubsets();
-      EBM_ASSERT(1 <= GetDataSetInteraction()->GetCountSubsets());
-      const DataSubsetInteraction * const pSubsetsEnd = pSubsetInit + GetDataSetInteraction()->GetCountSubsets();
-      do {
-         size_t cSamples = pSubsetInit->GetCountSamples();
-         EBM_ASSERT(1 <= cSamples);
-         if(cSamplesMax < cSamples) {
-            cSamplesMax = cSamples;
-         }
-         ++pSubsetInit;
-      } while(pSubsetsEnd != pSubsetInit);
-
-      ApplyUpdateBridge data;
-
+   if(size_t { 0 } != m_dataFrame.GetCountSamples()) {
       ptrdiff_t cClasses;
       const void * const aTargetsFrom = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
       EBM_ASSERT(nullptr != aTargetsFrom); // we previously called GetDataSetSharedTarget and got back a non-null result
@@ -280,22 +432,60 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       const size_t cScores = GetCountScores(cClasses);
       EBM_ASSERT(1 <= cScores);
 
-      if(IsMultiplyError(sizeof(FloatFast), cScores, cSamplesMax)) {
-         LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cScores, cSamplesMax)");
-         return Error_OutOfMemory;
-      }
-      const size_t cBytesScores = sizeof(FloatFast) * cScores;
-      ANALYSIS_ASSERT(0 != cBytesScores);
-      const size_t cBytesAllScores = cBytesScores * cSamplesMax;
+      size_t cBytesScoresMax = 0;
+      size_t cBytesAllScoresMax = 0;
+      size_t cBytesTempMax = 0;
+      size_t cBytesTargetMax = 0;
+      DataSubsetInteraction * pSubsetInit = GetDataSetInteraction()->GetSubsets();
+      EBM_ASSERT(1 <= GetDataSetInteraction()->GetCountSubsets());
+      const DataSubsetInteraction * const pSubsetsEnd = pSubsetInit + GetDataSetInteraction()->GetCountSubsets();
+      do {
+         size_t cSamples = pSubsetInit->GetCountSamples();
+         EBM_ASSERT(1 <= cSamples);
 
-      FloatFast * const aSampleScoreTo = static_cast<FloatFast *>(AlignedAlloc(cBytesAllScores));
+         if(IsMultiplyError(pSubsetInit->GetObjectiveWrapper()->m_cFloatBytes, cScores, 
+            EbmMax(cSamples, pSubsetInit->GetObjectiveWrapper()->m_cSIMDPack))) 
+         {
+            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(pSubsetInit->GetObjectiveWrapper()->m_cFloatBytes, cScores, EbmMax(cSamples, pSubsetInit->GetObjectiveWrapper()->m_cSIMDPack))");
+            return Error_OutOfMemory;
+         }
+         const size_t cBytesScores = pSubsetInit->GetObjectiveWrapper()->m_cFloatBytes * cScores;
+         const size_t cBytesTemp = cBytesScores * pSubsetInit->GetObjectiveWrapper()->m_cSIMDPack;
+         const size_t cBytesAllScores = cBytesScores * cSamples;
+
+         cBytesScoresMax = EbmMax(cBytesScoresMax, cBytesScores);
+         cBytesAllScoresMax = EbmMax(cBytesAllScoresMax, cBytesAllScores);
+         cBytesTempMax = EbmMax(cBytesTempMax, cBytesTemp);
+
+         if(IsClassification(cClasses)) {
+            if(IsMultiplyError(pSubsetInit->GetObjectiveWrapper()->m_cUIntBytes, cSamples)) {
+               LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(pSubsetInit->GetObjectiveWrapper()->m_cUIntBytes, cSamples)");
+               return Error_OutOfMemory;
+            }
+            const size_t cBytesTarget = pSubsetInit->GetObjectiveWrapper()->m_cUIntBytes * cSamples;
+            cBytesTargetMax = EbmMax(cBytesTargetMax, cBytesTarget);
+         } else {
+            if(IsMultiplyError(pSubsetInit->GetObjectiveWrapper()->m_cFloatBytes, cSamples)) {
+               LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(pSubsetInit->GetObjectiveWrapper()->m_cFloatBytes, cSamples)");
+               return Error_OutOfMemory;
+            }
+            const size_t cBytesTarget = pSubsetInit->GetObjectiveWrapper()->m_cFloatBytes * cSamples;
+            cBytesTargetMax = EbmMax(cBytesTargetMax, cBytesTarget);
+         }
+
+         ++pSubsetInit;
+      } while(pSubsetsEnd != pSubsetInit);
+
+      ApplyUpdateBridge data;
+
+      void * const aSampleScoreTo = AlignedAlloc(cBytesAllScoresMax);
       if(UNLIKELY(nullptr == aSampleScoreTo)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aSampleScoreTo");
          return Error_OutOfMemory;
       }
       data.m_aSampleScores = aSampleScoreTo;
 
-      FloatFast * const aUpdateScores = static_cast<FloatFast *>(AlignedAlloc(cBytesScores));
+      void * const aUpdateScores = AlignedAlloc(cBytesScoresMax);
       if(UNLIKELY(nullptr == aUpdateScores)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aUpdateScores");
          error = Error_OutOfMemory;
@@ -303,16 +493,11 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       }
       data.m_aUpdateTensorScores = aUpdateScores;
 
-      memset(aUpdateScores, 0, cBytesScores);
+      memset(aUpdateScores, 0, cBytesScoresMax);
 
       data.m_aMulticlassMidwayTemp = nullptr;
       if(IsClassification(cClasses)) {
-         if(IsMultiplyError(sizeof(StorageDataType), cSamplesMax)) {
-            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(StorageDataType), cSamplesMax)");
-            error = Error_OutOfMemory;
-            goto free_tensor_scores;
-         }
-         StorageDataType * const aTargetTo = static_cast<StorageDataType *>(AlignedAlloc(sizeof(StorageDataType) * cSamplesMax));
+         void * const aTargetTo = AlignedAlloc(cBytesTargetMax);
          if(UNLIKELY(nullptr == aTargetTo)) {
             LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aTargetTo");
             error = Error_OutOfMemory;
@@ -321,7 +506,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          data.m_aTargets = aTargetTo;
 
          if(IsMulticlass(cClasses)) {
-            FloatFast * const aMulticlassMidwayTemp = static_cast<FloatFast *>(AlignedAlloc(cBytesScores));
+            void * const aMulticlassMidwayTemp = AlignedAlloc(cBytesTempMax);
             if(UNLIKELY(nullptr == aMulticlassMidwayTemp)) {
                LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aMulticlassMidwayTemp");
                error = Error_OutOfMemory;
@@ -336,64 +521,81 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          const double * pInitScoreFrom = aInitScores;
          BagEbm replication = 0;
          const double * pInitScoreFromOld = nullptr;
-         StorageDataType target;
+         SharedStorageDataType target;
 
          DataSubsetInteraction * pSubset = GetDataSetInteraction()->GetSubsets();
          do {
             EBM_ASSERT(1 <= pSubset->GetCountSamples());
-            StorageDataType * pTargetTo = aTargetTo;
-            FloatFast * pSampleScoreTo = aSampleScoreTo;
-            const StorageDataType * const pTargetToEnd = &aTargetTo[pSubset->GetCountSamples()];
+
+            const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
+            EBM_ASSERT(0 == pSubset->GetCountSamples() % cSIMDPack);
+
+            void * pTargetTo = aTargetTo;
+            void * pSampleScoreTo = aSampleScoreTo;
+            const void * const pTargetToEnd = IndexByte(aTargetTo, pSubset->GetObjectiveWrapper()->m_cUIntBytes * pSubset->GetCountSamples());
+            double initScore = 0;
             do {
-               if(BagEbm { 0 } == replication) {
-                  replication = 1;
-                  size_t cAdvance = cScores;
-                  if(nullptr != pSampleReplication) {
-                     cAdvance = 0; // we'll add this now inside the loop below
-                     do {
-                        do {
-                           replication = *pSampleReplication;
-                           ++pSampleReplication;
-                           ++pTargetFrom;
-                        } while(BagEbm { 0 } == replication);
-                        cAdvance += cScores;
-                     } while(replication < BagEbm { 0 });
-                     --pTargetFrom;
-                  }
-
-                  if(nullptr != pInitScoreFrom) {
-                     pInitScoreFrom += cAdvance;
-                     pInitScoreFromOld = pInitScoreFrom - cScores;
-                  }
-
-                  const SharedStorageDataType targetOriginal = *pTargetFrom;
-                  ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
-
-                  // the shared data storage structure ensures that all target values are less than the number of classes
-                  // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
-                  // so we do not need the runtime to check this
-                  EBM_ASSERT(targetOriginal < static_cast<SharedStorageDataType>(cClasses));
-                  // since cClasses must be below StorageDataType, it follows that..
-                  EBM_ASSERT(!IsConvertError<StorageDataType>(targetOriginal));
-                  target = static_cast<StorageDataType>(targetOriginal);
-               }
-
-               *pTargetTo = target;
-               ++pTargetTo;
-
-               const double * pInitScoreFromLoop = pInitScoreFromOld;
-               const FloatFast * const pSampleScoreToEnd = pSampleScoreTo + cScores;
+               size_t iPartition = 0;
                do {
-                  FloatFast initScore = 0;
-                  if(nullptr != pInitScoreFromLoop) {
-                     initScore = SafeConvertFloat<FloatFast>(*pInitScoreFromLoop);
-                     ++pInitScoreFromLoop;
-                  }
-                  *pSampleScoreTo = initScore;
-                  ++pSampleScoreTo;
-               } while(pSampleScoreToEnd != pSampleScoreTo);
-               --replication;
+                  if(BagEbm { 0 } == replication) {
+                     replication = 1;
+                     size_t cAdvance = cScores;
+                     if(nullptr != pSampleReplication) {
+                        cAdvance = 0; // we'll add this now inside the loop below
+                        do {
+                           do {
+                              replication = *pSampleReplication;
+                              ++pSampleReplication;
+                              ++pTargetFrom;
+                           } while(BagEbm { 0 } == replication);
+                           cAdvance += cScores;
+                        } while(replication < BagEbm { 0 });
+                        --pTargetFrom;
+                     }
 
+                     if(nullptr != pInitScoreFrom) {
+                        pInitScoreFrom += cAdvance;
+                        pInitScoreFromOld = pInitScoreFrom - cScores;
+                     }
+
+                     target = *pTargetFrom;
+                     ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
+
+                     // the shared data storage structure ensures that all target values are less than the number of classes
+                     // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
+                     // so we do not need the runtime to check this
+                     EBM_ASSERT(target < static_cast<SharedStorageDataType>(cClasses));
+                  }
+
+                  if(sizeof(UInt_Small) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
+                     *reinterpret_cast<UInt_Small *>(pTargetTo) = static_cast<UInt_Small>(target);
+                  } else {
+                     EBM_ASSERT(sizeof(UInt_Big) == pSubset->GetObjectiveWrapper()->m_cUIntBytes);
+                     *reinterpret_cast<UInt_Big *>(pTargetTo) = static_cast<UInt_Big>(target);
+                  }
+                  pTargetTo = IndexByte(pTargetTo, pSubset->GetObjectiveWrapper()->m_cUIntBytes);
+
+                  const double * pInitScoreFromLoop = pInitScoreFromOld;
+                  size_t iScore = 0;
+                  do {
+                     if(nullptr != pInitScoreFromLoop) {
+                        initScore = *pInitScoreFromLoop;
+                        ++pInitScoreFromLoop;
+                     }
+
+                     if(sizeof(Float_Small) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+                        reinterpret_cast<Float_Small *>(pSampleScoreTo)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<Float_Small>(initScore);
+                     } else {
+                        EBM_ASSERT(sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+                        reinterpret_cast<Float_Big *>(pSampleScoreTo)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<Float_Big>(initScore);
+                     }
+                     ++iScore;
+                  } while(cScores != iScore);
+                  --replication;
+
+                  ++iPartition;
+               } while(cSIMDPack != iPartition);
+               pSampleScoreTo = IndexByte(pSampleScoreTo, cScores * pSubset->GetObjectiveWrapper()->m_cFloatBytes * cSIMDPack);
             } while(pTargetToEnd != pTargetTo);
 
             data.m_cScores = cScores;
@@ -417,12 +619,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       free_temp:
          AlignedFree(data.m_aMulticlassMidwayTemp); // nullptr ok
       } else {
-         if(IsMultiplyError(sizeof(FloatFast), cSamplesMax)) {
-            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(sizeof(FloatFast), cSamplesMax)");
-            error = Error_OutOfMemory;
-            goto free_tensor_scores;
-         }
-         FloatFast * const aTargetTo = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cSamplesMax));
+         void * const aTargetTo = AlignedAlloc(cBytesTargetMax);
          if(UNLIKELY(nullptr == aTargetTo)) {
             LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aTargetTo");
             error = Error_OutOfMemory;
@@ -435,15 +632,15 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          const BagEbm * pSampleReplication = aBag;
          const double * pInitScoreFrom = aInitScores;
          BagEbm replication = 0;
-         FloatFast initScore = 0;
+         double initScore = 0;
          FloatFast target;
 
          DataSubsetInteraction * pSubset = GetDataSetInteraction()->GetSubsets();
          do {
             EBM_ASSERT(1 <= pSubset->GetCountSamples());
-            FloatFast * pTargetTo = aTargetTo;
-            FloatFast * pSampleScoreTo = aSampleScoreTo;
-            const FloatFast * const pTargetToEnd = &aTargetTo[pSubset->GetCountSamples()];
+            void * pTargetTo = aTargetTo;
+            void * pSampleScoreTo = aSampleScoreTo;
+            const void * const pTargetToEnd = IndexByte(aTargetTo, pSubset->GetObjectiveWrapper()->m_cFloatBytes * pSubset->GetCountSamples());
             do {
                if(BagEbm { 0 } == replication) {
                   replication = 1;
@@ -463,20 +660,31 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
 
                   if(nullptr != pInitScoreFrom) {
                      pInitScoreFrom += cAdvance;
-                     initScore = SafeConvertFloat<FloatFast>(pInitScoreFrom[-1]);
+                     initScore = pInitScoreFrom[-1];
                   }
 
                   target = *pTargetFrom;
                   ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
                }
 
-               *pTargetTo = target;
-               ++pTargetTo;
+               if(sizeof(Float_Small) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+                  *reinterpret_cast<Float_Small *>(pTargetTo) = static_cast<Float_Small>(target);
+               } else {
+                  EBM_ASSERT(sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+                  *reinterpret_cast<Float_Big *>(pTargetTo) = static_cast<Float_Big>(target);
+               }
+               pTargetTo = IndexByte(pTargetTo, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 
-               *pSampleScoreTo = initScore;
-               ++pSampleScoreTo;
+               if(sizeof(Float_Small) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+                  *reinterpret_cast<Float_Small *>(pSampleScoreTo) = SafeConvertFloat<Float_Small>(initScore);
+               } else {
+                  EBM_ASSERT(sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+                  *reinterpret_cast<Float_Big *>(pSampleScoreTo) = SafeConvertFloat<Float_Big>(initScore);
+               }
+               pSampleScoreTo = IndexByte(pSampleScoreTo, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+
                --replication;
-            
+
             } while(pTargetToEnd != pTargetTo);
 
             data.m_cScores = cScores;
@@ -515,10 +723,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
 
          size_t cTotalScores = cScores;
          if(IsHessian()) {
-            if(IsMultiplyError(size_t { 2 }, cTotalScores)) {
-               LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(size_t { 2 }, cTotalScores)");
-               return Error_OutOfMemory;
-            }
+            EBM_ASSERT(!IsMultiplyError(size_t { 2 }, cTotalScores)); // we are accessing allocated memory
             cTotalScores = size_t { 2 } * cTotalScores;
          }
 
@@ -528,33 +733,49 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
 
          DataSubsetInteraction * pSubset = GetDataSetInteraction()->GetSubsets();
          do {
+            const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
+
             EBM_ASSERT(1 <= pSubset->GetCountSamples());
-            FloatFast * pGradHess = pSubset->GetGradHess();
-            const FloatFast * const pGradHessEnd = &pGradHess[pSubset->GetCountSamples() * cTotalScores];
+            EBM_ASSERT(0 == pSubset->GetCountSamples() % cSIMDPack);
+
+            void * pGradHess = pSubset->GetGradHess();
+            const void * const pGradHessEnd = IndexByte(pGradHess, pSubset->GetObjectiveWrapper()->m_cFloatBytes * cTotalScores * pSubset->GetCountSamples());
             do {
-               if(BagEbm { 0 } == replication) {
-                  replication = 1;
-                  if(nullptr != pSampleReplication) {
-                     do {
-                        replication = *pSampleReplication;
-                        ++pSampleReplication;
-                        ++pWeight;
-                     } while(replication <= BagEbm { 0 });
-                     --pWeight;
-                  }
-                  weight = *pWeight;
-                  ++pWeight;
-               }
-
-               const FloatFast * const pLocalGradHessEnd = pGradHess + cTotalScores;
+               size_t iPartition = 0;
                do {
-                  FloatFast gradHess = *pGradHess;
-                  gradHess *= weight;
-                  *pGradHess = gradHess;
-                  ++pGradHess;
-               } while(pLocalGradHessEnd != pGradHess);
-               --replication;
+                  if(BagEbm { 0 } == replication) {
+                     replication = 1;
+                     if(nullptr != pSampleReplication) {
+                        do {
+                           replication = *pSampleReplication;
+                           ++pSampleReplication;
+                           ++pWeight;
+                        } while(replication <= BagEbm { 0 });
+                        --pWeight;
+                     }
+                     weight = *pWeight;
+                     ++pWeight;
+                  }
+                  size_t iScore = 0;
+                  if(sizeof(Float_Small) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+                     const Float_Small weightConverted = SafeConvertFloat<Float_Small>(weight);
+                     do {
+                        reinterpret_cast<Float_Small *>(pGradHess)[iScore * cSIMDPack + iPartition] *= weightConverted;
+                        ++iScore;
+                     } while(cTotalScores != iScore);
+                  } else {
+                     EBM_ASSERT(sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+                     const Float_Big weightConverted = SafeConvertFloat<Float_Big>(weight);
+                     do {
+                        reinterpret_cast<Float_Big *>(pGradHess)[iScore * cSIMDPack + iPartition] *= weightConverted;
+                        ++iScore;
+                     } while(cTotalScores != iScore);
+                  }
+                  --replication;
 
+                  ++iPartition;
+               } while(cSIMDPack != iPartition);
+               pGradHess = IndexByte(pGradHess, pSubset->GetObjectiveWrapper()->m_cFloatBytes * cTotalScores * cSIMDPack);
             } while(pGradHessEnd != pGradHess);
 
             ++pSubset;

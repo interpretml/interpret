@@ -505,7 +505,7 @@ ErrorEbm BoosterCore::Create(
       config.cOutputs = cScores;
       config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
       error = GetObjective(&config, sObjective, &pBoosterCore->m_objectiveCpu, &pBoosterCore->m_objectiveSIMD);
-      if (Error_None != error) {
+      if(Error_None != error) {
          // already logged
          return error;
       }
@@ -533,7 +533,7 @@ ErrorEbm BoosterCore::Create(
       const bool bHessian = pBoosterCore->IsHessian();
 
       Term ** ppTerm = pBoosterCore->m_apTerms;
-      const Term * const * const ppTermsEnd = ppTerm + cTerms;
+      const Term * const * const ppTermsEnd = nullptr == ppTerm ? nullptr : ppTerm + cTerms;
       if(sizeof(UInt_Small) == pBoosterCore->m_objectiveCpu.m_cUIntBytes) {
          size_t cBytes;
          if(sizeof(Float_Small) == pBoosterCore->m_objectiveCpu.m_cFloatBytes) {

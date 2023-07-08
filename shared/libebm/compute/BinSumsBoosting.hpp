@@ -73,7 +73,7 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
       EBM_ASSERT(static_cast<size_t>(cBitsPerItemMax) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
 #endif // GPU_COMPILE
 
-      cShift = static_cast<int>((cSamples / TFloat::k_cSIMDPack - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
+      cShift = static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
       cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
       maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
@@ -138,14 +138,8 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
          //      histograms, then we're prefectly suited to sum them, and integers and float32 values shouldn't
          //      have issues since we stay well away from 2^32 integers, and the float values don't have addition
          //      issues anymore (where you can't add a 1 to more than 16 million floats)
-         //   But to do this, we need:
-         //   1) scattered reads
-         //   2) scattered writes
-         //   3) possibly parallel integer multiplication (?), which is from a later version of SIMD
-         //   4) the ability to index everything with uint32 indexes (for all histograms)
-         //   5) the scattered reads and writes to not be too slow (they at least must fit into L3 cache?)
-         //   We will need to rip apart the Bin class since we'll operate on multiple bins at a time. Maybe
-         //   use offsetof to index float32/uint32 indexes inside the Bin classes in parallel.  (messy!)
+         //   3) Only do the above if there aren't too many bins. If we put each sample into it's own bin
+         //      for a feature, then we should prefer using this version that keeps only 1 histogram
 
          if(bReplication) {
             const typename TFloat::TInt cOccurences = TFloat::TInt::LoadBytes(pCountOccurrences);
@@ -237,13 +231,17 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
                      hessian *= weight;
                   }
                   TFloat::Execute([apBins, iScore](const int i, const typename TFloat::T grad, const typename TFloat::T hess) {
+                     // BEWARE: unless we generate a separate histogram for each SIMD stream and later merge them, pBin can 
+                     // point to the same bin in multiple samples within the SIMD pack, so we need to serialize fetching sums
                      auto * const pBin = apBins[i];
                      auto * const aGradientPair = pBin->GetGradientPairs();
                      auto * const pGradientPair = &aGradientPair[iScore];
-                     const typename TFloat::T binGrad = pGradientPair->m_sumGradients;
-                     const typename TFloat::T binHess = pGradientPair->GetHess();
-                     pGradientPair->m_sumGradients = binGrad + grad;
-                     pGradientPair->SetHess(binHess + hess);
+                     typename TFloat::T binGrad = pGradientPair->m_sumGradients;
+                     typename TFloat::T binHess = pGradientPair->GetHess();
+                     binGrad += grad;
+                     binHess += hess;
+                     pGradientPair->m_sumGradients = binGrad;
+                     pGradientPair->SetHess(binHess);
                   }, gradient, hessian);
                } else {
                   TFloat gradient = TFloat::Load(&pGradientAndHessian[iScore << TFloat::k_cSIMDShift]);
@@ -251,6 +249,8 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
                      gradient *= weight;
                   }
                   TFloat::Execute([apBins, iScore](const int i, const typename TFloat::T grad) {
+                     // TODO: for this special case of having just 1 bin, we could sum all the gradients and hessians
+                     // before then adding them to the only bin
                      auto * const pBin = apBins[i];
                      auto * const aGradientPair = pBin->GetGradientPairs();
                      auto * const pGradientPair = &aGradientPair[iScore];
@@ -266,13 +266,17 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
                      hessian *= weight;
                   }
                   TFloat::Execute([aBins, iScore](int, const typename TFloat::T grad, const typename TFloat::T hess) {
+                     // BEWARE: unless we generate a separate histogram for each SIMD stream and later merge them, pBin can 
+                     // point to the same bin in multiple samples within the SIMD pack, so we need to serialize fetching sums
                      auto * const pBin = aBins;
                      auto * const aGradientPair = pBin->GetGradientPairs();
                      auto * const pGradientPair = &aGradientPair[iScore];
-                     const typename TFloat::T binGrad = pGradientPair->m_sumGradients;
-                     const typename TFloat::T binHess = pGradientPair->GetHess();
-                     pGradientPair->m_sumGradients = binGrad + grad;
-                     pGradientPair->SetHess(binHess + hess);
+                     typename TFloat::T binGrad = pGradientPair->m_sumGradients;
+                     typename TFloat::T binHess = pGradientPair->GetHess();
+                     binGrad += grad;
+                     binHess += hess;
+                     pGradientPair->m_sumGradients = binGrad;
+                     pGradientPair->SetHess(binHess);
                   }, gradient, hessian);
                } else {
                   TFloat gradient = TFloat::Load(&pGradientAndHessian[iScore << TFloat::k_cSIMDShift]);
@@ -280,6 +284,8 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
                      gradient *= weight;
                   }
                   TFloat::Execute([aBins, iScore](int, const typename TFloat::T grad) {
+                     // TODO: for this special case of having just 1 bin, we could sum all the gradients and hessians
+                     // before then adding them to the only bin
                      auto * const pBin = aBins;
                      auto * const aGradientPair = pBin->GetGradientPairs();
                      auto * const pGradientPair = &aGradientPair[iScore];
@@ -290,7 +296,7 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
             ++iScore;
          } while(cScores != iScore);
 
-         pGradientAndHessian += bHessian ? (cScores << (TFloat::k_cSIMDShift + 1)) : (cScores << TFloat::k_cSIMDShift);
+         pGradientAndHessian += cScores << (bHessian ? (TFloat::k_cSIMDShift + 1) : TFloat::k_cSIMDShift);
 
          if(bCompilerZeroDimensional) {
             if(pGradientsAndHessiansEnd == pGradientAndHessian) {

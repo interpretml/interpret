@@ -78,15 +78,15 @@ struct BinSumsInteractionBridge {
    size_t m_cScores;
 
    size_t m_cSamples;
-   const FloatFast * m_aGradientsAndHessians;
-   const FloatFast * m_aWeights;
+   const void * m_aGradientsAndHessians; // float or double
+   const void * m_aWeights; // float or double
 
    size_t m_cRuntimeRealDimensions;
    size_t m_acBins[k_cDimensionsMax];
    size_t m_acItemsPerBitPack[k_cDimensionsMax];
-   const StorageDataType * m_aaPacked[k_cDimensionsMax];
+   const void * m_aaPacked[k_cDimensionsMax]; // uint64_t or uint32_t
 
-   void * m_aFastBins;
+   void * m_aFastBins; // Bin<...> (can't use BinBase * since this is only C here)
 
 #ifndef NDEBUG
    const void * m_pDebugFastBinsEnd;

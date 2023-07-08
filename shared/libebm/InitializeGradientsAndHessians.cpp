@@ -145,15 +145,12 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(nullptr != pDataSet);
 
-   size_t cIncludedSamples = pDataSet->GetCountSamples();
-   if(size_t { 0 } != cIncludedSamples) {
+   if(size_t { 0 } != pDataSet->GetCountSamples()) {
       ptrdiff_t cRuntimeClasses;
       const FloatFast * pTargetData =
          static_cast<const FloatFast *>(GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses));
       EBM_ASSERT(nullptr != pTargetData); // we previously called GetDataSetSharedTarget and got back non-null result
       EBM_ASSERT(IsRegression(cRuntimeClasses));
-
-      EBM_ASSERT(1 <= pDataSet->GetCountSamples());
 
       DataSubsetInteraction * pSubset = pDataSet->GetSubsets();
       EBM_ASSERT(nullptr != pSubset);
@@ -170,14 +167,14 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
       const BagEbm * pSampleReplication = aBag;
       const double * pInitScore = aInitScores;
 
-      FloatFast initScore = 0;
+      double initScore = 0;
       BagEbm replication = 0;
-      FloatFast gradient;
+      double gradient;
       do {
          EBM_ASSERT(1 <= pSubset->GetCountSamples());
-         FloatFast * pGradHess = pSubset->GetGradHess();
+         void * pGradHess = pSubset->GetGradHess();
          EBM_ASSERT(nullptr != pGradHess);
-         const FloatFast * const pGradHessEnd = pGradHess + pSubset->GetCountSamples();
+         const void * const pGradHessEnd = IndexByte(pGradHess, pSubset->GetObjectiveWrapper()->m_cFloatBytes * pSubset->GetCountSamples());
 
          EBM_ASSERT(nullptr == pWeight && nullptr == pSubset->GetWeights() ||
             nullptr != pWeight && nullptr != pSubset->GetWeights());
@@ -214,7 +211,12 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
 
                // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
                //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
-               gradient = EbmStats::ComputeGradientRegressionRmseInit(initScore, data);
+
+
+               // for RMSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
+               // to keep the original scores when computing the gradient updates.
+
+               gradient = initScore - SafeConvertFloat<double>(data);
 
                if(nullptr != pWeight) {
                   // This is only used during the initialization of interaction detection. For boosting
@@ -227,8 +229,13 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
                }
             }
 
-            *pGradHess = gradient;
-            ++pGradHess;
+            if(sizeof(Float_Small) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+               *reinterpret_cast<Float_Small *>(pGradHess) = SafeConvertFloat<Float_Small>(gradient);
+            } else {
+               EBM_ASSERT(sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+               *reinterpret_cast<Float_Big *>(pGradHess) = SafeConvertFloat<Float_Big>(gradient);
+            }
+            pGradHess = IndexByte(pGradHess, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 
             --replication;
          } while(pGradHessEnd != pGradHess);

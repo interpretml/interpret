@@ -20,34 +20,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-
-//  TODO: Notes on SIMD-ifying
-//
-//- Let's say we have 8/16 SIMD-streams.  We'll be adding gradients into tensors with these, but
-//  if two of the SIMD streams collide in their index, then we'd have a problem with adding. We therefore need to add into
-//  SEPARATE tensors (one per SIMD-stream) and then add the final tensors together at the end.
-//- Let's say we have a binary feature, so we're packing 64 bits into a single bit pack.  When we access the gradients array
-//  we don't want to advance by 64 * 4 * 16 = 4096 bytes per access.  What we can do is carefully locate the bit packs such
-//  that we access the non-bit packed data sequentially.  To do this we would locate the first item into the highest bits of the
-//  first bitpack, and the second item into the highest bits of the second bitpack.  If we have 16 SIMD streams then we'll
-//  load 16 bitpacks at once, and we'll load the next sequential 16 gradient floats at the same time.  Then we'll use the
-//  highest bits of the first bitpack to index the first tensor, and the highest bits of the second bitpack and the second float
-//  to update the second tensor.  This way we sequentially load both the bitpacks and the floats.
-//- Similar to Boosting, we'll need two different kinds of loops.  We'll have a SIMD-optimized one and CPU one that specializes in the "dregs"
-//  The "dregs" one will will be for situations where we won't want to load 8/16 in a SIMD-cluster.  We'll do them 1 at a time in a CPU loop
-//  Since we're going to be araning the bits in the bitpack by the size of the SIMD-cluster, we'll need to have a different layout for
-//  these last dregs
-//- on AVX-512 with 16 parallel streams, we only need to process the last 15 items on the CPU. We can start mid-way through
-//  each bit pack even if they start from different points
-//- since we'll need to pack the bits differently depending on the type of SIMD.  We can proceed as follows:
-//  - move entirely towards using 32-bit floats AND build infrastructure to allow for adding together tensors AND being able to process
-//    separate datasets.  We'll need this to combine the separate SIMD tensors and to combine the CPU processed data from the SIMD processed data
-//  - build a separate SIMD-specialized part of the dataset, or a new dataset that packs bits in the way that we want for our particular SIMD-cluster size
-//  - keeping our existing code as-is, copy our exising code into a SIMD-only specialized set of loops in the compute part of the code and start
-//    passing clean sets of data that is in our new SIMD-specific datasets.  We'll use the existing code to handle CPU
-//  - allow the system to process all the data via CPU (which means it can be inside a single dataset) and compare this result to the result
-//    of using the SIMD code pipeline.  Maybe we can simulate all the same access 
-
 template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
 static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams) {
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
@@ -71,7 +43,7 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
    const size_t cSamples = pParams->m_cSamples;
 
    const typename TFloat::T * pGradientAndHessian = reinterpret_cast<const typename TFloat::T *>(pParams->m_aGradientsAndHessians);
-   const typename TFloat::T * const pGradientsAndHessiansEnd = pGradientAndHessian + (bHessian ? 2 : 1) * cScores * cSamples;
+   const typename TFloat::T * const pGradientsAndHessiansEnd = pGradientAndHessian + (bHessian ? size_t { 2 } : size_t { 1 }) * cScores * cSamples;
 
    struct DimensionalData {
       int m_cShift;
@@ -110,7 +82,7 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
 #endif // GPU_COMPILE
       pDimensionalData->m_cBitsPerItemMax = cBitsPerItemMax;
 
-      pDimensionalData->m_cShift = (static_cast<int>((cSamples / TFloat::k_cSIMDPack - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) + 1) * cBitsPerItemMax;
+      pDimensionalData->m_cShift = (static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) + 1) * cBitsPerItemMax;
       pDimensionalData->m_cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
       aMaskBits[iDimensionInit] = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
@@ -221,14 +193,6 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
          } while(cRealDimensionsMinusOne != iDimension);
       }
 
-#ifndef NDEBUG
-#ifndef GPU_COMPILE
-      TFloat::Execute([cBytesPerBin, apBins, pParams](const int i) {
-         ASSERT_BIN_OK(cBytesPerBin, apBins[i], pParams->m_pDebugFastBinsEnd);
-      });
-#endif // GPU_COMPILE
-#endif // NDEBUG
-
       TFloat::Execute([apBins](const int i) {
          auto * const pBin = apBins[i];
          // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
@@ -261,17 +225,23 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
             const TFloat gradient = TFloat::Load(&pGradientAndHessian[iScore << (TFloat::k_cSIMDShift + 1)]);
             const TFloat hessian = TFloat::Load(&pGradientAndHessian[(iScore << (TFloat::k_cSIMDShift + 1)) + TFloat::k_cSIMDPack]);
             TFloat::Execute([apBins, iScore](const int i, const typename TFloat::T grad, const typename TFloat::T hess) {
+               // BEWARE: unless we generate a separate histogram for each SIMD stream and later merge them, pBin can 
+               // point to the same bin in multiple samples within the SIMD pack, so we need to serialize fetching sums
                auto * const pBin = apBins[i];
                auto * const aGradientPair = pBin->GetGradientPairs();
                auto * const pGradientPair = &aGradientPair[iScore];
-               const typename TFloat::T binGrad = pGradientPair->m_sumGradients;
-               const typename TFloat::T binHess = pGradientPair->GetHess();
-               pGradientPair->m_sumGradients = binGrad + grad;
-               pGradientPair->SetHess(binHess + hess);
+               typename TFloat::T binGrad = pGradientPair->m_sumGradients;
+               typename TFloat::T binHess = pGradientPair->GetHess();
+               binGrad += grad;
+               binHess += hess;
+               pGradientPair->m_sumGradients = binGrad;
+               pGradientPair->SetHess(binHess);
             }, gradient, hessian);
          } else {
             const TFloat gradient = TFloat::Load(&pGradientAndHessian[iScore << TFloat::k_cSIMDShift]);
             TFloat::Execute([apBins, iScore](const int i, const typename TFloat::T grad) {
+               // BEWARE: unless we generate a separate histogram for each SIMD stream and later merge them, pBin can 
+               // point to the same bin in multiple samples within the SIMD pack, so we need to serialize fetching sums
                auto * const pBin = apBins[i];
                auto * const aGradientPair = pBin->GetGradientPairs();
                auto * const pGradientPair = &aGradientPair[iScore];
@@ -281,7 +251,7 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
          ++iScore;
       } while(cScores != iScore);
 
-      pGradientAndHessian += bHessian ? (cScores << (TFloat::k_cSIMDShift + 1)) : (cScores << TFloat::k_cSIMDShift);
+      pGradientAndHessian += cScores << (bHessian ? (TFloat::k_cSIMDShift + 1) : TFloat::k_cSIMDShift);
    }
 }
 

@@ -473,24 +473,6 @@ namespace EbmStats {
 
       return sumGradient;
    }
-
-   INLINE_ALWAYS static FloatFast ComputeGradientRegressionRmseInit(const FloatFast sampleScore, const FloatFast target) {
-      // this function is NOT performance critical as it's called on every sample, but only during initialization.
-
-      // for RMSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
-      // to keep the original scores when computing the gradient updates.
-
-      // it's possible to reach NaN or +-infinity within this module, so sampleScore can be those values
-      // since we can reach such values anyways, we might as well not check for them during initialization and detect the
-      // NaN or +-infinity values in one of our boosting rounds and then terminate the algorithm once those special values
-      // have propagaged, which we need to handle anyways
-
-      const FloatFast gradient = sampleScore - target;
-
-      // if target and sampleScore are both +infinity or both -infinity, then we'll generate a NaN value
-
-      return gradient;
-   }
 };
 
 } // DEFINED_ZONE_NAME

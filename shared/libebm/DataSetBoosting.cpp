@@ -140,6 +140,9 @@ ErrorEbm DataSetBoosting::InitSampleScores(
          const size_t cSubsetSamples = pSubset->m_cSamples;
          EBM_ASSERT(1 <= cSubsetSamples);
 
+         const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
+         EBM_ASSERT(0 == cSubsetSamples % cSIMDPack);
+
          if(IsMultiplyError(pSubset->m_pObjective->m_cFloatBytes, cScores, cSubsetSamples)) {
             LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitSampleScores IsMultiplyError(pSubset->m_pObjective->m_cFloatBytes, cScores, cSubsetSamples)");
             return Error_OutOfMemory;
@@ -155,37 +158,45 @@ ErrorEbm DataSetBoosting::InitSampleScores(
          const void * pSampleScoresEnd = IndexByte(pSampleScore, cBytes);
 
          do {
-            if(BagEbm { 0 } == replication) {
-               pInitScore = pFromEnd;
-               replication = 1;
-               if(nullptr != pSampleReplication) {
-                  bool isItemValidation;
-                  do {
-                     do {
-                        replication = *pSampleReplication;
-                        ++pSampleReplication;
-                     } while(BagEbm { 0 } == replication);
-                     isItemValidation = replication < BagEbm { 0 };
-                     pInitScore += cScores;
-                  } while(isLoopValidation != isItemValidation);
-                  pInitScore -= cScores;
-               }
-               pFromEnd = &pInitScore[cScores];
-            }
-
-            const double * pFrom = pInitScore;
+            size_t iPartition = 0;
             do {
-               if(sizeof(Float_Small) == pSubset->m_pObjective->m_cFloatBytes) {
-                  *reinterpret_cast<Float_Small *>(pSampleScore) = SafeConvertFloat<Float_Small>(*pFrom);
-               } else {
-                  EBM_ASSERT(sizeof(Float_Big) == pSubset->m_pObjective->m_cFloatBytes);
-                  *reinterpret_cast<Float_Big *>(pSampleScore) = SafeConvertFloat<Float_Big>(*pFrom);
+               if(BagEbm { 0 } == replication) {
+                  pInitScore = pFromEnd;
+                  replication = 1;
+                  if(nullptr != pSampleReplication) {
+                     bool isItemValidation;
+                     do {
+                        do {
+                           replication = *pSampleReplication;
+                           ++pSampleReplication;
+                        } while(BagEbm { 0 } == replication);
+                        isItemValidation = replication < BagEbm { 0 };
+                        pInitScore += cScores;
+                     } while(isLoopValidation != isItemValidation);
+                     pInitScore -= cScores;
+                  }
+                  pFromEnd = &pInitScore[cScores];
                }
-               pSampleScore = IndexByte(pSampleScore, pSubset->m_pObjective->m_cFloatBytes);
-               ++pFrom;
-            } while(pFromEnd != pFrom);
 
-            replication -= direction;
+               const double * pFrom = pInitScore;
+               size_t iScore = 0;
+               do {
+                  if(sizeof(Float_Small) == pSubset->m_pObjective->m_cFloatBytes) {
+                     reinterpret_cast<Float_Small *>(pSampleScore)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<Float_Small>(*pFrom);
+                  } else {
+                     EBM_ASSERT(sizeof(Float_Big) == pSubset->m_pObjective->m_cFloatBytes);
+                     reinterpret_cast<Float_Big *>(pSampleScore)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<Float_Big>(*pFrom);
+                  }
+
+                  ++iScore;
+                  ++pFrom;
+               } while(pFromEnd != pFrom);
+
+               replication -= direction;
+
+               ++iPartition;
+            } while(cSIMDPack != iPartition);
+            pSampleScore = IndexByte(pSampleScore, cScores * pSubset->GetObjectiveWrapper()->m_cFloatBytes * cSIMDPack);
          } while(pSampleScoresEnd != pSampleScore);
 
          ++pSubset;
@@ -465,7 +476,7 @@ ErrorEbm DataSetBoosting::InitTermData(
                pDimensionInfoInit->m_cItemsPerBitPackFrom = cItemsPerBitPackFrom;
                pDimensionInfoInit->m_cBitsPerItemMaxFrom = cBitsPerItemMaxFrom;
                pDimensionInfoInit->m_maskBitsFrom = maskBitsFrom;
-               pDimensionInfoInit->m_iShiftFrom = static_cast<ptrdiff_t>((cSharedSamples - 1) % cItemsPerBitPackFrom);
+               pDimensionInfoInit->m_iShiftFrom = static_cast<ptrdiff_t>((cSharedSamples - size_t { 1 }) % cItemsPerBitPackFrom);
 
                ++pDimensionInfoInit;
             }
@@ -948,7 +959,7 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
    EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(1 <= cSubsetItemsMax);
    EBM_ASSERT(nullptr != pObjectiveCpu);
-   EBM_ASSERT(nullptr != pObjectiveCpu->m_pObjective);
+   EBM_ASSERT(nullptr != pObjectiveCpu->m_pObjective); // the objective for the CPU zone cannot be null unlike SIMD
    EBM_ASSERT(nullptr != pObjectiveSIMD);
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);

@@ -59,6 +59,7 @@ struct DataSubsetBoosting final {
       EBM_ASSERT(0 == m_cSamples % m_pObjective->m_cSIMDPack);
       return (*m_pObjective->m_pApplyUpdateC)(m_pObjective, pData);
    }
+
    inline ErrorEbm BinSumsBoosting(BinSumsBoostingBridge * const pParams) {
       EBM_ASSERT(nullptr != pParams);
       EBM_ASSERT(nullptr != m_pObjective);
@@ -70,16 +71,20 @@ struct DataSubsetBoosting final {
    inline void * GetGradHess() {
       return m_aGradHess;
    }
+
    inline void * GetSampleScores() {
       return m_aSampleScores;
    }
+
    inline const void * GetTargetData() const {
       return m_aTargetData;
    }
+
    inline const void * GetTermData(const size_t iTerm) const {
       EBM_ASSERT(nullptr != m_aaTermData);
       return m_aaTermData[iTerm];
    }
+
    inline const InnerBag * GetInnerBag(const size_t iBag) const {
       EBM_ASSERT(nullptr != m_aInnerBags);
       return &m_aInnerBags[iBag];
