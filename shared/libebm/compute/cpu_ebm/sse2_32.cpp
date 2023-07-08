@@ -335,6 +335,20 @@ struct Sse_32_Float final {
       func(3, a0[3]);
    }
 
+   template<typename TFunc>
+   static inline void Execute(const TFunc & func, const Sse_32_Float & val0, const Sse_32_Float & val1) noexcept {
+      alignas(SIMD_BYTE_ALIGNMENT) T a0[k_cSIMDPack];
+      val0.Store(a0);
+      alignas(SIMD_BYTE_ALIGNMENT) T a1[k_cSIMDPack];
+      val1.Store(a1);
+
+      // no loops because this will disable optimizations for loops in the caller
+      func(0, a0[0], a1[0]);
+      func(1, a0[1], a1[1]);
+      func(2, a0[2], a1[2]);
+      func(3, a0[3], a1[3]);
+   }
+
    friend inline Sse_32_Float IfGreater(const Sse_32_Float & cmp1, const Sse_32_Float & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept {
       TPack mask = _mm_cmpgt_ps(cmp1.m_data, cmp2.m_data);
       TPack maskedTrue = _mm_and_ps(mask, trueVal.m_data);

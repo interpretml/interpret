@@ -148,7 +148,7 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
       // base pointer!  I should be able to handle even very big tensors.  
 
       Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores> * apBins[TFloat::k_cSIMDPack];
-      TFloat::Execute([aBins, &apBins](int i) {
+      TFloat::Execute([aBins, &apBins](const int i) {
          apBins[i] = aBins;
       });
       {
@@ -173,13 +173,13 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
 #ifndef NDEBUG
 #ifndef GPU_COMPILE
          EBM_ASSERT(size_t { 2 } <= cBins);
-         TFloat::TInt::Execute([cBins](int, typename TFloat::TInt::T x) {
+         TFloat::TInt::Execute([cBins](int, const typename TFloat::TInt::T x) {
             EBM_ASSERT(static_cast<size_t>(x) < cBins);
          }, iBin);
 #endif // GPU_COMPILE
 #endif // NDEBUG
 
-         TFloat::TInt::Execute([&apBins, cTensorBytes](int i, typename TFloat::TInt::T x) {
+         TFloat::TInt::Execute([&apBins, cTensorBytes](const int i, const typename TFloat::TInt::T x) {
             apBins[i] = IndexByte(apBins[i], static_cast<size_t>(x) * cTensorBytes);
          }, iBin);
 
@@ -205,13 +205,13 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
 #ifndef NDEBUG
 #ifndef GPU_COMPILE
             EBM_ASSERT(size_t { 2 } <= cBins);
-            TFloat::TInt::Execute([cBins](int, typename TFloat::TInt::T x) {
+            TFloat::TInt::Execute([cBins](int, const typename TFloat::TInt::T x) {
                EBM_ASSERT(static_cast<size_t>(x) < cBins);
             }, iBin);
 #endif // GPU_COMPILE
 #endif // NDEBUG
 
-            TFloat::TInt::Execute([&apBins, cTensorBytes](int i, typename TFloat::TInt::T x) {
+            TFloat::TInt::Execute([&apBins, cTensorBytes](const int i, const typename TFloat::TInt::T x) {
                apBins[i] = IndexByte(apBins[i], static_cast<size_t>(x) * cTensorBytes);
             }, iBin);
 
@@ -223,14 +223,14 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
 
 #ifndef NDEBUG
 #ifndef GPU_COMPILE
-      TFloat::Execute([cBytesPerBin, apBins, pParams](int i) {
+      TFloat::Execute([cBytesPerBin, apBins, pParams](const int i) {
          ASSERT_BIN_OK(cBytesPerBin, apBins[i], pParams->m_pDebugFastBinsEnd);
       });
 #endif // GPU_COMPILE
 #endif // NDEBUG
 
-      TFloat::Execute([apBins](int i) {
-         auto * pBin = apBins[i];
+      TFloat::Execute([apBins](const int i) {
+         auto * const pBin = apBins[i];
          // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
          //       such that we can remove that field optionally
          pBin->SetCountSamples(pBin->GetCountSamples() + typename TFloat::TInt::T { 1 });
@@ -240,15 +240,15 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
          const TFloat weight = TFloat::Load(pWeight);
          pWeight += TFloat::k_cSIMDPack;
 
-         TFloat::Execute([apBins](int i, typename TFloat::T x) {
-            auto * pBin = apBins[i];
+         TFloat::Execute([apBins](const int i, const typename TFloat::T x) {
+            auto * const pBin = apBins[i];
             // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
             //       such that we can remove that field optionally
             pBin->SetWeight(pBin->GetWeight() + x);
          }, weight);
       } else {
-         TFloat::Execute([apBins](int i) {
-            auto * pBin = apBins[i];
+         TFloat::Execute([apBins](const int i) {
+            auto * const pBin = apBins[i];
             // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
             //       such that we can remove that field optionally
             pBin->SetWeight(pBin->GetWeight() + typename TFloat::T { 1.0 });
@@ -257,21 +257,26 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
 
       size_t iScore = 0;
       do {
-         const TFloat gradient = TFloat::Load(bHessian ? &pGradientAndHessian[iScore << (TFloat::k_cSIMDShift + 1)] : &pGradientAndHessian[iScore << TFloat::k_cSIMDShift]);
-         TFloat::Execute([apBins, iScore](int i, typename TFloat::T x) {
-            auto * pBin = apBins[i];
-            auto * const aGradientPair = pBin->GetGradientPairs();
-            auto * const pGradientPair = &aGradientPair[iScore];
-            pGradientPair->m_sumGradients += x;
-         }, gradient);
          if(bHessian) {
+            const TFloat gradient = TFloat::Load(&pGradientAndHessian[iScore << (TFloat::k_cSIMDShift + 1)]);
             const TFloat hessian = TFloat::Load(&pGradientAndHessian[(iScore << (TFloat::k_cSIMDShift + 1)) + TFloat::k_cSIMDPack]);
-            TFloat::Execute([apBins, iScore](int i, typename TFloat::T x) {
-               auto * pBin = apBins[i];
+            TFloat::Execute([apBins, iScore](const int i, const typename TFloat::T grad, const typename TFloat::T hess) {
+               auto * const pBin = apBins[i];
                auto * const aGradientPair = pBin->GetGradientPairs();
                auto * const pGradientPair = &aGradientPair[iScore];
-               pGradientPair->SetHess(pGradientPair->GetHess() + x);
-            }, hessian);
+               const typename TFloat::T binGrad = pGradientPair->m_sumGradients;
+               const typename TFloat::T binHess = pGradientPair->GetHess();
+               pGradientPair->m_sumGradients = binGrad + grad;
+               pGradientPair->SetHess(binHess + hess);
+            }, gradient, hessian);
+         } else {
+            const TFloat gradient = TFloat::Load(&pGradientAndHessian[iScore << TFloat::k_cSIMDShift]);
+            TFloat::Execute([apBins, iScore](const int i, const typename TFloat::T grad) {
+               auto * const pBin = apBins[i];
+               auto * const aGradientPair = pBin->GetGradientPairs();
+               auto * const pGradientPair = &aGradientPair[iScore];
+               pGradientPair->m_sumGradients += grad;
+            }, gradient);
          }
          ++iScore;
       } while(cScores != iScore);
