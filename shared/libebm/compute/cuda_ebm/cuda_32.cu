@@ -68,14 +68,9 @@ struct Cuda_32_Int final {
       return Cuda_32_Int(*a);
    }
 
-   template<typename TFunc>
-   GPU_BOTH friend inline void ExecuteFunc(const Cuda_32_Int & val, const TFunc & func) noexcept {
-      func(0, val.m_data);
-   }
-
-   template<typename TFunc>
-   GPU_BOTH friend inline void ExecuteUnindexedFunc(const Cuda_32_Int & val, const TFunc & func) noexcept {
-      func(val.m_data);
+   template<typename TFunc, typename... TArgs>
+   GPU_BOTH static inline void Execute(const TFunc & func, const TArgs&... args) noexcept {
+      func(0, (args.m_data)...);
    }
 
    GPU_BOTH inline static Cuda_32_Int MakeIndexes() noexcept {
@@ -245,24 +240,9 @@ struct Cuda_32_Float final {
       return Cuda_32_Float(func(val.m_data));
    }
 
-   template<typename TFunc>
-   GPU_BOTH friend inline void ExecuteFunc(const Cuda_32_Float & val, const TFunc & func) noexcept {
-      func(0, val.m_data);
-   }
-
-   template<typename TFunc>
-   GPU_BOTH friend inline void ExecuteUnindexedFunc(const Cuda_32_Float & val, const TFunc & func) noexcept {
-      func(val.m_data);
-   }
-
-   template<typename TFunc>
-   GPU_BOTH static inline void EmptyExecuteFunc(const TFunc & func) noexcept {
-      func(0);
-   }
-
-   template<typename TFunc>
-   GPU_BOTH static inline void EmptyUnindexedExecuteFunc(const TFunc & func) noexcept {
-      func();
+   template<typename TFunc, typename... TArgs>
+   GPU_BOTH static inline void Execute(const TFunc & func, const TArgs&... args) noexcept {
+      func(0, (args.m_data)...);
    }
 
    GPU_BOTH friend inline Cuda_32_Float IfGreater(const Cuda_32_Float & cmp1, const Cuda_32_Float & cmp2, const Cuda_32_Float & trueVal, const Cuda_32_Float & falseVal) noexcept {

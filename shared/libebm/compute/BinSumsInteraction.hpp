@@ -148,7 +148,7 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
       // base pointer!  I should be able to handle even very big tensors.  
 
       Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores> * apBins[TFloat::k_cSIMDPack];
-      TFloat::EmptyExecuteFunc([aBins, &apBins](int i) {
+      TFloat::Execute([aBins, &apBins](int i) {
          apBins[i] = aBins;
       });
       {
@@ -173,15 +173,15 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
 #ifndef NDEBUG
 #ifndef GPU_COMPILE
          EBM_ASSERT(size_t { 2 } <= cBins);
-         ExecuteUnindexedFunc(iBin, [cBins](typename TFloat::TInt::T x) {
+         TFloat::TInt::Execute([cBins](int, typename TFloat::TInt::T x) {
             EBM_ASSERT(static_cast<size_t>(x) < cBins);
-         });
+         }, iBin);
 #endif // GPU_COMPILE
 #endif // NDEBUG
 
-         ExecuteFunc(iBin, [&apBins, cTensorBytes](int i, typename TFloat::TInt::T x) {
+         TFloat::TInt::Execute([&apBins, cTensorBytes](int i, typename TFloat::TInt::T x) {
             apBins[i] = IndexByte(apBins[i], static_cast<size_t>(x) * cTensorBytes);
-         });
+         }, iBin);
 
          cTensorBytes *= cBins;
       }
@@ -205,15 +205,15 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
 #ifndef NDEBUG
 #ifndef GPU_COMPILE
             EBM_ASSERT(size_t { 2 } <= cBins);
-            ExecuteUnindexedFunc(iBin, [cBins](typename TFloat::TInt::T x) {
+            TFloat::TInt::Execute([cBins](int, typename TFloat::TInt::T x) {
                EBM_ASSERT(static_cast<size_t>(x) < cBins);
-            });
+            }, iBin);
 #endif // GPU_COMPILE
 #endif // NDEBUG
 
-            ExecuteFunc(iBin, [&apBins, cTensorBytes](int i, typename TFloat::TInt::T x) {
+            TFloat::TInt::Execute([&apBins, cTensorBytes](int i, typename TFloat::TInt::T x) {
                apBins[i] = IndexByte(apBins[i], static_cast<size_t>(x) * cTensorBytes);
-            });
+            }, iBin);
 
             cTensorBytes *= cBins;
 
@@ -223,13 +223,13 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
 
 #ifndef NDEBUG
 #ifndef GPU_COMPILE
-      TFloat::EmptyExecuteFunc([cBytesPerBin, apBins, pParams](int i) {
+      TFloat::Execute([cBytesPerBin, apBins, pParams](int i) {
          ASSERT_BIN_OK(cBytesPerBin, apBins[i], pParams->m_pDebugFastBinsEnd);
       });
 #endif // GPU_COMPILE
 #endif // NDEBUG
 
-      TFloat::EmptyExecuteFunc([apBins](int i) {
+      TFloat::Execute([apBins](int i) {
          auto * pBin = apBins[i];
          // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
          //       such that we can remove that field optionally
@@ -240,14 +240,14 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
          const TFloat weight = TFloat::Load(pWeight);
          pWeight += TFloat::k_cSIMDPack;
 
-         ExecuteFunc(weight, [apBins](int i, typename TFloat::T x) {
+         TFloat::Execute([apBins](int i, typename TFloat::T x) {
             auto * pBin = apBins[i];
             // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
             //       such that we can remove that field optionally
             pBin->SetWeight(pBin->GetWeight() + x);
-         });
+         }, weight);
       } else {
-         TFloat::EmptyExecuteFunc([apBins](int i) {
+         TFloat::Execute([apBins](int i) {
             auto * pBin = apBins[i];
             // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
             //       such that we can remove that field optionally
@@ -258,20 +258,20 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
       size_t iScore = 0;
       do {
          const TFloat gradient = TFloat::Load(bHessian ? &pGradientAndHessian[iScore << (TFloat::k_cSIMDShift + 1)] : &pGradientAndHessian[iScore << TFloat::k_cSIMDShift]);
-         ExecuteFunc(gradient, [apBins, iScore](int i, typename TFloat::T x) {
+         TFloat::Execute([apBins, iScore](int i, typename TFloat::T x) {
             auto * pBin = apBins[i];
             auto * const aGradientPair = pBin->GetGradientPairs();
             auto * const pGradientPair = &aGradientPair[iScore];
             pGradientPair->m_sumGradients += x;
-         });
+         }, gradient);
          if(bHessian) {
             const TFloat hessian = TFloat::Load(&pGradientAndHessian[(iScore << (TFloat::k_cSIMDShift + 1)) + TFloat::k_cSIMDPack]);
-            ExecuteFunc(hessian, [apBins, iScore](int i, typename TFloat::T x) {
+            TFloat::Execute([apBins, iScore](int i, typename TFloat::T x) {
                auto * pBin = apBins[i];
                auto * const aGradientPair = pBin->GetGradientPairs();
                auto * const pGradientPair = &aGradientPair[iScore];
                pGradientPair->SetHess(pGradientPair->GetHess() + x);
-            });
+            }, hessian);
          }
          ++iScore;
       } while(cScores != iScore);

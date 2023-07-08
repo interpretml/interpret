@@ -93,31 +93,15 @@ struct Sse_32_Int final {
    }
 
    template<typename TFunc>
-   friend inline void ExecuteFunc(const Sse_32_Int & val, const TFunc & func) noexcept {
-      // TODO: use the equivalent of _mm_extract_epi32 in more advanced SIMD intrinsics
-
-      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
-      val.Store(aTemp);
+   static inline void Execute(const TFunc & func, const Sse_32_Int & val0) noexcept {
+      alignas(SIMD_BYTE_ALIGNMENT) T a0[k_cSIMDPack];
+      val0.Store(a0);
 
       // no loops because this will disable optimizations for loops in the caller
-      func(0, aTemp[0]);
-      func(1, aTemp[1]);
-      func(2, aTemp[2]);
-      func(3, aTemp[3]);
-   }
-
-   template<typename TFunc>
-   friend inline void ExecuteUnindexedFunc(const Sse_32_Int & val, const TFunc & func) noexcept {
-      // TODO: use the equivalent of _mm_extract_epi32 in more advanced SIMD intrinsics
-
-      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
-      val.Store(aTemp);
-
-      // no loops because this will disable optimizations for loops in the caller
-      func(aTemp[0]);
-      func(aTemp[1]);
-      func(aTemp[2]);
-      func(aTemp[3]);
+      func(0, a0[0]);
+      func(1, a0[1]);
+      func(2, a0[2]);
+      func(3, a0[3]);
    }
 
    inline static Sse_32_Int MakeIndexes() noexcept {
@@ -331,35 +315,7 @@ struct Sse_32_Float final {
    }
 
    template<typename TFunc>
-   friend inline void ExecuteFunc(const Sse_32_Float & val, const TFunc & func) noexcept {
-      // TODO: use the equivalent of _mm_extract_epi32 in more advanced SIMD intrinsics
-
-      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
-      val.Store(aTemp);
-
-      // no loops because this will disable optimizations for loops in the caller
-      func(0, aTemp[0]);
-      func(1, aTemp[1]);
-      func(2, aTemp[2]);
-      func(3, aTemp[3]);
-   }
-
-   template<typename TFunc>
-   friend inline void ExecuteUnindexedFunc(const Sse_32_Float & val, const TFunc & func) noexcept {
-      // TODO: use the equivalent of _mm_extract_epi32 in more advanced SIMD intrinsics
-
-      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
-      val.Store(aTemp);
-
-      // no loops because this will disable optimizations for loops in the caller
-      func(aTemp[0]);
-      func(aTemp[1]);
-      func(aTemp[2]);
-      func(aTemp[3]);
-   }
-
-   template<typename TFunc>
-   static inline void EmptyExecuteFunc(const TFunc & func) noexcept {
+   static inline void Execute(const TFunc & func) noexcept {
       // no loops because this will disable optimizations for loops in the caller
       func(0);
       func(1);
@@ -368,12 +324,15 @@ struct Sse_32_Float final {
    }
 
    template<typename TFunc>
-   static inline void EmptyUnindexedExecuteFunc(const TFunc & func) noexcept {
+   static inline void Execute(const TFunc & func, const Sse_32_Float & val0) noexcept {
+      alignas(SIMD_BYTE_ALIGNMENT) T a0[k_cSIMDPack];
+      val0.Store(a0);
+
       // no loops because this will disable optimizations for loops in the caller
-      func();
-      func();
-      func();
-      func();
+      func(0, a0[0]);
+      func(1, a0[1]);
+      func(2, a0[2]);
+      func(3, a0[3]);
    }
 
    friend inline Sse_32_Float IfGreater(const Sse_32_Float & cmp1, const Sse_32_Float & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept {

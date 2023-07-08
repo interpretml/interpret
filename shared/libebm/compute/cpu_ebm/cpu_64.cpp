@@ -64,14 +64,9 @@ struct Cpu_64_Int final {
       return Cpu_64_Int(*a);
    }
 
-   template<typename TFunc>
-   friend inline void ExecuteFunc(const Cpu_64_Int & val, const TFunc & func) noexcept {
-      func(0, val.m_data);
-   }
-
-   template<typename TFunc>
-   friend inline void ExecuteUnindexedFunc(const Cpu_64_Int & val, const TFunc & func) noexcept {
-      func(val.m_data);
+   template<typename TFunc, typename... TArgs>
+   static inline void Execute(const TFunc & func, const TArgs&... args) noexcept {
+      func(0, (args.m_data)...);
    }
 
    inline static Cpu_64_Int MakeIndexes() noexcept {
@@ -238,24 +233,9 @@ struct Cpu_64_Float final {
       return Cpu_64_Float(func(val.m_data));
    }
 
-   template<typename TFunc>
-   friend inline void ExecuteFunc(const Cpu_64_Float & val, const TFunc & func) noexcept {
-      func(0, val.m_data);
-   }
-
-   template<typename TFunc>
-   friend inline void ExecuteUnindexedFunc(const Cpu_64_Float & val, const TFunc & func) noexcept {
-      func(val.m_data);
-   }
-
-   template<typename TFunc>
-   static inline void EmptyExecuteFunc(const TFunc & func) noexcept {
-      func(0);
-   }
-
-   template<typename TFunc>
-   static inline void EmptyUnindexedExecuteFunc(const TFunc & func) noexcept {
-      func();
+   template<typename TFunc, typename... TArgs>
+   static inline void Execute(const TFunc & func, const TArgs&... args) noexcept {
+      func(0, (args.m_data)...);
    }
 
    friend inline Cpu_64_Float IfGreater(const Cpu_64_Float & cmp1, const Cpu_64_Float & cmp2, const Cpu_64_Float & trueVal, const Cpu_64_Float & falseVal) noexcept {

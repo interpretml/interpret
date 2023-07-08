@@ -120,12 +120,12 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
          if(!bCompilerZeroDimensional) {
             typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
             iTensorBin = Multiply<typename TFloat::TInt, typename TFloat::TInt::T, k_dynamicScores != cCompilerScores, static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cCompilerScores))>(iTensorBin, cBytesPerBin);
-            ExecuteFunc(iTensorBin, [aBins, &apBins](int i, typename TFloat::TInt::T x) {
+            TFloat::TInt::Execute([aBins, &apBins](int i, typename TFloat::TInt::T x) {
                apBins[i] = IndexBin(aBins, static_cast<size_t>(x));
-            });
+            }, iTensorBin);
 #ifndef NDEBUG
 #ifndef GPU_COMPILE
-            TFloat::EmptyExecuteFunc([cBytesPerBin, apBins, pParams](int i) {
+            TFloat::Execute([cBytesPerBin, apBins, pParams](int i) {
                ASSERT_BIN_OK(cBytesPerBin, apBins[i], pParams->m_pDebugFastBinsEnd);
             });
 #endif // GPU_COMPILE
@@ -152,30 +152,30 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
             pCountOccurrences += TFloat::k_cSIMDPack;
 
             if(!bCompilerZeroDimensional) {
-               ExecuteFunc(cOccurences, [apBins](int i, typename TFloat::TInt::T x) {
+               TFloat::TInt::Execute([apBins](int i, typename TFloat::TInt::T x) {
                   auto * pBin = apBins[i];
                   // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
                   //       such that we can remove that field optionally
                   pBin->SetCountSamples(pBin->GetCountSamples() + x);
-               });
+               }, cOccurences);
             } else {
-               ExecuteUnindexedFunc(cOccurences, [aBins](typename TFloat::TInt::T x) {
+               TFloat::TInt::Execute([aBins](int, typename TFloat::TInt::T x) {
                   auto * pBin = aBins;
                   // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
                   //       such that we can remove that field optionally
                   pBin->SetCountSamples(pBin->GetCountSamples() + x);
-               });
+               }, cOccurences);
             }
          } else {
             if(!bCompilerZeroDimensional) {
-               TFloat::EmptyExecuteFunc([apBins](int i) {
+               TFloat::Execute([apBins](int i) {
                   auto * pBin = apBins[i];
                   // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
                   //       such that we can remove that field optionally
                   pBin->SetCountSamples(pBin->GetCountSamples() + typename TFloat::TInt::T { 1 });
                });
             } else {
-               TFloat::EmptyUnindexedExecuteFunc([aBins]() {
+               TFloat::Execute([aBins](int) {
                   auto * pBin = aBins;
                   // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
                   //       such that we can remove that field optionally
@@ -190,30 +190,30 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
             pWeight += TFloat::k_cSIMDPack;
 
             if(!bCompilerZeroDimensional) {
-               ExecuteFunc(weight, [apBins](int i, typename TFloat::T x) {
+               TFloat::Execute([apBins](int i, typename TFloat::T x) {
                   auto * pBin = apBins[i];
                   // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
                   //       such that we can remove that field optionally
                   pBin->SetWeight(pBin->GetWeight() + x);
-               });
+               }, weight);
             } else {
-               ExecuteUnindexedFunc(weight, [aBins](typename TFloat::T x) {
+               TFloat::Execute([aBins](int, typename TFloat::T x) {
                   auto * pBin = aBins;
                   // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
                   //       such that we can remove that field optionally
                   pBin->SetWeight(pBin->GetWeight() + x);
-               });
+               }, weight);
             }
          } else {
             if(!bCompilerZeroDimensional) {
-               TFloat::EmptyExecuteFunc([apBins](int i) {
+               TFloat::Execute([apBins](int i) {
                   auto * pBin = apBins[i];
                   // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
                   //       such that we can remove that field optionally
                   pBin->SetWeight(pBin->GetWeight() + typename TFloat::T { 1.0 });
                });
             } else {
-               TFloat::EmptyUnindexedExecuteFunc([aBins]() {
+               TFloat::Execute([aBins](int) {
                   auto * pBin = aBins;
                   // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
                   //       such that we can remove that field optionally
@@ -233,19 +233,19 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
                gradient *= weight;
             }
             if(!bCompilerZeroDimensional) {
-               ExecuteFunc(gradient, [apBins, iScore](int i, typename TFloat::T x) {
+               TFloat::Execute([apBins, iScore](int i, typename TFloat::T x) {
                   auto * pBin = apBins[i];
                   auto * const aGradientPair = pBin->GetGradientPairs();
                   auto * const pGradientPair = &aGradientPair[iScore];
                   pGradientPair->m_sumGradients += x;
-               });
+               }, gradient);
             } else {
-               ExecuteUnindexedFunc(gradient, [aBins, iScore](typename TFloat::T x) {
+               TFloat::Execute([aBins, iScore](int, typename TFloat::T x) {
                   auto * pBin = aBins;
                   auto * const aGradientPair = pBin->GetGradientPairs();
                   auto * const pGradientPair = &aGradientPair[iScore];
                   pGradientPair->m_sumGradients += x;
-               });
+               }, gradient);
             }
             if(bHessian) {
                TFloat hessian = TFloat::Load(&pGradientAndHessian[(iScore << (TFloat::k_cSIMDShift + 1)) + TFloat::k_cSIMDPack]);
@@ -254,19 +254,19 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
                }
 
                if(!bCompilerZeroDimensional) {
-                  ExecuteFunc(hessian, [apBins, iScore](int i, typename TFloat::T x) {
+                  TFloat::Execute([apBins, iScore](int i, typename TFloat::T x) {
                      auto * pBin = apBins[i];
                      auto * const aGradientPair = pBin->GetGradientPairs();
                      auto * const pGradientPair = &aGradientPair[iScore];
                      pGradientPair->SetHess(pGradientPair->GetHess() + x);
-                  });
+                  }, hessian);
                } else {
-                  ExecuteUnindexedFunc(hessian, [aBins, iScore](typename TFloat::T x) {
+                  TFloat::Execute([aBins, iScore](int, typename TFloat::T x) {
                      auto * pBin = aBins;
                      auto * const aGradientPair = pBin->GetGradientPairs();
                      auto * const pGradientPair = &aGradientPair[iScore];
                      pGradientPair->SetHess(pGradientPair->GetHess() + x);
-                  });
+                  }, hessian);
                }
             }
             ++iScore;
