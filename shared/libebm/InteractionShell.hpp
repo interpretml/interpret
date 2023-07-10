@@ -27,7 +27,7 @@ class InteractionShell final {
    InteractionCore * m_pInteractionCore;
 
    BinBase * m_aInteractionFastBinsTemp;
-   size_t m_cAllocatedFastBins;
+   size_t m_cBytesFastBins;
 
    BinBase * m_aInteractionBigBins;
    size_t m_cAllocatedBigBins;
@@ -47,7 +47,7 @@ public:
       m_pInteractionCore = pInteractionCore;
 
       m_aInteractionFastBinsTemp = nullptr;
-      m_cAllocatedFastBins = 0;
+      m_cBytesFastBins = 0;
 
       m_aInteractionBigBins = nullptr;
       m_cAllocatedBigBins = 0;
@@ -94,26 +94,14 @@ public:
       return &m_cLogExitMessages;
    }
 
-   BinBase * GetInteractionFastBinsTemp(const size_t cBytesPerFastBin, const size_t cFastBins);
-
-   inline BinBase * GetInteractionFastBinsTemp() {
-      // call this if the bins were already allocated and we just need the pointer
-      return m_aInteractionFastBinsTemp;
-   }
+   BinBase * GetInteractionFastBinsTemp(const size_t cBytes);
 
    BinBase * GetInteractionBigBins(const size_t cBytesPerBigBin, const size_t cBigBins);
-
-   inline BinBase * GetInteractionBigBins() {
-      // call this if the bins were already allocated and we just need the pointer
-      return m_aInteractionBigBins;
-   }
 };
 static_assert(std::is_standard_layout<InteractionShell>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
 static_assert(std::is_trivial<InteractionShell>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<InteractionShell>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
 
 } // DEFINED_ZONE_NAME
 

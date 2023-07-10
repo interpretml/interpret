@@ -60,29 +60,24 @@ InteractionShell * InteractionShell::Create(InteractionCore * const pInteraction
    return pNew;
 }
 
-BinBase * InteractionShell::GetInteractionFastBinsTemp(const size_t cBytesPerFastBin, const size_t cFastBins) {
-   ANALYSIS_ASSERT(0 != cBytesPerFastBin);
+BinBase * InteractionShell::GetInteractionFastBinsTemp(const size_t cBytes) {
+   ANALYSIS_ASSERT(0 != cBytes);
 
    BinBase * aBuffer = m_aInteractionFastBinsTemp;
-   if(UNLIKELY(m_cAllocatedFastBins < cFastBins)) {
+   if(UNLIKELY(m_cBytesFastBins < cBytes)) {
       AlignedFree(aBuffer);
       m_aInteractionFastBinsTemp = nullptr;
 
-      const size_t cItemsGrowth = (cFastBins >> 2) + 16; // cannot overflow
-      if(IsAddError(cItemsGrowth, cFastBins)) {
-         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp IsAddError(cItemsGrowth, cFastBins)");
+      if(IsAddError(cBytes, cBytes)) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp IsAddError(cBytes, cBytes)");
          return nullptr;
       }
-      const size_t cNewAllocatedFastBins = cFastBins + cItemsGrowth;
+      const size_t cNewAllocatedFastBins = cBytes + cBytes;
 
-      m_cAllocatedFastBins = cNewAllocatedFastBins;
+      m_cBytesFastBins = cNewAllocatedFastBins;
       LOG_N(Trace_Info, "Growing Interaction fast bins to %zu", cNewAllocatedFastBins);
 
-      if(IsMultiplyError(cBytesPerFastBin, cNewAllocatedFastBins)) {
-         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp IsMultiplyError(cBytesPerFastBin, cNewAllocatedFastBins)");
-         return nullptr;
-      }
-      aBuffer = static_cast<BinBase *>(AlignedAlloc(cBytesPerFastBin * cNewAllocatedFastBins));
+      aBuffer = static_cast<BinBase *>(AlignedAlloc(cNewAllocatedFastBins));
       if(nullptr == aBuffer) {
          LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp OutOfMemory");
          return nullptr;

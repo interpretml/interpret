@@ -119,7 +119,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    );
 
    if(0 != (static_cast<UInteractionFlags>(flags) & ~(
-      static_cast<UInteractionFlags>(InteractionFlags_Pure)
+      static_cast<UInteractionFlags>(InteractionFlags_Pure) | 
+      static_cast<UInteractionFlags>(InteractionFlags_EnableNewton)
    ))) {
       LOG_0(Trace_Error, "ERROR CalcInteractionStrength flags contains unknown flags. Ignoring extras.");
    }
@@ -296,23 +297,40 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
    memset(aBigBins, 0, cBytesPerBigBin * cTensorBins);
 
-   const size_t cBytesPerFastBin = GetBinSize<FloatFast, StorageDataType>(pInteractionCore->IsHessian(), cScores);
-   if(IsMultiplyError(cBytesPerFastBin, cTensorBins)) {
-      LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTensorBins)");
-      return Error_OutOfMemory;
-   }
-
-   // this doesn't need to be freed since it's tracked and re-used by the class InteractionShell
-   BinBase * const aFastBins = pInteractionShell->GetInteractionFastBinsTemp(cBytesPerFastBin, cTensorBins);
-   if(UNLIKELY(nullptr == aFastBins)) {
-      // already logged
-      return Error_OutOfMemory;
-   }
+   const bool bHessian = pInteractionCore->IsHessian();
 
    EBM_ASSERT(1 <= pInteractionCore->GetDataSetInteraction()->GetCountSubsets());
    DataSubsetInteraction * pSubset = pInteractionCore->GetDataSetInteraction()->GetSubsets();
    const DataSubsetInteraction * const pSubsetsEnd = pSubset + pInteractionCore->GetDataSetInteraction()->GetCountSubsets();
    do {
+      size_t cBytesPerFastBin;
+      if(sizeof(UInt_Small) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
+         if(sizeof(Float_Small) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+            cBytesPerFastBin = GetBinSize<Float_Small, UInt_Small>(bHessian, cScores);
+         } else {
+            EBM_ASSERT(sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+            cBytesPerFastBin = GetBinSize<Float_Big, UInt_Small>(bHessian, cScores);
+         }
+      } else {
+         EBM_ASSERT(sizeof(UInt_Big) == pSubset->GetObjectiveWrapper()->m_cUIntBytes);
+         if(sizeof(Float_Small) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+            cBytesPerFastBin = GetBinSize<Float_Small, UInt_Big>(bHessian, cScores);
+         } else {
+            cBytesPerFastBin = GetBinSize<Float_Big, UInt_Big>(bHessian, cScores);
+         }
+      }
+      if(IsMultiplyError(cBytesPerFastBin, cTensorBins)) {
+         LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTensorBins)");
+         return Error_OutOfMemory;
+      }
+
+      // this doesn't need to be freed since it's tracked and re-used by the class InteractionShell
+      BinBase * const aFastBins = pInteractionShell->GetInteractionFastBinsTemp(cBytesPerFastBin * cTensorBins);
+      if(UNLIKELY(nullptr == aFastBins)) {
+         // already logged
+         return Error_OutOfMemory;
+      }
+
       aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
 
 #ifndef NDEBUG
@@ -357,8 +375,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          std::is_same<FloatBig, double>::value,
          std::is_same<StorageDataType, uint64_t>::value,
          aBigBins,
-         std::is_same<FloatFast, double>::value,
-         std::is_same<StorageDataType, uint64_t>::value,
+         sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes,
+         sizeof(UInt_Big) == pSubset->GetObjectiveWrapper()->m_cUIntBytes,
          aFastBins
       );
 
