@@ -55,7 +55,7 @@ extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
    const size_t cRealDimensions,
    const size_t * const acBins,
-   const InteractionFlags flags,
+   const CalcInteractionFlags flags,
    const size_t cSamplesLeafMin,
    BinBase * aAuxiliaryBinsBase,
    BinBase * const aBinsBase
@@ -73,7 +73,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    InteractionHandle interactionHandle,
    IntEbm countDimensions,
    const IntEbm * featureIndexes,
-   InteractionFlags flags,
+   CalcInteractionFlags flags,
    IntEbm maxCardinality,
    IntEbm minSamplesLeaf,
    double * avgInteractionStrengthOut
@@ -86,7 +86,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       "interactionHandle=%p, "
       "countDimensions=%" IntEbmPrintf ", "
       "featureIndexes=%p, "
-      "flags=0x%" UInteractionFlagsPrintf ", "
+      "flags=0x%" UCalcInteractionFlagsPrintf ", "
       "maxCardinality=%" IntEbmPrintf ", "
       "minSamplesLeaf=%" IntEbmPrintf ", "
       "avgInteractionStrengthOut=%p"
@@ -94,7 +94,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       static_cast<void *>(interactionHandle),
       countDimensions,
       static_cast<const void *>(featureIndexes),
-      static_cast<UInteractionFlags>(flags), // signed to unsigned conversion is defined behavior in C++
+      static_cast<UCalcInteractionFlags>(flags), // signed to unsigned conversion is defined behavior in C++
       maxCardinality,
       minSamplesLeaf,
       static_cast<void *>(avgInteractionStrengthOut)
@@ -118,9 +118,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       "Entered CalcInteractionStrength"
    );
 
-   if(0 != (static_cast<UInteractionFlags>(flags) & ~(
-      static_cast<UInteractionFlags>(InteractionFlags_Pure) | 
-      static_cast<UInteractionFlags>(InteractionFlags_EnableNewton)
+   if(0 != (static_cast<UCalcInteractionFlags>(flags) & ~(
+      static_cast<UCalcInteractionFlags>(CalcInteractionFlags_Pure) | 
+      static_cast<UCalcInteractionFlags>(CalcInteractionFlags_EnableNewton)
    ))) {
       LOG_0(Trace_Error, "ERROR CalcInteractionStrength flags contains unknown flags. Ignoring extras.");
    }
@@ -441,7 +441,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       const double totalWeight = pDataSet->GetWeightTotal();
       EBM_ASSERT(0 < totalWeight); // if all are zeros we assume there are no weights and use the count
       bestGain /= totalWeight;
-      if(0 != (static_cast<UInteractionFlags>(flags) & static_cast<UInteractionFlags>(InteractionFlags_EnableNewton))) {
+      if(0 != (static_cast<UCalcInteractionFlags>(flags) & static_cast<UCalcInteractionFlags>(CalcInteractionFlags_EnableNewton))) {
          bestGain /= pInteractionCore->HessianConstant();
          bestGain *= pInteractionCore->GainAdjustmentHessianBoosting();
       } else {

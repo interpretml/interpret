@@ -15,16 +15,16 @@ _log = logging.getLogger(__name__)
 
 
 class Native:
-    # BoostFlags
-    BoostFlags_Default = 0x00000000
-    BoostFlags_DisableNewtonGain = 0x00000001
-    BoostFlags_DisableNewtonUpdate = 0x00000002
-    BoostFlags_GradientSums = 0x00000004
-    BoostFlags_RandomSplits = 0x00000008
+    # TermBoostFlags
+    TermBoostFlags_Default = 0x00000000
+    TermBoostFlags_DisableNewtonGain = 0x00000001
+    TermBoostFlags_DisableNewtonUpdate = 0x00000002
+    TermBoostFlags_GradientSums = 0x00000004
+    TermBoostFlags_RandomSplits = 0x00000008
 
-    # InteractionFlags
-    InteractionFlags_Default = 0x00000000
-    InteractionFlags_Pure = 0x00000001
+    # CalcInteractionFlags
+    CalcInteractionFlags_Default = 0x00000000
+    CalcInteractionFlags_Pure = 0x00000001
 
     # TraceLevel
     _Trace_Off = 0
@@ -1078,7 +1078,7 @@ class Native:
             ct.c_void_p,
             # int64_t indexTerm
             ct.c_int64,
-            # BoostFlags flags
+            # TermBoostFlags flags
             ct.c_int32,
             # double learningRate
             ct.c_double,
@@ -1180,7 +1180,7 @@ class Native:
             ct.c_int64,
             # int64_t * featureIndexes
             ct.c_void_p,
-            # InteractionFlags flags
+            # CalcInteractionFlags flags
             ct.c_int32,
             # int64_t maxCardinality
             ct.c_int64,

@@ -96,14 +96,14 @@ typedef int32_t BoolEbm;
 #define BoolEbmPrintf PRId32
 typedef int32_t ErrorEbm;
 #define ErrorEbmPrintf PRId32
-typedef int32_t BoostFlags;
+typedef int32_t TermBoostFlags;
 // printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
-typedef uint32_t UBoostFlags;
-#define UBoostFlagsPrintf PRIx32
-typedef int32_t InteractionFlags;
+typedef uint32_t UTermBoostFlags;
+#define UTermBoostFlagsPrintf PRIx32
+typedef int32_t CalcInteractionFlags;
 // printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
-typedef uint32_t UInteractionFlags;
-#define UInteractionFlagsPrintf PRIx32
+typedef uint32_t UCalcInteractionFlags;
+#define UCalcInteractionFlagsPrintf PRIx32
 typedef int32_t LinkEbm;
 #define LinkEbmPrintf PRId32
 typedef int64_t OutputType;
@@ -119,8 +119,8 @@ typedef struct _InteractionHandle {
 
 #define BOOL_CAST(val)                             (STATIC_CAST(BoolEbm, (val)))
 #define ERROR_CAST(val)                            (STATIC_CAST(ErrorEbm, (val)))
-#define BOOST_FLAGS_CAST(val)                      (STATIC_CAST(BoostFlags, (val)))
-#define INTERACTION_FLAGS_CAST(val)                (STATIC_CAST(InteractionFlags, (val)))
+#define TERM_BOOST_FLAGS_CAST(val)                 (STATIC_CAST(TermBoostFlags, (val)))
+#define CALC_INTERACTION_FLAGS_CAST(val)           (STATIC_CAST(CalcInteractionFlags, (val)))
 #define TRACE_CAST(val)                            (STATIC_CAST(TraceEbm, (val)))
 #define LINK_CAST(val)                             (STATIC_CAST(LinkEbm, (val)))
 #define OUTPUT_TYPE_CAST(val)                      (STATIC_CAST(OutputType, (val)))
@@ -180,15 +180,15 @@ typedef struct _InteractionHandle {
 #define Error_ObjectiveParamNonPrivate             (ERROR_CAST(-20))
 #define Error_ObjectiveIllegalTarget               (ERROR_CAST(-21))
 
-#define BoostFlags_Default                         (BOOST_FLAGS_CAST(0x00000000))
-#define BoostFlags_DisableNewtonGain               (BOOST_FLAGS_CAST(0x00000001))
-#define BoostFlags_DisableNewtonUpdate             (BOOST_FLAGS_CAST(0x00000002))
-#define BoostFlags_GradientSums                    (BOOST_FLAGS_CAST(0x00000004))
-#define BoostFlags_RandomSplits                    (BOOST_FLAGS_CAST(0x00000008))
+#define TermBoostFlags_Default                     (TERM_BOOST_FLAGS_CAST(0x00000000))
+#define TermBoostFlags_DisableNewtonGain           (TERM_BOOST_FLAGS_CAST(0x00000001))
+#define TermBoostFlags_DisableNewtonUpdate         (TERM_BOOST_FLAGS_CAST(0x00000002))
+#define TermBoostFlags_GradientSums                (TERM_BOOST_FLAGS_CAST(0x00000004))
+#define TermBoostFlags_RandomSplits                (TERM_BOOST_FLAGS_CAST(0x00000008))
 
-#define InteractionFlags_Default                   (INTERACTION_FLAGS_CAST(0x00000000))
-#define InteractionFlags_Pure                      (INTERACTION_FLAGS_CAST(0x00000001))
-#define InteractionFlags_EnableNewton              (INTERACTION_FLAGS_CAST(0x00000002))
+#define CalcInteractionFlags_Default               (CALC_INTERACTION_FLAGS_CAST(0x00000000))
+#define CalcInteractionFlags_Pure                  (CALC_INTERACTION_FLAGS_CAST(0x00000001))
+#define CalcInteractionFlags_EnableNewton          (CALC_INTERACTION_FLAGS_CAST(0x00000002))
 
 // No messages will be logged. This is the default.
 #define Trace_Off                                  (TRACE_CAST(0))
@@ -441,7 +441,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    void * rng,
    BoosterHandle boosterHandle,
    IntEbm indexTerm,
-   BoostFlags flags, 
+   TermBoostFlags flags, 
    double learningRate, 
    IntEbm minSamplesLeaf, 
    const IntEbm * leavesMax, 
@@ -495,7 +495,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    InteractionHandle interactionHandle, 
    IntEbm countDimensions,
    const IntEbm * featureIndexes,
-   InteractionFlags flags,
+   CalcInteractionFlags flags,
    IntEbm maxCardinality,
    IntEbm minSamplesLeaf,
    double * avgInteractionStrengthOut

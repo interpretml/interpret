@@ -410,7 +410,7 @@ TEST_CASE("purified interaction strength with impure inputs should be zero, inte
       }
    );
 
-   double metricReturn = test1.TestCalcInteractionStrength({ 0, 1 }, InteractionFlags_Pure);
+   double metricReturn = test1.TestCalcInteractionStrength({ 0, 1 }, CalcInteractionFlags_Pure);
 
    CHECK(0 <= metricReturn && metricReturn < 0.0000001);
 }
@@ -440,7 +440,7 @@ TEST_CASE("purified interaction strength same as pre-purified strength, interact
       }
    );
 
-   double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 }, InteractionFlags_Pure);
+   double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 }, CalcInteractionFlags_Pure);
 
    // to the pure input we add on one   axis: 3, 5
    // to the pure input we add on other axis: 7, 11
@@ -465,7 +465,7 @@ TEST_CASE("purified interaction strength same as pre-purified strength, interact
       }
    );
 
-   double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 }, InteractionFlags_Pure);
+   double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 }, CalcInteractionFlags_Pure);
 
    CHECK_APPROX(metricReturn1, metricReturn2);
 }
@@ -485,7 +485,7 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
       }
    );
 
-   const double interactionStrength = test1.TestCalcInteractionStrength({ 0, 1 }, InteractionFlags_EnableNewton);
+   const double interactionStrength = test1.TestCalcInteractionStrength({ 0, 1 }, CalcInteractionFlags_EnableNewton);
 
    // we have a 2x2 matrix for boosting, which means there is only 1 cut point and it is known
    // so the gain should be from going from a singularity to the 4 quadrants

@@ -85,14 +85,14 @@ extern ErrorEbm PartitionRandomBoosting(
    RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
-   const BoostFlags flags,
+   const TermBoostFlags flags,
    const IntEbm * const aLeavesMax,
    double * const pTotalGain
 );
 
 static void BoostZeroDimensional(
    BoosterShell * const pBoosterShell, 
-   const BoostFlags flags
+   const TermBoostFlags flags
 ) {
    LOG_0(Trace_Verbose, "Entered BoostZeroDimensional");
 
@@ -107,7 +107,7 @@ static void BoostZeroDimensional(
    if(pBoosterCore->IsHessian()) {
       const auto * const pBin = pBigBin->Specialize<FloatBig, StorageDataType, true>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
-      if(0 != (BoostFlags_GradientSums & flags)) {
+      if(0 != (TermBoostFlags_GradientSums & flags)) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aGradientPairs[iScore].m_sumGradients);
             aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(updateScore);
@@ -124,7 +124,7 @@ static void BoostZeroDimensional(
    } else {
       const auto * const pBin = pBigBin->Specialize<FloatBig, StorageDataType, false>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
-      if(0 != (BoostFlags_GradientSums & flags)) {
+      if(0 != (TermBoostFlags_GradientSums & flags)) {
          const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aGradientPairs[0].m_sumGradients);
          aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
       } else {
@@ -406,7 +406,7 @@ static ErrorEbm BoostRandom(
    RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const size_t iTerm,
-   const BoostFlags flags,
+   const TermBoostFlags flags,
    const IntEbm * const aLeavesMax,
    double * const pTotalGain
 ) {
@@ -450,7 +450,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    void * rng,
    BoosterHandle boosterHandle,
    IntEbm indexTerm,
-   BoostFlags flags,
+   TermBoostFlags flags,
    double learningRate,
    IntEbm minSamplesLeaf,
    const IntEbm * leavesMax,
@@ -466,7 +466,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       "rng=%p, "
       "boosterHandle=%p, "
       "indexTerm=%" IntEbmPrintf ", "
-      "flags=0x%" UBoostFlagsPrintf ", "
+      "flags=0x%" UTermBoostFlagsPrintf ", "
       "learningRate=%le, "
       "minSamplesLeaf=%" IntEbmPrintf ", "
       "leavesMax=%p, "
@@ -475,7 +475,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       rng,
       static_cast<void *>(boosterHandle),
       indexTerm,
-      static_cast<UBoostFlags>(flags), // signed to unsigned conversion is defined behavior in C++
+      static_cast<UTermBoostFlags>(flags), // signed to unsigned conversion is defined behavior in C++
       learningRate,
       minSamplesLeaf,
       static_cast<const void *>(leavesMax),
@@ -520,11 +520,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       "Entered GenerateTermUpdate"
    );
 
-   if(0 != (static_cast<UBoostFlags>(flags) & ~(
-      static_cast<UBoostFlags>(BoostFlags_DisableNewtonGain) |
-      static_cast<UBoostFlags>(BoostFlags_DisableNewtonUpdate) |
-      static_cast<UBoostFlags>(BoostFlags_GradientSums) |
-      static_cast<UBoostFlags>(BoostFlags_RandomSplits)
+   if(0 != (static_cast<UTermBoostFlags>(flags) & ~(
+      static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonGain) |
+      static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonUpdate) |
+      static_cast<UTermBoostFlags>(TermBoostFlags_GradientSums) |
+      static_cast<UTermBoostFlags>(TermBoostFlags_RandomSplits)
    ))) {
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains unknown flags. Ignoring extras.");
    }
@@ -640,15 +640,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       const double multipleCommon = gradientConstant / cInnerBagsAfterZero;
       double multiple = multipleCommon;
       double gainMultiple = multipleCommon;
-      if(0 != (static_cast<UBoostFlags>(flags) & static_cast<UBoostFlags>(BoostFlags_GradientSums))) {
+      if(0 != (static_cast<UTermBoostFlags>(flags) & static_cast<UTermBoostFlags>(TermBoostFlags_GradientSums))) {
          multiple *= pBoosterCore->LearningRateAdjustmentDifferentialPrivacy();
-      } else if(0 != (static_cast<UBoostFlags>(flags) & static_cast<UBoostFlags>(BoostFlags_DisableNewtonUpdate))) {
+      } else if(0 != (static_cast<UTermBoostFlags>(flags) & static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonUpdate))) {
          multiple *= pBoosterCore->LearningRateAdjustmentGradientBoosting();
       } else {
          multiple /= pBoosterCore->HessianConstant();
          multiple *= pBoosterCore->LearningRateAdjustmentHessianBoosting();
       }
-      if(0 != (static_cast<UBoostFlags>(flags) & static_cast<UBoostFlags>(BoostFlags_DisableNewtonGain))) {
+      if(0 != (static_cast<UTermBoostFlags>(flags) & static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonGain))) {
          gainMultiple *= pBoosterCore->GainAdjustmentGradientBoosting();
       } else {
          gainMultiple /= pBoosterCore->HessianConstant();
@@ -715,7 +715,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
 
 #ifndef NDEBUG
       size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
-      if(0 != (BoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {
+      if(0 != (TermBoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {
          // if we're doing random boosting we allocated the auxillary memory, but we don't need it
          cAuxillaryBins = 0;
       }
@@ -814,7 +814,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             EBM_ASSERT(0 < weightTotal); // if all are zeros we assume there are no weights and use the count
 
             double gain;
-            if(0 != (BoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {
+            if(0 != (TermBoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {
                if(size_t { 1 } != cSamplesLeafMin) {
                   LOG_0(Trace_Warning,
                      "WARNING GenerateTermUpdate cSamplesLeafMin is ignored when doing random splitting"

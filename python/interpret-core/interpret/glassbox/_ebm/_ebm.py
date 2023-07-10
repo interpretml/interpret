@@ -782,7 +782,7 @@ class EBMModel(BaseEstimator):
 
             bin_data_weights = main_bin_weights
             boost_flags = (
-                Native.BoostFlags_GradientSums | Native.BoostFlags_RandomSplits
+                Native.TermBoostFlags_GradientSums | Native.TermBoostFlags_RandomSplits
             )
             inner_bags = 0
             greediness = 0.0
@@ -794,7 +794,7 @@ class EBMModel(BaseEstimator):
         else:
             noise_scale_boosting = None
             bin_data_weights = None
-            boost_flags = Native.BoostFlags_Default
+            boost_flags = Native.TermBoostFlags_Default
             inner_bags = self.inner_bags
             greediness = self.greediness
             smoothing_rounds = self.smoothing_rounds
@@ -994,7 +994,7 @@ class EBMModel(BaseEstimator):
                                 scores_bags[idx],
                                 combinations(range(n_features_in), 2),
                                 exclude,
-                                Native.InteractionFlags_Default,
+                                Native.CalcInteractionFlags_Default,
                                 max_cardinality,
                                 min_samples_leaf,
                                 is_differential_privacy,

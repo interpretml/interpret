@@ -69,9 +69,9 @@ def boost(
                 if 0 < smoothing_rounds:
                     # modify some of our parameters temporarily
                     boost_flags_local |= (
-                        Native.BoostFlags_DisableNewtonGain
-                        | Native.BoostFlags_DisableNewtonUpdate
-                        | Native.BoostFlags_RandomSplits
+                        Native.TermBoostFlags_DisableNewtonGain
+                        | Native.TermBoostFlags_DisableNewtonUpdate
+                        | Native.TermBoostFlags_RandomSplits
                     )
 
                 for term_idx in range(len(term_features)):

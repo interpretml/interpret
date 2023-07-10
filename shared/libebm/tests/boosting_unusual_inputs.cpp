@@ -26,7 +26,7 @@ TEST_CASE("zero learning rate, boosting, regression") {
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric = test.Boost(iTerm, BoostFlags_Default, 0).validationMetric;
+         validationMetric = test.Boost(iTerm, TermBoostFlags_Default, 0).validationMetric;
          CHECK(144 == validationMetric);
          termScore = test.GetCurrentTermScore(iTerm, {}, 0);
          CHECK(0 == termScore);
@@ -57,7 +57,7 @@ TEST_CASE("zero learning rate, boosting, binary") {
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric = test.Boost(iTerm, BoostFlags_Default, 0).validationMetric;
+         validationMetric = test.Boost(iTerm, TermBoostFlags_Default, 0).validationMetric;
          CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529, double { 1e-1 });
          termScore = test.GetCurrentTermScore(iTerm, {}, 0);
          CHECK(0 == termScore);
@@ -89,7 +89,7 @@ TEST_CASE("zero learning rate, boosting, multiclass") {
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric = test.Boost(iTerm, BoostFlags_Default, 0).validationMetric;
+         validationMetric = test.Boost(iTerm, TermBoostFlags_Default, 0).validationMetric;
          CHECK_APPROX_TOLERANCE(validationMetric, 1.0986122886681098, double { 1e-1 });
          termScore = test.GetCurrentTermScore(iTerm, {}, 0);
          CHECK(0 == termScore);
@@ -125,7 +125,7 @@ TEST_CASE("negative learning rate, boosting, regression") {
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric = test.Boost(iTerm, BoostFlags_Default, -k_learningRateDefault).validationMetric;
+         validationMetric = test.Boost(iTerm, TermBoostFlags_Default, -k_learningRateDefault).validationMetric;
          if(0 == iTerm && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 146.41);
             termScore = test.GetCurrentTermScore(iTerm, {}, 0);
@@ -164,7 +164,7 @@ TEST_CASE("negative learning rate, boosting, binary") {
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 50; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric = test.Boost(iTerm, BoostFlags_Default, -k_learningRateDefault).validationMetric;
+         validationMetric = test.Boost(iTerm, TermBoostFlags_Default, -k_learningRateDefault).validationMetric;
          if(0 == iTerm && 0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 0.70319717972663420, double { 1e-1 });
             termScore = test.GetCurrentTermScore(iTerm, {}, 0);
@@ -206,7 +206,7 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 20; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric = test.Boost(iTerm, BoostFlags_Default, -k_learningRateDefault).validationMetric;
+         validationMetric = test.Boost(iTerm, TermBoostFlags_Default, -k_learningRateDefault).validationMetric;
          if(0 == iTerm && 0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.1288361512023379, double { 1e-1 });
             const double zeroLogit = test.GetCurrentTermScore(iTerm, {}, 0);
@@ -250,7 +250,7 @@ TEST_CASE("zero minSamplesLeaf, boosting, regression") {
       }
    );
 
-   double validationMetric = test.Boost(0, BoostFlags_Default, k_learningRateDefault, 0).validationMetric;
+   double validationMetric = test.Boost(0, TermBoostFlags_Default, k_learningRateDefault, 0).validationMetric;
    CHECK_APPROX(validationMetric, 141.61);
    double termScore;
    termScore = test.GetCurrentTermScore(0, { 0 }, 0);
@@ -612,7 +612,7 @@ TEST_CASE("one leavesMax, boosting, regression") {
       }
    );
 
-   double validationMetric = test.Boost(0, BoostFlags_Default, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax).validationMetric;
+   double validationMetric = test.Boost(0, TermBoostFlags_Default, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax).validationMetric;
    CHECK_APPROX(validationMetric, 141.61);
    double termScore;
    termScore = test.GetCurrentTermScore(0, { 0 }, 0);
@@ -642,7 +642,7 @@ TEST_CASE("mono-classification") {
       nullptr,
       test.GetBoosterHandle(),
       0,
-      BoostFlags_Default,
+      TermBoostFlags_Default,
       k_learningRateDefault,
       k_minSamplesLeafDefault,
       &k_leavesMaxDefault[0],
@@ -1470,7 +1470,7 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         double validationMetric = test.Boost(iTerm, BoostFlags_RandomSplits, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax).validationMetric;
+         double validationMetric = test.Boost(iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax).validationMetric;
          if(0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.0340957641601563f, double { 1e-1 });
 
@@ -1508,7 +1508,7 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         double validationMetric = test.Boost(iTerm, BoostFlags_RandomSplits | BoostFlags_GradientSums, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax).validationMetric;
+         double validationMetric = test.Boost(iTerm, TermBoostFlags_RandomSplits | TermBoostFlags_GradientSums, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax).validationMetric;
          if(0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.0986122886681098, double { 1e-1 });
 
@@ -1560,7 +1560,7 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
    double validationMetric = double { 0 };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric = test.Boost(iTerm, BoostFlags_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
+         validationMetric = test.Boost(iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
       }
    }
 
@@ -1619,7 +1619,7 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
    double validationMetric = double { 0 };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric = test.Boost(iTerm, BoostFlags_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
+         validationMetric = test.Boost(iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
       }
    }
    CHECK(validationMetric <= 0.0091562298922079986 * 1.4);
@@ -1679,7 +1679,7 @@ TEST_CASE("Random splitting, pure tripples, regression") {
    double validationMetric = double { 0 };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric = test.Boost(iTerm, BoostFlags_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
+         validationMetric = test.Boost(iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
       }
    }
 
@@ -1737,7 +1737,7 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
          validationMetric = test.Boost(
             iTerm, 
-            BoostFlags_RandomSplits, 
+            TermBoostFlags_RandomSplits, 
             k_learningRateDefault,
             k_minSamplesLeaf,
             k_leavesMax
@@ -1794,7 +1794,7 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
    double validationMetric = 0;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric = test.Boost(iTerm, BoostFlags_RandomSplits | BoostFlags_GradientSums, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax).validationMetric;
+         validationMetric = test.Boost(iTerm, TermBoostFlags_RandomSplits | TermBoostFlags_GradientSums, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax).validationMetric;
          if(0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529, double { 1e-1 });
 
@@ -1830,7 +1830,7 @@ TEST_CASE("zero gain, boosting, regression") {
       {}
    );
 
-   double gainAvg = test.Boost(0, BoostFlags_Default, k_learningRateDefault, 0).gainAvg;
+   double gainAvg = test.Boost(0, TermBoostFlags_Default, k_learningRateDefault, 0).gainAvg;
    CHECK(0 <= gainAvg && gainAvg < 0.0000001);
 }
 
@@ -1891,7 +1891,7 @@ TEST_CASE("tweedie, boosting") {
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric = test.Boost(iTerm, BoostFlags_Default).validationMetric;
+         validationMetric = test.Boost(iTerm, TermBoostFlags_Default).validationMetric;
       }
    }
 

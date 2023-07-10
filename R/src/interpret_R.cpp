@@ -822,7 +822,7 @@ SEXP GenerateTermUpdate_R(
       pRng,
       boosterHandle,
       iTerm,
-      BoostFlags_Default,
+      TermBoostFlags_Default,
       learningRateLocal,
       samplesLeafMin,
       aLeavesMax,
@@ -1083,7 +1083,7 @@ SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexe
       interactionHandle, 
       cDimensions, 
       aFeatureIndexes, 
-      InteractionFlags_Default, 
+      CalcInteractionFlags_Default, 
       cardinalityMax, 
       samplesLeafMin, 
       &avgInteractionStrength

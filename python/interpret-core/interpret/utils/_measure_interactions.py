@@ -251,7 +251,7 @@ def measure_interactions(
         init_scores=init_score,
         iter_term_features=iter_term_features,
         exclude=set(),
-        interaction_flags=Native.InteractionFlags_Pure,
+        interaction_flags=Native.CalcInteractionFlags_Pure,
         max_cardinality=max_cardinality,
         min_samples_leaf=min_samples_leaf,
         is_private=is_differential_privacy,

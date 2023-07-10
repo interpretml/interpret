@@ -563,7 +563,7 @@ TestBoost::~TestBoost() {
 
 BoostRet TestBoost::Boost(
    const IntEbm indexTerm,
-   const BoostFlags flags,
+   const TermBoostFlags flags,
    const double learningRate,
    const IntEbm minSamplesLeaf,
    const std::vector<IntEbm> leavesMax
@@ -586,7 +586,7 @@ BoostRet TestBoost::Boost(
    if(Error_None != error) {
       throw TestException(error, "GenerateTermUpdate");
    }
-   if(0 != (BoostFlags_GradientSums & flags)) {
+   if(0 != (TermBoostFlags_GradientSums & flags)) {
       // if sums are on, then we MUST change the term update
 
       size_t cUpdateScores = GetCountScores(m_cClasses);
@@ -921,7 +921,7 @@ TestInteraction::~TestInteraction() {
 
 double TestInteraction::TestCalcInteractionStrength(
    const std::vector<IntEbm> features,
-   const InteractionFlags flags,
+   const CalcInteractionFlags flags,
    const IntEbm minSamplesLeaf
 ) const {
    double avgInteractionStrength = double { 0 };

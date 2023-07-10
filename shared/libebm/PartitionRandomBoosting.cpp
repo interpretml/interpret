@@ -38,7 +38,7 @@ public:
       RandomDeterministic * const pRng,
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const BoostFlags flags,
+      const TermBoostFlags flags,
       const IntEbm * const aLeavesMax,
       double * const pTotalGain
    ) {
@@ -514,7 +514,7 @@ public:
       FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
       auto * pCollapsedBin2 = aCollapsedBins;
 
-      if(0 != (BoostFlags_GradientSums & flags)) {
+      if(0 != (TermBoostFlags_GradientSums & flags)) {
          do {
             auto * const pGradientPair = pCollapsedBin2->GetGradientPairs();
 
@@ -578,7 +578,7 @@ public:
       RandomDeterministic * const pRng,
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const BoostFlags flags,
+      const TermBoostFlags flags,
       const IntEbm * const aLeavesMax,
       double * const pTotalGain
    ) {
@@ -615,7 +615,7 @@ public:
       RandomDeterministic * const pRng,
       BoosterShell * const pBoosterShell,
       const Term * const pTerm,
-      const BoostFlags flags,
+      const TermBoostFlags flags,
       const IntEbm * const aLeavesMax,
       double * const pTotalGain
    ) {
@@ -634,7 +634,7 @@ extern ErrorEbm PartitionRandomBoosting(
    RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const Term * const pTerm,
-   const BoostFlags flags,
+   const TermBoostFlags flags,
    const IntEbm * const aLeavesMax,
    double * const pTotalGain
 ) {
