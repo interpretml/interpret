@@ -20,7 +20,7 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }
-      if(config.isDifferentiallyPrivate) {
+      if(config.isDifferentialPrivacy) {
          throw NonPrivateRegistrationException();
       }
       if(variancePower <= 1.0 || 2.0 <= variancePower) {

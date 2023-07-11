@@ -27,7 +27,7 @@ struct ExampleRegressionObjective : RegressionObjective {
          throw ParamMismatchWithConfigException();
       }
 
-      if(config.isDifferentiallyPrivate) {
+      if(config.isDifferentialPrivacy) {
          // Do not support differential privacy unless this objective has been mathematically proven to work in DP
          throw NonPrivateRegistrationException();
       }

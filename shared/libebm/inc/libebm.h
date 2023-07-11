@@ -96,10 +96,18 @@ typedef int32_t BoolEbm;
 #define BoolEbmPrintf PRId32
 typedef int32_t ErrorEbm;
 #define ErrorEbmPrintf PRId32
+typedef int32_t CreateBoosterFlags;
+// printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
+typedef uint32_t UCreateBoosterFlags;
+#define UCreateBoosterFlagsPrintf PRIx32
 typedef int32_t TermBoostFlags;
 // printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
 typedef uint32_t UTermBoostFlags;
 #define UTermBoostFlagsPrintf PRIx32
+typedef int32_t CreateInteractionFlags;
+// printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
+typedef uint32_t UCreateInteractionFlags;
+#define UCreateInteractionFlagsPrintf PRIx32
 typedef int32_t CalcInteractionFlags;
 // printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
 typedef uint32_t UCalcInteractionFlags;
@@ -119,6 +127,8 @@ typedef struct _InteractionHandle {
 
 #define BOOL_CAST(val)                             (STATIC_CAST(BoolEbm, (val)))
 #define ERROR_CAST(val)                            (STATIC_CAST(ErrorEbm, (val)))
+#define CREATE_BOOSTER_FLAGS_CAST(val)             (STATIC_CAST(CreateBoosterFlags, (val)))
+#define CREATE_INTERACTION_FLAGS_CAST(val)         (STATIC_CAST(CreateInteractionFlags, (val)))
 #define TERM_BOOST_FLAGS_CAST(val)                 (STATIC_CAST(TermBoostFlags, (val)))
 #define CALC_INTERACTION_FLAGS_CAST(val)           (STATIC_CAST(CalcInteractionFlags, (val)))
 #define TRACE_CAST(val)                            (STATIC_CAST(TraceEbm, (val)))
@@ -180,11 +190,17 @@ typedef struct _InteractionHandle {
 #define Error_ObjectiveParamNonPrivate             (ERROR_CAST(-20))
 #define Error_ObjectiveIllegalTarget               (ERROR_CAST(-21))
 
+#define CreateBoosterFlags_Default                 (CREATE_BOOSTER_FLAGS_CAST(0x00000000))
+#define CreateBoosterFlags_DifferentialPrivacy     (CREATE_BOOSTER_FLAGS_CAST(0x00000001))
+
 #define TermBoostFlags_Default                     (TERM_BOOST_FLAGS_CAST(0x00000000))
 #define TermBoostFlags_DisableNewtonGain           (TERM_BOOST_FLAGS_CAST(0x00000001))
 #define TermBoostFlags_DisableNewtonUpdate         (TERM_BOOST_FLAGS_CAST(0x00000002))
 #define TermBoostFlags_GradientSums                (TERM_BOOST_FLAGS_CAST(0x00000004))
 #define TermBoostFlags_RandomSplits                (TERM_BOOST_FLAGS_CAST(0x00000008))
+
+#define CreateInteractionFlags_Default             (CREATE_BOOSTER_FLAGS_CAST(0x00000000))
+#define CreateInteractionFlags_DifferentialPrivacy (CREATE_BOOSTER_FLAGS_CAST(0x00000001))
 
 #define CalcInteractionFlags_Default               (CALC_INTERACTION_FLAGS_CAST(0x00000000))
 #define CalcInteractionFlags_Pure                  (CALC_INTERACTION_FLAGS_CAST(0x00000001))
@@ -397,7 +413,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratifi
 );
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
-   BoolEbm isDifferentiallyPrivate,
+   BoolEbm isDifferentialPrivacy,
    const char * objective,
    LinkEbm * linkOut,
    double * linkParamOut
@@ -425,7 +441,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    const IntEbm * dimensionCounts,
    const IntEbm * featureIndexes,
    IntEbm countInnerBags,
-   BoolEbm isDifferentiallyPrivate,
+   CreateBoosterFlags flags,
    const char * objective,
    const double * experimentalParams,
    BoosterHandle * boosterHandleOut
@@ -483,7 +499,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    const BagEbm * bag,
    // TODO: add a baseScore parameter here for symmetry with CreateBooster
    const double * initScores, // only samples with non-zeros in the bag are included
-   BoolEbm isDifferentiallyPrivate,
+   CreateInteractionFlags flags,
    const char * objective,
    const double * experimentalParams,
    InteractionHandle * interactionHandleOut

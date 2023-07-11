@@ -176,7 +176,7 @@ inline static void FreeObjectiveWrapperInternals(ObjectiveWrapper * const pObjec
 struct Config {
    // don't use m_ notation here, mostly to make it cleaner for people writing *Objective classes
    size_t cOutputs;
-   BoolEbm isDifferentiallyPrivate;
+   BoolEbm isDifferentialPrivacy;
 };
 
 INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateObjective_Cpu_64(

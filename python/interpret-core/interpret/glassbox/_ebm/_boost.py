@@ -18,7 +18,7 @@ def boost(
     init_scores,
     term_features,
     n_inner_bags,
-    boost_flags,
+    term_boost_flags,
     learning_rate,
     min_samples_leaf,
     max_leaves,
@@ -30,7 +30,7 @@ def boost(
     noise_scale,
     bin_weights,
     rng,
-    is_private,
+    create_booster_flags,
     objective,
     experimental_params=None,
 ):
@@ -43,7 +43,7 @@ def boost(
             term_features,
             n_inner_bags,
             rng,
-            is_private,
+            create_booster_flags,
             objective,
             experimental_params,
         ) as booster:
@@ -65,10 +65,10 @@ def boost(
                     # we're doing a cyclic round
                     heap = []
 
-                boost_flags_local = boost_flags
+                term_boost_flags_local = term_boost_flags
                 if 0 < smoothing_rounds:
                     # modify some of our parameters temporarily
-                    boost_flags_local |= (
+                    term_boost_flags_local |= (
                         Native.TermBoostFlags_DisableNewtonGain
                         | Native.TermBoostFlags_DisableNewtonUpdate
                         | Native.TermBoostFlags_RandomSplits
@@ -83,7 +83,7 @@ def boost(
                     avg_gain = booster.generate_term_update(
                         rng,
                         term_idx=term_idx,
-                        boost_flags=boost_flags_local,
+                        term_boost_flags=term_boost_flags_local,
                         learning_rate=learning_rate,
                         min_samples_leaf=min_samples_leaf,
                         max_leaves=max_leaves,

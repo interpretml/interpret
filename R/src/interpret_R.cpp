@@ -746,7 +746,7 @@ SEXP CreateBooster_R(
       acTermDimensions,
       aiTermFeatures,
       cInnerBags,
-      EBM_FALSE,
+      CreateBoosterFlags_Default,
       "log_loss",
       nullptr,
       &boosterHandle
@@ -1035,7 +1035,7 @@ SEXP CreateInteractionDetector_R(SEXP dataSetWrapped, SEXP bag, SEXP initScores)
       pDataSet,
       aBag,
       aInitScores,
-      EBM_FALSE,
+      CreateInteractionFlags_Default,
       "log_loss",
       nullptr,
       &interactionHandle

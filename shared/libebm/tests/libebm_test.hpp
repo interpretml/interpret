@@ -437,7 +437,7 @@ public:
       const std::vector<TestSample> train,
       const std::vector<TestSample> validation,
       const IntEbm countInnerBags = k_countInnerBagsDefault,
-      const BoolEbm bDifferentiallyPrivate = EBM_FALSE,
+      const CreateBoosterFlags flags = CreateBoosterFlags_Default,
       const char * const sObjective = nullptr,
       const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault
    );
@@ -486,7 +486,7 @@ public:
       const OutputType cClasses,
       const std::vector<FeatureTest> features,
       const std::vector<TestSample> samples,
-      const BoolEbm bDifferentiallyPrivate = EBM_FALSE,
+      const CreateInteractionFlags flags = CreateInteractionFlags_Default,
       const char * const sObjective = nullptr,
       const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault
    );

@@ -20,7 +20,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
          throw ParamMismatchWithConfigException();
       }
 
-      if(config.isDifferentiallyPrivate) {
+      if(config.isDifferentialPrivacy) {
          throw NonPrivateRegistrationException();
       }
    }

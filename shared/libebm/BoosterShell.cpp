@@ -170,7 +170,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    const IntEbm * dimensionCounts,
    const IntEbm * featureIndexes,
    IntEbm countInnerBags,
-   BoolEbm isDifferentiallyPrivate,
+   CreateBoosterFlags flags,
    const char * objective,
    const double * experimentalParams,
    BoosterHandle * boosterHandleOut
@@ -186,7 +186,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       "dimensionCounts=%p, "
       "featureIndexes=%p, "
       "countInnerBags=%" IntEbmPrintf ", "
-      "isDifferentiallyPrivate=%s, "
+      "flags=0x%" UCreateBoosterFlagsPrintf ", "
       "objective=%p, "
       "experimentalParams=%p, "
       "boosterHandleOut=%p"
@@ -199,7 +199,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       static_cast<const void *>(dimensionCounts),
       static_cast<const void *>(featureIndexes),
       countInnerBags,
-      ObtainTruth(isDifferentiallyPrivate),
+      static_cast<UCreateBoosterFlags>(flags), // signed to unsigned conversion is defined behavior in C++
       static_cast<const void *>(objective), // do not print the string for security reasons
       static_cast<const void *>(experimentalParams),
       static_cast<const void *>(boosterHandleOut)
@@ -212,6 +212,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       return Error_IllegalParamVal;
    }
    *boosterHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
+
+   if(0 != (static_cast<UCreateBoosterFlags>(flags) & ~(
+      static_cast<UCreateBoosterFlags>(CreateBoosterFlags_DifferentialPrivacy)
+   ))) {
+      LOG_0(Trace_Error, "ERROR CreateBooster flags contains unknown flags. Ignoring extras.");
+   }
 
    if(nullptr == dataSet) {
       LOG_0(Trace_Error, "ERROR CreateBooster nullptr == dataSet");
@@ -253,7 +259,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       static_cast<const unsigned char *>(dataSet),
       bag,
       initScores,
-      isDifferentiallyPrivate,
+      flags,
       objective,
       &pBoosterCore
    );

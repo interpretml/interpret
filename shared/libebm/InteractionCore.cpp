@@ -63,7 +63,7 @@ ErrorEbm InteractionCore::Create(
    const size_t cFeatures,
    const size_t cWeights,
    const BagEbm * const aBag,
-   const BoolEbm isDifferentiallyPrivate,
+   const CreateInteractionFlags flags,
    const char * const sObjective,
    const double * const experimentalParams,
    InteractionCore ** const ppInteractionCoreOut
@@ -184,7 +184,7 @@ ErrorEbm InteractionCore::Create(
       LOG_0(Trace_Info, "INFO InteractionCore::Create determining Objective");
       Config config;
       config.cOutputs = cScores;
-      config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
+      config.isDifferentialPrivacy = 0 != (CreateInteractionFlags_DifferentialPrivacy & flags) ? EBM_TRUE : EBM_FALSE;
       error = GetObjective(&config, sObjective, &pInteractionCore->m_objectiveCpu, &pInteractionCore->m_objectiveSIMD);
       if(Error_None != error) {
          // already logged

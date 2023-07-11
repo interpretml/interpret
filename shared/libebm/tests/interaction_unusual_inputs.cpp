@@ -25,8 +25,8 @@ TEST_CASE("Zero interaction samples, interaction, binary") {
       OutputType_BinaryClassification, 
       { FeatureTest(2) },
       {},
-      EBM_FALSE, 
-      nullptr, 
+      CreateInteractionFlags_Default,
+      nullptr,
       0
    );
 
@@ -98,8 +98,8 @@ TEST_CASE("Term with zero features, interaction, binary") {
       OutputType_BinaryClassification, 
       {},
       { TestSample({}, 0) },
-      EBM_FALSE, 
-      nullptr, 
+      CreateInteractionFlags_Default,
+      nullptr,
       0
    );
 
@@ -134,8 +134,8 @@ TEST_CASE("Term with one feature with one state, interaction, binary") {
       OutputType_BinaryClassification, 
       { FeatureTest(2, true, false) }, 
       { TestSample({ 0 }, 0) },
-      EBM_FALSE, 
-      nullptr, 
+      CreateInteractionFlags_Default,
+      nullptr,
       0
    );
 
@@ -500,8 +500,7 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
          TestSample({ 1, 0 }, 5, 85.1254),
          TestSample({ 1, 1 }, 7, 1.355),
       },
-      {},
-      0
+      {}
    );
    const double gainAvg = test2.Boost(0).gainAvg;
 
@@ -518,7 +517,7 @@ TEST_CASE("tweedie, interaction") {
          TestSample({ 1, 0 }, 13),
          TestSample({ 1, 1 }, 12)
       },
-      EBM_FALSE, 
+      CreateInteractionFlags_Default,
       "tweedie_deviance:variance_power=1.3"
    );
 

@@ -781,7 +781,7 @@ class EBMModel(BaseEstimator):
                 )
 
             bin_data_weights = main_bin_weights
-            boost_flags = (
+            term_boost_flags = (
                 Native.TermBoostFlags_GradientSums | Native.TermBoostFlags_RandomSplits
             )
             inner_bags = 0
@@ -794,7 +794,7 @@ class EBMModel(BaseEstimator):
         else:
             noise_scale_boosting = None
             bin_data_weights = None
-            boost_flags = Native.TermBoostFlags_Default
+            term_boost_flags = Native.TermBoostFlags_Default
             inner_bags = self.inner_bags
             greediness = self.greediness
             smoothing_rounds = self.smoothing_rounds
@@ -868,7 +868,7 @@ class EBMModel(BaseEstimator):
                         init_score_local,
                         term_features,
                         inner_bags,
-                        boost_flags,
+                        term_boost_flags,
                         self.learning_rate,
                         min_samples_leaf,
                         self.max_leaves,
@@ -880,7 +880,9 @@ class EBMModel(BaseEstimator):
                         noise_scale_boosting,
                         bin_data_weights,
                         rngs[idx],
-                        is_differential_privacy,
+                        Native.CreateBoosterFlags_DifferentialPrivacy
+                        if is_differential_privacy
+                        else Native.CreateBoosterFlags_Default,
                         objective,
                         None,
                     )
@@ -997,7 +999,9 @@ class EBMModel(BaseEstimator):
                                 Native.CalcInteractionFlags_Default,
                                 max_cardinality,
                                 min_samples_leaf,
-                                is_differential_privacy,
+                                Native.CreateInteractionFlags_DifferentialPrivacy
+                                if is_differential_privacy
+                                else Native.CreateInteractionFlags_Default,
                                 objective,
                                 None,
                             )
@@ -1085,7 +1089,7 @@ class EBMModel(BaseEstimator):
                             scores_bags[idx],
                             boost_groups,
                             inner_bags,
-                            boost_flags,
+                            term_boost_flags,
                             self.learning_rate,
                             min_samples_leaf,
                             self.max_leaves,
@@ -1097,7 +1101,9 @@ class EBMModel(BaseEstimator):
                             noise_scale_boosting,
                             bin_data_weights,
                             rngs[idx],
-                            is_differential_privacy,
+                            Native.CreateBoosterFlags_DifferentialPrivacy
+                            if is_differential_privacy
+                            else Native.CreateBoosterFlags_Default,
                             objective,
                             None,
                         )

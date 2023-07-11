@@ -15,12 +15,20 @@ _log = logging.getLogger(__name__)
 
 
 class Native:
+    # CreateBoosterFlags
+    CreateBoosterFlags_Default = 0x00000000
+    CreateBoosterFlags_DifferentialPrivacy = 0x00000001
+
     # TermBoostFlags
     TermBoostFlags_Default = 0x00000000
     TermBoostFlags_DisableNewtonGain = 0x00000001
     TermBoostFlags_DisableNewtonUpdate = 0x00000002
     TermBoostFlags_GradientSums = 0x00000004
     TermBoostFlags_RandomSplits = 0x00000008
+
+    # CreateInteractionFlags
+    CreateInteractionFlags_Default = 0x00000000
+    CreateInteractionFlags_DifferentialPrivacy = 0x00000001
 
     # CalcInteractionFlags
     CalcInteractionFlags_Default = 0x00000000
@@ -1014,7 +1022,7 @@ class Native:
         self._unsafe.SampleWithoutReplacementStratified.restype = ct.c_int32
 
         self._unsafe.DetermineLinkFunction.argtypes = [
-            # int32_t isDifferentiallyPrivate
+            # int32_t isDifferentialPrivacy
             ct.c_int32,
             # char * objective
             ct.c_char_p,
@@ -1054,7 +1062,7 @@ class Native:
             ct.c_void_p,
             # int64_t countInnerBags
             ct.c_int64,
-            # int32_t isDifferentiallyPrivate
+            # CreateBoosterFlags flags
             ct.c_int32,
             # char * objective
             ct.c_char_p,
@@ -1156,7 +1164,7 @@ class Native:
             ct.c_void_p,
             # double * initScores
             ct.c_void_p,
-            # int32_t isDifferentiallyPrivate
+            # CreateInteractionFlags flags
             ct.c_int32,
             # char * objective
             ct.c_char_p,
@@ -1203,7 +1211,7 @@ class Booster(AbstractContextManager):
         term_features,
         n_inner_bags,
         rng,
-        is_private,
+        create_booster_flags,
         objective,
         experimental_params,
     ):
@@ -1228,7 +1236,7 @@ class Booster(AbstractContextManager):
         self.term_features = term_features
         self.n_inner_bags = n_inner_bags
         self.rng = rng
-        self.is_private = is_private
+        self.create_booster_flags = create_booster_flags
         self.objective = objective
         self.experimental_params = experimental_params
 
@@ -1310,7 +1318,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(dimension_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
-            self.is_private,
+            self.create_booster_flags,
             self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(booster_handle),
@@ -1342,7 +1350,7 @@ class Booster(AbstractContextManager):
         self,
         rng,
         term_idx,
-        boost_flags,
+        term_boost_flags,
         learning_rate,
         min_samples_leaf,
         max_leaves,
@@ -1352,7 +1360,7 @@ class Booster(AbstractContextManager):
 
         Args:
             term_idx: The index for the term to generate the update for
-            boost_flags: C interface options
+            term_boost_flags: C interface options
             learning_rate: Learning rate as a float.
             min_samples_leaf: Min observations required to split.
             max_leaves: Max leaf nodes on feature step.
@@ -1375,7 +1383,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(rng, np.ubyte, is_null_allowed=True),
             self._booster_handle,
             term_idx,
-            boost_flags,
+            term_boost_flags,
             learning_rate,
             min_samples_leaf,
             Native._make_pointer(max_leaves_arr, np.int64),
@@ -1596,7 +1604,7 @@ class InteractionDetector(AbstractContextManager):
         dataset,
         bag,
         init_scores,
-        is_private,
+        create_interaction_flags,
         objective,
         experimental_params,
     ):
@@ -1616,7 +1624,7 @@ class InteractionDetector(AbstractContextManager):
         self.dataset = dataset
         self.bag = bag
         self.init_scores = init_scores
-        self.is_private = is_private
+        self.create_interaction_flags = create_interaction_flags
         self.objective = objective
         self.experimental_params = experimental_params
 
@@ -1670,7 +1678,7 @@ class InteractionDetector(AbstractContextManager):
             Native._make_pointer(
                 self.init_scores, np.float64, 2 if 1 < n_class_scores else 1, True
             ),
-            self.is_private,
+            self.create_interaction_flags,
             self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(interaction_handle),
@@ -1699,7 +1707,7 @@ class InteractionDetector(AbstractContextManager):
         _log.info("Deallocation interaction end")
 
     def calc_interaction_strength(
-        self, feature_idxs, interaction_flags, max_cardinality, min_samples_leaf
+        self, feature_idxs, calc_interaction_flags, max_cardinality, min_samples_leaf
     ):
         """Provides a strength measurement of a feature interaction. Higher is better."""
         _log.info("Fast interaction strength start")
@@ -1713,7 +1721,7 @@ class InteractionDetector(AbstractContextManager):
             self._interaction_handle,
             len(feature_idxs),
             Native._make_pointer(feature_idxs, np.int64),
-            interaction_flags,
+            calc_interaction_flags,
             max_cardinality,
             min_samples_leaf,
             ct.byref(strength),

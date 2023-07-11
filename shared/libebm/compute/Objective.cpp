@@ -28,7 +28,7 @@ ErrorEbm Objective::CreateObjective(
    EBM_ASSERT(nullptr != registerObjectivesFunction);
    EBM_ASSERT(nullptr != pConfig);
    EBM_ASSERT(1 <= pConfig->cOutputs);
-   EBM_ASSERT(EBM_FALSE == pConfig->isDifferentiallyPrivate || EBM_TRUE == pConfig->isDifferentiallyPrivate);
+   EBM_ASSERT(EBM_FALSE == pConfig->isDifferentialPrivacy || EBM_TRUE == pConfig->isDifferentialPrivacy);
    EBM_ASSERT(nullptr != sObjective);
    EBM_ASSERT(nullptr != sObjectiveEnd);
    EBM_ASSERT(sObjective < sObjectiveEnd); // empty string not allowed

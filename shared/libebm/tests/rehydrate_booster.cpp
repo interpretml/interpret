@@ -62,7 +62,7 @@ TEST_CASE("Test Rehydration, boosting, binary") {
          TestSample({}, 0) 
       },
       k_countInnerBagsDefault, 
-      EBM_FALSE, 
+      CreateBoosterFlags_Default,
       nullptr, 
       0
    );
@@ -85,7 +85,7 @@ TEST_CASE("Test Rehydration, boosting, binary") {
             TestSample({}, 0, 1, { termScore0, termScore1 }) 
          },
          k_countInnerBagsDefault,
-         EBM_FALSE, 
+         CreateBoosterFlags_Default,
          nullptr, 
          0
       );

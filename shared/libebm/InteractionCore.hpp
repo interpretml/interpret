@@ -96,7 +96,7 @@ public:
       const size_t cFeatures,
       const size_t cWeights,
       const BagEbm * const aBag,
-      const BoolEbm isDifferentiallyPrivate,
+      const CreateInteractionFlags flags,
       const char * const sObjective,
       const double * const experimentalParams,
       InteractionCore ** const ppInteractionCoreOut

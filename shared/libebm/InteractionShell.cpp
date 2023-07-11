@@ -123,7 +123,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
    const BagEbm * bag,
    const double * initScores, // only samples with non-zeros in the bag are included
-   BoolEbm isDifferentiallyPrivate,
+   CreateInteractionFlags flags,
    const char * objective,
    const double * experimentalParams,
    InteractionHandle * interactionHandleOut
@@ -132,7 +132,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       "dataSet=%p, "
       "bag=%p, "
       "initScores=%p, "
-      "isDifferentiallyPrivate=%s, "
+      "flags=0x%" UCreateInteractionFlagsPrintf ", "
       "objective=%p, "
       "experimentalParams=%p, "
       "interactionHandleOut=%p"
@@ -140,7 +140,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       static_cast<const void *>(dataSet),
       static_cast<const void *>(bag),
       static_cast<const void *>(initScores),
-      ObtainTruth(isDifferentiallyPrivate),
+      static_cast<UCreateInteractionFlags>(flags), // signed to unsigned conversion is defined behavior in C++
       static_cast<const void *>(objective), // do not print the string for security reasons
       static_cast<const void *>(experimentalParams),
       static_cast<const void *>(interactionHandleOut)
@@ -153,6 +153,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       return Error_IllegalParamVal;
    }
    *interactionHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
+
+   if(0 != (static_cast<UCreateInteractionFlags>(flags) & ~(
+      static_cast<UCreateInteractionFlags>(CreateInteractionFlags_DifferentialPrivacy)
+   ))) {
+      LOG_0(Trace_Error, "ERROR CreateInteractionDetector flags contains unknown flags. Ignoring extras.");
+   }
 
    if(nullptr == dataSet) {
       LOG_0(Trace_Error, "ERROR CreateInteractionDetector nullptr == dataSet");
@@ -191,7 +197,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       cFeatures,
       cWeights,
       bag,
-      isDifferentiallyPrivate,
+      flags,
       objective,
       experimentalParams,
       &pInteractionCore

@@ -19,7 +19,7 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
          throw ParamMismatchWithConfigException();
       }
 
-      if(config.isDifferentiallyPrivate) {
+      if(config.isDifferentialPrivacy) {
          throw NonPrivateRegistrationException();
       }
 

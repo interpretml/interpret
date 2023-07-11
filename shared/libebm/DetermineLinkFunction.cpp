@@ -18,7 +18,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
-   BoolEbm isDifferentiallyPrivate,
+   BoolEbm isDifferentialPrivacy,
    const char * objective,
    LinkEbm * linkOut,
    double * linkParamOut
@@ -26,12 +26,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    LOG_N(
       Trace_Info,
       "Entered DetermineLinkFunction: "
-      "isDifferentiallyPrivate=%s, "
+      "isDifferentialPrivacy=%s, "
       "objective=%p, "
       "linkOut=%p, "
       "linkParamOut=%p"
       ,
-      ObtainTruth(isDifferentiallyPrivate),
+      ObtainTruth(isDifferentialPrivacy),
       static_cast<const void *>(objective),
       static_cast<void *>(linkOut),
       static_cast<void *>(linkParamOut)
@@ -42,7 +42,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
 
    Config config;
    config.cOutputs = 1; // this is kind of cheating, but it should work
-   config.isDifferentiallyPrivate = EBM_FALSE != isDifferentiallyPrivate ? EBM_TRUE : EBM_FALSE;
+   config.isDifferentialPrivacy = EBM_FALSE != isDifferentialPrivacy ? EBM_TRUE : EBM_FALSE;
    const ErrorEbm error = GetObjective(&config, objective, &objectiveWrapper, nullptr);
    if(Error_None != error) {
       LOG_0(Trace_Error, "ERROR DetermineLinkFunction GetObjective failed");

@@ -227,7 +227,7 @@ TestBoost::TestBoost(
    const std::vector<TestSample> train,
    const std::vector<TestSample> validation,
    const IntEbm countInnerBags,
-   const BoolEbm bDifferentiallyPrivate,
+   const CreateBoosterFlags flags,
    const char * const sObjective,
    const ptrdiff_t iZeroClassificationLogit
 ) :
@@ -542,7 +542,7 @@ TestBoost::TestBoost(
       0 == dimensionCounts.size() ? nullptr : &dimensionCounts[0],
       0 == allFeatureIndexes.size() ? nullptr : &allFeatureIndexes[0],
       countInnerBags,
-      bDifferentiallyPrivate,
+      flags,
       nullptr == sObjective ? (IsClassification(cClasses) ? "log_loss" : "rmse") : sObjective,
       nullptr,
       &m_boosterHandle
@@ -682,14 +682,12 @@ TestInteraction::TestInteraction(
    const OutputType cClasses,
    const std::vector<FeatureTest> features,
    const std::vector<TestSample> samples,
-   const BoolEbm bDifferentiallyPrivate,
+   const CreateInteractionFlags flags,
    const char * const sObjective,
    const ptrdiff_t iZeroClassificationLogit
 ) :
    m_interactionHandle(nullptr) 
 {
-   UNUSED(bDifferentiallyPrivate);
-
    ErrorEbm error;
 
    if(IsClassification(cClasses)) {
@@ -899,7 +897,7 @@ TestInteraction::TestInteraction(
       &dataset[0],
       0 == bag.size() ? nullptr : &bag[0],
       0 == initScores.size() ? nullptr : &initScores[0],
-      EBM_FALSE,
+      flags,
       nullptr == sObjective ? (IsClassification(cClasses) ? "log_loss" : "rmse") : sObjective,
       nullptr,
       &m_interactionHandle

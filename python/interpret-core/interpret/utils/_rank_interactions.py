@@ -20,10 +20,10 @@ def rank_interactions(
     init_scores,
     iter_term_features,
     exclude,
-    interaction_flags,
+    calc_interaction_flags,
     max_cardinality,
     min_samples_leaf,
-    is_private,
+    create_interaction_flags,
     objective,
     experimental_params=None,
     n_output_interactions=0,
@@ -31,14 +31,19 @@ def rank_interactions(
     try:
         interaction_strengths = []
         with InteractionDetector(
-            dataset, bag, init_scores, is_private, objective, experimental_params
+            dataset,
+            bag,
+            init_scores,
+            create_interaction_flags,
+            objective,
+            experimental_params,
         ) as interaction_detector:
             for feature_idxs in iter_term_features:
                 if tuple(sorted(feature_idxs)) in exclude:
                     continue
                 strength = interaction_detector.calc_interaction_strength(
                     feature_idxs,
-                    interaction_flags,
+                    calc_interaction_flags,
                     max_cardinality,
                     min_samples_leaf,
                 )
