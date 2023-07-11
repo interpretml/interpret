@@ -392,10 +392,18 @@ ErrorEbm InteractionCore::Create(
          }
       }
 
+      // if we have 32 bit floats or ints, then we need to break large datasets into smaller data subsets
+      // because float32 values stop incrementing at 2^24 where the value 1 is below the threshold incrementing a float
+      const bool bForceMultipleSubsets =
+         sizeof(UInt_Small) == pInteractionCore->m_objectiveCpu.m_cUIntBytes ||
+         sizeof(Float_Small) == pInteractionCore->m_objectiveCpu.m_cFloatBytes ||
+         sizeof(UInt_Small) == pInteractionCore->m_objectiveSIMD.m_cUIntBytes ||
+         sizeof(Float_Small) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes;
+
       error = pInteractionCore->m_dataFrame.InitDataSetInteraction(
          bHessian,
          cScores,
-         0 != (CreateInteractionFlags_DisableSIMD & flags) ? SIZE_MAX : k_cSubsetSamplesMax,
+         bForceMultipleSubsets ? k_cSubsetSamplesMax : SIZE_MAX,
          &pInteractionCore->m_objectiveCpu,
          &pInteractionCore->m_objectiveSIMD,
          pDataSetShared,

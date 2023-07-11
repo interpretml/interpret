@@ -775,6 +775,14 @@ ErrorEbm BoosterCore::Create(
          }
       }
 
+      // if we have 32 bit floats or ints, then we need to break large datasets into smaller data subsets
+      // because float32 values stop incrementing at 2^24 where the value 1 is below the threshold incrementing a float
+      const bool bForceMultipleSubsets =
+         sizeof(UInt_Small) == pBoosterCore->m_objectiveCpu.m_cUIntBytes ||
+         sizeof(Float_Small) == pBoosterCore->m_objectiveCpu.m_cFloatBytes ||
+         sizeof(UInt_Small) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes ||
+         sizeof(Float_Small) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes;
+
       pBoosterCore->m_cInnerBags = cInnerBags; // this is used to destruct m_trainingSet, so store it first
       error = pBoosterCore->m_trainingSet.InitDataSetBoosting(
          true,
@@ -783,7 +791,7 @@ ErrorEbm BoosterCore::Create(
          !pBoosterCore->IsRmse(),
          rng,
          cScores,
-         0 != (CreateBoosterFlags_DisableSIMD & flags) ? SIZE_MAX : k_cSubsetSamplesMax,
+         bForceMultipleSubsets ? k_cSubsetSamplesMax : SIZE_MAX,
          &pBoosterCore->m_objectiveCpu,
          &pBoosterCore->m_objectiveSIMD,
          pDataSetShared,
@@ -809,7 +817,7 @@ ErrorEbm BoosterCore::Create(
          !pBoosterCore->IsRmse(),
          rng,
          cScores,
-         0 != (CreateBoosterFlags_DisableSIMD & flags) ? SIZE_MAX : k_cSubsetSamplesMax,
+         bForceMultipleSubsets ? k_cSubsetSamplesMax : SIZE_MAX,
          &pBoosterCore->m_objectiveCpu,
          &pBoosterCore->m_objectiveSIMD,
          pDataSetShared,

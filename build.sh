@@ -554,7 +554,7 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x86/libebm"
       bin_file="libebm_linux_x86.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_linux_x86_build_log.txt"
-      both_args_extra="-msse2 -mfpmath=sse -m32 -DNDEBUG -O3 -DBRIDGE_SSE2_32"
+      both_args_extra="-msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
@@ -585,7 +585,7 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x86/libebm"
       bin_file="libebm_linux_x86_debug.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_debug_linux_x86_build_log.txt"
-      both_args_extra="-msse2 -mfpmath=sse -m32 -O1 -DBRIDGE_SSE2_32"
+      both_args_extra="-msse2 -mfpmath=sse -m32 -O1"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
