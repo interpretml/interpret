@@ -71,7 +71,7 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
                trainingSamples,
                validationSamples,
                k_countInnerBagsDefault,
-               CreateBoosterFlags_Default, 
+               k_testCreateBoosterFlags_Default, 
                nullptr, 
                0
             );
@@ -140,7 +140,7 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
                OutputType_BinaryClassification, 
                { FeatureTest(2), FeatureTest(cBins + 1, true, false) },
                samples,
-               CreateInteractionFlags_Default,
+               k_testCreateInteractionFlags_Default,
                nullptr, 
                0
             );

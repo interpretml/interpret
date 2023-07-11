@@ -36,7 +36,6 @@ struct Sse_32_Int final {
    friend Sse_32_Float;
    friend inline Sse_32_Float IfEqual(const Sse_32_Int & cmp1, const Sse_32_Int & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept;
 
-   // TODO: WARNING: DO NOT CHANGE TO using this uint32_t without switching from using SIZE_MAX to using k_cSubsetSamplesMax
    using T = uint32_t;
    using TPack = __m128i;
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
@@ -152,7 +151,6 @@ static_assert(std::is_standard_layout<Sse_32_Int>::value && std::is_trivially_co
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 struct Sse_32_Float final {
-   // TODO: WARNING: DO NOT CHANGE TO using this float without switching from using SIZE_MAX to using k_cSubsetSamplesMax
    using T = float;
    using TPack = __m128;
    using TInt = Sse_32_Int;
@@ -425,7 +423,7 @@ INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterObjective(const
 // now include all our special objective registrations which will use the RegisterObjective function we defined above!
 #include "objective_registrations.hpp"
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Sse_32(
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Sse2_32(
    const Config * const pConfig,
    const char * const sObjective,
    const char * const sObjectiveEnd,

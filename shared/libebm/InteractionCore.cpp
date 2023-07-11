@@ -185,7 +185,12 @@ ErrorEbm InteractionCore::Create(
       Config config;
       config.cOutputs = cScores;
       config.isDifferentialPrivacy = 0 != (CreateInteractionFlags_DifferentialPrivacy & flags) ? EBM_TRUE : EBM_FALSE;
-      error = GetObjective(&config, sObjective, &pInteractionCore->m_objectiveCpu, &pInteractionCore->m_objectiveSIMD);
+      error = GetObjective(
+         &config, 
+         sObjective, 
+         &pInteractionCore->m_objectiveCpu, 
+         0 != (CreateInteractionFlags_DisableSIMD & flags) ? nullptr : &pInteractionCore->m_objectiveSIMD
+      );
       if(Error_None != error) {
          // already logged
          return error;
@@ -390,7 +395,7 @@ ErrorEbm InteractionCore::Create(
       error = pInteractionCore->m_dataFrame.InitDataSetInteraction(
          bHessian,
          cScores,
-         SIZE_MAX, // TODO: use k_cSubsetSamplesMax (and also use k_cSubsetSamplesMax everywhere else too)
+         0 != (CreateInteractionFlags_DisableSIMD & flags) ? SIZE_MAX : k_cSubsetSamplesMax,
          &pInteractionCore->m_objectiveCpu,
          &pInteractionCore->m_objectiveSIMD,
          pDataSetShared,

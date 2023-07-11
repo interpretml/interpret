@@ -48,7 +48,7 @@ TEST_CASE("zero learning rate, boosting, binary") {
          TestSample({}, 0) 
       },
       k_countInnerBagsDefault,
-      CreateBoosterFlags_Default,
+      k_testCreateBoosterFlags_Default,
       nullptr,
       0
    );
@@ -155,7 +155,7 @@ TEST_CASE("negative learning rate, boosting, binary") {
          TestSample({}, 0) 
       },
       k_countInnerBagsDefault,
-      CreateBoosterFlags_Default,
+      k_testCreateBoosterFlags_Default,
       nullptr, 
       0
    );
@@ -705,7 +705,7 @@ TEST_CASE("Zero training samples, boosting, binary") {
          TestSample({ 1 }, 0) 
       },
       k_countInnerBagsDefault,
-      CreateBoosterFlags_Default,
+      k_testCreateBoosterFlags_Default,
       nullptr, 
       0
    );
@@ -794,7 +794,7 @@ TEST_CASE("Zero validation samples, boosting, binary") {
       }, 
       {},
       k_countInnerBagsDefault,
-      CreateBoosterFlags_Default,
+      k_testCreateBoosterFlags_Default,
       nullptr, 
       0
    );
@@ -1018,7 +1018,7 @@ TEST_CASE("zero terms, boosting, binary") {
          TestSample({}, 1) 
       },
       k_countInnerBagsDefault,
-      CreateBoosterFlags_Default,
+      k_testCreateBoosterFlags_Default,
       nullptr, 
       0
    );
@@ -1091,7 +1091,7 @@ TEST_CASE("Term with zero features, boosting, binary") {
          TestSample({}, 0) 
       },
       k_countInnerBagsDefault,
-      CreateBoosterFlags_Default,
+      k_testCreateBoosterFlags_Default,
       nullptr, 
       0
    );
@@ -1236,7 +1236,7 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
          TestSample({}, 0) 
       },
       k_countInnerBagsDefault,
-      CreateBoosterFlags_Default,
+      k_testCreateBoosterFlags_Default,
       nullptr, 
       0
    );
@@ -1252,7 +1252,7 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
          TestSample({ 0 }, 0) 
       },
       k_countInnerBagsDefault,
-      CreateBoosterFlags_Default,
+      k_testCreateBoosterFlags_Default,
       nullptr, 
       0
    );
@@ -1268,7 +1268,7 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
          TestSample({ 1 }, 0) 
       },
       k_countInnerBagsDefault,
-      CreateBoosterFlags_Default,
+      k_testCreateBoosterFlags_Default,
       nullptr, 
       0
    );
@@ -1882,7 +1882,7 @@ TEST_CASE("tweedie, boosting") {
          TestSample({ 0 }, 12) 
       },
       k_countInnerBagsDefault,
-      CreateBoosterFlags_Default,
+      k_testCreateBoosterFlags_Default,
       "tweedie_deviance:variance_power=1.3"
    );
 

@@ -18,6 +18,7 @@ class Native:
     # CreateBoosterFlags
     CreateBoosterFlags_Default = 0x00000000
     CreateBoosterFlags_DifferentialPrivacy = 0x00000001
+    CreateBoosterFlags_DisableSIMD = 0x00000002
 
     # TermBoostFlags
     TermBoostFlags_Default = 0x00000000
@@ -29,6 +30,7 @@ class Native:
     # CreateInteractionFlags
     CreateInteractionFlags_Default = 0x00000000
     CreateInteractionFlags_DifferentialPrivacy = 0x00000001
+    CreateInteractionFlags_DisableSIMD = 0x00000002
 
     # CalcInteractionFlags
     CalcInteractionFlags_Default = 0x00000000
@@ -50,11 +52,11 @@ class Native:
         pass
 
     @staticmethod
-    def get_native_singleton(is_debug=False):
+    def get_native_singleton(is_debug=False, simd=False):
         if Native._native is None:
             _log.info("EBM lib loading.")
             native = Native()
-            native._initialize(is_debug=is_debug)
+            native._initialize(is_debug=is_debug, simd=simd)
             Native._native = native
         return Native._native
 
@@ -674,8 +676,9 @@ class Native:
             _log.error(msg)
             raise Exception(msg)
 
-    def _initialize(self, is_debug):
+    def _initialize(self, is_debug, simd):
         self.is_debug = is_debug
+        self.simd = simd
 
         self._log_callback_func = None
         self._unsafe = ct.cdll.LoadLibrary(Native._get_ebm_lib_path(debug=is_debug))
@@ -1305,6 +1308,10 @@ class Booster(AbstractContextManager):
             ):  # pragma: no cover
                 raise ValueError(f"init_scores should have {n_class_scores} scores")
 
+        flags = self.create_booster_flags
+        if not native.simd:
+           flags |= Native.CreateBoosterFlags_DisableSIMD
+
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateBooster(
@@ -1318,7 +1325,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(dimension_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
-            self.create_booster_flags,
+            flags,
             self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(booster_handle),
@@ -1670,15 +1677,20 @@ class InteractionDetector(AbstractContextManager):
             ):  # pragma: no cover
                 raise ValueError(f"init_scores should have {n_class_scores} scores")
 
+        flags = self.create_interaction_flags
+        if not native.simd:
+           flags |= Native.CreateInteractionFlags_DisableSIMD
+
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
+
         return_code = native._unsafe.CreateInteractionDetector(
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
             Native._make_pointer(
                 self.init_scores, np.float64, 2 if 1 < n_class_scores else 1, True
             ),
-            self.create_interaction_flags,
+            flags,
             self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(interaction_handle),

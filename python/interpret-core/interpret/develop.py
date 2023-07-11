@@ -129,7 +129,7 @@ def _sizeof_fmt(num, suffix="B"):
     return "%.1f%s%s" % (num, "Yi", suffix)  # pragma: no cover
 
 
-def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
+def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True, simd=False):
     """Sets package into debug mode.
 
     Args:
@@ -160,7 +160,7 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
     root.info(debug_str)
 
     # Load native libraries in debug mode if needed
-    native = Native.get_native_singleton(is_debug=native_debug)
+    native = Native.get_native_singleton(is_debug=native_debug, simd=simd)
     native.set_logging(log_level)
 
     return handler

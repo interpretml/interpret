@@ -51,9 +51,20 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetObjective(
       return error;
    }
 
-   UNUSED(pSIMDObjectiveWrapperOut);
+   if(nullptr != pSIMDObjectiveWrapperOut) {
+      // TODO: add a flag in the pCpuObjectiveWrapperOut struct that indicates if the objective can be SIMDed
+      //       we first make the cpu version and if that says it can't be SIMDed then we shouldn't try
 
-   return error;
+#ifdef BRIDGE_SSE2_32
+      LOG_0(Trace_Info, "INFO GetObjective creating SSE2 SIMD Objective");
+      error = CreateObjective_Sse2_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
+      if(Error_None != error) {
+         return error;
+      }
+#endif //BRIDGE_SSE2_32
+   }
+
+   return Error_None;
 }
 
 INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetMetrics(

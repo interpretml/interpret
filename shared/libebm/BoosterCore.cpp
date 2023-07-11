@@ -504,7 +504,12 @@ ErrorEbm BoosterCore::Create(
       Config config;
       config.cOutputs = cScores;
       config.isDifferentialPrivacy = 0 != (CreateBoosterFlags_DifferentialPrivacy & flags) ? EBM_TRUE : EBM_FALSE;
-      error = GetObjective(&config, sObjective, &pBoosterCore->m_objectiveCpu, &pBoosterCore->m_objectiveSIMD);
+      error = GetObjective(
+         &config, 
+         sObjective, 
+         &pBoosterCore->m_objectiveCpu, 
+         0 != (CreateBoosterFlags_DisableSIMD & flags) ? nullptr : &pBoosterCore->m_objectiveSIMD
+      );
       if(Error_None != error) {
          // already logged
          return error;
@@ -778,7 +783,7 @@ ErrorEbm BoosterCore::Create(
          !pBoosterCore->IsRmse(),
          rng,
          cScores,
-         SIZE_MAX, // TODO: use k_cSubsetSamplesMax (and also use k_cSubsetSamplesMax everywhere else too)
+         0 != (CreateBoosterFlags_DisableSIMD & flags) ? SIZE_MAX : k_cSubsetSamplesMax,
          &pBoosterCore->m_objectiveCpu,
          &pBoosterCore->m_objectiveSIMD,
          pDataSetShared,
@@ -804,7 +809,7 @@ ErrorEbm BoosterCore::Create(
          !pBoosterCore->IsRmse(),
          rng,
          cScores,
-         SIZE_MAX, // TODO: use k_cSubsetSamplesMax (and also use k_cSubsetSamplesMax everywhere else too)
+         0 != (CreateBoosterFlags_DisableSIMD & flags) ? SIZE_MAX : k_cSubsetSamplesMax,
          &pBoosterCore->m_objectiveCpu,
          &pBoosterCore->m_objectiveSIMD,
          pDataSetShared,

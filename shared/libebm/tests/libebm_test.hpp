@@ -331,6 +331,8 @@ static constexpr ptrdiff_t k_iZeroClassificationLogitDefault = ptrdiff_t { -1 };
 static constexpr IntEbm k_countInnerBagsDefault = IntEbm { 0 };
 static constexpr double k_learningRateDefault = double { 0.01 };
 static constexpr IntEbm k_minSamplesLeafDefault = IntEbm { 1 };
+static constexpr CreateBoosterFlags k_testCreateBoosterFlags_Default = CreateBoosterFlags_DisableSIMD;
+static constexpr CreateInteractionFlags k_testCreateInteractionFlags_Default = CreateInteractionFlags_DisableSIMD;
 
 static constexpr IntEbm k_leavesMaxFillDefault = 5;
 // 64 dimensions is the most we can express with a 64 bit IntEbm
@@ -437,7 +439,7 @@ public:
       const std::vector<TestSample> train,
       const std::vector<TestSample> validation,
       const IntEbm countInnerBags = k_countInnerBagsDefault,
-      const CreateBoosterFlags flags = CreateBoosterFlags_Default,
+      const CreateBoosterFlags flags = k_testCreateBoosterFlags_Default,
       const char * const sObjective = nullptr,
       const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault
    );
@@ -486,7 +488,7 @@ public:
       const OutputType cClasses,
       const std::vector<FeatureTest> features,
       const std::vector<TestSample> samples,
-      const CreateInteractionFlags flags = CreateInteractionFlags_Default,
+      const CreateInteractionFlags flags = k_testCreateInteractionFlags_Default,
       const char * const sObjective = nullptr,
       const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault
    );
