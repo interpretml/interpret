@@ -184,6 +184,10 @@ static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams)
 #endif // NDEBUG
 
             TFloat::TInt::Execute([&apBins, cTensorBytes](const int i, const typename TFloat::TInt::T x) {
+               // TODO: I think this non-SIMD multiplication is the bottleneck for this code. Since it wouldn't
+               // change any memory layout, we could have two versions of this loop. One would be the current 
+               // code fallback that exectures if the multiplication would exceed a 32-bit integer, and the other could
+               // do the multiplication with SIMD to avoid most of the cost when the result will fit into a 32 bit result
                apBins[i] = IndexByte(apBins[i], static_cast<size_t>(x) * cTensorBytes);
             }, iBin);
 

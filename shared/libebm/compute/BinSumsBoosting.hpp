@@ -119,7 +119,15 @@ static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
          Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores> * apBins[TFloat::k_cSIMDPack];
          if(!bCompilerZeroDimensional) {
             typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-            iTensorBin = Multiply<typename TFloat::TInt, typename TFloat::TInt::T, k_dynamicScores != cCompilerScores, static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cCompilerScores))>(iTensorBin, cBytesPerBin);
+            
+            // normally the compiler is better at optimimizing multiplications into shifs, but it isn't better
+            // if TFloat is a SIMD type. For SIMD shifts & adds will almost always be better than multiplication if
+            // there are low numbers of shifts, which should be the case for anything with a compile time constant here
+            iTensorBin = Multiply<typename TFloat::TInt, typename TFloat::TInt::T, 
+               k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack, 
+               static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cCompilerScores))>(
+                  iTensorBin, cBytesPerBin);
+            
             TFloat::TInt::Execute([aBins, &apBins](const int i, const typename TFloat::TInt::T x) {
                apBins[i] = IndexBin(aBins, static_cast<size_t>(x));
             }, iTensorBin);

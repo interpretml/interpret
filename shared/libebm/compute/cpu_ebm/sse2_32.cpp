@@ -76,7 +76,7 @@ struct Sse_32_Int final {
    }
 
    template<typename TFunc>
-   friend inline Sse_32_Int ApplyFunction(const Sse_32_Int & val, const TFunc & func) noexcept {
+   friend inline Sse_32_Int ApplyFunc(const TFunc & func, const Sse_32_Int & val) noexcept {
       // TODO: use the equivalent of _mm_extract_epi32 in more advanced SIMD intrinsics
 
       alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
@@ -121,7 +121,7 @@ struct Sse_32_Int final {
       // since the low 32 bit results are the same) in the SIMD register with another SIMD register, but 
       // it's only available in SSE4.1.
 
-      return ApplyFunction(*this, [other](T x) { return x * other; });
+      return ApplyFunc([other](T x) { return x * other; }, *this);
    }
 
    inline Sse_32_Int & operator*= (const T & other) noexcept {
@@ -297,7 +297,7 @@ struct Sse_32_Float final {
    }
 
    template<typename TFunc>
-   friend inline Sse_32_Float ApplyFunction(const Sse_32_Float & val, const TFunc & func) noexcept {
+   friend inline Sse_32_Float ApplyFunc(const TFunc & func, const Sse_32_Float & val) noexcept {
       // TODO: use the equivalent of _mm_cvtss_f32 with _mm_permute_ps in more advanced SIMD intrinsics
 
       alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
@@ -347,13 +347,6 @@ struct Sse_32_Float final {
       func(3, a0[3], a1[3]);
    }
 
-   friend inline Sse_32_Float IfGreater(const Sse_32_Float & cmp1, const Sse_32_Float & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept {
-      TPack mask = _mm_cmpgt_ps(cmp1.m_data, cmp2.m_data);
-      TPack maskedTrue = _mm_and_ps(mask, trueVal.m_data);
-      TPack maskedFalse = _mm_andnot_ps(mask, falseVal.m_data);
-      return Sse_32_Float(_mm_or_ps(maskedTrue, maskedFalse));
-   }
-
    friend inline Sse_32_Float IfLess(const Sse_32_Float & cmp1, const Sse_32_Float & cmp2, const Sse_32_Float & trueVal, const Sse_32_Float & falseVal) noexcept {
       TPack mask = _mm_cmplt_ps(cmp1.m_data, cmp2.m_data);
       TPack maskedTrue = _mm_and_ps(mask, trueVal.m_data);
@@ -379,12 +372,12 @@ struct Sse_32_Float final {
 
    friend inline Sse_32_Float Exp(const Sse_32_Float & val) noexcept {
       // TODO: make a fast approximation of this
-      return ApplyFunction(val, [](T x) { return std::exp(x); });
+      return ApplyFunc([](T x) { return std::exp(x); }, val);
    }
 
    friend inline Sse_32_Float Log(const Sse_32_Float & val) noexcept {
       // TODO: make a fast approximation of this
-      return ApplyFunction(val, [](T x) { return std::log(x); });
+      return ApplyFunc([](T x) { return std::log(x); }, val);
    }
 
    friend inline T Sum(const Sse_32_Float & val) noexcept {

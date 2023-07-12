@@ -229,7 +229,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                pSampleScore += TFloat::k_cSIMDPack;
 
                if(bGetTarget) {
-                  const TFloat oneExp = ApplyFunction(sampleScore, [](typename TFloat::T x) { return ExpForMulticlass<false>(x); });
+                  const TFloat oneExp = ApplyFunc([](typename TFloat::T x) { return ExpForMulticlass<false>(x); }, sampleScore);
                   sumExp += oneExp;
                   oneExp.Store(&aExps[iScore1 << TFloat::k_cSIMDShift]);
                }
@@ -291,7 +291,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                const TFloat itemExp = TFloat::Load(aExps, target);
                const TFloat invertedProbability = sumExp / itemExp;
                TFloat metric =
-                  ApplyFunction(invertedProbability, [](typename TFloat::T x) { return LogForLogLoss<false>(x); });
+                  ApplyFunc([](typename TFloat::T x) { return LogForLogLoss<false>(x); }, invertedProbability);
 
                if(bWeight) {
                   const TFloat weight = TFloat::Load(pWeight);

@@ -235,7 +235,7 @@ struct Cuda_32_Float final {
    }
 
    template<typename TFunc>
-   GPU_BOTH friend inline Cuda_32_Float ApplyFunction(const Cuda_32_Float & val, const TFunc & func) noexcept {
+   GPU_BOTH friend inline Cuda_32_Float ApplyFunc(const TFunc & func, const Cuda_32_Float & val) noexcept {
       // this function is more useful for a SIMD operator where it applies func() to all packed items
       return Cuda_32_Float(func(val.m_data));
    }
@@ -243,10 +243,6 @@ struct Cuda_32_Float final {
    template<typename TFunc, typename... TArgs>
    GPU_BOTH static inline void Execute(const TFunc & func, const TArgs&... args) noexcept {
       func(0, (args.m_data)...);
-   }
-
-   GPU_BOTH friend inline Cuda_32_Float IfGreater(const Cuda_32_Float & cmp1, const Cuda_32_Float & cmp2, const Cuda_32_Float & trueVal, const Cuda_32_Float & falseVal) noexcept {
-      return cmp1.m_data > cmp2.m_data ? trueVal : falseVal;
    }
 
    GPU_BOTH friend inline Cuda_32_Float IfLess(const Cuda_32_Float & cmp1, const Cuda_32_Float & cmp2, const Cuda_32_Float & trueVal, const Cuda_32_Float & falseVal) noexcept {

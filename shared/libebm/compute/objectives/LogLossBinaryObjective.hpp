@@ -228,7 +228,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
 
                const TFloat numerator = IfEqual(typename TFloat::TInt(0), target, TFloat(1), TFloat(-1));
                TFloat denominator = IfEqual(typename TFloat::TInt(0), target, -sampleScore, sampleScore);
-               denominator = ApplyFunction(denominator, [](typename TFloat::T x) { return ExpForBinaryClassification<false>(x); });
+               denominator = ApplyFunc([](typename TFloat::T x) { return ExpForBinaryClassification<false>(x); }, denominator);
                denominator += 1.0;
                const TFloat gradient = numerator / denominator;
 
@@ -310,9 +310,9 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                //       This will eliminate both the IfEqual call, and also the negation, so it's a great optimization.
                
                TFloat metric = IfEqual(typename TFloat::TInt(0), target, sampleScore, -sampleScore);
-               metric = ApplyFunction(metric, [](typename TFloat::T x) { return ExpForBinaryClassification<false>(x); });
+               metric = ApplyFunc([](typename TFloat::T x) { return ExpForBinaryClassification<false>(x); }, metric);
                metric += 1.0;
-               metric = ApplyFunction(metric, [](typename TFloat::T x) { return LogForLogLoss<false>(x); });
+               metric = ApplyFunc([](typename TFloat::T x) { return LogForLogLoss<false>(x); }, metric);
 
                if(bWeight) {
                   const TFloat weight = TFloat::Load(pWeight);
