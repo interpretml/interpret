@@ -46,6 +46,7 @@
     <ClCompile Include="random.cpp" />
     <ClCompile Include="DetermineLinkFunction.cpp" />
     <ClCompile Include="ConvertAddBin.cpp" />
+    <ClCompile Include="compute_accessors.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InteractionShell.hpp" />
@@ -85,7 +86,6 @@
     <ClInclude Include="common_c\logging.h">
       <Filter>common_c</Filter>
     </ClInclude>
-    <ClInclude Include="compute_accessors.hpp" />
     <ClInclude Include="dataset_shared.hpp" />
     <ClInclude Include="GaussianDistribution.hpp" />
     <ClInclude Include="RandomNondeterministic.hpp" />

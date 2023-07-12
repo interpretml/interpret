@@ -124,8 +124,8 @@ struct Avx512_32_Int final {
       return *this;
    }
 
-   inline Avx512_32_Int operator* (const Avx512_32_Int & other) const noexcept {
-      return Avx512_32_Int(_mm512_mullo_epi32(m_data, other.m_data));
+   inline Avx512_32_Int operator* (const T & other) const noexcept {
+      return Avx512_32_Int(_mm512_mullo_epi32(m_data, _mm512_set1_epi32(other)));
    }
 
    inline Avx512_32_Int & operator*= (const T & other) noexcept {
