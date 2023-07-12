@@ -193,6 +193,13 @@ INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateObjective_Avx512f_32(
    ObjectiveWrapper * const pObjectiveWrapperOut
 );
 
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateObjective_Avx2_32(
+   const Config * const pConfig,
+   const char * const sObjective,
+   const char * const sObjectiveEnd,
+   ObjectiveWrapper * const pObjectiveWrapperOut
+);
+
 INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateObjective_Sse2_32(
    const Config * const pConfig,
    const char * const sObjective,

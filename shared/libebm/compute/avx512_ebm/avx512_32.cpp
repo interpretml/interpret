@@ -442,17 +442,4 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Avx512f_32(
    return Error_None;
 }
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateMetric_Avx512_32(
-   const Config * const pConfig,
-   const char * const sMetric,
-   const char * const sMetricEnd
-//   MetricWrapper * const pMetricWrapperOut,
-) {
-   UNUSED(pConfig);
-   UNUSED(sMetric);
-   UNUSED(sMetricEnd);
-
-   return Error_UnexpectedInternal;
-}
-
 } // DEFINED_ZONE_NAME
