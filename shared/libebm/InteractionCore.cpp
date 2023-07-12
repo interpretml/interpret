@@ -13,7 +13,6 @@
 #include "bridge_cpp.hpp" // GetCountScores
 #include "Bin.hpp" // IsOverflowBinSize
 
-#include "compute_accessors.hpp"
 #include "ebm_internal.hpp" // SafeConvertFloat
 #include "Feature.hpp" // Feature
 #include "dataset_shared.hpp" // GetDataSetSharedHeader
@@ -30,6 +29,13 @@ extern ErrorEbm Unbag(
    size_t * const pcTrainingSamplesOut,
    size_t * const pcValidationSamplesOut
 );
+
+extern ErrorEbm GetObjective(
+   const Config * const pConfig,
+   const char * sObjective,
+   ObjectiveWrapper * const pCpuObjectiveWrapperOut,
+   ObjectiveWrapper * const pSIMDObjectiveWrapperOut
+) noexcept;
 
 void InteractionCore::Free(InteractionCore * const pInteractionCore) {
    LOG_0(Trace_Info, "Entered InteractionCore::Free");

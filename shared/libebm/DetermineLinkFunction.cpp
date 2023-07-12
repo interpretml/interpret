@@ -10,12 +10,18 @@
 #include "zones.h"
 
 #include "bridge_cpp.hpp" // IsRegressionOutput, IsClassificationOutput, IsRankingOutput
-#include "compute_accessors.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
+
+extern ErrorEbm GetObjective(
+   const Config * const pConfig,
+   const char * sObjective,
+   ObjectiveWrapper * const pCpuObjectiveWrapperOut,
+   ObjectiveWrapper * const pSIMDObjectiveWrapperOut
+) noexcept;
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    BoolEbm isDifferentialPrivacy,

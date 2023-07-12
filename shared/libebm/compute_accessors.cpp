@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef COMPUTE_ACCESSORS_HPP
-#define COMPUTE_ACCESSORS_HPP
+#include "precompiled_header_cpp.hpp"
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -20,7 +19,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetObjective(
+extern ErrorEbm GetObjective(
    const Config * const pConfig,
    const char * sObjective,
    ObjectiveWrapper * const pCpuObjectiveWrapperOut,
@@ -126,5 +125,3 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetMetrics(
 }
 
 } // DEFINED_ZONE_NAME
-
-#endif // COMPUTE_ACCESSORS_HPP

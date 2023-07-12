@@ -14,7 +14,6 @@
 #include "common_cpp.hpp" // IsConvertError, IsMultiplyError
 #include "Bin.hpp" // IsOverflowBinSize
 
-#include "compute_accessors.hpp"
 #include "ebm_internal.hpp"
 #include "dataset_shared.hpp" // GetDataSetSharedHeader
 #include "Tensor.hpp" // Tensor
@@ -38,6 +37,13 @@ extern ErrorEbm Unbag(
    size_t * const pcTrainingSamplesOut,
    size_t * const pcValidationSamplesOut
 );
+
+extern ErrorEbm GetObjective(
+   const Config * const pConfig,
+   const char * sObjective,
+   ObjectiveWrapper * const pCpuObjectiveWrapperOut,
+   ObjectiveWrapper * const pSIMDObjectiveWrapperOut
+) noexcept;
 
 void BoosterCore::DeleteTensors(const size_t cTerms, Tensor ** const apTensors) {
    LOG_0(Trace_Info, "Entered DeleteTensors");

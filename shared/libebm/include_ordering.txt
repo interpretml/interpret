@@ -31,7 +31,6 @@
 #include "Objective.hpp" // depends on zoned_bridge_cpp_functions.hpp, compute.hpp.  The cpp file depends on: zoned_bridge_c_functions.h, registration_exceptions.hpp, Registration.hpp
 
 // main side include files
-#include "compute_accessors.hpp"
 #include "ebm_internal.hpp" // GENERAL include file in the non-compute zones.  Almost all the below depend on it
 #include "RandomDeterministic.hpp"
 #include "RandomNondeterministic.hpp"

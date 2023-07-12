@@ -272,6 +272,7 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/BoosterCore.cpp" -o "$tmp_path/BoosterCore.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/BoosterShell.cpp" -o "$tmp_path/BoosterShell.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/CalcInteractionStrength.cpp" -o "$tmp_path/CalcInteractionStrength.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/compute_accessors.cpp" -o "$tmp_path/compute_accessors.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/ConvertAddBin.cpp" -o "$tmp_path/ConvertAddBin.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/CutQuantile.cpp" -o "$tmp_path/CutQuantile.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/CutUniform.cpp" -o "$tmp_path/CutUniform.o"
@@ -312,6 +313,8 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    "$tmp_path/BoosterCore.o" \
    "$tmp_path/BoosterShell.o" \
    "$tmp_path/CalcInteractionStrength.o" \
+   "$tmp_path/compute_accessors.o" \
+   "$tmp_path/ConvertAddBin.o" \
    "$tmp_path/CutQuantile.o" \
    "$tmp_path/CutUniform.o" \
    "$tmp_path/CutWinsorized.o" \
@@ -507,7 +510,7 @@ if [ "$os_type" = "Linux" ]; then
       compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "$is_asm" "C"
       compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_cpu" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "avx512"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" -mavx512f "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "avx512"
       compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "$is_asm" "NONE"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
@@ -538,7 +541,7 @@ if [ "$os_type" = "Linux" ]; then
       compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" 0 "C"
       compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_cpu" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "cpu"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "cpu"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "avx512"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" -mavx512f "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "avx512"
       compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0 "NONE"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
@@ -569,7 +572,7 @@ if [ "$os_type" = "Linux" ]; then
       compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" 0 "C"
       compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_cpu" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "cpu"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "cpu"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "avx512"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" -mavx512f "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "avx512"
       compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0 "NONE"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
@@ -600,7 +603,7 @@ if [ "$os_type" = "Linux" ]; then
       compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" 0 "C"
       compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_cpu" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "cpu"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "cpu"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "avx512"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" -mavx512f "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "avx512"
       compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0 "NONE"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
@@ -658,7 +661,7 @@ elif [ "$os_type" = "Darwin" ]; then
       compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "$is_asm" "C"
       compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_cpu" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "avx512"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" -mavx512f "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "avx512"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -688,7 +691,7 @@ elif [ "$os_type" = "Darwin" ]; then
       compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" 0 "C"
       compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_cpu" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "cpu"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "cpu"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "avx512"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" -mavx512f "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "avx512"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
