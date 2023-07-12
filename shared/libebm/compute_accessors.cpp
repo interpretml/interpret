@@ -6,7 +6,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#if defined(BRIDGE_SSE2_32) || defined(BRIDGE_AVX512_32)
+#if defined(BRIDGE_AVX512F_32) || defined(BRIDGE_AVX2_32) || defined(BRIDGE_SSE2_32)
 #define INTEL_SIMD
 #endif
 
@@ -134,11 +134,8 @@ static int DetectInstructionset(void) {
 inline static bool IsAvx512f() {
    return DetectInstructionset() >= 9;
 }
-
-#else // INTEL_SIMD
-
-inline constexpr static bool IsAvx512f() {
-   return false;
+inline static bool IsAvx2() {
+   return DetectInstructionset() >= 8;
 }
 
 #endif // INTEL_SIMD
@@ -178,16 +175,29 @@ extern ErrorEbm GetObjective(
       // TODO: add a flag in the pCpuObjectiveWrapperOut struct that indicates if the objective can be SIMDed
       //       we first make the cpu version and if that says it can't be SIMDed then we shouldn't try
       while(true) {
-#ifdef BRIDGE_AVX512_32
+#ifdef BRIDGE_AVX512F_32
+         LOG_0(Trace_Info, "INFO GetObjective checking for AVX512F compatibility");
          if(IsAvx512f()) {
             LOG_0(Trace_Info, "INFO GetObjective creating AVX512 SIMD Objective");
-            error = CreateObjective_Avx512_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
+            error = CreateObjective_Avx512f_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
             if(Error_None != error) {
                return error;
             }
             break;
          }
-#endif // BRIDGE_AVX512_32
+#endif // BRIDGE_AVX512F_32
+
+#ifdef BRIDGE_AVX2_32
+         LOG_0(Trace_Info, "INFO GetObjective checking for AVX2 compatibility");
+         if(IsAvx2()) {
+            LOG_0(Trace_Info, "INFO GetObjective creating AVX2 SIMD Objective");
+            error = CreateObjective_Avx2_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
+            if(Error_None != error) {
+               return error;
+            }
+            break;
+      }
+#endif // BRIDGE_AVX2_32
 
 #ifdef BRIDGE_SSE2_32
          LOG_0(Trace_Info, "INFO GetObjective creating SSE2 SIMD Objective");

@@ -425,7 +425,7 @@ INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterObjective(const
 // now include all our special objective registrations which will use the RegisterObjective function we defined above!
 #include "objective_registrations.hpp"
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Avx512_32(
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Avx512f_32(
    const Config * const pConfig,
    const char * const sObjective,
    const char * const sObjectiveEnd,

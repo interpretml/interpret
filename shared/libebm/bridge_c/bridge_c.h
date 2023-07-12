@@ -186,7 +186,7 @@ INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateObjective_Cpu_64(
    ObjectiveWrapper * const pObjectiveWrapperOut
 );
 
-INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateObjective_Avx512_32(
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateObjective_Avx512f_32(
    const Config * const pConfig,
    const char * const sObjective,
    const char * const sObjectiveEnd,
