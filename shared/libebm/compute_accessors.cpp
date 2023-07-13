@@ -87,11 +87,7 @@ inline static uint64_t xgetbv(int xcr) {
 
 static int DetectInstructionset(void) {
    // from: https://github.com/vectorclass/version2/blob/9d324e13457cf67b44be04f49a4a0036bb188a89/instrset_detect.cpp#L63
-   static int instructionSet = -1;
-   if(instructionSet >= 0) {
-      return instructionSet;
-   }
-   instructionSet = 0;
+   int instructionSet = 0;
    int abcd[4] = { 0, 0, 0, 0 };
    cpuid(abcd, 0);
    if(abcd[0] == 0) return instructionSet;
@@ -129,13 +125,6 @@ static int DetectInstructionset(void) {
    if((abcd[1] & 0x40020000) != 0x40020000) return instructionSet;
    instructionSet = 10;
    return instructionSet;
-}
-
-inline static bool IsAvx512f() {
-   return DetectInstructionset() >= 9;
-}
-inline static bool IsAvx2() {
-   return DetectInstructionset() >= 8;
 }
 
 #endif // INTEL_SIMD
@@ -177,7 +166,7 @@ extern ErrorEbm GetObjective(
       while(true) {
 #ifdef BRIDGE_AVX512F_32
          LOG_0(Trace_Info, "INFO GetObjective checking for AVX512F compatibility");
-         if(IsAvx512f()) {
+         if(DetectInstructionset() >= 9) {
             LOG_0(Trace_Info, "INFO GetObjective creating AVX512 SIMD Objective");
             error = CreateObjective_Avx512f_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
             if(Error_None != error) {
@@ -189,14 +178,14 @@ extern ErrorEbm GetObjective(
 
 #ifdef BRIDGE_AVX2_32
          LOG_0(Trace_Info, "INFO GetObjective checking for AVX2 compatibility");
-         if(IsAvx2()) {
+         if(DetectInstructionset() >= 8) {
             LOG_0(Trace_Info, "INFO GetObjective creating AVX2 SIMD Objective");
             error = CreateObjective_Avx2_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
             if(Error_None != error) {
                return error;
             }
             break;
-      }
+         }
 #endif // BRIDGE_AVX2_32
 
 #ifdef BRIDGE_SSE2_32
