@@ -167,7 +167,7 @@ extern ErrorEbm GetObjective(
 #ifdef BRIDGE_AVX512F_32
          LOG_0(Trace_Info, "INFO GetObjective checking for AVX512F compatibility");
          if(DetectInstructionset() >= 9) {
-            LOG_0(Trace_Info, "INFO GetObjective creating AVX512 SIMD Objective");
+            LOG_0(Trace_Info, "INFO GetObjective creating AVX512F SIMD Objective");
             error = CreateObjective_Avx512f_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
             if(Error_None != error) {
                return error;

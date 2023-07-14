@@ -408,7 +408,7 @@ EXIT /B 0
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="compute\avx512_ebm\avx512_ebm.vcxproj">
+    <ProjectReference Include="compute\avx512f_ebm\avx512f_ebm.vcxproj">
       <Project>{f2ea4b57-0df5-40a9-a8de-6e92c7f898a1}</Project>
     </ProjectReference>
     <ProjectReference Include="compute\avx2_ebm\avx2_ebm.vcxproj">

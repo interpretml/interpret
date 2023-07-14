@@ -29,11 +29,11 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-struct Avx512_32_Float;
+struct Avx512f_32_Float;
 
-struct Avx512_32_Int final {
-   friend Avx512_32_Float;
-   friend inline Avx512_32_Float IfEqual(const Avx512_32_Int & cmp1, const Avx512_32_Int & cmp2, const Avx512_32_Float & trueVal, const Avx512_32_Float & falseVal) noexcept;
+struct Avx512f_32_Int final {
+   friend Avx512f_32_Float;
+   friend inline Avx512f_32_Float IfEqual(const Avx512f_32_Int & cmp1, const Avx512f_32_Int & cmp2, const Avx512f_32_Float & trueVal, const Avx512f_32_Float & falseVal) noexcept;
 
    using T = uint32_t;
    using TPack = __m512i;
@@ -45,28 +45,28 @@ struct Avx512_32_Int final {
 
    WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
-   inline Avx512_32_Int() noexcept {
+   inline Avx512f_32_Int() noexcept {
    }
    WARNING_POP
 
-   inline Avx512_32_Int(const T & val) noexcept : m_data(_mm512_set1_epi32(val)) {
+   inline Avx512f_32_Int(const T & val) noexcept : m_data(_mm512_set1_epi32(val)) {
    }
 
-   inline static Avx512_32_Int Load(const T * const a) noexcept {
-      return Avx512_32_Int(_mm512_load_si512(reinterpret_cast<const TPack *>(a)));
+   inline static Avx512f_32_Int Load(const T * const a) noexcept {
+      return Avx512f_32_Int(_mm512_load_si512(reinterpret_cast<const TPack *>(a)));
    }
 
    inline void Store(T * const a) const noexcept {
       _mm512_store_si512(reinterpret_cast<TPack *>(a), m_data);
    }
 
-   inline static Avx512_32_Int LoadBytes(const uint8_t * const a) noexcept {
+   inline static Avx512f_32_Int LoadBytes(const uint8_t * const a) noexcept {
       const __m128i temp = _mm_load_si128(reinterpret_cast<const __m128i *>(a));
-      return Avx512_32_Int(_mm512_cvtepu8_epi32(temp));
+      return Avx512f_32_Int(_mm512_cvtepu8_epi32(temp));
    }
 
    template<typename TFunc>
-   static inline void Execute(const TFunc & func, const Avx512_32_Int & val0) noexcept {
+   static inline void Execute(const TFunc & func, const Avx512f_32_Int & val0) noexcept {
       alignas(SIMD_BYTE_ALIGNMENT) T a0[k_cSIMDPack];
       val0.Store(a0);
 
@@ -89,44 +89,44 @@ struct Avx512_32_Int final {
       func(15, a0[15]);
    }
 
-   inline static Avx512_32_Int MakeIndexes() noexcept {
-      return Avx512_32_Int(_mm512_set_epi32(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
+   inline static Avx512f_32_Int MakeIndexes() noexcept {
+      return Avx512f_32_Int(_mm512_set_epi32(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
    }
 
-   inline Avx512_32_Int operator+ (const Avx512_32_Int & other) const noexcept {
-      return Avx512_32_Int(_mm512_add_epi32(m_data, other.m_data));
+   inline Avx512f_32_Int operator+ (const Avx512f_32_Int & other) const noexcept {
+      return Avx512f_32_Int(_mm512_add_epi32(m_data, other.m_data));
    }
 
-   inline Avx512_32_Int operator* (const T & other) const noexcept {
-      return Avx512_32_Int(_mm512_mullo_epi32(m_data, _mm512_set1_epi32(other)));
+   inline Avx512f_32_Int operator* (const T & other) const noexcept {
+      return Avx512f_32_Int(_mm512_mullo_epi32(m_data, _mm512_set1_epi32(other)));
    }
 
-   inline Avx512_32_Int operator>> (unsigned int shift) const noexcept {
-      return Avx512_32_Int(_mm512_srli_epi32(m_data, shift));
+   inline Avx512f_32_Int operator>> (unsigned int shift) const noexcept {
+      return Avx512f_32_Int(_mm512_srli_epi32(m_data, shift));
    }
 
-   inline Avx512_32_Int operator<< (unsigned int shift) const noexcept {
-      return Avx512_32_Int(_mm512_slli_epi32(m_data, shift));
+   inline Avx512f_32_Int operator<< (unsigned int shift) const noexcept {
+      return Avx512f_32_Int(_mm512_slli_epi32(m_data, shift));
    }
 
-   inline Avx512_32_Int operator& (const Avx512_32_Int & other) const noexcept {
-      return Avx512_32_Int(_mm512_and_si512(other.m_data, m_data));
+   inline Avx512f_32_Int operator& (const Avx512f_32_Int & other) const noexcept {
+      return Avx512f_32_Int(_mm512_and_si512(other.m_data, m_data));
    }
 
 private:
-   inline Avx512_32_Int(const TPack & data) noexcept : m_data(data) {
+   inline Avx512f_32_Int(const TPack & data) noexcept : m_data(data) {
    }
 
    TPack m_data;
 };
-static_assert(std::is_standard_layout<Avx512_32_Int>::value && std::is_trivially_copyable<Avx512_32_Int>::value,
+static_assert(std::is_standard_layout<Avx512f_32_Int>::value && std::is_trivially_copyable<Avx512f_32_Int>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 
-struct Avx512_32_Float final {
+struct Avx512f_32_Float final {
    using T = float;
    using TPack = __m512;
-   using TInt = Avx512_32_Int;
+   using TInt = Avx512f_32_Int;
    static_assert(sizeof(T) <= sizeof(Float_Big), "Float_Big must be able to hold a T");
    static constexpr bool bCpu = TInt::bCpu;
    static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
@@ -134,109 +134,109 @@ struct Avx512_32_Float final {
 
    WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
-   inline Avx512_32_Float() noexcept {
+   inline Avx512f_32_Float() noexcept {
    }
    WARNING_POP
 
-   inline Avx512_32_Float(const double val) noexcept : m_data { _mm512_set1_ps(static_cast<T>(val)) } {
+   inline Avx512f_32_Float(const double val) noexcept : m_data { _mm512_set1_ps(static_cast<T>(val)) } {
    }
-   inline Avx512_32_Float(const float val) noexcept : m_data { _mm512_set1_ps(static_cast<T>(val)) } {
+   inline Avx512f_32_Float(const float val) noexcept : m_data { _mm512_set1_ps(static_cast<T>(val)) } {
    }
-   inline Avx512_32_Float(const int val) noexcept : m_data { _mm512_set1_ps(static_cast<T>(val)) } {
+   inline Avx512f_32_Float(const int val) noexcept : m_data { _mm512_set1_ps(static_cast<T>(val)) } {
    }
 
 
-   inline Avx512_32_Float operator+() const noexcept {
+   inline Avx512f_32_Float operator+() const noexcept {
       return *this;
    }
 
-   inline Avx512_32_Float operator-() const noexcept {
-      return Avx512_32_Float(_mm512_castsi512_ps(_mm512_xor_si512(_mm512_castps_si512(m_data), _mm512_set1_epi32(0x80000000))));
+   inline Avx512f_32_Float operator-() const noexcept {
+      return Avx512f_32_Float(_mm512_castsi512_ps(_mm512_xor_si512(_mm512_castps_si512(m_data), _mm512_set1_epi32(0x80000000))));
    }
 
 
-   inline Avx512_32_Float operator+ (const Avx512_32_Float & other) const noexcept {
-      return Avx512_32_Float(_mm512_add_ps(m_data, other.m_data));
+   inline Avx512f_32_Float operator+ (const Avx512f_32_Float & other) const noexcept {
+      return Avx512f_32_Float(_mm512_add_ps(m_data, other.m_data));
    }
 
-   inline Avx512_32_Float operator- (const Avx512_32_Float & other) const noexcept {
-      return Avx512_32_Float(_mm512_sub_ps(m_data, other.m_data));
+   inline Avx512f_32_Float operator- (const Avx512f_32_Float & other) const noexcept {
+      return Avx512f_32_Float(_mm512_sub_ps(m_data, other.m_data));
    }
 
-   inline Avx512_32_Float operator* (const Avx512_32_Float & other) const noexcept {
-      return Avx512_32_Float(_mm512_mul_ps(m_data, other.m_data));
+   inline Avx512f_32_Float operator* (const Avx512f_32_Float & other) const noexcept {
+      return Avx512f_32_Float(_mm512_mul_ps(m_data, other.m_data));
    }
 
-   inline Avx512_32_Float operator/ (const Avx512_32_Float & other) const noexcept {
-      return Avx512_32_Float(_mm512_div_ps(m_data, other.m_data));
+   inline Avx512f_32_Float operator/ (const Avx512f_32_Float & other) const noexcept {
+      return Avx512f_32_Float(_mm512_div_ps(m_data, other.m_data));
    }
 
 
-   inline Avx512_32_Float & operator+= (const Avx512_32_Float & other) noexcept {
+   inline Avx512f_32_Float & operator+= (const Avx512f_32_Float & other) noexcept {
       *this = (*this) + other;
       return *this;
    }
 
-   inline Avx512_32_Float & operator-= (const Avx512_32_Float & other) noexcept {
+   inline Avx512f_32_Float & operator-= (const Avx512f_32_Float & other) noexcept {
       *this = (*this) - other;
       return *this;
    }
 
-   inline Avx512_32_Float & operator*= (const Avx512_32_Float & other) noexcept {
+   inline Avx512f_32_Float & operator*= (const Avx512f_32_Float & other) noexcept {
       *this = (*this) * other;
       return *this;
    }
 
-   inline Avx512_32_Float & operator/= (const Avx512_32_Float & other) noexcept {
+   inline Avx512f_32_Float & operator/= (const Avx512f_32_Float & other) noexcept {
       *this = (*this) / other;
       return *this;
    }
 
 
-   friend inline Avx512_32_Float operator+ (const double val, const Avx512_32_Float & other) noexcept {
-      return Avx512_32_Float(val) + other;
+   friend inline Avx512f_32_Float operator+ (const double val, const Avx512f_32_Float & other) noexcept {
+      return Avx512f_32_Float(val) + other;
    }
 
-   friend inline Avx512_32_Float operator- (const double val, const Avx512_32_Float & other) noexcept {
-      return Avx512_32_Float(val) - other;
+   friend inline Avx512f_32_Float operator- (const double val, const Avx512f_32_Float & other) noexcept {
+      return Avx512f_32_Float(val) - other;
    }
 
-   friend inline Avx512_32_Float operator* (const double val, const Avx512_32_Float & other) noexcept {
-      return Avx512_32_Float(val) * other;
+   friend inline Avx512f_32_Float operator* (const double val, const Avx512f_32_Float & other) noexcept {
+      return Avx512f_32_Float(val) * other;
    }
 
-   friend inline Avx512_32_Float operator/ (const double val, const Avx512_32_Float & other) noexcept {
-      return Avx512_32_Float(val) / other;
-   }
-
-
-   friend inline Avx512_32_Float operator+ (const float val, const Avx512_32_Float & other) noexcept {
-      return Avx512_32_Float(val) + other;
-   }
-
-   friend inline Avx512_32_Float operator- (const float val, const Avx512_32_Float & other) noexcept {
-      return Avx512_32_Float(val) - other;
-   }
-
-   friend inline Avx512_32_Float operator* (const float val, const Avx512_32_Float & other) noexcept {
-      return Avx512_32_Float(val) * other;
-   }
-
-   friend inline Avx512_32_Float operator/ (const float val, const Avx512_32_Float & other) noexcept {
-      return Avx512_32_Float(val) / other;
+   friend inline Avx512f_32_Float operator/ (const double val, const Avx512f_32_Float & other) noexcept {
+      return Avx512f_32_Float(val) / other;
    }
 
 
-   inline static Avx512_32_Float Load(const T * const a) noexcept {
-      return Avx512_32_Float(_mm512_load_ps(a));
+   friend inline Avx512f_32_Float operator+ (const float val, const Avx512f_32_Float & other) noexcept {
+      return Avx512f_32_Float(val) + other;
+   }
+
+   friend inline Avx512f_32_Float operator- (const float val, const Avx512f_32_Float & other) noexcept {
+      return Avx512f_32_Float(val) - other;
+   }
+
+   friend inline Avx512f_32_Float operator* (const float val, const Avx512f_32_Float & other) noexcept {
+      return Avx512f_32_Float(val) * other;
+   }
+
+   friend inline Avx512f_32_Float operator/ (const float val, const Avx512f_32_Float & other) noexcept {
+      return Avx512f_32_Float(val) / other;
+   }
+
+
+   inline static Avx512f_32_Float Load(const T * const a) noexcept {
+      return Avx512f_32_Float(_mm512_load_ps(a));
    }
 
    inline void Store(T * const a) const noexcept {
       _mm512_store_ps(a, m_data);
    }
 
-   inline static Avx512_32_Float Load(const T * const a, const TInt i) noexcept {
-      return Avx512_32_Float(_mm512_i32gather_ps(i.m_data, a, sizeof(a[0])));
+   inline static Avx512f_32_Float Load(const T * const a, const TInt i) noexcept {
+      return Avx512f_32_Float(_mm512_i32gather_ps(i.m_data, a, sizeof(a[0])));
    }
 
    inline void Store(T * const a, const TInt i) const noexcept {
@@ -244,7 +244,7 @@ struct Avx512_32_Float final {
    }
 
    template<typename TFunc>
-   friend inline Avx512_32_Float ApplyFunc(const TFunc & func, const Avx512_32_Float & val) noexcept {
+   friend inline Avx512f_32_Float ApplyFunc(const TFunc & func, const Avx512f_32_Float & val) noexcept {
 
       alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
       val.Store(aTemp);
@@ -290,7 +290,7 @@ struct Avx512_32_Float final {
    }
 
    template<typename TFunc>
-   static inline void Execute(const TFunc & func, const Avx512_32_Float & val0) noexcept {
+   static inline void Execute(const TFunc & func, const Avx512f_32_Float & val0) noexcept {
       alignas(SIMD_BYTE_ALIGNMENT) T a0[k_cSIMDPack];
       val0.Store(a0);
 
@@ -313,7 +313,7 @@ struct Avx512_32_Float final {
    }
 
    template<typename TFunc>
-   static inline void Execute(const TFunc & func, const Avx512_32_Float & val0, const Avx512_32_Float & val1) noexcept {
+   static inline void Execute(const TFunc & func, const Avx512f_32_Float & val0, const Avx512f_32_Float & val1) noexcept {
       alignas(SIMD_BYTE_ALIGNMENT) T a0[k_cSIMDPack];
       val0.Store(a0);
       alignas(SIMD_BYTE_ALIGNMENT) T a1[k_cSIMDPack];
@@ -337,41 +337,41 @@ struct Avx512_32_Float final {
       func(15, a0[15], a1[15]);
    }
 
-   friend inline Avx512_32_Float IfLess(const Avx512_32_Float & cmp1, const Avx512_32_Float & cmp2, const Avx512_32_Float & trueVal, const Avx512_32_Float & falseVal) noexcept {
+   friend inline Avx512f_32_Float IfLess(const Avx512f_32_Float & cmp1, const Avx512f_32_Float & cmp2, const Avx512f_32_Float & trueVal, const Avx512f_32_Float & falseVal) noexcept {
       const __mmask16 mask = _mm512_cmp_ps_mask(cmp1.m_data, cmp2.m_data, _CMP_LT_OQ);
-      return Avx512_32_Float(_mm512_mask_blend_ps(mask, falseVal.m_data, trueVal.m_data));
+      return Avx512f_32_Float(_mm512_mask_blend_ps(mask, falseVal.m_data, trueVal.m_data));
    }
 
-   friend inline Avx512_32_Float IfEqual(const Avx512_32_Int & cmp1, const Avx512_32_Int & cmp2, const Avx512_32_Float & trueVal, const Avx512_32_Float & falseVal) noexcept {
+   friend inline Avx512f_32_Float IfEqual(const Avx512f_32_Int & cmp1, const Avx512f_32_Int & cmp2, const Avx512f_32_Float & trueVal, const Avx512f_32_Float & falseVal) noexcept {
       const __mmask16 mask = _mm512_cmpeq_epi32_mask(cmp1.m_data, cmp2.m_data);
-      return Avx512_32_Float(_mm512_mask_blend_ps(mask, falseVal.m_data, trueVal.m_data));
+      return Avx512f_32_Float(_mm512_mask_blend_ps(mask, falseVal.m_data, trueVal.m_data));
    }
 
-   friend inline Avx512_32_Float Abs(const Avx512_32_Float & val) noexcept {
-      return Avx512_32_Float(_mm512_castsi512_ps(_mm512_and_si512(_mm512_castps_si512(val.m_data), _mm512_set1_epi32(0x7FFFFFFF))));
+   friend inline Avx512f_32_Float Abs(const Avx512f_32_Float & val) noexcept {
+      return Avx512f_32_Float(_mm512_castsi512_ps(_mm512_and_si512(_mm512_castps_si512(val.m_data), _mm512_set1_epi32(0x7FFFFFFF))));
    }
 
-   friend inline Avx512_32_Float Reciprocal(const Avx512_32_Float & val) noexcept {
-      return Avx512_32_Float(_mm512_rcp14_ps(val.m_data));
+   friend inline Avx512f_32_Float Reciprocal(const Avx512f_32_Float & val) noexcept {
+      return Avx512f_32_Float(_mm512_rcp14_ps(val.m_data));
    }
 
-   friend inline Avx512_32_Float FastApproxDivide(const Avx512_32_Float & dividend, const Avx512_32_Float & divisor) noexcept {
+   friend inline Avx512f_32_Float FastApproxDivide(const Avx512f_32_Float & dividend, const Avx512f_32_Float & divisor) noexcept {
       return dividend * Reciprocal(divisor);
    }
 
-   friend inline Avx512_32_Float Sqrt(const Avx512_32_Float & val) noexcept {
-      return Avx512_32_Float(_mm512_sqrt_ps(val.m_data));
+   friend inline Avx512f_32_Float Sqrt(const Avx512f_32_Float & val) noexcept {
+      return Avx512f_32_Float(_mm512_sqrt_ps(val.m_data));
    }
 
-   friend inline Avx512_32_Float Exp(const Avx512_32_Float & val) noexcept {
+   friend inline Avx512f_32_Float Exp(const Avx512f_32_Float & val) noexcept {
       return ApplyFunc([](T x) { return std::exp(x); }, val);
    }
 
-   friend inline Avx512_32_Float Log(const Avx512_32_Float & val) noexcept {
+   friend inline Avx512f_32_Float Log(const Avx512f_32_Float & val) noexcept {
       return ApplyFunc([](T x) { return std::log(x); }, val);
    }
 
-   friend inline T Sum(const Avx512_32_Float & val) noexcept {
+   friend inline T Sum(const Avx512f_32_Float & val) noexcept {
       return _mm512_reduce_add_ps(val.m_data);
    }
 
@@ -385,33 +385,33 @@ struct Avx512_32_Float final {
 
    template<bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge * const pParams) noexcept {
-      RemoteBinSumsBoosting<Avx512_32_Float, bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
+      RemoteBinSumsBoosting<Avx512f_32_Float, bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
       return Error_None;
    }
 
 
    template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsInteraction(BinSumsInteractionBridge * const pParams) noexcept {
-      RemoteBinSumsInteraction<Avx512_32_Float, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
+      RemoteBinSumsInteraction<Avx512f_32_Float, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
       return Error_None;
    }
 
 
 private:
 
-   inline Avx512_32_Float(const TPack & data) noexcept : m_data(data) {
+   inline Avx512f_32_Float(const TPack & data) noexcept : m_data(data) {
    }
 
    TPack m_data;
 };
-static_assert(std::is_standard_layout<Avx512_32_Float>::value && std::is_trivially_copyable<Avx512_32_Float>::value,
+static_assert(std::is_standard_layout<Avx512f_32_Float>::value && std::is_trivially_copyable<Avx512f_32_Float>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 // FIRST, define the RegisterObjective function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions
 template<template <typename> class TRegistrable, typename... Args>
 INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterObjective(const char * const sRegistrationName, const Args...args) {
-   return Register<TRegistrable, Avx512_32_Float>(sRegistrationName, args...);
+   return Register<TRegistrable, Avx512f_32_Float>(sRegistrationName, args...);
 }
 
 // now include all our special objective registrations which will use the RegisterObjective function we defined above!
@@ -423,7 +423,7 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Avx512f_32(
    const char * const sObjectiveEnd,
    ObjectiveWrapper * const pObjectiveWrapperOut
 ) {
-   ErrorEbm error = ComputeWrapper<Avx512_32_Float>::FillWrapper(pObjectiveWrapperOut);
+   ErrorEbm error = ComputeWrapper<Avx512f_32_Float>::FillWrapper(pObjectiveWrapperOut);
    if(Error_None != error) {
       return error;
    }

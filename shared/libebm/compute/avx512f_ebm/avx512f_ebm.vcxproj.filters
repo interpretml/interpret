@@ -4,7 +4,7 @@
     <ClCompile Include="..\special\precompiled_header_cpp.cpp">
       <Filter>special</Filter>
     </ClCompile>
-    <ClCompile Include="avx512_32.cpp" />
+    <ClCompile Include="avx512f_32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="special">
