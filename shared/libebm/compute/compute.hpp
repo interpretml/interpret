@@ -16,17 +16,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-#ifdef __CUDACC__
-#define GPU_COMPILE
-#define GPU_GLOBAL            __global__
-#define GPU_DEVICE            __device__
-#define GPU_BOTH              __host__ __device__
-#else
-#define GPU_GLOBAL
-#define GPU_DEVICE
-#define GPU_BOTH
-#endif
-
 // 64 for k_cItemsPerBitPackMax is too big since it'll replicate the objectives 64 times, and then 32, 21, etc..
 // 8 is nice for k_cItemsPerBitPackMax since 2^8 = 256 bins, which gets 8 items packed into each 64 bit number.
 static constexpr ptrdiff_t k_cItemsPerBitPackMax = ptrdiff_t { 8 };

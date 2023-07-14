@@ -352,11 +352,27 @@ struct Avx2_32_Float final {
       return _mm_cvtss_f32(sum2);
    }
 
+
    template<typename TObjective, size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Objective * const pObjective, ApplyUpdateBridge * const pData) noexcept {
       RemoteApplyUpdate<TObjective, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian, cCompilerPack>(pObjective, pData);
       return Error_None;
    }
+
+
+   template<bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
+   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge * const pParams) noexcept {
+      RemoteBinSumsBoosting<Avx2_32_Float, bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
+      return Error_None;
+   }
+
+
+   template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
+   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsInteraction(BinSumsInteractionBridge * const pParams) noexcept {
+      RemoteBinSumsInteraction<Avx2_32_Float, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
+      return Error_None;
+   }
+
 
 private:
 
@@ -388,11 +404,7 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Avx2_32(
    if(Error_None != error) {
       return error;
    }
-   error = Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
-   if(Error_None != error) {
-      return error;
-   }
-   return Error_None;
+   return Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
 }
 
 } // DEFINED_ZONE_NAME

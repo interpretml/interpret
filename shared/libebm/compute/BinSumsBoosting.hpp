@@ -324,17 +324,15 @@ GPU_DEVICE static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pPa
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 }
 
+template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
+GPU_GLOBAL static void RemoteBinSumsBoosting(BinSumsBoostingBridge * const pParams) {
+   BinSumsBoostingInternal<TFloat, bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
+}
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
 INLINE_RELEASE_TEMPLATED ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge * const pParams) {
-   // TODO: in the future call back to the the operator class to allow it to inject the code into a GPU (see Objective.hpp for an example):
-   // return TFloat::template OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
-   // and also return the error code returned from that call instead of always Error_None
-   BinSumsBoostingInternal<TFloat, bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
-
-   return Error_None;
+   return TFloat::template OperatorBinSumsBoosting<bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
 }
-
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BitPackBoosting(BinSumsBoostingBridge * const pParams) {

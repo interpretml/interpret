@@ -77,29 +77,29 @@ static constexpr FloatFast k_epsilonGradientForBinaryToMulticlass = FloatFast{ 1
 // which is required in order to use the offsetof macro, or in our case array to pointer conversion.
 // 
 template<typename T>
-inline static T * ArrayToPointer(T * const a) noexcept {
+GPU_BOTH inline static T * ArrayToPointer(T * const a) noexcept {
    return a;
 }
 template<typename T>
-inline static const T * ArrayToPointer(const T * const a) noexcept {
+GPU_BOTH inline static const T * ArrayToPointer(const T * const a) noexcept {
    return a;
 }
 
 template<typename T>
-inline static T * IndexByte(T * const p, const size_t iByte) noexcept {
+GPU_BOTH inline static T * IndexByte(T * const p, const size_t iByte) noexcept {
    return reinterpret_cast<T *>(reinterpret_cast<char *>(p) + iByte);
 }
 template<typename T>
-inline static const T * IndexByte(const T * const p, const size_t iByte) noexcept {
+GPU_BOTH inline static const T * IndexByte(const T * const p, const size_t iByte) noexcept {
    return reinterpret_cast<const T *>(reinterpret_cast<const char *>(p) + iByte);
 }
 
 template<typename T>
-inline static T * NegativeIndexByte(T * const p, const size_t iByte) noexcept {
+GPU_BOTH inline static T * NegativeIndexByte(T * const p, const size_t iByte) noexcept {
    return reinterpret_cast<T *>(reinterpret_cast<char *>(p) - iByte);
 }
 template<typename T>
-inline static const T * NegativeIndexByte(const T * const p, const size_t iByte) noexcept {
+GPU_BOTH inline static const T * NegativeIndexByte(const T * const p, const size_t iByte) noexcept {
    return reinterpret_cast<const T *>(reinterpret_cast<const char *>(p) - iByte);
 }
 

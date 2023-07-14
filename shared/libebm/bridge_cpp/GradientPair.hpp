@@ -48,32 +48,34 @@ struct GradientPair<TFloat, true> final {
    // nicely from eachother and match other package naming.  ThirdDerivative is nice since it's distinctly named
    // and easy to see rather than Derivative1, Derivative2, Derivative3, etc..
 
-   inline TFloat GetHess() const {
+   GPU_BOTH inline TFloat GetHess() const {
       return m_sumHessians;
    }
-   inline void SetHess(const TFloat sumHessians) {
+   GPU_BOTH inline void SetHess(const TFloat sumHessians) {
       m_sumHessians = sumHessians;
    }
-   inline GradientPair & operator+=(const GradientPair & other) {
+   GPU_BOTH inline GradientPair & operator+=(const GradientPair & other) {
       m_sumGradients += other.m_sumGradients;
       m_sumHessians += other.m_sumHessians;
       return *this;
    }
-   inline GradientPair & operator-=(const GradientPair & other) {
+   GPU_BOTH inline GradientPair & operator-=(const GradientPair & other) {
       m_sumGradients -= other.m_sumGradients;
       m_sumHessians -= other.m_sumHessians;
       return *this;
    }
-   inline bool IsGradientsClose(const GradientPair & other) const {
+   GPU_BOTH inline bool IsGradientsClose(const GradientPair & other) const {
       return IsClose(m_sumGradients, other.m_sumGradients) && IsClose(m_sumHessians, other.m_sumHessians);
    }
-   inline void Zero() {
+   GPU_BOTH inline void Zero() {
       m_sumGradients = 0;
       m_sumHessians = 0;
    }
-   inline void AssertZero() const {
+   GPU_BOTH inline void AssertZero() const {
+#ifndef GPU_COMPILE
       EBM_ASSERT(0 == m_sumGradients);
       EBM_ASSERT(0 == m_sumHessians);
+#endif // GPU_COMPILE
    }
 };
 static_assert(std::is_standard_layout<GradientPair<double, true>>::value,
@@ -105,30 +107,36 @@ struct GradientPair<TFloat, false> final {
 
    TFloat m_sumGradients;
 
-   inline TFloat GetHess() const {
+   GPU_BOTH inline TFloat GetHess() const {
+#ifndef GPU_COMPILE
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
+#endif // GPU_COMPILE
       return TFloat { 0 };
    }
-   inline void SetHess(const TFloat sumHessians) {
+   GPU_BOTH inline void SetHess(const TFloat sumHessians) {
       UNUSED(sumHessians);
+#ifndef GPU_COMPILE
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
+#endif // GPU_COMPILE
    }
-   inline GradientPair & operator+=(const GradientPair & other) {
+   GPU_BOTH inline GradientPair & operator+=(const GradientPair & other) {
       m_sumGradients += other.m_sumGradients;
       return *this;
    }
-   inline GradientPair & operator-=(const GradientPair & other) {
+   GPU_BOTH inline GradientPair & operator-=(const GradientPair & other) {
       m_sumGradients -= other.m_sumGradients;
       return *this;
    }
-   inline bool IsGradientsClose(const GradientPair & other) const {
+   GPU_BOTH inline bool IsGradientsClose(const GradientPair & other) const {
       return IsClose(m_sumGradients, other.m_sumGradients);
    }
-   inline void Zero() {
+   GPU_BOTH inline void Zero() {
       m_sumGradients = 0;
    }
-   inline void AssertZero() const {
+   GPU_BOTH inline void AssertZero() const {
+#ifndef GPU_COMPILE
       EBM_ASSERT(0 == m_sumGradients);
+#endif // GPU_COMPILE
    }
 };
 static_assert(std::is_standard_layout<GradientPair<double, false>>::value,
@@ -142,11 +150,13 @@ static_assert(std::is_trivial<GradientPair<float, false>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 
 template<typename TFloat, bool bHessian>
-inline static void ZeroGradientPairs(
+GPU_BOTH inline static void ZeroGradientPairs(
    GradientPair<TFloat, bHessian> * const aGradientPairs, 
    const size_t cScores
 ) {
+#ifndef GPU_COMPILE
    EBM_ASSERT(1 <= cScores);
+#endif // GPU_COMPILE
    size_t iScore = 0;
    do {
       aGradientPairs[iScore].Zero();
@@ -155,7 +165,7 @@ inline static void ZeroGradientPairs(
 }
 
 template<typename TFloat>
-inline constexpr static size_t GetGradientPairSize(const bool bHessian) {
+GPU_BOTH inline constexpr static size_t GetGradientPairSize(const bool bHessian) {
    return bHessian ? sizeof(GradientPair<TFloat, true>) : sizeof(GradientPair<TFloat, false>);
 }
 

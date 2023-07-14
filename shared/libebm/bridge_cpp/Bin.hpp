@@ -33,15 +33,15 @@ struct BinBase {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores = 1>
-   inline Bin<TFloat, TUInt, bHessian, cCompilerScores> * Specialize() {
+   GPU_BOTH inline Bin<TFloat, TUInt, bHessian, cCompilerScores> * Specialize() {
       return static_cast<Bin<TFloat, TUInt, bHessian, cCompilerScores> *>(this);
    }
    template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores = 1>
-   inline const Bin<TFloat, TUInt, bHessian, cCompilerScores> * Specialize() const {
+   GPU_BOTH inline const Bin<TFloat, TUInt, bHessian, cCompilerScores> * Specialize() const {
       return static_cast<const Bin<TFloat, TUInt, bHessian, cCompilerScores> *>(this);
    }
 
-   inline void ZeroMem(const size_t cBytesPerBin, const size_t cBins = 1, const size_t iBin = 0) {
+   GPU_BOTH inline void ZeroMem(const size_t cBytesPerBin, const size_t cBins = 1, const size_t iBin = 0) {
       // The C standard guarantees that memset to 0 on integer types is a zero, and IEEE-754 guarantees 
       // that mem zeroing a floating point is zero.  Our Bin objects are POD and also only contain floating point
       // and unsigned integer types, so memset is legal. We do not use pointers which would be implementation defined.
@@ -65,7 +65,7 @@ static_assert(std::is_trivial<BinBase>::value,
 template<typename TFloat, typename TUInt>
 static bool IsOverflowBinSize(const bool bHessian, const size_t cScores);
 template<typename TFloat, typename TUInt>
-inline constexpr static size_t GetBinSize(const bool bHessian, const size_t cScores);
+GPU_BOTH inline constexpr static size_t GetBinSize(const bool bHessian, const size_t cScores);
 
 template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
 struct Bin final : BinBase {
@@ -84,7 +84,7 @@ struct Bin final : BinBase {
       const void * const
    );
    template<typename, typename> friend bool IsOverflowBinSize(const bool, const size_t);
-   template<typename, typename> friend inline constexpr size_t GetBinSize(const bool, const size_t);
+   template<typename, typename> GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const size_t);
 
    
    static_assert(std::is_floating_point<TFloat>::value, "TFloat must be a float type");
@@ -106,148 +106,155 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   inline TUInt GetCountSamples() const {
+   GPU_BOTH inline TUInt GetCountSamples() const {
       return m_cSamples;
    }
-   inline void SetCountSamples(const TUInt cSamples) {
+   GPU_BOTH inline void SetCountSamples(const TUInt cSamples) {
       m_cSamples = cSamples;
    }
 
-   inline TFloat GetWeight() const {
+   GPU_BOTH inline TFloat GetWeight() const {
       return m_weight;
    }
-   inline void SetWeight(const TFloat weight) {
+   GPU_BOTH inline void SetWeight(const TFloat weight) {
       m_weight = weight;
    }
 
-   inline const GradientPair<TFloat, bHessian> * GetGradientPairs() const {
+   GPU_BOTH inline const GradientPair<TFloat, bHessian> * GetGradientPairs() const {
       return ArrayToPointer(m_aGradientPairs);
    }
-   inline GradientPair<TFloat, bHessian> * GetGradientPairs() {
+   GPU_BOTH inline GradientPair<TFloat, bHessian> * GetGradientPairs() {
       return ArrayToPointer(m_aGradientPairs);
    }
 
-   inline const Bin<TFloat, TUInt, bHessian, 1> * Downgrade() const {
+   GPU_BOTH inline const Bin<TFloat, TUInt, bHessian, 1> * Downgrade() const {
       return reinterpret_cast<const Bin<TFloat, TUInt, bHessian, 1> *>(this);
    }
-   inline Bin<TFloat, TUInt, bHessian, 1> * Downgrade() {
+   GPU_BOTH inline Bin<TFloat, TUInt, bHessian, 1> * Downgrade() {
       return reinterpret_cast<Bin<TFloat, TUInt, bHessian, 1> *>(this);
    }
 
-   inline void Add(
+   GPU_BOTH inline void Add(
       const size_t cScores,
       const Bin & other,
       const GradientPair<TFloat, bHessian> * const aOtherGradientPairs,
       GradientPair<TFloat, bHessian> * const aThisGradientPairs
    ) {
+#ifndef GPU_COMPILE
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
       EBM_ASSERT(cScores != cCompilerScores || aOtherGradientPairs == other.GetGradientPairs());
       EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == GetGradientPairs());
-
+      EBM_ASSERT(1 <= cScores);
+#endif // GPU_COMPILE
       m_cSamples += other.m_cSamples;
       m_weight += other.m_weight;
 
-      EBM_ASSERT(1 <= cScores);
       size_t iScore = 0;
       do {
          aThisGradientPairs[iScore] += aOtherGradientPairs[iScore];
          ++iScore;
       } while(cScores != iScore);
    }
-   inline void Add(
+   GPU_BOTH inline void Add(
       const size_t cScores,
       const Bin & other,
       const GradientPair<TFloat, bHessian> * const aOtherGradientPairs
    ) {
       Add(cScores, other, aOtherGradientPairs, GetGradientPairs());
    }
-   inline void Add(const size_t cScores, const Bin & other) {
+   GPU_BOTH inline void Add(const size_t cScores, const Bin & other) {
       Add(cScores, other, other.GetGradientPairs(), GetGradientPairs());
    }
 
-   inline void Subtract(
+   GPU_BOTH inline void Subtract(
       const size_t cScores,
       const Bin & other,
       const GradientPair<TFloat, bHessian> * const aOtherGradientPairs,
       GradientPair<TFloat, bHessian> * const aThisGradientPairs
    ) {
+#ifndef GPU_COMPILE
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
       EBM_ASSERT(cScores != cCompilerScores || aOtherGradientPairs == other.GetGradientPairs());
       EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == GetGradientPairs());
-
+      EBM_ASSERT(1 <= cScores);
+#endif // GPU_COMPILE
       m_cSamples -= other.m_cSamples;
       m_weight -= other.m_weight;
 
-      EBM_ASSERT(1 <= cScores);
       size_t iScore = 0;
       do {
          aThisGradientPairs[iScore] -= aOtherGradientPairs[iScore];
          ++iScore;
       } while(cScores != iScore);
    }
-   inline void Subtract(
+   GPU_BOTH inline void Subtract(
       const size_t cScores,
       const Bin & other,
       const GradientPair<TFloat, bHessian> * const aOtherGradientPairs
    ) {
       Subtract(cScores, other, aOtherGradientPairs, GetGradientPairs());
    }
-   inline void Subtract(const size_t cScores, const Bin & other) {
+   GPU_BOTH inline void Subtract(const size_t cScores, const Bin & other) {
       Subtract(cScores, other, other.GetGradientPairs(), GetGradientPairs());
    }
 
-   inline void Copy(
+   GPU_BOTH inline void Copy(
       const size_t cScores,
       const Bin & other,
       const GradientPair<TFloat, bHessian> * const aOtherGradientPairs,
       GradientPair<TFloat, bHessian> * const aThisGradientPairs
    ) {
+#ifndef GPU_COMPILE
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
       EBM_ASSERT(cScores != cCompilerScores || aOtherGradientPairs == other.GetGradientPairs());
       EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == GetGradientPairs());
+      EBM_ASSERT(1 <= cScores);
+#endif // GPU_COMPILE
 
       m_cSamples = other.m_cSamples;
       m_weight = other.m_weight;
 
-      EBM_ASSERT(1 <= cScores);
       size_t iScore = 0;
       do {
          aThisGradientPairs[iScore] = aOtherGradientPairs[iScore];
          ++iScore;
       } while(cScores != iScore);
    }
-   inline void Copy(
+   GPU_BOTH inline void Copy(
       const size_t cScores,
       const Bin & other,
       const GradientPair<TFloat, bHessian> * const aOtherGradientPairs
    ) {
       Copy(cScores, other, aOtherGradientPairs, GetGradientPairs());
    }
-   inline void Copy(const size_t cScores, const Bin & other) {
+   GPU_BOTH inline void Copy(const size_t cScores, const Bin & other) {
       Copy(cScores, other, other.GetGradientPairs(), GetGradientPairs());
    }
 
-   inline void Zero(
+   GPU_BOTH inline void Zero(
       const size_t cScores,
       GradientPair<TFloat, bHessian> * const aThisGradientPairs
    ) {
+#ifndef GPU_COMPILE
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
       EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == GetGradientPairs());
+#endif // GPU_COMPILE
 
       m_cSamples = 0;
       m_weight = 0;
       ZeroGradientPairs(aThisGradientPairs, cScores);
    }
-   inline void Zero(const size_t cScores) {
+   GPU_BOTH inline void Zero(const size_t cScores) {
       Zero(cScores, GetGradientPairs());
    }
 
-   inline void AssertZero(
+   GPU_BOTH inline void AssertZero(
       const size_t cScores,
       const GradientPair<TFloat, bHessian> * const aThisGradientPairs
    ) const {
       UNUSED(cScores);
       UNUSED(aThisGradientPairs);
+#ifndef GPU_COMPILE
 #ifndef NDEBUG
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
       EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == GetGradientPairs());
@@ -262,8 +269,9 @@ public:
          ++iScore;
       } while(cScores != iScore);
 #endif // NDEBUG
+#endif // GPU_COMPILE
    }
-   inline void AssertZero(const size_t cScores) const {
+   GPU_BOTH inline void AssertZero(const size_t cScores) const {
       AssertZero(cScores, GetGradientPairs());
    }
 };
@@ -302,7 +310,7 @@ inline static bool IsOverflowBinSize(const bool bHessian, const size_t cScores) 
 }
 
 template<typename TFloat, typename TUInt>
-inline constexpr static size_t GetBinSize(const bool bHessian, const size_t cScores) {
+GPU_BOTH inline constexpr static size_t GetBinSize(const bool bHessian, const size_t cScores) {
    typedef Bin<TFloat, TUInt, true> OffsetTypeHt;
    typedef Bin<TFloat, TUInt, false> OffsetTypeHf;
 
@@ -317,7 +325,7 @@ inline constexpr static size_t GetBinSize(const bool bHessian, const size_t cSco
 
 
 template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
-inline static Bin<TFloat, TUInt, bHessian, cCompilerScores> * IndexBin(
+GPU_BOTH inline static Bin<TFloat, TUInt, bHessian, cCompilerScores> * IndexBin(
    Bin<TFloat, TUInt, bHessian, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
@@ -325,23 +333,23 @@ inline static Bin<TFloat, TUInt, bHessian, cCompilerScores> * IndexBin(
 }
 
 template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
-inline static const Bin<TFloat, TUInt, bHessian, cCompilerScores> * IndexBin(
+GPU_BOTH inline static const Bin<TFloat, TUInt, bHessian, cCompilerScores> * IndexBin(
    const Bin<TFloat, TUInt, bHessian, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
    return IndexByte(aBins, iByte);
 }
 
-inline static BinBase * IndexBin(BinBase * const aBins, const size_t iByte) {
+GPU_BOTH inline static BinBase * IndexBin(BinBase * const aBins, const size_t iByte) {
    return IndexByte(aBins, iByte);
 }
 
-inline static const BinBase * IndexBin(const BinBase * const aBins, const size_t iByte) {
+GPU_BOTH inline static const BinBase * IndexBin(const BinBase * const aBins, const size_t iByte) {
    return IndexByte(aBins, iByte);
 }
 
 template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
-inline static const Bin<TFloat, TUInt, bHessian, cCompilerScores> * NegativeIndexBin(
+GPU_BOTH inline static const Bin<TFloat, TUInt, bHessian, cCompilerScores> * NegativeIndexBin(
    const Bin<TFloat, TUInt, bHessian, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
@@ -349,7 +357,7 @@ inline static const Bin<TFloat, TUInt, bHessian, cCompilerScores> * NegativeInde
 }
 
 template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
-inline static Bin<TFloat, TUInt, bHessian, cCompilerScores> * NegativeIndexBin(
+GPU_BOTH inline static Bin<TFloat, TUInt, bHessian, cCompilerScores> * NegativeIndexBin(
    Bin<TFloat, TUInt, bHessian, cCompilerScores> * const aBins,
    const size_t iByte
 ) {
@@ -363,7 +371,9 @@ inline static size_t CountBins(
    const size_t cBytesPerBin
 ) {
    const size_t cBytesDiff = CountBytes(pBinHigh, pBinLow);
+#ifndef GPU_COMPILE
    EBM_ASSERT(0 == cBytesDiff % cBytesPerBin);
+#endif // GPU_COMPILE
    return cBytesDiff / cBytesPerBin;
 }
 

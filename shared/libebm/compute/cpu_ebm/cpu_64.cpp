@@ -272,6 +272,21 @@ struct Cpu_64_Float final {
       return Error_None;
    }
 
+
+   template<bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
+   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge * const pParams) noexcept {
+      RemoteBinSumsBoosting<Cpu_64_Float, bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
+      return Error_None;
+   }
+
+
+   template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
+   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsInteraction(BinSumsInteractionBridge * const pParams) noexcept {
+      RemoteBinSumsInteraction<Cpu_64_Float, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
+      return Error_None;
+   }
+
+
 private:
 
    TPack m_data;
@@ -300,11 +315,7 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Cpu_64(
    if(Error_None != error) {
       return error;
    }
-   error = Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
-   if(Error_None != error) {
-      return error;
-   }
-   return Error_None;
+   return Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
 }
 
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateMetric_Cpu_64(

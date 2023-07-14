@@ -259,17 +259,15 @@ GPU_DEVICE static void BinSumsInteractionInternal(BinSumsInteractionBridge * con
    }
 }
 
+template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
+GPU_GLOBAL static void RemoteBinSumsInteraction(BinSumsInteractionBridge * const pParams) {
+   BinSumsInteractionInternal<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
+}
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
 INLINE_RELEASE_TEMPLATED ErrorEbm OperatorBinSumsInteraction(BinSumsInteractionBridge * const pParams) {
-   // TODO: in the future call back to the the operator class to allow it to inject the code into a GPU (see Objective.hpp for an example):
-   // return TFloat::template OperatorBinSumsInteraction<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
-   // and also return the error code returned from that call instead of always Error_None
-   BinSumsInteractionInternal<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
-
-   return Error_None;
+   return TFloat::template OperatorBinSumsInteraction<bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
 }
-
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions>
 INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptionsInteraction(BinSumsInteractionBridge * const pParams) {

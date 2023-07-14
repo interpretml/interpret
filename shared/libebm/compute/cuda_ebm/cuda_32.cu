@@ -403,6 +403,28 @@ struct Cuda_32_Float final {
       return bExitError ? Error_UnexpectedInternal : Error_None;
    }
 
+
+
+
+   template<bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
+   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge * const pParams) noexcept {
+      // TODO: move memory to the GPU and return errors
+      static constexpr size_t k_cItems = 5;
+      RemoteBinSumsBoosting<Cuda_32_Float, bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack><<<1, k_cItems>>>(pParams);
+      return Error_None;
+   }
+
+
+   template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
+   INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsInteraction(BinSumsInteractionBridge * const pParams) noexcept {
+      // TODO: move memory to the GPU and return errors
+      static constexpr size_t k_cItems = 5;
+      RemoteBinSumsInteraction<Cuda_32_Float, bHessian, cCompilerScores, cCompilerDimensions, bWeight><<<1, k_cItems>>>(pParams);
+      return Error_None;
+   }
+
+
+
 private:
 
    TPack m_data;
@@ -427,12 +449,11 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Cuda_32(
    const char * const sObjectiveEnd,
    ObjectiveWrapper * const pObjectiveWrapperOut
 ) {
-   ErrorEbm error;
-   error = Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
+   ErrorEbm error = ComputeWrapper<Cuda_32_Float>::FillWrapper(pObjectiveWrapperOut);
    if(Error_None != error) {
       return error;
    }
-   return Error_None;
+   return Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
 }
 
 } // DEFINED_ZONE_NAME
