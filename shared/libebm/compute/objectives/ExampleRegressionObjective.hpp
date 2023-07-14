@@ -5,7 +5,7 @@
 // !! To add a new objective in C++ follow the steps at the top of the "objective_registrations.hpp" file !!
 
 // TFloat is a wrapper that could hold a double, float, or SIMD intrinsic type. It can also expose GPU operations.
-// See sse2_32.cpp, cpu_64.cpp, and cuda_32.cu as examples where TFloat operators are defined.
+// See cpu_64.cpp, avx2_32.cpp, and cuda_32.cu as examples where TFloat operators are defined.
 template<typename TFloat>
 struct ExampleRegressionObjective : RegressionObjective {
    // Parameters for the OBJECTIVE_BOILERPLATE are:

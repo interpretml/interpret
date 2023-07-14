@@ -70,10 +70,6 @@ copy_code(file.path(native_path, "compute", "objectives"), file.path(cxx_path, "
 copy_code(file.path(native_path, "compute", "metrics"), file.path(cxx_path, "compute", "metrics"))
 copy_code(file.path(native_path, "compute", "cpu_ebm"), file.path(cxx_path, "compute", "cpu_ebm"))
 
-# we do not use these yet
-file.remove(file.path(cxx_path, "compute", "cpu_ebm", "sse2_32.cpp"))
-file.remove(file.path(cxx_path, "compute", "cpu_ebm", "sse2_64.cpp"))
-
 staging_path <- file.path(root_path, "..", "staging")
 
 # Create the staging directory

@@ -6,7 +6,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#if defined(BRIDGE_AVX512F_32) || defined(BRIDGE_AVX2_32) || defined(BRIDGE_SSE2_32)
+#if defined(BRIDGE_AVX512F_32) || defined(BRIDGE_AVX2_32)
 #define INTEL_SIMD
 #endif
 
@@ -187,15 +187,6 @@ extern ErrorEbm GetObjective(
             break;
          }
 #endif // BRIDGE_AVX2_32
-
-#ifdef BRIDGE_SSE2_32
-         LOG_0(Trace_Info, "INFO GetObjective creating SSE2 SIMD Objective");
-         error = CreateObjective_Sse2_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
-         if(Error_None != error) {
-            return error;
-         }
-#endif // BRIDGE_SSE2_32
-         break;
       }
    }
 

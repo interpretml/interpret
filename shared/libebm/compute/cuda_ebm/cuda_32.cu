@@ -5,6 +5,7 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
+#include <limits> // numeric_limits
 #include <type_traits>
 
 #include "libebm.h"
@@ -20,6 +21,7 @@
 #include "Objective.hpp"
 
 #include "approximate_math.hpp"
+#include "compute_wrapper.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -53,7 +55,7 @@ struct Cuda_32_Int final {
    }
    WARNING_POP
 
-   GPU_BOTH inline Cuda_32_Int(const T val) noexcept : m_data(val) {
+   GPU_BOTH inline Cuda_32_Int(const T & val) noexcept : m_data(val) {
    }
 
    GPU_BOTH inline static Cuda_32_Int Load(const T * const a) noexcept {
@@ -81,25 +83,15 @@ struct Cuda_32_Int final {
       return Cuda_32_Int(m_data + other.m_data);
    }
 
-   GPU_BOTH inline Cuda_32_Int & operator+= (const Cuda_32_Int & other) noexcept {
-      *this = (*this) + other;
-      return *this;
+   GPU_BOTH inline Cuda_32_Int operator* (const T & other) const noexcept {
+      return Cuda_32_Int(m_data * other);
    }
 
-   GPU_BOTH inline Cuda_32_Int operator* (const Cuda_32_Int & other) const noexcept {
-      return Cuda_32_Int(m_data * other.m_data);
-   }
-
-   GPU_BOTH inline Cuda_32_Int & operator*= (const Cuda_32_Int & other) noexcept {
-      *this = (*this) * other;
-      return *this;
-   }
-
-   GPU_BOTH inline Cuda_32_Int operator>> (int shift) const noexcept {
+   GPU_BOTH inline Cuda_32_Int operator>> (unsigned int shift) const noexcept {
       return Cuda_32_Int(m_data >> shift);
    }
 
-   GPU_BOTH inline Cuda_32_Int operator<< (int shift) const noexcept {
+   GPU_BOTH inline Cuda_32_Int operator<< (unsigned int shift) const noexcept {
       return Cuda_32_Int(m_data << shift);
    }
 
@@ -132,27 +124,11 @@ struct Cuda_32_Float final {
    }
    WARNING_POP
 
-   Cuda_32_Float(const Cuda_32_Float & other) noexcept = default; // preserve POD status
-   Cuda_32_Float & operator=(const Cuda_32_Float &) noexcept = default; // preserve POD status
-
    GPU_BOTH inline Cuda_32_Float(const double val) noexcept : m_data { static_cast<T>(val) } {
    }
    GPU_BOTH inline Cuda_32_Float(const float val) noexcept : m_data { static_cast<T>(val) } {
    }
    GPU_BOTH inline Cuda_32_Float(const int val) noexcept : m_data { static_cast<T>(val) } {
-   }
-
-   GPU_BOTH inline Cuda_32_Float & operator= (const double val) noexcept {
-      m_data = static_cast<T>(val);
-      return *this;
-   }
-   GPU_BOTH inline Cuda_32_Float & operator= (const float val) noexcept {
-      m_data = static_cast<T>(val);
-      return *this;
-   }
-   GPU_BOTH inline Cuda_32_Float & operator= (const int val) noexcept {
-      m_data = static_cast<T>(val);
-      return *this;
    }
 
 
@@ -180,6 +156,7 @@ struct Cuda_32_Float final {
    GPU_BOTH inline Cuda_32_Float operator/ (const Cuda_32_Float & other) const noexcept {
       return Cuda_32_Float(m_data / other.m_data);
    }
+
 
    GPU_BOTH inline Cuda_32_Float & operator+= (const Cuda_32_Float & other) noexcept {
       *this = (*this) + other;
@@ -218,6 +195,24 @@ struct Cuda_32_Float final {
       return Cuda_32_Float(val) / other;
    }
 
+
+   GPU_BOTH friend inline Cuda_32_Float operator+ (const float val, const Cuda_32_Float & other) noexcept {
+      return Cuda_32_Float(val) + other;
+   }
+
+   GPU_BOTH friend inline Cuda_32_Float operator- (const float val, const Cuda_32_Float & other) noexcept {
+      return Cuda_32_Float(val) - other;
+   }
+
+   GPU_BOTH friend inline Cuda_32_Float operator* (const float val, const Cuda_32_Float & other) noexcept {
+      return Cuda_32_Float(val) * other;
+   }
+
+   GPU_BOTH friend inline Cuda_32_Float operator/ (const float val, const Cuda_32_Float & other) noexcept {
+      return Cuda_32_Float(val) / other;
+   }
+
+
    GPU_BOTH inline static Cuda_32_Float Load(const T * const a) noexcept {
       return Cuda_32_Float(*a);
    }
@@ -230,13 +225,12 @@ struct Cuda_32_Float final {
       return Cuda_32_Float(a[i.m_data]);
    }
 
-   GPU_BOTH inline void Store(T * const a, const TInt i) noexcept {
+   GPU_BOTH inline void Store(T * const a, const TInt i) const noexcept {
       a[i.m_data] = m_data;
    }
 
    template<typename TFunc>
    GPU_BOTH friend inline Cuda_32_Float ApplyFunc(const TFunc & func, const Cuda_32_Float & val) noexcept {
-      // this function is more useful for a SIMD operator where it applies func() to all packed items
       return Cuda_32_Float(func(val.m_data));
    }
 
@@ -250,11 +244,19 @@ struct Cuda_32_Float final {
    }
 
    GPU_BOTH friend inline Cuda_32_Float IfEqual(const Cuda_32_Int & cmp1, const Cuda_32_Int & cmp2, const Cuda_32_Float & trueVal, const Cuda_32_Float & falseVal) noexcept {
-      return Cuda_32_Float(cmp1.m_data == cmp2.m_data ? trueVal : falseVal);
+      return cmp1.m_data == cmp2.m_data ? trueVal : falseVal;
    }
 
    GPU_BOTH friend inline Cuda_32_Float Abs(const Cuda_32_Float & val) noexcept {
-      return Cuda_32_Float(std::abs(val.m_data));
+      return Cuda_32_Float(fabsf(val.m_data));
+   }
+
+   GPU_BOTH friend inline Cuda_32_Float Reciprocal(const Cuda_32_Float & val) noexcept {
+      return Cuda_32_Float(T { 1.0 } / val.m_data);
+   }
+
+   GPU_BOTH friend inline Cuda_32_Float FastApproxDivide(const Cuda_32_Float & dividend, const Cuda_32_Float & divisor) noexcept {
+      return Cuda_32_Float(dividend.m_data / divisor.m_data);
    }
 
    GPU_BOTH friend inline Cuda_32_Float Sqrt(const Cuda_32_Float & val) noexcept {
@@ -408,6 +410,7 @@ private:
 static_assert(std::is_standard_layout<Cuda_32_Float>::value && std::is_trivially_copyable<Cuda_32_Float>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
+
 // FIRST, define the RegisterObjective function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions
 template<template <typename> class TRegistrable, typename... Args>
@@ -424,7 +427,12 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Cuda_32(
    const char * const sObjectiveEnd,
    ObjectiveWrapper * const pObjectiveWrapperOut
 ) {
-   return Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
+   ErrorEbm error;
+   error = Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
+   if(Error_None != error) {
+      return error;
+   }
+   return Error_None;
 }
 
 } // DEFINED_ZONE_NAME

@@ -230,7 +230,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                TFloat denominator = IfEqual(typename TFloat::TInt(0), target, -sampleScore, sampleScore);
                denominator = ApplyFunc([](typename TFloat::T x) { return ExpForBinaryClassification<false>(x); }, denominator);
                denominator += 1.0;
-               const TFloat gradient = numerator / denominator;
+               const TFloat gradient = FastApproxDivide(numerator, denominator);
 
                if(bHessian) {
                   // normally you would calculate the hessian from the class probability, but for classification it's possible

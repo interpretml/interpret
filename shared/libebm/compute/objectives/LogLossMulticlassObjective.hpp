@@ -218,7 +218,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                TFloat updateScore;
                if(!bCompilerZeroDimensional) {
                   updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
-                  iTensorBin += 1;
+                  iTensorBin = iTensorBin + 1;
                } else {
                   updateScore = aUpdateTensorScores[iScore1];
                }
@@ -244,7 +244,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
             }
 
             if(bKeepGradHess) {
-               const TFloat sumExpInverted = TFloat { 1.0 } / sumExp;
+               const TFloat sumExpInverted = Reciprocal(sumExp);
 
                size_t iScore2 = 0;
                do {
@@ -267,7 +267,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                } else {
                   target = target << TFloat::k_cSIMDShift;
                }
-               target += TFloat::TInt::MakeIndexes();
+               target = target + TFloat::TInt::MakeIndexes();
 
                // TODO: after we finish sorting our dataset, all the target values in this datasubset will be
                // identical, so instead of calling LoadScattered and SaveScattered we'll be able to call
@@ -284,12 +284,12 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                // in latency
 
                target = target << TFloat::k_cSIMDShift;
-               target += TFloat::TInt::MakeIndexes();
+               target = target + TFloat::TInt::MakeIndexes();
 
                // TODO: after we finish sorting our dataset, all the target values in this datasubset will be
                // identical, so instead of calling LoadScattered we'll be able to call LoadAligned
                const TFloat itemExp = TFloat::Load(aExps, target);
-               const TFloat invertedProbability = sumExp / itemExp;
+               const TFloat invertedProbability = FastApproxDivide(sumExp, itemExp);
                TFloat metric =
                   ApplyFunc([](typename TFloat::T x) { return LogForLogLoss<false>(x); }, invertedProbability);
 

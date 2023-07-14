@@ -21,7 +21,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
-static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
+GPU_DEVICE static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
    static_assert(bWeight || !bReplication, "bReplication cannot be true if bWeight is false");
 
    static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
