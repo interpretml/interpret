@@ -327,7 +327,7 @@ struct Avx2_32_Float final {
 #ifdef FAST_DIVISION
       return Avx2_32_Float(_mm256_rcp_ps(val.m_data));
 #else // FAST_DIVISION
-      return Avx2_32_Float(T { 1.0 } / val.m_data);
+      return Avx2_32_Float(1.0) / val;
 #endif // FAST_DIVISION
    }
 
@@ -335,7 +335,7 @@ struct Avx2_32_Float final {
 #ifdef FAST_DIVISION
       return dividend * Reciprocal(divisor);
 #else // FAST_DIVISION
-      return Avx2_32_Float(dividend.m_data / val.m_data);
+      return dividend / divisor;
 #endif // FAST_DIVISION
    }
 
