@@ -352,11 +352,19 @@ struct Avx512f_32_Float final {
    }
 
    friend inline Avx512f_32_Float Reciprocal(const Avx512f_32_Float & val) noexcept {
+#ifdef FAST_DIVISION
       return Avx512f_32_Float(_mm512_rcp14_ps(val.m_data));
+#else // FAST_DIVISION
+      return Avx512f_32_Float(T { 1.0 } / val.m_data);
+#endif // FAST_DIVISION
    }
 
    friend inline Avx512f_32_Float FastApproxDivide(const Avx512f_32_Float & dividend, const Avx512f_32_Float & divisor) noexcept {
+#ifdef FAST_DIVISION
       return dividend * Reciprocal(divisor);
+#else // FAST_DIVISION
+      return Avx512f_32_Float(dividend.m_data / val.m_data);
+#endif // FAST_DIVISION
    }
 
    friend inline Avx512f_32_Float Sqrt(const Avx512f_32_Float & val) noexcept {

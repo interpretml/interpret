@@ -176,6 +176,7 @@ INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * const dest, const char * c
 
 #define FAST_EXP
 #define FAST_LOG
+#define FAST_DIVISION
 
 // TODO: someday flip FloatFast to float32
 //#define FLOAT_FAST_32

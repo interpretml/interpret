@@ -456,9 +456,9 @@ namespace EbmStats {
       // subtract +infinity-(+infinity) or -infinity-(-infinity), which will result in NaN.  After that, everything melts down to NaN.
 
       // all the weights can be zero in which case even if we have no splits our sumHessian can be zero
-      EBM_ASSERT(0 <= sumHessian);
 
-      return (FloatBig { 0 } == sumHessian) ? FloatBig { 0 } : (-sumGradient / sumHessian);
+      EBM_ASSERT(0 < k_hessianMin);
+      return UNLIKELY(sumHessian < k_hessianMin) ? FloatBig { 0 } : (-sumGradient / sumHessian);
 
       // return can be NaN if both sumGradient and sumHessian are zero, or if we're propagating a NaN value.  Neither sumGradient nor 
       //   sumHessian can be infinity, so that's not a source of NaN

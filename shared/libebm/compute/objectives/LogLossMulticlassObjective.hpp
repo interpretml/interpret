@@ -244,6 +244,17 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
             }
 
             if(bKeepGradHess) {
+               // this Reciprocal is fast and is more SIMD-able, but it does create some complications.
+               // When sumExp gets somewhat large, arround +4.5 or above, then the sumExp can get to be something
+               // in the order of +100.  The inverse of that is around 0.01. We can then later multiply a number
+               // close to 100 (if one of the classes dominate a bin) by 0.01 and we can sometimes get a number just
+               // slightly above 1.0.  It might just be 1.000001, but then to calculate the hessian we subtract from
+               // 1.0, leaving us with a small negative number. We could potentially shift the scores of the classes
+               // to make the dominant class have a score of 0, but that gives our approximate exp a skew that I
+               // this is better left more randomized. I tink as long as we tollerate negative hessians by excluding
+               // hessians below a certain value we're ok, since we probably want to ignore these low hessians anyways
+               // and even if we wanted to continue boosting, the other classes will continue to be boosted on
+               // and our main class will stop growing more positive around +5, which is a fairly big value anyways
                const TFloat sumExpInverted = Reciprocal(sumExp);
 
                size_t iScore2 = 0;

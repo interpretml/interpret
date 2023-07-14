@@ -230,6 +230,11 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                TFloat denominator = IfEqual(typename TFloat::TInt(0), target, -sampleScore, sampleScore);
                denominator = ApplyFunc([](typename TFloat::T x) { return ExpForBinaryClassification<false>(x); }, denominator);
                denominator += 1.0;
+
+               // I think using FastApproxDivide means that sometimes the gradient can be slightly above 1.0
+               // eg: 1.00001 or something like that. When that happens the hessian calculation below can be
+               // a small negative number.  We ignore hessians below a certain value, and these negative hessians
+               // should only occur close to when we should be ignoring the hessian anyways, so it shouldn't be a problem
                const TFloat gradient = FastApproxDivide(numerator, denominator);
 
                if(bHessian) {
