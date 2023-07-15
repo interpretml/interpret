@@ -107,12 +107,11 @@ public:
    }
 
 
-   template<size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
+   template<size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_oneScore == cCompilerScores, "for RMSE regression there should always be one score");
-      static_assert(bKeepGradHess, "for RMSE regression we should always keep the gradients");
       static_assert(!bHessian, "for RMSE regression we should never need the hessians");
-      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
+      static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
 
@@ -175,7 +174,7 @@ public:
 
       const typename TFloat::T * pWeight;
       TFloat metricSum;
-      if(bCalcMetric) {
+      if(bValidation) {
          if(bWeight) {
             pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
 #ifndef GPU_COMPILE
@@ -201,7 +200,7 @@ public:
             gradient.Store(pGradient);
             pGradient += TFloat::k_cSIMDPack;
 
-            if(bCalcMetric) {
+            if(bValidation) {
                // we use RMSE so get the squared error part here
                TFloat metric = gradient * gradient;
                if(bWeight) {
@@ -229,7 +228,7 @@ public:
          cShift = cShiftReset;
       } while(pGradientsEnd != pGradient);
 
-      if(bCalcMetric) {
+      if(bValidation) {
          pData->m_metricOut = static_cast<double>(Sum(metricSum));
       }
    }

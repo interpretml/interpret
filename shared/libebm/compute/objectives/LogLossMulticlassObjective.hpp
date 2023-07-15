@@ -81,15 +81,13 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
       return GradientHessian<TFloat>(0.0, 0.0);
    }
 
-   template<size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
+   template<size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_dynamicScores == cCompilerScores || 2 <= cCompilerScores, "Multiclass needs more than 1 score");
-      static_assert(!bKeepGradHess || !bCalcMetric, "bKeepGradHess and bCalcMetric cannot both be true");
-      static_assert(bKeepGradHess || !bHessian, "bHessian can only be true if bKeepGradHess is true");
-      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
+      static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");
+      static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
-      static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
       static constexpr bool bDynamic = k_dynamicScores == cCompilerScores;
 
 #ifndef GPU_COMPILE
@@ -101,18 +99,13 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
       EBM_ASSERT(2 <= pData->m_cScores);
       EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == pData->m_cScores);
       EBM_ASSERT(nullptr != pData->m_aMulticlassMidwayTemp);
+      EBM_ASSERT(nullptr != pData->m_aTargets);
 #endif // GPU_COMPILE
 
       alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::T 
          aLocalExpVector[bDynamic ? size_t { 1 } : (cCompilerScores * size_t { TFloat::k_cSIMDPack })];
-      typename TFloat::T * aExps;
-      if(bGetTarget) {
-         if(bDynamic) {
-            aExps = reinterpret_cast<typename TFloat::T *>(pData->m_aMulticlassMidwayTemp);
-         } else {
-            aExps = aLocalExpVector;
-         }
-      }
+      typename TFloat::T * const aExps = bDynamic ? 
+         reinterpret_cast<typename TFloat::T *>(pData->m_aMulticlassMidwayTemp) : aLocalExpVector;
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
       const typename TFloat::TInt::T cCastScores = static_cast<typename TFloat::TInt::T>(cScores);
@@ -160,25 +153,12 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
 #endif // GPU_COMPILE
       }
 
-      const typename TFloat::TInt::T * pTargetData;
-      if(bGetTarget) {
-         pTargetData = reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aTargets);
-#ifndef GPU_COMPILE
-         EBM_ASSERT(nullptr != pTargetData);
-#endif // GPU_COMPILE
-      }
-
-      typename TFloat::T * pGradientAndHessian;
-      if(bKeepGradHess) {
-         pGradientAndHessian = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians);
-#ifndef GPU_COMPILE
-         EBM_ASSERT(nullptr != pGradientAndHessian);
-#endif // GPU_COMPILE
-      }
+      const typename TFloat::TInt::T * pTargetData = reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aTargets);
 
       const typename TFloat::T * pWeight;
       TFloat metricSum;
-      if(bCalcMetric) {
+      typename TFloat::T * pGradientAndHessian;
+      if(bValidation) {
          if(bWeight) {
             pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
 #ifndef GPU_COMPILE
@@ -186,6 +166,11 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
 #endif // GPU_COMPILE
          }
          metricSum = 0.0;
+      } else {
+         pGradientAndHessian = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians);
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pGradientAndHessian);
+#endif // GPU_COMPILE
       }
       do {
          typename TFloat::TInt iTensorBinCombined;
@@ -209,10 +194,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                iTensorBin = Multiply<typename TFloat::TInt, typename TFloat::TInt::T, k_dynamicScores != cCompilerScores, static_cast<typename TFloat::TInt::T>(cCompilerScores)>(iTensorBin, cCastScores);
             }
 
-            TFloat sumExp;
-            if(bGetTarget) {
-               sumExp = 0.0;
-            }
+            TFloat sumExp = 0.0;
             size_t iScore1 = 0;
             do {
                TFloat updateScore;
@@ -228,22 +210,39 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                sampleScore.Store(pSampleScore);
                pSampleScore += TFloat::k_cSIMDPack;
 
-               if(bGetTarget) {
-                  const TFloat oneExp = ApplyFunc([](typename TFloat::T x) { return ExpForMulticlass<false>(x); }, sampleScore);
-                  sumExp += oneExp;
-                  oneExp.Store(&aExps[iScore1 << TFloat::k_cSIMDShift]);
-               }
+               const TFloat oneExp = ApplyFunc([](typename TFloat::T x) { return ExpForMulticlass<false>(x); }, sampleScore);
+               sumExp += oneExp;
+               oneExp.Store(&aExps[iScore1 << TFloat::k_cSIMDShift]);
 
                ++iScore1;
             } while(cScores != iScore1);
 
-            typename TFloat::TInt target;
-            if(bGetTarget) {
-               target = TFloat::TInt::Load(pTargetData);
-               pTargetData += TFloat::TInt::k_cSIMDPack;
-            }
+            typename TFloat::TInt target = TFloat::TInt::Load(pTargetData);
+            pTargetData += TFloat::TInt::k_cSIMDPack;
 
-            if(bKeepGradHess) {
+            if(bValidation) {
+               // TODO: instead of writing the exp values to memory, since we just need 1 and the sum, 
+               // we could use an if selector to keep only the one that matches our target and we don't need
+               // to store (or re-load) from memory.  This also saves us a gathering load, which will be expensive
+               // in latency
+
+               target = target << TFloat::k_cSIMDShift;
+               target = target + TFloat::TInt::MakeIndexes();
+
+               // TODO: after we finish sorting our dataset, all the target values in this datasubset will be
+               // identical, so instead of calling LoadScattered we'll be able to call LoadAligned
+               const TFloat itemExp = TFloat::Load(aExps, target);
+               const TFloat invertedProbability = FastApproxDivide(sumExp, itemExp);
+               TFloat metric =
+                  ApplyFunc([](typename TFloat::T x) { return LogForLogLoss<false>(x); }, invertedProbability);
+
+               if(bWeight) {
+                  const TFloat weight = TFloat::Load(pWeight);
+                  pWeight += TFloat::k_cSIMDPack;
+                  metric *= weight;
+               }
+               metricSum += metric;
+            } else {
                // this Reciprocal is fast and is more SIMD-able, but it does create some complications.
                // When sumExp gets somewhat large, arround +4.5 or above, then the sumExp can get to be something
                // in the order of +100.  The inverse of that is around 0.01. We can then later multiply a number
@@ -288,28 +287,6 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                adjust.Store(pGradientAndHessian, target);
 
                pGradientAndHessian += cScores << (bHessian ? (TFloat::k_cSIMDShift + 1) : TFloat::k_cSIMDShift);
-            } else if(bCalcMetric) {
-               // TODO: instead of writing the exp values to memory, since we just need 1 and the sum, 
-               // we could use an if selector to keep only the one that matches our target and we don't need
-               // to store (or re-load) from memory.  This also saves us a gathering load, which will be expensive
-               // in latency
-
-               target = target << TFloat::k_cSIMDShift;
-               target = target + TFloat::TInt::MakeIndexes();
-
-               // TODO: after we finish sorting our dataset, all the target values in this datasubset will be
-               // identical, so instead of calling LoadScattered we'll be able to call LoadAligned
-               const TFloat itemExp = TFloat::Load(aExps, target);
-               const TFloat invertedProbability = FastApproxDivide(sumExp, itemExp);
-               TFloat metric =
-                  ApplyFunc([](typename TFloat::T x) { return LogForLogLoss<false>(x); }, invertedProbability);
-
-               if(bWeight) {
-                  const TFloat weight = TFloat::Load(pWeight);
-                  pWeight += TFloat::k_cSIMDPack;
-                  metric *= weight;
-               }
-               metricSum += metric;
             }
 
             if(bCompilerZeroDimensional) {
@@ -329,7 +306,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
          cShift = cShiftReset;
       } while(pSampleScoresEnd != pSampleScore);
 
-      if(bCalcMetric) {
+      if(bValidation) {
          pData->m_metricOut = static_cast<double>(Sum(metricSum));
       }
    }

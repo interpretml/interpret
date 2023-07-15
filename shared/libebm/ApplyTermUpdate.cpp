@@ -151,7 +151,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
                data.m_cPack = 0 == pTerm->GetBitsRequiredMin() ? k_cItemsPerBitPackNone :
                   GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes));
                data.m_bHessianNeeded = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
-               data.m_bCalcMetric = EBM_FALSE;
+               data.m_bValidation = EBM_FALSE;
                data.m_aMulticlassMidwayTemp = pBoosterShell->GetMulticlassMidwayTemp();
                data.m_aUpdateTensorScores = aUpdateScores;
                data.m_cSamples = pSubset->GetCountSamples();
@@ -196,7 +196,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
                // for the validation set we're calculating the metric and updating the scores, but we don't use
                // the gradients, except for the special case of RMSE where the gradients are also the error
                data.m_bHessianNeeded = EBM_FALSE;
-               data.m_bCalcMetric = EBM_TRUE;
+               data.m_bValidation = EBM_TRUE;
                data.m_aMulticlassMidwayTemp = pBoosterShell->GetMulticlassMidwayTemp();
                data.m_aUpdateTensorScores = aUpdateScores;
                data.m_cSamples = pSubset->GetCountSamples();

@@ -73,10 +73,10 @@ GPU_DEVICE inline GradientHessian<TFloat> MakeGradientHessian(const double gradi
 }
 
 
-template<typename TObjective, size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
+template<typename TObjective, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
 GPU_GLOBAL static void RemoteApplyUpdate(const Objective * const pObjective, ApplyUpdateBridge * const pData) {
    const TObjective * const pObjectiveSpecific = static_cast<const TObjective *>(pObjective);
-   pObjectiveSpecific->template InjectedApplyUpdate<cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian, cCompilerPack>(pData);
+   pObjectiveSpecific->template InjectedApplyUpdate<cCompilerScores, bValidation, bWeight, bHessian, cCompilerPack>(pData);
 }
 
 
@@ -170,104 +170,85 @@ private:
 
    template<typename TObjective, typename TFloat, size_t cCompilerScores, typename std::enable_if<!TObjective::k_bRmse, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm OptionsApplyUpdate(ApplyUpdateBridge * const pData) const {
-      if(nullptr != pData->m_aGradientsAndHessians) {
-         static constexpr bool bKeepGradHess = true;
+      if(EBM_FALSE != pData->m_bValidation) {
+         static constexpr bool bValidation = true;
 
-         // if we are updating the gradients then we are doing training and do not need to calculate the metric
-         EBM_ASSERT(EBM_FALSE == pData->m_bCalcMetric);
-         static constexpr bool bCalcMetric = false;
-
-         EBM_ASSERT(nullptr == pData->m_aWeights);
-         static constexpr bool bWeight = false;
-
-         return HessianApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight>(pData);
-      } else {
          // the validation set will have no gradients or hessians
-         static constexpr bool bKeepGradHess = false;
+         EBM_ASSERT(nullptr == pData->m_aGradientsAndHessians);
 
          // the hessian is only used for gradient/hessian calculation, not for metric calculations
          EBM_ASSERT(EBM_FALSE == pData->m_bHessianNeeded);
          static constexpr bool bHessian = false;
 
-         if(EBM_FALSE != pData->m_bCalcMetric) {
-            static constexpr bool bCalcMetric = true;
-
-            if(nullptr != pData->m_aWeights) {
-               static constexpr bool bWeight = true;
-               return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian>(pData);
-            } else {
-               static constexpr bool bWeight = false;
-               return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian>(pData);
-            }
+         if(nullptr != pData->m_aWeights) {
+            static constexpr bool bWeight = true;
+            return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian>(pData);
          } else {
-            static constexpr bool bCalcMetric = false;
-
-            // TODO: handle this branch a different way. If the caller wants neither gradients/hessians or metrics
-            //       then we're just applying the update tensor scores, but importantly, this does NOT require
-            //       knowledge of what the objective is, so there is no benefit in having a bunch of different
-            //       templated objectives which are not used.  It would be better to have a non-objective specific
-            //       function to handle the scenario where we want to update the validation set but we do not what
-            //       to know the updated metric
-
-            // currently this branch is not taken, but if would be if we wanted to allow in the future
-            // non-metric calculating validation for boosting.  For instance if we wanted to substitute an alternate
-            // metric or if for performance reasons we only want to calculate the metric every N rounds of boosting
-
-            EBM_ASSERT(nullptr == pData->m_aWeights);
-            static constexpr bool bWeight = false; // if we are not calculating the metric or updating gradients then we never need the weights
-
-            return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian>(pData);
+            static constexpr bool bWeight = false;
+            return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian>(pData);
          }
+      } else {
+         static constexpr bool bValidation = false;
+
+         EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians);
+
+         // we only use weights for calculating the metric. Weights get applied 
+         // in BinSumsBoosting or during initialization for interactions
+         EBM_ASSERT(nullptr == pData->m_aWeights);
+         static constexpr bool bWeight = false;
+
+         return HessianApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight>(pData);
       }
    }
    template<typename TObjective, typename TFloat, size_t cCompilerScores, typename std::enable_if<TObjective::k_bRmse, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm OptionsApplyUpdate(ApplyUpdateBridge * const pData) const {
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
-      static constexpr bool bKeepGradHess = true;
 
       EBM_ASSERT(EBM_FALSE == pData->m_bHessianNeeded);
       static constexpr bool bHessian = false;
 
-      if(EBM_FALSE != pData->m_bCalcMetric) {
-         static constexpr bool bCalcMetric = true;
+      if(EBM_FALSE != pData->m_bValidation) {
+         static constexpr bool bValidation = true;
 
          if(nullptr != pData->m_aWeights) {
             static constexpr bool bWeight = true;
-            return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian>(pData);
+            return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian>(pData);
          } else {
             static constexpr bool bWeight = false;
-            return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian>(pData);
+            return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian>(pData);
          }
       } else {
-         static constexpr bool bCalcMetric = false;
+         static constexpr bool bValidation = false;
 
+         // we only use weights for calculating the metric. Weights get applied 
+         // in BinSumsBoosting or during initialization for interactions
          EBM_ASSERT(nullptr == pData->m_aWeights);
          static constexpr bool bWeight = false; // if we are not calculating the metric then we never need the weights
 
-         return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian>(pData);
+         return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian>(pData);
       }
    }
 
             
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, typename std::enable_if<HasHessian<TObjective>() && bKeepGradHess, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, typename std::enable_if<!bValidation && HasHessian<TObjective>(), void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm HessianApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(pData->m_bHessianNeeded) {
-         return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, true>(pData);
+         return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, true>(pData);
       } else {
-         return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, false>(pData);
+         return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, false>(pData);
       }
    }
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, typename std::enable_if<!HasHessian<TObjective>() || !bKeepGradHess, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, typename std::enable_if<bValidation || !HasHessian<TObjective>(), void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm HessianApplyUpdate(ApplyUpdateBridge * const pData) const {
       EBM_ASSERT(!pData->m_bHessianNeeded);
-      return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, false>(pData);
+      return PackApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, false>(pData);
    }
 
 
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore == cCompilerScores, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore == cCompilerScores, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm PackApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
-         return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian, k_cItemsPerBitPackNone>(pData);
+         return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, k_cItemsPerBitPackNone>(pData);
       } else {
          // TODO: we're not currently getting much benefit from having a compile sized bitpack.  We benefit a little
          //       from having compile time constants as this frees registers.  The big win that we want is to
@@ -283,42 +264,42 @@ private:
          //       number of samples was divisible by the bitpack.  The we can change the code such that the compiler
          //       can optimize away the loop
 
-         return BitPack<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian, k_cItemsPerBitPackMax>::Func(this, pData);
+         return BitPack<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, k_cItemsPerBitPackMax>::Func(this, pData);
       }
    }
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore != cCompilerScores, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore != cCompilerScores, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm PackApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
-         return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian, k_cItemsPerBitPackNone>(pData);
+         return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, k_cItemsPerBitPackNone>(pData);
       } else {
-         return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian, k_cItemsPerBitPackDynamic>(pData);
+         return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, k_cItemsPerBitPackDynamic>(pData);
       }
    }
 
 
    // in our current format cCompilerScores will always be 1, but just in case we change our code to allow
    // for special casing multiclass with compile time unrolling of the compiler pack, leave cCompilerScores here
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
    struct BitPack final {
       INLINE_ALWAYS static ErrorEbm Func(const Objective * const pObjective, ApplyUpdateBridge * const pData) {
          if(cCompilerPack == pData->m_cPack) {
-            return pObjective->OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian, cCompilerPack>(pData);
+            return pObjective->OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, cCompilerPack>(pData);
          } else {
-            return BitPack<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian, GetNextBitPack(cCompilerPack)>::Func(pObjective, pData);
+            return BitPack<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, GetNextBitPack(cCompilerPack)>::Func(pObjective, pData);
          }
       }
    };
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian>
-   struct BitPack<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian, k_cItemsPerBitPackLast> final {
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian>
+   struct BitPack<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, k_cItemsPerBitPackLast> final {
       INLINE_ALWAYS static ErrorEbm Func(const Objective * const pObjective, ApplyUpdateBridge * const pData) {
-         return pObjective->OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian, k_cItemsPerBitPackLast>(pData);
+         return pObjective->OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, k_cItemsPerBitPackLast>(pData);
       }
    };
 
 
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED ErrorEbm OperatorApplyUpdate(ApplyUpdateBridge * const pData) const {
-      return TFloat::template OperatorApplyUpdate<TObjective, cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian, cCompilerPack>(this, pData);
+      return TFloat::template OperatorApplyUpdate<TObjective, cCompilerScores, bValidation, bWeight, bHessian, cCompilerPack>(this, pData);
    }
 
 protected:
@@ -349,17 +330,15 @@ protected:
       return pGradientAndHessian + TFloat::k_cSIMDPack;
    }
 
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
    GPU_DEVICE void ChildApplyUpdate(ApplyUpdateBridge * const pData) const {
       const TObjective * const pObjective = static_cast<const TObjective *>(this);
 
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
-      static_assert(!bKeepGradHess || !bCalcMetric, "bKeepGradHess and bCalcMetric cannot both be true");
-      static_assert(bKeepGradHess || !bHessian, "bHessian can only be true if bKeepGradHess is true");
-      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
+      static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");
+      static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
-      static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pObjective);
@@ -369,6 +348,7 @@ protected:
       EBM_ASSERT(0 == pData->m_cSamples % TFloat::k_cSIMDPack);
       EBM_ASSERT(nullptr != pData->m_aSampleScores);
       EBM_ASSERT(1 == pData->m_cScores);
+      EBM_ASSERT(nullptr != pData->m_aTargets);
 #endif // GPU_COMPILE
 
       const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
@@ -418,25 +398,12 @@ protected:
 #endif // GPU_COMPILE
       }
 
-      const typename TFloat::T * pTargetData;
-      if(bGetTarget) {
-         pTargetData = reinterpret_cast<const typename TFloat::T *>(pData->m_aTargets);
-#ifndef GPU_COMPILE
-         EBM_ASSERT(nullptr != pTargetData);
-#endif // GPU_COMPILE
-      }
+      const typename TFloat::T * pTargetData = reinterpret_cast<const typename TFloat::T *>(pData->m_aTargets);
 
       typename TFloat::T * pGradientAndHessian;
-      if(bKeepGradHess) {
-         pGradientAndHessian = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians);
-#ifndef GPU_COMPILE
-         EBM_ASSERT(nullptr != pGradientAndHessian);
-#endif // GPU_COMPILE
-      }
-
       const typename TFloat::T * pWeight;
       TFloat metricSum;
-      if(bCalcMetric) {
+      if(bValidation) {
          if(bWeight) {
             pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
 #ifndef GPU_COMPILE
@@ -444,6 +411,11 @@ protected:
 #endif // GPU_COMPILE
          }
          metricSum = 0.0;
+      } else {
+         pGradientAndHessian = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians);
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pGradientAndHessian);
+#endif // GPU_COMPILE
       }
       do {
          typename TFloat::TInt iTensorBinCombined;
@@ -457,20 +429,15 @@ protected:
                updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
             }
 
-            TFloat target;
-            if(bGetTarget) {
-               target = TFloat::Load(pTargetData);
-               pTargetData += TFloat::k_cSIMDPack;
-            }
+            const TFloat target = TFloat::Load(pTargetData);
+            pTargetData += TFloat::k_cSIMDPack;
 
             TFloat sampleScore = TFloat::Load(pSampleScore);
             sampleScore += updateScore;
             sampleScore.Store(pSampleScore);
             pSampleScore += TFloat::k_cSIMDPack;
 
-            if(bKeepGradHess) {
-               pGradientAndHessian = HandleGradHess<TObjective, TFloat, bHessian>(pGradientAndHessian, sampleScore, target);
-            } else if(bCalcMetric) {
+            if(bValidation) {
                TFloat metric = pObjective->CalcMetric(sampleScore, target);
                if(bWeight) {
                   const TFloat weight = TFloat::Load(pWeight);
@@ -478,6 +445,8 @@ protected:
                   metric *= weight;
                }
                metricSum += metric;
+            } else {
+               pGradientAndHessian = HandleGradHess<TObjective, TFloat, bHessian>(pGradientAndHessian, sampleScore, target);
             }
 
             if(bCompilerZeroDimensional) {
@@ -497,7 +466,7 @@ protected:
          cShift = cShiftReset;
       } while(pSampleScoresEnd != pSampleScore);
 
-      if(bCalcMetric) {
+      if(bValidation) {
          pData->m_metricOut = static_cast<double>(Sum(metricSum));
       }
    }
@@ -745,10 +714,10 @@ protected:
 
 #define OBJECTIVE_TEMPLATE_BOILERPLATE \
    public: \
-      template<size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack> \
+      template<size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack> \
       GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const { \
          Objective::ChildApplyUpdate<typename std::remove_pointer<decltype(this)>::type, TFloat, \
-            cCompilerScores, bKeepGradHess, bCalcMetric, bWeight, bHessian, cCompilerPack>(pData); \
+            cCompilerScores, bValidation, bWeight, bHessian, cCompilerPack>(pData); \
       }
 
 #define OBJECTIVE_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION) \

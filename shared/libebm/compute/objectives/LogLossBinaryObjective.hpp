@@ -73,15 +73,13 @@ struct LogLossBinaryObjective final : public BinaryObjective {
       return GradientHessian<TFloat>(0.0, 0.0);
    }
 
-   template<size_t cCompilerScores, bool bKeepGradHess, bool bCalcMetric, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
+   template<size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
-      static_assert(!bKeepGradHess || !bCalcMetric, "bKeepGradHess and bCalcMetric cannot both be true");
-      static_assert(bKeepGradHess || !bHessian, "bHessian can only be true if bKeepGradHess is true");
-      static_assert(bCalcMetric || !bWeight, "bWeight can only be true if bCalcMetric is true");
+      static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");
+      static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
-      static constexpr bool bGetTarget = bCalcMetric || bKeepGradHess;
 
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pData);
@@ -90,6 +88,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
       EBM_ASSERT(0 == pData->m_cSamples % TFloat::k_cSIMDPack);
       EBM_ASSERT(nullptr != pData->m_aSampleScores);
       EBM_ASSERT(1 == pData->m_cScores);
+      EBM_ASSERT(nullptr != pData->m_aTargets);
 #endif // GPU_COMPILE
 
       const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
@@ -139,25 +138,12 @@ struct LogLossBinaryObjective final : public BinaryObjective {
 #endif // GPU_COMPILE
       }
 
-      const typename TFloat::TInt::T * pTargetData;
-      if(bGetTarget) {
-         pTargetData = reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aTargets);
-#ifndef GPU_COMPILE
-         EBM_ASSERT(nullptr != pTargetData);
-#endif // GPU_COMPILE
-      }
-
-      typename TFloat::T * pGradientAndHessian;
-      if(bKeepGradHess) {
-         pGradientAndHessian = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians);
-#ifndef GPU_COMPILE
-         EBM_ASSERT(nullptr != pGradientAndHessian);
-#endif // GPU_COMPILE
-      }
+      const typename TFloat::TInt::T * pTargetData = reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aTargets);
 
       const typename TFloat::T * pWeight;
       TFloat metricSum;
-      if(bCalcMetric) {
+      typename TFloat::T * pGradientAndHessian;
+      if(bValidation) {
          if(bWeight) {
             pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
 #ifndef GPU_COMPILE
@@ -165,6 +151,11 @@ struct LogLossBinaryObjective final : public BinaryObjective {
 #endif // GPU_COMPILE
          }
          metricSum = 0.0;
+      } else {
+         pGradientAndHessian = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians);
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pGradientAndHessian);
+#endif // GPU_COMPILE
       }
       do {
          typename TFloat::TInt iTensorBinCombined;
@@ -178,19 +169,33 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
             }
 
-            typename TFloat::TInt target;
-            if(bGetTarget) {
-               target = TFloat::TInt::Load(pTargetData);
-               pTargetData += TFloat::TInt::k_cSIMDPack;
-            }
+            const typename TFloat::TInt target = TFloat::TInt::Load(pTargetData);
+            pTargetData += TFloat::TInt::k_cSIMDPack;
 
             TFloat sampleScore = TFloat::Load(pSampleScore);
             sampleScore += updateScore;
             sampleScore.Store(pSampleScore);
             pSampleScore += TFloat::k_cSIMDPack;
 
-            if(bKeepGradHess) {
+            if(bValidation) {
+               // TODO: similar to the gradient calculation above, once we sort our data by the target values we
+               //       will be able to pass all the targets==0 and target==1 in to a single call to this function
+               //       and we can therefore template the target value.  We can then call ExpForBinaryClassification
+               //       with a TEMPLATED parameter that indicates it if should negative sampleScore within the function
+               //       This will eliminate both the IfEqual call, and also the negation, so it's a great optimization.
+               
+               TFloat metric = IfEqual(typename TFloat::TInt(0), target, sampleScore, -sampleScore);
+               metric = ApplyFunc([](typename TFloat::T x) { return ExpForBinaryClassification<false>(x); }, metric);
+               metric += 1.0;
+               metric = ApplyFunc([](typename TFloat::T x) { return LogForLogLoss<false>(x); }, metric);
 
+               if(bWeight) {
+                  const TFloat weight = TFloat::Load(pWeight);
+                  pWeight += TFloat::k_cSIMDPack;
+                  metric *= weight;
+               }
+               metricSum += metric;
+            } else {
                // gradient will be 0.0 if we perfectly predict the target with 100% certainty.  
                //    To do so, sampleScore would need to be either +infinity or -infinity
                // gradient will be +1.0 if actual value was 1 but we incorrectly predicted with 
@@ -307,24 +312,6 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                   gradient.Store(pGradientAndHessian);
                   pGradientAndHessian += TFloat::k_cSIMDPack;
                }
-            } else if(bCalcMetric) {
-               // TODO: similar to the gradient calculation above, once we sort our data by the target values we
-               //       will be able to pass all the targets==0 and target==1 in to a single call to this function
-               //       and we can therefore template the target value.  We can then call ExpForBinaryClassification
-               //       with a TEMPLATED parameter that indicates it if should negative sampleScore within the function
-               //       This will eliminate both the IfEqual call, and also the negation, so it's a great optimization.
-               
-               TFloat metric = IfEqual(typename TFloat::TInt(0), target, sampleScore, -sampleScore);
-               metric = ApplyFunc([](typename TFloat::T x) { return ExpForBinaryClassification<false>(x); }, metric);
-               metric += 1.0;
-               metric = ApplyFunc([](typename TFloat::T x) { return LogForLogLoss<false>(x); }, metric);
-
-               if(bWeight) {
-                  const TFloat weight = TFloat::Load(pWeight);
-                  pWeight += TFloat::k_cSIMDPack;
-                  metric *= weight;
-               }
-               metricSum += metric;
             }
 
             if(bCompilerZeroDimensional) {
@@ -344,7 +331,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
          cShift = cShiftReset;
       } while(pSampleScoresEnd != pSampleScore);
 
-      if(bCalcMetric) {
+      if(bValidation) {
          pData->m_metricOut = static_cast<double>(Sum(metricSum));
       }
    }
