@@ -89,7 +89,7 @@ struct Cpu_64_Int final {
    }
 
    inline Cpu_64_Int operator& (const Cpu_64_Int & other) const noexcept {
-      return Cpu_64_Int(other.m_data & m_data);
+      return Cpu_64_Int(m_data & other.m_data);
    }
 
 private:
@@ -114,11 +114,11 @@ struct Cpu_64_Float final {
    }
    WARNING_POP
 
-   inline Cpu_64_Float(const double val) noexcept : m_data { static_cast<T>(val) } {
+   inline Cpu_64_Float(const double val) noexcept : m_data(static_cast<T>(val)) {
    }
-   inline Cpu_64_Float(const float val) noexcept : m_data { static_cast<T>(val) } {
+   inline Cpu_64_Float(const float val) noexcept : m_data(static_cast<T>(val)) {
    }
-   inline Cpu_64_Float(const int val) noexcept : m_data { static_cast<T>(val) } {
+   inline Cpu_64_Float(const int val) noexcept : m_data(static_cast<T>(val)) {
    }
 
 
@@ -247,6 +247,14 @@ struct Cpu_64_Float final {
 
    friend inline Cpu_64_Float FastApproxDivide(const Cpu_64_Float & dividend, const Cpu_64_Float & divisor) noexcept {
       return Cpu_64_Float(dividend.m_data / divisor.m_data);
+   }
+
+   friend inline Cpu_64_Float FastMultiplyAdd(const Cpu_64_Float & mul1, const Cpu_64_Float & mul2, const Cpu_64_Float & add) noexcept {
+      return mul1 * mul2 + add;
+   }
+
+   friend inline Cpu_64_Float FastNegateMultiplyAdd(const Cpu_64_Float & mul1, const Cpu_64_Float & mul2, const Cpu_64_Float & add) noexcept {
+      return add - mul1 * mul2;
    }
 
    friend inline Cpu_64_Float Sqrt(const Cpu_64_Float & val) noexcept {

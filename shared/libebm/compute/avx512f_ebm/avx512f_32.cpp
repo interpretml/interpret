@@ -53,16 +53,15 @@ struct Avx512f_32_Int final {
    }
 
    inline static Avx512f_32_Int Load(const T * const a) noexcept {
-      return Avx512f_32_Int(_mm512_load_si512(reinterpret_cast<const TPack *>(a)));
+      return Avx512f_32_Int(_mm512_load_si512(a));
    }
 
    inline void Store(T * const a) const noexcept {
-      _mm512_store_si512(reinterpret_cast<TPack *>(a), m_data);
+      _mm512_store_si512(a, m_data);
    }
 
    inline static Avx512f_32_Int LoadBytes(const uint8_t * const a) noexcept {
-      const __m128i temp = _mm_load_si128(reinterpret_cast<const __m128i *>(a));
-      return Avx512f_32_Int(_mm512_cvtepu8_epi32(temp));
+      return Avx512f_32_Int(_mm512_cvtepu8_epi32(_mm_load_si128(reinterpret_cast<const __m128i *>(a))));
    }
 
    template<typename TFunc>
@@ -110,7 +109,7 @@ struct Avx512f_32_Int final {
    }
 
    inline Avx512f_32_Int operator& (const Avx512f_32_Int & other) const noexcept {
-      return Avx512f_32_Int(_mm512_and_si512(other.m_data, m_data));
+      return Avx512f_32_Int(_mm512_and_si512(m_data, other.m_data));
    }
 
 private:
@@ -138,11 +137,11 @@ struct Avx512f_32_Float final {
    }
    WARNING_POP
 
-   inline Avx512f_32_Float(const double val) noexcept : m_data { _mm512_set1_ps(static_cast<T>(val)) } {
+   inline Avx512f_32_Float(const double val) noexcept : m_data(_mm512_set1_ps(static_cast<T>(val))) {
    }
-   inline Avx512f_32_Float(const float val) noexcept : m_data { _mm512_set1_ps(static_cast<T>(val)) } {
+   inline Avx512f_32_Float(const float val) noexcept : m_data(_mm512_set1_ps(static_cast<T>(val))) {
    }
-   inline Avx512f_32_Float(const int val) noexcept : m_data { _mm512_set1_ps(static_cast<T>(val)) } {
+   inline Avx512f_32_Float(const int val) noexcept : m_data(_mm512_set1_ps(static_cast<T>(val))) {
    }
 
 
@@ -236,16 +235,17 @@ struct Avx512f_32_Float final {
    }
 
    inline static Avx512f_32_Float Load(const T * const a, const TInt i) noexcept {
+      // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
       return Avx512f_32_Float(_mm512_i32gather_ps(i.m_data, a, sizeof(a[0])));
    }
 
    inline void Store(T * const a, const TInt i) const noexcept {
+      // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
       _mm512_i32scatter_ps(a, i.m_data, m_data, sizeof(a[0]));
    }
 
    template<typename TFunc>
    friend inline Avx512f_32_Float ApplyFunc(const TFunc & func, const Avx512f_32_Float & val) noexcept {
-
       alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
       val.Store(aTemp);
 
@@ -365,6 +365,15 @@ struct Avx512f_32_Float final {
 #else // FAST_DIVISION
       return dividend / divisor;
 #endif // FAST_DIVISION
+   }
+
+   friend inline Avx512f_32_Float FastMultiplyAdd(const Avx512f_32_Float & mul1, const Avx512f_32_Float & mul2, const Avx512f_32_Float & add) noexcept {
+      return Avx512f_32_Float(_mm512_fmadd_ps(mul1.m_data, mul2.m_data, add.m_data));
+   }
+
+   friend inline Avx512f_32_Float FastNegateMultiplyAdd(const Avx512f_32_Float & mul1, const Avx512f_32_Float & mul2, const Avx512f_32_Float & add) noexcept {
+      // equivalent to: -(mul1 * mul2) + add
+      return Avx512f_32_Float(_mm512_fnmadd_ps(mul1.m_data, mul2.m_data, add.m_data));
    }
 
    friend inline Avx512f_32_Float Sqrt(const Avx512f_32_Float & val) noexcept {

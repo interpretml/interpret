@@ -61,8 +61,7 @@ struct Avx2_32_Int final {
    }
 
    inline static Avx2_32_Int LoadBytes(const uint8_t * const a) noexcept {
-      const __m128i temp = _mm_loadu_si64(a);
-      return Avx2_32_Int(_mm256_cvtepu8_epi32(temp));
+      return Avx2_32_Int(_mm256_cvtepu8_epi32(_mm_loadu_si64(a)));
    }
 
    template<typename TFunc>
@@ -228,6 +227,7 @@ struct Avx2_32_Float final {
    }
 
    inline static Avx2_32_Float Load(const T * const a, const TInt i) noexcept {
+      // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
       return Avx2_32_Float(_mm256_i32gather_ps(a, i.m_data, sizeof(a[0])));
    }
 
@@ -337,6 +337,18 @@ struct Avx2_32_Float final {
 #else // FAST_DIVISION
       return dividend / divisor;
 #endif // FAST_DIVISION
+   }
+
+   friend inline Avx2_32_Float FastMultiplyAdd(const Avx2_32_Float & mul1, const Avx2_32_Float & mul2, const Avx2_32_Float & add) noexcept {
+      // Intel and AMD built incompatible fused multiply add instructions for Avx2, and you need to use cpuid
+      // to detect which is available.  Ignore this extra complexity and just use separate instructions for avx2.
+      return mul1 * mul2 + add;
+   }
+
+   friend inline Avx2_32_Float FastNegateMultiplyAdd(const Avx2_32_Float & mul1, const Avx2_32_Float & mul2, const Avx2_32_Float & add) noexcept {
+      // Intel and AMD built incompatible fused multiply add instructions for Avx2, and you need to use cpuid
+      // to detect which is available.  Ignore this extra complexity and just use separate instructions for avx2.
+      return add - mul1 * mul2;
    }
 
    friend inline Avx2_32_Float Sqrt(const Avx2_32_Float & val) noexcept {

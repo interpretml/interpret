@@ -584,7 +584,9 @@ ErrorEbm BoosterCore::Create(
                }
                cIndexes *= 2;
             }
-            if(IsConvertError<UInt_Small>(cIndexes - size_t { 1 })) {
+            // restriction from LogLossMulticlassObjective.hpp
+            // we use the target value to index into the temp exp array and adjust the target gradient
+            if(IsConvertError<typename std::make_signed<UInt_Small>::type>(cIndexes - size_t { 1 })) {
                LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
                return Error_IllegalParamVal;
             }
@@ -592,8 +594,10 @@ ErrorEbm BoosterCore::Create(
          for(; ppTermsEnd != ppTerm ; ++ppTerm) {
             const size_t cTensorBins = (*ppTerm)->GetCountTensorBins();
             // we need to fit the tensor index into a packed data unit, and we also use SIMD to index into the
-            // score tensors, so we need to multiply by cScores
-            if(0 != cTensorBins && IsConvertError<UInt_Small>(cTensorBins * cScores - 1)) {
+            // score tensors, so we need to multiply by cScores. Since we use the TFloat::Load function we
+            // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
+            // instructions use signed indexes
+            if(0 != cTensorBins && IsConvertError<typename std::make_signed<UInt_Small>::type>(cTensorBins * cScores - size_t { 1 })) {
                LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UInt_Small>((*ppTerm)->GetCountTensorBins())");
                return Error_IllegalParamVal;
             }
@@ -638,7 +642,9 @@ ErrorEbm BoosterCore::Create(
                }
                cIndexes *= 2;
             }
-            if(IsConvertError<UInt_Big>(cIndexes - size_t { 1 })) {
+            // restriction from LogLossMulticlassObjective.hpp
+            // we use the target value to index into the temp exp array and adjust the target gradient
+            if(IsConvertError<typename std::make_signed<UInt_Big>::type>(cIndexes - size_t { 1 })) {
                LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
                return Error_IllegalParamVal;
             }
@@ -646,8 +652,10 @@ ErrorEbm BoosterCore::Create(
          for(; ppTermsEnd != ppTerm; ++ppTerm) {
             const size_t cTensorBins = (*ppTerm)->GetCountTensorBins();
             // we need to fit the tensor index into a packed data unit, and we also use SIMD to index into the
-            // score tensors, so we need to multiply by cScores
-            if(0 != cTensorBins && IsConvertError<UInt_Big>(cTensorBins * cScores - 1)) {
+            // score tensors, so we need to multiply by cScores. Since we use the TFloat::Load function we
+            // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
+            // instructions use signed indexes
+            if(0 != cTensorBins && IsConvertError<typename std::make_signed<UInt_Big>::type>(cTensorBins * cScores - size_t { 1 })) {
                LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UInt_Small>((*ppTerm)->GetCountTensorBins())");
                return Error_IllegalParamVal;
             }
@@ -700,7 +708,9 @@ ErrorEbm BoosterCore::Create(
                      bRemoveSIMD = true;
                      break;
                   }
-                  if(IsConvertError<UInt_Small>(cIndexes * pBoosterCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
+                  // restriction from LogLossMulticlassObjective.hpp
+                  // we use the target value to index into the temp exp array and adjust the target gradient
+                  if(IsConvertError<typename std::make_signed<UInt_Small>::type>(cIndexes * pBoosterCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
                      bRemoveSIMD = true;
                      break;
                   }
@@ -708,8 +718,10 @@ ErrorEbm BoosterCore::Create(
                for(; ppTermsEnd != ppTerm; ++ppTerm) {
                   const size_t cTensorBins = (*ppTerm)->GetCountTensorBins();
                   // we need to fit the tensor index into a packed data unit, and we also use SIMD to index into the
-                  // score tensors, so we need to multiply by cScores
-                  if(0 != cTensorBins && IsConvertError<UInt_Small>(cTensorBins * cScores - 1)) {
+                  // score tensors, so we need to multiply by cScores. Since we use the TFloat::Load function we
+                  // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
+                  // instructions use signed indexes
+                  if(0 != cTensorBins && IsConvertError<typename std::make_signed<UInt_Small>::type>(cTensorBins * cScores - size_t { 1 })) {
                      bRemoveSIMD = true;
                      break;
                   }
@@ -758,7 +770,9 @@ ErrorEbm BoosterCore::Create(
                      bRemoveSIMD = true;
                      break;
                   }
-                  if(IsConvertError<UInt_Big>(cIndexes * pBoosterCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
+                  // restriction from LogLossMulticlassObjective.hpp
+                  // we use the target value to index into the temp exp array and adjust the target gradient
+                  if(IsConvertError<typename std::make_signed<UInt_Big>::type>(cIndexes * pBoosterCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
                      bRemoveSIMD = true;
                      break;
                   }
@@ -766,8 +780,10 @@ ErrorEbm BoosterCore::Create(
                for(; ppTermsEnd != ppTerm; ++ppTerm) {
                   const size_t cTensorBins = (*ppTerm)->GetCountTensorBins();
                   // we need to fit the tensor index into a packed data unit, and we also use SIMD to index into the
-                  // score tensors, so we need to multiply by cScores
-                  if(0 != cTensorBins && IsConvertError<UInt_Big>(cTensorBins * cScores - 1)) {
+                  // score tensors, so we need to multiply by cScores. Since we use the TFloat::Load function we
+                  // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
+                  // instructions use signed indexes
+                  if(0 != cTensorBins && IsConvertError<typename std::make_signed<UInt_Big>::type>(cTensorBins * cScores - size_t { 1 })) {
                      bRemoveSIMD = true;
                      break;
                   }

@@ -96,7 +96,7 @@ struct Cuda_32_Int final {
    }
 
    GPU_BOTH inline Cuda_32_Int operator& (const Cuda_32_Int & other) const noexcept {
-      return Cuda_32_Int(other.m_data & m_data);
+      return Cuda_32_Int(m_data & other.m_data);
    }
 
 private:
@@ -124,11 +124,11 @@ struct Cuda_32_Float final {
    }
    WARNING_POP
 
-   GPU_BOTH inline Cuda_32_Float(const double val) noexcept : m_data { static_cast<T>(val) } {
+   GPU_BOTH inline Cuda_32_Float(const double val) noexcept : m_data(static_cast<T>(val)) {
    }
-   GPU_BOTH inline Cuda_32_Float(const float val) noexcept : m_data { static_cast<T>(val) } {
+   GPU_BOTH inline Cuda_32_Float(const float val) noexcept : m_data(static_cast<T>(val)) {
    }
-   GPU_BOTH inline Cuda_32_Float(const int val) noexcept : m_data { static_cast<T>(val) } {
+   GPU_BOTH inline Cuda_32_Float(const int val) noexcept : m_data(static_cast<T>(val)) {
    }
 
 
@@ -257,6 +257,14 @@ struct Cuda_32_Float final {
 
    GPU_BOTH friend inline Cuda_32_Float FastApproxDivide(const Cuda_32_Float & dividend, const Cuda_32_Float & divisor) noexcept {
       return Cuda_32_Float(dividend.m_data / divisor.m_data);
+   }
+
+   GPU_BOTH friend inline Cuda_32_Float FastMultiplyAdd(const Cuda_32_Float & mul1, const Cuda_32_Float & mul2, const Cuda_32_Float & add) noexcept {
+      return mul1 * mul2 + add;
+   }
+
+   GPU_BOTH friend inline Cuda_32_Float FastNegateMultiplyAdd(const Cuda_32_Float & mul1, const Cuda_32_Float & mul2, const Cuda_32_Float & add) noexcept {
+      return add - mul1 * mul2;
    }
 
    GPU_BOTH friend inline Cuda_32_Float Sqrt(const Cuda_32_Float & val) noexcept {

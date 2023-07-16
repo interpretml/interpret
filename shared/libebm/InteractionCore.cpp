@@ -251,13 +251,16 @@ ErrorEbm InteractionCore::Create(
                }
                cIndexes *= 2;
             }
-            if(IsConvertError<UInt_Small>(cIndexes - size_t { 1 })) {
+            // restriction from LogLossMulticlassObjective.hpp
+            // we use the target value to index into the temp exp array and adjust the target gradient
+            if(IsConvertError<typename std::make_signed<UInt_Small>::type>(cIndexes - size_t { 1 })) {
                LOG_0(Trace_Error, "ERROR InteractionCore::Create target indexes cannot fit into compute zone indexes");
                return Error_IllegalParamVal;
             }
          }
          for(; pFeatureEnd != pFeature; ++pFeature) {
             const size_t cBins = pFeature->GetCountBins();
+            // the bin index needs to fit into the bit packs
             if(0 != cBins && IsConvertError<UInt_Small>(cBins - 1)) {
                LOG_0(Trace_Error, "ERROR InteractionCore::Create IsConvertError<UInt_Small>((*ppTerm)->GetCountTensorBins())");
                return Error_IllegalParamVal;
@@ -289,13 +292,16 @@ ErrorEbm InteractionCore::Create(
                }
                cIndexes *= 2;
             }
-            if(IsConvertError<UInt_Big>(cIndexes - size_t { 1 })) {
+            // restriction from LogLossMulticlassObjective.hpp
+            // we use the target value to index into the temp exp array and adjust the target gradient
+            if(IsConvertError<typename std::make_signed<UInt_Big>::type>(cIndexes - size_t { 1 })) {
                LOG_0(Trace_Error, "ERROR InteractionCore::Create target indexes cannot fit into compute zone indexes");
                return Error_IllegalParamVal;
             }
          }
          for(; pFeatureEnd != pFeature; ++pFeature) {
             const size_t cBins = pFeature->GetCountBins();
+            // the bin index needs to fit into the bit packs
             if(0 != cBins && IsConvertError<UInt_Big>(cBins - 1)) {
                LOG_0(Trace_Error, "ERROR InteractionCore::Create IsConvertError<UInt_Big>((*ppTerm)->GetCountTensorBins())");
                return Error_IllegalParamVal;
@@ -335,13 +341,16 @@ ErrorEbm InteractionCore::Create(
                      bRemoveSIMD = true;
                      break;
                   }
-                  if(IsConvertError<UInt_Small>(cIndexes * pInteractionCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
+                  // restriction from LogLossMulticlassObjective.hpp
+                  // we use the target value to index into the temp exp array and adjust the target gradient
+                  if(IsConvertError<typename std::make_signed<UInt_Small>::type>(cIndexes * pInteractionCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
                      bRemoveSIMD = true;
                      break;
                   }
                }
                for(; pFeatureEnd != pFeature; ++pFeature) {
                   const size_t cBins = pFeature->GetCountBins();
+                  // the bin index needs to fit into the bit packs
                   if(0 != cBins && IsConvertError<UInt_Small>(cBins - 1)) {
                      bRemoveSIMD = true;
                      break;
@@ -377,13 +386,16 @@ ErrorEbm InteractionCore::Create(
                      bRemoveSIMD = true;
                      break;
                   }
-                  if(IsConvertError<UInt_Big>(cIndexes * pInteractionCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
+                  // restriction from LogLossMulticlassObjective.hpp
+                  // we use the target value to index into the temp exp array and adjust the target gradient
+                  if(IsConvertError<typename std::make_signed<UInt_Big>::type>(cIndexes * pInteractionCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
                      bRemoveSIMD = true;
                      break;
                   }
                }
                for(; pFeatureEnd != pFeature; ++pFeature) {
                   const size_t cBins = pFeature->GetCountBins();
+                  // the bin index needs to fit into the bit packs
                   if(0 != cBins && IsConvertError<UInt_Big>(cBins - 1)) {
                      bRemoveSIMD = true;
                      break;
