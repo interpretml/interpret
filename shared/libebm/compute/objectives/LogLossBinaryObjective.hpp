@@ -303,8 +303,7 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                   // !!! IMPORTANT: Newton-Raphson step, as illustrated in Friedman's original paper (https://statweb.stanford.edu/~jhf/ftp/trebst.pdf, page 9). Note that
                   //   they are using t * (2 - t) since they have a 2 in their objective
 
-                  const TFloat absGradient = Abs(gradient);
-                  const TFloat hessian = absGradient * (1.0 - absGradient);
+                  const TFloat hessian = FusedNegateMultiplyAdd(gradient, gradient, Abs(gradient));
 
                   gradient.Store(pGradientAndHessian);
                   hessian.Store(pGradientAndHessian + TFloat::k_cSIMDPack);

@@ -263,7 +263,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                   const TFloat gradient = itemExp * sumExpInverted;
 
                   if(bHessian) {
-                     const TFloat hessian = gradient * (TFloat { 1.0 } - gradient);
+                     const TFloat hessian = FusedNegateMultiplyAdd(gradient, gradient, gradient);
                      gradient.Store(&pGradientAndHessian[iScore2 << (TFloat::k_cSIMDShift + 1)]);
                      hessian.Store(&pGradientAndHessian[(iScore2 << (TFloat::k_cSIMDShift + 1)) + TFloat::k_cSIMDPack]);
                   } else {
