@@ -85,7 +85,7 @@ inline static uint64_t xgetbv(int xcr) {
 #endif
 }
 
-static int DetectInstructionset(void) {
+static int DetectInstructionset() {
    // from: https://github.com/vectorclass/version2/blob/9d324e13457cf67b44be04f49a4a0036bb188a89/instrset_detect.cpp#L63
    int instructionSet = 0;
    int abcd[4] = { 0, 0, 0, 0 };
@@ -125,6 +125,15 @@ static int DetectInstructionset(void) {
    if((abcd[1] & 0x40020000) != 0x40020000) return instructionSet;
    instructionSet = 10;
    return instructionSet;
+}
+
+static bool IsFMA3() {
+   // only call this if 7 <= DetectInstructionset(), which stands for AVX
+   // Since we limit ourselves to AVX2 and above, this might be consdidered superfluous since all processors released 
+   // with AVX2 also support FMA3, but call it anyways for extra insurance since it's the correct thing to do.
+   int abcd[4];
+   cpuid(abcd, 1);
+   return 0 != (abcd[2] & (1 << 12));
 }
 
 #endif // INTEL_SIMD
@@ -168,7 +177,7 @@ extern ErrorEbm GetObjective(
          // TODO: enabled AVX512f, but only after we've had some time verifying AVX2 works
          //       before enabling this we need to test that it produces nearly identical results as AVX2
          LOG_0(Trace_Info, "INFO GetObjective checking for AVX512F compatibility");
-         if(DetectInstructionset() >= 9) {
+         if(9 <= DetectInstructionset()) {
             LOG_0(Trace_Info, "INFO GetObjective creating AVX512F SIMD Objective");
             error = CreateObjective_Avx512f_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
             if(Error_None != error) {
@@ -180,7 +189,7 @@ extern ErrorEbm GetObjective(
 
 #ifdef BRIDGE_AVX2_32
          LOG_0(Trace_Info, "INFO GetObjective checking for AVX2 compatibility");
-         if(DetectInstructionset() >= 8) {
+         if(8 <= DetectInstructionset() && IsFMA3()) {
             LOG_0(Trace_Info, "INFO GetObjective creating AVX2 SIMD Objective");
             error = CreateObjective_Avx2_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
             if(Error_None != error) {
