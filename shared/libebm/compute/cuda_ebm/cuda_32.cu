@@ -251,7 +251,7 @@ struct Cuda_32_Float final {
       return Cuda_32_Float(fabsf(val.m_data));
    }
 
-   GPU_BOTH friend inline Cuda_32_Float Reciprocal(const Cuda_32_Float & val) noexcept {
+   GPU_BOTH friend inline Cuda_32_Float FastApproxReciprocal(const Cuda_32_Float & val) noexcept {
       return Cuda_32_Float(T { 1.0 } / val.m_data);
    }
 
@@ -259,11 +259,11 @@ struct Cuda_32_Float final {
       return Cuda_32_Float(dividend.m_data / divisor.m_data);
    }
 
-   GPU_BOTH friend inline Cuda_32_Float FastMultiplyAdd(const Cuda_32_Float & mul1, const Cuda_32_Float & mul2, const Cuda_32_Float & add) noexcept {
+   GPU_BOTH friend inline Cuda_32_Float FusedMultiplyAdd(const Cuda_32_Float & mul1, const Cuda_32_Float & mul2, const Cuda_32_Float & add) noexcept {
       return mul1 * mul2 + add;
    }
 
-   GPU_BOTH friend inline Cuda_32_Float FastNegateMultiplyAdd(const Cuda_32_Float & mul1, const Cuda_32_Float & mul2, const Cuda_32_Float & add) noexcept {
+   GPU_BOTH friend inline Cuda_32_Float FusedNegateMultiplyAdd(const Cuda_32_Float & mul1, const Cuda_32_Float & mul2, const Cuda_32_Float & add) noexcept {
       return add - mul1 * mul2;
    }
 

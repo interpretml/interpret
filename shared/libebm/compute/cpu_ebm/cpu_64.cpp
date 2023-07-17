@@ -241,7 +241,7 @@ struct Cpu_64_Float final {
       return Cpu_64_Float(std::abs(val.m_data));
    }
 
-   friend inline Cpu_64_Float Reciprocal(const Cpu_64_Float & val) noexcept {
+   friend inline Cpu_64_Float FastApproxReciprocal(const Cpu_64_Float & val) noexcept {
       return Cpu_64_Float(T { 1.0 } / val.m_data);
    }
 
@@ -249,11 +249,11 @@ struct Cpu_64_Float final {
       return Cpu_64_Float(dividend.m_data / divisor.m_data);
    }
 
-   friend inline Cpu_64_Float FastMultiplyAdd(const Cpu_64_Float & mul1, const Cpu_64_Float & mul2, const Cpu_64_Float & add) noexcept {
+   friend inline Cpu_64_Float FusedMultiplyAdd(const Cpu_64_Float & mul1, const Cpu_64_Float & mul2, const Cpu_64_Float & add) noexcept {
       return mul1 * mul2 + add;
    }
 
-   friend inline Cpu_64_Float FastNegateMultiplyAdd(const Cpu_64_Float & mul1, const Cpu_64_Float & mul2, const Cpu_64_Float & add) noexcept {
+   friend inline Cpu_64_Float FusedNegateMultiplyAdd(const Cpu_64_Float & mul1, const Cpu_64_Float & mul2, const Cpu_64_Float & add) noexcept {
       return add - mul1 * mul2;
    }
 

@@ -211,8 +211,8 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                pSampleScore += TFloat::k_cSIMDPack;
 
                const TFloat oneExp = ApplyFunc([](typename TFloat::T x) { return ExpForMulticlass<false>(x); }, sampleScore);
-               sumExp += oneExp;
                oneExp.Store(&aExps[iScore1 << TFloat::k_cSIMDShift]);
+               sumExp += oneExp;
 
                ++iScore1;
             } while(cScores != iScore1);
@@ -239,9 +239,10 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                if(bWeight) {
                   const TFloat weight = TFloat::Load(pWeight);
                   pWeight += TFloat::k_cSIMDPack;
-                  metric *= weight;
+                  metricSum = FusedMultiplyAdd(metric, weight, metricSum);
+               } else {
+                  metricSum += metric;
                }
-               metricSum += metric;
             } else {
                // this Reciprocal is fast and is more SIMD-able, but it does create some complications.
                // When sumExp gets somewhat large, arround +4.5 or above, then the sumExp can get to be something
@@ -254,7 +255,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
                // hessians below a certain value we're ok, since we probably want to ignore these low hessians anyways
                // and even if we wanted to continue boosting, the other classes will continue to be boosted on
                // and our main class will stop growing more positive around +5, which is a fairly big value anyways
-               const TFloat sumExpInverted = Reciprocal(sumExp);
+               const TFloat sumExpInverted = FastApproxReciprocal(sumExp);
 
                size_t iScore2 = 0;
                do {

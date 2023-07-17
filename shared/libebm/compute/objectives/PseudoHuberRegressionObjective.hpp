@@ -84,9 +84,9 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       const TFloat errorFraction = error * m_deltaInverted;
-      const TFloat calc = errorFraction * errorFraction + 1.0;
+      const TFloat calc = FusedMultiplyAdd(errorFraction, errorFraction, 1.0);
       const TFloat sqrtCalc = Sqrt(calc);
-      const TFloat metric = sqrtCalc - 1.0;
+      const TFloat metric = sqrtCalc - 1.0; // TODO: this subtraction of 1.0 could be moved to FinishMetric if we passed the total outer bag weight to FinishMetric
       return metric;
    }
 
@@ -94,9 +94,9 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       const TFloat errorFraction = error * m_deltaInverted;
-      const TFloat calc = errorFraction * errorFraction + 1.0;
+      const TFloat calc = FusedMultiplyAdd(errorFraction, errorFraction, 1.0);
       const TFloat sqrtCalc = Sqrt(calc);
-      const TFloat gradient = error / sqrtCalc;
+      const TFloat gradient = FastApproxDivide(error, sqrtCalc);
       return gradient;
    }
 
@@ -104,10 +104,10 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       const TFloat errorFraction = error * m_deltaInverted;
-      const TFloat calc = errorFraction * errorFraction + 1.0;
+      const TFloat calc = FusedMultiplyAdd(errorFraction, errorFraction, 1.0);
       const TFloat sqrtCalc = Sqrt(calc);
-      const TFloat gradient = error / sqrtCalc;
-      const TFloat hessian = 1.0 / (calc * sqrtCalc);
+      const TFloat gradient = FastApproxDivide(error, sqrtCalc);
+      const TFloat hessian = FastApproxReciprocal(calc * sqrtCalc);
       return MakeGradientHessian(gradient, hessian);
    }
 };

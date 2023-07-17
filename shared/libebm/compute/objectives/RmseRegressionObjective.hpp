@@ -202,13 +202,13 @@ public:
 
             if(bValidation) {
                // we use RMSE so get the squared error part here
-               TFloat metric = gradient * gradient;
                if(bWeight) {
                   const TFloat weight = TFloat::Load(pWeight);
                   pWeight += TFloat::k_cSIMDPack;
-                  metric *= weight;
+                  metricSum = FusedMultiplyAdd(gradient * gradient, weight, metricSum);
+               } else {
+                  metricSum = FusedMultiplyAdd(gradient, gradient, metricSum);
                }
-               metricSum += metric;
             }
 
             if(bCompilerZeroDimensional) {

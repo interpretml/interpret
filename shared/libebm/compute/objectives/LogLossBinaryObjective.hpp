@@ -192,9 +192,10 @@ struct LogLossBinaryObjective final : public BinaryObjective {
                if(bWeight) {
                   const TFloat weight = TFloat::Load(pWeight);
                   pWeight += TFloat::k_cSIMDPack;
-                  metric *= weight;
+                  metricSum = FusedMultiplyAdd(metric, weight, metricSum);
+               } else {
+                  metricSum += metric;
                }
-               metricSum += metric;
             } else {
                // gradient will be 0.0 if we perfectly predict the target with 100% certainty.  
                //    To do so, sampleScore would need to be either +infinity or -infinity

@@ -351,7 +351,7 @@ struct Avx512f_32_Float final {
       return Avx512f_32_Float(_mm512_castsi512_ps(_mm512_and_si512(_mm512_castps_si512(val.m_data), _mm512_set1_epi32(0x7FFFFFFF))));
    }
 
-   friend inline Avx512f_32_Float Reciprocal(const Avx512f_32_Float & val) noexcept {
+   friend inline Avx512f_32_Float FastApproxReciprocal(const Avx512f_32_Float & val) noexcept {
 #ifdef FAST_DIVISION
       return Avx512f_32_Float(_mm512_rcp14_ps(val.m_data));
 #else // FAST_DIVISION
@@ -361,17 +361,17 @@ struct Avx512f_32_Float final {
 
    friend inline Avx512f_32_Float FastApproxDivide(const Avx512f_32_Float & dividend, const Avx512f_32_Float & divisor) noexcept {
 #ifdef FAST_DIVISION
-      return dividend * Reciprocal(divisor);
+      return dividend * FastApproxReciprocal(divisor);
 #else // FAST_DIVISION
       return dividend / divisor;
 #endif // FAST_DIVISION
    }
 
-   friend inline Avx512f_32_Float FastMultiplyAdd(const Avx512f_32_Float & mul1, const Avx512f_32_Float & mul2, const Avx512f_32_Float & add) noexcept {
+   friend inline Avx512f_32_Float FusedMultiplyAdd(const Avx512f_32_Float & mul1, const Avx512f_32_Float & mul2, const Avx512f_32_Float & add) noexcept {
       return Avx512f_32_Float(_mm512_fmadd_ps(mul1.m_data, mul2.m_data, add.m_data));
    }
 
-   friend inline Avx512f_32_Float FastNegateMultiplyAdd(const Avx512f_32_Float & mul1, const Avx512f_32_Float & mul2, const Avx512f_32_Float & add) noexcept {
+   friend inline Avx512f_32_Float FusedNegateMultiplyAdd(const Avx512f_32_Float & mul1, const Avx512f_32_Float & mul2, const Avx512f_32_Float & add) noexcept {
       // equivalent to: -(mul1 * mul2) + add
       return Avx512f_32_Float(_mm512_fnmadd_ps(mul1.m_data, mul2.m_data, add.m_data));
    }

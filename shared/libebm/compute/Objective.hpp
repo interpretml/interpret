@@ -442,9 +442,10 @@ protected:
                if(bWeight) {
                   const TFloat weight = TFloat::Load(pWeight);
                   pWeight += TFloat::k_cSIMDPack;
-                  metric *= weight;
+                  metricSum = FusedMultiplyAdd(metric, weight, metricSum);
+               } else {
+                  metricSum += metric;
                }
-               metricSum += metric;
             } else {
                pGradientAndHessian = HandleGradHess<TObjective, TFloat, bHessian>(pGradientAndHessian, sampleScore, target);
             }

@@ -305,22 +305,13 @@ extern double g_TestLogSumErrors = TestLogSumErrors();
 static double TestExpSumErrors() {
    double debugRet = 0; // this just prevents the optimizer from eliminating this code
 
-   // no underflow to denormals
+   // check underflow behavior
    EBM_ASSERT(!std::isnan(ExpApproxSchraudolph(k_expUnderflowPoint, k_expTermLowerBound)));
    EBM_ASSERT(std::numeric_limits<float>::min() <= ExpApproxSchraudolph(k_expUnderflowPoint, k_expTermLowerBound));
 
-   // no underflow to infinity
+   // check overflow behavior
    EBM_ASSERT(!std::isnan(ExpApproxSchraudolph(k_expOverflowPoint, k_expTermUpperBound)));
    EBM_ASSERT(ExpApproxSchraudolph(k_expOverflowPoint, k_expTermUpperBound) <= std::numeric_limits<float>::max());
-
-
-   // no underflow to denormals
-   EBM_ASSERT(!std::isnan(ExpApproxBest(k_expUnderflowPoint)));
-   EBM_ASSERT(std::numeric_limits<float>::min() <= ExpApproxBest(k_expUnderflowPoint));
-
-   // no underflow to infinity
-   EBM_ASSERT(!std::isnan(ExpApproxBest(k_expOverflowPoint)));
-   EBM_ASSERT(ExpApproxBest(k_expOverflowPoint) <= std::numeric_limits<float>::max());
 
 
    // our exp error has a periodicity of ln(2), so [0, ln(2)) should have the same relative error as 
@@ -509,10 +500,10 @@ static double TestSoftmaxSumErrors() {
             const double exactVal = exactNumerator / exactDenominator;
 
 
-            const double approxNumerator = 0 == iEliminateOneTerm ? double { 1 } : ExpApproxBest<false, false, false, false>(softmaxTerms[0]);
+            const double approxNumerator = 0 == iEliminateOneTerm ? double { 1 } : ExpApproxSchraudolph<false, false, false, false>(softmaxTerms[0]);
             double approxDenominator = 0;
             for(ptrdiff_t iTerm = 0; iTerm < k_cSoftmaxTerms; ++iTerm) {
-               const double oneTermAdd = iTerm == iEliminateOneTerm ? double { 1 } : ExpApproxBest<false, false, false, false>(softmaxTerms[iTerm]);
+               const double oneTermAdd = iTerm == iEliminateOneTerm ? double { 1 } : ExpApproxSchraudolph<false, false, false, false>(softmaxTerms[iTerm]);
                approxDenominator += oneTermAdd;
             }
             const double approxVal = approxNumerator / approxDenominator;
