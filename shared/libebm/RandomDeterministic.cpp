@@ -80,7 +80,7 @@ static const uint_fast64_t k_oneTimePadSeed[64] {
 };
 
 uint_fast64_t RandomDeterministic::GetOneTimePadConversion(uint_fast64_t seed) {
-   static_assert(CountBitsRequiredPositiveMax<uint64_t>() == sizeof(k_oneTimePadSeed) / sizeof(k_oneTimePadSeed[0]),
+   static_assert(COUNT_BITS(uint64_t) == sizeof(k_oneTimePadSeed) / sizeof(k_oneTimePadSeed[0]),
       "the one time pad must have the same length as the number of bits");
 
    EBM_ASSERT(seed == static_cast<uint_fast64_t>(static_cast<uint64_t>(seed)));

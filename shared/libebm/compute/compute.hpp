@@ -69,7 +69,7 @@ GPU_DEVICE inline constexpr static T Multiply(const T val) {
    // this function will be a lot faster than the default of unpacking the SIMD type and multiplying the components.
    // And even if the SIMD implemention has a scalar multiply I think this function will be faster for multiplications
    // with less than 4 bits anywhere in multiplicator, which should most be the case for where we use it.
-   return Multiplier<T, U, multiplicator, CountBitsRequiredPositiveMax<U>(), 0>::Multiply(val);
+   return Multiplier<T, U, multiplicator, COUNT_BITS(U), 0>::Multiply(val);
 }
 template<typename T, typename U, bool bCompileTime, U multiplicator, typename std::enable_if<bCompileTime, void>::type * = nullptr>
 GPU_DEVICE inline constexpr static T Multiply(const T val, const U) {

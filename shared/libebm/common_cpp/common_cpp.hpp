@@ -427,14 +427,6 @@ constexpr static size_t CountBitsRequired(const T maxValue) noexcept {
    return T { 0 } == maxValue ? size_t { 0 } : size_t { 1 } + CountBitsRequired<T>(maxValue >> 1);
 }
 
-template<typename T>
-inline constexpr static size_t CountBitsRequiredPositiveMax() noexcept {
-   return CountBitsRequired(std::numeric_limits<T>::max());
-}
-static_assert(CountBitsRequiredPositiveMax<uint8_t>() == 8, "automated test with compiler");
-static_assert(CountBitsRequiredPositiveMax<uint16_t>() == 16, "automated test with compiler");
-static_assert(CountBitsRequiredPositiveMax<uint32_t>() == 32, "automated test with compiler");
-static_assert(CountBitsRequiredPositiveMax<uint64_t>() == 64, "automated test with compiler");
 
 template<typename T>
 inline constexpr static T MaxFromCountBits(const size_t cBits) noexcept {
@@ -448,12 +440,12 @@ static_assert(MaxFromCountBits<uint8_t>(4) == 15, "automated test with compiler"
 static_assert(MaxFromCountBits<uint8_t>(8) == 255, "automated test with compiler");
 static_assert(MaxFromCountBits<uint64_t>(64) == uint64_t { 18446744073709551615u }, "automated test with compiler");
 
-static constexpr size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
+static constexpr size_t k_cBitsForSizeT = COUNT_BITS(size_t);
 
 inline static unsigned int GetCountItemsBitPacked(const unsigned int cBits, const unsigned int cTotalBytes) noexcept {
    EBM_ASSERT(size_t { 1 } <= cBits);
    EBM_ASSERT(size_t { 1 } <= cTotalBytes);
-   const unsigned int cTotalBits = cTotalBytes * static_cast<unsigned int>(CountBitsRequiredPositiveMax<uint8_t>());
+   const unsigned int cTotalBits = cTotalBytes * static_cast<unsigned int>(CHAR_BIT);
    EBM_ASSERT(cBits <= cTotalBits);
    return cTotalBits / cBits;
 }
@@ -461,25 +453,25 @@ template<typename T>
 inline static size_t GetCountItemsBitPacked(const size_t cBits) noexcept {
    static_assert(std::is_unsigned<T>::value, "T must be unsigned");
    EBM_ASSERT(size_t { 1 } <= cBits);
-   EBM_ASSERT(cBits <= CountBitsRequiredPositiveMax<T>());
-   return CountBitsRequiredPositiveMax<T>() / cBits;
+   EBM_ASSERT(cBits <= COUNT_BITS(T));
+   return COUNT_BITS(T) / cBits;
 }
 inline static unsigned int GetCountBits(const unsigned int cItemsBitPacked, const unsigned int cTotalBytes) noexcept {
    EBM_ASSERT(1 <= cItemsBitPacked);
    EBM_ASSERT(1 <= cTotalBytes);
-   const unsigned int cTotalBits = cTotalBytes * static_cast<unsigned int>(CountBitsRequiredPositiveMax<uint8_t>());
+   const unsigned int cTotalBits = cTotalBytes * static_cast<unsigned int>(CHAR_BIT);
    EBM_ASSERT(cItemsBitPacked <= cTotalBits);
    return cTotalBits / cItemsBitPacked;
 }
 template<typename T>
 inline constexpr static size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
    static_assert(std::is_unsigned<T>::value, "T must be unsigned");
-   return CountBitsRequiredPositiveMax<T>() / cItemsBitPacked;
+   return COUNT_BITS(T) / cItemsBitPacked;
 }
 template<typename T>
 inline constexpr static T MakeLowMask(const size_t cBits) noexcept {
    static_assert(std::is_unsigned<T>::value, "T must be unsigned");
-   return (~T { 0 }) >> (CountBitsRequiredPositiveMax<T>() - cBits);
+   return (~T { 0 }) >> (COUNT_BITS(T) - cBits);
 }
 
 inline static bool IsAligned(const void * const p, const size_t cBytesAlignment = SIMD_BYTE_ALIGNMENT) {

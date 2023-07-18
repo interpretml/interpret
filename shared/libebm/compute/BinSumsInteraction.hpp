@@ -72,13 +72,13 @@ GPU_DEVICE static void BinSumsInteractionInternal(BinSumsInteractionBridge * con
       const int cItemsPerBitPack = static_cast<int>(pParams->m_acItemsPerBitPack[iDimensionInit]);
 #ifndef GPU_COMPILE
       EBM_ASSERT(1 <= cItemsPerBitPack);
-      EBM_ASSERT(static_cast<size_t>(cItemsPerBitPack) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
+      EBM_ASSERT(static_cast<size_t>(cItemsPerBitPack) <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
       const int cBitsPerItemMax = static_cast<int>(GetCountBits<typename TFloat::TInt::T>(static_cast<size_t>(cItemsPerBitPack)));;
 #ifndef GPU_COMPILE
       EBM_ASSERT(1 <= cBitsPerItemMax);
-      EBM_ASSERT(static_cast<size_t>(cBitsPerItemMax) <= CountBitsRequiredPositiveMax<typename TFloat::TInt::T>());
+      EBM_ASSERT(static_cast<size_t>(cBitsPerItemMax) <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
       pDimensionalData->m_cBitsPerItemMax = cBitsPerItemMax;
 

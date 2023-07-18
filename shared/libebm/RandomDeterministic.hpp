@@ -166,7 +166,7 @@ public:
    template<typename T>
    INLINE_ALWAYS typename std::enable_if<std::is_unsigned<T>::value && std::numeric_limits<uint32_t>::max() < std::numeric_limits<T>::max(), T>::type Next(const T max) {
       if(std::numeric_limits<T>::max() == max) {
-         static constexpr size_t k_bitsT = CountBitsRequiredPositiveMax<T>();
+         static constexpr size_t k_bitsT = COUNT_BITS(T);
          static_assert(MaxFromCountBits<T>(k_bitsT) == std::numeric_limits<T>::max(), "T max must be all 1s");
          size_t count = (k_bitsT + 31) / 32 - 1;
          EBM_ASSERT(1 <= count);

@@ -58,8 +58,8 @@ public:
    }
 
    INLINE_ALWAYS T Next() {
-      static constexpr size_t k_bitsT = CountBitsRequiredPositiveMax<T>();
-      static constexpr size_t k_bitsRandom = CountBitsRequiredPositiveMax<unsigned int>();
+      static constexpr size_t k_bitsT = COUNT_BITS(T);
+      static constexpr size_t k_bitsRandom = COUNT_BITS(unsigned int);
 
       static_assert(MaxFromCountBits<T>(k_bitsT) == std::numeric_limits<T>::max(), "T max must be all 1s");
       static_assert(MaxFromCountBits<unsigned int>(k_bitsRandom) == std::numeric_limits<unsigned int>::max(),

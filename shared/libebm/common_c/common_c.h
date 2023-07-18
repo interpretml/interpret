@@ -6,6 +6,7 @@
 #define COMMON_C_H
 
 #include <string.h>
+#include <limits.h>
 
 #include "libebm.h" // BoolEbm
 
@@ -201,8 +202,15 @@ typedef double FloatBig;
 #endif
 
 // 16 byte alignment works for *most* SIMD implementation, but it's even better to align with the 64 byte cache!
-#define SIMD_BITS_ALIGNMENT (STATIC_CAST(size_t, 6))
-#define SIMD_BYTE_ALIGNMENT (STATIC_CAST(size_t, 1 << SIMD_BITS_ALIGNMENT))
+#define SIMD_BITS_ALIGNMENT   STATIC_CAST(size_t, 6)
+#define SIMD_BYTE_ALIGNMENT   STATIC_CAST(size_t, 1 << SIMD_BITS_ALIGNMENT)
+
+#define COUNT_BITS(intType)   STATIC_CAST(unsigned int, sizeof(intType) * CHAR_BIT)
+
+static_assert(COUNT_BITS(uint8_t) == 8, "automated test with compiler");
+static_assert(COUNT_BITS(uint16_t) == 16, "automated test with compiler");
+static_assert(COUNT_BITS(uint32_t) == 32, "automated test with compiler");
+static_assert(COUNT_BITS(uint64_t) == 64, "automated test with compiler");
 
 extern void * AlignedAlloc(const size_t cBytes);
 extern void AlignedFree(void * const p);

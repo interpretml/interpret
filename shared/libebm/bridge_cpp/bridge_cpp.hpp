@@ -96,7 +96,7 @@ inline constexpr static size_t GetArrayScores(const size_t cScores) noexcept {
 #define GET_ITEMS_PER_BIT_PACK(MACRO_compilerBitPack, MACRO_runtimeBitPack) \
    (k_cItemsPerBitPackDynamic == (MACRO_compilerBitPack) ? (MACRO_runtimeBitPack) : (MACRO_compilerBitPack))
 
-static constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
+static constexpr size_t k_cBitsForStorageType = COUNT_BITS(StorageDataType);
 
 static constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin
 static constexpr ptrdiff_t k_cItemsPerBitPackDynamic = ptrdiff_t { 0 };
