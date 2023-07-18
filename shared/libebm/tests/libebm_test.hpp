@@ -331,8 +331,8 @@ static constexpr ptrdiff_t k_iZeroClassificationLogitDefault = ptrdiff_t { -1 };
 static constexpr IntEbm k_countInnerBagsDefault = IntEbm { 0 };
 static constexpr double k_learningRateDefault = double { 0.01 };
 static constexpr IntEbm k_minSamplesLeafDefault = IntEbm { 1 };
-static constexpr CreateBoosterFlags k_testCreateBoosterFlags_Default = CreateBoosterFlags_DisableSIMD;
-static constexpr CreateInteractionFlags k_testCreateInteractionFlags_Default = CreateInteractionFlags_DisableSIMD;
+static constexpr CreateBoosterFlags k_testCreateBoosterFlags_Default = CreateBoosterFlags_Default;
+static constexpr CreateInteractionFlags k_testCreateInteractionFlags_Default = CreateInteractionFlags_Default;
 
 static constexpr IntEbm k_leavesMaxFillDefault = 5;
 // 64 dimensions is the most we can express with a 64 bit IntEbm
