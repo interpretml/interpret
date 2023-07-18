@@ -52,7 +52,7 @@ class Native:
         pass
 
     @staticmethod
-    def get_native_singleton(is_debug=False, simd=False):
+    def get_native_singleton(is_debug=False, simd=True):
         if Native._native is None:
             _log.info("EBM lib loading.")
             native = Native()
