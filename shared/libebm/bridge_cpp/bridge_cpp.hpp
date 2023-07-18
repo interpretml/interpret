@@ -10,7 +10,6 @@
 #include "bridge_c.h" // StorageDataType
 #include "zones.h"
 
-#include "common_cpp.hpp" // CountBitsRequiredPositiveMax
 #include "Bin.hpp"
 
 namespace DEFINED_ZONE_NAME {

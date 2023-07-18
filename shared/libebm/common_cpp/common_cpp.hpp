@@ -421,24 +421,17 @@ static_assert(!IsConvertError<uint8_t>(uint16_t { 255 }), "automated test with c
 static_assert(!IsConvertError<uint8_t>(uint16_t { 0 }), "automated test with compiler");
 
 template<typename T>
-constexpr static size_t CountBitsRequired(const T maxValue) noexcept {
+inline static unsigned int CountBitsRequired(T maxValue) noexcept {
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
-   // this is a bit inefficient when called in the runtime, but we don't call it anywhere that's important performance wise.
-   return T { 0 } == maxValue ? size_t { 0 } : size_t { 1 } + CountBitsRequired<T>(maxValue >> 1);
+   unsigned int cBits = 0;
+   while(T { 0 } != maxValue) {
+      ++cBits;
+      maxValue >>= 1;
+   }
+   return cBits;
 }
 
 
-template<typename T>
-inline constexpr static T MaxFromCountBits(const size_t cBits) noexcept {
-   return 0 == cBits ? T { 0 } : (MaxFromCountBits<T>(cBits - 1) << 1 | T { 1 });
-}
-static_assert(MaxFromCountBits<uint8_t>(0) == 0, "automated test with compiler");
-static_assert(MaxFromCountBits<uint8_t>(1) == 1, "automated test with compiler");
-static_assert(MaxFromCountBits<uint8_t>(2) == 3, "automated test with compiler");
-static_assert(MaxFromCountBits<uint8_t>(3) == 7, "automated test with compiler");
-static_assert(MaxFromCountBits<uint8_t>(4) == 15, "automated test with compiler");
-static_assert(MaxFromCountBits<uint8_t>(8) == 255, "automated test with compiler");
-static_assert(MaxFromCountBits<uint64_t>(64) == uint64_t { 18446744073709551615u }, "automated test with compiler");
 
 static constexpr size_t k_cBitsForSizeT = COUNT_BITS(size_t);
 
@@ -474,9 +467,17 @@ inline constexpr static T MakeLowMask(const size_t cBits) noexcept {
    return static_cast<T>(~T { 0 }) >> (COUNT_BITS(T) - cBits);
 }
 
+static_assert(MakeLowMask<uint8_t>(0) == 0, "automated test with compiler");
+static_assert(MakeLowMask<uint8_t>(1) == 1, "automated test with compiler");
+static_assert(MakeLowMask<uint8_t>(2) == 3, "automated test with compiler");
+static_assert(MakeLowMask<uint8_t>(3) == 7, "automated test with compiler");
+static_assert(MakeLowMask<uint8_t>(4) == 15, "automated test with compiler");
+static_assert(MakeLowMask<uint8_t>(8) == 255, "automated test with compiler");
+static_assert(MakeLowMask<uint64_t>(64) == uint64_t { 18446744073709551615u }, "automated test with compiler");
+
 inline static bool IsAligned(const void * const p, const size_t cBytesAlignment = SIMD_BYTE_ALIGNMENT) {
    EBM_ASSERT(1 <= cBytesAlignment);
-   const size_t cBits = CountBitsRequired(cBytesAlignment - 1);
+   const unsigned int cBits = CountBitsRequired(cBytesAlignment - 1);
    EBM_ASSERT(size_t { 1 } << cBits == cBytesAlignment);
    const uintptr_t mask = MakeLowMask<uintptr_t>(cBits);
    return uintptr_t { 0 } == (reinterpret_cast<uintptr_t>(p) & mask);

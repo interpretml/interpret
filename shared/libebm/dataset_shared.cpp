@@ -531,7 +531,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
          } else {
             // if there is only 1 bin we always know what it will be and we do not need to store anything
             if(SharedStorageDataType { 0 } != countSamples && SharedStorageDataType { 1 } < countBins) {
-               const size_t cBitsRequiredMin = CountBitsRequired(countBins - SharedStorageDataType { 1 });
+               const unsigned int cBitsRequiredMin = CountBitsRequired(countBins - SharedStorageDataType { 1 });
                EBM_ASSERT(1 <= cBitsRequiredMin);
                EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType);
 
@@ -1119,7 +1119,7 @@ static IntEbm AppendFeature(
 
       // if there is only 1 bin we always know what it will be and we do not need to store anything
       if(size_t { 0 } != cSamples && SharedStorageDataType { 1 } < cBins) {
-         const size_t cBitsRequiredMin = CountBitsRequired(cBins - SharedStorageDataType { 1 });
+         const unsigned int cBitsRequiredMin = CountBitsRequired(cBins - SharedStorageDataType { 1 });
          EBM_ASSERT(1 <= cBitsRequiredMin);
          EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType);
 

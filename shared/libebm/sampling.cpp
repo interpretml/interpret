@@ -9,6 +9,8 @@
 #include "common_c.h" // LIKELY
 #include "zones.h"
 
+#include "common_cpp.hpp"
+
 #include "RandomDeterministic.hpp"
 #include "RandomNondeterministic.hpp"
 #include "dataset_shared.hpp" // GetDataSetSharedWeight

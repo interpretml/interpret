@@ -92,7 +92,7 @@ public:
 
       unsigned int cBitsRequiredMin = 0;
       if(size_t { 1 } < cBins) {
-         cBitsRequiredMin = static_cast<unsigned int>(CountBitsRequired(cBins - size_t { 1 }));
+         cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
          EBM_ASSERT(1 <= cBitsRequiredMin);
          EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT);
       }

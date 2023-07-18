@@ -8,6 +8,8 @@
 #include "logging.h" // LOG_
 #include "zones.h"
 
+#include "common_cpp.hpp"
+
 #include "RandomDeterministic.hpp"
 #include "RandomNondeterministic.hpp"
 #include "GaussianDistribution.hpp"

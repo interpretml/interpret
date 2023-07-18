@@ -453,7 +453,7 @@ ErrorEbm DataSetBoosting::InitTermData(
                pDimensionInfoInit->m_pFeatureDataFrom = static_cast<const SharedStorageDataType *>(pFeatureDataFrom);
                pDimensionInfoInit->m_cBins = cBins;
 
-               const size_t cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
+               const unsigned int cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
                EBM_ASSERT(1 <= cBitsRequiredMin);
                EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType); // comes from shared data set
                EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT); // since cBins fits into size_t (previous call to GetDataSetSharedFeature)

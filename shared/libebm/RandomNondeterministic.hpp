@@ -9,10 +9,8 @@
 
 #include "libebm.h" // SeedEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // INLINE_ALWAYS
+#include "common_c.h" // INLINE_ALWAYS, COUNT_BITS
 #include "zones.h"
-
-#include "common_cpp.hpp" // CountBitsRequiredPositiveMax
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -61,12 +59,12 @@ public:
       static constexpr size_t k_bitsT = COUNT_BITS(T);
       static constexpr size_t k_bitsRandom = COUNT_BITS(unsigned int);
 
-      static_assert(MaxFromCountBits<T>(k_bitsT) == std::numeric_limits<T>::max(), "T max must be all 1s");
-      static_assert(MaxFromCountBits<unsigned int>(k_bitsRandom) == std::numeric_limits<unsigned int>::max(),
+      static_assert(MakeLowMask<T>(k_bitsT) == std::numeric_limits<T>::max(), "T max must be all 1s");
+      static_assert(MakeLowMask<unsigned int>(k_bitsRandom) == std::numeric_limits<unsigned int>::max(),
          "unsigned int max must be all 1s");
 
       static_assert(0 == std::random_device::min(), "std::random_device::min() must be zero");
-      static_assert(MaxFromCountBits<unsigned int>(k_bitsRandom) == std::random_device::max(),
+      static_assert(MakeLowMask<unsigned int>(k_bitsRandom) == std::random_device::max(),
          "std::random_device::max() must be the max for unsigned int");
 
       T ret = static_cast<T>(m_generator());

@@ -130,7 +130,7 @@ ErrorEbm DataSetInteraction::InitFeatureData(
          // we don't need any bits to store 1 bin since it's always going to be the only bin available, and also 
          // we return 0.0 on interactions whenever we find a feature with 1 bin before further processing
       
-         const size_t cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
+         const unsigned int cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
          EBM_ASSERT(1 <= cBitsRequiredMin);
          EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType); // comes from shared data set
          EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT); // since cBins fits into size_t (previous call to GetDataSetSharedFeature)
@@ -160,7 +160,7 @@ ErrorEbm DataSetInteraction::InitFeatureData(
          DataSubsetInteraction * pSubset = m_aSubsets;
          do {
             const unsigned int cItemsPerBitPackTo =
-               GetCountItemsBitPacked(static_cast<unsigned int>(cBitsRequiredMin), static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes));
+               GetCountItemsBitPacked(cBitsRequiredMin, static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes));
             EBM_ASSERT(1 <= cItemsPerBitPackTo);
             EBM_ASSERT(cItemsPerBitPackTo <= static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes * 8));
 

@@ -456,7 +456,7 @@ ErrorEbm BoosterCore::Create(
                if(LIKELY(size_t { 1 } != cTensorBins)) {
                   EBM_ASSERT(1 <= cRealDimensions);
 
-                  cBitsRequiredMin = static_cast<unsigned int>(CountBitsRequired(cTensorBins - size_t { 1 }));
+                  cBitsRequiredMin = CountBitsRequired(cTensorBins - size_t { 1 });
                   EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
                   EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT);
 
