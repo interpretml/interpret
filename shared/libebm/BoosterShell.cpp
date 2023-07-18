@@ -213,9 +213,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    }
    *boosterHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
-   if(0 != (static_cast<UCreateBoosterFlags>(flags) & ~(
+   if(0 != (static_cast<UCreateBoosterFlags>(flags) & static_cast<UCreateBoosterFlags>(~(
       static_cast<UCreateBoosterFlags>(CreateBoosterFlags_DifferentialPrivacy)
-   ))) {
+   )))) {
       LOG_0(Trace_Error, "ERROR CreateBooster flags contains unknown flags. Ignoring extras.");
    }
 

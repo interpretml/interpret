@@ -471,7 +471,7 @@ inline constexpr static size_t GetCountBits(const size_t cItemsBitPacked) noexce
 template<typename T>
 inline constexpr static T MakeLowMask(const size_t cBits) noexcept {
    static_assert(std::is_unsigned<T>::value, "T must be unsigned");
-   return (~T { 0 }) >> (COUNT_BITS(T) - cBits);
+   return static_cast<T>(~T { 0 }) >> (COUNT_BITS(T) - cBits);
 }
 
 inline static bool IsAligned(const void * const p, const size_t cBytesAlignment = SIMD_BYTE_ALIGNMENT) {

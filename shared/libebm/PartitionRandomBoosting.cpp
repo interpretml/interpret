@@ -437,7 +437,7 @@ public:
 
 
       const TermFeature * pTermFeature4 = pTerm->GetTermFeatures();
-      size_t iDimensionWrite = ~size_t { 0 }; // this is -1, but without the compiler warning
+      size_t iDimensionWrite = static_cast<size_t>(~size_t { 0 }); // this is -1, but without the compiler warning
       size_t cBinsWrite;
       do {
          const FeatureBoosting * const pFeature = pTermFeature4->m_pFeature;

@@ -118,10 +118,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       "Entered CalcInteractionStrength"
    );
 
-   if(0 != (static_cast<UCalcInteractionFlags>(flags) & ~(
+   if(0 != (static_cast<UCalcInteractionFlags>(flags) & static_cast<UCalcInteractionFlags>(~(
       static_cast<UCalcInteractionFlags>(CalcInteractionFlags_Pure) | 
       static_cast<UCalcInteractionFlags>(CalcInteractionFlags_EnableNewton)
-   ))) {
+   )))) {
       LOG_0(Trace_Error, "ERROR CalcInteractionStrength flags contains unknown flags. Ignoring extras.");
    }
 

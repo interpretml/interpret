@@ -520,12 +520,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       "Entered GenerateTermUpdate"
    );
 
-   if(0 != (static_cast<UTermBoostFlags>(flags) & ~(
+   if(0 != (static_cast<UTermBoostFlags>(flags) & static_cast<UTermBoostFlags>(~(
       static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonGain) |
       static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonUpdate) |
       static_cast<UTermBoostFlags>(TermBoostFlags_GradientSums) |
       static_cast<UTermBoostFlags>(TermBoostFlags_RandomSplits)
-   ))) {
+   )))) {
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains unknown flags. Ignoring extras.");
    }
 

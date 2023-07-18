@@ -103,7 +103,7 @@ extern void * AlignedAlloc(const size_t cBytes) {
    }
 
    uintptr_t pointer = REINTERPRET_CAST(uintptr_t, p);
-   pointer = (pointer + STATIC_CAST(uintptr_t, sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1)) & ~STATIC_CAST(uintptr_t, SIMD_BYTE_ALIGNMENT - 1);
+   pointer = (pointer + STATIC_CAST(uintptr_t, sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1)) & STATIC_CAST(uintptr_t, ~STATIC_CAST(uintptr_t, SIMD_BYTE_ALIGNMENT - 1));
    *(REINTERPRET_CAST(void **, pointer) - 1) = p;
    return REINTERPRET_CAST(void *, pointer);
 }
