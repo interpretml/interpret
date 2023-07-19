@@ -231,7 +231,7 @@ class RegistrationPack final : public Registration {
       // it is legal for the destructor to not be called on a placement new object when the destructor is trivial
       // or the caller does not rely on any side effects of the destructor
       // https://stackoverflow.com/questions/41385355/is-it-ok-not-to-call-the-destructor-on-placement-new-allocated-objects
-      void * const pRegistrableMemory = malloc(sizeof(TRegistrable<TFloat>));
+      void * const pRegistrableMemory = AlignedAlloc(sizeof(TRegistrable<TFloat>));
       if(nullptr != pRegistrableMemory) {
          try {
             static_assert(std::is_trivially_destructible<TRegistrable<TFloat>>::value,
@@ -250,22 +250,22 @@ class RegistrationPack final : public Registration {
             pRegistrable->FillWrapper(pWrapperOut);
             return false;
          } catch(const SkipRegistrationException &) {
-            free(pRegistrableMemory);
+            AlignedFree(pRegistrableMemory);
             return true;
          } catch(const ParamValOutOfRangeException &) {
-            free(pRegistrableMemory);
+            AlignedFree(pRegistrableMemory);
             throw;
          } catch(const ParamMismatchWithConfigException &) {
-            free(pRegistrableMemory);
+            AlignedFree(pRegistrableMemory);
             throw;
          } catch(const std::bad_alloc &) {
             // it's possible in theory that the constructor allocates some temporary memory, so pass this through
-            free(pRegistrableMemory);
+            AlignedFree(pRegistrableMemory);
             throw;
          } catch(...) {
             // our client Registration functions should only ever throw a limited range of exceptions listed above, 
             // but check anyways
-            free(pRegistrableMemory);
+            AlignedFree(pRegistrableMemory);
             throw RegistrationConstructorException();
          }
       }

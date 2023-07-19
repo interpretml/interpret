@@ -169,7 +169,7 @@ inline static void InitializeObjectiveWrapperUnfailing(ObjectiveWrapper * const 
 }
 
 inline static void FreeObjectiveWrapperInternals(ObjectiveWrapper * const pObjectiveWrapper) {
-   free(pObjectiveWrapper->m_pObjective);
+   AlignedFree(pObjectiveWrapper->m_pObjective);
    free(pObjectiveWrapper->m_pFunctionPointersCpp);
 }
 
