@@ -198,6 +198,9 @@ extern ErrorEbm GetObjective(
             break;
          }
 #endif // BRIDGE_AVX2_32
+
+         LOG_0(Trace_Info, "INFO GetObjective no SIMD option found");
+         break;
       }
    }
 
