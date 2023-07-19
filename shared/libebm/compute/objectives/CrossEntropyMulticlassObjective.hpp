@@ -6,6 +6,6 @@
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template <typename TFloat>
-struct CrossEntropyMulticlassObjective : public MulticlassObjective {
+struct CrossEntropyMulticlassObjective : MulticlassObjective {
    // this one needs to be special cased!
 };

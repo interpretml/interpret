@@ -41,13 +41,13 @@ struct RegressionMultitaskObjective;
 
 
 template<typename TFloat>
-class GradientHessian {
+class alignas(sizeof(TFloat)) GradientHessian {
    TFloat m_gradient;
    TFloat m_hessian;
 
 public:
    template<typename T1, typename T2>
-   GPU_DEVICE inline GradientHessian(const T1 gradient, const T2 hessian) : 
+   GPU_DEVICE inline GradientHessian(const T1 & gradient, const T2 & hessian) :
       m_gradient(TFloat(gradient)), 
       m_hessian(TFloat(hessian)) {
    }
@@ -56,15 +56,15 @@ public:
    GPU_DEVICE inline TFloat GetHessian() const noexcept { return m_hessian; }
 };
 template<typename TFloat>
-GPU_DEVICE inline GradientHessian<TFloat> MakeGradientHessian(const TFloat gradient, const TFloat hessian) {
+GPU_DEVICE inline GradientHessian<TFloat> MakeGradientHessian(const TFloat & gradient, const TFloat & hessian) {
    return GradientHessian<TFloat>(gradient, hessian);
 }
 template<typename TFloat>
-GPU_DEVICE inline GradientHessian<TFloat> MakeGradientHessian(const TFloat gradient, const double hessian) {
+GPU_DEVICE inline GradientHessian<TFloat> MakeGradientHessian(const TFloat & gradient, const double hessian) {
    return GradientHessian<TFloat>(gradient, hessian);
 }
 template<typename TFloat>
-GPU_DEVICE inline GradientHessian<TFloat> MakeGradientHessian(const double gradient, const TFloat hessian) {
+GPU_DEVICE inline GradientHessian<TFloat> MakeGradientHessian(const double gradient, const TFloat & hessian) {
    return GradientHessian<TFloat>(gradient, hessian);
 }
 template<typename TFloat>
@@ -307,13 +307,13 @@ protected:
    template<typename TObjective, typename TFloat, bool bHessian, typename std::enable_if<bHessian, void>::type * = nullptr>
    GPU_DEVICE INLINE_ALWAYS typename TFloat::T * HandleGradHess(
       typename TFloat::T * const pGradientAndHessian,
-      const TFloat sampleScore,
-      const TFloat target
+      const TFloat & sampleScore,
+      const TFloat & target
    ) const noexcept {
       const TObjective * const pObjective = static_cast<const TObjective *>(this);
       const GradientHessian<TFloat> gradientHessian = pObjective->CalcGradientHessian(sampleScore, target);
-      TFloat gradient = gradientHessian.GetGradient();
-      TFloat hessian = gradientHessian.GetHessian();
+      const TFloat gradient = gradientHessian.GetGradient();
+      const TFloat hessian = gradientHessian.GetHessian();
       gradient.Store(pGradientAndHessian);
       hessian.Store(pGradientAndHessian + TFloat::k_cSIMDPack);
       return pGradientAndHessian + (TFloat::k_cSIMDPack + TFloat::k_cSIMDPack);
@@ -321,11 +321,11 @@ protected:
    template<typename TObjective, typename TFloat, bool bHessian, typename std::enable_if<!bHessian, void>::type * = nullptr>
    GPU_DEVICE INLINE_ALWAYS typename TFloat::T * HandleGradHess(
       typename TFloat::T * const pGradientAndHessian, 
-      const TFloat sampleScore, 
-      const TFloat target
+      const TFloat & sampleScore, 
+      const TFloat & target
    ) const noexcept {
       const TObjective * const pObjective = static_cast<const TObjective *>(this);
-      TFloat gradient = pObjective->CalcGradient(sampleScore, target);
+      const TFloat gradient = pObjective->CalcGradient(sampleScore, target);
       gradient.Store(pGradientAndHessian);
       return pGradientAndHessian + TFloat::k_cSIMDPack;
    }

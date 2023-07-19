@@ -6,6 +6,6 @@
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template <typename TFloat>
-struct RmseRegressionMultitaskObjective : public RegressionMultitaskObjective {
+struct RmseRegressionMultitaskObjective : RegressionMultitaskObjective {
    // this one needs to be special cased!
 };

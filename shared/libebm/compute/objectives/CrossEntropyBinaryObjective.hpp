@@ -6,6 +6,6 @@
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template <typename TFloat>
-struct CrossEntropyBinaryObjective : public BinaryObjective {
+struct CrossEntropyBinaryObjective : BinaryObjective {
    // this one needs to be special cased!
 };

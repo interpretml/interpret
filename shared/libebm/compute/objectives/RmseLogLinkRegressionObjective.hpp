@@ -72,14 +72,14 @@ struct RmseLogLinkRegressionObjective : RegressionObjective {
       return std::sqrt(metricSum); // finish the 'r' in 'rmse'
    }
 
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat prediction = Exp(score); // log link function
       const TFloat error = prediction - target;
       const TFloat metric = error * error;
       return metric;
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat prediction = Exp(score); // log link function
       const TFloat gradient = prediction - target;
       return gradient;

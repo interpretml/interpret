@@ -6,7 +6,7 @@
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template <typename TFloat>
-struct LogLossBinaryMultitaskObjective : public BinaryMultitaskObjective {
+struct LogLossBinaryMultitaskObjective : BinaryMultitaskObjective {
    // this one would more popularily be called LogLossMultilabelObjective.  We're currently calling this
    // LogLossBinaryMultitaskObjective since it fits better into our ontology of Multitask* types having 
    // multiple targets, but consider chaning this to multilabel since it would be more widely recognized that way

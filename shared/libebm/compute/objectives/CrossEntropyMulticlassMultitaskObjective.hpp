@@ -6,7 +6,7 @@
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template <typename TFloat>
-struct CrossEntropyMulticlassMultitaskObjective : public MulticlassMultitaskObjective {
+struct CrossEntropyMulticlassMultitaskObjective : MulticlassMultitaskObjective {
 
    // This is the most general format that I could envision we'd handle as a non-custom objective.
    // It's not clear that we can really handle it nicely, but I'm leaving a placeholder here to think about it.  

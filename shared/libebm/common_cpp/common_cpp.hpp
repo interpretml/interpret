@@ -8,7 +8,6 @@
 #include <limits> // numeric_limits
 #include <type_traits> // std::is_integral, std::enable_if, std::is_signed
 #include <stddef.h> // size_t, ptrdiff_t
-#include <stdlib.h> // malloc
 
 #include "logging.h"
 #include "common_c.h"

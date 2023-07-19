@@ -7,8 +7,7 @@
 // Do not use this file as a reference for other objectives. RMSE is special.
 
 template<typename TFloat>
-struct RmseRegressionObjective final : public RegressionObjective {
-public:
+struct RmseRegressionObjective : RegressionObjective {
    static constexpr bool k_bRmse = true;
    static constexpr BoolEbm k_bMaximizeMetric = MINIMIZE_METRIC;
    static constexpr LinkEbm k_linkFunction = Link_identity;
@@ -93,13 +92,13 @@ public:
       //return std::sqrt(metricSum); // finish the 'r' in 'rmse'
    }
 
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat & score, const TFloat & target) const noexcept {
       // This function is here to signal the RmseRegressionObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat & score, const TFloat & target) const noexcept {
       // This function is here to signal the RmseRegressionObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);

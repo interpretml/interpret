@@ -7,7 +7,7 @@
 // Do not use this file as a reference for other objectives. LogLoss is special.
 
 template<typename TFloat>
-struct LogLossMulticlassObjective final : public MulticlassObjective {
+struct LogLossMulticlassObjective : MulticlassObjective {
    OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossMulticlassObjective, MINIMIZE_METRIC, Link_logit)
 
    inline LogLossMulticlassObjective(const Config & config) {
@@ -61,20 +61,20 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
       return metricSum;
    }
 
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat & score, const TFloat & target) const noexcept {
       // This function is here to signal the LogLossMulticlassObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat & score, const TFloat & target) const noexcept {
       // This function is here to signal the LogLossMulticlassObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
       return 0.0;
    }
 
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat & score, const TFloat & target) const noexcept {
       // This function is here to signal the LogLossMulticlassObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
@@ -102,7 +102,7 @@ struct LogLossMulticlassObjective final : public MulticlassObjective {
       EBM_ASSERT(nullptr != pData->m_aTargets);
 #endif // GPU_COMPILE
 
-      alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::T 
+      alignas(sizeof(TFloat)) typename TFloat::T
          aLocalExpVector[bDynamic ? size_t { 1 } : (cCompilerScores * size_t { TFloat::k_cSIMDPack })];
       typename TFloat::T * const aExps = bDynamic ? 
          reinterpret_cast<typename TFloat::T *>(pData->m_aMulticlassMidwayTemp) : aLocalExpVector;

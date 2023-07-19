@@ -64,7 +64,7 @@ struct Cpu_64_Int final {
    }
 
    template<typename TFunc, typename... TArgs>
-   static inline void Execute(const TFunc & func, const TArgs&... args) noexcept {
+   static inline void Execute(const TFunc & func, const TArgs &... args) noexcept {
       func(0, (args.m_data)...);
    }
 
@@ -211,11 +211,11 @@ struct Cpu_64_Float final {
       *a = m_data;
    }
 
-   inline static Cpu_64_Float Load(const T * const a, const TInt i) noexcept {
+   inline static Cpu_64_Float Load(const T * const a, const TInt & i) noexcept {
       return Cpu_64_Float(a[i.m_data]);
    }
 
-   inline void Store(T * const a, const TInt i) const noexcept {
+   inline void Store(T * const a, const TInt & i) const noexcept {
       a[i.m_data] = m_data;
    }
 
@@ -225,7 +225,7 @@ struct Cpu_64_Float final {
    }
 
    template<typename TFunc, typename... TArgs>
-   static inline void Execute(const TFunc & func, const TArgs&... args) noexcept {
+   static inline void Execute(const TFunc & func, const TArgs &... args) noexcept {
       func(0, (args.m_data)...);
    }
 

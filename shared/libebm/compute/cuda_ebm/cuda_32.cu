@@ -71,7 +71,7 @@ struct Cuda_32_Int final {
    }
 
    template<typename TFunc, typename... TArgs>
-   GPU_BOTH static inline void Execute(const TFunc & func, const TArgs&... args) noexcept {
+   GPU_BOTH static inline void Execute(const TFunc & func, const TArgs &... args) noexcept {
       func(0, (args.m_data)...);
    }
 
@@ -221,11 +221,11 @@ struct Cuda_32_Float final {
       *a = m_data;
    }
 
-   GPU_BOTH inline static Cuda_32_Float Load(const T * const a, const TInt i) noexcept {
+   GPU_BOTH inline static Cuda_32_Float Load(const T * const a, const TInt & i) noexcept {
       return Cuda_32_Float(a[i.m_data]);
    }
 
-   GPU_BOTH inline void Store(T * const a, const TInt i) const noexcept {
+   GPU_BOTH inline void Store(T * const a, const TInt & i) const noexcept {
       a[i.m_data] = m_data;
    }
 
@@ -235,7 +235,7 @@ struct Cuda_32_Float final {
    }
 
    template<typename TFunc, typename... TArgs>
-   GPU_BOTH static inline void Execute(const TFunc & func, const TArgs&... args) noexcept {
+   GPU_BOTH static inline void Execute(const TFunc & func, const TArgs &... args) noexcept {
       func(0, (args.m_data)...);
    }
 

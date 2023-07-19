@@ -80,7 +80,7 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
       return m_deltaSquared * metricSum;
    }
 
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       const TFloat errorFraction = error * m_deltaInverted;
@@ -90,7 +90,7 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
       return metric;
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       const TFloat errorFraction = error * m_deltaInverted;
@@ -100,7 +100,7 @@ struct PseudoHuberRegressionObjective : RegressionObjective {
       return gradient;
    }
 
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       const TFloat errorFraction = error * m_deltaInverted;

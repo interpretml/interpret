@@ -29,9 +29,11 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-struct Avx512f_32_Float;
+static constexpr size_t k_cAlignment = 64;
 
-struct Avx512f_32_Int final {
+struct alignas(k_cAlignment) Avx512f_32_Float;
+
+struct alignas(k_cAlignment) Avx512f_32_Int final {
    friend Avx512f_32_Float;
    friend inline Avx512f_32_Float IfEqual(const Avx512f_32_Int & cmp1, const Avx512f_32_Int & cmp2, const Avx512f_32_Float & trueVal, const Avx512f_32_Float & falseVal) noexcept;
 
@@ -66,7 +68,7 @@ struct Avx512f_32_Int final {
 
    template<typename TFunc>
    static inline void Execute(const TFunc & func, const Avx512f_32_Int & val0) noexcept {
-      alignas(SIMD_BYTE_ALIGNMENT) T a0[k_cSIMDPack];
+      alignas(k_cAlignment) T a0[k_cSIMDPack];
       val0.Store(a0);
 
       // no loops because this will disable optimizations for loops in the caller
@@ -122,7 +124,7 @@ static_assert(std::is_standard_layout<Avx512f_32_Int>::value && std::is_triviall
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 
-struct Avx512f_32_Float final {
+struct alignas(k_cAlignment) Avx512f_32_Float final {
    using T = float;
    using TPack = __m512;
    using TInt = Avx512f_32_Int;
@@ -234,19 +236,19 @@ struct Avx512f_32_Float final {
       _mm512_store_ps(a, m_data);
    }
 
-   inline static Avx512f_32_Float Load(const T * const a, const TInt i) noexcept {
+   inline static Avx512f_32_Float Load(const T * const a, const TInt & i) noexcept {
       // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
       return Avx512f_32_Float(_mm512_i32gather_ps(i.m_data, a, sizeof(a[0])));
    }
 
-   inline void Store(T * const a, const TInt i) const noexcept {
+   inline void Store(T * const a, const TInt & i) const noexcept {
       // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
       _mm512_i32scatter_ps(a, i.m_data, m_data, sizeof(a[0]));
    }
 
    template<typename TFunc>
    friend inline Avx512f_32_Float ApplyFunc(const TFunc & func, const Avx512f_32_Float & val) noexcept {
-      alignas(SIMD_BYTE_ALIGNMENT) T aTemp[k_cSIMDPack];
+      alignas(k_cAlignment) T aTemp[k_cSIMDPack];
       val.Store(aTemp);
 
       aTemp[0] = func(aTemp[0]);
@@ -291,7 +293,7 @@ struct Avx512f_32_Float final {
 
    template<typename TFunc>
    static inline void Execute(const TFunc & func, const Avx512f_32_Float & val0) noexcept {
-      alignas(SIMD_BYTE_ALIGNMENT) T a0[k_cSIMDPack];
+      alignas(k_cAlignment) T a0[k_cSIMDPack];
       val0.Store(a0);
 
       func(0, a0[0]);
@@ -314,9 +316,9 @@ struct Avx512f_32_Float final {
 
    template<typename TFunc>
    static inline void Execute(const TFunc & func, const Avx512f_32_Float & val0, const Avx512f_32_Float & val1) noexcept {
-      alignas(SIMD_BYTE_ALIGNMENT) T a0[k_cSIMDPack];
+      alignas(k_cAlignment) T a0[k_cSIMDPack];
       val0.Store(a0);
-      alignas(SIMD_BYTE_ALIGNMENT) T a1[k_cSIMDPack];
+      alignas(k_cAlignment) T a1[k_cSIMDPack];
       val1.Store(a1);
 
       func(0, a0[0], a1[0]);

@@ -73,7 +73,7 @@ struct PoissonDevianceRegressionObjective : RegressionObjective {
    // https://github.com/h2oai/h2o-3/blob/master/h2o-core/src/main/java/hex/DistributionFactory.java
    // https://github.com/microsoft/LightGBM/blob/master/src/objective/regression_objective.hpp
    //
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat prediction = Exp(score); // log link function
       const TFloat error = prediction - target;
       const TFloat frac = target / prediction;
@@ -86,13 +86,13 @@ struct PoissonDevianceRegressionObjective : RegressionObjective {
       return error + conditionalExtra;
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat prediction = Exp(score); // log link function
       const TFloat gradient = prediction - target;
       return gradient;
    }
 
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat prediction = Exp(score); // log link function
       const TFloat gradient = prediction - target;
       const TFloat hessian = prediction;

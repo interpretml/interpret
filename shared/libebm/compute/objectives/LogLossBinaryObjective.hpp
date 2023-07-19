@@ -7,7 +7,7 @@
 // Do not use this file as a reference for other objectives. LogLoss is special.
 
 template<typename TFloat>
-struct LogLossBinaryObjective final : public BinaryObjective {
+struct LogLossBinaryObjective : BinaryObjective {
    OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossBinaryObjective, MINIMIZE_METRIC, Link_logit)
 
    inline LogLossBinaryObjective(const Config & config) {
@@ -53,20 +53,20 @@ struct LogLossBinaryObjective final : public BinaryObjective {
       return metricSum;
    }
 
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat & score, const TFloat & target) const noexcept {
       // This function is here to signal the LogLossBinaryObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat & score, const TFloat & target) const noexcept {
       // This function is here to signal the LogLossBinaryObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
       return 0.0;
    }
 
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat & score, const TFloat & target) const noexcept {
       // This function is here to signal the LogLossBinaryObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);

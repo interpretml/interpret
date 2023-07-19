@@ -227,9 +227,12 @@ class RegistrationPack final : public Registration {
       // which would have been an error.  FinalCheckParams does this and throws an exception if it finds any errors
       FinalCheckParams(sRegistration, sRegistrationEnd, cUsedParams);
 
-      // use malloc so that we can use the C free function on the main zone side.
-      // it is legal for the destructor to not be called on a placement new object when the destructor is trivial
-      // or the caller does not rely on any side effects of the destructor
+      // The TRegistrable class can contain SIMD types that have stricter alignment requirements than what you would 
+      // get from either new or malloc, so we need to use AlignedAlloc (it was crashing on Linux beforehand). Also, 
+      // AlignedAlloc is a C function that we can call directly from the calling zone without transitioning back to 
+      // this zone, which we would need to do for any C++ allocation function. It is legal for the destructor to not 
+      // be called on a placement new object when the destructor is trivial or the caller does not rely on any side 
+      // effects of the destructor.
       // https://stackoverflow.com/questions/41385355/is-it-ok-not-to-call-the-destructor-on-placement-new-allocated-objects
       void * const pRegistrableMemory = AlignedAlloc(sizeof(TRegistrable<TFloat>));
       if(nullptr != pRegistrableMemory) {

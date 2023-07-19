@@ -84,7 +84,7 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
       return 2.0 * metricSum;
    }
 
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat exp1Score = Exp(m_variancePowerParamSub1 * score);
       const TFloat exp2Score = Exp(m_variancePowerParamSub2 * score);
       const TFloat metric = FusedNegateMultiplyAdd(
@@ -95,14 +95,14 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
       return metric;
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat exp1Score = Exp(m_variancePowerParamSub1 * score);
       const TFloat exp2Score = Exp(m_variancePowerParamSub2 * score);
       const TFloat gradient = FusedNegateMultiplyAdd(target, exp1Score, exp2Score);
       return gradient;
    }
 
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat exp1Score = Exp(m_variancePowerParamSub1 * score);
       const TFloat exp2Score = Exp(m_variancePowerParamSub2 * score);
       const TFloat gradient = FusedNegateMultiplyAdd(target, exp1Score, exp2Score);

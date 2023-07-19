@@ -52,8 +52,8 @@ GPU_DEVICE static void BinSumsInteractionInternal(BinSumsInteractionBridge * con
       const typename TFloat::TInt::T * m_pData;
       int m_cShiftReset;
    };
-   alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::TInt aiBinCombined[(k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions)];
-   alignas(SIMD_BYTE_ALIGNMENT) typename TFloat::TInt aMaskBits[(k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions)];
+   alignas(sizeof(typename TFloat::TInt)) typename TFloat::TInt aiBinCombined[(k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions)];
+   alignas(sizeof(typename TFloat::TInt)) typename TFloat::TInt aMaskBits[(k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions)];
    typename TFloat::TInt * const aiBinCombinedShifted = &aiBinCombined[1];
    typename TFloat::TInt * const aMaskBitsShifted = &aMaskBits[1];
 

@@ -14,12 +14,12 @@ struct ExampleRegressionObjective : RegressionObjective {
    //   - Link function type. See libebm.h for a list of available link functions
    OBJECTIVE_BOILERPLATE(ExampleRegressionObjective, MINIMIZE_METRIC, Link_identity)
 
-   // constexpr values should be of type double
-   static constexpr double Two = 2.0;
-
    // member variables should be of type TFloat
    TFloat m_param0;
    TFloat m_param1;
+
+   // constexpr values should be static and type double
+   static constexpr double Two = 2.0;
 
    // The constructor parameters following config must match the RegisterObjective parameters in objective_registrations.hpp
    inline ExampleRegressionObjective(const Config & config, const double param0, const double param1) {
@@ -78,13 +78,13 @@ struct ExampleRegressionObjective : RegressionObjective {
       return metricSum; // return MSE in this example, but if we wanted to return RMSE we would take the sqrt here
    }
 
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       return error * error;
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       // Alternatively, the 2.0 factor could be moved to GradientConstant()
@@ -93,7 +93,7 @@ struct ExampleRegressionObjective : RegressionObjective {
    }
 
    // If the loss function doesn't have a second derivative, then delete the CalcGradientHessian function.
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat score, const TFloat target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat & score, const TFloat & target) const noexcept {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       // Alternatively, the 2.0 factors could be moved to GradientConstant() and HessianConstant()

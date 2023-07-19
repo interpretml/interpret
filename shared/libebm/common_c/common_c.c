@@ -90,8 +90,6 @@ extern BoolEbm IsStringEqualsForgiving(const char * sMain, const char * sLabel) 
 }
 
 extern void * AlignedAlloc(const size_t cBytes) {
-   static_assert(STATIC_CAST(size_t, 1 << SIMD_BITS_ALIGNMENT) == SIMD_BYTE_ALIGNMENT, "alignments must match");
-
    EBM_ASSERT(0 != cBytes);
    if(SIZE_MAX - (sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1) < cBytes) {
       return NULL;
@@ -103,7 +101,8 @@ extern void * AlignedAlloc(const size_t cBytes) {
    }
 
    uintptr_t pointer = REINTERPRET_CAST(uintptr_t, p);
-   pointer = (pointer + STATIC_CAST(uintptr_t, sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1)) & STATIC_CAST(uintptr_t, ~STATIC_CAST(uintptr_t, SIMD_BYTE_ALIGNMENT - 1));
+   pointer = (pointer + STATIC_CAST(uintptr_t, sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1)) & 
+      STATIC_CAST(uintptr_t, ~STATIC_CAST(uintptr_t, SIMD_BYTE_ALIGNMENT - 1));
    *(REINTERPRET_CAST(void **, pointer) - 1) = p;
    return REINTERPRET_CAST(void *, pointer);
 }

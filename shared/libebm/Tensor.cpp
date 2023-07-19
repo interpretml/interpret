@@ -43,6 +43,7 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
    pTensor->m_cTensorScoreCapacity = cTensorScoreCapacity;
    pTensor->m_bExpanded = false;
 
+   // this isn't required to be aligned, but do it anyways to keep as much of it on a single cache line as possible
    FloatFast * const aTensorScores = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cTensorScoreCapacity));
    if(UNLIKELY(nullptr == aTensorScores)) {
       LOG_0(Trace_Warning, "WARNING Allocate nullptr == aTensorScores");
