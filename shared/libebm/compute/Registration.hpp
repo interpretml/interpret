@@ -207,7 +207,7 @@ class RegistrationPack final : public Registration {
    }
 
    template<typename TParam, typename... ArgsConverted>
-   INLINE_ALWAYS static void UnpackRecursive(std::vector<const char *> & paramNames, const TParam param, const ArgsConverted...args) {
+   INLINE_ALWAYS static void UnpackRecursive(std::vector<const char *> & paramNames, const TParam param, const ArgsConverted &... args) {
       static_assert(std::is_base_of<ParamBase, TParam>::value, "RegistrationPack::UnpackRecursive TParam must derive from ParamBase");
       CheckParamNames(param.GetParamName(), paramNames);
       UnpackRecursive(paramNames, args...);
@@ -220,7 +220,7 @@ class RegistrationPack final : public Registration {
       const char * const sRegistrationEnd,
       void * const pWrapperOut,
       const size_t & cUsedParams,
-      const ArgsConverted...args
+      const ArgsConverted &... args
    ) {
       // The registration string has been processed so we now have either the default param values or we have the parameter
       // values specified in the registration string.  Now we need to verify that there weren't any unused parameters,
@@ -293,12 +293,12 @@ class RegistrationPack final : public Registration {
 
 public:
 
-   RegistrationPack(const char * sRegistrationName, const Args...args) : Registration(sRegistrationName) {
+   RegistrationPack(const char * sRegistrationName, const Args &... args) : Registration(sRegistrationName) {
 
       std::vector<const char *> usedParamNames;
       UnpackRecursive(usedParamNames, args...);
 
-      // hide our parameter pack in a lambda so that we don't have to think about it yet.  Seems easier than using a tuple
+      // hide our parameter pack in a lambda so that we don't have to think about it yet. The lambda also makes a copy.
       m_callBack = [args...](
          const Config * const pConfig,
          const char * const sRegistration,
@@ -328,7 +328,7 @@ public:
 };
 
 template<template <typename> class TRegistrable, typename TFloat, typename... Args>
-std::shared_ptr<const Registration> Register(const char * const sRegistrationName, const Args...args) {
+std::shared_ptr<const Registration> Register(const char * const sRegistrationName, const Args &... args) {
    // ideally we'd be returning unique_ptr here, but we pass this to an initialization list which doesn't work in C++11
    return std::make_shared<const RegistrationPack<TRegistrable, TFloat, Args...>>(sRegistrationName, args...);
 }

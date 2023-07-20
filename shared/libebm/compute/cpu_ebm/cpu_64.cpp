@@ -306,7 +306,7 @@ static_assert(std::is_standard_layout<Cpu_64_Float>::value && std::is_trivially_
 // FIRST, define the RegisterObjective function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions
 template<template <typename> class TRegistrable, typename... Args>
-INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterObjective(const char * const sRegistrationName, const Args...args) {
+INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterObjective(const char * const sRegistrationName, const Args &... args) {
    return Register<TRegistrable, Cpu_64_Float>(sRegistrationName, args...);
 }
 
