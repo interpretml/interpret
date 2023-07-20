@@ -7,7 +7,7 @@ variables:
 - name: ubuntu_image
   value: ubuntu-20.04
 - name: mac_image
-  value: macOS-11
+  value: macOS-13
 - name: windows_image
   value: windows-2022
 
