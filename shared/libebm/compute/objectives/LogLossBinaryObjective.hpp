@@ -74,7 +74,7 @@ struct LogLossBinaryObjective : BinaryObjective {
    }
 
    template<size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
-   GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
+   GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
       static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");
       static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");

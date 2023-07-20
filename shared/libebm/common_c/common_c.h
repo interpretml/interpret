@@ -136,6 +136,7 @@ extern "C" {
 #endif // __has_builtin(__builtin_unpredictable)
 
 #define INLINE_ALWAYS inline __attribute__((always_inline))
+#define NEVER_INLINE inline __attribute__((noinline))
 
 // TODO : use EBM_RESTRICT_FUNCTION_RETURN EBM_RESTRICT_PARAM_VARIABLE and EBM_NOALIAS.  This helps performance by telling the compiler that pointers are 
 //   not aliased
@@ -155,6 +156,7 @@ extern "C" {
 #define PREDICTABLE(b) (b)
 #define UNPREDICTABLE(b) (b)
 #define INLINE_ALWAYS inline __forceinline
+#define NEVER_INLINE inline __declspec(noinline)
 
 #else // compiler type
 #error compiler not recognized

@@ -21,7 +21,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
-GPU_DEVICE static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams) {
+GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams) {
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
 #ifndef GPU_COMPILE
