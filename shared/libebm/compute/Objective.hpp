@@ -41,7 +41,7 @@ struct RegressionMultitaskObjective;
 
 
 template<typename TFloat>
-class alignas(sizeof(TFloat)) GradientHessian {
+class alignas(alignof(TFloat)) GradientHessian {
    TFloat m_gradient;
    TFloat m_hessian;
 

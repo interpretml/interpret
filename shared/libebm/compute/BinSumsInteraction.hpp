@@ -45,10 +45,10 @@ GPU_DEVICE static void BinSumsInteractionInternal(BinSumsInteractionBridge * con
    const typename TFloat::T * pGradientAndHessian = reinterpret_cast<const typename TFloat::T *>(pParams->m_aGradientsAndHessians);
    const typename TFloat::T * const pGradientsAndHessiansEnd = pGradientAndHessian + (bHessian ? size_t { 2 } : size_t { 1 }) * cScores * cSamples;
 
-   struct alignas(sizeof(typename TFloat::TInt)) DimensionalData {
+   struct alignas(EbmMax(alignof(typename TFloat::TInt), alignof(void *), alignof(size_t), alignof(int))) DimensionalData {
       // C struct packing rules say these will be aligned within the struct to sizeof(typename TFloat::TInt)
       // and the compiler should (although some compilers have bugs) align the entire struct on the stack to 
-      // sizeof(typename TFloat::TInt) from the alignas directive above
+      // alignof(typename TFloat::TInt) from the alignas directive above assuming TFloat::TInt is a large SIMD type
       typename TFloat::TInt iBinCombined;
       typename TFloat::TInt maskBits;
       const typename TFloat::TInt::T * m_pData;
@@ -61,7 +61,7 @@ GPU_DEVICE static void BinSumsInteractionInternal(BinSumsInteractionBridge * con
    const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, pParams->m_cRuntimeRealDimensions);
 
    // this is on the stack and the compiler should be able to optimize these as if they were variables or registers
-   alignas(sizeof(typename TFloat::TInt)) DimensionalData aDimensionalData[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+   DimensionalData aDimensionalData[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
    size_t iDimensionInit = 0;
    do {
       DimensionalData * const pDimensionalData = &aDimensionalData[iDimensionInit];

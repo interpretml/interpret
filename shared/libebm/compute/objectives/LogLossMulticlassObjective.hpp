@@ -102,7 +102,7 @@ struct LogLossMulticlassObjective : MulticlassObjective {
       EBM_ASSERT(nullptr != pData->m_aTargets);
 #endif // GPU_COMPILE
 
-      alignas(sizeof(TFloat)) typename TFloat::T
+      alignas(alignof(TFloat)) typename TFloat::T
          aLocalExpVector[bDynamic ? size_t { 1 } : (cCompilerScores * size_t { TFloat::k_cSIMDPack })];
       typename TFloat::T * const aExps = bDynamic ? 
          reinterpret_cast<typename TFloat::T *>(pData->m_aMulticlassMidwayTemp) : aLocalExpVector;
