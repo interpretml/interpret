@@ -45,28 +45,29 @@ GPU_DEVICE static void BinSumsInteractionInternal(BinSumsInteractionBridge * con
    const typename TFloat::T * pGradientAndHessian = reinterpret_cast<const typename TFloat::T *>(pParams->m_aGradientsAndHessians);
    const typename TFloat::T * const pGradientsAndHessiansEnd = pGradientAndHessian + (bHessian ? size_t { 2 } : size_t { 1 }) * cScores * cSamples;
 
-   struct DimensionalData {
+   struct alignas(sizeof(typename TFloat::TInt)) DimensionalData {
+      // C struct packing rules say these will be aligned within the struct to sizeof(typename TFloat::TInt)
+      // and the compiler should (although some compilers have bugs) align the entire struct on the stack to 
+      // sizeof(typename TFloat::TInt) from the alignas directive above
+      typename TFloat::TInt iBinCombined;
+      typename TFloat::TInt maskBits;
+      const typename TFloat::TInt::T * m_pData;
+      size_t m_cBins;
       int m_cShift;
       int m_cBitsPerItemMax;
-      size_t m_cBins;
-      const typename TFloat::TInt::T * m_pData;
       int m_cShiftReset;
    };
-   alignas(sizeof(typename TFloat::TInt)) typename TFloat::TInt aiBinCombined[(k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions)];
-   alignas(sizeof(typename TFloat::TInt)) typename TFloat::TInt aMaskBits[(k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions)];
-   typename TFloat::TInt * const aiBinCombinedShifted = &aiBinCombined[1];
-   typename TFloat::TInt * const aMaskBitsShifted = &aMaskBits[1];
 
    const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, pParams->m_cRuntimeRealDimensions);
 
    // this is on the stack and the compiler should be able to optimize these as if they were variables or registers
-   DimensionalData aDimensionalData[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+   alignas(sizeof(typename TFloat::TInt)) DimensionalData aDimensionalData[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
    size_t iDimensionInit = 0;
    do {
       DimensionalData * const pDimensionalData = &aDimensionalData[iDimensionInit];
 
       const typename TFloat::TInt::T * const pData = reinterpret_cast<const typename TFloat::TInt::T *>(pParams->m_aaPacked[iDimensionInit]);
-      aiBinCombined[iDimensionInit] = TFloat::TInt::Load(pData);
+      pDimensionalData->iBinCombined = TFloat::TInt::Load(pData);
       pDimensionalData->m_pData = pData + TFloat::TInt::k_cSIMDPack;
 
       const int cItemsPerBitPack = static_cast<int>(pParams->m_acItemsPerBitPack[iDimensionInit]);
@@ -85,7 +86,7 @@ GPU_DEVICE static void BinSumsInteractionInternal(BinSumsInteractionBridge * con
       pDimensionalData->m_cShift = (static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) + 1) * cBitsPerItemMax;
       pDimensionalData->m_cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
-      aMaskBits[iDimensionInit] = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
+      pDimensionalData->maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
       pDimensionalData->m_cBins = pParams->m_acBins[iDimensionInit];
 
@@ -133,12 +134,12 @@ GPU_DEVICE static void BinSumsInteractionInternal(BinSumsInteractionBridge * con
                // this point simultaneously
                return;
             }
-            aiBinCombinedShifted[-1] = TFloat::TInt::Load(pDimensionalData->m_pData);
+            pDimensionalData->iBinCombined = TFloat::TInt::Load(pDimensionalData->m_pData);
             pDimensionalData->m_pData = pDimensionalData->m_pData + TFloat::TInt::k_cSIMDPack;
             pDimensionalData->m_cShift = pDimensionalData->m_cShiftReset;
          }
 
-         const typename TFloat::TInt iBin = (aiBinCombinedShifted[-1] >> pDimensionalData->m_cShift) & aMaskBitsShifted[-1];
+         const typename TFloat::TInt iBin = (pDimensionalData->iBinCombined >> pDimensionalData->m_cShift) & pDimensionalData->maskBits;
 
          const size_t cBins = pDimensionalData->m_cBins;
          // earlier we return an interaction strength of 0.0 on any useless dimensions having 1 bin
@@ -165,12 +166,12 @@ GPU_DEVICE static void BinSumsInteractionInternal(BinSumsInteractionBridge * con
 
             pDimensionalData->m_cShift -= pDimensionalData->m_cBitsPerItemMax;
             if(pDimensionalData->m_cShift < 0) {
-               aiBinCombinedShifted[iDimension] = TFloat::TInt::Load(pDimensionalData->m_pData);
+               pDimensionalData->iBinCombined = TFloat::TInt::Load(pDimensionalData->m_pData);
                pDimensionalData->m_pData = pDimensionalData->m_pData + TFloat::TInt::k_cSIMDPack;
                pDimensionalData->m_cShift = pDimensionalData->m_cShiftReset;
             }
 
-            const typename TFloat::TInt iBin = (aiBinCombinedShifted[iDimension] >> pDimensionalData->m_cShift) & aMaskBitsShifted[iDimension];
+            const typename TFloat::TInt iBin = (pDimensionalData->iBinCombined >> pDimensionalData->m_cShift) & pDimensionalData->maskBits;
 
             const size_t cBins = pDimensionalData->m_cBins;
             // earlier we return an interaction strength of 0.0 on any useless dimensions having 1 bin
