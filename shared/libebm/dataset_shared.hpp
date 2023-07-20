@@ -16,12 +16,10 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-typedef UIntEbm SharedStorageDataType;
-static constexpr size_t k_cBitsForSharedStorageType = COUNT_BITS(SharedStorageDataType);
-
+typedef UIntEbm UIntShared;
 struct SparseFeatureDataSetSharedEntry {
-   SharedStorageDataType m_iSample;
-   SharedStorageDataType m_nonDefaultVal;
+   UIntShared m_iSample;
+   UIntShared m_nonDefaultVal;
 };
 static_assert(std::is_standard_layout<SparseFeatureDataSetSharedEntry>::value,
    "These structs are shared between processes, so they definetly need to be standard layout and trivial");
@@ -30,13 +28,13 @@ static_assert(std::is_trivial<SparseFeatureDataSetSharedEntry>::value,
 
 extern ErrorEbm GetDataSetSharedHeader(
    const unsigned char * const pDataSetShared,
-   SharedStorageDataType * const pcSamplesOut,
+   UIntShared * const pcSamplesOut,
    size_t * const pcFeaturesOut,
    size_t * const pcWeightsOut,
    size_t * const pcTargetsOut
 );
 
-// GetDataSetSharedFeature will return either (SparseFeatureDataSetSharedEntry *) or (SharedStorageDataType *)
+// GetDataSetSharedFeature will return either (SparseFeatureDataSetSharedEntry *) or (UIntShared *)
 extern const void * GetDataSetSharedFeature(
    const unsigned char * const pDataSetShared,
    const size_t iFeature,
@@ -44,8 +42,8 @@ extern const void * GetDataSetSharedFeature(
    bool * const pbUnknownOut,
    bool * const pbNominalOut,
    bool * const pbSparseOut,
-   SharedStorageDataType * const pcBinsOut,
-   SharedStorageDataType * const pDefaultValSparseOut,
+   UIntShared * const pcBinsOut,
+   UIntShared * const pDefaultValSparseOut,
    size_t * const pcNonDefaultsSparseOut
 );
 
@@ -54,7 +52,7 @@ extern const FloatFast * GetDataSetSharedWeight(
    const size_t iWeight
 );
 
-// GetDataSetSharedTarget returns (FloatFast *) for regression and (SharedStorageDataType *) for classification
+// GetDataSetSharedTarget returns (FloatFast *) for regression and (UIntShared *) for classification
 extern const void * GetDataSetSharedTarget(
    const unsigned char * const pDataSetShared,
    const size_t iTarget,

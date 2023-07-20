@@ -8,7 +8,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_internal.hpp" // SafeConvertFloat
-#include "dataset_shared.hpp" // SharedStorageDataType
+#include "dataset_shared.hpp" // UIntShared
 #include "DataSetInteraction.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -106,8 +106,8 @@ ErrorEbm DataSetInteraction::InitFeatureData(
       bool bUnknown;
       bool bNominal;
       bool bSparse;
-      SharedStorageDataType countBins;
-      SharedStorageDataType defaultValSparse;
+      UIntShared countBins;
+      UIntShared defaultValSparse;
       size_t cNonDefaultsSparse;
       const void * aFeatureDataFrom = GetDataSetSharedFeature(
          pDataSetShared,
@@ -132,27 +132,27 @@ ErrorEbm DataSetInteraction::InitFeatureData(
       
          const unsigned int cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
          EBM_ASSERT(1 <= cBitsRequiredMin);
-         EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType); // comes from shared data set
+         EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(UIntShared)); // comes from shared data set
          EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT); // since cBins fits into size_t (previous call to GetDataSetSharedFeature)
 
-         const size_t cItemsPerBitPackFrom = GetCountItemsBitPacked<SharedStorageDataType>(cBitsRequiredMin);
+         const size_t cItemsPerBitPackFrom = GetCountItemsBitPacked<UIntShared>(cBitsRequiredMin);
          EBM_ASSERT(1 <= cItemsPerBitPackFrom);
-         EBM_ASSERT(cItemsPerBitPackFrom <= k_cBitsForSharedStorageType);
+         EBM_ASSERT(cItemsPerBitPackFrom <= COUNT_BITS(UIntShared));
 
-         const size_t cBitsPerItemMaxFrom = GetCountBits<SharedStorageDataType>(cItemsPerBitPackFrom);
+         const size_t cBitsPerItemMaxFrom = GetCountBits<UIntShared>(cItemsPerBitPackFrom);
          EBM_ASSERT(1 <= cBitsPerItemMaxFrom);
-         EBM_ASSERT(cBitsPerItemMaxFrom <= k_cBitsForSharedStorageType);
+         EBM_ASSERT(cBitsPerItemMaxFrom <= COUNT_BITS(UIntShared));
 
-         // we can only guarantee that cBitsPerItemMaxFrom is less than or equal to k_cBitsForSharedStorageType
+         // we can only guarantee that cBitsPerItemMaxFrom is less than or equal to COUNT_BITS(UIntShared)
          // so we need to construct our mask in that type, but afterwards we can convert it to a 
          // StorageDataType since we know the ultimate answer must fit into that. If in theory 
-         // SharedStorageDataType were allowed to be a billion, then the mask could be 65 bits while the end
+         // UIntShared were allowed to be a billion, then the mask could be 65 bits while the end
          // result would be forced to be 64 bits or less since we use the maximum number of bits per item possible
-         const UIntExceed maskBitsFrom = static_cast<UIntExceed>(MakeLowMask<SharedStorageDataType>(cBitsPerItemMaxFrom));
+         const UIntExceed maskBitsFrom = static_cast<UIntExceed>(MakeLowMask<UIntShared>(cBitsPerItemMaxFrom));
 
          ptrdiff_t iShiftFrom = static_cast<ptrdiff_t>((cSharedSamples - size_t { 1 }) % cItemsPerBitPackFrom);
 
-         const SharedStorageDataType * pFeatureDataFrom = static_cast<const SharedStorageDataType *>(aFeatureDataFrom);
+         const UIntShared * pFeatureDataFrom = static_cast<const UIntShared *>(aFeatureDataFrom);
          const BagEbm * pSampleReplication = aBag;
          BagEbm replication = 0;
          UIntExceed iFeatureBin;
@@ -222,10 +222,10 @@ ErrorEbm DataSetInteraction::InitFeatureData(
                            pFeatureDataFrom += cCompleteAdvanced;
                         }
 
-                        const SharedStorageDataType bitsFrom = *pFeatureDataFrom;
+                        const UIntShared bitsFrom = *pFeatureDataFrom;
 
                         EBM_ASSERT(0 <= iShiftFrom);
-                        EBM_ASSERT(static_cast<size_t>(iShiftFrom) * cBitsPerItemMaxFrom < k_cBitsForSharedStorageType);
+                        EBM_ASSERT(static_cast<size_t>(iShiftFrom) * cBitsPerItemMaxFrom < COUNT_BITS(UIntShared));
                         iFeatureBin = static_cast<UIntExceed>(bitsFrom >>
                            (iShiftFrom * cBitsPerItemMaxFrom)) & maskBitsFrom;
 

@@ -12,7 +12,7 @@
 #include "RandomNondeterministic.hpp" // RandomNondeterministic
 #include "Feature.hpp" // Feature
 #include "Term.hpp" // Term
-#include "dataset_shared.hpp" // SharedStorageDataType
+#include "dataset_shared.hpp" // UIntShared
 #include "DataSetBoosting.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -236,8 +236,8 @@ ErrorEbm DataSetBoosting::InitTargetData(
 
    BagEbm replication = 0;
    if(IsClassification(cClasses)) {
-      const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargets);
-      SharedStorageDataType iData;
+      const UIntShared * pTargetFrom = static_cast<const UIntShared *>(aTargets);
+      UIntShared iData;
       do {
          const size_t cSubsetSamples = pSubset->m_cSamples;
          EBM_ASSERT(1 <= cSubsetSamples);
@@ -274,7 +274,7 @@ ErrorEbm DataSetBoosting::InitTargetData(
 
 #ifndef NDEBUG
                // this was checked when creating the shared dataset
-               EBM_ASSERT(iData < static_cast<SharedStorageDataType>(cClasses));
+               EBM_ASSERT(iData < static_cast<UIntShared>(cClasses));
                EBM_ASSERT(!IsConvertError<size_t>(iData)); // since cClasses came from size_t
                if(sizeof(UInt_Small) == pSubset->m_pObjective->m_cUIntBytes) {
                   // we checked earlier that cClasses - 1 would fit into UInt_Small
@@ -367,7 +367,7 @@ struct FeatureDimension {
    size_t m_maskBitsFrom;
    ptrdiff_t m_iShiftFrom;
 
-   const SharedStorageDataType * m_pFeatureDataFrom;
+   const UIntShared * m_pFeatureDataFrom;
    size_t m_cBins;
 };
 static_assert(std::is_standard_layout<FeatureDimension>::value,
@@ -430,8 +430,8 @@ ErrorEbm DataSetBoosting::InitTermData(
                bool bUnknown;
                bool bNominal;
                bool bSparse;
-               SharedStorageDataType cBinsUnused;
-               SharedStorageDataType defaultValSparse;
+               UIntShared cBinsUnused;
+               UIntShared defaultValSparse;
                size_t cNonDefaultsSparse;
                const void * pFeatureDataFrom = GetDataSetSharedFeature(
                   pDataSetShared,
@@ -450,28 +450,28 @@ ErrorEbm DataSetBoosting::InitTermData(
                EBM_ASSERT(!IsConvertError<size_t>(cBinsUnused)); // since we previously extracted cBins and checked
                EBM_ASSERT(static_cast<size_t>(cBinsUnused) == cBins);
 
-               pDimensionInfoInit->m_pFeatureDataFrom = static_cast<const SharedStorageDataType *>(pFeatureDataFrom);
+               pDimensionInfoInit->m_pFeatureDataFrom = static_cast<const UIntShared *>(pFeatureDataFrom);
                pDimensionInfoInit->m_cBins = cBins;
 
                const unsigned int cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
                EBM_ASSERT(1 <= cBitsRequiredMin);
-               EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSharedStorageType); // comes from shared data set
+               EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(UIntShared)); // comes from shared data set
                EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT); // since cBins fits into size_t (previous call to GetDataSetSharedFeature)
 
-               const size_t cItemsPerBitPackFrom = GetCountItemsBitPacked<SharedStorageDataType>(cBitsRequiredMin);
+               const size_t cItemsPerBitPackFrom = GetCountItemsBitPacked<UIntShared>(cBitsRequiredMin);
                EBM_ASSERT(1 <= cItemsPerBitPackFrom);
-               EBM_ASSERT(cItemsPerBitPackFrom <= k_cBitsForSharedStorageType);
+               EBM_ASSERT(cItemsPerBitPackFrom <= COUNT_BITS(UIntShared));
 
-               const size_t cBitsPerItemMaxFrom = GetCountBits<SharedStorageDataType>(cItemsPerBitPackFrom);
+               const size_t cBitsPerItemMaxFrom = GetCountBits<UIntShared>(cItemsPerBitPackFrom);
                EBM_ASSERT(1 <= cBitsPerItemMaxFrom);
-               EBM_ASSERT(cBitsPerItemMaxFrom <= k_cBitsForSharedStorageType);
+               EBM_ASSERT(cBitsPerItemMaxFrom <= COUNT_BITS(UIntShared));
 
-               // we can only guarantee that cBitsPerItemMaxFrom is less than or equal to k_cBitsForSharedStorageType
+               // we can only guarantee that cBitsPerItemMaxFrom is less than or equal to COUNT_BITS(UIntShared)
                // so we need to construct our mask in that type, but afterwards we can convert it to a 
                // size_t since we know the ultimate answer must fit into that since cBins fits into a size_t. If in theory 
-               // SharedStorageDataType were allowed to be a billion bits, then the mask could be 65 bits while the end
+               // UIntShared were allowed to be a billion bits, then the mask could be 65 bits while the end
                // result would be forced to be 64 bits or less since we use the maximum number of bits per item possible
-               const size_t maskBitsFrom = static_cast<size_t>(MakeLowMask<SharedStorageDataType>(cBitsPerItemMaxFrom));
+               const size_t maskBitsFrom = static_cast<size_t>(MakeLowMask<UIntShared>(cBitsPerItemMaxFrom));
 
                pDimensionInfoInit->m_cItemsPerBitPackFrom = cItemsPerBitPackFrom;
                pDimensionInfoInit->m_cBitsPerItemMaxFrom = cBitsPerItemMaxFrom;
@@ -570,12 +570,12 @@ ErrorEbm DataSetBoosting::InitTermData(
                         size_t tensorMultiple = 1;
                         FeatureDimension * pDimensionInfo = dimensionInfo;
                         do {
-                           const SharedStorageDataType * const pFeatureDataFrom = pDimensionInfo->m_pFeatureDataFrom;
-                           const SharedStorageDataType bitsFrom = *pFeatureDataFrom;
+                           const UIntShared * const pFeatureDataFrom = pDimensionInfo->m_pFeatureDataFrom;
+                           const UIntShared bitsFrom = *pFeatureDataFrom;
 
                            ptrdiff_t iShiftFrom = pDimensionInfo->m_iShiftFrom;
                            EBM_ASSERT(0 <= iShiftFrom);
-                           EBM_ASSERT(static_cast<size_t>(iShiftFrom) * pDimensionInfo->m_cBitsPerItemMaxFrom < k_cBitsForSharedStorageType);
+                           EBM_ASSERT(static_cast<size_t>(iShiftFrom) * pDimensionInfo->m_cBitsPerItemMaxFrom < COUNT_BITS(UIntShared));
                            const size_t iFeatureBin = static_cast<size_t>(bitsFrom >>
                               (static_cast<size_t>(iShiftFrom) * pDimensionInfo->m_cBitsPerItemMaxFrom)) &
                               pDimensionInfo->m_maskBitsFrom;

@@ -165,7 +165,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       return Error_IllegalParamVal;
    }
 
-   SharedStorageDataType countSamples;
+   UIntShared countSamples;
    size_t cFeatures;
    size_t cWeights;
    size_t cTargets;

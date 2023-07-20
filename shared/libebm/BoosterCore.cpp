@@ -233,7 +233,7 @@ ErrorEbm BoosterCore::Create(
    // give ownership of our object back to the caller, even if there is a failure
    *ppBoosterCoreOut = pBoosterCore;
 
-   SharedStorageDataType countSamples;
+   UIntShared countSamples;
    size_t cFeatures;
    size_t cWeights;
    size_t cTargets;
@@ -287,8 +287,8 @@ ErrorEbm BoosterCore::Create(
          bool bUnknown;
          bool bNominal;
          bool bSparse;
-         SharedStorageDataType countBins;
-         SharedStorageDataType defaultValSparse;
+         UIntShared countBins;
+         UIntShared defaultValSparse;
          size_t cNonDefaultsSparse;
          GetDataSetSharedFeature(
             pDataSetShared,

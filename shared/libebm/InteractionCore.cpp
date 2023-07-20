@@ -133,8 +133,8 @@ ErrorEbm InteractionCore::Create(
          bool bUnknown;
          bool bNominal;
          bool bSparse;
-         SharedStorageDataType countBins;
-         SharedStorageDataType defaultValSparse;
+         UIntShared countBins;
+         UIntShared defaultValSparse;
          size_t cNonDefaultsSparse;
          GetDataSetSharedFeature(
             pDataSetShared,
@@ -546,13 +546,13 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
          }
 
-         const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargetsFrom);
+         const UIntShared * pTargetFrom = static_cast<const UIntShared *>(aTargetsFrom);
 
          const BagEbm * pSampleReplication = aBag;
          const double * pInitScoreFrom = aInitScores;
          BagEbm replication = 0;
          const double * pInitScoreFromOld = nullptr;
-         SharedStorageDataType target;
+         UIntShared target;
 
          DataSubsetInteraction * pSubset = GetDataSetInteraction()->GetSubsets();
          do {
@@ -595,7 +595,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                      // the shared data storage structure ensures that all target values are less than the number of classes
                      // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
                      // so we do not need the runtime to check this
-                     EBM_ASSERT(target < static_cast<SharedStorageDataType>(cClasses));
+                     EBM_ASSERT(target < static_cast<UIntShared>(cClasses));
                   }
 
                   if(sizeof(UInt_Small) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
