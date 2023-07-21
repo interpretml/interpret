@@ -245,7 +245,7 @@ private:
    }
 
 
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore == cCompilerScores, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore == cCompilerScores && !TFloat::bCpu, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm PackApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, k_cItemsPerBitPackNone>(pData);
@@ -264,10 +264,10 @@ private:
          //       number of samples was divisible by the bitpack.  The we can change the code such that the compiler
          //       can optimize away the loop
 
-         return BitPack<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, GetFirstBitPack<typename TFloat::TInt::T>()>::Func(this, pData);
+         return BitPack<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, GetFirstBitPack<typename TFloat::TInt::T>(TObjective::k_cItemsPerBitPackMax, TObjective::k_cItemsPerBitPackMin)>::Func(this, pData);
       }
    }
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore != cCompilerScores, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore != cCompilerScores || TFloat::bCpu, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm PackApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, k_cItemsPerBitPackNone>(pData);
@@ -285,7 +285,7 @@ private:
          if(cCompilerPack == pData->m_cPack) {
             return pObjective->OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, cCompilerPack>(pData);
          } else {
-            return BitPack<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, GetNextBitPack<typename TFloat::TInt::T>(cCompilerPack)>::Func(pObjective, pData);
+            return BitPack<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, GetNextBitPack<typename TFloat::TInt::T>(cCompilerPack, TObjective::k_cItemsPerBitPackMin)>::Func(pObjective, pData);
          }
       }
    };
@@ -685,12 +685,14 @@ protected:
 };
 
 
-#define OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION) \
+#define OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION, cItemsPerBitPackMax, cItemsPerBitPackMin) \
    public: \
       static constexpr bool k_bRmse = false; \
       static constexpr BoolEbm k_bMaximizeMetric = (__MAXIMIZE_METRIC); \
       static constexpr LinkEbm k_linkFunction = (__LINK_FUNCTION); \
       static constexpr OutputType k_outputType = GetOutputType(k_linkFunction); \
+      static constexpr int k_cItemsPerBitPackMax = (cItemsPerBitPackMax); \
+      static constexpr int k_cItemsPerBitPackMin = (cItemsPerBitPackMin); \
       static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->ParentApplyUpdate<const __EBM_TYPE<TFloat>, TFloat>(pData); \
       } \
@@ -717,7 +719,7 @@ protected:
       }
 
 #define OBJECTIVE_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION) \
-   OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION) \
+   OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION, k_cItemsPerBitPackDynamic, k_cItemsPerBitPackDynamic) \
    OBJECTIVE_TEMPLATE_BOILERPLATE
 
 } // DEFINED_ZONE_NAME

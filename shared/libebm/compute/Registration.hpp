@@ -16,6 +16,8 @@
 #include "bridge_c.h" // Config
 #include "zones.h"
 
+#include "bridge_cpp.hpp"
+
 #include "registration_exceptions.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -243,6 +245,9 @@ class RegistrationPack final : public Registration {
                "This allows offsetof, inter-language, GPU and cross-machine access.");
             static_assert(std::is_trivially_copyable<TRegistrable<TFloat>>::value,
                "This allows us to memcpy the struct to a GPU or the network.");
+
+            static_assert(1 <= TRegistrable<TFloat>::k_cItemsPerBitPackMin || (k_cItemsPerBitPackDynamic == TRegistrable<TFloat>::k_cItemsPerBitPackMin && k_cItemsPerBitPackDynamic == TRegistrable<TFloat>::k_cItemsPerBitPackMax), "k_cItemsPerBitPackMin must be positive and can only be zero if both min and max are zero (which means we only use dynamic)");
+            static_assert(TRegistrable<TFloat>::k_cItemsPerBitPackMin <= TRegistrable<TFloat>::k_cItemsPerBitPackMax, "bit pack max less than min");
 
             // use the in-place constructor to constrct our specialized Objective/Metric in our pre-reserved memory
             // this works because the *Objective/Metric classes need to be standard layout and trivially copyable anyways

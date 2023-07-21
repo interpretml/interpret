@@ -14,31 +14,22 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-// 64 or 32 for k_cItemsPerBitPackMax is too big since it'll replicate the objectives 64/32 times
-// 10 replications is probably not too many, and below 10 a loop has more relative cost
-static constexpr int k_cItemsPerBitPackMax = 10;
-// 1 is too low for k_cItemsPerBitPackMin since nobody should have 2^32 bins. 2 is nice since it allows there
-// to be 2^16 bins = 65,536 bins. 3 would only allow 2^10 bins = 1024 which someone might want to exceed.
-static constexpr int k_cItemsPerBitPackMin = 2;
-
-static_assert(1 <= k_cItemsPerBitPackMin || (k_cItemsPerBitPackDynamic == k_cItemsPerBitPackMin && k_cItemsPerBitPackDynamic == k_cItemsPerBitPackMax), "k_cItemsPerBitPackMin must be positive and can only be zero if both min and max are zero (which means we only use dynamic)");
-static_assert(k_cItemsPerBitPackMin <= k_cItemsPerBitPackMax, "bit pack max less than min");
 
 template<typename T>
-inline constexpr static int GetNextBitPack(const int cItemsBitPackedPrev) noexcept {
-   // for 64 bits, the progression is: 64,32,21,16,12,10,9,8,7,6,5,4,3,2,1,0 (optionaly),-1 (never occurs in this function)
+inline constexpr static int GetNextBitPack(const int cItemsBitPackedPrev, const int cItemsPerBitPackMin) noexcept {
+   // for 64 bits, the progression is: 64,32,21,16,12,10,9,8,7,6,5,4,3,2,1,0 (dynamic). -1 never occurs in this function
    // [there are 15 of these + the dynamic case + onebin case]
-   // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1,0 (optionaly),-1 (never occurs in this function)
+   // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1,0 (dynamic). -1 never occurs in this function
    // [which are all included in 64 bits + the dynamic case + onebin case]
    // we can have bit packs of -1, but this function should never see that value
    // this function should also never see the dynamic value 0 because we should terminate the chain at that point
-   return COUNT_BITS(T) / ((COUNT_BITS(T) / cItemsBitPackedPrev) + 1) < k_cItemsPerBitPackMin ? k_cItemsPerBitPackDynamic :
+   return COUNT_BITS(T) / ((COUNT_BITS(T) / cItemsBitPackedPrev) + 1) < cItemsPerBitPackMin ? k_cItemsPerBitPackDynamic :
       COUNT_BITS(T) / ((COUNT_BITS(T) / cItemsBitPackedPrev) + 1);
 }
 
 template<typename T>
-inline constexpr static int GetFirstBitPack() noexcept {
-   return GetNextBitPack<T>(k_cItemsPerBitPackMax + 1);
+inline constexpr static int GetFirstBitPack(int cItemsPerBitPackMax, const int cItemsPerBitPackMin) noexcept {
+   return GetNextBitPack<T>(cItemsPerBitPackMax + 1, cItemsPerBitPackMin);
 }
 
 template<typename T, typename U, U multiplicator, int shiftEnd, int shift>
