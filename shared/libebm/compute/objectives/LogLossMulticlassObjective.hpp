@@ -124,14 +124,9 @@ struct LogLossMulticlassObjective : MulticlassObjective {
       const typename TFloat::TInt::T * pInputData;
 
       if(!bCompilerZeroDimensional) {
-         const int cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
+         const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
 #ifndef GPU_COMPILE
-         EBM_ASSERT(static_cast<int>(k_cItemsPerBitPackNone) != cPack); // we require this condition to be templated
-         EBM_ASSERT(1 <= cPack);
-#endif // GPU_COMPILE
-
-         const int cItemsPerBitPack = cPack;
-#ifndef GPU_COMPILE
+         EBM_ASSERT(static_cast<int>(k_cItemsPerBitPackNone) != cItemsPerBitPack); // we require this condition to be templated
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE

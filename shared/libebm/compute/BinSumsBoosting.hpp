@@ -55,14 +55,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    if(!bCompilerZeroDimensional) {
       cBytesPerBin = static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cScores));
 
-      const int cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
+      const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
 #ifndef GPU_COMPILE
-      EBM_ASSERT(static_cast<int>(k_cItemsPerBitPackNone) != cPack); // we require this condition to be templated
-      EBM_ASSERT(1 <= cPack);
-#endif // GPU_COMPILE
-
-      const int cItemsPerBitPack = cPack;
-#ifndef GPU_COMPILE
+      EBM_ASSERT(static_cast<int>(k_cItemsPerBitPackNone) != cItemsPerBitPack); // we require this condition to be templated
       EBM_ASSERT(1 <= cItemsPerBitPack);
       EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
