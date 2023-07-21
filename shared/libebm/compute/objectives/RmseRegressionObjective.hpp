@@ -120,7 +120,7 @@ struct RmseRegressionObjective : RegressionObjective {
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
-      EBM_ASSERT(0 == pData->m_cSamples % TFloat::k_cSIMDPack);
+      EBM_ASSERT(0 == pData->m_cSamples % size_t { TFloat::k_cSIMDPack });
       EBM_ASSERT(nullptr == pData->m_aSampleScores);
       EBM_ASSERT(1 == pData->m_cScores);
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians);

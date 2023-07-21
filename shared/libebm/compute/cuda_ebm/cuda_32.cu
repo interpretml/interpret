@@ -87,11 +87,11 @@ struct Cuda_32_Int final {
       return Cuda_32_Int(m_data * other);
    }
 
-   GPU_BOTH inline Cuda_32_Int operator>> (unsigned int shift) const noexcept {
+   GPU_BOTH inline Cuda_32_Int operator>> (int shift) const noexcept {
       return Cuda_32_Int(m_data >> shift);
    }
 
-   GPU_BOTH inline Cuda_32_Int operator<< (unsigned int shift) const noexcept {
+   GPU_BOTH inline Cuda_32_Int operator<< (int shift) const noexcept {
       return Cuda_32_Int(m_data << shift);
    }
 

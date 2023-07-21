@@ -80,11 +80,11 @@ struct Cpu_64_Int final {
       return Cpu_64_Int(m_data * other);
    }
 
-   inline Cpu_64_Int operator>> (unsigned int shift) const noexcept {
+   inline Cpu_64_Int operator>> (int shift) const noexcept {
       return Cpu_64_Int(m_data >> shift);
    }
 
-   inline Cpu_64_Int operator<< (unsigned int shift) const noexcept {
+   inline Cpu_64_Int operator<< (int shift) const noexcept {
       return Cpu_64_Int(m_data << shift);
    }
 

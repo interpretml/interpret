@@ -19,7 +19,7 @@ namespace DEFINED_ZONE_NAME {
 
 template<typename T>
 class RandomNondeterministic final {
-   static_assert(!std::is_signed<T>::value, "T must be an unsigned type");
+   static_assert(std::is_unsigned<T>::value, "T must be an unsigned type");
    static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
 
    T m_randomRemainingMax;

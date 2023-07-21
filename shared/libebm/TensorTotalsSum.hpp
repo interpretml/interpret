@@ -227,7 +227,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
 
    //this is a fast way of determining the number of bits (see if the are faster algorithms.. CPU hardware or expoential shifting potentially).  
    // We may use it in the future if we're trying to decide whether to go from (0,0,...,0,0) or (1,1,...,1,1)
-   //unsigned int cBits = 0;
+   //int cBits = 0;
    //{
    //   size_t directionVectorDestroy = directionVector;
    //   while(directionVectorDestroy) {

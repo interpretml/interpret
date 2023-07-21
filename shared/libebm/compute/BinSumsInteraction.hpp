@@ -27,7 +27,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
    EBM_ASSERT(1 <= pParams->m_cSamples);
-   EBM_ASSERT(0 == pParams->m_cSamples % TFloat::k_cSIMDPack);
+   EBM_ASSERT(0 == pParams->m_cSamples % size_t { TFloat::k_cSIMDPack });
    EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
    EBM_ASSERT(nullptr != pParams->m_aFastBins);
    EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == pParams->m_cScores);

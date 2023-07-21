@@ -61,7 +61,7 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   static constexpr size_t k_illegalTermIndex = size_t { static_cast<size_t>(ptrdiff_t { -1 }) };
+   static constexpr size_t k_illegalTermIndex = std::numeric_limits<size_t>::max();
 
    INLINE_ALWAYS void InitializeUnfailing(BoosterCore * const pBoosterCore) {
       m_handleVerification = k_handleVerificationOk;

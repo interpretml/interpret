@@ -94,11 +94,11 @@ struct alignas(k_cAlignment) Avx2_32_Int final {
       return Avx2_32_Int(_mm256_mullo_epi32(m_data, _mm256_set1_epi32(other)));
    }
 
-   inline Avx2_32_Int operator>> (unsigned int shift) const noexcept {
+   inline Avx2_32_Int operator>> (int shift) const noexcept {
       return Avx2_32_Int(_mm256_srli_epi32(m_data, shift));
    }
 
-   inline Avx2_32_Int operator<< (unsigned int shift) const noexcept {
+   inline Avx2_32_Int operator<< (int shift) const noexcept {
       return Avx2_32_Int(_mm256_slli_epi32(m_data, shift));
    }
 
