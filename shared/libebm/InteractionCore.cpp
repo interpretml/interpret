@@ -630,7 +630,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             } while(pTargetToEnd != pTargetTo);
 
             data.m_cScores = cScores;
-            data.m_cPack = static_cast<int>(k_cItemsPerBitPackNone);
+            data.m_cPack = k_cItemsPerBitPackNone;
             data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
             data.m_bValidation = EBM_FALSE;
             data.m_cSamples = pSubset->GetCountSamples();
@@ -719,7 +719,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             } while(pTargetToEnd != pTargetTo);
 
             data.m_cScores = cScores;
-            data.m_cPack = static_cast<int>(k_cItemsPerBitPackNone);
+            data.m_cPack = k_cItemsPerBitPackNone;
             data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
             data.m_bValidation = EBM_FALSE;
             data.m_cSamples = pSubset->GetCountSamples();

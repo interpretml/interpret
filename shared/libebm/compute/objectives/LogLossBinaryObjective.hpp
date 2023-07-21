@@ -73,7 +73,7 @@ struct LogLossBinaryObjective : BinaryObjective {
       return GradientHessian<TFloat>(0.0, 0.0);
    }
 
-   template<size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
+   template<size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, int cCompilerPack>
    GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
       static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");
@@ -111,7 +111,7 @@ struct LogLossBinaryObjective : BinaryObjective {
       } else {
          const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
 #ifndef GPU_COMPILE
-         EBM_ASSERT(static_cast<int>(k_cItemsPerBitPackNone) != cItemsPerBitPack); // we require this condition to be templated
+         EBM_ASSERT(k_cItemsPerBitPackNone != cItemsPerBitPack); // we require this condition to be templated
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE

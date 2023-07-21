@@ -10,7 +10,7 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 #include "common_cpp.hpp" // k_cDimensionsMax
-#include "bridge_cpp.hpp" // k_cItemsPerBitPackDynamic
+#include "bridge_cpp.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

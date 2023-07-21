@@ -93,12 +93,10 @@ inline constexpr static size_t GetArrayScores(const size_t cScores) noexcept {
 // having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in 
 // places where you couldn't do so with variable loop iterations
 #define GET_ITEMS_PER_BIT_PACK(MACRO_compilerBitPack, MACRO_runtimeBitPack) \
-   (k_cItemsPerBitPackDynamic == (MACRO_compilerBitPack) ? (MACRO_runtimeBitPack) : static_cast<int>(MACRO_compilerBitPack))
+   (k_cItemsPerBitPackDynamic == (MACRO_compilerBitPack) ? (MACRO_runtimeBitPack) : (MACRO_compilerBitPack))
 
-static constexpr size_t k_cBitsForStorageType = static_cast<size_t>(COUNT_BITS(StorageDataType));
-
-static constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin
-static constexpr ptrdiff_t k_cItemsPerBitPackDynamic = ptrdiff_t { 0 };
+static constexpr int k_cItemsPerBitPackNone = -1; // this is for when there is only 1 bin
+static constexpr int k_cItemsPerBitPackDynamic = 0;
 
 inline constexpr static bool IsRegressionOutput(const LinkEbm link) noexcept {
    return 

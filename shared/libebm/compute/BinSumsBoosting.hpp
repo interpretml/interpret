@@ -20,7 +20,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
+template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, int cCompilerPack>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
    static_assert(bWeight || !bReplication, "bReplication cannot be true if bWeight is false");
 
@@ -57,7 +57,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
       const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
 #ifndef GPU_COMPILE
-      EBM_ASSERT(static_cast<int>(k_cItemsPerBitPackNone) != cItemsPerBitPack); // we require this condition to be templated
+      EBM_ASSERT(k_cItemsPerBitPackNone != cItemsPerBitPack); // we require this condition to be templated
       EBM_ASSERT(1 <= cItemsPerBitPack);
       EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
@@ -319,19 +319,19 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 }
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
+template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, int cCompilerPack>
 GPU_GLOBAL static void RemoteBinSumsBoosting(BinSumsBoostingBridge * const pParams) {
    BinSumsBoostingInternal<TFloat, bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
 }
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
+template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, int cCompilerPack>
 INLINE_RELEASE_TEMPLATED ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge * const pParams) {
    return TFloat::template OperatorBinSumsBoosting<bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
 }
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BitPackBoosting(BinSumsBoostingBridge * const pParams) {
-   if(static_cast<int>(k_cItemsPerBitPackNone) != pParams->m_cPack) {
+   if(k_cItemsPerBitPackNone != pParams->m_cPack) {
       return OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication, k_cItemsPerBitPackDynamic>(pParams);
    } else {
       // this needs to be special cased because otherwise we would inject comparisons into the dynamic version

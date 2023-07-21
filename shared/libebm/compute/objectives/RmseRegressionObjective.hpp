@@ -106,7 +106,7 @@ struct RmseRegressionObjective : RegressionObjective {
    }
 
 
-   template<size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
+   template<size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, int cCompilerPack>
    GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_oneScore == cCompilerScores, "for RMSE regression there should always be one score");
       static_assert(!bHessian, "for RMSE regression we should never need the hessians");
@@ -144,7 +144,7 @@ struct RmseRegressionObjective : RegressionObjective {
       } else {
          const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
 #ifndef GPU_COMPILE
-         EBM_ASSERT(static_cast<int>(k_cItemsPerBitPackNone) != cItemsPerBitPack); // we require this condition to be templated
+         EBM_ASSERT(k_cItemsPerBitPackNone != cItemsPerBitPack); // we require this condition to be templated
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE

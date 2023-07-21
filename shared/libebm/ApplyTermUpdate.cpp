@@ -148,7 +148,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
             } else {
                ApplyUpdateBridge data;
                data.m_cScores = GetCountScores(pBoosterCore->GetCountClasses());
-               data.m_cPack = 0 == pTerm->GetBitsRequiredMin() ? static_cast<int>(k_cItemsPerBitPackNone) :
+               data.m_cPack = 0 == pTerm->GetBitsRequiredMin() ? k_cItemsPerBitPackNone :
                   GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), pSubset->GetObjectiveWrapper()->m_cUIntBytes);
                data.m_bHessianNeeded = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
                data.m_bValidation = EBM_FALSE;
@@ -191,7 +191,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
 
                ApplyUpdateBridge data;
                data.m_cScores = GetCountScores(pBoosterCore->GetCountClasses());
-               data.m_cPack = 0 == pTerm->GetBitsRequiredMin() ? static_cast<int>(k_cItemsPerBitPackNone) :
+               data.m_cPack = 0 == pTerm->GetBitsRequiredMin() ? k_cItemsPerBitPackNone :
                   GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), pSubset->GetObjectiveWrapper()->m_cUIntBytes);
                // for the validation set we're calculating the metric and updating the scores, but we don't use
                // the gradients, except for the special case of RMSE where the gradients are also the error

@@ -284,7 +284,7 @@ struct Cuda_32_Float final {
    }
 
 
-   template<typename TObjective, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
+   template<typename TObjective, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, int cCompilerPack>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(const Objective * const pObjective, ApplyUpdateBridge * const pData) noexcept {
       // TODO: currently we're duplicating all this code to interface with the GPU for each and every templated
       //       set of options. We should instead call a single non-templated function to handle most of this where
@@ -414,7 +414,7 @@ struct Cuda_32_Float final {
 
 
 
-   template<bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, ptrdiff_t cCompilerPack>
+   template<bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, int cCompilerPack>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge * const pParams) noexcept {
       // TODO: move memory to the GPU and return errors
       static constexpr size_t k_cItems = 5;
