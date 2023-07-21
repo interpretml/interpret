@@ -367,7 +367,7 @@ ErrorEbm BoosterCore::Create(
 
          size_t cAuxillaryBinsForBuildFastTotals = 0;
          size_t cRealDimensions = 0;
-         unsigned int cBitsRequiredMin = 0;
+         int cBitsRequiredMin = 0;
          size_t cTensorBins = 1;
          if(UNLIKELY(0 == cDimensions)) {
             LOG_0(Trace_Info, "INFO BoosterCore::Create empty term");
@@ -458,7 +458,7 @@ ErrorEbm BoosterCore::Create(
 
                   cBitsRequiredMin = CountBitsRequired(cTensorBins - size_t { 1 });
                   EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
-                  EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT);
+                  EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(size_t));
 
                   if(size_t { 1 } == cRealDimensions) {
                      cSingleDimensionBinsMax = EbmMax(cSingleDimensionBinsMax, cSingleDimensionBins);
@@ -1045,7 +1045,7 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
 
          ApplyUpdateBridge data;
          data.m_cScores = cScores;
-         data.m_cPack = k_cItemsPerBitPackNone;
+         data.m_cPack = static_cast<int>(k_cItemsPerBitPackNone);
          data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
          data.m_bValidation = EBM_FALSE;
          data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;

@@ -37,7 +37,7 @@ typedef UIntEbm ActiveDataType; // TODO: in most places we could use size_t for 
 
 struct ApplyUpdateBridge {
    size_t m_cScores;
-   ptrdiff_t m_cPack;
+   int m_cPack;
 
    BoolEbm m_bHessianNeeded;
 
@@ -58,7 +58,7 @@ struct BinSumsBoostingBridge {
    BoolEbm m_bHessian;
    size_t m_cScores;
 
-   ptrdiff_t m_cPack;
+   int m_cPack;
 
    size_t m_cSamples;
    const void * m_aGradientsAndHessians; // float or double
@@ -83,7 +83,7 @@ struct BinSumsInteractionBridge {
 
    size_t m_cRuntimeRealDimensions;
    size_t m_acBins[k_cDimensionsMax];
-   size_t m_acItemsPerBitPack[k_cDimensionsMax];
+   int m_acItemsPerBitPack[k_cDimensionsMax];
    const void * m_aaPacked[k_cDimensionsMax]; // uint64_t or uint32_t
 
    void * m_aFastBins; // Bin<...> (can't use BinBase * since this is only C here)

@@ -43,7 +43,7 @@ class RandomNondeterministic final {
    //
    std::random_device m_generator;
 
-   INLINE_ALWAYS T Shift(const T val, const size_t shift) {
+   INLINE_ALWAYS T Shift(const T val, const int shift) {
       // putting this shift in a function avoids a compiler warning
       return val << shift;
    }
@@ -56,8 +56,8 @@ public:
    }
 
    INLINE_ALWAYS T Next() {
-      static constexpr size_t k_bitsT = COUNT_BITS(T);
-      static constexpr size_t k_bitsRandom = COUNT_BITS(unsigned int);
+      static constexpr int k_bitsT = COUNT_BITS(T);
+      static constexpr int k_bitsRandom = COUNT_BITS(unsigned int);
 
       static_assert(MakeLowMask<T>(k_bitsT) == std::numeric_limits<T>::max(), "T max must be all 1s");
       static_assert(MakeLowMask<unsigned int>(k_bitsRandom) == std::numeric_limits<unsigned int>::max(),
@@ -68,7 +68,7 @@ public:
          "std::random_device::max() must be the max for unsigned int");
 
       T ret = static_cast<T>(m_generator());
-      size_t count = (k_bitsT + k_bitsRandom - 1) / k_bitsRandom - 1;
+      int count = (k_bitsT + k_bitsRandom - 1) / k_bitsRandom - 1;
       while(0 != count) {
          // if k_bitsT == k_bitsRandom then the compiler should optimize this out
          ret = Shift(ret, k_bitsRandom) | static_cast<T>(m_generator());

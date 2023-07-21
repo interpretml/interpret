@@ -206,7 +206,7 @@ typedef double FloatBig;
 // 16 byte alignment works for *most* SIMD implementation, but it's even better to align with the 64 byte cache!
 #define SIMD_BYTE_ALIGNMENT   STATIC_CAST(size_t, 64)
 
-#define COUNT_BITS(uintType)  STATIC_CAST(unsigned int, sizeof(uintType) * CHAR_BIT)
+#define COUNT_BITS(uintType)  STATIC_CAST(int, sizeof(uintType) * CHAR_BIT)
 
 static_assert(COUNT_BITS(uint8_t) == 8, "automated test with compiler");
 static_assert(COUNT_BITS(uint16_t) == 16, "automated test with compiler");

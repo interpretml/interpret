@@ -30,7 +30,7 @@ class Term final {
    size_t m_cRealDimensions;
    size_t m_cTensorBins;
    size_t m_cAuxillaryBins;
-   unsigned int m_cBitsRequiredMin;
+   int m_cBitsRequiredMin;
    int m_cLogEnterGenerateTermUpdateMessages;
    int m_cLogExitGenerateTermUpdateMessages;
    int m_cLogEnterApplyTermUpdateMessages;
@@ -66,11 +66,11 @@ public:
    static Term ** AllocateTerms(const size_t cTerms) noexcept;
    static void FreeTerms(const size_t cTerms, Term ** apTerms) noexcept;
 
-   inline void SetBitsRequiredMin(const unsigned int cBitsRequiredMin) noexcept {
+   inline void SetBitsRequiredMin(const int cBitsRequiredMin) noexcept {
       m_cBitsRequiredMin = cBitsRequiredMin;
    }
 
-   inline unsigned int GetBitsRequiredMin() const noexcept {
+   inline int GetBitsRequiredMin() const noexcept {
       return m_cBitsRequiredMin;
    }
 

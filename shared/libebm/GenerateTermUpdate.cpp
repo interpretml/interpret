@@ -733,15 +733,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          DataSubsetBoosting * pSubset = pBoosterCore->GetTrainingSet()->GetSubsets();
          const DataSubsetBoosting * const pSubsetsEnd = pSubset + pBoosterCore->GetTrainingSet()->GetCountSubsets();
          do {
-            ptrdiff_t cPack;
+            int cPack;
             if(UNLIKELY(IntEbm { 0 } == lastDimensionLeavesMax)) {
                // this is kind of hacky where if any one of a number of things occurs (like we have only 1 leaf)
                // we sum everything into a single bin. The alternative would be to always sum into the tensor bins
                // but then collapse them afterwards into a single bin, but that's more work.
-               cPack = k_cItemsPerBitPackNone;
+               cPack = static_cast<int>(k_cItemsPerBitPackNone);
             } else {
                EBM_ASSERT(1 <= pTerm->GetBitsRequiredMin());
-               cPack = GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes));
+               cPack = GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), pSubset->GetObjectiveWrapper()->m_cUIntBytes);
             }
 
             size_t cBytesPerFastBin;

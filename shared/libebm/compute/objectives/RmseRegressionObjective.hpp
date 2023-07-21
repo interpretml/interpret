@@ -142,22 +142,22 @@ struct RmseRegressionObjective : RegressionObjective {
       if(bCompilerZeroDimensional) {
          updateScore = aUpdateTensorScores[0];
       } else {
-         const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
+         const int cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
 #ifndef GPU_COMPILE
-         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
+         EBM_ASSERT(static_cast<int>(k_cItemsPerBitPackNone) != cPack); // we require this condition to be templated
          EBM_ASSERT(1 <= cPack);
 #endif // GPU_COMPILE
 
-         const int cItemsPerBitPack = static_cast<int>(cPack);
+         const int cItemsPerBitPack = cPack;
 #ifndef GPU_COMPILE
          EBM_ASSERT(1 <= cItemsPerBitPack);
-         EBM_ASSERT(static_cast<size_t>(cItemsPerBitPack) <= COUNT_BITS(typename TFloat::TInt::T));
+         EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-         cBitsPerItemMax = static_cast<int>(GetCountBits<typename TFloat::TInt::T>(static_cast<size_t>(cItemsPerBitPack)));
+         cBitsPerItemMax = GetCountBits<typename TFloat::TInt::T>(cItemsPerBitPack);
 #ifndef GPU_COMPILE
          EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(static_cast<size_t>(cBitsPerItemMax) <= COUNT_BITS(typename TFloat::TInt::T));
+         EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
          cShift = static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;

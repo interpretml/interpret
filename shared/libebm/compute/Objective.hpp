@@ -141,7 +141,7 @@ private:
    }
    template<typename TObjective, typename TFloat, typename std::enable_if<TObjective::IsMultiScore && !std::is_base_of<MulticlassMultitaskObjective, TObjective>::value, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm TypeApplyUpdate(ApplyUpdateBridge * const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cPack) {
+      if(static_cast<int>(k_cItemsPerBitPackNone) == pData->m_cPack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return OptionsApplyUpdate<TObjective, TFloat, k_dynamicScores>(pData);
       } else {
@@ -247,7 +247,7 @@ private:
 
    template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore == cCompilerScores, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm PackApplyUpdate(ApplyUpdateBridge * const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cPack) {
+      if(static_cast<int>(k_cItemsPerBitPackNone) == pData->m_cPack) {
          return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, k_cItemsPerBitPackNone>(pData);
       } else {
          // TODO: we're not currently getting much benefit from having a compile sized bitpack.  We benefit a little
@@ -269,7 +269,7 @@ private:
    }
    template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore != cCompilerScores, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm PackApplyUpdate(ApplyUpdateBridge * const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cPack) {
+      if(static_cast<int>(k_cItemsPerBitPackNone) == pData->m_cPack) {
          return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, k_cItemsPerBitPackNone>(pData);
       } else {
          return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, k_cItemsPerBitPackDynamic>(pData);
@@ -282,7 +282,7 @@ private:
    template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, ptrdiff_t cCompilerPack>
    struct BitPack final {
       INLINE_ALWAYS static ErrorEbm Func(const Objective * const pObjective, ApplyUpdateBridge * const pData) {
-         if(cCompilerPack == pData->m_cPack) {
+         if(static_cast<int>(cCompilerPack) == pData->m_cPack) {
             return pObjective->OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, cCompilerPack>(pData);
          } else {
             return BitPack<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, GetNextBitPack(cCompilerPack)>::Func(pObjective, pData);
@@ -369,22 +369,22 @@ protected:
       if(bCompilerZeroDimensional) {
          updateScore = aUpdateTensorScores[0];
       } else {
-         const ptrdiff_t cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
+         const int cPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
 #ifndef GPU_COMPILE
-         EBM_ASSERT(k_cItemsPerBitPackNone != cPack); // we require this condition to be templated
+         EBM_ASSERT(static_cast<int>(k_cItemsPerBitPackNone) != cPack); // we require this condition to be templated
          EBM_ASSERT(1 <= cPack);
 #endif // GPU_COMPILE
 
-         const int cItemsPerBitPack = static_cast<int>(cPack);
+         const int cItemsPerBitPack = cPack;
 #ifndef GPU_COMPILE
          EBM_ASSERT(1 <= cItemsPerBitPack);
-         EBM_ASSERT(static_cast<size_t>(cItemsPerBitPack) <= COUNT_BITS(typename TFloat::TInt::T));
+         EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-         cBitsPerItemMax = static_cast<int>(GetCountBits<typename TFloat::TInt::T>(static_cast<size_t>(cItemsPerBitPack)));
+         cBitsPerItemMax = GetCountBits<typename TFloat::TInt::T>(cItemsPerBitPack);
 #ifndef GPU_COMPILE
          EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(static_cast<size_t>(cBitsPerItemMax) <= COUNT_BITS(typename TFloat::TInt::T));
+         EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
          cShift = static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;

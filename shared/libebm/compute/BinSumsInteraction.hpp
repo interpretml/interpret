@@ -70,16 +70,16 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
       pDimensionalData->iBinCombined = TFloat::TInt::Load(pData);
       pDimensionalData->m_pData = pData + TFloat::TInt::k_cSIMDPack;
 
-      const int cItemsPerBitPack = static_cast<int>(pParams->m_acItemsPerBitPack[iDimensionInit]);
+      const int cItemsPerBitPack = pParams->m_acItemsPerBitPack[iDimensionInit];
 #ifndef GPU_COMPILE
       EBM_ASSERT(1 <= cItemsPerBitPack);
-      EBM_ASSERT(static_cast<size_t>(cItemsPerBitPack) <= COUNT_BITS(typename TFloat::TInt::T));
+      EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-      const int cBitsPerItemMax = static_cast<int>(GetCountBits<typename TFloat::TInt::T>(static_cast<size_t>(cItemsPerBitPack)));;
+      const int cBitsPerItemMax = GetCountBits<typename TFloat::TInt::T>(cItemsPerBitPack);
 #ifndef GPU_COMPILE
       EBM_ASSERT(1 <= cBitsPerItemMax);
-      EBM_ASSERT(static_cast<size_t>(cBitsPerItemMax) <= COUNT_BITS(typename TFloat::TInt::T));
+      EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
       pDimensionalData->m_cBitsPerItemMax = cBitsPerItemMax;
 

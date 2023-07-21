@@ -420,9 +420,9 @@ static_assert(!IsConvertError<uint8_t>(uint16_t { 255 }), "automated test with c
 static_assert(!IsConvertError<uint8_t>(uint16_t { 0 }), "automated test with compiler");
 
 template<typename T>
-inline static unsigned int CountBitsRequired(T maxValue) noexcept {
+inline static int CountBitsRequired(T maxValue) noexcept {
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
-   unsigned int cBits = 0;
+   int cBits = 0;
    while(T { 0 } != maxValue) {
       ++cBits;
       maxValue >>= 1;
@@ -432,36 +432,34 @@ inline static unsigned int CountBitsRequired(T maxValue) noexcept {
 
 
 
-static constexpr size_t k_cBitsForSizeT = COUNT_BITS(size_t);
-
-inline static unsigned int GetCountItemsBitPacked(const unsigned int cBits, const unsigned int cTotalBytes) noexcept {
-   EBM_ASSERT(size_t { 1 } <= cBits);
+inline static int GetCountItemsBitPacked(const int cBits, const size_t cTotalBytes) noexcept {
+   EBM_ASSERT(1 <= cBits);
    EBM_ASSERT(size_t { 1 } <= cTotalBytes);
-   const unsigned int cTotalBits = cTotalBytes * static_cast<unsigned int>(CHAR_BIT);
+   const int cTotalBits = static_cast<int>(cTotalBytes) * static_cast<int>(CHAR_BIT);
    EBM_ASSERT(cBits <= cTotalBits);
    return cTotalBits / cBits;
 }
 template<typename T>
-inline static size_t GetCountItemsBitPacked(const size_t cBits) noexcept {
+inline static int GetCountItemsBitPacked(const int cBits) noexcept {
    static_assert(std::is_unsigned<T>::value, "T must be unsigned");
-   EBM_ASSERT(size_t { 1 } <= cBits);
+   EBM_ASSERT(1 <= cBits);
    EBM_ASSERT(cBits <= COUNT_BITS(T));
    return COUNT_BITS(T) / cBits;
 }
-inline static unsigned int GetCountBits(const unsigned int cItemsBitPacked, const unsigned int cTotalBytes) noexcept {
+inline static int GetCountBits(const int cItemsBitPacked, const size_t cTotalBytes) noexcept {
    EBM_ASSERT(1 <= cItemsBitPacked);
-   EBM_ASSERT(1 <= cTotalBytes);
-   const unsigned int cTotalBits = cTotalBytes * static_cast<unsigned int>(CHAR_BIT);
+   EBM_ASSERT(size_t { 1 } <= cTotalBytes);
+   const int cTotalBits = static_cast<int>(cTotalBytes) * static_cast<int>(CHAR_BIT);
    EBM_ASSERT(cItemsBitPacked <= cTotalBits);
    return cTotalBits / cItemsBitPacked;
 }
 template<typename T>
-inline constexpr static size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
+inline constexpr static int GetCountBits(const int cItemsBitPacked) noexcept {
    static_assert(std::is_unsigned<T>::value, "T must be unsigned");
    return COUNT_BITS(T) / cItemsBitPacked;
 }
 template<typename T>
-inline constexpr static T MakeLowMask(const size_t cBits) noexcept {
+inline constexpr static T MakeLowMask(const int cBits) noexcept {
    static_assert(std::is_unsigned<T>::value, "T must be unsigned");
    return static_cast<T>(~T { 0 }) >> (COUNT_BITS(T) - cBits);
 }
@@ -475,8 +473,8 @@ static_assert(MakeLowMask<uint8_t>(8) == 255, "automated test with compiler");
 static_assert(MakeLowMask<uint64_t>(64) == uint64_t { 18446744073709551615u }, "automated test with compiler");
 
 inline static bool IsAligned(const void * const p, const size_t cBytesAlignment = SIMD_BYTE_ALIGNMENT) {
-   EBM_ASSERT(1 <= cBytesAlignment);
-   const unsigned int cBits = CountBitsRequired(cBytesAlignment - 1);
+   EBM_ASSERT(size_t { 1 } <= cBytesAlignment);
+   const int cBits = CountBitsRequired(cBytesAlignment - size_t { 1 });
    EBM_ASSERT(size_t { 1 } << cBits == cBytesAlignment);
    const uintptr_t mask = MakeLowMask<uintptr_t>(cBits);
    return uintptr_t { 0 } == (reinterpret_cast<uintptr_t>(p) & mask);

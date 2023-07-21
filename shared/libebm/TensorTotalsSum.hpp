@@ -190,7 +190,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
       size_t m_cLast;
    };
 
-   static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
+   static_assert(k_cDimensionsMax < COUNT_BITS(size_t), "reserve the highest bit for bit manipulation space");
 
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
    const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
@@ -267,15 +267,15 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(
          ++iDimension;
       } while(LIKELY(cRealDimensions != iDimension));
    }
-   const unsigned int cProcessingDimensions = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
-   EBM_ASSERT(cProcessingDimensions < k_cBitsForSizeT);
-   EBM_ASSERT(cProcessingDimensions <= cRealDimensions);
+   const int cProcessingDimensions = static_cast<int>(pTotalsDimensionEnd - totalsDimension);
+   EBM_ASSERT(cProcessingDimensions < COUNT_BITS(size_t));
+   EBM_ASSERT(static_cast<size_t>(cProcessingDimensions) <= cRealDimensions);
    EBM_ASSERT(1 <= cProcessingDimensions);
    // The Clang static analyer just knows that directionVectorDestroy is not zero in the loop above, but it doesn't
    // know if some of the very high bits are set or some of the low ones, so when it iterates by the number of
    // dimesions it doesn't know if it'll hit any bits that would increment pTotalsDimensionEnd.  If pTotalsDimensionEnd
    // is never incremented, then cProcessingDimensions would be zero, and the shift below would become equal to
-   // k_cBitsForSizeT, which would be illegal
+   // COUNT_BITS(size_t), which would be illegal
    ANALYSIS_ASSERT(0 != cProcessingDimensions);
 
    binOut.Zero(cScores, aGradientPairsOut);

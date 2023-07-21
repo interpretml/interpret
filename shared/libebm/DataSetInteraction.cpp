@@ -130,16 +130,16 @@ ErrorEbm DataSetInteraction::InitFeatureData(
          // we don't need any bits to store 1 bin since it's always going to be the only bin available, and also 
          // we return 0.0 on interactions whenever we find a feature with 1 bin before further processing
       
-         const unsigned int cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
+         const int cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
          EBM_ASSERT(1 <= cBitsRequiredMin);
          EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(UIntShared)); // comes from shared data set
-         EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT); // since cBins fits into size_t (previous call to GetDataSetSharedFeature)
+         EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(size_t)); // since cBins fits into size_t (previous call to GetDataSetSharedFeature)
 
-         const size_t cItemsPerBitPackFrom = GetCountItemsBitPacked<UIntShared>(cBitsRequiredMin);
+         const int cItemsPerBitPackFrom = GetCountItemsBitPacked<UIntShared>(cBitsRequiredMin);
          EBM_ASSERT(1 <= cItemsPerBitPackFrom);
          EBM_ASSERT(cItemsPerBitPackFrom <= COUNT_BITS(UIntShared));
 
-         const size_t cBitsPerItemMaxFrom = GetCountBits<UIntShared>(cItemsPerBitPackFrom);
+         const int cBitsPerItemMaxFrom = GetCountBits<UIntShared>(cItemsPerBitPackFrom);
          EBM_ASSERT(1 <= cBitsPerItemMaxFrom);
          EBM_ASSERT(cBitsPerItemMaxFrom <= COUNT_BITS(UIntShared));
 
@@ -150,7 +150,7 @@ ErrorEbm DataSetInteraction::InitFeatureData(
          // result would be forced to be 64 bits or less since we use the maximum number of bits per item possible
          const UIntExceed maskBitsFrom = static_cast<UIntExceed>(MakeLowMask<UIntShared>(cBitsPerItemMaxFrom));
 
-         ptrdiff_t iShiftFrom = static_cast<ptrdiff_t>((cSharedSamples - size_t { 1 }) % cItemsPerBitPackFrom);
+         int iShiftFrom = static_cast<int>((cSharedSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPackFrom));
 
          const UIntShared * pFeatureDataFrom = static_cast<const UIntShared *>(aFeatureDataFrom);
          const BagEbm * pSampleReplication = aBag;
@@ -159,14 +159,12 @@ ErrorEbm DataSetInteraction::InitFeatureData(
 
          DataSubsetInteraction * pSubset = m_aSubsets;
          do {
-            const unsigned int cItemsPerBitPackTo =
-               GetCountItemsBitPacked(cBitsRequiredMin, static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes));
+            const int cItemsPerBitPackTo =
+               GetCountItemsBitPacked(cBitsRequiredMin, pSubset->GetObjectiveWrapper()->m_cUIntBytes);
             EBM_ASSERT(1 <= cItemsPerBitPackTo);
-            EBM_ASSERT(cItemsPerBitPackTo <= static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes * 8));
 
-            const unsigned int cBitsPerItemMaxTo = GetCountBits(cItemsPerBitPackTo, static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes));
+            const int cBitsPerItemMaxTo = GetCountBits(cItemsPerBitPackTo, pSubset->GetObjectiveWrapper()->m_cUIntBytes);
             EBM_ASSERT(1 <= cBitsPerItemMaxTo);
-            EBM_ASSERT(cBitsPerItemMaxTo <= static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes * 8));
 
             const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
             EBM_ASSERT(1 <= cSIMDPack);
@@ -198,7 +196,7 @@ ErrorEbm DataSetInteraction::InitFeatureData(
             memset(pFeatureDataTo, 0, cBytes);
 
             int cShiftTo = static_cast<int>((cParallelSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPackTo)) * cBitsPerItemMaxTo;
-            const unsigned int cShiftResetTo = (cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo;
+            const int cShiftResetTo = (cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo;
             do {
                do {
                   size_t iPartition = 0;
@@ -213,9 +211,9 @@ ErrorEbm DataSetInteraction::InitFeatureData(
                            } while(replication <= BagEbm { 0 });
                            const size_t cAdvances = pSampleReplication - pSampleReplicationOriginal - 1;
 
-                           size_t cCompleteAdvanced = cAdvances / cItemsPerBitPackFrom;
-                           iShiftFrom -= static_cast<ptrdiff_t>(cAdvances % cItemsPerBitPackFrom);
-                           if(iShiftFrom < ptrdiff_t { 0 }) {
+                           size_t cCompleteAdvanced = cAdvances / static_cast<size_t>(cItemsPerBitPackFrom);
+                           iShiftFrom -= static_cast<int>(cAdvances % static_cast<size_t>(cItemsPerBitPackFrom));
+                           if(iShiftFrom < 0) {
                               iShiftFrom += cItemsPerBitPackFrom;
                               ++cCompleteAdvanced;
                            }
@@ -225,7 +223,7 @@ ErrorEbm DataSetInteraction::InitFeatureData(
                         const UIntShared bitsFrom = *pFeatureDataFrom;
 
                         EBM_ASSERT(0 <= iShiftFrom);
-                        EBM_ASSERT(static_cast<size_t>(iShiftFrom) * cBitsPerItemMaxFrom < COUNT_BITS(UIntShared));
+                        EBM_ASSERT(iShiftFrom * cBitsPerItemMaxFrom < COUNT_BITS(UIntShared));
                         iFeatureBin = static_cast<UIntExceed>(bitsFrom >>
                            (iShiftFrom * cBitsPerItemMaxFrom)) & maskBitsFrom;
 
@@ -233,8 +231,8 @@ ErrorEbm DataSetInteraction::InitFeatureData(
                         EBM_ASSERT(static_cast<size_t>(iFeatureBin) < cBins);
 
                         --iShiftFrom;
-                        if(iShiftFrom < ptrdiff_t { 0 }) {
-                           EBM_ASSERT(ptrdiff_t { -1 } == iShiftFrom);
+                        if(iShiftFrom < 0) {
+                           EBM_ASSERT(-1 == iShiftFrom);
                            iShiftFrom += cItemsPerBitPackFrom;
                            ++pFeatureDataFrom;
                         }
@@ -257,7 +255,7 @@ ErrorEbm DataSetInteraction::InitFeatureData(
                      ++iPartition;
                   } while(cSIMDPack != iPartition);
                   cShiftTo -= cBitsPerItemMaxTo;
-               } while(ptrdiff_t { 0 } <= cShiftTo);
+               } while(0 <= cShiftTo);
                cShiftTo = cShiftResetTo;
 
                pFeatureDataTo = IndexByte(pFeatureDataTo, pSubset->m_pObjective->m_cUIntBytes * cSIMDPack);

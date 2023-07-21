@@ -70,7 +70,7 @@ class FeatureInteraction final {
    bool m_bMissing;
    bool m_bUnknown;
    bool m_bNominal;
-   unsigned int m_cBitsRequiredMin;
+   int m_cBitsRequiredMin;
 
 public:
 
@@ -90,16 +90,16 @@ public:
       m_bUnknown = bUnknown;
       m_bNominal = bNominal;
 
-      unsigned int cBitsRequiredMin = 0;
+      int cBitsRequiredMin = 0;
       if(size_t { 1 } < cBins) {
          cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
          EBM_ASSERT(1 <= cBitsRequiredMin);
-         EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT);
+         EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(size_t));
       }
       m_cBitsRequiredMin = cBitsRequiredMin;
    }
 
-   inline unsigned int GetBitsRequiredMin() const noexcept {
+   inline int GetBitsRequiredMin() const noexcept {
       return m_cBitsRequiredMin;
    }
 

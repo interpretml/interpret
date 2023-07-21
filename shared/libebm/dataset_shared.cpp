@@ -531,11 +531,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
          } else {
             // if there is only 1 bin we always know what it will be and we do not need to store anything
             if(UIntShared { 0 } != countSamples && UIntShared { 1 } < countBins) {
-               const unsigned int cBitsRequiredMin = CountBitsRequired(countBins - UIntShared { 1 });
+               const int cBitsRequiredMin = CountBitsRequired(countBins - UIntShared { 1 });
                EBM_ASSERT(1 <= cBitsRequiredMin);
                EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(UIntShared));
 
-               const size_t cItemsPerBitPack = GetCountItemsBitPacked<UIntShared>(cBitsRequiredMin);
+               const int cItemsPerBitPack = GetCountItemsBitPacked<UIntShared>(cBitsRequiredMin);
                EBM_ASSERT(1 <= cItemsPerBitPack);
                EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(UIntShared));
 
@@ -567,12 +567,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
                   return Error_IllegalParamVal;
                }
 
-               const size_t cBitsPerItemMax = GetCountBits<UIntShared>(cItemsPerBitPack);
+               const int cBitsPerItemMax = GetCountBits<UIntShared>(cItemsPerBitPack);
                EBM_ASSERT(1 <= cBitsPerItemMax);
                EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(UIntShared));
 
-               ptrdiff_t cShift = static_cast<ptrdiff_t>(static_cast<size_t>((countSamples - UIntShared { 1 }) % static_cast<UIntShared>(cItemsPerBitPack)) * cBitsPerItemMax);
-               const ptrdiff_t cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - size_t { 1 }) * cBitsPerItemMax);
+               int cShift = static_cast<int>((countSamples - UIntShared { 1 }) % static_cast<UIntShared>(cItemsPerBitPack)) * cBitsPerItemMax;
+               const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
                const UIntShared maskBits = MakeLowMask<UIntShared>(cBitsPerItemMax);
 
@@ -593,7 +593,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
                      }
 
                      cShift -= cBitsPerItemMax;
-                  } while(ptrdiff_t { 0 } <= cShift);
+                  } while(0 <= cShift);
                   cShift = cShiftReset;
                } while(pInputDataEnd != pInputData);
             }
@@ -1119,20 +1119,20 @@ static IntEbm AppendFeature(
 
       // if there is only 1 bin we always know what it will be and we do not need to store anything
       if(size_t { 0 } != cSamples && UIntShared { 1 } < cBins) {
-         const unsigned int cBitsRequiredMin = CountBitsRequired(cBins - UIntShared { 1 });
+         const int cBitsRequiredMin = CountBitsRequired(cBins - UIntShared { 1 });
          EBM_ASSERT(1 <= cBitsRequiredMin);
          EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(UIntShared));
 
-         const size_t cItemsPerBitPack = GetCountItemsBitPacked<UIntShared>(cBitsRequiredMin);
+         const int cItemsPerBitPack = GetCountItemsBitPacked<UIntShared>(cBitsRequiredMin);
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(UIntShared));
 
-         const size_t cBitsPerItemMax = GetCountBits<UIntShared>(cItemsPerBitPack);
+         const int cBitsPerItemMax = GetCountBits<UIntShared>(cItemsPerBitPack);
          EBM_ASSERT(1 <= cBitsPerItemMax);
          EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(UIntShared));
 
          EBM_ASSERT(1 <= cSamples);
-         const size_t cDataUnits = (cSamples - size_t { 1 }) / cItemsPerBitPack + size_t { 1 };
+         const size_t cDataUnits = (cSamples - size_t { 1 }) / static_cast<size_t>(cItemsPerBitPack) + size_t { 1 };
 
          if(IsMultiplyError(sizeof(UIntShared), cDataUnits)) {
             LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(UIntShared), cDataUnits)");
@@ -1160,8 +1160,8 @@ static IntEbm AppendFeature(
             const IntEbm * const pBinIndexsEnd = binIndexes + cSamples;
             UIntShared * pFillData = reinterpret_cast<UIntShared *>(pFillMem + iByteCur);
 
-            ptrdiff_t cShift = static_cast<ptrdiff_t>((cSamples - size_t { 1 }) % cItemsPerBitPack * cBitsPerItemMax);
-            const ptrdiff_t cShiftReset = static_cast<ptrdiff_t>((cItemsPerBitPack - size_t { 1 }) * cBitsPerItemMax);
+            int cShift = static_cast<int>((cSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
+            const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
             const IntEbm indexBinIllegal = countBins - (EBM_FALSE != isUnknown ? IntEbm { 0 } : IntEbm { 1 });
             do {
                UIntShared bits = 0;
@@ -1189,10 +1189,10 @@ static IntEbm AppendFeature(
                   EBM_ASSERT(!IsConvertError<UIntShared>(indexBin));
 
                   EBM_ASSERT(0 <= cShift);
-                  EBM_ASSERT(static_cast<size_t>(cShift) < COUNT_BITS(UIntShared));
+                  EBM_ASSERT(cShift < COUNT_BITS(UIntShared));
                   bits |= static_cast<UIntShared>(indexBin) << cShift;
                   cShift -= cBitsPerItemMax;
-               } while(ptrdiff_t { 0 } <= cShift);
+               } while(0 <= cShift);
                cShift = cShiftReset;
                *pFillData = bits;
                ++pFillData;

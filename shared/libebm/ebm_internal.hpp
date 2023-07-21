@@ -21,7 +21,7 @@
 
 // TODO: try and remove the dependency on bridge_cpp.hpp and common_cpp.hpp in the future once all our templated performance stuff is in the compute zone
 #include "common_cpp.hpp"
-#include "bridge_cpp.hpp" // k_cBitsForStorageType
+#include "bridge_cpp.hpp"
 
 // TODO: try and remove EbmInternal.h from as many places as possible after we've transitioned most of this stuff into common_c.h and common_c.hpp
 

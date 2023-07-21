@@ -362,13 +362,12 @@ struct FeatureDimension {
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   size_t m_cItemsPerBitPackFrom;
-   size_t m_cBitsPerItemMaxFrom;
-   size_t m_maskBitsFrom;
-   ptrdiff_t m_iShiftFrom;
-
    const UIntShared * m_pFeatureDataFrom;
+   size_t m_maskBitsFrom;
    size_t m_cBins;
+   int m_cItemsPerBitPackFrom;
+   int m_cBitsPerItemMaxFrom;
+   int m_iShiftFrom;
 };
 static_assert(std::is_standard_layout<FeatureDimension>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -453,16 +452,16 @@ ErrorEbm DataSetBoosting::InitTermData(
                pDimensionInfoInit->m_pFeatureDataFrom = static_cast<const UIntShared *>(pFeatureDataFrom);
                pDimensionInfoInit->m_cBins = cBins;
 
-               const unsigned int cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
+               const int cBitsRequiredMin = CountBitsRequired(cBins - size_t { 1 });
                EBM_ASSERT(1 <= cBitsRequiredMin);
                EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(UIntShared)); // comes from shared data set
-               EBM_ASSERT(cBitsRequiredMin <= k_cBitsForSizeT); // since cBins fits into size_t (previous call to GetDataSetSharedFeature)
+               EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(size_t)); // since cBins fits into size_t (previous call to GetDataSetSharedFeature)
 
-               const size_t cItemsPerBitPackFrom = GetCountItemsBitPacked<UIntShared>(cBitsRequiredMin);
+               const int cItemsPerBitPackFrom = GetCountItemsBitPacked<UIntShared>(cBitsRequiredMin);
                EBM_ASSERT(1 <= cItemsPerBitPackFrom);
                EBM_ASSERT(cItemsPerBitPackFrom <= COUNT_BITS(UIntShared));
 
-               const size_t cBitsPerItemMaxFrom = GetCountBits<UIntShared>(cItemsPerBitPackFrom);
+               const int cBitsPerItemMaxFrom = GetCountBits<UIntShared>(cItemsPerBitPackFrom);
                EBM_ASSERT(1 <= cBitsPerItemMaxFrom);
                EBM_ASSERT(cBitsPerItemMaxFrom <= COUNT_BITS(UIntShared));
 
@@ -476,7 +475,7 @@ ErrorEbm DataSetBoosting::InitTermData(
                pDimensionInfoInit->m_cItemsPerBitPackFrom = cItemsPerBitPackFrom;
                pDimensionInfoInit->m_cBitsPerItemMaxFrom = cBitsPerItemMaxFrom;
                pDimensionInfoInit->m_maskBitsFrom = maskBitsFrom;
-               pDimensionInfoInit->m_iShiftFrom = static_cast<ptrdiff_t>((cSharedSamples - size_t { 1 }) % cItemsPerBitPackFrom);
+               pDimensionInfoInit->m_iShiftFrom = static_cast<int>((cSharedSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPackFrom));
 
                ++pDimensionInfoInit;
             }
@@ -492,11 +491,11 @@ ErrorEbm DataSetBoosting::InitTermData(
 
          DataSubsetBoosting * pSubset = m_aSubsets;
          do {
-            const unsigned int cItemsPerBitPackTo =
-               GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes));
+            const int cItemsPerBitPackTo =
+               GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), pSubset->GetObjectiveWrapper()->m_cUIntBytes);
             EBM_ASSERT(1 <= cItemsPerBitPackTo);
 
-            const unsigned int cBitsPerItemMaxTo = GetCountBits(cItemsPerBitPackTo, static_cast<unsigned int>(pSubset->GetObjectiveWrapper()->m_cUIntBytes));
+            const int cBitsPerItemMaxTo = GetCountBits(cItemsPerBitPackTo, pSubset->GetObjectiveWrapper()->m_cUIntBytes);
             EBM_ASSERT(1 <= cBitsPerItemMaxTo);
 
             const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
@@ -529,7 +528,7 @@ ErrorEbm DataSetBoosting::InitTermData(
             memset(pTermDataTo, 0, cBytes);
 
             int cShiftTo = static_cast<int>((cParallelSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPackTo)) * cBitsPerItemMaxTo;
-            const unsigned int cShiftResetTo = (cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo;
+            const int cShiftResetTo = (cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo;
             do {
                do {
                   size_t iPartition = 0;
@@ -550,12 +549,12 @@ ErrorEbm DataSetBoosting::InitTermData(
                            if(0 != cAdvances) {
                               FeatureDimension * pDimensionInfo = dimensionInfo;
                               do {
-                                 const size_t cItemsPerBitPackFrom = pDimensionInfo->m_cItemsPerBitPackFrom;
-                                 size_t cCompleteAdvanced = cAdvances / cItemsPerBitPackFrom;
-                                 ptrdiff_t iShiftFrom = pDimensionInfo->m_iShiftFrom;
-                                 iShiftFrom -= static_cast<ptrdiff_t>(cAdvances % cItemsPerBitPackFrom);
+                                 const int cItemsPerBitPackFrom = pDimensionInfo->m_cItemsPerBitPackFrom;
+                                 size_t cCompleteAdvanced = cAdvances / static_cast<size_t>(cItemsPerBitPackFrom);
+                                 int iShiftFrom = pDimensionInfo->m_iShiftFrom;
+                                 iShiftFrom -= static_cast<int>(cAdvances % static_cast<size_t>(cItemsPerBitPackFrom));
                                  pDimensionInfo->m_iShiftFrom = iShiftFrom;
-                                 if(iShiftFrom < ptrdiff_t { 0 }) {
+                                 if(iShiftFrom < 0) {
                                     pDimensionInfo->m_iShiftFrom = iShiftFrom + cItemsPerBitPackFrom;
                                     ++cCompleteAdvanced;
                                  }
@@ -573,11 +572,11 @@ ErrorEbm DataSetBoosting::InitTermData(
                            const UIntShared * const pFeatureDataFrom = pDimensionInfo->m_pFeatureDataFrom;
                            const UIntShared bitsFrom = *pFeatureDataFrom;
 
-                           ptrdiff_t iShiftFrom = pDimensionInfo->m_iShiftFrom;
+                           int iShiftFrom = pDimensionInfo->m_iShiftFrom;
                            EBM_ASSERT(0 <= iShiftFrom);
-                           EBM_ASSERT(static_cast<size_t>(iShiftFrom) * pDimensionInfo->m_cBitsPerItemMaxFrom < COUNT_BITS(UIntShared));
+                           EBM_ASSERT(iShiftFrom * pDimensionInfo->m_cBitsPerItemMaxFrom < COUNT_BITS(UIntShared));
                            const size_t iFeatureBin = static_cast<size_t>(bitsFrom >>
-                              (static_cast<size_t>(iShiftFrom) * pDimensionInfo->m_cBitsPerItemMaxFrom)) &
+                              (iShiftFrom * pDimensionInfo->m_cBitsPerItemMaxFrom)) &
                               pDimensionInfo->m_maskBitsFrom;
 
                            // we check our dataSet when we get the header, and cBins has been checked to fit into size_t
@@ -585,8 +584,8 @@ ErrorEbm DataSetBoosting::InitTermData(
 
                            --iShiftFrom;
                            pDimensionInfo->m_iShiftFrom = iShiftFrom;
-                           if(iShiftFrom < ptrdiff_t { 0 }) {
-                              EBM_ASSERT(ptrdiff_t { -1 } == iShiftFrom);
+                           if(iShiftFrom < 0) {
+                              EBM_ASSERT(-1 == iShiftFrom);
                               pDimensionInfo->m_iShiftFrom = iShiftFrom + pDimensionInfo->m_cItemsPerBitPackFrom;
                               pDimensionInfo->m_pFeatureDataFrom = pFeatureDataFrom + 1;
                            }
@@ -624,7 +623,7 @@ ErrorEbm DataSetBoosting::InitTermData(
                      ++iPartition;
                   } while(cSIMDPack != iPartition);
                   cShiftTo -= cBitsPerItemMaxTo;
-               } while(ptrdiff_t { 0 } <= cShiftTo);
+               } while(0 <= cShiftTo);
                cShiftTo = cShiftResetTo;
 
                pTermDataTo = IndexByte(pTermDataTo, pSubset->m_pObjective->m_cUIntBytes * cSIMDPack);

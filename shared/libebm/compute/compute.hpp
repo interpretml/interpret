@@ -9,7 +9,7 @@
 
 #include "zones.h"
 
-#include "bridge_cpp.hpp" // k_cBitsForStorageType
+#include "bridge_cpp.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
