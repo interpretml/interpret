@@ -10,7 +10,7 @@
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // FloatBig
+#include "common_c.h" // FloatMain
 #include "zones.h"
 
 #include "Bin.hpp" // GetBinSize
@@ -279,7 +279,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    }
    const size_t cTotalBigBins = cTensorBins + cAuxillaryBins;
 
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig, StorageDataType>(pInteractionCore->IsHessian(), cScores);
+   const size_t cBytesPerBigBin = GetBinSize<FloatMain, StorageDataType>(pInteractionCore->IsHessian(), cScores);
    if(IsMultiplyError(cBytesPerBigBin, cTotalBigBins)) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTotalBigBins)");
       return Error_OutOfMemory;
@@ -372,7 +372,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          cScores,
          pInteractionCore->IsHessian(),
          cTensorBins,
-         std::is_same<FloatBig, double>::value,
+         std::is_same<FloatMain, double>::value,
          std::is_same<StorageDataType, uint64_t>::value,
          aBigBins,
          sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes,
@@ -456,7 +456,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          // least important item, which is good, but it also signals an overflow without the weirness of NaNs.
          EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<double>::infinity() == bestGain);
          bestGain = k_illegalGainDouble;
-      } else if(UNLIKELY(bestGain < 0)) {
+      } else if(UNLIKELY(bestGain < 0.0)) {
          // gain can't mathematically be legally negative, but it can be here in the following situations:
          //   1) for impure interaction gain we subtract the parent partial gain, and there can be floating point
          //      noise that makes this slightly negative
@@ -467,7 +467,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          //      here instead of inside the templated function.
 
          EBM_ASSERT(!std::isnan(bestGain));
-         EBM_ASSERT(std::numeric_limits<double>::infinity() != bestGain);
+         // make bestGain k_illegalGainDouble if it's -infinity, otherwise make it zero
          bestGain = std::numeric_limits<double>::lowest() <= bestGain ? 0.0 : k_illegalGainDouble;
       } else {
          EBM_ASSERT(!std::isnan(bestGain));
@@ -478,7 +478,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          *avgInteractionStrengthOut = bestGain;
       }
 
-      EBM_ASSERT(k_illegalGainDouble == bestGain || double { 0 } <= bestGain);
+      EBM_ASSERT(k_illegalGainDouble == bestGain || 0.0 <= bestGain);
       LOG_COUNTED_N(
          pInteractionShell->GetPointerCountLogExitMessages(),
          Trace_Info,

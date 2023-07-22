@@ -435,7 +435,7 @@ ErrorEbm InteractionCore::Create(
          return error;
       }
 
-      if(IsOverflowBinSize<FloatBig, StorageDataType>(bHessian, cScores)) {
+      if(IsOverflowBinSize<FloatMain, StorageDataType>(bHessian, cScores)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsOverflowBinSize overflow");
          return Error_OutOfMemory;
       }

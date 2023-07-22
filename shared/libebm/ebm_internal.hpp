@@ -56,10 +56,12 @@ INLINE_ALWAYS static TTo SafeConvertFloat(const TFrom val) {
 
 // gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small 
 // negative values close to zero that might occur due to numeric instability
-static constexpr FloatBig k_illegalGainFloat = std::numeric_limits<FloatBig>::lowest();
+static constexpr FloatCalc k_illegalGainFloat = std::numeric_limits<FloatCalc>::lowest();
 static constexpr double k_illegalGainDouble = std::numeric_limits<double>::lowest();
-static constexpr FloatBig k_epsilonNegativeGainAllowed = FloatBig { -1e-7 };
 
+#ifndef NDEBUG
+static constexpr FloatCalc k_epsilonNegativeGainAllowed = FloatCalc { -1e-7 };
+#endif // NDEBUG
 
 static constexpr bool k_bUseLogitboost = false;
 

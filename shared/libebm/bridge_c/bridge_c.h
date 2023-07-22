@@ -20,7 +20,7 @@ extern "C" {
 
 #define INTERNAL_IMPORT_EXPORT_INCLUDE extern
 
-// TODO: rename these to FloatBig, UIntBig, FloatSmall, UIntSmall once FloatBig and FloatFast have been eliminated
+// TODO: rename these to FloatBig, UIntBig, FloatSmall, UIntSmall (check that none of these names exist now)
 typedef uint64_t UIntExceed;
 typedef double Float_Big;
 typedef uint64_t UInt_Big;

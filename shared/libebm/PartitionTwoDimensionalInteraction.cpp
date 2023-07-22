@@ -44,15 +44,15 @@ public:
    ) {
       static constexpr size_t cCompilerDimensions = 2;
 
-      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
-      auto * const aBins = aBinsBase->Specialize<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aBins = aBinsBase->Specialize<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
 
 #ifndef NDEBUG
-      auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
 #endif // NDEBUG
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pInteractionCore->GetCountClasses()));
-      const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
+      const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
 
       const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
       EBM_ASSERT(k_dynamicDimensions == cCompilerDimensions || cCompilerDimensions == cRuntimeRealDimensions);
@@ -74,10 +74,10 @@ public:
       auto * const p_DO_NOT_USE_DIRECTLY_11 = IndexBin(aAuxiliaryBins, cBytesPerBin * 3);
       ASSERT_BIN_OK(cBytesPerBin, p_DO_NOT_USE_DIRECTLY_11, pBinsEndDebug);
 
-      Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> bin00;
-      Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> bin01;
-      Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> bin10;
-      Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> bin11;
+      Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> bin00;
+      Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> bin01;
+      Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> bin10;
+      Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> bin11;
 
       // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
       static constexpr bool bUseStackMemory = k_dynamicScores != cCompilerScores;
@@ -93,7 +93,7 @@ public:
 #endif // NDEBUG
 
       // if a negative value were to occur, then it would be due to numeric instability, so clip it to zero here
-      FloatBig bestGain = 0;
+      FloatCalc bestGain = 0;
 
       EBM_ASSERT(2 <= aDimensions[0].m_cBins); // 1 cBins in any dimension returns an interaction score of 0
       aDimensions[0].m_iPoint = 0;
@@ -164,7 +164,7 @@ public:
 #ifndef NDEBUG
                         bAnySplits = true;
 #endif // NDEBUG
-                        FloatBig gain = 0;
+                        FloatCalc gain = 0;
 
                         for(size_t iScore = 0; iScore < cScores; ++iScore) {
                            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
@@ -174,17 +174,17 @@ public:
 
                            // n = numerator (sum_gradients), d = denominator (sum_hessians or weight)
 
-                           const FloatBig n00 = aGradientPairs00[iScore].m_sumGradients;
-                           const FloatBig d00 = bUseLogitBoost ? aGradientPairs00[iScore].GetHess() : bin00.GetWeight();
+                           const FloatCalc n00 = SafeConvertFloat<FloatCalc>(aGradientPairs00[iScore].m_sumGradients);
+                           const FloatCalc d00 = SafeConvertFloat<FloatCalc>(bUseLogitBoost ? aGradientPairs00[iScore].GetHess() : bin00.GetWeight());
 
-                           const FloatBig n01 = aGradientPairs01[iScore].m_sumGradients;
-                           const FloatBig d01 = bUseLogitBoost ? aGradientPairs01[iScore].GetHess() : bin01.GetWeight();
+                           const FloatCalc n01 = SafeConvertFloat<FloatCalc>(aGradientPairs01[iScore].m_sumGradients);
+                           const FloatCalc d01 = SafeConvertFloat<FloatCalc>(bUseLogitBoost ? aGradientPairs01[iScore].GetHess() : bin01.GetWeight());
 
-                           const FloatBig n10 = aGradientPairs10[iScore].m_sumGradients;
-                           const FloatBig d10 = bUseLogitBoost ? aGradientPairs10[iScore].GetHess() : bin10.GetWeight();
+                           const FloatCalc n10 = SafeConvertFloat<FloatCalc>(aGradientPairs10[iScore].m_sumGradients);
+                           const FloatCalc d10 = SafeConvertFloat<FloatCalc>(bUseLogitBoost ? aGradientPairs10[iScore].GetHess() : bin10.GetWeight());
 
-                           const FloatBig n11 = aGradientPairs11[iScore].m_sumGradients;
-                           const FloatBig d11 = bUseLogitBoost ? aGradientPairs11[iScore].GetHess() : bin11.GetWeight();
+                           const FloatCalc n11 = SafeConvertFloat<FloatCalc>(aGradientPairs11[iScore].m_sumGradients);
+                           const FloatCalc d11 = SafeConvertFloat<FloatCalc>(bUseLogitBoost ? aGradientPairs11[iScore].GetHess() : bin11.GetWeight());
 
                            if(0 != (CalcInteractionFlags_Pure & flags)) {
                               // purified gain
@@ -243,39 +243,39 @@ public:
 
                               // if any of the denominators (weights) are zero then the purified gain will be
                               // zero.  Handle it here to avoid division by zero
-                              if(0 != d00 && 0 != d01 && 0 != d10 && 0 != d11) {
+                              if(FloatCalc { 0 } != d00 && FloatCalc { 0 } != d01 && FloatCalc { 0 } != d10 && FloatCalc { 0 } != d11) {
 
                                  // TODO: instead of checking the denominators for zero above, can we do it earlier?
                                  // If we're using hessians then we'd need it here, but we aren't using them yet
 
                                  // calculate what the full updates would be for non-purified:
                                  // u = update (non-purified)
-                                 const FloatBig u00 = n00 / d00;
-                                 const FloatBig u01 = n01 / d01;
-                                 const FloatBig u10 = n10 / d10;
-                                 const FloatBig u11 = n11 / d11;
+                                 const FloatCalc u00 = n00 / d00;
+                                 const FloatCalc u01 = n01 / d01;
+                                 const FloatCalc u10 = n10 / d10;
+                                 const FloatCalc u11 = n11 / d11;
 
                                  // common part of equations (positive for 00 & 11 equations, negative for 01 and 10)
-                                 const FloatBig common = u00 - u01 - u10 + u11;
+                                 const FloatCalc common = u00 - u01 - u10 + u11;
 
                                  // p = purified update
-                                 const FloatBig p00 = common / (FloatBig { 1 } + d00 / d01 + d00 / d10 + d00 / d11);
-                                 const FloatBig p01 = common / (FloatBig { -1 } - d01 / d00 - d01 / d10 - d01 / d11);
-                                 const FloatBig p10 = common / (FloatBig { -1 } - d10 / d00 - d10 / d01 - d10 / d11);
-                                 const FloatBig p11 = common / (FloatBig { 1 } + d11 / d00 + d11 / d01 + d11 / d10);
+                                 const FloatCalc p00 = common / (FloatCalc { 1 } + d00 / d01 + d00 / d10 + d00 / d11);
+                                 const FloatCalc p01 = common / (FloatCalc { -1 } - d01 / d00 - d01 / d10 - d01 / d11);
+                                 const FloatCalc p10 = common / (FloatCalc { -1 } - d10 / d00 - d10 / d01 - d10 / d11);
+                                 const FloatCalc p11 = common / (FloatCalc { 1 } + d11 / d00 + d11 / d01 + d11 / d10);
 
                                  // g = gain
-                                 const FloatBig g00 = EbmStats::CalcPartialGainFromUpdate(p00, d00);
-                                 const FloatBig g01 = EbmStats::CalcPartialGainFromUpdate(p01, d01);
-                                 const FloatBig g10 = EbmStats::CalcPartialGainFromUpdate(p10, d10);
-                                 const FloatBig g11 = EbmStats::CalcPartialGainFromUpdate(p11, d11);
+                                 const FloatCalc g00 = EbmStats::CalcPartialGainFromUpdate(p00, d00);
+                                 const FloatCalc g01 = EbmStats::CalcPartialGainFromUpdate(p01, d01);
+                                 const FloatCalc g10 = EbmStats::CalcPartialGainFromUpdate(p10, d10);
+                                 const FloatCalc g11 = EbmStats::CalcPartialGainFromUpdate(p11, d11);
 
 #ifndef NDEBUG
                                  // r = reconsituted numerator (after purification)
-                                 const FloatBig r00 = p00 * d00;
-                                 const FloatBig r01 = p01 * d01;
-                                 const FloatBig r10 = p10 * d10;
-                                 const FloatBig r11 = p11 * d11;
+                                 const FloatCalc r00 = p00 * d00;
+                                 const FloatCalc r01 = p01 * d01;
+                                 const FloatCalc r10 = p10 * d10;
+                                 const FloatCalc r11 = p11 * d11;
 
                                  // purification means summing any direction gives us zero
                                  EBM_ASSERT(std::abs(r00 + r01) < 0.001);
@@ -336,7 +336,7 @@ public:
          // the bin before the aAuxiliaryBins is the last summation bin of aBinsBase, 
          // which contains the totals of all bins
          const auto * const pTotal = NegativeIndexBin(aAuxiliaryBins, cBytesPerBin);
-         const FloatBig weightAll = pTotal->GetWeight();
+         const FloatMain weightAll = pTotal->GetWeight();
          const auto * const aGradientPairs = pTotal->GetGradientPairs();
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
@@ -344,8 +344,8 @@ public:
 
             static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
             bestGain -= EbmStats::CalcPartialGain(
-               aGradientPairs[iScore].m_sumGradients,
-               bUseLogitBoost ? aGradientPairs[iScore].GetHess() : weightAll
+               SafeConvertFloat<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
+               SafeConvertFloat<FloatCalc>(bUseLogitBoost ? aGradientPairs[iScore].GetHess() : weightAll)
             );
          }
 
@@ -362,7 +362,7 @@ public:
          // BUT, for debugging purposes, check here for that condition so that we can check for illegal negative gain.
 
          EBM_ASSERT(std::isnan(bestGain) ||
-            -std::numeric_limits<FloatBig>::infinity() == bestGain ||
+            -std::numeric_limits<FloatCalc>::infinity() == bestGain ||
             k_epsilonNegativeGainAllowed <= bestGain || !bAnySplits);
       }
 

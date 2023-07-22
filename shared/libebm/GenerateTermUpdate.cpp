@@ -65,7 +65,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
    const size_t cSamplesLeafMin,
    const size_t cSplitsMax,
    const size_t cSamplesTotal,
-   const FloatBig weightTotal,
+   const FloatMain weightTotal,
    double * const pTotalGain
 );
 
@@ -105,34 +105,34 @@ static void BoostZeroDimensional(
    Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
    FloatFast * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
    if(pBoosterCore->IsHessian()) {
-      const auto * const pBin = pBigBin->Specialize<FloatBig, StorageDataType, true>();
+      const auto * const pBin = pBigBin->Specialize<FloatMain, StorageDataType, true>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (TermBoostFlags_GradientSums & flags)) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aGradientPairs[iScore].m_sumGradients);
-            aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(updateScore);
+            const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(SafeConvertFloat<FloatCalc>(aGradientPairs[iScore].m_sumGradients));
+            aUpdateScores[iScore] = SafeConvertFloat<FloatScore>(updateScore);
          }
       } else {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
-               aGradientPairs[iScore].m_sumGradients,
-               aGradientPairs[iScore].GetHess()
+            const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdate(
+               SafeConvertFloat<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
+               SafeConvertFloat<FloatCalc>(aGradientPairs[iScore].GetHess())
             );
-            aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(updateScore);
+            aUpdateScores[iScore] = SafeConvertFloat<FloatScore>(updateScore);
          }
       }
    } else {
-      const auto * const pBin = pBigBin->Specialize<FloatBig, StorageDataType, false>();
+      const auto * const pBin = pBigBin->Specialize<FloatMain, StorageDataType, false>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (TermBoostFlags_GradientSums & flags)) {
-         const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aGradientPairs[0].m_sumGradients);
-         aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
+         const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(SafeConvertFloat<FloatCalc>(aGradientPairs[0].m_sumGradients));
+         aUpdateScores[0] = SafeConvertFloat<FloatScore>(updateScore);
       } else {
-         const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
-            aGradientPairs[0].m_sumGradients,
-            pBin->GetWeight()
+         const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdate(
+            SafeConvertFloat<FloatCalc>(aGradientPairs[0].m_sumGradients),
+            SafeConvertFloat<FloatCalc>(pBin->GetWeight())
          );
-         aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
+         aUpdateScores[0] = SafeConvertFloat<FloatScore>(updateScore);
       }
    }
 
@@ -143,7 +143,7 @@ static ErrorEbm BoostSingleDimensional(
    RandomDeterministic * const pRng,
    BoosterShell * const pBoosterShell,
    const size_t cBins,
-   const FloatFast weightTotal,
+   const FloatMain weightTotal,
    const size_t iDimension,
    const size_t cSamplesLeafMin,
    const IntEbm countLeavesMax,
@@ -224,7 +224,7 @@ static ErrorEbm BoostMultiDimensional(
 
    const size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
 
-   const size_t cBytesPerBigBin = GetBinSize<FloatBig, StorageDataType>(pBoosterCore->IsHessian(), cScores);
+   const size_t cBytesPerBigBin = GetBinSize<FloatMain, StorageDataType>(pBoosterCore->IsHessian(), cScores);
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
    BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
@@ -706,7 +706,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
       EBM_ASSERT(nullptr != aFastBins);
 
-      const size_t cBytesPerBigBin = GetBinSize<FloatBig, StorageDataType>(pBoosterCore->IsHessian(), cScores);
+      const size_t cBytesPerBigBin = GetBinSize<FloatMain, StorageDataType>(pBoosterCore->IsHessian(), cScores);
       EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTensorBins));
       const size_t cBytesBigBins = cBytesPerBigBin * cTensorBins;
 
@@ -787,7 +787,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
                cScores,
                pBoosterCore->IsHessian(),
                cTensorBins,
-               std::is_same<FloatBig, double>::value,
+               std::is_same<FloatMain, double>::value,
                std::is_same<StorageDataType, uint64_t>::value,
                aBigBins,
                pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Big),
@@ -846,7 +846,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
                   pRng,
                   pBoosterShell,
                   cSignificantBinCount,
-                  SafeConvertFloat<FloatFast>(weightTotal),
+                  SafeConvertFloat<FloatMain>(weightTotal),
                   iDimensionImportant,
                   cSamplesLeafMin,
                   lastDimensionLeavesMax,
@@ -876,7 +876,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             gain = gain / weightTotal * gainMultiple;
             gainAvg += gain;
             EBM_ASSERT(!std::isnan(gainAvg));
-            EBM_ASSERT(0 <= gainAvg);
+            EBM_ASSERT(0.0 <= gainAvg);
          }
 
          // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the 
@@ -909,7 +909,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       } else {
          EBM_ASSERT(!std::isnan(gainAvg));
          EBM_ASSERT(!std::isinf(gainAvg));
-         EBM_ASSERT(0 <= gainAvg);
+         EBM_ASSERT(0.0 <= gainAvg);
       }
 
       LOG_0(Trace_Verbose, "GenerateTermUpdate done sampling set loop");

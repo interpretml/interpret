@@ -56,9 +56,9 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pBoosterCore->GetCountClasses()));
-      const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
+      const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
 
-      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
 
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
@@ -354,7 +354,7 @@ public:
 
       // put the histograms right after our slice array
       auto * const aCollapsedBins =
-         reinterpret_cast<Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
+         reinterpret_cast<Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
 
       aCollapsedBins->ZeroMem(cBytesCollapsedTensor3);
       const auto * const pCollapsedBinEnd = IndexBin(aCollapsedBins, cBytesCollapsedTensor3);
@@ -431,9 +431,9 @@ public:
       //      Then, before exiting, on the last one we collapse the collapsed tensor even more into just a single
       //      bin from which we can calculate the parent and subtract the best child from the parent.
       
-      //FloatBig gain;
-      //FloatBig gainParent = FloatBig { 0 };
-      FloatBig gain = 0;
+      //FloatCalc gain;
+      //FloatCalc gainParent = 0;
+      FloatCalc gain = 0;
 
 
       const TermFeature * pTermFeature4 = pTerm->GetTermFeatures();
@@ -519,8 +519,8 @@ public:
             auto * const pGradientPair = pCollapsedBin2->GetGradientPairs();
 
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
-               FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(pGradientPair[iScore].m_sumGradients);
-               *pUpdateScore = SafeConvertFloat<FloatFast>(updateScore);
+               const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(SafeConvertFloat<FloatCalc>(pGradientPair[iScore].m_sumGradients));
+               *pUpdateScore = SafeConvertFloat<FloatScore>(updateScore);
                ++pUpdateScore;
             }
             pCollapsedBin2 = IndexBin(pCollapsedBin2, cBytesPerBin);
@@ -542,19 +542,19 @@ public:
             } else {
                auto * const pGradientPair = pCollapsedBin2->GetGradientPairs();
                for(size_t iScore = 0; iScore < cScores; ++iScore) {
-                  FloatBig updateScore;
+                  FloatCalc updateScore;
                   if(bHessian) {
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                        pGradientPair[iScore].m_sumGradients,
-                        pGradientPair[iScore].GetHess()
+                        SafeConvertFloat<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                        SafeConvertFloat<FloatCalc>(pGradientPair[iScore].GetHess())
                      );
                   } else {
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                        pGradientPair[iScore].m_sumGradients,
-                        pCollapsedBin2->GetWeight()
+                        SafeConvertFloat<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                        SafeConvertFloat<FloatCalc>(pCollapsedBin2->GetWeight())
                      );
                   }
-                  *pUpdateScore = SafeConvertFloat<FloatFast>(updateScore);
+                  *pUpdateScore = SafeConvertFloat<FloatScore>(updateScore);
                   ++pUpdateScore;
                }
             }

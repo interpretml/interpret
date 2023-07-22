@@ -34,10 +34,10 @@ namespace DEFINED_ZONE_NAME {
 template<bool bHessian, size_t cCompilerScores>
 INLINE_RELEASE_TEMPLATED static void SumAllBins(
    BoosterShell * const pBoosterShell,
-   const Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> * const pBinsEnd,
+   const Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> * const pBinsEnd,
    const size_t cSamplesTotal,
-   const FloatBig weightTotal,
-   Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> * const pBinOut
+   const FloatMain weightTotal,
+   Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> * const pBinOut
 ) {
    // these stay the same across boosting rounds, so we can calculate them once at init
    pBinOut->SetCountSamples(cSamplesTotal);
@@ -47,20 +47,20 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pBoosterCore->GetCountClasses()));
 
    // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
-   GradientPair<FloatBig, bHessian> aSumGradientPairsLocal[GetArrayScores(cCompilerScores)];
+   GradientPair<FloatMain, bHessian> aSumGradientPairsLocal[GetArrayScores(cCompilerScores)];
    static constexpr bool bUseStackMemory = k_dynamicScores != cCompilerScores;
    auto * const aSumGradientPairs = bUseStackMemory ? aSumGradientPairsLocal : pBinOut->GetGradientPairs();
 
    ZeroGradientPairs(aSumGradientPairs, cScores);
 
-   const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
+   const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
 
 #ifndef NDEBUG
    StorageDataType cSamplesTotalDebug = 0;
-   FloatBig weightTotalDebug = 0;
+   FloatMain weightTotalDebug = 0;
 #endif // NDEBUG
 
-   const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
 
    EBM_ASSERT(2 <= CountBins(pBinsEnd, aBins, cBytesPerBin)); // we pre-filter out features with only one bin
 
@@ -136,12 +136,12 @@ static ErrorEbm Flatten(
    ActiveDataType * pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
    FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
 
-   const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
 
    EBM_ASSERT(!IsOverflowTreeNodeSize(bHessian, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bHessian, cScores);
 
-   const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, StorageDataType, bHessian>();
+   const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, StorageDataType, bHessian>();
    const auto * const pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
 
    auto * pTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian>();
@@ -173,7 +173,7 @@ static ErrorEbm Flatten(
             const auto * const pRightChild = GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
             pBinLastOrChildren = pRightChild->BEFORE_GetBinLast();
          }
-         const auto * const pBinLast = reinterpret_cast<const Bin<FloatBig, StorageDataType, bHessian> *>(pBinLastOrChildren);
+         const auto * const pBinLast = reinterpret_cast<const Bin<FloatMain, StorageDataType, bHessian> *>(pBinLastOrChildren);
 
          EBM_ASSERT(aBins <= pBinLast);
          EBM_ASSERT(pBinLast < pBinsEnd);
@@ -182,16 +182,16 @@ static ErrorEbm Flatten(
          const auto * aGradientPair = pTreeNode->GetGradientPairs();
          size_t iScore = 0;
          do {
-            FloatBig updateScore;
+            FloatCalc updateScore;
             if(bHessian) {
                updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                  aGradientPair[iScore].m_sumGradients, aGradientPair[iScore].GetHess());
+                  SafeConvertFloat<FloatCalc>(aGradientPair[iScore].m_sumGradients), SafeConvertFloat<FloatCalc>(aGradientPair[iScore].GetHess()));
             } else {
                updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                  aGradientPair[iScore].m_sumGradients, pTreeNode->GetWeight());
+                  SafeConvertFloat<FloatCalc>(aGradientPair[iScore].m_sumGradients), SafeConvertFloat<FloatCalc>(pTreeNode->GetWeight()));
             }
 
-            *pUpdateScore = SafeConvertFloat<FloatFast>(updateScore);
+            *pUpdateScore = SafeConvertFloat<FloatScore>(updateScore);
             ++pUpdateScore;
 
             ++iScore;
@@ -274,8 +274,8 @@ static int FindBestSplitGain(
    pLeftChild->SetDebugProgression(0);
 #endif // NDEBUG
 
-   Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> binParent;
-   Bin<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> binLeft;
+   Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> binParent;
+   Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> binLeft;
 
    // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
    static constexpr bool bUseStackMemory = k_dynamicScores != cCompilerScores;
@@ -294,7 +294,7 @@ static int FindBestSplitGain(
 
    pLeftChild->BEFORE_SetBinFirst(pBinCur);
 
-   const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
    EBM_ASSERT(!IsOverflowSplitPositionSize(bHessian, cScores)); // we're accessing allocated memory
    const size_t cBytesPerSplitPosition = GetSplitPositionSize(bHessian, cScores);
 
@@ -303,8 +303,8 @@ static int FindBestSplitGain(
 
    StorageDataType cSamplesRight = binParent.GetCountSamples();
 
-   EBM_ASSERT(0 <= k_gainMin);
-   FloatBig bestGain = k_gainMin; // it must at least be this, and maybe it needs to be more
+   EBM_ASSERT(FloatCalc { 0 } <= k_gainMin);
+   FloatCalc bestGain = k_gainMin; // it must at least be this, and maybe it needs to be more
    EBM_ASSERT(0 < cSamplesLeafMin);
    EBM_ASSERT(pBinLast != pBinCur); // then we would be non-splitable and would have exited above
    do {
@@ -321,19 +321,19 @@ static int FindBestSplitGain(
 
       const auto * const aBinGradientPairs = pBinCur->GetGradientPairs();
 
-      FloatBig sumHessiansLeft = binLeft.GetWeight();
-      FloatBig sumHessiansRight = binParent.GetWeight() - binLeft.GetWeight();
-      FloatBig gain = 0;
+      FloatMain sumHessiansLeft = binLeft.GetWeight();
+      FloatMain sumHessiansRight = binParent.GetWeight() - binLeft.GetWeight();
+      FloatCalc gain = 0;
 
       size_t iScore = 0;
       do {
-         const FloatBig sumGradientsLeft = aLeftGradientPairs[iScore].m_sumGradients + 
+         const FloatMain sumGradientsLeft = aLeftGradientPairs[iScore].m_sumGradients + 
             aBinGradientPairs[iScore].m_sumGradients;
          aLeftGradientPairs[iScore].m_sumGradients = sumGradientsLeft;
-         const FloatBig sumGradientsRight = aParentGradientPairs[iScore].m_sumGradients - sumGradientsLeft;
+         const FloatMain sumGradientsRight = aParentGradientPairs[iScore].m_sumGradients - sumGradientsLeft;
 
          if(bHessian) {
-            const FloatBig newSumHessiansLeft = aLeftGradientPairs[iScore].GetHess() + aBinGradientPairs[iScore].GetHess();
+            const FloatMain newSumHessiansLeft = aLeftGradientPairs[iScore].GetHess() + aBinGradientPairs[iScore].GetHess();
             aLeftGradientPairs[iScore].SetHess(newSumHessiansLeft);
             if(bUseLogitBoost) {
                sumHessiansLeft = newSumHessiansLeft;
@@ -343,13 +343,13 @@ static int FindBestSplitGain(
 
          // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
          // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-         const FloatBig gainRight = EbmStats::CalcPartialGain(sumGradientsRight, sumHessiansRight);
+         const FloatCalc gainRight = EbmStats::CalcPartialGain(SafeConvertFloat<FloatCalc>(sumGradientsRight), SafeConvertFloat<FloatCalc>(sumHessiansRight));
          EBM_ASSERT(std::isnan(gainRight) || 0 <= gainRight);
          gain += gainRight;
 
          // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
          // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-         const FloatBig gainLeft = EbmStats::CalcPartialGain(sumGradientsLeft, sumHessiansLeft);
+         const FloatCalc gainLeft = EbmStats::CalcPartialGain(SafeConvertFloat<FloatCalc>(sumGradientsLeft), SafeConvertFloat<FloatCalc>(sumHessiansLeft));
          EBM_ASSERT(std::isnan(gainLeft) || 0 <= gainLeft);
          gain += gainLeft;
 
@@ -413,7 +413,7 @@ static int FindBestSplitGain(
    }
    EBM_ASSERT(std::isnan(bestGain) || 0 <= bestGain);
 
-   if(UNLIKELY(/* NaN */ !LIKELY(bestGain <= std::numeric_limits<FloatBig>::max()))) {
+   if(UNLIKELY(/* NaN */ !LIKELY(bestGain <= std::numeric_limits<FloatCalc>::max()))) {
       // this tests for NaN and +inf
 
       // we need this test since the priority queue in the function that calls us cannot accept a NaN value
@@ -427,16 +427,16 @@ static int FindBestSplitGain(
       return -1; // exit boosting with overflow
    }
 
-   FloatBig sumHessiansOverwrite = binParent.GetWeight();
+   FloatMain sumHessiansOverwrite = binParent.GetWeight();
    size_t iScoreParent = 0;
    do {
-      const FloatBig sumGradientsParent = aParentGradientPairs[iScoreParent].m_sumGradients;
+      const FloatMain sumGradientsParent = aParentGradientPairs[iScoreParent].m_sumGradients;
       if(bHessian) {
          if(bUseLogitBoost) {
             sumHessiansOverwrite = aParentGradientPairs[iScoreParent].GetHess();
          }
       }
-      const FloatBig gain1 = EbmStats::CalcPartialGain(sumGradientsParent, sumHessiansOverwrite);
+      const FloatCalc gain1 = EbmStats::CalcPartialGain(SafeConvertFloat<FloatCalc>(sumGradientsParent), SafeConvertFloat<FloatCalc>(sumHessiansOverwrite));
       EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
       bestGain -= gain1;
 
@@ -445,10 +445,10 @@ static int FindBestSplitGain(
 
    // bestGain could be -inf if the partial gain on the children reached a number close to +inf and then
    // the children were -inf due to floating point noise.  
-   EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatBig>::infinity() == bestGain || k_epsilonNegativeGainAllowed <= bestGain);
-   EBM_ASSERT(std::numeric_limits<FloatBig>::infinity() != bestGain);
+   EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatCalc>::infinity() == bestGain || k_epsilonNegativeGainAllowed <= bestGain);
+   EBM_ASSERT(std::numeric_limits<FloatCalc>::infinity() != bestGain);
 
-   EBM_ASSERT(0 <= k_gainMin);
+   EBM_ASSERT(FloatCalc { 0 } <= k_gainMin);
    if(UNLIKELY(/* NaN */ !LIKELY(k_gainMin <= bestGain))) {
       // do not allow splits on gains that are too small
       // also filter out slightly negative numbers that can arrise from floating point noise
@@ -460,7 +460,7 @@ static int FindBestSplitGain(
       pTreeNode->AFTER_RejectSplit();
 
       // but if the parent partial gain overflowed to +inf and thus we got a -inf gain, then handle as an overflow
-      return /* NaN */ std::numeric_limits<FloatBig>::lowest() <= bestGain ? 1 : -1;
+      return /* NaN */ std::numeric_limits<FloatCalc>::lowest() <= bestGain ? 1 : -1;
    }
    EBM_ASSERT(!std::isnan(bestGain));
    EBM_ASSERT(!std::isinf(bestGain));
@@ -544,7 +544,7 @@ public:
       const size_t cSamplesLeafMin,
       const size_t cSplitsMax,
       const size_t cSamplesTotal,
-      const FloatBig weightTotal,
+      const FloatMain weightTotal,
       double * const pTotalGain
    ) {
       EBM_ASSERT(2 <= cBins); // filter these out at the start where we can handle this case easily
@@ -554,7 +554,7 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pBoosterCore->GetCountClasses()));
 
-      const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
+      const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
 
       auto * const pRootTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian, GetArrayScores(cCompilerScores)>();
 
@@ -562,7 +562,7 @@ public:
       pRootTreeNode->SetDebugProgression(0);
 #endif // NDEBUG
 
-      const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatBig, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
+      const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
       const auto * const pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
       const auto * const pBinsLast = NegativeIndexBin(pBinsEnd, cBytesPerBin);
 
@@ -585,13 +585,13 @@ public:
          cSamplesLeafMin
       );
       size_t cSplitsRemaining = cSplitsMax;
-      FloatBig totalGain = 0;
+      FloatCalc totalGain = 0;
       if(UNLIKELY(0 != retFind)) {
          // there will be no splits at all
          if(UNLIKELY(retFind < 0)) {
             // Any negative return means there was an overflow. Signal the overflow by making gain infinite here.
             // We'll flip it later to a negative number to signal to the caller that there was an overflow.
-            totalGain = std::numeric_limits<FloatBig>::infinity();
+            totalGain = std::numeric_limits<FloatCalc>::infinity();
          }
       } else {
          // our priority queue comparison function cannot handle NaN gains so we filter out before
@@ -634,7 +634,7 @@ public:
                // pTreeNode had the highest gain of all the available Nodes, so we will split it.
 
                // get the gain first, since calling AFTER_SplitNode destroys it
-               const FloatBig totalGainUpdate = pTreeNode->AFTER_GetSplitGain();
+               const FloatCalc totalGainUpdate = pTreeNode->AFTER_GetSplitGain();
                EBM_ASSERT(!std::isnan(totalGainUpdate));
                EBM_ASSERT(!std::isinf(totalGainUpdate));
                EBM_ASSERT(0 <= totalGainUpdate);
@@ -715,7 +715,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
    const size_t cSamplesLeafMin,
    const size_t cSplitsMax,
    const size_t cSamplesTotal,
-   const FloatBig weightTotal,
+   const FloatMain weightTotal,
    double * const pTotalGain
 ) {
    LOG_0(Trace_Verbose, "Entered PartitionOneDimensionalBoosting");

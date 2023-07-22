@@ -163,24 +163,24 @@ public:
       static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
       struct FastTotalState {
-         Bin<FloatBig, StorageDataType, bHessian, cArrayScores> * m_pDimensionalCur;
-         Bin<FloatBig, StorageDataType, bHessian, cArrayScores> * m_pDimensionalWrap;
-         Bin<FloatBig, StorageDataType, bHessian, cArrayScores> * m_pDimensionalFirst;
+         Bin<FloatMain, StorageDataType, bHessian, cArrayScores> * m_pDimensionalCur;
+         Bin<FloatMain, StorageDataType, bHessian, cArrayScores> * m_pDimensionalWrap;
+         Bin<FloatMain, StorageDataType, bHessian, cArrayScores> * m_pDimensionalFirst;
          size_t m_iCur;
          size_t m_cBins;
       };
 
       LOG_0(Trace_Verbose, "Entered BuildFastTotals");
 
-      auto * pAuxiliaryBin = aAuxiliaryBinsBase->Specialize<FloatBig, StorageDataType, bHessian, cArrayScores>();
+      auto * pAuxiliaryBin = aAuxiliaryBinsBase->Specialize<FloatMain, StorageDataType, bHessian, cArrayScores>();
 
-      auto * const aBins = aBinsBase->Specialize<FloatBig, StorageDataType, bHessian, cArrayScores>();
+      auto * const aBins = aBinsBase->Specialize<FloatMain, StorageDataType, bHessian, cArrayScores>();
 
       const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
       EBM_ASSERT(1 <= cRealDimensions);
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
-      const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
+      const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
 
       FastTotalState fastTotalState[k_cDimensionsMax];
       FastTotalState * pFastTotalStateInitialize = fastTotalState;
@@ -236,9 +236,9 @@ public:
       UNUSED(aDebugCopyBinsBase);
 #ifdef CHECK_TENSORS
 
-      auto * const pDebugBin = static_cast<Bin<FloatBig, StorageDataType, bHessian, cArrayScores> *>(malloc(cBytesPerBin));
+      auto * const pDebugBin = static_cast<Bin<FloatMain, StorageDataType, bHessian, cArrayScores> *>(malloc(cBytesPerBin));
 
-      auto * aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatBig, StorageDataType, bHessian, cArrayScores>();
+      auto * aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatMain, StorageDataType, bHessian, cArrayScores>();
 
 #endif // CHECK_TENSORS
 #endif // NDEBUG
@@ -571,7 +571,7 @@ extern void TensorTotalsBuild(
 
 
 //template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
-//bool BoostMultiDimensionalPaulAlgorithm(voidvoid * const pThreadState, const FeatureInternal * const pTargetFeature, InnerBag const * const pInnerBag, const Term * const pTerm, SegmentedRegion<ActiveDataType, FloatBig> * const pInnerTermUpdate) {
+//bool BoostMultiDimensionalPaulAlgorithm(voidvoid * const pThreadState, const FeatureInternal * const pTargetFeature, InnerBag const * const pInnerBag, const Term * const pTerm, SegmentedRegion<ActiveDataType, FloatMain> * const pInnerTermUpdate) {
 //   Bin<IsClassification(cCompilerClasses)> * const aBins = BinDataSet<cCompilerClasses>(pThreadState, pTerm, pInnerBag, pTargetFeature);
 //   if(UNLIKELY(nullptr == aBins)) {
 //      return true;
@@ -593,7 +593,7 @@ extern void TensorTotalsBuild(
 //      const size_t cBinsDimension1 = pTerm->GetFeatures()[0].m_pFeature->m_cBins;
 //      const size_t cBinsDimension2 = pTerm->GetFeatures()[1].m_pFeature->m_cBins;
 //
-//      FloatBig bestSplittingScore = FloatBig { -std::numeric_limits<FloatBig>::infinity() };
+//      FloatCalc bestSplittingScore = FloatCalc { -std::numeric_limits<FloatCalc>::infinity() };
 //
 //      if(pInnerTermUpdate->SetCountSplits(0, 1)) {
 //         free(aDynamicBins);
@@ -619,7 +619,7 @@ extern void TensorTotalsBuild(
 //
 //      for(size_t iBin1 = 0; iBin1 < cBinsDimension1 - 1; ++iBin1) {
 //         for(size_t iBin2 = 0; iBin2 < cBinsDimension2 - 1; ++iBin2) {
-//            FloatBig splittingScore;
+//            FloatCalc splittingScore;
 //
 //            Bin<IsClassification(cCompilerClasses)> * pTotalsLowLow = IndexBin(cBytesPerBin, aDynamicBins, 0);
 //            Bin<IsClassification(cCompilerClasses)> * pTotalsHighLow = IndexBin(cBytesPerBin, aDynamicBins, 1);
@@ -671,8 +671,8 @@ extern void TensorTotalsBuild(
 //               pInnerTermUpdate->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iScore = 0; iScore < cScores; ++iScore) {
-//                  FloatBig predictionTarget;
-//                  FloatBig predictionOther;
+//                  FloatCalc predictionTarget;
+//                  FloatCalc predictionOther;
 //
 //                  if(IS_REGRESSION(cCompilerClasses)) {
 //                     // regression
@@ -714,8 +714,8 @@ extern void TensorTotalsBuild(
 //               pInnerTermUpdate->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iScore = 0; iScore < cScores; ++iScore) {
-//                  FloatBig predictionTarget;
-//                  FloatBig predictionOther;
+//                  FloatCalc predictionTarget;
+//                  FloatCalc predictionOther;
 //
 //                  if(IS_REGRESSION(cCompilerClasses)) {
 //                     // regression
@@ -757,8 +757,8 @@ extern void TensorTotalsBuild(
 //               pInnerTermUpdate->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iScore = 0; iScore < cScores; ++iScore) {
-//                  FloatBig predictionTarget;
-//                  FloatBig predictionOther;
+//                  FloatCalc predictionTarget;
+//                  FloatCalc predictionOther;
 //
 //                  if(IS_REGRESSION(cCompilerClasses)) {
 //                     // regression
@@ -799,8 +799,8 @@ extern void TensorTotalsBuild(
 //               pInnerTermUpdate->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iScore = 0; iScore < cScores; ++iScore) {
-//                  FloatBig predictionTarget;
-//                  FloatBig predictionOther;
+//                  FloatCalc predictionTarget;
+//                  FloatCalc predictionOther;
 //
 //                  if(IS_REGRESSION(cCompilerClasses)) {
 //                     // regression

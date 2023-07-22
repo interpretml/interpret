@@ -15,7 +15,7 @@
 #include "bridge_c.h" // ObjectiveWrapper
 #include "zones.h"
 
-#include "ebm_internal.hpp" // FloatBig
+#include "ebm_internal.hpp" // FloatMain
 #include "DataSetBoosting.hpp"
 
 namespace DEFINED_ZONE_NAME {

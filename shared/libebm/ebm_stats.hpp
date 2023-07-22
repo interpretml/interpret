@@ -14,6 +14,8 @@
 
 #include "common_cpp.hpp"
 
+#include "ebm_internal.hpp"
+
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
@@ -36,8 +38,8 @@ static_assert(
    "We can't even guarantee that infinity exists as a concept."
 );
 
-static constexpr FloatBig k_hessianMin = std::numeric_limits<FloatBig>::min();
-static constexpr FloatBig k_gainMin = 0;
+static constexpr FloatCalc k_hessianMin = std::numeric_limits<FloatCalc>::min();
+static constexpr FloatCalc k_gainMin = 0;
 
 // HANDLING SPECIAL FLOATING POINT VALUES (NaN/infinities/denormals/-0):
 // - it should be virtually impossible to get NaN values anywhere in this code without being given an 
@@ -335,25 +337,26 @@ static constexpr FloatBig k_gainMin = 0;
 //     which would sidestep the issue since we'd never be adding 1 to a number that was fairly small.
 
 namespace EbmStats {
-   INLINE_ALWAYS static FloatBig CalcPartialGain(const FloatBig sumGradient, const FloatBig sumHessian) {
+   INLINE_ALWAYS static FloatCalc CalcPartialGain(const FloatCalc sumGradient, const FloatCalc sumHessian) {
       // typically this is not performance critical, unless the caller has a very large number of bins
 
       // This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which 
       // can be seen following the derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
 
-      EBM_ASSERT(0 < k_hessianMin);
-      const FloatBig partialGain = UNLIKELY(sumHessian < k_hessianMin) ? 
-         FloatBig { 0 } : sumGradient / sumHessian * sumGradient;
+      EBM_ASSERT(FloatCalc { 0 } < k_hessianMin);
+      const FloatCalc partialGain = UNLIKELY(sumHessian < k_hessianMin) ? 
+         FloatCalc { 0 } : sumGradient / sumHessian * sumGradient;
 
       // This function should not create new NaN values, but if either sumGradient or sumHessian is a NaN then the 
       // result will be a NaN.  This could happen for instance if large value samples added to +inf in one bin and -inf 
       // in another bin, and then the two bins are added together. That would lead to NaN even without NaN samples.
 
-      EBM_ASSERT(std::isnan(sumGradient) || std::isnan(sumHessian) || 0 <= partialGain);
+      EBM_ASSERT(std::isnan(sumGradient) || std::isnan(sumHessian) || FloatCalc { 0 } <= partialGain);
       return partialGain;
    }
 
-   INLINE_ALWAYS static FloatBig CalcPartialGainFromUpdate(const FloatBig update, const FloatBig sumHessian) {
+   INLINE_ALWAYS static FloatCalc CalcPartialGainFromUpdate(const FloatCalc update, const FloatCalc sumHessian) {
+
       // the update is: sumGradient / sumHessian
       // For gain we want sumGradient * sumGradient / sumHessian
       // we can get there by doing: update * update * sumHessian
@@ -361,23 +364,23 @@ namespace EbmStats {
       // and then: (sumGradient / sumHessian) * sumGradient
       // finally: sumGradient * sumGradient / sumHessian
 
-      EBM_ASSERT(0 < k_hessianMin);
-      const FloatBig partialGain = UNLIKELY(sumHessian < k_hessianMin) ?
-         FloatBig { 0 } : update * update * sumHessian;
+      EBM_ASSERT(FloatCalc { 0 } < k_hessianMin);
+      const FloatCalc partialGain = UNLIKELY(sumHessian < k_hessianMin) ?
+         FloatCalc { 0 } : update * update * sumHessian;
 
-      EBM_ASSERT(std::isnan(update) || std::isnan(sumHessian) || 0 <= partialGain);
+      EBM_ASSERT(std::isnan(update) || std::isnan(sumHessian) || FloatCalc { 0 } <= partialGain);
       return partialGain;
    }
 
 
-   INLINE_ALWAYS static FloatBig ComputeSinglePartitionUpdate(
-      const FloatBig sumGradient, 
-      const FloatBig sumHessian
+   INLINE_ALWAYS static FloatCalc ComputeSinglePartitionUpdate(
+      const FloatCalc sumGradient,
+      const FloatCalc sumHessian
    ) {
       // this is NOT a performance critical function.  It only gets called AFTER we've decided where to split, so only a few times per Boosting step
 
       // for regression, sumGradient can be NaN -> if the user gives us regression targets (either positive or negative) with values below but close to
-      //   +-std::numeric_limits<FloatBig>::max(), the sumGradient can reach +-infinity since they are a sum.
+      //   +-std::numeric_limits<FloatMain>::max(), the sumGradient can reach +-infinity since they are a sum.
       //   After sumGradient reaches +-infinity, we'll get a graph update with a +infinity, and some samples with +-infinity scores
       //   Then, on the next feature that we boost on, we'll calculate a term score update for some samples  
       //   inside ComputeSinglePartitionUpdate as +-infinity/sumHessian, which will be +-infinity (of the same sign). 
@@ -448,7 +451,7 @@ namespace EbmStats {
 
       // for Gradient regression, -infinity <= sumGradient && sumGradient <= infinity (it's regression which has a larger range)
 
-      // even if we trim inputs of +-infinity from the user to std::numeric_limits<FloatBig>::max() or std::numeric_limits<FloatBig>::lowest(), 
+      // even if we trim inputs of +-infinity from the user to std::numeric_limits<FloatMain>::max() or std::numeric_limits<FloatMain>::lowest(), 
       // we'll still reach +-infinity if we add a bunch of them together, so sumGradient can reach +-infinity.
       // After sumGradient reaches +-infinity, we'll get an update and some samples with +-infinity scores
       // Then, on the next feature we boost on, we'll calculate an term score update for some samples (inside this function) as 
@@ -457,8 +460,8 @@ namespace EbmStats {
 
       // all the weights can be zero in which case even if we have no splits our sumHessian can be zero
 
-      EBM_ASSERT(0 < k_hessianMin);
-      return UNLIKELY(sumHessian < k_hessianMin) ? FloatBig { 0 } : (-sumGradient / sumHessian);
+      EBM_ASSERT(FloatCalc { 0 } < k_hessianMin);
+      return UNLIKELY(sumHessian < k_hessianMin) ? FloatCalc { 0 } : (-sumGradient / sumHessian);
 
       // return can be NaN if both sumGradient and sumHessian are zero, or if we're propagating a NaN value.  Neither sumGradient nor 
       //   sumHessian can be infinity, so that's not a source of NaN
@@ -468,7 +471,7 @@ namespace EbmStats {
    }
 
 
-   INLINE_ALWAYS static FloatBig ComputeSinglePartitionUpdateGradientSum(const FloatBig sumGradient) {
+   INLINE_ALWAYS static FloatCalc ComputeSinglePartitionUpdateGradientSum(const FloatCalc sumGradient) {
       // this is NOT a performance critical call.  It only gets called AFTER we've decided where to split, so only a few times per term boost
 
       return sumGradient;

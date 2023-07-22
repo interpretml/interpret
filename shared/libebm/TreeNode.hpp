@@ -9,7 +9,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // FloatBig
+#include "common_c.h" // FloatMain
 #include "zones.h"
 
 #include "common_cpp.hpp" // IsAddError
@@ -34,20 +34,20 @@ struct TreeNode final {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
 
-   inline const Bin<FloatBig, StorageDataType, bHessian, cCompilerScores> * BEFORE_GetBinFirst() const {
+   inline const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * BEFORE_GetBinFirst() const {
       EBM_ASSERT(0 == m_debugProgressionStage);
       return m_UNION.m_beforeGainCalc.m_pBinFirst;
    }
-   inline void BEFORE_SetBinFirst(const Bin<FloatBig, StorageDataType, bHessian, cCompilerScores> * const pBinFirst) {
+   inline void BEFORE_SetBinFirst(const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * const pBinFirst) {
       EBM_ASSERT(0 == m_debugProgressionStage);
       m_UNION.m_beforeGainCalc.m_pBinFirst = pBinFirst;
    }
 
-   inline const Bin<FloatBig, StorageDataType, bHessian, cCompilerScores> * BEFORE_GetBinLast() const {
+   inline const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * BEFORE_GetBinLast() const {
       EBM_ASSERT(0 == m_debugProgressionStage);
-      return reinterpret_cast<const Bin<FloatBig, StorageDataType, bHessian, cCompilerScores> *>(pBinLastOrChildren);
+      return reinterpret_cast<const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> *>(pBinLastOrChildren);
    }
-   inline void BEFORE_SetBinLast(const Bin<FloatBig, StorageDataType, bHessian, cCompilerScores> * const pBinLast) {
+   inline void BEFORE_SetBinLast(const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * const pBinLast) {
       EBM_ASSERT(0 == m_debugProgressionStage);
       // we aren't going to modify pBinLast, but we're storing it in a shared pointer, so remove the const for now
       pBinLastOrChildren = const_cast<void *>(static_cast<const void *>(pBinLast));
@@ -79,10 +79,10 @@ struct TreeNode final {
    }
 
 
-   inline FloatBig AFTER_GetSplitGain() const {
+   inline FloatCalc AFTER_GetSplitGain() const {
       EBM_ASSERT(1 == m_debugProgressionStage);
 
-      const FloatBig splitGain = m_UNION.m_afterGainCalc.m_splitGain;
+      const FloatCalc splitGain = m_UNION.m_afterGainCalc.m_splitGain;
 
       // our priority queue cannot handle NaN values so we filter them out before adding them
       EBM_ASSERT(!std::isnan(splitGain));
@@ -91,7 +91,7 @@ struct TreeNode final {
 
       return splitGain;
    }
-   inline void AFTER_SetSplitGain(const FloatBig splitGain) {
+   inline void AFTER_SetSplitGain(const FloatCalc splitGain) {
       EBM_ASSERT(1 == m_debugProgressionStage);
 
       // this is only called if there is a legal gain value. If the TreeNode cannot be split call AFTER_RejectSplit.
@@ -125,7 +125,7 @@ struct TreeNode final {
 
    inline void AFTER_SplitNode() {
       EBM_ASSERT(1 == m_debugProgressionStage);
-      m_UNION.m_afterGainCalc.m_splitGain = std::numeric_limits<FloatBig>::quiet_NaN();
+      m_UNION.m_afterGainCalc.m_splitGain = std::numeric_limits<FloatCalc>::quiet_NaN();
    }
 
    inline bool AFTER_IsSplit() const {
@@ -148,21 +148,21 @@ struct TreeNode final {
       return m_bin.GetCountSamples();
    }
 
-   inline FloatBig GetWeight() const {
+   inline FloatMain GetWeight() const {
       return m_bin.GetWeight();
    }
 
-   inline const GradientPair<FloatBig, bHessian> * GetGradientPairs() const {
+   inline const GradientPair<FloatMain, bHessian> * GetGradientPairs() const {
       return m_bin.GetGradientPairs();
    }
-   inline GradientPair<FloatBig, bHessian> * GetGradientPairs() {
+   inline GradientPair<FloatMain, bHessian> * GetGradientPairs() {
       return m_bin.GetGradientPairs();
    }
 
-   inline const Bin<FloatBig, StorageDataType, bHessian, cCompilerScores> * GetBin() const {
+   inline const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * GetBin() const {
       return &m_bin;
    }
-   inline Bin<FloatBig, StorageDataType, bHessian, cCompilerScores> * GetBin() {
+   inline Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * GetBin() {
       return &m_bin;
    }
 
@@ -185,11 +185,11 @@ struct TreeNode final {
 private:
 
    struct BeforeGainCalc final {
-      const Bin<FloatBig, StorageDataType, bHessian, cCompilerScores> * m_pBinFirst;
+      const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * m_pBinFirst;
    };
 
    struct AfterGainCalc final {
-      FloatBig m_splitGain;
+      FloatCalc m_splitGain;
    };
 
    struct Deconstruct final {
@@ -210,7 +210,7 @@ private:
    TreeNodeUnion m_UNION;
 
    // IMPORTANT: m_bin must be in the last position for the struct hack and this must be standard layout
-   Bin<FloatBig, StorageDataType, bHessian, cCompilerScores> m_bin;
+   Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> m_bin;
 };
 static_assert(std::is_standard_layout<TreeNode<true>>::value && std::is_standard_layout<TreeNode<false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -220,7 +220,7 @@ static_assert(std::is_pod<TreeNode<true>>::value && std::is_pod<TreeNode<false>>
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 inline static bool IsOverflowTreeNodeSize(const bool bHessian, const size_t cScores) {
-   const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
 
    size_t cBytesTreeNodeComponent;
    if(bHessian) {
@@ -239,7 +239,7 @@ inline static bool IsOverflowTreeNodeSize(const bool bHessian, const size_t cSco
 }
 
 inline static size_t GetTreeNodeSize(const bool bHessian, const size_t cScores) {
-   const size_t cBytesPerBin = GetBinSize<FloatBig, StorageDataType>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
 
    size_t cBytesTreeNodeComponent;
    if(bHessian) {
