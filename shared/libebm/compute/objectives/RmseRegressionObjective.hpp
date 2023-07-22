@@ -17,11 +17,11 @@ struct RmseRegressionObjective : RegressionObjective {
    static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) {
       return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentApplyUpdate<const RmseRegressionObjective<TFloat>, TFloat>(pData);
    }
-   template<typename T = void, typename std::enable_if<TFloat::bCpu, T>::type * = nullptr>
+   template<typename T = void, typename std::enable_if<TFloat::k_bCpu, T>::type * = nullptr>
    static double StaticFinishMetric(const Objective * const pThis, const double metricSum) {
       return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->FinishMetric(metricSum);
    }
-   template<typename T = void, typename std::enable_if<TFloat::bCpu, T>::type * = nullptr>
+   template<typename T = void, typename std::enable_if<TFloat::k_bCpu, T>::type * = nullptr>
    static BoolEbm StaticCheckTargets(const Objective * const pThis, const size_t c, const void * const aTargets) {
       return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentCheckTargets<const RmseRegressionObjective<TFloat>, TFloat>(c, aTargets);
    }
