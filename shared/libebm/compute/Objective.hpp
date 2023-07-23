@@ -481,7 +481,7 @@ protected:
       const FloatShared * pTarget = static_cast<const FloatShared *>(aTargets);
       const FloatShared * const pTargetEnd = &pTarget[c];
       while(pTargetEnd != pTarget) {
-         if(pObjective->CheckRegressionTarget(SafeConvertFloat<double>(*pTarget))) {
+         if(pObjective->CheckRegressionTarget(static_cast<double>(*pTarget))) {
             return EBM_TRUE;
          }
          ++pTarget;
