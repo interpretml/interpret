@@ -279,7 +279,7 @@ ErrorEbm DataSetInteraction::InitWeights(
 
    EBM_ASSERT(nullptr != pDataSetShared);
 
-   const FloatFast * pWeightFrom = GetDataSetSharedWeight(pDataSetShared, 0);
+   const FloatShared * pWeightFrom = GetDataSetSharedWeight(pDataSetShared, 0);
    EBM_ASSERT(nullptr != pWeightFrom);
 
    EBM_ASSERT(nullptr != m_aSubsets);

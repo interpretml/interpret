@@ -8,7 +8,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "libebm.h" // UIntEbm
-#include "bridge_c.h" // FloatFast
+#include "bridge_c.h" // FloatShared
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {
@@ -47,12 +47,12 @@ extern const void * GetDataSetSharedFeature(
    size_t * const pcNonDefaultsSparseOut
 );
 
-extern const FloatFast * GetDataSetSharedWeight(
+extern const FloatShared * GetDataSetSharedWeight(
    const unsigned char * const pDataSetShared,
    const size_t iWeight
 );
 
-// GetDataSetSharedTarget returns (FloatFast *) for regression and (UIntShared *) for classification
+// GetDataSetSharedTarget returns (FloatShared *) for regression and (UIntShared *) for classification
 extern const void * GetDataSetSharedTarget(
    const unsigned char * const pDataSetShared,
    const size_t iTarget,

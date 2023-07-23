@@ -658,13 +658,13 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          }
          data.m_aTargets = aTargetTo;
 
-         const FloatFast * pTargetFrom = static_cast<const FloatFast *>(aTargetsFrom);
+         const FloatShared * pTargetFrom = static_cast<const FloatShared *>(aTargetsFrom);
 
          const BagEbm * pSampleReplication = aBag;
          const double * pInitScoreFrom = aInitScores;
          BagEbm replication = 0;
          double initScore = 0;
-         FloatFast target;
+         FloatShared target;
 
          DataSubsetInteraction * pSubset = GetDataSetInteraction()->GetSubsets();
          do {
@@ -749,7 +749,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          // after we exit this function and we just bin the non-changing values after this. By multiplying here
          // we can avoid doing the multiplication each time we bin them.
 
-         const FloatFast * pWeight = GetDataSetSharedWeight(pDataSetShared, 0);
+         const FloatShared * pWeight = GetDataSetSharedWeight(pDataSetShared, 0);
          EBM_ASSERT(nullptr != pWeight);
 
          size_t cTotalScores = cScores;
@@ -760,7 +760,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
 
          const BagEbm * pSampleReplication = aBag;
          BagEbm replication = 0;
-         FloatFast weight;
+         FloatShared weight;
 
          DataSubsetInteraction * pSubset = GetDataSetInteraction()->GetSubsets();
          do {

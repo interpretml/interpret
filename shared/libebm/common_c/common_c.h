@@ -181,19 +181,9 @@ INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * const dest, const char * c
 #define FAST_LOG
 #define FAST_DIVISION
 
-// TODO: someday flip FloatFast to float32
-//#define FLOAT_FAST_32
-#define FLOAT_FAST_64
 //#define FLOAT_MAIN_32
 #define FLOAT_MAIN_64
 
-#if defined(FLOAT_FAST_32)
-typedef float FloatFast;
-#elif defined(FLOAT_FAST_64)
-typedef double FloatFast;
-#else
-#error either FLOAT_FAST_32 or FLOAT_FAST_64 must be defined
-#endif
 
 #if defined(FLOAT_MAIN_32)
 typedef float FloatMain;
@@ -203,6 +193,7 @@ typedef double FloatMain;
 #error either FLOAT_MAIN_32 or FLOAT_MAIN_64 must be defined
 #endif
 
+typedef double FloatShared;
 typedef double FloatScore;
 typedef double FloatCalc;
 

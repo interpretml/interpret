@@ -478,10 +478,10 @@ protected:
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void * const aTargets) const noexcept {
       // regression
       const TObjective * const pObjective = static_cast<const TObjective *>(this);
-      const FloatFast * pTarget = static_cast<const FloatFast *>(aTargets);
-      const FloatFast * const pTargetEnd = &pTarget[c];
+      const FloatShared * pTarget = static_cast<const FloatShared *>(aTargets);
+      const FloatShared * const pTargetEnd = &pTarget[c];
       while(pTargetEnd != pTarget) {
-         if(pObjective->CheckRegressionTarget(*pTarget)) {
+         if(pObjective->CheckRegressionTarget(SafeConvertFloat<double>(*pTarget))) {
             return EBM_TRUE;
          }
          ++pTarget;

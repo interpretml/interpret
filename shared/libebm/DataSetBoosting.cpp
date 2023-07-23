@@ -300,8 +300,8 @@ ErrorEbm DataSetBoosting::InitTargetData(
          ++pSubset;
       } while(pSubsetsEnd != pSubset);
    } else {
-      const FloatFast * pTargetFrom = static_cast<const FloatFast *>(aTargets);
-      FloatFast data;
+      const FloatShared * pTargetFrom = static_cast<const FloatShared *>(aTargets);
+      FloatShared data;
       do {
          const size_t cSubsetSamples = pSubset->m_cSamples;
          EBM_ASSERT(1 <= cSubsetSamples);
@@ -703,7 +703,7 @@ ErrorEbm DataSetBoosting::InitBags(
       }
    }
 
-   const FloatFast * aWeightsFrom = nullptr;
+   const FloatShared * aWeightsFrom = nullptr;
    if(size_t { 0 } != cWeights) {
       aWeightsFrom = GetDataSetSharedWeight(pDataSetShared, 0);
       EBM_ASSERT(nullptr != aWeightsFrom);
@@ -795,7 +795,7 @@ ErrorEbm DataSetBoosting::InitBags(
       } else {
          const uint8_t * pOccurrencesFrom = aOccurrencesFrom;
          const BagEbm * pSampleReplication = aBag;
-         const FloatFast * pWeightFrom = aWeightsFrom;
+         const FloatShared * pWeightFrom = aWeightsFrom;
          DataSubsetBoosting * pSubset = m_aSubsets;
          totalWeight = 0.0;
 

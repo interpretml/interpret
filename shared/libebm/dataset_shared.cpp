@@ -643,11 +643,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
             return Error_IllegalParamVal;
          }
 
-         if(IsMultiplyError(sizeof(FloatFast), cSamples)) {
-            LOG_0(Trace_Error, "ERROR CheckDataSet IsMultiplyError(sizeof(FloatFast), cSamples)");
+         if(IsMultiplyError(sizeof(FloatShared), cSamples)) {
+            LOG_0(Trace_Error, "ERROR CheckDataSet IsMultiplyError(sizeof(FloatShared), cSamples)");
             return Error_IllegalParamVal;
          }
-         const size_t cTotalMem = sizeof(FloatFast) * cSamples;
+         const size_t cTotalMem = sizeof(FloatShared) * cSamples;
 
          // iOffsetCur = iOffsetNext;
          if(IsAddError(iOffsetNext, cTotalMem)) {
@@ -662,12 +662,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
          }
 
          // TODO: should I be checking for these bad weight values here or somewhere else?
-         //const FloatFast * pInputData =
-         //   reinterpret_cast<const FloatFast *>(pDataSetShared + iOffsetCur);
-         //const FloatFast * const pInputDataEnd =
-         //   reinterpret_cast<const FloatFast *>(pDataSetShared + iOffsetNext);
+         //const FloatShared * pInputData =
+         //   reinterpret_cast<const FloatShared *>(pDataSetShared + iOffsetCur);
+         //const FloatShared * const pInputDataEnd =
+         //   reinterpret_cast<const FloatShared *>(pDataSetShared + iOffsetNext);
          //while(pInputDataEnd != pInputData) {
-         //   const FloatFast weight = *pInputData;
+         //   const FloatShared weight = *pInputData;
          //   if(std::isnan(weight)) {
          //      LOG_0(Trace_Error, "ERROR CheckDataSet std::isnan(weight)");
          //      return Error_IllegalParamVal;
@@ -676,8 +676,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
          //      LOG_0(Trace_Error, "ERROR CheckDataSet std::isinf(weight)");
          //      return Error_IllegalParamVal;
          //   }
-         //   if(weight < FloatFast { 0 }) {
-         //      LOG_0(Trace_Error, "ERROR CheckDataSet weight < FloatFast { 0 }");
+         //   if(weight < FloatShared { 0 }) {
+         //      LOG_0(Trace_Error, "ERROR CheckDataSet weight < FloatShared { 0 }");
          //      return Error_IllegalParamVal;
          //   }
          //   ++pInputData;
@@ -785,11 +785,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
             }
             const size_t cSamples = static_cast<size_t>(countSamples);
 
-            if(IsMultiplyError(sizeof(FloatFast), cSamples)) {
-               LOG_0(Trace_Error, "ERROR CheckDataSet IsMultiplyError(sizeof(FloatFast), cSamples)");
+            if(IsMultiplyError(sizeof(FloatShared), cSamples)) {
+               LOG_0(Trace_Error, "ERROR CheckDataSet IsMultiplyError(sizeof(FloatShared), cSamples)");
                return Error_IllegalParamVal;
             }
-            const size_t cTotalMem = sizeof(FloatFast) * cSamples;
+            const size_t cTotalMem = sizeof(FloatShared) * cSamples;
 
             //iOffsetCur = iOffsetNext;
             if(IsAddError(iOffsetNext, cTotalMem)) {
@@ -804,12 +804,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
             }
 
             // TODO: should I be checking for these bad regression targets here or somewhere else?
-            //const FloatFast * pInputData =
-            //   reinterpret_cast<const FloatFast *>(pDataSetShared + iOffsetCur);
-            //const FloatFast * const pInputDataEnd =
-            //   reinterpret_cast<const FloatFast *>(pDataSetShared + iOffsetNext);
+            //const FloatShared * pInputData =
+            //   reinterpret_cast<const FloatShared *>(pDataSetShared + iOffsetCur);
+            //const FloatShared * const pInputDataEnd =
+            //   reinterpret_cast<const FloatShared *>(pDataSetShared + iOffsetNext);
             //while(pInputDataEnd != pInputData) {
-            //   const FloatFast target = *pInputData;
+            //   const FloatShared target = *pInputData;
             //   if(std::isnan(target)) {
             //      LOG_0(Trace_Error, "ERROR CheckDataSet std::isnan(target)");
             //      return Error_IllegalParamVal;
@@ -1344,11 +1344,11 @@ static IntEbm AppendWeight(
             goto return_bad;
          }
 
-         if(IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatFast)), cSamples)) {
-            LOG_0(Trace_Error, "ERROR AppendWeight IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatFast)), cSamples)");
+         if(IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatShared)), cSamples)) {
+            LOG_0(Trace_Error, "ERROR AppendWeight IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatShared)), cSamples)");
             goto return_bad;
          }
-         const size_t cBytesAllSamples = sizeof(FloatFast) * cSamples;
+         const size_t cBytesAllSamples = sizeof(FloatShared) * cSamples;
 
          if(IsAddError(iByteCur, cBytesAllSamples)) {
             LOG_0(Trace_Error, "ERROR AppendWeight IsAddError(iByteCur, cBytesAllSamples)");
@@ -1361,7 +1361,7 @@ static IntEbm AppendWeight(
                goto return_bad;
             }
 
-            FloatFast * pFill = reinterpret_cast<FloatFast *>(pFillMem + iByteCur);
+            FloatShared * pFill = reinterpret_cast<FloatShared *>(pFillMem + iByteCur);
             const double * pWeight = aWeights;
             const double * const pWeightsEnd = &aWeights[cSamples];
             do {
@@ -1386,7 +1386,7 @@ static IntEbm AppendWeight(
                   goto return_bad;
                }
 
-               *pFill = SafeConvertFloat<FloatFast>(weight);
+               *pFill = SafeConvertFloat<FloatShared>(weight);
                ++pFill;
                ++pWeight;
             } while(pWeightsEnd != pWeight);
@@ -1558,11 +1558,11 @@ static IntEbm AppendTarget(
             }
             cBytesAllSamples = sizeof(UIntShared) * cSamples;
          } else {
-            if(IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatFast)), cSamples)) {
-               LOG_0(Trace_Error, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatFast)), cSamples)");
+            if(IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatShared)), cSamples)) {
+               LOG_0(Trace_Error, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatShared)), cSamples)");
                goto return_bad;
             }
-            cBytesAllSamples = sizeof(FloatFast) * cSamples;
+            cBytesAllSamples = sizeof(FloatShared) * cSamples;
          }
          if(IsAddError(iByteCur, cBytesAllSamples)) {
             LOG_0(Trace_Error, "ERROR AppendTarget IsAddError(iByteCur, cBytesAllSamples)");
@@ -1602,7 +1602,7 @@ static IntEbm AppendTarget(
                } while(pTargetsEnd != pTarget);
                EBM_ASSERT(reinterpret_cast<unsigned char *>(pFillData) == pFillMem + iByteNext);
             } else {
-               FloatFast * pFill = reinterpret_cast<FloatFast *>(pFillMem + iByteCur);
+               FloatShared * pFill = reinterpret_cast<FloatShared *>(pFillMem + iByteCur);
                const double * pTarget = reinterpret_cast<const double *>(aTargets);
                const double * const pTargetsEnd = &pTarget[cSamples];
                do {
@@ -1616,7 +1616,7 @@ static IntEbm AppendTarget(
                      LOG_0(Trace_Error, "ERROR AppendTarget target is infinity");
                      goto return_bad;
                   }
-                  const FloatFast converted = SafeConvertFloat<FloatFast>(cleaned);
+                  const FloatShared converted = SafeConvertFloat<FloatShared>(cleaned);
 
                   // TODO: clean this float in float32 format
 
@@ -2196,7 +2196,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
    return Error_None;
 }
 
-extern const FloatFast * GetDataSetSharedWeight(
+extern const FloatShared * GetDataSetSharedWeight(
    const unsigned char * const pDataSetShared,
    const size_t iWeight
 ) {
@@ -2224,11 +2224,11 @@ extern const FloatFast * GetDataSetSharedWeight(
 
    EBM_ASSERT(k_weightId == pWeightDataSetShared->m_id);
 
-   return reinterpret_cast<const FloatFast *>(pWeightDataSetShared + 1);
+   return reinterpret_cast<const FloatShared *>(pWeightDataSetShared + 1);
 }
 
 // TODO: make an inline wrapper that forces this to the correct type and have 2 differently named functions
-// GetDataSetSharedTarget returns (FloatFast *) for regression and (UIntShared *) for classification
+// GetDataSetSharedTarget returns (FloatShared *) for regression and (UIntShared *) for classification
 extern const void * GetDataSetSharedTarget(
    const unsigned char * const pDataSetShared,
    const size_t iTarget,

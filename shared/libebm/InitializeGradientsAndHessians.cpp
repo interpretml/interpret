@@ -42,8 +42,8 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
 
    if(size_t { 0 } != pDataSet->GetCountSamples()) {
       ptrdiff_t cRuntimeClasses;
-      const FloatFast * pTargetData =
-         static_cast<const FloatFast *>(GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses));
+      const FloatShared * pTargetData =
+         static_cast<const FloatShared *>(GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses));
       EBM_ASSERT(nullptr != pTargetData); // we previously called GetDataSetSharedTarget and got back non-null result
       EBM_ASSERT(IsRegression(cRuntimeClasses));
 
@@ -86,7 +86,7 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
                   } while(isLoopValidation != isItemValidation);
                   --pTargetData;
                }
-               const FloatFast data = *pTargetData;
+               const FloatShared data = *pTargetData;
                ++pTargetData;
 
                if(nullptr != pInitScore) {
@@ -147,15 +147,15 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
 
    if(size_t { 0 } != pDataSet->GetCountSamples()) {
       ptrdiff_t cRuntimeClasses;
-      const FloatFast * pTargetData =
-         static_cast<const FloatFast *>(GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses));
+      const FloatShared * pTargetData =
+         static_cast<const FloatShared *>(GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses));
       EBM_ASSERT(nullptr != pTargetData); // we previously called GetDataSetSharedTarget and got back non-null result
       EBM_ASSERT(IsRegression(cRuntimeClasses));
 
       DataSubsetInteraction * pSubset = pDataSet->GetSubsets();
       EBM_ASSERT(nullptr != pSubset);
 
-      const FloatFast * pWeight = nullptr;
+      const FloatShared * pWeight = nullptr;
       if(size_t { 0 } != cWeights) {
          pWeight = GetDataSetSharedWeight(pDataSetShared, 0);
          EBM_ASSERT(nullptr != pWeight);
@@ -196,7 +196,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
                   pSampleReplication += cSharedAdvances;
                }
                pTargetData += cSharedAdvances;
-               const FloatFast data = pTargetData[-1];
+               const FloatShared data = pTargetData[-1];
 
                if(nullptr != pInitScore) {
                   pInitScore += cInitAdvances;
@@ -225,7 +225,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
                   // Whether this multiplication happens or not is controlled by the caller by passing in the
                   // weight array or not.
                   pWeight += cSharedAdvances;
-                  gradient *= pWeight[-1];
+                  gradient *= SafeConvertFloat<double>(pWeight[-1]);
                }
             }
 
