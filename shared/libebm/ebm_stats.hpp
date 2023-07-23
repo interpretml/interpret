@@ -176,7 +176,7 @@ static constexpr FloatCalc k_gainMin = 0;
 //     really needs to do something to handle the condition since there isn't really much that we can do with 
 //     such large numbers, so pushing the error back to them is the best solution anyways.
 //     If we really wanted to, we could eliminate all errors from large regression targets by limiting the 
-//     user to a maximum regression target value (of 7.2e+134) if FloatFast is a float64 and much less for float32
+//     user to a maximum regression target value (of 7.2e+134) if FLOAT is a float64 and much less for float32
 //   - In regression, if the user gives us regression targets (either positive or negative) with absolute 
 //     values greater than sqrt(max_float), or if several rounds of boosting 
 //     leads to large square errors, then we'll overflow to +infinity in 

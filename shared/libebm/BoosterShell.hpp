@@ -10,7 +10,7 @@
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // FloatFast
+#include "common_c.h"
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {
@@ -44,7 +44,7 @@ class BoosterShell final {
    BinBase * m_aBoostingFastBinsTemp;
    BinBase * m_aBoostingBigBins;
 
-   // TODO: I think this can share memory with m_aBoostingFastBinsTemp since the GradientPair always contains a FloatFast, and it always contains enough for the multiclass scores in the first bin, and we always have at least 1 bin, right?
+   // TODO: I think this can share memory with m_aBoostingFastBinsTemp since the GradientPair always contains a FLOAT, and it always contains enough for the multiclass scores in the first bin, and we always have at least 1 bin, right?
    void * m_aMulticlassMidwayTemp;
 
    void * m_aTreeNodesTemp;

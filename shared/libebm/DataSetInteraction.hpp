@@ -9,7 +9,7 @@
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // FloatFast
+#include "common_c.h"
 #include "bridge_c.h" // UIntMain
 #include "zones.h"
 

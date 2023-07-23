@@ -44,7 +44,7 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
    pTensor->m_bExpanded = false;
 
    // this isn't required to be aligned, but do it anyways to keep as much of it on a single cache line as possible
-   FloatFast * const aTensorScores = static_cast<FloatFast *>(AlignedAlloc(sizeof(FloatFast) * cTensorScoreCapacity));
+   FloatScore * const aTensorScores = static_cast<FloatScore *>(AlignedAlloc(sizeof(FloatScore) * cTensorScoreCapacity));
    if(UNLIKELY(nullptr == aTensorScores)) {
       LOG_0(Trace_Warning, "WARNING Allocate nullptr == aTensorScores");
       free(pTensor); // don't need to call the full Free(*) yet
@@ -53,8 +53,8 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
    pTensor->m_aTensorScores = aTensorScores;
 
    // we only need to set the base case to zero, not our entire initial allocation
-   // we checked for cScores * k_initialTensorCapacity * sizeof(FloatFast), and 1 <= k_initialTensorCapacity, 
-   // so sizeof(FloatFast) * cScores can't overflow
+   // we checked for cScores * k_initialTensorCapacity * sizeof(FloatScore), and 1 <= k_initialTensorCapacity, 
+   // so sizeof(FloatScore) * cScores can't overflow
    //
    // we check elsewhere that IEEE754 is used, so bit zeroing is making zeroed floats
    memset(aTensorScores, 0, sizeof(*aTensorScores) * cScores);
@@ -164,12 +164,12 @@ ErrorEbm Tensor::EnsureTensorScoreCapacity(const size_t cTensorScores) {
       size_t cNewTensorScoreCapacity = cTensorScores + (cTensorScores >> 1);
       LOG_N(Trace_Info, "EnsureTensorScoreCapacity Growing to size %zu", cNewTensorScoreCapacity);
 
-      if(IsMultiplyError(sizeof(FloatFast), cNewTensorScoreCapacity)) {
-         LOG_0(Trace_Warning, "WARNING EnsureTensorScoreCapacity IsMultiplyError(sizeof(FloatFast), cNewTensorScoreCapacity)");
+      if(IsMultiplyError(sizeof(FloatScore), cNewTensorScoreCapacity)) {
+         LOG_0(Trace_Warning, "WARNING EnsureTensorScoreCapacity IsMultiplyError(sizeof(FloatScore), cNewTensorScoreCapacity)");
          return Error_OutOfMemory;
       }
-      size_t cBytes = sizeof(FloatFast) * cNewTensorScoreCapacity;
-      FloatFast * const aNewTensorScores = static_cast<FloatFast *>(AlignedRealloc(m_aTensorScores, sizeof(FloatFast) * m_cTensorScoreCapacity, cBytes));
+      size_t cBytes = sizeof(FloatScore) * cNewTensorScoreCapacity;
+      FloatScore * const aNewTensorScores = static_cast<FloatScore *>(AlignedRealloc(m_aTensorScores, sizeof(FloatScore) * m_cTensorScoreCapacity, cBytes));
       if(UNLIKELY(nullptr == aNewTensorScores)) {
          // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
          // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
@@ -209,14 +209,14 @@ ErrorEbm Tensor::Copy(const Tensor & rhs) {
       // already logged
       return error;
    }
-   EBM_ASSERT(!IsMultiplyError(sizeof(FloatFast), cTensorScores)); // we're copying this memory, so multiplication can't overflow
-   memcpy(m_aTensorScores, rhs.m_aTensorScores, sizeof(FloatFast) * cTensorScores);
+   EBM_ASSERT(!IsMultiplyError(sizeof(FloatScore), cTensorScores)); // we're copying this memory, so multiplication can't overflow
+   memcpy(m_aTensorScores, rhs.m_aTensorScores, sizeof(FloatScore) * cTensorScores);
    m_bExpanded = rhs.m_bExpanded;
    return Error_None;
 }
 
 bool Tensor::MultiplyAndCheckForIssues(const double v) {
-   const FloatFast vFloat = SafeConvertFloat<FloatFast>(v);
+   const FloatScore vFloat = SafeConvertFloat<FloatScore>(v);
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
 
    size_t cTensorScores = m_cScores;
@@ -226,12 +226,12 @@ bool Tensor::MultiplyAndCheckForIssues(const double v) {
       cTensorScores *= pThisDimensionInfo[iDimension].m_cSlices;
    }
 
-   FloatFast * pCur = &m_aTensorScores[0];
-   FloatFast * pEnd = &m_aTensorScores[cTensorScores];
+   FloatScore * pCur = &m_aTensorScores[0];
+   FloatScore * pEnd = &m_aTensorScores[cTensorScores];
    int bBad = 0;
    // we always have 1 score, even if we have zero splits
    do {
-      const FloatFast val = *pCur * vFloat;
+      const FloatScore val = *pCur * vFloat;
       // TODO: these can be done with bitwise operators, which would be good for SIMD.  Check to see what assembly this turns into.
       // since both NaN and +-infinity have the exponential as FF, and no other values do, the best optimized assembly would test the exponential 
       // bits for FF and then OR a 1 if the test is true and 0 if the test is false
@@ -306,19 +306,19 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
          return error;
       }
 
-      FloatFast * const aTensorScores = m_aTensorScores;
+      FloatScore * const aTensorScores = m_aTensorScores;
       const DimensionInfo * const aDimension1 = GetDimensions();
 
       EBM_ASSERT(cTensorScores1 <= cNewTensorScores);
-      const FloatFast * pTensorScore1 = &aTensorScores[cTensorScores1];
-      FloatFast * pTensorScoreTop = &aTensorScores[cNewTensorScores];
+      const FloatScore * pTensorScore1 = &aTensorScores[cTensorScores1];
+      FloatScore * pTensorScoreTop = &aTensorScores[cNewTensorScores];
 
       // traverse the scores in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our 
       // existing scores which we still need to copy first do the scores because we need to refer to the old splits when making decisions about 
       // where to move next
       while(true) {
-         const FloatFast * pTensorScore1Move = pTensorScore1;
-         const FloatFast * const pTensorScoreTopEnd = pTensorScoreTop - m_cScores;
+         const FloatScore * pTensorScore1Move = pTensorScore1;
+         const FloatScore * const pTensorScoreTopEnd = pTensorScoreTop - m_cScores;
          do {
             --pTensorScore1Move;
             --pTensorScoreTop;
@@ -429,7 +429,7 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
    return Error_None;
 }
 
-void Tensor::AddExpandedWithBadValueProtection(const FloatFast * const aFromScores) {
+void Tensor::AddExpandedWithBadValueProtection(const FloatScore * const aFromScores) {
    EBM_ASSERT(m_bExpanded);
    size_t cItems = m_cScores;
 
@@ -439,9 +439,9 @@ void Tensor::AddExpandedWithBadValueProtection(const FloatFast * const aFromScor
       cItems *= aDimension[iDimension].m_cSlices;
    }
 
-   const FloatFast * pFromScore = aFromScores;
-   FloatFast * pToScore = m_aTensorScores;
-   const FloatFast * const pToScoresEnd = m_aTensorScores + cItems;
+   const FloatScore * pFromScore = aFromScores;
+   FloatScore * pToScore = m_aTensorScores;
+   const FloatScore * const pToScoresEnd = m_aTensorScores + cItems;
    do {
       // if we get a NaN value, then just consider it a no-op zero
       // if we get a +infinity, then just make our value the maximum
@@ -450,17 +450,17 @@ void Tensor::AddExpandedWithBadValueProtection(const FloatFast * const aFromScor
       // so, not much real loss there.  Also, if we have NaN, or +-infinity in an update, we'll be stopping boosting soon
       // but we want to preserve the best term scores that we had
 
-      FloatFast score = *pFromScore;
-      score = std::isnan(score) ? FloatFast { 0 } : score;
+      FloatScore score = *pFromScore;
+      score = std::isnan(score) ? FloatScore { 0 } : score;
       score = *pToScore + score;
       // this is a check for -infinity, without the -infinity value since some compilers make that illegal
       // even so far as to make isinf always FALSE with some compiler flags
       // include the equals case so that the compiler is less likely to optimize that out
-      score = score <= std::numeric_limits<FloatFast>::lowest() ? std::numeric_limits<FloatFast>::lowest() : score;
+      score = score <= std::numeric_limits<FloatScore>::lowest() ? std::numeric_limits<FloatScore>::lowest() : score;
       // this is a check for +infinity, without the +infinity value since some compilers make that illegal
       // even so far as to make isinf always FALSE with some compiler flags
       // include the equals case so that the compiler is less likely to optimize that out
-      score = std::numeric_limits<FloatFast>::max() <= score ? std::numeric_limits<FloatFast>::max() : score;
+      score = std::numeric_limits<FloatScore>::max() <= score ? std::numeric_limits<FloatScore>::max() : score;
       *pToScore = score;
       ++pFromScore;
       ++pToScore;
@@ -478,9 +478,9 @@ ErrorEbm Tensor::Add(const Tensor & rhs) {
       EBM_ASSERT(1 <= m_cTensorScoreCapacity);
       EBM_ASSERT(nullptr != m_aTensorScores);
 
-      FloatFast * pTo = &m_aTensorScores[0];
-      const FloatFast * pFrom = &rhs.m_aTensorScores[0];
-      const FloatFast * const pToEnd = &pTo[m_cScores];
+      FloatScore * pTo = &m_aTensorScores[0];
+      const FloatScore * pFrom = &rhs.m_aTensorScores[0];
+      const FloatScore * const pToEnd = &pTo[m_cScores];
       do {
          *pTo += *pFrom;
          ++pTo;
@@ -568,22 +568,22 @@ ErrorEbm Tensor::Add(const Tensor & rhs) {
       return error;
    }
 
-   const FloatFast * pTensorScore2 = &rhs.m_aTensorScores[cTensorScores2];  // we're accessing allocated memory, so it can't overflow
+   const FloatScore * pTensorScore2 = &rhs.m_aTensorScores[cTensorScores2];  // we're accessing allocated memory, so it can't overflow
    const DimensionInfo * const aDimension2 = rhs.GetDimensions();
 
-   FloatFast * const aTensorScores = m_aTensorScores;
+   FloatScore * const aTensorScores = m_aTensorScores;
    const DimensionInfo * const aDimension1 = GetDimensions();
 
-   const FloatFast * pTensorScore1 = &aTensorScores[cTensorScores1]; // we're accessing allocated memory, so it can't overflow
-   FloatFast * pTensorScoreTop = &aTensorScores[cNewTensorScores]; // we're accessing allocated memory, so it can't overflow
+   const FloatScore * pTensorScore1 = &aTensorScores[cTensorScores1]; // we're accessing allocated memory, so it can't overflow
+   FloatScore * pTensorScoreTop = &aTensorScores[cNewTensorScores]; // we're accessing allocated memory, so it can't overflow
 
    // traverse the scores in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our
    // existing scores which we still need to copy first do the scores because we need to refer to the old splits when making decisions about where 
    // to move next
    while(true) {
-      const FloatFast * pTensorScore1Move = pTensorScore1;
-      const FloatFast * pTensorScore2Move = pTensorScore2;
-      const FloatFast * const pTensorScoreTopEnd = pTensorScoreTop - m_cScores;
+      const FloatScore * pTensorScore1Move = pTensorScore1;
+      const FloatScore * pTensorScore2Move = pTensorScore2;
+      const FloatScore * const pTensorScoreTopEnd = pTensorScoreTop - m_cScores;
       do {
          --pTensorScore1Move;
          --pTensorScore2Move;
@@ -781,9 +781,9 @@ bool Tensor::IsEqual(const Tensor & rhs) const {
       }
    }
 
-   const FloatFast * pV1Cur = &m_aTensorScores[0];
-   const FloatFast * pV2Cur = &rhs.m_aTensorScores[0];
-   const FloatFast * const pV1End = pV1Cur + cTensorScores;
+   const FloatScore * pV1Cur = &m_aTensorScores[0];
+   const FloatScore * pV2Cur = &rhs.m_aTensorScores[0];
+   const FloatScore * const pV1End = pV1Cur + cTensorScores;
    do {
       if(UNLIKELY(*pV1Cur != *pV2Cur)) {
          return false;

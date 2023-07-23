@@ -587,7 +587,7 @@ public:
                            );
                         }
 
-                        FloatFast * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
+                        FloatScore * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
                         if(splitFirst2LowBest < splitFirst2HighBest) {
                            aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowLow);
                            aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowHigh);
@@ -717,7 +717,7 @@ public:
                               SafeConvertFloat<FloatCalc>(pTotals1HighHighBest->GetWeight())
                            );
                         }
-                        FloatFast * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
+                        FloatScore * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
                         if(splitFirst1LowBest < splitFirst1HighBest) {
                            aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowLow);
                            aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighLow);
@@ -784,7 +784,7 @@ public:
             );
          }
 
-         FloatFast * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
+         FloatScore * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
          aUpdateScores[iScore] = SafeConvertFloat<FloatScore>(update);
       }
       return Error_None;

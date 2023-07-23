@@ -115,7 +115,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       return error;
    }
 
-   FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
+   FloatScore * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
 
    // our caller can give us one of these bad types of inputs:
    //  1) NaN values
@@ -134,7 +134,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
 
    double validationMetricAvg = 0.0;
 
-   size_t cFloatSize = sizeof(Float_Big);
+
+   static_assert(std::is_same<Float_Big, FloatScore>::value || std::is_same<Float_Small, FloatScore>::value,
+      "FloatScore must be either Float_Big or Float_Small");
+   size_t cFloatSize = sizeof(aUpdateScores[0]);
    bool bIgnored = false;
    while(true) {
       if(0 != pBoosterCore->GetTrainingSet()->GetCountSamples()) {
@@ -214,25 +217,31 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
             ++pSubset;
          } while(pSubsetsEnd != pSubset);
       }
-      if(sizeof(Float_Small) == cFloatSize || !bIgnored) {
+      if(!bIgnored) {
          break;
       }
-
       // we support having our updates as float64 with float64 or float32 compute zone values
       // or we support having our updates as float32 with float32 compute zone values
       // but we do not support having float32 updates with float64 compute zone values
-      EBM_ASSERT(sizeof(aUpdateScores[0]) == sizeof(Float_Big));
+      EBM_ASSERT(sizeof(Float_Big) == sizeof(FloatScore));
+      if(sizeof(Float_Small) == cFloatSize) {
+         break;
+      }
+
+      EBM_ASSERT(sizeof(Float_Big) == cFloatSize);
+      static_assert(sizeof(Float_Small) < sizeof(Float_Big), "we reuse the memory below and since we overwrite memory the Float_Big needs to be larger or equal to Float_Small, but also we use the size to differentiate so they can't be equal either");
 
       cFloatSize = sizeof(Float_Small);
 
-      float * pUpdateFloat = reinterpret_cast<float *>(aUpdateScores);
-      double * pUpdateDouble = reinterpret_cast<double *>(aUpdateScores);
-      const double * const pUpdateDoubleEnd = pUpdateDouble + pTerm->GetCountTensorBins() * GetCountScores(pBoosterCore->GetCountClasses());
+      // these need to be void * to avoid breaking the C++ aliasing rules
+      void * pUpdateSmall = aUpdateScores;
+      void * pUpdateBig = aUpdateScores;
+      const Float_Big * const pUpdateBigEnd = aUpdateScores + pTerm->GetCountTensorBins() * GetCountScores(pBoosterCore->GetCountClasses());
       do {
-         *pUpdateFloat = SafeConvertFloat<float>(*pUpdateDouble);
-         ++pUpdateFloat;
-         ++pUpdateDouble;
-      } while(pUpdateDoubleEnd != pUpdateDouble);
+         *reinterpret_cast<Float_Small *>(pUpdateSmall) = SafeConvertFloat<Float_Small>(*reinterpret_cast<Float_Big *>(pUpdateBig));
+         pUpdateBig = IndexByte(pUpdateBig, sizeof(Float_Big));;
+         pUpdateSmall = IndexByte(pUpdateSmall, sizeof(Float_Small));
+      } while(pUpdateBigEnd != pUpdateBig);
    }
 
    if(0 != pBoosterCore->GetValidationSet()->GetCountSamples()) {
@@ -498,7 +507,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(
       return error;
    }
 
-   FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
+   FloatScore * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
    Transpose<true>(pTerm, GetCountScores(pBoosterCore->GetCountClasses()), updateScoresTensorOut, aUpdateScores);
 
    return Error_None;
@@ -590,7 +599,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
       return error;
    }
 
-   FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
+   FloatScore * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
    // *updateScoresTensor is const, but Transpose can go either way.  When bCopyToIncrement is false like it
    // is below, then Transpose will treat updateScoresTensor as const
    Transpose<false>(pTerm, GetCountScores(pBoosterCore->GetCountClasses()), const_cast<double *>(updateScoresTensor), aUpdateScores);

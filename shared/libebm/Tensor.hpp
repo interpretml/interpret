@@ -10,7 +10,7 @@
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // FloatFast
+#include "common_c.h" // FloatScore
 #include "bridge_c.h" // ActiveDataType
 #include "zones.h"
 
@@ -46,7 +46,7 @@ class Term;
 // NO m_cTensorScores -> we don't need to pass this arround from process to process since it's global info and can be passed to the individual functions
 // NO m_cDimensionsMax -> we pre-determine the maximum size and always allocate the max max size
 // NO m_cDimensions; -> we can pass in the Term object to know the # of dimensions
-// FloatFast m_aTensorScores[]; // a space for our values
+// FloatScore m_aTensorScores[]; // a space for our values
 // UIntEbm DIMENSION_1_SPLIT_POINTS
 // UIntEbm DIMENSION_1_SLICE_COUNT -> we find this by traversing the 0th dimension items
 // UIntEbm DIMENSION_0_SPLIT_POINTS -> we travel backwards by the count
@@ -153,7 +153,7 @@ class Tensor final {
    size_t m_cScores;
    size_t m_cDimensionsMax;
    size_t m_cDimensions;
-   FloatFast * m_aTensorScores;
+   FloatScore * m_aTensorScores;
    bool m_bExpanded;
 
    // IMPORTANT: m_aDimensions must be in the last position for the struct hack and this must be standard layout
@@ -195,7 +195,7 @@ public:
    ErrorEbm Copy(const Tensor & rhs);
    bool MultiplyAndCheckForIssues(const double v);
    ErrorEbm Expand(const Term * const pTerm);
-   void AddExpandedWithBadValueProtection(const FloatFast * const aFromValues);
+   void AddExpandedWithBadValueProtection(const FloatScore * const aFromValues);
    ErrorEbm Add(const Tensor & rhs);
 
 #ifndef NDEBUG
@@ -221,7 +221,7 @@ public:
       return GetDimensions()[iDimension].m_cSlices;
    }
 
-   inline FloatFast * GetTensorScoresPointer() {
+   inline FloatScore * GetTensorScoresPointer() {
       return m_aTensorScores;
    }
 };

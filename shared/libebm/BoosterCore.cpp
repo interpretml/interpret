@@ -1022,7 +1022,7 @@ ErrorEbm BoosterCore::Create(
 
 ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
    void * const aMulticlassMidwayTemp,
-   FloatFast * const aUpdateScores
+   FloatScore * const aUpdateScores
 ) {
    DataSetBoosting * const pDataSet = GetTrainingSet();
    if(size_t { 0 } != pDataSet->GetCountSamples()) {
@@ -1049,6 +1049,7 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
          data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
          data.m_bValidation = EBM_FALSE;
          data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
+         static_assert(std::is_same<FloatScore, Float_Big>::value, "If FloatScore is type Float_Small then some of the zones might use Float_Big as their type and then read past the end of the aUpdateScores memory, which should always contain zeros. If we want to handle this scenario then we need to allocate a larger buffer of memory to zero out instead of using aUpdateScores");
          data.m_aUpdateTensorScores = aUpdateScores;
          data.m_cSamples = pSubset->GetCountSamples();
          data.m_aPacked = nullptr;

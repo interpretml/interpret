@@ -511,7 +511,7 @@ public:
          } while(PREDICTABLE(pStateInit != pState));
       }
 
-      FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
+      FloatScore * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
       auto * pCollapsedBin2 = aCollapsedBins;
 
       if(0 != (TermBoostFlags_GradientSums & flags)) {

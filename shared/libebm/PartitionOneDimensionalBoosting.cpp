@@ -134,7 +134,7 @@ static ErrorEbm Flatten(
    }
 
    ActiveDataType * pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
-   FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
+   FloatScore * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
 
    const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 

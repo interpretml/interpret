@@ -224,7 +224,7 @@ struct LogLossBinaryObjective : BinaryObjective {
                //                sums of zero.
                //                I've made a copy of this formula as a comment to reference to what is good in-case the 
                //                formula is changed in the code without reading this comment
-               //                const FLOAT gradient = (UNPREDICTABLE(0 == target) ? FloatFast { -1 } : FloatFast { 1 }) / (FloatFast{ 1 } + ExpForBinaryClassification(UNPREDICTABLE(0 == target) ? -sampleScore : sampleScore));
+               //                const FLOAT gradient = (UNPREDICTABLE(0 == target) ? FLOAT { -1 } : FLOAT { 1 }) / (FLOAT{ 1 } + ExpForBinaryClassification(UNPREDICTABLE(0 == target) ? -sampleScore : sampleScore));
                // !!! IMPORTANT: SEE ABOVE
 
                const TFloat numerator = IfEqual(typename TFloat::TInt(0), target, TFloat(1), TFloat(-1));

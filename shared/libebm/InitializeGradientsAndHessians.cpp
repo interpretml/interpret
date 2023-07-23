@@ -8,7 +8,7 @@
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // FloatFast
+#include "common_c.h"
 #include "zones.h"
 
 #include "ebm_internal.hpp" //SafeConvertFloat
@@ -200,7 +200,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
 
                if(nullptr != pInitScore) {
                   pInitScore += cInitAdvances;
-                  initScore = SafeConvertFloat<FloatFast>(pInitScore[-1]);
+                  initScore = pInitScore[-1];
                }
 
                // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 

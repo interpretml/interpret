@@ -7,7 +7,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "common_c.h" // FloatFast
+#include "common_c.h"
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {

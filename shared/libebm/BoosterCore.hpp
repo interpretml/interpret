@@ -182,7 +182,7 @@ public:
 
    ErrorEbm InitializeBoosterGradientsAndHessians(
       void * const aMulticlassMidwayTemp,
-      FloatFast * const aUpdateScores
+      FloatScore * const aUpdateScores
    );
 
    inline double FinishMetric(const double metricSum) {

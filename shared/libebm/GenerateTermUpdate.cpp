@@ -103,7 +103,7 @@ static void BoostZeroDimensional(
    EBM_ASSERT(nullptr != pBigBin);
 
    Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
-   FloatFast * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
+   FloatScore * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
    if(pBoosterCore->IsHessian()) {
       const auto * const pBin = pBigBin->Specialize<FloatMain, UIntMain, true>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
