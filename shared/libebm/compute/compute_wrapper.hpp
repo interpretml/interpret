@@ -47,10 +47,10 @@ struct ComputeWrapper final {
 
       static_assert(std::is_unsigned<typename TFloat::TInt::T>::value,
          "TFloat::TInt::T must be an unsigned integer type");
-      static_assert(std::is_same<UInt_Big, typename TFloat::TInt::T>::value || std::is_same<UInt_Small, typename TFloat::TInt::T>::value,
-         "TFloat::TInt::T must be either UInt_Big or UInt_Small");
-      static_assert(std::is_same<Float_Big, typename TFloat::T>::value || std::is_same<Float_Small, typename TFloat::T>::value,
-         "TFloat::T must be either Float_Big or Float_Small");
+      static_assert(std::is_same<UIntBig, typename TFloat::TInt::T>::value || std::is_same<UIntSmall, typename TFloat::TInt::T>::value,
+         "TFloat::TInt::T must be either UIntBig or UIntSmall");
+      static_assert(std::is_same<FloatBig, typename TFloat::T>::value || std::is_same<FloatSmall, typename TFloat::T>::value,
+         "TFloat::T must be either FloatBig or FloatSmall");
 
       pObjectiveWrapperOut->m_cFloatBytes = sizeof(typename TFloat::T);
       pObjectiveWrapperOut->m_cUIntBytes = sizeof(typename TFloat::TInt::T);

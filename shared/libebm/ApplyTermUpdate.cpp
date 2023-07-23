@@ -135,8 +135,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
    double validationMetricAvg = 0.0;
 
 
-   static_assert(std::is_same<Float_Big, FloatScore>::value || std::is_same<Float_Small, FloatScore>::value,
-      "FloatScore must be either Float_Big or Float_Small");
+   static_assert(std::is_same<FloatBig, FloatScore>::value || std::is_same<FloatSmall, FloatScore>::value,
+      "FloatScore must be either FloatBig or FloatSmall");
    size_t cFloatSize = sizeof(aUpdateScores[0]);
    bool bIgnored = false;
    while(true) {
@@ -223,24 +223,24 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       // we support having our updates as float64 with float64 or float32 compute zone values
       // or we support having our updates as float32 with float32 compute zone values
       // but we do not support having float32 updates with float64 compute zone values
-      EBM_ASSERT(sizeof(Float_Big) == sizeof(FloatScore));
-      if(sizeof(Float_Small) == cFloatSize) {
+      EBM_ASSERT(sizeof(FloatBig) == sizeof(FloatScore));
+      if(sizeof(FloatSmall) == cFloatSize) {
          break;
       }
 
-      EBM_ASSERT(sizeof(Float_Big) == cFloatSize);
-      static_assert(sizeof(Float_Small) < sizeof(Float_Big), "we reuse the memory below and since we overwrite memory the Float_Big needs to be larger or equal to Float_Small, but also we use the size to differentiate so they can't be equal either");
+      EBM_ASSERT(sizeof(FloatBig) == cFloatSize);
+      static_assert(sizeof(FloatSmall) < sizeof(FloatBig), "we reuse the memory below and since we overwrite memory the FloatBig needs to be larger or equal to FloatSmall, but also we use the size to differentiate so they can't be equal either");
 
-      cFloatSize = sizeof(Float_Small);
+      cFloatSize = sizeof(FloatSmall);
 
       // these need to be void * to avoid breaking the C++ aliasing rules
       void * pUpdateSmall = aUpdateScores;
       void * pUpdateBig = aUpdateScores;
-      const Float_Big * const pUpdateBigEnd = aUpdateScores + pTerm->GetCountTensorBins() * GetCountScores(pBoosterCore->GetCountClasses());
+      const FloatBig * const pUpdateBigEnd = aUpdateScores + pTerm->GetCountTensorBins() * GetCountScores(pBoosterCore->GetCountClasses());
       do {
-         *reinterpret_cast<Float_Small *>(pUpdateSmall) = SafeConvertFloat<Float_Small>(*reinterpret_cast<Float_Big *>(pUpdateBig));
-         pUpdateBig = IndexByte(pUpdateBig, sizeof(Float_Big));;
-         pUpdateSmall = IndexByte(pUpdateSmall, sizeof(Float_Small));
+         *reinterpret_cast<FloatSmall *>(pUpdateSmall) = SafeConvertFloat<FloatSmall>(*reinterpret_cast<FloatBig *>(pUpdateBig));
+         pUpdateBig = IndexByte(pUpdateBig, sizeof(FloatBig));;
+         pUpdateSmall = IndexByte(pUpdateSmall, sizeof(FloatSmall));
       } while(pUpdateBigEnd != pUpdateBig);
    }
 

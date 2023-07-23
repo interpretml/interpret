@@ -304,19 +304,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    const DataSubsetInteraction * const pSubsetsEnd = pSubset + pInteractionCore->GetDataSetInteraction()->GetCountSubsets();
    do {
       size_t cBytesPerFastBin;
-      if(sizeof(UInt_Small) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
-         if(sizeof(Float_Small) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-            cBytesPerFastBin = GetBinSize<Float_Small, UInt_Small>(bHessian, cScores);
+      if(sizeof(UIntSmall) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
+         if(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+            cBytesPerFastBin = GetBinSize<FloatSmall, UIntSmall>(bHessian, cScores);
          } else {
-            EBM_ASSERT(sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-            cBytesPerFastBin = GetBinSize<Float_Big, UInt_Small>(bHessian, cScores);
+            EBM_ASSERT(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+            cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
          }
       } else {
-         EBM_ASSERT(sizeof(UInt_Big) == pSubset->GetObjectiveWrapper()->m_cUIntBytes);
-         if(sizeof(Float_Small) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-            cBytesPerFastBin = GetBinSize<Float_Small, UInt_Big>(bHessian, cScores);
+         EBM_ASSERT(sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes);
+         if(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+            cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
          } else {
-            cBytesPerFastBin = GetBinSize<Float_Big, UInt_Big>(bHessian, cScores);
+            cBytesPerFastBin = GetBinSize<FloatBig, UIntBig>(bHessian, cScores);
          }
       }
       if(IsMultiplyError(cBytesPerFastBin, cTensorBins)) {
@@ -375,8 +375,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          std::is_same<FloatMain, double>::value,
          std::is_same<UIntMain, uint64_t>::value,
          aMainBins,
-         sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes,
-         sizeof(UInt_Big) == pSubset->GetObjectiveWrapper()->m_cUIntBytes,
+         sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes,
+         sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes,
          aFastBins
       );
 

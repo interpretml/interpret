@@ -745,20 +745,20 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             }
 
             size_t cBytesPerFastBin;
-            if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Big)) {
-               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big)) {
-                  cBytesPerFastBin = GetBinSize<Float_Big, UInt_Big>(pBoosterCore->IsHessian(), cScores);
+            if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatBig)) {
+               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntBig)) {
+                  cBytesPerFastBin = GetBinSize<FloatBig, UIntBig>(pBoosterCore->IsHessian(), cScores);
                } else {
-                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Small));
-                  cBytesPerFastBin = GetBinSize<Float_Big, UInt_Small>(pBoosterCore->IsHessian(), cScores);
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntSmall));
+                  cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(pBoosterCore->IsHessian(), cScores);
                }
             } else {
-               EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Small));
-               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big)) {
-                  cBytesPerFastBin = GetBinSize<Float_Small, UInt_Big>(pBoosterCore->IsHessian(), cScores);
+               EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatSmall));
+               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntBig)) {
+                  cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(pBoosterCore->IsHessian(), cScores);
                } else {
-                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Small));
-                  cBytesPerFastBin = GetBinSize<Float_Small, UInt_Small>(pBoosterCore->IsHessian(), cScores);
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntSmall));
+                  cBytesPerFastBin = GetBinSize<FloatSmall, UIntSmall>(pBoosterCore->IsHessian(), cScores);
                }
             }
             EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTensorBins));
@@ -790,8 +790,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
                std::is_same<FloatMain, double>::value,
                std::is_same<UIntMain, uint64_t>::value,
                aMainBins,
-               pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Big),
-               pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big),
+               pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatBig),
+               pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntBig),
                aFastBins
             );
             ++pSubset;

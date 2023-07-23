@@ -241,11 +241,11 @@ ErrorEbm DataSetInteraction::InitFeatureData(
                      --replication;
 
                      EBM_ASSERT(0 <= cShiftTo);
-                     if(sizeof(UInt_Small) == pSubset->m_pObjective->m_cUIntBytes) {
-                        *(reinterpret_cast<UInt_Small *>(pFeatureDataTo) + iPartition) |= static_cast<UInt_Small>(iFeatureBin) << cShiftTo;
+                     if(sizeof(UIntSmall) == pSubset->m_pObjective->m_cUIntBytes) {
+                        *(reinterpret_cast<UIntSmall *>(pFeatureDataTo) + iPartition) |= static_cast<UIntSmall>(iFeatureBin) << cShiftTo;
                      } else {
-                        EBM_ASSERT(sizeof(UInt_Big) == pSubset->m_pObjective->m_cUIntBytes);
-                        *(reinterpret_cast<UInt_Big *>(pFeatureDataTo) + iPartition) |= static_cast<UInt_Big>(iFeatureBin) << cShiftTo;
+                        EBM_ASSERT(sizeof(UIntBig) == pSubset->m_pObjective->m_cUIntBytes);
+                        *(reinterpret_cast<UIntBig *>(pFeatureDataTo) + iPartition) |= static_cast<UIntBig>(iFeatureBin) << cShiftTo;
                      }
 
                      ++iPartition;
@@ -336,11 +336,11 @@ ErrorEbm DataSetInteraction::InitWeights(
 
          subsetWeight += weight;
 
-         if(sizeof(Float_Small) == pSubset->m_pObjective->m_cFloatBytes) {
-            *reinterpret_cast<Float_Small *>(pWeightTo) = SafeConvertFloat<Float_Small>(weight);
+         if(sizeof(FloatSmall) == pSubset->m_pObjective->m_cFloatBytes) {
+            *reinterpret_cast<FloatSmall *>(pWeightTo) = SafeConvertFloat<FloatSmall>(weight);
          } else {
-            EBM_ASSERT(sizeof(Float_Big) == pSubset->m_pObjective->m_cFloatBytes);
-            *reinterpret_cast<Float_Big *>(pWeightTo) = SafeConvertFloat<Float_Big>(weight);
+            EBM_ASSERT(sizeof(FloatBig) == pSubset->m_pObjective->m_cFloatBytes);
+            *reinterpret_cast<FloatBig *>(pWeightTo) = SafeConvertFloat<FloatBig>(weight);
          }
          pWeightTo = IndexByte(pWeightTo, pSubset->m_pObjective->m_cFloatBytes);
 

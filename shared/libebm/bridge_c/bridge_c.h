@@ -20,14 +20,13 @@ extern "C" {
 
 #define INTERNAL_IMPORT_EXPORT_INCLUDE extern
 
-// TODO: rename these to FloatBig, UIntBig, FloatSmall, UIntSmall (check that none of these names exist now)
-typedef double Float_Big;
-typedef uint64_t UInt_Big;
-typedef float Float_Small;
-typedef uint32_t UInt_Small;
+typedef double FloatBig;
+typedef uint64_t UIntBig;
+typedef float FloatSmall;
+typedef uint32_t UIntSmall;
 
-static_assert(sizeof(Float_Small) < sizeof(Float_Big), "Float_Big must be able to contain Float_Small");
-static_assert(sizeof(UInt_Small) < sizeof(UInt_Big), "UInt_Big must be able to contain UInt_Small");
+static_assert(sizeof(FloatSmall) < sizeof(FloatBig), "FloatBig must be able to contain FloatSmall");
+static_assert(sizeof(UIntSmall) < sizeof(UIntBig), "UIntBig must be able to contain UIntSmall");
 
 typedef uint64_t UIntMain;
 typedef UIntEbm ActiveDataType; // TODO: in most places we could use size_t for this and only use the uint64 version where we have cross-platform considerations.

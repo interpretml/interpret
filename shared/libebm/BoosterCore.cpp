@@ -545,28 +545,28 @@ ErrorEbm BoosterCore::Create(
 
       Term ** ppTerm = pBoosterCore->m_apTerms;
       const Term * const * const ppTermsEnd = nullptr == ppTerm ? nullptr : ppTerm + cTerms;
-      if(sizeof(UInt_Small) == pBoosterCore->m_objectiveCpu.m_cUIntBytes) {
+      if(sizeof(UIntSmall) == pBoosterCore->m_objectiveCpu.m_cUIntBytes) {
          size_t cBytes;
-         if(sizeof(Float_Small) == pBoosterCore->m_objectiveCpu.m_cFloatBytes) {
-            if(IsOverflowBinSize<Float_Small, UInt_Small>(bHessian, cScores)) {
+         if(sizeof(FloatSmall) == pBoosterCore->m_objectiveCpu.m_cFloatBytes) {
+            if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                return Error_OutOfMemory;
             }
-            cBytes = GetBinSize<Float_Small, UInt_Small>(bHessian, cScores);
+            cBytes = GetBinSize<FloatSmall, UIntSmall>(bHessian, cScores);
          } else {
-            EBM_ASSERT(sizeof(Float_Big) == pBoosterCore->m_objectiveCpu.m_cFloatBytes);
-            if(IsOverflowBinSize<Float_Big, UInt_Small>(bHessian, cScores)) {
+            EBM_ASSERT(sizeof(FloatBig) == pBoosterCore->m_objectiveCpu.m_cFloatBytes);
+            if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                return Error_OutOfMemory;
             }
-            cBytes = GetBinSize<Float_Big, UInt_Small>(bHessian, cScores);
+            cBytes = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
          }
          if(IsMultiplyError(cBytes, cFastBinsMax)) {
             LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
             return Error_IllegalParamVal;
          }
          cBytes *= cFastBinsMax;
-         if(IsConvertError<UInt_Small>(cBytes - 1)) {
+         if(IsConvertError<UIntSmall>(cBytes - 1)) {
             // In BinSumsBoosting we use the SIMD pack to hold an index to memory, so we need to be able to hold
             // the entire fast bin tensor
             LOG_0(Trace_Error, "ERROR BoosterCore::Create fast tensor indexes cannot fit into compute zone indexes");
@@ -586,7 +586,7 @@ ErrorEbm BoosterCore::Create(
             }
             // restriction from LogLossMulticlassObjective.hpp
             // we use the target value to index into the temp exp array and adjust the target gradient
-            if(IsConvertError<typename std::make_signed<UInt_Small>::type>(cIndexes - size_t { 1 })) {
+            if(IsConvertError<typename std::make_signed<UIntSmall>::type>(cIndexes - size_t { 1 })) {
                LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
                return Error_IllegalParamVal;
             }
@@ -597,34 +597,34 @@ ErrorEbm BoosterCore::Create(
             // score tensors, so we need to multiply by cScores. Since we use the TFloat::Load function we
             // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
             // instructions use signed indexes
-            if(0 != cTensorBins && IsConvertError<typename std::make_signed<UInt_Small>::type>(cTensorBins * cScores - size_t { 1 })) {
-               LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UInt_Small>((*ppTerm)->GetCountTensorBins())");
+            if(0 != cTensorBins && IsConvertError<typename std::make_signed<UIntSmall>::type>(cTensorBins * cScores - size_t { 1 })) {
+               LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UIntSmall>((*ppTerm)->GetCountTensorBins())");
                return Error_IllegalParamVal;
             }
          }
       } else {
-         EBM_ASSERT(sizeof(UInt_Big) == pBoosterCore->m_objectiveCpu.m_cUIntBytes);
+         EBM_ASSERT(sizeof(UIntBig) == pBoosterCore->m_objectiveCpu.m_cUIntBytes);
          size_t cBytes;
-         if(sizeof(Float_Small) == pBoosterCore->m_objectiveCpu.m_cFloatBytes) {
-            if(IsOverflowBinSize<Float_Small, UInt_Big>(bHessian, cScores)) {
+         if(sizeof(FloatSmall) == pBoosterCore->m_objectiveCpu.m_cFloatBytes) {
+            if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                return Error_OutOfMemory;
             }
-            cBytes = GetBinSize<Float_Small, UInt_Big>(bHessian, cScores);
+            cBytes = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
          } else {
-            EBM_ASSERT(sizeof(Float_Big) == pBoosterCore->m_objectiveCpu.m_cFloatBytes);
-            if(IsOverflowBinSize<Float_Big, UInt_Big>(bHessian, cScores)) {
+            EBM_ASSERT(sizeof(FloatBig) == pBoosterCore->m_objectiveCpu.m_cFloatBytes);
+            if(IsOverflowBinSize<FloatBig, UIntBig>(bHessian, cScores)) {
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                return Error_OutOfMemory;
             }
-            cBytes = GetBinSize<Float_Big, UInt_Big>(bHessian, cScores);
+            cBytes = GetBinSize<FloatBig, UIntBig>(bHessian, cScores);
          }
          if(IsMultiplyError(cBytes, cFastBinsMax)) {
             LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
             return Error_IllegalParamVal;
          }
          cBytes *= cFastBinsMax;
-         if(IsConvertError<UInt_Big>(cBytes - 1)) {
+         if(IsConvertError<UIntBig>(cBytes - 1)) {
             // In BinSumsBoosting we use the SIMD pack to hold an index to memory, so we need to be able to hold
             // the entire fast bin tensor
             LOG_0(Trace_Error, "ERROR BoosterCore::Create fast tensor indexes cannot fit into compute zone indexes");
@@ -644,7 +644,7 @@ ErrorEbm BoosterCore::Create(
             }
             // restriction from LogLossMulticlassObjective.hpp
             // we use the target value to index into the temp exp array and adjust the target gradient
-            if(IsConvertError<typename std::make_signed<UInt_Big>::type>(cIndexes - size_t { 1 })) {
+            if(IsConvertError<typename std::make_signed<UIntBig>::type>(cIndexes - size_t { 1 })) {
                LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
                return Error_IllegalParamVal;
             }
@@ -655,8 +655,8 @@ ErrorEbm BoosterCore::Create(
             // score tensors, so we need to multiply by cScores. Since we use the TFloat::Load function we
             // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
             // instructions use signed indexes
-            if(0 != cTensorBins && IsConvertError<typename std::make_signed<UInt_Big>::type>(cTensorBins * cScores - size_t { 1 })) {
-               LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UInt_Small>((*ppTerm)->GetCountTensorBins())");
+            if(0 != cTensorBins && IsConvertError<typename std::make_signed<UIntBig>::type>(cTensorBins * cScores - size_t { 1 })) {
+               LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UIntSmall>((*ppTerm)->GetCountTensorBins())");
                return Error_IllegalParamVal;
             }
          }
@@ -665,28 +665,28 @@ ErrorEbm BoosterCore::Create(
       if(0 != pBoosterCore->m_objectiveSIMD.m_cUIntBytes) {
          bool bRemoveSIMD = false;
          while(true) {
-            if(sizeof(UInt_Small) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes) {
+            if(sizeof(UIntSmall) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes) {
                size_t cBytes;
-               if(sizeof(Float_Small) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes) {
-                  if(IsOverflowBinSize<Float_Small, UInt_Small>(bHessian, cScores)) {
+               if(sizeof(FloatSmall) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes) {
+                  if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
                      bRemoveSIMD = true;
                      break;
                   }
-                  cBytes = GetBinSize<Float_Small, UInt_Small>(bHessian, cScores);
+                  cBytes = GetBinSize<FloatSmall, UIntSmall>(bHessian, cScores);
                } else {
-                  EBM_ASSERT(sizeof(Float_Big) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes);
-                  if(IsOverflowBinSize<Float_Big, UInt_Small>(bHessian, cScores)) {
+                  EBM_ASSERT(sizeof(FloatBig) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes);
+                  if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
                      bRemoveSIMD = true;
                      break;
                   }
-                  cBytes = GetBinSize<Float_Big, UInt_Small>(bHessian, cScores);
+                  cBytes = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
                }
                if(IsMultiplyError(cBytes, cFastBinsMax)) {
                   bRemoveSIMD = true;
                   break;
                }
                cBytes *= cFastBinsMax;
-               if(IsConvertError<UInt_Small>(cBytes - 1)) {
+               if(IsConvertError<UIntSmall>(cBytes - 1)) {
                   // In BinSumsBoosting we use the SIMD pack to hold an index to memory, so we need to be able to hold
                   // the entire fast bin tensor
                   bRemoveSIMD = true;
@@ -710,7 +710,7 @@ ErrorEbm BoosterCore::Create(
                   }
                   // restriction from LogLossMulticlassObjective.hpp
                   // we use the target value to index into the temp exp array and adjust the target gradient
-                  if(IsConvertError<typename std::make_signed<UInt_Small>::type>(cIndexes * pBoosterCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
+                  if(IsConvertError<typename std::make_signed<UIntSmall>::type>(cIndexes * pBoosterCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
                      bRemoveSIMD = true;
                      break;
                   }
@@ -721,34 +721,34 @@ ErrorEbm BoosterCore::Create(
                   // score tensors, so we need to multiply by cScores. Since we use the TFloat::Load function we
                   // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
                   // instructions use signed indexes
-                  if(0 != cTensorBins && IsConvertError<typename std::make_signed<UInt_Small>::type>(cTensorBins * cScores - size_t { 1 })) {
+                  if(0 != cTensorBins && IsConvertError<typename std::make_signed<UIntSmall>::type>(cTensorBins * cScores - size_t { 1 })) {
                      bRemoveSIMD = true;
                      break;
                   }
                }
             } else {
-               EBM_ASSERT(sizeof(UInt_Big) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes);
+               EBM_ASSERT(sizeof(UIntBig) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes);
                size_t cBytes;
-               if(sizeof(Float_Small) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes) {
-                  if(IsOverflowBinSize<Float_Small, UInt_Big>(bHessian, cScores)) {
+               if(sizeof(FloatSmall) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes) {
+                  if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
                      bRemoveSIMD = true;
                      break;
                   }
-                  cBytes = GetBinSize<Float_Small, UInt_Big>(bHessian, cScores);
+                  cBytes = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
                } else {
-                  EBM_ASSERT(sizeof(Float_Big) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes);
-                  if(IsOverflowBinSize<Float_Big, UInt_Big>(bHessian, cScores)) {
+                  EBM_ASSERT(sizeof(FloatBig) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes);
+                  if(IsOverflowBinSize<FloatBig, UIntBig>(bHessian, cScores)) {
                      bRemoveSIMD = true;
                      break;
                   }
-                  cBytes = GetBinSize<Float_Big, UInt_Big>(bHessian, cScores);
+                  cBytes = GetBinSize<FloatBig, UIntBig>(bHessian, cScores);
                }
                if(IsMultiplyError(cBytes, cFastBinsMax)) {
                   bRemoveSIMD = true;
                   break;
                }
                cBytes *= cFastBinsMax;
-               if(IsConvertError<UInt_Big>(cBytes - 1)) {
+               if(IsConvertError<UIntBig>(cBytes - 1)) {
                   // In BinSumsBoosting we use the SIMD pack to hold an index to memory, so we need to be able to hold
                   // the entire fast bin tensor
                   bRemoveSIMD = true;
@@ -772,7 +772,7 @@ ErrorEbm BoosterCore::Create(
                   }
                   // restriction from LogLossMulticlassObjective.hpp
                   // we use the target value to index into the temp exp array and adjust the target gradient
-                  if(IsConvertError<typename std::make_signed<UInt_Big>::type>(cIndexes * pBoosterCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
+                  if(IsConvertError<typename std::make_signed<UIntBig>::type>(cIndexes * pBoosterCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
                      bRemoveSIMD = true;
                      break;
                   }
@@ -783,7 +783,7 @@ ErrorEbm BoosterCore::Create(
                   // score tensors, so we need to multiply by cScores. Since we use the TFloat::Load function we
                   // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
                   // instructions use signed indexes
-                  if(0 != cTensorBins && IsConvertError<typename std::make_signed<UInt_Big>::type>(cTensorBins * cScores - size_t { 1 })) {
+                  if(0 != cTensorBins && IsConvertError<typename std::make_signed<UIntBig>::type>(cTensorBins * cScores - size_t { 1 })) {
                      bRemoveSIMD = true;
                      break;
                   }
@@ -800,10 +800,10 @@ ErrorEbm BoosterCore::Create(
       // if we have 32 bit floats or ints, then we need to break large datasets into smaller data subsets
       // because float32 values stop incrementing at 2^24 where the value 1 is below the threshold incrementing a float
       const bool bForceMultipleSubsets =
-         sizeof(UInt_Small) == pBoosterCore->m_objectiveCpu.m_cUIntBytes ||
-         sizeof(Float_Small) == pBoosterCore->m_objectiveCpu.m_cFloatBytes ||
-         sizeof(UInt_Small) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes ||
-         sizeof(Float_Small) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes;
+         sizeof(UIntSmall) == pBoosterCore->m_objectiveCpu.m_cUIntBytes ||
+         sizeof(FloatSmall) == pBoosterCore->m_objectiveCpu.m_cFloatBytes ||
+         sizeof(UIntSmall) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes ||
+         sizeof(FloatSmall) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes;
 
       pBoosterCore->m_cInnerBags = cInnerBags; // this is used to destruct m_trainingSet, so store it first
       error = pBoosterCore->m_trainingSet.InitDataSetBoosting(
@@ -865,36 +865,36 @@ ErrorEbm BoosterCore::Create(
          const DataSubsetBoosting * const pSubsetsEnd = pSubset + pBoosterCore->GetTrainingSet()->GetCountSubsets();
          do {
             size_t cBytesPerFastBin;;
-            if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Big)) {
-               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big)) {
-                  if(IsOverflowBinSize<Float_Big, UInt_Big>(bHessian, cScores)) {
+            if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatBig)) {
+               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntBig)) {
+                  if(IsOverflowBinSize<FloatBig, UIntBig>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
                   }
-                  cBytesPerFastBin = GetBinSize<Float_Big, UInt_Big>(bHessian, cScores);
+                  cBytesPerFastBin = GetBinSize<FloatBig, UIntBig>(bHessian, cScores);
                } else {
-                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Small));
-                  if(IsOverflowBinSize<Float_Big, UInt_Small>(bHessian, cScores)) {
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntSmall));
+                  if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
                   }
-                  cBytesPerFastBin = GetBinSize<Float_Big, UInt_Small>(bHessian, cScores);
+                  cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
                }
             } else {
-               EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Small));
-               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big)) {
-                  if(IsOverflowBinSize<Float_Small, UInt_Big>(bHessian, cScores)) {
+               EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatSmall));
+               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntBig)) {
+                  if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
                   }
-                  cBytesPerFastBin = GetBinSize<Float_Small, UInt_Big>(bHessian, cScores);
+                  cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
                } else {
-                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Small));
-                  if(IsOverflowBinSize<Float_Small, UInt_Small>(bHessian, cScores)) {
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntSmall));
+                  if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
                   }
-                  cBytesPerFastBin = GetBinSize<Float_Small, UInt_Small>(bHessian, cScores);
+                  cBytesPerFastBin = GetBinSize<FloatSmall, UIntSmall>(bHessian, cScores);
                }
             }
             cBytesPerFastBinMax = EbmMax(cBytesPerFastBinMax, cBytesPerFastBin);
@@ -907,36 +907,36 @@ ErrorEbm BoosterCore::Create(
          const DataSubsetBoosting * const pSubsetsEnd = pSubset + pBoosterCore->GetValidationSet()->GetCountSubsets();
          do {
             size_t cBytesPerFastBin;;
-            if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Big)) {
-               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big)) {
-                  if(IsOverflowBinSize<Float_Big, UInt_Big>(bHessian, cScores)) {
+            if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatBig)) {
+               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntBig)) {
+                  if(IsOverflowBinSize<FloatBig, UIntBig>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
                   }
-                  cBytesPerFastBin = GetBinSize<Float_Big, UInt_Big>(bHessian, cScores);
+                  cBytesPerFastBin = GetBinSize<FloatBig, UIntBig>(bHessian, cScores);
                } else {
-                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Small));
-                  if(IsOverflowBinSize<Float_Big, UInt_Small>(bHessian, cScores)) {
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntSmall));
+                  if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
                   }
-                  cBytesPerFastBin = GetBinSize<Float_Big, UInt_Small>(bHessian, cScores);
+                  cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
                }
             } else {
-               EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Small));
-               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big)) {
-                  if(IsOverflowBinSize<Float_Small, UInt_Big>(bHessian, cScores)) {
+               EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatSmall));
+               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntBig)) {
+                  if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
                   }
-                  cBytesPerFastBin = GetBinSize<Float_Small, UInt_Big>(bHessian, cScores);
+                  cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
                } else {
-                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Small));
-                  if(IsOverflowBinSize<Float_Small, UInt_Small>(bHessian, cScores)) {
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntSmall));
+                  if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
                   }
-                  cBytesPerFastBin = GetBinSize<Float_Small, UInt_Small>(bHessian, cScores);
+                  cBytesPerFastBin = GetBinSize<FloatSmall, UIntSmall>(bHessian, cScores);
                }
             }
             cBytesPerFastBinMax = EbmMax(cBytesPerFastBinMax, cBytesPerFastBin);
@@ -1049,7 +1049,7 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
          data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
          data.m_bValidation = EBM_FALSE;
          data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
-         static_assert(std::is_same<FloatScore, Float_Big>::value, "If FloatScore is type Float_Small then some of the zones might use Float_Big as their type and then read past the end of the aUpdateScores memory, which should always contain zeros. If we want to handle this scenario then we need to allocate a larger buffer of memory to zero out instead of using aUpdateScores");
+         static_assert(std::is_same<FloatScore, FloatBig>::value, "If FloatScore is type FloatSmall then some of the zones might use FloatBig as their type and then read past the end of the aUpdateScores memory, which should always contain zeros. If we want to handle this scenario then we need to allocate a larger buffer of memory to zero out instead of using aUpdateScores");
          data.m_aUpdateTensorScores = aUpdateScores;
          data.m_cSamples = pSubset->GetCountSamples();
          data.m_aPacked = nullptr;

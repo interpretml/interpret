@@ -37,8 +37,8 @@ struct Cpu_64_Int final {
    using T = uint64_t;
    using TPack = uint64_t;
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
-   static_assert(std::is_same<UInt_Big, T>::value || std::is_same<UInt_Small, T>::value,
-      "T must be either UInt_Big or UInt_Small");
+   static_assert(std::is_same<UIntBig, T>::value || std::is_same<UIntSmall, T>::value,
+      "T must be either UIntBig or UIntSmall");
    static constexpr bool k_bCpu = true;
    static constexpr int k_cSIMDShift = 0;
    static constexpr int k_cSIMDPack = 1 << k_cSIMDShift;
@@ -104,8 +104,8 @@ struct Cpu_64_Float final {
    using T = double;
    using TPack = double;
    using TInt = Cpu_64_Int;
-   static_assert(std::is_same<Float_Big, T>::value || std::is_same<Float_Small, T>::value,
-      "T must be either Float_Big or Float_Small");
+   static_assert(std::is_same<FloatBig, T>::value || std::is_same<FloatSmall, T>::value,
+      "T must be either FloatBig or FloatSmall");
    static constexpr bool k_bCpu = TInt::k_bCpu;
    static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;

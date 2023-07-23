@@ -110,11 +110,11 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
                gradient = initScore - SafeConvertFloat<double>(data);
             }
 
-            if(sizeof(Float_Small) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-               *reinterpret_cast<Float_Small *>(pGradHess) = SafeConvertFloat<Float_Small>(gradient);
+            if(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+               *reinterpret_cast<FloatSmall *>(pGradHess) = SafeConvertFloat<FloatSmall>(gradient);
             } else {
-               EBM_ASSERT(sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-               *reinterpret_cast<Float_Big *>(pGradHess) = SafeConvertFloat<Float_Big>(gradient);
+               EBM_ASSERT(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+               *reinterpret_cast<FloatBig *>(pGradHess) = SafeConvertFloat<FloatBig>(gradient);
             }
             pGradHess = IndexByte(pGradHess, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 
@@ -229,11 +229,11 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
                }
             }
 
-            if(sizeof(Float_Small) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-               *reinterpret_cast<Float_Small *>(pGradHess) = SafeConvertFloat<Float_Small>(gradient);
+            if(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+               *reinterpret_cast<FloatSmall *>(pGradHess) = SafeConvertFloat<FloatSmall>(gradient);
             } else {
-               EBM_ASSERT(sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-               *reinterpret_cast<Float_Big *>(pGradHess) = SafeConvertFloat<Float_Big>(gradient);
+               EBM_ASSERT(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+               *reinterpret_cast<FloatBig *>(pGradHess) = SafeConvertFloat<FloatBig>(gradient);
             }
             pGradHess = IndexByte(pGradHess, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 
