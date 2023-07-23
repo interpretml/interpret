@@ -40,7 +40,8 @@ struct alignas(k_cAlignment) Avx2_32_Int final {
    using T = uint32_t;
    using TPack = __m256i;
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned integer type");
-   static_assert(std::numeric_limits<T>::max() <= std::numeric_limits<UIntExceed>::max(), "UIntExceed must be able to hold a T");
+   static_assert(std::is_same<UInt_Big, T>::value || std::is_same<UInt_Small, T>::value, 
+      "T must be either UInt_Big or UInt_Small");
    static constexpr bool k_bCpu = false;
    static constexpr int k_cSIMDShift = 3;
    static constexpr int k_cSIMDPack = 1 << k_cSIMDShift;
@@ -120,7 +121,8 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
    using T = float;
    using TPack = __m256;
    using TInt = Avx2_32_Int;
-   static_assert(sizeof(T) <= sizeof(Float_Big), "Float_Big must be able to hold a T");
+   static_assert(std::is_same<Float_Big, T>::value || std::is_same<Float_Small, T>::value,
+      "T must be either Float_Big or Float_Small");
    static constexpr bool k_bCpu = TInt::k_bCpu;
    static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;

@@ -148,14 +148,14 @@ ErrorEbm DataSetInteraction::InitFeatureData(
          // StorageDataType since we know the ultimate answer must fit into that. If in theory 
          // UIntShared were allowed to be a billion, then the mask could be 65 bits while the end
          // result would be forced to be 64 bits or less since we use the maximum number of bits per item possible
-         const UIntExceed maskBitsFrom = static_cast<UIntExceed>(MakeLowMask<UIntShared>(cBitsPerItemMaxFrom));
+         const UIntShared maskBitsFrom = MakeLowMask<UIntShared>(cBitsPerItemMaxFrom);
 
          int iShiftFrom = static_cast<int>((cSharedSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPackFrom));
 
          const UIntShared * pFeatureDataFrom = static_cast<const UIntShared *>(aFeatureDataFrom);
          const BagEbm * pSampleReplication = aBag;
          BagEbm replication = 0;
-         UIntExceed iFeatureBin;
+         UIntShared iFeatureBin;
 
          DataSubsetInteraction * pSubset = m_aSubsets;
          do {
@@ -224,8 +224,7 @@ ErrorEbm DataSetInteraction::InitFeatureData(
 
                         EBM_ASSERT(0 <= iShiftFrom);
                         EBM_ASSERT(iShiftFrom * cBitsPerItemMaxFrom < COUNT_BITS(UIntShared));
-                        iFeatureBin = static_cast<UIntExceed>(bitsFrom >>
-                           (iShiftFrom * cBitsPerItemMaxFrom)) & maskBitsFrom;
+                        iFeatureBin = (bitsFrom >> (iShiftFrom * cBitsPerItemMaxFrom)) & maskBitsFrom;
 
                         EBM_ASSERT(!IsConvertError<size_t>(iFeatureBin));
                         EBM_ASSERT(static_cast<size_t>(iFeatureBin) < cBins);
@@ -242,14 +241,11 @@ ErrorEbm DataSetInteraction::InitFeatureData(
                      --replication;
 
                      EBM_ASSERT(0 <= cShiftTo);
-                     // the tensor index needs to fit in memory, but concivably bitsTo does not
-                     const UIntExceed bitsTo = iFeatureBin << cShiftTo;
-
                      if(sizeof(UInt_Small) == pSubset->m_pObjective->m_cUIntBytes) {
-                        *(reinterpret_cast<UInt_Small *>(pFeatureDataTo) + iPartition) |= static_cast<UInt_Small>(bitsTo);
+                        *(reinterpret_cast<UInt_Small *>(pFeatureDataTo) + iPartition) |= static_cast<UInt_Small>(iFeatureBin) << cShiftTo;
                      } else {
                         EBM_ASSERT(sizeof(UInt_Big) == pSubset->m_pObjective->m_cUIntBytes);
-                        *(reinterpret_cast<UInt_Big *>(pFeatureDataTo) + iPartition) |= static_cast<UInt_Big>(bitsTo);
+                        *(reinterpret_cast<UInt_Big *>(pFeatureDataTo) + iPartition) |= static_cast<UInt_Big>(iFeatureBin) << cShiftTo;
                      }
 
                      ++iPartition;

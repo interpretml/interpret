@@ -47,14 +47,10 @@ struct ComputeWrapper final {
 
       static_assert(std::is_unsigned<typename TFloat::TInt::T>::value,
          "TFloat::TInt::T must be an unsigned integer type");
-      static_assert(sizeof(typename TFloat::TInt::T) == sizeof(UInt_Big) || sizeof(typename TFloat::TInt::T) == sizeof(UInt_Small),
-         "TFloat::UInt::T can be either UInt_Big or UInt_Small only");
-      static_assert(std::numeric_limits<typename TFloat::TInt::T>::max() <= std::numeric_limits<UIntExceed>::max(),
-         "UIntExceed must be able to hold a TFloat::TInt::T");
-      static_assert(sizeof(typename TFloat::T) == sizeof(Float_Big) || sizeof(typename TFloat::T) == sizeof(Float_Small),
-         "TFloat::T can be either Float_Big or Float_Small only");
-      static_assert(sizeof(typename TFloat::T) <= sizeof(Float_Big),
-         "Float_Big must be able to hold a TFloat::T");
+      static_assert(std::is_same<UInt_Big, typename TFloat::TInt::T>::value || std::is_same<UInt_Small, typename TFloat::TInt::T>::value,
+         "TFloat::TInt::T must be either UInt_Big or UInt_Small");
+      static_assert(std::is_same<Float_Big, typename TFloat::T>::value || std::is_same<Float_Small, typename TFloat::T>::value,
+         "TFloat::T must be either Float_Big or Float_Small");
 
       pObjectiveWrapperOut->m_cFloatBytes = sizeof(typename TFloat::T);
       pObjectiveWrapperOut->m_cUIntBytes = sizeof(typename TFloat::TInt::T);

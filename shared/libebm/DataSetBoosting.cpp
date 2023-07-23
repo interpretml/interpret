@@ -487,7 +487,7 @@ ErrorEbm DataSetBoosting::InitTermData(
          EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if aBag is nullptr then we have no validation samples
          const BagEbm * pSampleReplication = aBag;
          BagEbm replication = 0;
-         UIntExceed iTensor;
+         size_t iTensor;
 
          DataSubsetBoosting * pSubset = m_aSubsets;
          do {
@@ -565,7 +565,7 @@ ErrorEbm DataSetBoosting::InitTermData(
                            }
                         }
 
-                        size_t tensorIndex = 0;
+                        iTensor = 0;
                         size_t tensorMultiple = 1;
                         FeatureDimension * pDimensionInfo = dimensionInfo;
                         do {
@@ -594,15 +594,13 @@ ErrorEbm DataSetBoosting::InitTermData(
                            EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
 
                            // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
-                           tensorIndex += tensorMultiple * iFeatureBin;
+                           iTensor += tensorMultiple * iFeatureBin;
                            tensorMultiple *= pDimensionInfo->m_cBins;
 
                            ++pDimensionInfo;
                         } while(pDimensionInfoInit != pDimensionInfo);
 
-                        EBM_ASSERT(tensorIndex < pTerm->GetCountTensorBins());
-                        // during term construction we checked that the maximum tensor index fits into the destination storage
-                        iTensor = static_cast<UIntExceed>(tensorIndex);
+                        EBM_ASSERT(iTensor < pTerm->GetCountTensorBins());
                      }
 
                      EBM_ASSERT(0 != replication);
@@ -610,14 +608,11 @@ ErrorEbm DataSetBoosting::InitTermData(
                      replication -= direction;
 
                      EBM_ASSERT(0 <= cShiftTo);
-                     // the tensor index needs to fit in memory, but concivably bitsTo does not
-                     const UIntExceed bitsTo = iTensor << cShiftTo;
-
                      if(sizeof(UInt_Small) == pSubset->m_pObjective->m_cUIntBytes) {
-                        *(reinterpret_cast<UInt_Small *>(pTermDataTo) + iPartition) |= static_cast<UInt_Small>(bitsTo);
+                        *(reinterpret_cast<UInt_Small *>(pTermDataTo) + iPartition) |= static_cast<UInt_Small>(iTensor) << cShiftTo;
                      } else {
                         EBM_ASSERT(sizeof(UInt_Big) == pSubset->m_pObjective->m_cUIntBytes);
-                        *(reinterpret_cast<UInt_Big *>(pTermDataTo) + iPartition) |= static_cast<UInt_Big>(bitsTo);
+                        *(reinterpret_cast<UInt_Big *>(pTermDataTo) + iPartition) |= static_cast<UInt_Big>(iTensor) << cShiftTo;
                      }
 
                      ++iPartition;
