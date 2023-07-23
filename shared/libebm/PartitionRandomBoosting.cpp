@@ -56,9 +56,9 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pBoosterCore->GetCountClasses()));
-      const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
+      const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
-      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
 
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
@@ -354,7 +354,7 @@ public:
 
       // put the histograms right after our slice array
       auto * const aCollapsedBins =
-         reinterpret_cast<Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
+         reinterpret_cast<Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
 
       aCollapsedBins->ZeroMem(cBytesCollapsedTensor3);
       const auto * const pCollapsedBinEnd = IndexBin(aCollapsedBins, cBytesCollapsedTensor3);

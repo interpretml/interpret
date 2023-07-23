@@ -435,7 +435,7 @@ ErrorEbm InteractionCore::Create(
          return error;
       }
 
-      if(IsOverflowBinSize<FloatMain, StorageDataType>(bHessian, cScores)) {
+      if(IsOverflowBinSize<FloatMain, UIntMain>(bHessian, cScores)) {
          LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsOverflowBinSize overflow");
          return Error_OutOfMemory;
       }
@@ -593,7 +593,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                      ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
 
                      // the shared data storage structure ensures that all target values are less than the number of classes
-                     // we also check that the number of classes can be converted to a ptrdiff_t and also a StorageDataType
+                     // we also check that the number of classes can be converted to a ptrdiff_t and also a UIntMain
                      // so we do not need the runtime to check this
                      EBM_ASSERT(target < static_cast<UIntShared>(cClasses));
                   }

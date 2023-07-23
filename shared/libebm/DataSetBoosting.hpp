@@ -10,7 +10,7 @@
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
 #include "common_c.h" // FloatFast
-#include "bridge_c.h" // StorageDataType
+#include "bridge_c.h" // UIntMain
 #include "zones.h"
 
 #include "InnerBag.hpp" // InnerBag

@@ -144,8 +144,8 @@ ErrorEbm DataSetInteraction::InitFeatureData(
          EBM_ASSERT(cBitsPerItemMaxFrom <= COUNT_BITS(UIntShared));
 
          // we can only guarantee that cBitsPerItemMaxFrom is less than or equal to COUNT_BITS(UIntShared)
-         // so we need to construct our mask in that type, but afterwards we can convert it to a 
-         // StorageDataType since we know the ultimate answer must fit into that. If in theory 
+         // so we need to construct our mask in that type, but afterwards we can convert it to the 
+         // zone type since we know the ultimate answer must fit into that. If in theory 
          // UIntShared were allowed to be a billion, then the mask could be 65 bits while the end
          // result would be forced to be 64 bits or less since we use the maximum number of bits per item possible
          const UIntShared maskBitsFrom = MakeLowMask<UIntShared>(cBitsPerItemMaxFrom);

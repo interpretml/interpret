@@ -34,10 +34,10 @@ namespace DEFINED_ZONE_NAME {
 template<bool bHessian, size_t cCompilerScores>
 INLINE_RELEASE_TEMPLATED static void SumAllBins(
    BoosterShell * const pBoosterShell,
-   const Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> * const pBinsEnd,
+   const Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)> * const pBinsEnd,
    const size_t cSamplesTotal,
    const FloatMain weightTotal,
-   Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> * const pBinOut
+   Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)> * const pBinOut
 ) {
    // these stay the same across boosting rounds, so we can calculate them once at init
    pBinOut->SetCountSamples(cSamplesTotal);
@@ -53,14 +53,14 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
 
    ZeroGradientPairs(aSumGradientPairs, cScores);
 
-   const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
+   const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
 
 #ifndef NDEBUG
-   StorageDataType cSamplesTotalDebug = 0;
+   UIntMain cSamplesTotalDebug = 0;
    FloatMain weightTotalDebug = 0;
 #endif // NDEBUG
 
-   const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
    EBM_ASSERT(2 <= CountBins(pBinsEnd, aBins, cBytesPerBin)); // we pre-filter out features with only one bin
 
@@ -136,12 +136,12 @@ static ErrorEbm Flatten(
    ActiveDataType * pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
    FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
 
-   const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
    EBM_ASSERT(!IsOverflowTreeNodeSize(bHessian, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bHessian, cScores);
 
-   const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, StorageDataType, bHessian>();
+   const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, UIntMain, bHessian>();
    const auto * const pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
 
    auto * pTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian>();
@@ -173,7 +173,7 @@ static ErrorEbm Flatten(
             const auto * const pRightChild = GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
             pBinLastOrChildren = pRightChild->BEFORE_GetBinLast();
          }
-         const auto * const pBinLast = reinterpret_cast<const Bin<FloatMain, StorageDataType, bHessian> *>(pBinLastOrChildren);
+         const auto * const pBinLast = reinterpret_cast<const Bin<FloatMain, UIntMain, bHessian> *>(pBinLastOrChildren);
 
          EBM_ASSERT(aBins <= pBinLast);
          EBM_ASSERT(pBinLast < pBinsEnd);
@@ -274,8 +274,8 @@ static int FindBestSplitGain(
    pLeftChild->SetDebugProgression(0);
 #endif // NDEBUG
 
-   Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> binParent;
-   Bin<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)> binLeft;
+   Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)> binParent;
+   Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)> binLeft;
 
    // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
    static constexpr bool bUseStackMemory = k_dynamicScores != cCompilerScores;
@@ -294,14 +294,14 @@ static int FindBestSplitGain(
 
    pLeftChild->BEFORE_SetBinFirst(pBinCur);
 
-   const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
    EBM_ASSERT(!IsOverflowSplitPositionSize(bHessian, cScores)); // we're accessing allocated memory
    const size_t cBytesPerSplitPosition = GetSplitPositionSize(bHessian, cScores);
 
    auto * pBestSplitsStart = pBoosterShell->GetSplitPositionsTemp<bHessian, GetArrayScores(cCompilerScores)>();
    auto * pBestSplitsCur = pBestSplitsStart;
 
-   StorageDataType cSamplesRight = binParent.GetCountSamples();
+   UIntMain cSamplesRight = binParent.GetCountSamples();
 
    EBM_ASSERT(FloatCalc { 0 } <= k_gainMin);
    FloatCalc bestGain = k_gainMin; // it must at least be this, and maybe it needs to be more
@@ -310,7 +310,7 @@ static int FindBestSplitGain(
    do {
       ASSERT_BIN_OK(cBytesPerBin, pBinCur, pBoosterShell->GetDebugBigBinsEnd());
 
-      const StorageDataType cSamplesChange = pBinCur->GetCountSamples();
+      const UIntMain cSamplesChange = pBinCur->GetCountSamples();
       cSamplesRight -= cSamplesChange;
       if(UNLIKELY(cSamplesRight < cSamplesLeafMin)) {
          break; // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
@@ -554,7 +554,7 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pBoosterCore->GetCountClasses()));
 
-      const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
+      const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
       auto * const pRootTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian, GetArrayScores(cCompilerScores)>();
 
@@ -562,7 +562,7 @@ public:
       pRootTreeNode->SetDebugProgression(0);
 #endif // NDEBUG
 
-      const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, StorageDataType, bHessian, GetArrayScores(cCompilerScores)>();
+      const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
       const auto * const pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
       const auto * const pBinsLast = NegativeIndexBin(pBinsEnd, cBytesPerBin);
 

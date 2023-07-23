@@ -29,10 +29,10 @@ struct SplitPosition final {
    friend size_t GetSplitPositionSize(const bool, const size_t);
 
 private:
-   const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * m_pBinPosition;
+   const Bin<FloatMain, UIntMain, bHessian, cCompilerScores> * m_pBinPosition;
 
    // IMPORTANT: m_leftSum must be in the last position for the struct hack and this must be standard layout
-   Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> m_leftSum;
+   Bin<FloatMain, UIntMain, bHessian, cCompilerScores> m_leftSum;
 
 public:
 
@@ -41,14 +41,14 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   inline const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * GetBinPosition() const {
+   inline const Bin<FloatMain, UIntMain, bHessian, cCompilerScores> * GetBinPosition() const {
       return m_pBinPosition;
    }
-   inline void SetBinPosition(const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * const pBinPosition) {
+   inline void SetBinPosition(const Bin<FloatMain, UIntMain, bHessian, cCompilerScores> * const pBinPosition) {
       m_pBinPosition = pBinPosition;
    }
 
-   inline Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * GetLeftSum() {
+   inline Bin<FloatMain, UIntMain, bHessian, cCompilerScores> * GetLeftSum() {
       return &m_leftSum;
    }
 };
@@ -60,7 +60,7 @@ static_assert(std::is_pod<SplitPosition<true>>::value && std::is_pod<SplitPositi
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 inline static bool IsOverflowSplitPositionSize(const bool bHessian, const size_t cScores) {
-   const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
    size_t cBytesSplitPositionComponent;
    if(bHessian) {
@@ -79,7 +79,7 @@ inline static bool IsOverflowSplitPositionSize(const bool bHessian, const size_t
 }
 
 inline static size_t GetSplitPositionSize(bool bHessian, const size_t cScores) {
-   const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
    size_t cBytesSplitPositionComponent;
    if(bHessian) {

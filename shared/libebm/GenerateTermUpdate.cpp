@@ -105,7 +105,7 @@ static void BoostZeroDimensional(
    Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
    FloatFast * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
    if(pBoosterCore->IsHessian()) {
-      const auto * const pBin = pBigBin->Specialize<FloatMain, StorageDataType, true>();
+      const auto * const pBin = pBigBin->Specialize<FloatMain, UIntMain, true>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (TermBoostFlags_GradientSums & flags)) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
@@ -122,7 +122,7 @@ static void BoostZeroDimensional(
          }
       }
    } else {
-      const auto * const pBin = pBigBin->Specialize<FloatMain, StorageDataType, false>();
+      const auto * const pBin = pBigBin->Specialize<FloatMain, UIntMain, false>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (TermBoostFlags_GradientSums & flags)) {
          const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(SafeConvertFloat<FloatCalc>(aGradientPairs[0].m_sumGradients));
@@ -224,7 +224,7 @@ static ErrorEbm BoostMultiDimensional(
 
    const size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
 
-   const size_t cBytesPerBigBin = GetBinSize<FloatMain, StorageDataType>(pBoosterCore->IsHessian(), cScores);
+   const size_t cBytesPerBigBin = GetBinSize<FloatMain, UIntMain>(pBoosterCore->IsHessian(), cScores);
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
    BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
@@ -706,7 +706,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
       EBM_ASSERT(nullptr != aFastBins);
 
-      const size_t cBytesPerBigBin = GetBinSize<FloatMain, StorageDataType>(pBoosterCore->IsHessian(), cScores);
+      const size_t cBytesPerBigBin = GetBinSize<FloatMain, UIntMain>(pBoosterCore->IsHessian(), cScores);
       EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTensorBins));
       const size_t cBytesBigBins = cBytesPerBigBin * cTensorBins;
 
@@ -788,7 +788,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
                pBoosterCore->IsHessian(),
                cTensorBins,
                std::is_same<FloatMain, double>::value,
-               std::is_same<StorageDataType, uint64_t>::value,
+               std::is_same<UIntMain, uint64_t>::value,
                aBigBins,
                pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Big),
                pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big),

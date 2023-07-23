@@ -279,7 +279,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    }
    const size_t cTotalBigBins = cTensorBins + cAuxillaryBins;
 
-   const size_t cBytesPerBigBin = GetBinSize<FloatMain, StorageDataType>(pInteractionCore->IsHessian(), cScores);
+   const size_t cBytesPerBigBin = GetBinSize<FloatMain, UIntMain>(pInteractionCore->IsHessian(), cScores);
    if(IsMultiplyError(cBytesPerBigBin, cTotalBigBins)) {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTotalBigBins)");
       return Error_OutOfMemory;
@@ -373,7 +373,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          pInteractionCore->IsHessian(),
          cTensorBins,
          std::is_same<FloatMain, double>::value,
-         std::is_same<StorageDataType, uint64_t>::value,
+         std::is_same<UIntMain, uint64_t>::value,
          aBigBins,
          sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes,
          sizeof(UInt_Big) == pSubset->GetObjectiveWrapper()->m_cUIntBytes,

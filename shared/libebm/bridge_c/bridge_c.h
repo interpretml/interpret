@@ -29,7 +29,7 @@ typedef uint32_t UInt_Small;
 static_assert(sizeof(Float_Small) < sizeof(Float_Big), "Float_Big must be able to contain Float_Small");
 static_assert(sizeof(UInt_Small) < sizeof(UInt_Big), "UInt_Big must be able to contain UInt_Small");
 
-typedef uint64_t StorageDataType;
+typedef uint64_t UIntMain;
 typedef UIntEbm ActiveDataType; // TODO: in most places we could use size_t for this and only use the uint64 version where we have cross-platform considerations.
 
 struct ApplyUpdateBridge {

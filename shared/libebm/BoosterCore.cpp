@@ -950,12 +950,12 @@ ErrorEbm BoosterCore::Create(
       }
       pBoosterCore->m_cBytesFastBins = cBytesPerFastBinMax * cFastBinsMax;
 
-      if(IsOverflowBinSize<FloatMain, StorageDataType>(bHessian, cScores)) {
+      if(IsOverflowBinSize<FloatMain, UIntMain>(bHessian, cScores)) {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
          return Error_OutOfMemory;
       }
 
-      const size_t cBytesPerBigBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
+      const size_t cBytesPerBigBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
       if(IsMultiplyError(cBytesPerBigBin, cBigBinsMax)) {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerBigBin, cBigBinsMax)");
          return Error_OutOfMemory;

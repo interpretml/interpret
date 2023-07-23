@@ -163,24 +163,24 @@ public:
       static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
       struct FastTotalState {
-         Bin<FloatMain, StorageDataType, bHessian, cArrayScores> * m_pDimensionalCur;
-         Bin<FloatMain, StorageDataType, bHessian, cArrayScores> * m_pDimensionalWrap;
-         Bin<FloatMain, StorageDataType, bHessian, cArrayScores> * m_pDimensionalFirst;
+         Bin<FloatMain, UIntMain, bHessian, cArrayScores> * m_pDimensionalCur;
+         Bin<FloatMain, UIntMain, bHessian, cArrayScores> * m_pDimensionalWrap;
+         Bin<FloatMain, UIntMain, bHessian, cArrayScores> * m_pDimensionalFirst;
          size_t m_iCur;
          size_t m_cBins;
       };
 
       LOG_0(Trace_Verbose, "Entered BuildFastTotals");
 
-      auto * pAuxiliaryBin = aAuxiliaryBinsBase->Specialize<FloatMain, StorageDataType, bHessian, cArrayScores>();
+      auto * pAuxiliaryBin = aAuxiliaryBinsBase->Specialize<FloatMain, UIntMain, bHessian, cArrayScores>();
 
-      auto * const aBins = aBinsBase->Specialize<FloatMain, StorageDataType, bHessian, cArrayScores>();
+      auto * const aBins = aBinsBase->Specialize<FloatMain, UIntMain, bHessian, cArrayScores>();
 
       const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
       EBM_ASSERT(1 <= cRealDimensions);
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
-      const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
+      const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
       FastTotalState fastTotalState[k_cDimensionsMax];
       FastTotalState * pFastTotalStateInitialize = fastTotalState;
@@ -236,9 +236,9 @@ public:
       UNUSED(aDebugCopyBinsBase);
 #ifdef CHECK_TENSORS
 
-      auto * const pDebugBin = static_cast<Bin<FloatMain, StorageDataType, bHessian, cArrayScores> *>(malloc(cBytesPerBin));
+      auto * const pDebugBin = static_cast<Bin<FloatMain, UIntMain, bHessian, cArrayScores> *>(malloc(cBytesPerBin));
 
-      auto * aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatMain, StorageDataType, bHessian, cArrayScores>();
+      auto * aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatMain, UIntMain, bHessian, cArrayScores>();
 
 #endif // CHECK_TENSORS
 #endif // NDEBUG

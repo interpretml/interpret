@@ -34,20 +34,20 @@ struct TreeNode final {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
 
-   inline const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * BEFORE_GetBinFirst() const {
+   inline const Bin<FloatMain, UIntMain, bHessian, cCompilerScores> * BEFORE_GetBinFirst() const {
       EBM_ASSERT(0 == m_debugProgressionStage);
       return m_UNION.m_beforeGainCalc.m_pBinFirst;
    }
-   inline void BEFORE_SetBinFirst(const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * const pBinFirst) {
+   inline void BEFORE_SetBinFirst(const Bin<FloatMain, UIntMain, bHessian, cCompilerScores> * const pBinFirst) {
       EBM_ASSERT(0 == m_debugProgressionStage);
       m_UNION.m_beforeGainCalc.m_pBinFirst = pBinFirst;
    }
 
-   inline const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * BEFORE_GetBinLast() const {
+   inline const Bin<FloatMain, UIntMain, bHessian, cCompilerScores> * BEFORE_GetBinLast() const {
       EBM_ASSERT(0 == m_debugProgressionStage);
-      return reinterpret_cast<const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> *>(pBinLastOrChildren);
+      return reinterpret_cast<const Bin<FloatMain, UIntMain, bHessian, cCompilerScores> *>(pBinLastOrChildren);
    }
-   inline void BEFORE_SetBinLast(const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * const pBinLast) {
+   inline void BEFORE_SetBinLast(const Bin<FloatMain, UIntMain, bHessian, cCompilerScores> * const pBinLast) {
       EBM_ASSERT(0 == m_debugProgressionStage);
       // we aren't going to modify pBinLast, but we're storing it in a shared pointer, so remove the const for now
       pBinLastOrChildren = const_cast<void *>(static_cast<const void *>(pBinLast));
@@ -144,7 +144,7 @@ struct TreeNode final {
    }
 
 
-   inline StorageDataType GetCountSamples() const {
+   inline UIntMain GetCountSamples() const {
       return m_bin.GetCountSamples();
    }
 
@@ -159,10 +159,10 @@ struct TreeNode final {
       return m_bin.GetGradientPairs();
    }
 
-   inline const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * GetBin() const {
+   inline const Bin<FloatMain, UIntMain, bHessian, cCompilerScores> * GetBin() const {
       return &m_bin;
    }
-   inline Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * GetBin() {
+   inline Bin<FloatMain, UIntMain, bHessian, cCompilerScores> * GetBin() {
       return &m_bin;
    }
 
@@ -185,7 +185,7 @@ struct TreeNode final {
 private:
 
    struct BeforeGainCalc final {
-      const Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> * m_pBinFirst;
+      const Bin<FloatMain, UIntMain, bHessian, cCompilerScores> * m_pBinFirst;
    };
 
    struct AfterGainCalc final {
@@ -210,7 +210,7 @@ private:
    TreeNodeUnion m_UNION;
 
    // IMPORTANT: m_bin must be in the last position for the struct hack and this must be standard layout
-   Bin<FloatMain, StorageDataType, bHessian, cCompilerScores> m_bin;
+   Bin<FloatMain, UIntMain, bHessian, cCompilerScores> m_bin;
 };
 static_assert(std::is_standard_layout<TreeNode<true>>::value && std::is_standard_layout<TreeNode<false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -220,7 +220,7 @@ static_assert(std::is_pod<TreeNode<true>>::value && std::is_pod<TreeNode<false>>
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 inline static bool IsOverflowTreeNodeSize(const bool bHessian, const size_t cScores) {
-   const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
    size_t cBytesTreeNodeComponent;
    if(bHessian) {
@@ -239,7 +239,7 @@ inline static bool IsOverflowTreeNodeSize(const bool bHessian, const size_t cSco
 }
 
 inline static size_t GetTreeNodeSize(const bool bHessian, const size_t cScores) {
-   const size_t cBytesPerBin = GetBinSize<FloatMain, StorageDataType>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
    size_t cBytesTreeNodeComponent;
    if(bHessian) {
