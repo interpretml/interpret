@@ -330,7 +330,7 @@ ErrorEbm BoosterCore::Create(
    LOG_0(Trace_Info, "BoosterCore::Create done feature processing");
 
    size_t cFastBinsMax = 0;
-   size_t cBigBinsMax = 0;
+   size_t cMainBinsMax = 0;
    size_t cSingleDimensionBinsMax = 0;
 
    LOG_0(Trace_Info, "BoosterCore::Create starting term processing");
@@ -373,7 +373,7 @@ ErrorEbm BoosterCore::Create(
             LOG_0(Trace_Info, "INFO BoosterCore::Create empty term");
 
             cFastBinsMax = EbmMax(cFastBinsMax, size_t { 1 });
-            cBigBinsMax = EbmMax(cBigBinsMax, size_t { 1 });
+            cMainBinsMax = EbmMax(cMainBinsMax, size_t { 1 });
          } else {
             if(nullptr == piTermFeature) {
                LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures cannot be NULL when there are Terms with non-zero numbers of features");
@@ -452,7 +452,7 @@ ErrorEbm BoosterCore::Create(
             if(LIKELY(size_t { 0 } != cTensorBins)) {
                cFastBinsMax = EbmMax(cFastBinsMax, cTensorBins);
 
-               size_t cTotalBigBins = cTensorBins;
+               size_t cTotalMainBins = cTensorBins;
                if(LIKELY(size_t { 1 } != cTensorBins)) {
                   EBM_ASSERT(1 <= cRealDimensions);
 
@@ -475,12 +475,12 @@ ErrorEbm BoosterCore::Create(
                         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cTensorBins, cAuxillaryBins)");
                         return Error_OutOfMemory;
                      }
-                     cTotalBigBins += cAuxillaryBins;
+                     cTotalMainBins += cAuxillaryBins;
                   }
                } else {
                   EBM_ASSERT(0 == cRealDimensions);
                }
-               cBigBinsMax = EbmMax(cBigBinsMax, cTotalBigBins);
+               cMainBinsMax = EbmMax(cMainBinsMax, cTotalMainBins);
             }
          }
          pTerm->SetCountRealDimensions(cRealDimensions);
@@ -955,12 +955,12 @@ ErrorEbm BoosterCore::Create(
          return Error_OutOfMemory;
       }
 
-      const size_t cBytesPerBigBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
-      if(IsMultiplyError(cBytesPerBigBin, cBigBinsMax)) {
-         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerBigBin, cBigBinsMax)");
+      const size_t cBytesPerMainBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
+      if(IsMultiplyError(cBytesPerMainBin, cMainBinsMax)) {
+         LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerMainBin, cMainBinsMax)");
          return Error_OutOfMemory;
       }
-      pBoosterCore->m_cBytesBigBins = cBytesPerBigBin * cBigBinsMax;
+      pBoosterCore->m_cBytesMainBins = cBytesPerMainBin * cMainBinsMax;
 
       if(0 != cSingleDimensionBinsMax) {
          if(IsOverflowTreeNodeSize(bHessian, cScores) || IsOverflowSplitPositionSize(bHessian, cScores)) {

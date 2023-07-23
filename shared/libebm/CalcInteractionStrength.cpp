@@ -277,25 +277,25 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsAddError(cTensorBins, cAuxillaryBins)");
       return Error_OutOfMemory;
    }
-   const size_t cTotalBigBins = cTensorBins + cAuxillaryBins;
+   const size_t cTotalMainBins = cTensorBins + cAuxillaryBins;
 
-   const size_t cBytesPerBigBin = GetBinSize<FloatMain, UIntMain>(pInteractionCore->IsHessian(), cScores);
-   if(IsMultiplyError(cBytesPerBigBin, cTotalBigBins)) {
-      LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTotalBigBins)");
+   const size_t cBytesPerMainBin = GetBinSize<FloatMain, UIntMain>(pInteractionCore->IsHessian(), cScores);
+   if(IsMultiplyError(cBytesPerMainBin, cTotalMainBins)) {
+      LOG_0(Trace_Warning, "WARNING CalcInteractionStrength IsMultiplyError(cBytesPerBin, cTotalMainBins)");
       return Error_OutOfMemory;
    }
 
-   BinBase * const aBigBins = pInteractionShell->GetInteractionBigBins(cBytesPerBigBin, cTotalBigBins);
-   if(UNLIKELY(nullptr == aBigBins)) {
+   BinBase * const aMainBins = pInteractionShell->GetInteractionMainBins(cBytesPerMainBin, cTotalMainBins);
+   if(UNLIKELY(nullptr == aMainBins)) {
       // already logged
       return Error_OutOfMemory;
    }
 
 #ifndef NDEBUG
-   const auto * const pDebugBigBinsEnd = IndexBin(aBigBins, cBytesPerBigBin * cTotalBigBins);
+   const auto * const pDebugMainBinsEnd = IndexBin(aMainBins, cBytesPerMainBin * cTotalMainBins);
 #endif // NDEBUG
 
-   memset(aBigBins, 0, cBytesPerBigBin * cTensorBins);
+   memset(aMainBins, 0, cBytesPerMainBin * cTensorBins);
 
    const bool bHessian = pInteractionCore->IsHessian();
 
@@ -374,7 +374,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          cTensorBins,
          std::is_same<FloatMain, double>::value,
          std::is_same<UIntMain, uint64_t>::value,
-         aBigBins,
+         aMainBins,
          sizeof(Float_Big) == pSubset->GetObjectiveWrapper()->m_cFloatBytes,
          sizeof(UInt_Big) == pSubset->GetObjectiveWrapper()->m_cUIntBytes,
          aFastBins
@@ -393,19 +393,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    // make a copy of the original bins for debugging purposes
 
    BinBase * aDebugCopyBins = nullptr;
-   if(!IsMultiplyError(cBytesPerBigBin, cTensorBins)) {
-      ANALYSIS_ASSERT(0 != cBytesPerBigBin);
+   if(!IsMultiplyError(cBytesPerMainBin, cTensorBins)) {
+      ANALYSIS_ASSERT(0 != cBytesPerMainBin);
       ANALYSIS_ASSERT(1 <= cTensorBins);
-      aDebugCopyBins = static_cast<BinBase *>(malloc(cBytesPerBigBin * cTensorBins));
+      aDebugCopyBins = static_cast<BinBase *>(malloc(cBytesPerMainBin * cTensorBins));
       if(nullptr != aDebugCopyBins) {
          // if we can't allocate, don't fail.. just stop checking
-         memcpy(aDebugCopyBins, aBigBins, cTensorBins * cBytesPerBigBin);
+         memcpy(aDebugCopyBins, aMainBins, cTensorBins * cBytesPerMainBin);
       }
    }
 #endif // NDEBUG
 
-   BinBase * aAuxiliaryBins = IndexBin(aBigBins, cBytesPerBigBin * cTensorBins);
-   aAuxiliaryBins->ZeroMem(cBytesPerBigBin, cAuxillaryBins);
+   BinBase * aAuxiliaryBins = IndexBin(aMainBins, cBytesPerMainBin * cTensorBins);
+   aAuxiliaryBins->ZeroMem(cBytesPerMainBin, cAuxillaryBins);
 
    TensorTotalsBuild(
       pInteractionCore->IsHessian(),
@@ -413,10 +413,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       cDimensions,
       binSums.m_acBins,
       aAuxiliaryBins,
-      aBigBins
+      aMainBins
 #ifndef NDEBUG
       , aDebugCopyBins
-      , pDebugBigBinsEnd
+      , pDebugMainBinsEnd
 #endif // NDEBUG
    );
 
@@ -430,10 +430,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          flags,
          cSamplesLeafMin,
          aAuxiliaryBins,
-         aBigBins
+         aMainBins
 #ifndef NDEBUG
          , aDebugCopyBins
-         , pDebugBigBinsEnd
+         , pDebugMainBinsEnd
 #endif // NDEBUG
       );
 

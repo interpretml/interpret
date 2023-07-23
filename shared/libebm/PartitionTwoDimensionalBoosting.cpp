@@ -197,7 +197,7 @@ public:
       ErrorEbm error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
       Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
       const size_t cRuntimeScores = GetCountScores(pBoosterCore->GetCountClasses());
@@ -280,7 +280,7 @@ public:
             &splitSecond1LowBest
 #ifndef NDEBUG
             , aDebugCopyBins
-            , pBoosterShell->GetDebugBigBinsEnd()
+            , pBoosterShell->GetDebugMainBinsEnd()
 #endif // NDEBUG
          );
 
@@ -303,7 +303,7 @@ public:
                &splitSecond1HighBest
 #ifndef NDEBUG
                , aDebugCopyBins
-               , pBoosterShell->GetDebugBigBinsEnd()
+               , pBoosterShell->GetDebugMainBinsEnd()
 #endif // NDEBUG
             );
 
@@ -371,7 +371,7 @@ public:
             &splitSecond2LowBest
 #ifndef NDEBUG
             , aDebugCopyBins
-            , pBoosterShell->GetDebugBigBinsEnd()
+            , pBoosterShell->GetDebugMainBinsEnd()
 #endif // NDEBUG
          );
 
@@ -394,7 +394,7 @@ public:
                &splitSecond2HighBest
 #ifndef NDEBUG
                , aDebugCopyBins
-               , pBoosterShell->GetDebugBigBinsEnd()
+               , pBoosterShell->GetDebugMainBinsEnd()
 #endif // NDEBUG
             );
 
@@ -440,7 +440,7 @@ public:
       // which contains the totals of all bins
       const auto * const pTotal = NegativeIndexBin(aAuxiliaryBins, cBytesPerBin);
 
-      ASSERT_BIN_OK(cBytesPerBin, pTotal, pBoosterShell->GetDebugBigBinsEnd());
+      ASSERT_BIN_OK(cBytesPerBin, pTotal, pBoosterShell->GetDebugMainBinsEnd());
 
       const auto * const pGradientPairTotal = pTotal->GetGradientPairs();
 

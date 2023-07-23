@@ -58,7 +58,7 @@ public:
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pBoosterCore->GetCountClasses()));
       const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
-      auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
+      auto * const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
 
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
@@ -377,7 +377,7 @@ public:
          do {
             const auto * const pBinSliceEnd = IndexBin(pBin, *pcItemsInNextSliceOrBytesInCurrentSlice);
             do {
-               ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetDebugBigBinsEnd());
+               ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetDebugMainBinsEnd());
                // TODO: add this first into a local Bin that can be put in registers then write it to
                // pCollapsedBin1 aferwards
                pCollapsedBin1->Add(cScores, *pBin);

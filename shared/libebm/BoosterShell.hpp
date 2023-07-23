@@ -42,7 +42,7 @@ class BoosterShell final {
 
    // TODO: try to merge some of this memory so that we get more CPU cache residency
    BinBase * m_aBoostingFastBinsTemp;
-   BinBase * m_aBoostingBigBins;
+   BinBase * m_aBoostingMainBins;
 
    // TODO: I think this can share memory with m_aBoostingFastBinsTemp since the GradientPair always contains a FLOAT, and it always contains enough for the multiclass scores in the first bin, and we always have at least 1 bin, right?
    void * m_aMulticlassMidwayTemp;
@@ -51,7 +51,7 @@ class BoosterShell final {
    void * m_aSplitPositionsTemp;
 
 #ifndef NDEBUG
-   const BinBase * m_pDebugBigBinsEnd;
+   const BinBase * m_pDebugMainBinsEnd;
 #endif // NDEBUG
 
 public:
@@ -70,7 +70,7 @@ public:
       m_pTermUpdate = nullptr;
       m_pInnerTermUpdate = nullptr;
       m_aBoostingFastBinsTemp = nullptr;
-      m_aBoostingBigBins = nullptr;
+      m_aBoostingMainBins = nullptr;
       m_aMulticlassMidwayTemp = nullptr;
       m_aTreeNodesTemp = nullptr;
       m_aSplitPositionsTemp = nullptr;
@@ -126,9 +126,9 @@ public:
       return m_aBoostingFastBinsTemp;
    }
 
-   INLINE_ALWAYS BinBase * GetBoostingBigBins() {
+   INLINE_ALWAYS BinBase * GetBoostingMainBins() {
       // call this if the bins were already allocated and we just need the pointer
-      return m_aBoostingBigBins;
+      return m_aBoostingMainBins;
    }
 
    INLINE_ALWAYS void * GetMulticlassMidwayTemp() {
@@ -147,12 +147,12 @@ public:
 
 
 #ifndef NDEBUG
-   INLINE_ALWAYS const BinBase * GetDebugBigBinsEnd() const {
-      return m_pDebugBigBinsEnd;
+   INLINE_ALWAYS const BinBase * GetDebugMainBinsEnd() const {
+      return m_pDebugMainBinsEnd;
    }
 
-   INLINE_ALWAYS void SetDebugBigBinsEnd(const BinBase * const pDebugBigBinsEnd) {
-      m_pDebugBigBinsEnd = pDebugBigBinsEnd;
+   INLINE_ALWAYS void SetDebugMainBinsEnd(const BinBase * const pDebugMainBinsEnd) {
+      m_pDebugMainBinsEnd = pDebugMainBinsEnd;
    }
 #endif // NDEBUG
 };

@@ -29,8 +29,8 @@ class InteractionShell final {
    BinBase * m_aInteractionFastBinsTemp;
    size_t m_cBytesFastBins;
 
-   BinBase * m_aInteractionBigBins;
-   size_t m_cAllocatedBigBins;
+   BinBase * m_aInteractionMainBins;
+   size_t m_cAllocatedMainBins;
 
    int m_cLogEnterMessages;
    int m_cLogExitMessages;
@@ -49,8 +49,8 @@ public:
       m_aInteractionFastBinsTemp = nullptr;
       m_cBytesFastBins = 0;
 
-      m_aInteractionBigBins = nullptr;
-      m_cAllocatedBigBins = 0;
+      m_aInteractionMainBins = nullptr;
+      m_cAllocatedMainBins = 0;
 
       m_cLogEnterMessages = 1000;
       m_cLogExitMessages = 1000;
@@ -96,7 +96,7 @@ public:
 
    BinBase * GetInteractionFastBinsTemp(const size_t cBytes);
 
-   BinBase * GetInteractionBigBins(const size_t cBytesPerBigBin, const size_t cBigBins);
+   BinBase * GetInteractionMainBins(const size_t cBytesPerMainBin, const size_t cMainBins);
 };
 static_assert(std::is_standard_layout<InteractionShell>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");

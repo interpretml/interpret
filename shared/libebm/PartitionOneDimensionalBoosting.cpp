@@ -53,7 +53,7 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
 
    ZeroGradientPairs(aSumGradientPairs, cScores);
 
-   const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
+   const auto * const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
 
 #ifndef NDEBUG
    UIntMain cSamplesTotalDebug = 0;
@@ -66,7 +66,7 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
 
    const auto * pBin = aBins;
    do {
-      ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetDebugBigBinsEnd());
+      ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetDebugMainBinsEnd());
 #ifndef NDEBUG
       cSamplesTotalDebug += pBin->GetCountSamples();
       weightTotalDebug += pBin->GetWeight();
@@ -141,7 +141,7 @@ static ErrorEbm Flatten(
    EBM_ASSERT(!IsOverflowTreeNodeSize(bHessian, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bHessian, cScores);
 
-   const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, UIntMain, bHessian>();
+   const auto * const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, bHessian>();
    const auto * const pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
 
    auto * pTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian>();
@@ -308,7 +308,7 @@ static int FindBestSplitGain(
    EBM_ASSERT(0 < cSamplesLeafMin);
    EBM_ASSERT(pBinLast != pBinCur); // then we would be non-splitable and would have exited above
    do {
-      ASSERT_BIN_OK(cBytesPerBin, pBinCur, pBoosterShell->GetDebugBigBinsEnd());
+      ASSERT_BIN_OK(cBytesPerBin, pBinCur, pBoosterShell->GetDebugMainBinsEnd());
 
       const UIntMain cSamplesChange = pBinCur->GetCountSamples();
       cSamplesRight -= cSamplesChange;
@@ -478,7 +478,7 @@ static int FindBestSplitGain(
    memcpy(pLeftChild->GetBin(), pBestSplitsStart->GetLeftSum(), cBytesPerBin);
 
    const auto * const pBinFirst = IndexBin(pBestBinPosition, cBytesPerBin);
-   ASSERT_BIN_OK(cBytesPerBin, pBinFirst, pBoosterShell->GetDebugBigBinsEnd());
+   ASSERT_BIN_OK(cBytesPerBin, pBinFirst, pBoosterShell->GetDebugMainBinsEnd());
 
 
    EBM_ASSERT(!IsOverflowTreeNodeSize(bHessian, cScores)); // we're accessing allocated memory
@@ -562,13 +562,13 @@ public:
       pRootTreeNode->SetDebugProgression(0);
 #endif // NDEBUG
 
-      const auto * const aBins = pBoosterShell->GetBoostingBigBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
+      const auto * const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
       const auto * const pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
       const auto * const pBinsLast = NegativeIndexBin(pBinsEnd, cBytesPerBin);
 
       pRootTreeNode->BEFORE_SetBinFirst(aBins);
       pRootTreeNode->BEFORE_SetBinLast(pBinsLast);
-      ASSERT_BIN_OK(cBytesPerBin, pRootTreeNode->BEFORE_GetBinLast(), pBoosterShell->GetDebugBigBinsEnd());
+      ASSERT_BIN_OK(cBytesPerBin, pRootTreeNode->BEFORE_GetBinLast(), pBoosterShell->GetDebugMainBinsEnd());
 
       SumAllBins<bHessian, cCompilerScores>(pBoosterShell, pBinsEnd, cSamplesTotal, weightTotal, pRootTreeNode->GetBin());
 

@@ -54,7 +54,7 @@ class BoosterCore final {
    double m_bestModelMetric;
 
    size_t m_cBytesFastBins;
-   size_t m_cBytesBigBins;
+   size_t m_cBytesMainBins;
 
    size_t m_cBytesSplitPositions;
    size_t m_cBytesTreeNodes;
@@ -88,7 +88,7 @@ class BoosterCore final {
       m_apBestTermTensors(nullptr),
       m_bestModelMetric(std::numeric_limits<double>::infinity()),
       m_cBytesFastBins(0),
-      m_cBytesBigBins(0),
+      m_cBytesMainBins(0),
       m_cBytesSplitPositions(0),
       m_cBytesTreeNodes(0)
    {
@@ -115,8 +115,8 @@ public:
       return m_cBytesFastBins;
    }
 
-   inline size_t GetCountBytesBigBins() const {
-      return m_cBytesBigBins;
+   inline size_t GetCountBytesMainBins() const {
+      return m_cBytesMainBins;
    }
 
    inline size_t GetCountBytesSplitPositions() const {

@@ -40,7 +40,7 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
       Tensor::Free(pBoosterShell->m_pTermUpdate);
       Tensor::Free(pBoosterShell->m_pInnerTermUpdate);
       AlignedFree(pBoosterShell->m_aBoostingFastBinsTemp);
-      AlignedFree(pBoosterShell->m_aBoostingBigBins);
+      AlignedFree(pBoosterShell->m_aBoostingMainBins);
       AlignedFree(pBoosterShell->m_aMulticlassMidwayTemp);
       AlignedFree(pBoosterShell->m_aSplitPositionsTemp);
       AlignedFree(pBoosterShell->m_aTreeNodesTemp);
@@ -97,9 +97,9 @@ ErrorEbm BoosterShell::FillAllocations() {
          }
       }
 
-      if(0 != m_pBoosterCore->GetCountBytesBigBins()) {
-         m_aBoostingBigBins = static_cast<BinBase *>(AlignedAlloc(m_pBoosterCore->GetCountBytesBigBins()));
-         if(nullptr == m_aBoostingBigBins) {
+      if(0 != m_pBoosterCore->GetCountBytesMainBins()) {
+         m_aBoostingMainBins = static_cast<BinBase *>(AlignedAlloc(m_pBoosterCore->GetCountBytesMainBins()));
+         if(nullptr == m_aBoostingMainBins) {
             goto failed_allocation;
          }
       }

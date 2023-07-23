@@ -32,7 +32,7 @@ void InteractionShell::Free(InteractionShell * const pInteractionShell) {
 
    if(nullptr != pInteractionShell) {
       AlignedFree(pInteractionShell->m_aInteractionFastBinsTemp);
-      AlignedFree(pInteractionShell->m_aInteractionBigBins);
+      AlignedFree(pInteractionShell->m_aInteractionMainBins);
       InteractionCore::Free(pInteractionShell->m_pInteractionCore);
       
       // before we free our memory, indicate it was freed so if our higher level language attempts to use it we have
@@ -87,34 +87,34 @@ BinBase * InteractionShell::GetInteractionFastBinsTemp(const size_t cBytes) {
    return aBuffer;
 }
 
-BinBase * InteractionShell::GetInteractionBigBins(const size_t cBytesPerBigBin, const size_t cBigBins) {
-   ANALYSIS_ASSERT(0 != cBytesPerBigBin);
+BinBase * InteractionShell::GetInteractionMainBins(const size_t cBytesPerMainBin, const size_t cMainBins) {
+   ANALYSIS_ASSERT(0 != cBytesPerMainBin);
 
-   BinBase * aBuffer = m_aInteractionBigBins;
-   if(UNLIKELY(m_cAllocatedBigBins < cBigBins)) {
+   BinBase * aBuffer = m_aInteractionMainBins;
+   if(UNLIKELY(m_cAllocatedMainBins < cMainBins)) {
       AlignedFree(aBuffer);
-      m_aInteractionBigBins = nullptr;
+      m_aInteractionMainBins = nullptr;
 
-      const size_t cItemsGrowth = (cBigBins >> 2) + 16; // cannot overflow
-      if(IsAddError(cItemsGrowth, cBigBins)) {
-         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionBigBins IsAddError(cItemsGrowth, cBigBins)");
+      const size_t cItemsGrowth = (cMainBins >> 2) + 16; // cannot overflow
+      if(IsAddError(cItemsGrowth, cMainBins)) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionMainBins IsAddError(cItemsGrowth, cMainBins)");
          return nullptr;
       }
-      const size_t cNewAllocatedBigBins = cBigBins + cItemsGrowth;
+      const size_t cNewAllocatedMainBins = cMainBins + cItemsGrowth;
 
-      m_cAllocatedBigBins = cNewAllocatedBigBins;
-      LOG_N(Trace_Info, "Growing Interaction big bins to %zu", cNewAllocatedBigBins);
+      m_cAllocatedMainBins = cNewAllocatedMainBins;
+      LOG_N(Trace_Info, "Growing Interaction big bins to %zu", cNewAllocatedMainBins);
 
-      if(IsMultiplyError(cBytesPerBigBin, cNewAllocatedBigBins)) {
-         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionBigBins IsMultiplyError(cBytesPerBigBin, cNewAllocatedBigBins)");
+      if(IsMultiplyError(cBytesPerMainBin, cNewAllocatedMainBins)) {
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionMainBins IsMultiplyError(cBytesPerMainBin, cNewAllocatedMainBins)");
          return nullptr;
       }
-      aBuffer = static_cast<BinBase *>(AlignedAlloc(cBytesPerBigBin * cNewAllocatedBigBins));
+      aBuffer = static_cast<BinBase *>(AlignedAlloc(cBytesPerMainBin * cNewAllocatedMainBins));
       if(nullptr == aBuffer) {
-         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionBigBins OutOfMemory");
+         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionMainBins OutOfMemory");
          return nullptr;
       }
-      m_aInteractionBigBins = aBuffer;
+      m_aInteractionMainBins = aBuffer;
    }
    return aBuffer;
 }

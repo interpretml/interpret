@@ -181,21 +181,10 @@ INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * const dest, const char * c
 #define FAST_LOG
 #define FAST_DIVISION
 
-//#define FLOAT_MAIN_32
-#define FLOAT_MAIN_64
-
-
-#if defined(FLOAT_MAIN_32)
-typedef float FloatMain;
-#elif defined(FLOAT_MAIN_64)
-typedef double FloatMain;
-#else
-#error either FLOAT_MAIN_32 or FLOAT_MAIN_64 must be defined
-#endif
-
 typedef double FloatShared;
-typedef double FloatScore;
+typedef double FloatMain;
 typedef double FloatCalc;
+typedef double FloatScore;
 
 // 16 byte alignment works for *most* SIMD implementation, but it's even better to align with the 64 byte cache!
 #define SIMD_BYTE_ALIGNMENT   STATIC_CAST(size_t, 64)

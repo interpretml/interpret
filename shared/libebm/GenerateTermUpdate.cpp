@@ -99,13 +99,13 @@ static void BoostZeroDimensional(
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
 
-   BinBase * const pBigBin = pBoosterShell->GetBoostingBigBins();
-   EBM_ASSERT(nullptr != pBigBin);
+   BinBase * const pMainBin = pBoosterShell->GetBoostingMainBins();
+   EBM_ASSERT(nullptr != pMainBin);
 
    Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
    FloatScore * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
    if(pBoosterCore->IsHessian()) {
-      const auto * const pBin = pBigBin->Specialize<FloatMain, UIntMain, true>();
+      const auto * const pBin = pMainBin->Specialize<FloatMain, UIntMain, true>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (TermBoostFlags_GradientSums & flags)) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
@@ -122,7 +122,7 @@ static void BoostZeroDimensional(
          }
       }
    } else {
-      const auto * const pBin = pBigBin->Specialize<FloatMain, UIntMain, false>();
+      const auto * const pBin = pMainBin->Specialize<FloatMain, UIntMain, false>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (TermBoostFlags_GradientSums & flags)) {
          const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(SafeConvertFloat<FloatCalc>(aGradientPairs[0].m_sumGradients));
@@ -224,30 +224,30 @@ static ErrorEbm BoostMultiDimensional(
 
    const size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
 
-   const size_t cBytesPerBigBin = GetBinSize<FloatMain, UIntMain>(pBoosterCore->IsHessian(), cScores);
+   const size_t cBytesPerMainBin = GetBinSize<FloatMain, UIntMain>(pBoosterCore->IsHessian(), cScores);
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
-   BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
-   EBM_ASSERT(nullptr != aBigBins);
+   BinBase * const aMainBins = pBoosterShell->GetBoostingMainBins();
+   EBM_ASSERT(nullptr != aMainBins);
 
    // we also need to zero the auxillary bins
-   aBigBins->ZeroMem(cBytesPerBigBin, cAuxillaryBins, cTensorBins);
+   aMainBins->ZeroMem(cBytesPerMainBin, cAuxillaryBins, cTensorBins);
  
 #ifndef NDEBUG
    // make a copy of the original bins for debugging purposes
 
    BinBase * aDebugCopyBins = nullptr;
-   if(!IsMultiplyError(cBytesPerBigBin, cTensorBins)) {
-      ANALYSIS_ASSERT(0 != cBytesPerBigBin);
-      aDebugCopyBins = static_cast<BinBase *>(malloc(cBytesPerBigBin * cTensorBins));
+   if(!IsMultiplyError(cBytesPerMainBin, cTensorBins)) {
+      ANALYSIS_ASSERT(0 != cBytesPerMainBin);
+      aDebugCopyBins = static_cast<BinBase *>(malloc(cBytesPerMainBin * cTensorBins));
       if(nullptr != aDebugCopyBins) {
          // if we can't allocate, don't fail.. just stop checking
-         memcpy(aDebugCopyBins, aBigBins, cBytesPerBigBin * cTensorBins);
+         memcpy(aDebugCopyBins, aMainBins, cBytesPerMainBin * cTensorBins);
       }
    }
 #endif // NDEBUG
 
-   BinBase * aAuxiliaryBins = IndexBin(aBigBins, cBytesPerBigBin * cTensorBins);
+   BinBase * aAuxiliaryBins = IndexBin(aMainBins, cBytesPerMainBin * cTensorBins);
 
    TensorTotalsBuild(
       pBoosterCore->IsHessian(),
@@ -255,10 +255,10 @@ static ErrorEbm BoostMultiDimensional(
       pTerm->GetCountRealDimensions(),
       acBins,
       aAuxiliaryBins,
-      aBigBins
+      aMainBins
 #ifndef NDEBUG
       , aDebugCopyBins
-      , pBoosterShell->GetDebugBigBinsEnd()
+      , pBoosterShell->GetDebugMainBinsEnd()
 #endif // NDEBUG
    );
 
@@ -706,12 +706,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
       EBM_ASSERT(nullptr != aFastBins);
 
-      const size_t cBytesPerBigBin = GetBinSize<FloatMain, UIntMain>(pBoosterCore->IsHessian(), cScores);
-      EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTensorBins));
-      const size_t cBytesBigBins = cBytesPerBigBin * cTensorBins;
+      const size_t cBytesPerMainBin = GetBinSize<FloatMain, UIntMain>(pBoosterCore->IsHessian(), cScores);
+      EBM_ASSERT(!IsMultiplyError(cBytesPerMainBin, cTensorBins));
+      const size_t cBytesMainBins = cBytesPerMainBin * cTensorBins;
 
-      BinBase * const aBigBins = pBoosterShell->GetBoostingBigBins();
-      EBM_ASSERT(nullptr != aBigBins);
+      BinBase * const aMainBins = pBoosterShell->GetBoostingMainBins();
+      EBM_ASSERT(nullptr != aMainBins);
 
 #ifndef NDEBUG
       size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
@@ -720,14 +720,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          cAuxillaryBins = 0;
       }
       EBM_ASSERT(!IsAddError(cTensorBins, cAuxillaryBins));
-      EBM_ASSERT(!IsMultiplyError(cBytesPerBigBin, cTensorBins + cAuxillaryBins));
-      pBoosterShell->SetDebugBigBinsEnd(IndexBin(aBigBins, cBytesPerBigBin * (cTensorBins + cAuxillaryBins)));
+      EBM_ASSERT(!IsMultiplyError(cBytesPerMainBin, cTensorBins + cAuxillaryBins));
+      pBoosterShell->SetDebugMainBinsEnd(IndexBin(aMainBins, cBytesPerMainBin * (cTensorBins + cAuxillaryBins)));
 #endif // NDEBUG
 
       size_t iBag = 0;
       EBM_ASSERT(1 <= cInnerBagsAfterZero);
       do {
-         memset(aBigBins, 0, cBytesBigBins);
+         memset(aMainBins, 0, cBytesMainBins);
 
          EBM_ASSERT(1 <= pBoosterCore->GetTrainingSet()->GetCountSubsets());
          DataSubsetBoosting * pSubset = pBoosterCore->GetTrainingSet()->GetSubsets();
@@ -789,7 +789,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
                cTensorBins,
                std::is_same<FloatMain, double>::value,
                std::is_same<UIntMain, uint64_t>::value,
-               aBigBins,
+               aMainBins,
                pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(Float_Big),
                pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UInt_Big),
                aFastBins
