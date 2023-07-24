@@ -20,16 +20,15 @@ extern "C" {
 
 #define INTERNAL_IMPORT_EXPORT_INCLUDE extern
 
-typedef double FloatBig;
+typedef double FloatShared;
+
 typedef uint64_t UIntBig;
-typedef float FloatSmall;
+typedef double FloatBig;
 typedef uint32_t UIntSmall;
+typedef float FloatSmall;
 
 static_assert(sizeof(FloatSmall) < sizeof(FloatBig), "FloatBig must be able to contain FloatSmall");
 static_assert(sizeof(UIntSmall) < sizeof(UIntBig), "UIntBig must be able to contain UIntSmall");
-
-typedef uint64_t UIntMain;
-typedef UIntEbm ActiveDataType; // TODO: in most places we could use size_t for this and only use the uint64 version where we have cross-platform considerations.
 
 struct ApplyUpdateBridge {
    size_t m_cScores;

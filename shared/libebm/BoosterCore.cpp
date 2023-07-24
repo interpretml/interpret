@@ -865,15 +865,15 @@ ErrorEbm BoosterCore::Create(
          const DataSubsetBoosting * const pSubsetsEnd = pSubset + pBoosterCore->GetTrainingSet()->GetCountSubsets();
          do {
             size_t cBytesPerFastBin;
-            if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntBig)) {
-               if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatBig)) {
+            if(sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
+               if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
                   if(IsOverflowBinSize<FloatBig, UIntBig>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
                   }
                   cBytesPerFastBin = GetBinSize<FloatBig, UIntBig>(bHessian, cScores);
                } else {
-                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatSmall));
+                  EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
                   if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
@@ -881,15 +881,15 @@ ErrorEbm BoosterCore::Create(
                   cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
                }
             } else {
-               EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntSmall));
-               if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatBig)) {
+               EBM_ASSERT(sizeof(UIntSmall) == pSubset->GetObjectiveWrapper()->m_cUIntBytes);
+               if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
                   if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
                   }
                   cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
                } else {
-                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatSmall));
+                  EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
                   if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
@@ -907,15 +907,15 @@ ErrorEbm BoosterCore::Create(
          const DataSubsetBoosting * const pSubsetsEnd = pSubset + pBoosterCore->GetValidationSet()->GetCountSubsets();
          do {
             size_t cBytesPerFastBin;
-            if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntBig)) {
-               if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatBig)) {
+            if(sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
+               if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
                   if(IsOverflowBinSize<FloatBig, UIntBig>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
                   }
                   cBytesPerFastBin = GetBinSize<FloatBig, UIntBig>(bHessian, cScores);
                } else {
-                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatSmall));
+                  EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
                   if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
@@ -923,15 +923,15 @@ ErrorEbm BoosterCore::Create(
                   cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
                }
             } else {
-               EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntSmall));
-               if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatBig)) {
+               EBM_ASSERT(sizeof(UIntSmall) == pSubset->GetObjectiveWrapper()->m_cUIntBytes);
+               if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
                   if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;
                   }
                   cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
                } else {
-                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatSmall));
+                  EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
                   if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                      return Error_OutOfMemory;

@@ -304,19 +304,20 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
    const DataSubsetInteraction * const pSubsetsEnd = pSubset + pInteractionCore->GetDataSetInteraction()->GetCountSubsets();
    do {
       size_t cBytesPerFastBin;
-      if(sizeof(UIntSmall) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
-         if(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-            cBytesPerFastBin = GetBinSize<FloatSmall, UIntSmall>(bHessian, cScores);
+      if(sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
+         if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+            cBytesPerFastBin = GetBinSize<FloatBig, UIntBig>(bHessian, cScores);
          } else {
-            EBM_ASSERT(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-            cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
+            EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+            cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
          }
       } else {
-         EBM_ASSERT(sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes);
-         if(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-            cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
+         EBM_ASSERT(sizeof(UIntSmall) == pSubset->GetObjectiveWrapper()->m_cUIntBytes);
+         if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
+            cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
          } else {
-            cBytesPerFastBin = GetBinSize<FloatBig, UIntBig>(bHessian, cScores);
+            EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+            cBytesPerFastBin = GetBinSize<FloatSmall, UIntSmall>(bHessian, cScores);
          }
       }
       if(IsMultiplyError(cBytesPerFastBin, cTensorBins)) {

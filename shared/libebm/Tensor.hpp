@@ -15,6 +15,7 @@
 #include "zones.h"
 
 #include "common_cpp.hpp" // ArrayToPointer
+#include "ebm_internal.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

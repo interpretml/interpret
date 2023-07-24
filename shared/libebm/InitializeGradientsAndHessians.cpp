@@ -110,11 +110,11 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
                gradient = initScore - SafeConvertFloat<double>(data);
             }
 
-            if(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-               *reinterpret_cast<FloatSmall *>(pGradHess) = SafeConvertFloat<FloatSmall>(gradient);
-            } else {
-               EBM_ASSERT(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+            if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
                *reinterpret_cast<FloatBig *>(pGradHess) = SafeConvertFloat<FloatBig>(gradient);
+            } else {
+               EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+               *reinterpret_cast<FloatSmall *>(pGradHess) = SafeConvertFloat<FloatSmall>(gradient);
             }
             pGradHess = IndexByte(pGradHess, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 
@@ -229,11 +229,11 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
                }
             }
 
-            if(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-               *reinterpret_cast<FloatSmall *>(pGradHess) = SafeConvertFloat<FloatSmall>(gradient);
-            } else {
-               EBM_ASSERT(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+            if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
                *reinterpret_cast<FloatBig *>(pGradHess) = SafeConvertFloat<FloatBig>(gradient);
+            } else {
+               EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+               *reinterpret_cast<FloatSmall *>(pGradHess) = SafeConvertFloat<FloatSmall>(gradient);
             }
             pGradHess = IndexByte(pGradHess, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 

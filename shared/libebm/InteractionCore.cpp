@@ -226,56 +226,15 @@ ErrorEbm InteractionCore::Create(
 
       FeatureInteraction * pFeature = pInteractionCore->m_aFeatures;
       const FeatureInteraction * const pFeatureEnd = nullptr == pFeature ? nullptr : pFeature + cFeatures;
-      if(sizeof(UIntSmall) == pInteractionCore->m_objectiveCpu.m_cUIntBytes) {
-         if(sizeof(FloatSmall) == pInteractionCore->m_objectiveCpu.m_cFloatBytes) {
-            if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
-               LOG_0(Trace_Warning, "WARNING InteractionCore::Create bin size overflow");
-               return Error_OutOfMemory;
-            }
-         } else {
-            EBM_ASSERT(sizeof(FloatBig) == pInteractionCore->m_objectiveCpu.m_cFloatBytes);
-            if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
-               LOG_0(Trace_Warning, "WARNING InteractionCore::Create bin size overflow");
-               return Error_OutOfMemory;
-            }
-         }
-         if(IsMulticlass(cClasses)) {
-            // TODO: we currently index into the gradient array using the target, but the gradient array is also
-            // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
-            // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
-            size_t cIndexes = static_cast<size_t>(cClasses);
-            if(bHessian) {
-               if(IsMultiplyError(size_t { 2 }, cIndexes)) {
-                  LOG_0(Trace_Error, "ERROR InteractionCore::Create target indexes cannot fit into compute zone indexes");
-                  return Error_IllegalParamVal;
-               }
-               cIndexes *= 2;
-            }
-            // restriction from LogLossMulticlassObjective.hpp
-            // we use the target value to index into the temp exp array and adjust the target gradient
-            if(IsConvertError<typename std::make_signed<UIntSmall>::type>(cIndexes - size_t { 1 })) {
-               LOG_0(Trace_Error, "ERROR InteractionCore::Create target indexes cannot fit into compute zone indexes");
-               return Error_IllegalParamVal;
-            }
-         }
-         for(; pFeatureEnd != pFeature; ++pFeature) {
-            const size_t cBins = pFeature->GetCountBins();
-            // the bin index needs to fit into the bit packs
-            if(0 != cBins && IsConvertError<UIntSmall>(cBins - 1)) {
-               LOG_0(Trace_Error, "ERROR InteractionCore::Create IsConvertError<UIntSmall>((*ppTerm)->GetCountTensorBins())");
-               return Error_IllegalParamVal;
-            }
-         }
-      } else {
-         EBM_ASSERT(sizeof(UIntBig) == pInteractionCore->m_objectiveCpu.m_cUIntBytes);
-         if(sizeof(FloatSmall) == pInteractionCore->m_objectiveCpu.m_cFloatBytes) {
-            if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
-               LOG_0(Trace_Warning, "WARNING InteractionCore::Create bin size overflow");
-               return Error_OutOfMemory;
-            }
-         } else {
-            EBM_ASSERT(sizeof(FloatBig) == pInteractionCore->m_objectiveCpu.m_cFloatBytes);
+      if(sizeof(UIntBig) == pInteractionCore->m_objectiveCpu.m_cUIntBytes) {
+         if(sizeof(FloatBig) == pInteractionCore->m_objectiveCpu.m_cFloatBytes) {
             if(IsOverflowBinSize<FloatBig, UIntBig>(bHessian, cScores)) {
+               LOG_0(Trace_Warning, "WARNING InteractionCore::Create bin size overflow");
+               return Error_OutOfMemory;
+            }
+         } else {
+            EBM_ASSERT(sizeof(FloatSmall) == pInteractionCore->m_objectiveCpu.m_cFloatBytes);
+            if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
                LOG_0(Trace_Warning, "WARNING InteractionCore::Create bin size overflow");
                return Error_OutOfMemory;
             }
@@ -307,65 +266,61 @@ ErrorEbm InteractionCore::Create(
                return Error_IllegalParamVal;
             }
          }
+      } else {
+         EBM_ASSERT(sizeof(UIntSmall) == pInteractionCore->m_objectiveCpu.m_cUIntBytes);
+         if(sizeof(FloatBig) == pInteractionCore->m_objectiveCpu.m_cFloatBytes) {
+            if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
+               LOG_0(Trace_Warning, "WARNING InteractionCore::Create bin size overflow");
+               return Error_OutOfMemory;
+            }
+         } else {
+            EBM_ASSERT(sizeof(FloatSmall) == pInteractionCore->m_objectiveCpu.m_cFloatBytes);
+            if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
+               LOG_0(Trace_Warning, "WARNING InteractionCore::Create bin size overflow");
+               return Error_OutOfMemory;
+            }
+         }
+         if(IsMulticlass(cClasses)) {
+            // TODO: we currently index into the gradient array using the target, but the gradient array is also
+            // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
+            // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
+            size_t cIndexes = static_cast<size_t>(cClasses);
+            if(bHessian) {
+               if(IsMultiplyError(size_t { 2 }, cIndexes)) {
+                  LOG_0(Trace_Error, "ERROR InteractionCore::Create target indexes cannot fit into compute zone indexes");
+                  return Error_IllegalParamVal;
+               }
+               cIndexes *= 2;
+            }
+            // restriction from LogLossMulticlassObjective.hpp
+            // we use the target value to index into the temp exp array and adjust the target gradient
+            if(IsConvertError<typename std::make_signed<UIntSmall>::type>(cIndexes - size_t { 1 })) {
+               LOG_0(Trace_Error, "ERROR InteractionCore::Create target indexes cannot fit into compute zone indexes");
+               return Error_IllegalParamVal;
+            }
+         }
+         for(; pFeatureEnd != pFeature; ++pFeature) {
+            const size_t cBins = pFeature->GetCountBins();
+            // the bin index needs to fit into the bit packs
+            if(0 != cBins && IsConvertError<UIntSmall>(cBins - 1)) {
+               LOG_0(Trace_Error, "ERROR InteractionCore::Create IsConvertError<UIntSmall>((*ppTerm)->GetCountTensorBins())");
+               return Error_IllegalParamVal;
+            }
+         }
       }
 
       if(0 != pInteractionCore->m_objectiveSIMD.m_cUIntBytes) {
          bool bRemoveSIMD = false;
          while(true) {
-            if(sizeof(UIntSmall) == pInteractionCore->m_objectiveSIMD.m_cUIntBytes) {
-               if(sizeof(FloatSmall) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes) {
-                  if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
-                     bRemoveSIMD = true;
-                     break;
-                  }
-               } else {
-                  EBM_ASSERT(sizeof(FloatBig) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes);
-                  if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
-                     bRemoveSIMD = true;
-                     break;
-                  }
-               }
-               if(IsMulticlass(cClasses)) {
-                  // TODO: we currently index into the gradient array using the target, but the gradient array is also
-                  // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
-                  // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
-                  size_t cIndexes = static_cast<size_t>(cClasses);
-                  if(bHessian) {
-                     if(IsMultiplyError(size_t { 2 }, cIndexes)) {
-                        bRemoveSIMD = true;
-                        break;
-                     }
-                     cIndexes *= 2;
-                  }
-                  if(IsMultiplyError(cIndexes, pInteractionCore->m_objectiveSIMD.m_cSIMDPack)) {
-                     bRemoveSIMD = true;
-                     break;
-                  }
-                  // restriction from LogLossMulticlassObjective.hpp
-                  // we use the target value to index into the temp exp array and adjust the target gradient
-                  if(IsConvertError<typename std::make_signed<UIntSmall>::type>(cIndexes * pInteractionCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
-                     bRemoveSIMD = true;
-                     break;
-                  }
-               }
-               for(; pFeatureEnd != pFeature; ++pFeature) {
-                  const size_t cBins = pFeature->GetCountBins();
-                  // the bin index needs to fit into the bit packs
-                  if(0 != cBins && IsConvertError<UIntSmall>(cBins - 1)) {
-                     bRemoveSIMD = true;
-                     break;
-                  }
-               }
-            } else {
-               EBM_ASSERT(sizeof(UIntBig) == pInteractionCore->m_objectiveSIMD.m_cUIntBytes);
-               if(sizeof(FloatSmall) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes) {
-                  if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
-                     bRemoveSIMD = true;
-                     break;
-                  }
-               } else {
-                  EBM_ASSERT(sizeof(FloatBig) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes);
+            if(sizeof(UIntBig) == pInteractionCore->m_objectiveSIMD.m_cUIntBytes) {
+               if(sizeof(FloatBig) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes) {
                   if(IsOverflowBinSize<FloatBig, UIntBig>(bHessian, cScores)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               } else {
+                  EBM_ASSERT(sizeof(FloatSmall) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes);
+                  if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
                      bRemoveSIMD = true;
                      break;
                   }
@@ -397,6 +352,51 @@ ErrorEbm InteractionCore::Create(
                   const size_t cBins = pFeature->GetCountBins();
                   // the bin index needs to fit into the bit packs
                   if(0 != cBins && IsConvertError<UIntBig>(cBins - 1)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               }
+            } else {
+               EBM_ASSERT(sizeof(UIntSmall) == pInteractionCore->m_objectiveSIMD.m_cUIntBytes);
+               if(sizeof(FloatBig) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes) {
+                  if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               } else {
+                  EBM_ASSERT(sizeof(FloatSmall) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes);
+                  if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               }
+               if(IsMulticlass(cClasses)) {
+                  // TODO: we currently index into the gradient array using the target, but the gradient array is also
+                  // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
+                  // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
+                  size_t cIndexes = static_cast<size_t>(cClasses);
+                  if(bHessian) {
+                     if(IsMultiplyError(size_t { 2 }, cIndexes)) {
+                        bRemoveSIMD = true;
+                        break;
+                     }
+                     cIndexes *= 2;
+                  }
+                  if(IsMultiplyError(cIndexes, pInteractionCore->m_objectiveSIMD.m_cSIMDPack)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+                  // restriction from LogLossMulticlassObjective.hpp
+                  // we use the target value to index into the temp exp array and adjust the target gradient
+                  if(IsConvertError<typename std::make_signed<UIntSmall>::type>(cIndexes * pInteractionCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               }
+               for(; pFeatureEnd != pFeature; ++pFeature) {
+                  const size_t cBins = pFeature->GetCountBins();
+                  // the bin index needs to fit into the bit packs
+                  if(0 != cBins && IsConvertError<UIntSmall>(cBins - 1)) {
                      bRemoveSIMD = true;
                      break;
                   }
@@ -598,11 +598,11 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                      EBM_ASSERT(target < static_cast<UIntShared>(cClasses));
                   }
 
-                  if(sizeof(UIntSmall) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
-                     *reinterpret_cast<UIntSmall *>(pTargetTo) = static_cast<UIntSmall>(target);
-                  } else {
-                     EBM_ASSERT(sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes);
+                  if(sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
                      *reinterpret_cast<UIntBig *>(pTargetTo) = static_cast<UIntBig>(target);
+                  } else {
+                     EBM_ASSERT(sizeof(UIntSmall) == pSubset->GetObjectiveWrapper()->m_cUIntBytes);
+                     *reinterpret_cast<UIntSmall *>(pTargetTo) = static_cast<UIntSmall>(target);
                   }
                   pTargetTo = IndexByte(pTargetTo, pSubset->GetObjectiveWrapper()->m_cUIntBytes);
 
@@ -614,11 +614,11 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                         ++pInitScoreFromLoop;
                      }
 
-                     if(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-                        reinterpret_cast<FloatSmall *>(pSampleScoreTo)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<FloatSmall>(initScore);
-                     } else {
-                        EBM_ASSERT(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+                     if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
                         reinterpret_cast<FloatBig *>(pSampleScoreTo)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<FloatBig>(initScore);
+                     } else {
+                        EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+                        reinterpret_cast<FloatSmall *>(pSampleScoreTo)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<FloatSmall>(initScore);
                      }
                      ++iScore;
                   } while(cScores != iScore);
@@ -698,19 +698,19 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                   ++pTargetFrom; // target data is shared so unlike init scores we must keep them even if replication is zero
                }
 
-               if(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-                  *reinterpret_cast<FloatSmall *>(pTargetTo) = static_cast<FloatSmall>(target);
-               } else {
-                  EBM_ASSERT(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+               if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
                   *reinterpret_cast<FloatBig *>(pTargetTo) = static_cast<FloatBig>(target);
+               } else {
+                  EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+                  *reinterpret_cast<FloatSmall *>(pTargetTo) = static_cast<FloatSmall>(target);
                }
                pTargetTo = IndexByte(pTargetTo, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 
-               if(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-                  *reinterpret_cast<FloatSmall *>(pSampleScoreTo) = SafeConvertFloat<FloatSmall>(initScore);
-               } else {
-                  EBM_ASSERT(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+               if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
                   *reinterpret_cast<FloatBig *>(pSampleScoreTo) = SafeConvertFloat<FloatBig>(initScore);
+               } else {
+                  EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+                  *reinterpret_cast<FloatSmall *>(pSampleScoreTo) = SafeConvertFloat<FloatSmall>(initScore);
                }
                pSampleScoreTo = IndexByte(pSampleScoreTo, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 
@@ -788,17 +788,17 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                      ++pWeight;
                   }
                   size_t iScore = 0;
-                  if(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-                     const FloatSmall weightConverted = SafeConvertFloat<FloatSmall>(weight);
-                     do {
-                        reinterpret_cast<FloatSmall *>(pGradHess)[iScore * cSIMDPack + iPartition] *= weightConverted;
-                        ++iScore;
-                     } while(cTotalScores != iScore);
-                  } else {
-                     EBM_ASSERT(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+                  if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
                      const FloatBig weightConverted = SafeConvertFloat<FloatBig>(weight);
                      do {
                         reinterpret_cast<FloatBig *>(pGradHess)[iScore * cSIMDPack + iPartition] *= weightConverted;
+                        ++iScore;
+                     } while(cTotalScores != iScore);
+                  } else {
+                     EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+                     const FloatSmall weightConverted = SafeConvertFloat<FloatSmall>(weight);
+                     do {
+                        reinterpret_cast<FloatSmall *>(pGradHess)[iScore * cSIMDPack + iPartition] *= weightConverted;
                         ++iScore;
                      } while(cTotalScores != iScore);
                   }

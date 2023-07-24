@@ -181,11 +181,6 @@ INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * const dest, const char * c
 #define FAST_LOG
 #define FAST_DIVISION
 
-typedef double FloatShared;
-typedef double FloatMain;
-typedef double FloatCalc;
-typedef double FloatScore;
-
 // 16 byte alignment works for *most* SIMD implementation, but it's even better to align with the 64 byte cache!
 #define SIMD_BYTE_ALIGNMENT   STATIC_CAST(size_t, 64)
 

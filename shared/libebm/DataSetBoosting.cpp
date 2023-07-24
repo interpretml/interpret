@@ -181,11 +181,11 @@ ErrorEbm DataSetBoosting::InitSampleScores(
                const double * pFrom = pInitScore;
                size_t iScore = 0;
                do {
-                  if(sizeof(FloatSmall) == pSubset->m_pObjective->m_cFloatBytes) {
-                     reinterpret_cast<FloatSmall *>(pSampleScore)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<FloatSmall>(*pFrom);
-                  } else {
-                     EBM_ASSERT(sizeof(FloatBig) == pSubset->m_pObjective->m_cFloatBytes);
+                  if(sizeof(FloatBig) == pSubset->m_pObjective->m_cFloatBytes) {
                      reinterpret_cast<FloatBig *>(pSampleScore)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<FloatBig>(*pFrom);
+                  } else {
+                     EBM_ASSERT(sizeof(FloatSmall) == pSubset->m_pObjective->m_cFloatBytes);
+                     reinterpret_cast<FloatSmall *>(pSampleScore)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<FloatSmall>(*pFrom);
                   }
 
                   ++iScore;
@@ -276,21 +276,21 @@ ErrorEbm DataSetBoosting::InitTargetData(
                // this was checked when creating the shared dataset
                EBM_ASSERT(iData < static_cast<UIntShared>(cClasses));
                EBM_ASSERT(!IsConvertError<size_t>(iData)); // since cClasses came from size_t
-               if(sizeof(UIntSmall) == pSubset->m_pObjective->m_cUIntBytes) {
+               if(sizeof(UIntBig) == pSubset->m_pObjective->m_cUIntBytes) {
+                  // we checked earlier that cClasses - 1 would fit into UIntBig
+                  EBM_ASSERT(!IsConvertError<UIntBig>(iData));
+               } else {
+                  EBM_ASSERT(sizeof(UIntSmall) == pSubset->m_pObjective->m_cUIntBytes);
                   // we checked earlier that cClasses - 1 would fit into UIntSmall
                   EBM_ASSERT(!IsConvertError<UIntSmall>(iData));
-               } else {
-                  // we checked earlier that cClasses - 1 would fit into UIntBig
-                  EBM_ASSERT(sizeof(UIntBig) == pSubset->m_pObjective->m_cFloatBytes);
-                  EBM_ASSERT(!IsConvertError<UIntBig>(iData));
                }
 #endif // NDEBUG
             }
-            if(sizeof(UIntSmall) == pSubset->m_pObjective->m_cUIntBytes) {
-               *reinterpret_cast<UIntSmall *>(pTargetTo) = static_cast<UIntSmall>(iData);
-            } else {
-               EBM_ASSERT(sizeof(UIntBig) == pSubset->m_pObjective->m_cUIntBytes);
+            if(sizeof(UIntBig) == pSubset->m_pObjective->m_cUIntBytes) {
                *reinterpret_cast<UIntBig *>(pTargetTo) = static_cast<UIntBig>(iData);
+            } else {
+               EBM_ASSERT(sizeof(UIntSmall) == pSubset->m_pObjective->m_cUIntBytes);
+               *reinterpret_cast<UIntSmall *>(pTargetTo) = static_cast<UIntSmall>(iData);
             }
             pTargetTo = IndexByte(pTargetTo, pSubset->m_pObjective->m_cUIntBytes);
 
@@ -336,11 +336,11 @@ ErrorEbm DataSetBoosting::InitTargetData(
                data = *pTargetFrom;
                ++pTargetFrom;
             }
-            if(sizeof(FloatSmall) == pSubset->m_pObjective->m_cFloatBytes) {
-               *reinterpret_cast<FloatSmall *>(pTargetTo) = SafeConvertFloat<FloatSmall>(data);
-            } else {
-               EBM_ASSERT(sizeof(FloatBig) == pSubset->m_pObjective->m_cFloatBytes);
+            if(sizeof(FloatBig) == pSubset->m_pObjective->m_cFloatBytes) {
                *reinterpret_cast<FloatBig *>(pTargetTo) = SafeConvertFloat<FloatBig>(data);
+            } else {
+               EBM_ASSERT(sizeof(FloatSmall) == pSubset->m_pObjective->m_cFloatBytes);
+               *reinterpret_cast<FloatSmall *>(pTargetTo) = SafeConvertFloat<FloatSmall>(data);
             }
             pTargetTo = IndexByte(pTargetTo, pSubset->m_pObjective->m_cFloatBytes);
 
@@ -608,11 +608,11 @@ ErrorEbm DataSetBoosting::InitTermData(
                      replication -= direction;
 
                      EBM_ASSERT(0 <= cShiftTo);
-                     if(sizeof(UIntSmall) == pSubset->m_pObjective->m_cUIntBytes) {
-                        *(reinterpret_cast<UIntSmall *>(pTermDataTo) + iPartition) |= static_cast<UIntSmall>(iTensor) << cShiftTo;
-                     } else {
-                        EBM_ASSERT(sizeof(UIntBig) == pSubset->m_pObjective->m_cUIntBytes);
+                     if(sizeof(UIntBig) == pSubset->m_pObjective->m_cUIntBytes) {
                         *(reinterpret_cast<UIntBig *>(pTermDataTo) + iPartition) |= static_cast<UIntBig>(iTensor) << cShiftTo;
+                     } else {
+                        EBM_ASSERT(sizeof(UIntSmall) == pSubset->m_pObjective->m_cUIntBytes);
+                        *(reinterpret_cast<UIntSmall *>(pTermDataTo) + iPartition) |= static_cast<UIntSmall>(iTensor) << cShiftTo;
                      }
 
                      ++iPartition;
@@ -777,11 +777,11 @@ ErrorEbm DataSetBoosting::InitBags(
                   const uint8_t cOccurrences = *pOccurrencesFrom;
                   *pOccurrencesTo = cOccurrences;
 
-                  if(sizeof(FloatSmall) == pSubset->m_pObjective->m_cFloatBytes) {
-                     *reinterpret_cast<FloatSmall *>(pWeightTo) = static_cast<FloatSmall>(cOccurrences);
-                  } else {
-                     EBM_ASSERT(sizeof(FloatBig) == pSubset->m_pObjective->m_cFloatBytes);
+                  if(sizeof(FloatBig) == pSubset->m_pObjective->m_cFloatBytes) {
                      *reinterpret_cast<FloatBig *>(pWeightTo) = static_cast<FloatBig>(cOccurrences);
+                  } else {
+                     EBM_ASSERT(sizeof(FloatSmall) == pSubset->m_pObjective->m_cFloatBytes);
+                     *reinterpret_cast<FloatSmall *>(pWeightTo) = static_cast<FloatSmall>(cOccurrences);
                   }
                   pWeightTo = IndexByte(pWeightTo, pSubset->m_pObjective->m_cFloatBytes);
 
@@ -877,11 +877,11 @@ ErrorEbm DataSetBoosting::InitBags(
 
                subsetWeight += result;
 
-               if(sizeof(FloatSmall) == pSubset->m_pObjective->m_cFloatBytes) {
-                  *reinterpret_cast<FloatSmall *>(pWeightTo) = SafeConvertFloat<FloatSmall>(result);
-               } else {
-                  EBM_ASSERT(sizeof(FloatBig) == pSubset->m_pObjective->m_cFloatBytes);
+               if(sizeof(FloatBig) == pSubset->m_pObjective->m_cFloatBytes) {
                   *reinterpret_cast<FloatBig *>(pWeightTo) = SafeConvertFloat<FloatBig>(result);
+               } else {
+                  EBM_ASSERT(sizeof(FloatSmall) == pSubset->m_pObjective->m_cFloatBytes);
+                  *reinterpret_cast<FloatSmall *>(pWeightTo) = SafeConvertFloat<FloatSmall>(result);
                }
                pWeightTo = IndexByte(pWeightTo, pSubset->m_pObjective->m_cFloatBytes);
 
