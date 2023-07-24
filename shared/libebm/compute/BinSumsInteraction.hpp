@@ -61,7 +61,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
    const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, pParams->m_cRuntimeRealDimensions);
 
    // this is on the stack and the compiler should be able to optimize these as if they were variables or registers
-   DimensionalData aDimensionalData[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+   ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER DimensionalData 
+      aDimensionalData[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+
    size_t iDimensionInit = 0;
    do {
       DimensionalData * const pDimensionalData = &aDimensionalData[iDimensionInit];

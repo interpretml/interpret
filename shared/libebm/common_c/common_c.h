@@ -100,7 +100,11 @@ extern "C" {
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY __pragma(warning(disable: 6001))
 #define WARNING_BUFFER_OVERRUN __pragma(warning(disable: 6386))
 #define WARNING_REDUNDANT_CODE __pragma(warning(disable: 6287))
+#ifdef GPU_COMPILE
+#define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
+#else // GPU_COMPILE
 #define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER [[gsl::suppress(type.6)]]
+#endif // GPU_COMPILE
 
 #define ANALYZER_NORETURN
 

@@ -46,11 +46,9 @@ struct alignas(k_cAlignment) Avx2_32_Int final {
    static constexpr int k_cSIMDShift = 3;
    static constexpr int k_cSIMDPack = 1 << k_cSIMDShift;
 
-   WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    inline Avx2_32_Int() noexcept {
    }
-   WARNING_POP
 
    inline Avx2_32_Int(const T & val) noexcept : m_data(_mm256_set1_epi32(val)) {
    }
@@ -127,11 +125,9 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
    static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;
 
-   WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    inline Avx2_32_Float() noexcept {
    }
-   WARNING_POP
 
    inline Avx2_32_Float(const double val) noexcept : m_data(_mm256_set1_ps(static_cast<T>(val))) {
    }

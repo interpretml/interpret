@@ -421,17 +421,18 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
          return Error_IllegalParamVal;
       }
 
-      const ActiveDataType indexEdgeAdd = bMissing ? size_t { 0 } : size_t { 1 };
+      const UIntSplit indexEdgeAdd = bMissing ? UIntSplit { 0 } : UIntSplit { 1 };
 
-      const ActiveDataType * pFrom = pBoosterShell->GetTermUpdate()->GetSplitPointer(iDimension);
+      const UIntSplit * pFrom = pBoosterShell->GetTermUpdate()->GetSplitPointer(iDimension);
       IntEbm * pTo = splitsOut;
       IntEbm * pToEnd = splitsOut + cSplits;
       do {
          // if the missing bin was eliminated, we need to increment our split indexes
-         const ActiveDataType indexEdge = *pFrom + indexEdgeAdd;
+         const UIntSplit indexEdge = *pFrom + indexEdgeAdd;
          ++pFrom;
 
-         EBM_ASSERT(!IsConvertError<IntEbm>(indexEdge)); // the total count works so the index should too
+         // the caller passed us a countBins value as an IntEbm, and the UIntSplit value should be equal or less
+         EBM_ASSERT(!IsConvertError<IntEbm>(indexEdge));
          *pTo = static_cast<IntEbm>(indexEdge);
 
          ++pTo;

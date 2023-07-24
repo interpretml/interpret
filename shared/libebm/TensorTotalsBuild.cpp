@@ -571,7 +571,7 @@ extern void TensorTotalsBuild(
 
 
 //template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
-//bool BoostMultiDimensionalPaulAlgorithm(voidvoid * const pThreadState, const FeatureInternal * const pTargetFeature, InnerBag const * const pInnerBag, const Term * const pTerm, SegmentedRegion<ActiveDataType, FloatMain> * const pInnerTermUpdate) {
+//bool BoostMultiDimensionalPaulAlgorithm(voidvoid * const pThreadState, const FeatureInternal * const pTargetFeature, InnerBag const * const pInnerBag, const Term * const pTerm, SegmentedRegion<UIntSplit, FloatMain> * const pInnerTermUpdate) {
 //   Bin<IsClassification(cCompilerClasses)> * const aBins = BinDataSet<cCompilerClasses>(pThreadState, pTerm, pInnerBag, pTargetFeature);
 //   if(UNLIKELY(nullptr == aBins)) {
 //      return true;

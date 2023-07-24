@@ -11,7 +11,7 @@
 #include <atomic>
 
 #include "libebm.h" // ErrorEbm
-#include "common_c.h" // ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
+#include "common_c.h"
 #include "bridge_c.h" // ObjectiveWrapper
 #include "zones.h"
 

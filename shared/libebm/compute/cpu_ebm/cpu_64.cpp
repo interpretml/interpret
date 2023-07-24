@@ -43,11 +43,9 @@ struct Cpu_64_Int final {
    static constexpr int k_cSIMDShift = 0;
    static constexpr int k_cSIMDPack = 1 << k_cSIMDShift;
 
-   WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    inline Cpu_64_Int() noexcept {
    }
-   WARNING_POP
 
    inline Cpu_64_Int(const T & val) noexcept : m_data(val) {
    }
@@ -110,11 +108,9 @@ struct Cpu_64_Float final {
    static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;
 
-   WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    inline Cpu_64_Float() noexcept {
    }
-   WARNING_POP
 
    inline Cpu_64_Float(const double val) noexcept : m_data(static_cast<T>(val)) {
    }

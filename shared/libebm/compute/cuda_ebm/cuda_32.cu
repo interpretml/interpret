@@ -50,11 +50,9 @@ struct Cuda_32_Int final {
    static constexpr int k_cSIMDShift = 0;
    static constexpr int k_cSIMDPack = 1 << k_cSIMDShift;
 
-   WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    GPU_BOTH inline Cuda_32_Int() noexcept {
    }
-   WARNING_POP
 
    GPU_BOTH inline Cuda_32_Int(const T & val) noexcept : m_data(val) {
    }
@@ -120,11 +118,9 @@ struct Cuda_32_Float final {
    static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;
 
-   WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    GPU_BOTH inline Cuda_32_Float() noexcept {
    }
-   WARNING_POP
 
    GPU_BOTH inline Cuda_32_Float(const double val) noexcept : m_data(static_cast<T>(val)) {
    }

@@ -133,7 +133,7 @@ static ErrorEbm Flatten(
       return error;
    }
 
-   ActiveDataType * pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
+   UIntSplit * pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
    FloatScore * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
 
    const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
@@ -207,7 +207,9 @@ static ErrorEbm Flatten(
    moved_up:;
       auto * pChildren = pTreeNode->AFTER_GetChildren();
       if(nullptr != pChildren) {
-         *pSplit = iEdge;
+         // we checked earlier that countBins could be converted to a UIntSplit
+         EBM_ASSERT(!IsConvertError<UIntSplit>(iEdge));
+         *pSplit = static_cast<UIntSplit>(iEdge);
          ++pSplit;
 
          pParent = pTreeNode;

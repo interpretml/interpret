@@ -73,7 +73,7 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
       pDimension = pTensor->GetDimensions();
       iDimension = 0;
       do {
-         ActiveDataType * const aSplits = static_cast<ActiveDataType *>(malloc(sizeof(ActiveDataType) * (k_initialSliceCapacity - 1)));
+         UIntSplit * const aSplits = static_cast<UIntSplit *>(malloc(sizeof(UIntSplit) * (k_initialSliceCapacity - 1)));
          if(UNLIKELY(nullptr == aSplits)) {
             LOG_0(Trace_Warning, "WARNING Allocate nullptr == aSplits");
             Free(pTensor); // free everything!
@@ -133,12 +133,12 @@ ErrorEbm Tensor::SetCountSlices(const size_t iDimension, const size_t cSlices) {
       size_t cNewSplitCapacity = cSplits + (cSplits >> 1);
       LOG_N(Trace_Info, "SetCountSplits Growing to size %zu", cNewSplitCapacity);
 
-      if(IsMultiplyError(sizeof(ActiveDataType), cNewSplitCapacity)) {
-         LOG_0(Trace_Warning, "WARNING SetCountSplits IsMultiplyError(sizeof(ActiveDataType), cNewSplitCapacity)");
+      if(IsMultiplyError(sizeof(UIntSplit), cNewSplitCapacity)) {
+         LOG_0(Trace_Warning, "WARNING SetCountSplits IsMultiplyError(sizeof(UIntSplit), cNewSplitCapacity)");
          return Error_OutOfMemory;
       }
-      size_t cBytes = sizeof(ActiveDataType) * cNewSplitCapacity;
-      ActiveDataType * const aNewSplits = static_cast<ActiveDataType *>(realloc(pDimension->m_aSplits, cBytes));
+      size_t cBytes = sizeof(UIntSplit) * cNewSplitCapacity;
+      UIntSplit * const aNewSplits = static_cast<UIntSplit *>(realloc(pDimension->m_aSplits, cBytes));
       if(UNLIKELY(nullptr == aNewSplits)) {
          // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
          // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
@@ -201,8 +201,8 @@ ErrorEbm Tensor::Copy(const Tensor & rhs) {
          LOG_0(Trace_Warning, "WARNING Copy SetCountSlices(iDimension, cSlices)");
          return error;
       }
-      EBM_ASSERT(!IsMultiplyError(sizeof(ActiveDataType), cSlices - 1)); // we're copying this memory, so multiplication can't overflow
-      memcpy(pThisDimensionInfo[iDimension].m_aSplits, pDimension->m_aSplits, sizeof(ActiveDataType) * (cSlices - 1));
+      EBM_ASSERT(!IsMultiplyError(sizeof(UIntSplit), cSlices - 1)); // we're copying this memory, so multiplication can't overflow
+      memcpy(pThisDimensionInfo[iDimension].m_aSplits, pDimension->m_aSplits, sizeof(UIntSplit) * (cSlices - 1));
    }
    error = EnsureTensorScoreCapacity(cTensorScores);
    if(UNLIKELY(Error_None != error)) {
@@ -244,10 +244,6 @@ bool Tensor::MultiplyAndCheckForIssues(const double v) {
 }
 
 ErrorEbm Tensor::Expand(const Term * const pTerm) {
-   // checking the max isn't really the best here, but doing this right seems pretty complicated
-   static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<ActiveDataType>::max() &&
-      0 == std::numeric_limits<ActiveDataType>::min(), "bad AcitveDataType size");
-
    ErrorEbm error;
 
    LOG_0(Trace_Verbose, "Entered Expand");
@@ -343,16 +339,16 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
          size_t multiplication1 = m_cScores;
 
          while(true) {
-            const ActiveDataType * const pSplit1 = pDimensionInfoStackSecond->m_pSplit1;
+            const UIntSplit * const pSplit1 = pDimensionInfoStackSecond->m_pSplit1;
             size_t iEdge2 = pDimensionInfoStackSecond->m_iEdge2;
 
-            ActiveDataType * const aSplits1 = pDimensionSecond1->m_aSplits;
+            UIntSplit * const aSplits1 = pDimensionSecond1->m_aSplits;
 
             EBM_ASSERT(static_cast<size_t>(pSplit1 - aSplits1) < iEdge2);
             if(UNPREDICTABLE(aSplits1 < pSplit1)) {
                EBM_ASSERT(1 < iEdge2);
 
-               const ActiveDataType * const pSplit1MinusOne = pSplit1 - 1;
+               const UIntSplit * const pSplit1MinusOne = pSplit1 - 1;
 
                const size_t d1 = static_cast<size_t>(*pSplit1MinusOne);
 
@@ -412,10 +408,12 @@ ErrorEbm Tensor::Expand(const Term * const pTerm) {
             // if cSlices is 1 then pDimension->m_cSlices must be 1 and we'd be filtered out above
             EBM_ASSERT(size_t { 2 } <= cSlices);
 
-            ActiveDataType * const aSplit = pDimension->m_aSplits;
+            UIntSplit * const aSplit = pDimension->m_aSplits;
             size_t iEdge = 1;
             do {
-               aSplit[iEdge - 1] = iEdge;
+               // we checked earlier that countBins could be converted to a UIntSplit
+               EBM_ASSERT(!IsConvertError<UIntSplit>(iEdge));
+               aSplit[iEdge - 1] = static_cast<UIntSplit>(iEdge);
                ++iEdge;
             } while(cSlices != iEdge);
          }
@@ -512,15 +510,15 @@ ErrorEbm Tensor::Add(const Tensor & rhs) {
    // first, get basic counts of how many splits and values we'll have in our final result
    do {
       const size_t cSlices1 = pDimensionFirst1->m_cSlices;
-      ActiveDataType * p1Cur = pDimensionFirst1->m_aSplits;
+      UIntSplit * p1Cur = pDimensionFirst1->m_aSplits;
       const size_t cSlices2 = pDimensionFirst2->m_cSlices;
-      ActiveDataType * p2Cur = pDimensionFirst2->m_aSplits;
+      UIntSplit * p2Cur = pDimensionFirst2->m_aSplits;
 
       cTensorScores1 *= cSlices1; // this can't overflow since we're counting existing allocated memory
       cTensorScores2 *= cSlices2; // this can't overflow since we're counting existing allocated memory
 
-      ActiveDataType * const p1End = &p1Cur[cSlices1 - 1];
-      ActiveDataType * const p2End = &p2Cur[cSlices2 - 1];
+      UIntSplit * const p1End = &p1Cur[cSlices1 - 1];
+      UIntSplit * const p2End = &p2Cur[cSlices2 - 1];
 
       pDimensionInfoStackFirst->m_pSplit1 = p1End;
       pDimensionInfoStackFirst->m_pSplit2 = p2End;
@@ -543,8 +541,8 @@ ErrorEbm Tensor::Add(const Tensor & rhs) {
          }
          ++cNewSingleDimensionSlices; // if we move one or both pointers, we just added annother unique one
 
-         const ActiveDataType d1 = *p1Cur;
-         const ActiveDataType d2 = *p2Cur;
+         const UIntSplit d1 = *p1Cur;
+         const UIntSplit d2 = *p2Cur;
 
          p1Cur = UNPREDICTABLE(d1 <= d2) ? p1Cur + 1 : p1Cur;
          p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
@@ -609,19 +607,19 @@ ErrorEbm Tensor::Add(const Tensor & rhs) {
       size_t multiplication2 = m_cScores;
 
       while(true) {
-         const ActiveDataType * const pSplit1 = pDimensionInfoStackSecond->m_pSplit1;
-         const ActiveDataType * const pSplit2 = pDimensionInfoStackSecond->m_pSplit2;
+         const UIntSplit * const pSplit1 = pDimensionInfoStackSecond->m_pSplit1;
+         const UIntSplit * const pSplit2 = pDimensionInfoStackSecond->m_pSplit2;
 
-         ActiveDataType * const aSplits1 = pDimensionSecond1->m_aSplits;
-         ActiveDataType * const aSplits2 = pDimensionSecond2->m_aSplits;
+         UIntSplit * const aSplits1 = pDimensionSecond1->m_aSplits;
+         UIntSplit * const aSplits2 = pDimensionSecond2->m_aSplits;
 
          if(UNPREDICTABLE(aSplits1 < pSplit1)) {
             if(UNPREDICTABLE(aSplits2 < pSplit2)) {
-               const ActiveDataType * const pSplit1MinusOne = pSplit1 - 1;
-               const ActiveDataType * const pSplit2MinusOne = pSplit2 - 1;
+               const UIntSplit * const pSplit1MinusOne = pSplit1 - 1;
+               const UIntSplit * const pSplit2MinusOne = pSplit2 - 1;
 
-               const ActiveDataType d1 = *pSplit1MinusOne;
-               const ActiveDataType d2 = *pSplit2MinusOne;
+               const UIntSplit d1 = *pSplit1MinusOne;
+               const UIntSplit d2 = *pSplit2MinusOne;
 
                const bool bMove1 = UNPREDICTABLE(d2 <= d1);
                pDimensionInfoStackSecond->m_pSplit1 = bMove1 ? pSplit1MinusOne : pSplit1;
@@ -692,9 +690,9 @@ ErrorEbm Tensor::Add(const Tensor & rhs) {
          return error;
       }
 
-      const ActiveDataType * p1Cur = &pDimension1Cur->m_aSplits[cOriginalSlicesBeforeSetting - 1];
-      const ActiveDataType * p2Cur = &pDimension2Cur->m_aSplits[pDimension2Cur->m_cSlices - 1];
-      ActiveDataType * pTopCur = &pDimension1Cur->m_aSplits[cNewSlices - 1];
+      const UIntSplit * p1Cur = &pDimension1Cur->m_aSplits[cOriginalSlicesBeforeSetting - 1];
+      const UIntSplit * p2Cur = &pDimension2Cur->m_aSplits[pDimension2Cur->m_cSlices - 1];
+      UIntSplit * pTopCur = &pDimension1Cur->m_aSplits[cNewSlices - 1];
 
       // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing scores
       // which we still need to copy
@@ -718,21 +716,21 @@ ErrorEbm Tensor::Add(const Tensor & rhs) {
             memcpy(
                pDimension1Cur->m_aSplits,
                pDimension2Cur->m_aSplits,
-               static_cast<size_t>(pTopCur - pDimension1Cur->m_aSplits) * sizeof(ActiveDataType)
+               static_cast<size_t>(pTopCur - pDimension1Cur->m_aSplits) * sizeof(UIntSplit)
             );
             break;
          }
 
-         const ActiveDataType * const p1CurMinusOne = p1Cur - 1;
-         const ActiveDataType * const p2CurMinusOne = p2Cur - 1;
+         const UIntSplit * const p1CurMinusOne = p1Cur - 1;
+         const UIntSplit * const p2CurMinusOne = p2Cur - 1;
 
-         const ActiveDataType d1 = *p1CurMinusOne;
-         const ActiveDataType d2 = *p2CurMinusOne;
+         const UIntSplit d1 = *p1CurMinusOne;
+         const UIntSplit d2 = *p2CurMinusOne;
 
          p1Cur = UNPREDICTABLE(d2 <= d1) ? p1CurMinusOne : p1Cur;
          p2Cur = UNPREDICTABLE(d1 <= d2) ? p2CurMinusOne : p2Cur;
 
-         const ActiveDataType d = UNPREDICTABLE(d1 <= d2) ? d2 : d1;
+         const UIntSplit d = UNPREDICTABLE(d1 <= d2) ? d2 : d1;
 
          --pTopCur; // if we move one or both pointers, we just added annother unique one
          *pTopCur = d;
@@ -768,9 +766,9 @@ bool Tensor::IsEqual(const Tensor & rhs) const {
          EBM_ASSERT(!IsMultiplyError(cTensorScores, cSlices)); // we're accessing allocated memory, so it can't overflow
          cTensorScores *= cSlices;
 
-         const ActiveDataType * pD1Cur = pDimension1->m_aSplits;
-         const ActiveDataType * pD2Cur = pDimension2->m_aSplits;
-         const ActiveDataType * const pD1End = pD1Cur + cSlices - 1;
+         const UIntSplit * pD1Cur = pDimension1->m_aSplits;
+         const UIntSplit * pD2Cur = pDimension2->m_aSplits;
+         const UIntSplit * const pD1End = pD1Cur + cSlices - 1;
          do {
             if(UNLIKELY(*pD1Cur != *pD2Cur)) {
                return false;

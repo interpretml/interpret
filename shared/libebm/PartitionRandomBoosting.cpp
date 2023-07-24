@@ -459,14 +459,16 @@ public:
       const size_t * pcBytesInSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       if(LIKELY(size_t { 1 } < cFirstSlices)) {
          const size_t * const pcBytesInSliceLast = pcBytesInSliceEnd - size_t { 1 };
-         ActiveDataType * pSplitFirst = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
+         UIntSplit * pSplitFirst = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
          size_t iEdgeFirst = 0;
          do {
             EBM_ASSERT(pcBytesInSlice2 < pcBytesInSliceLast);
             EBM_ASSERT(0 != *pcBytesInSlice2);
             EBM_ASSERT(0 == *pcBytesInSlice2 % cBytesPerBin);
             iEdgeFirst += *pcBytesInSlice2 / cBytesPerBin;
-            *pSplitFirst = iEdgeFirst;
+            // we checked earlier that countBins could be converted to a UIntSplit
+            EBM_ASSERT(!IsConvertError<UIntSplit>(iEdgeFirst));
+            *pSplitFirst = static_cast<UIntSplit>(iEdgeFirst);
             ++pSplitFirst;
             ++pcBytesInSlice2;
             // the last one is the distance to the end, which we don't include in the update
@@ -494,14 +496,18 @@ public:
             }
             const size_t * pcItemsInNextSliceLast = pcItemsInNextSliceEnd - size_t { 1 };
             if(pcItemsInNextSliceLast != pcBytesInSlice2) {
-               ActiveDataType * pSplit = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
+               UIntSplit * pSplit = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
                size_t iEdge2 = *pcItemsInNextSliceLast;
-               *pSplit = iEdge2;
+               // we checked earlier that countBins could be converted to a UIntSplit
+               EBM_ASSERT(!IsConvertError<UIntSplit>(iEdge2));
+               *pSplit = static_cast<UIntSplit>(iEdge2);
                --pcItemsInNextSliceLast;
                while(pcItemsInNextSliceLast != pcBytesInSlice2) {
                   iEdge2 += *pcBytesInSlice2;
                   ++pSplit;
-                  *pSplit = iEdge2;
+                  // we checked earlier that countBins could be converted to a UIntSplit
+                  EBM_ASSERT(!IsConvertError<UIntSplit>(iEdge2));
+                  *pSplit = static_cast<UIntSplit>(iEdge2);
                   ++pcBytesInSlice2;
                }
                // increment it once more because our indexes are shifted such that the first one was the last item

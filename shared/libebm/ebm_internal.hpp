@@ -30,7 +30,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-typedef UIntEbm ActiveDataType; // TODO: in most places we could use size_t for this and only use the uint64 version where we have cross-platform considerations.
+typedef size_t UIntSplit;
 typedef uint64_t UIntMain;
 typedef double FloatMain;
 typedef double FloatCalc;

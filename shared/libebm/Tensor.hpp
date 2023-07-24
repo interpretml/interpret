@@ -11,7 +11,7 @@
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
 #include "common_c.h" // FloatScore
-#include "bridge_c.h" // ActiveDataType
+#include "bridge_c.h" // UIntSplit
 #include "zones.h"
 
 #include "common_cpp.hpp" // ArrayToPointer
@@ -99,8 +99,8 @@ class Tensor final {
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
-      const ActiveDataType * m_pSplit1;
-      const ActiveDataType * m_pSplit2;
+      const UIntSplit * m_pSplit1;
+      const UIntSplit * m_pSplit2;
       size_t m_cNewSlices;
    };
    static_assert(std::is_standard_layout<DimensionInfoStack>::value,
@@ -116,7 +116,7 @@ class Tensor final {
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
-      const ActiveDataType * m_pSplit1;
+      const UIntSplit * m_pSplit1;
       size_t m_iEdge2;
       size_t m_cNewSlices;
    };
@@ -134,7 +134,7 @@ class Tensor final {
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
       size_t m_cSlices;
-      ActiveDataType * m_aSplits;
+      UIntSplit * m_aSplits;
       size_t m_cSliceCapacity;
    };
    static_assert(std::is_standard_layout<DimensionInfo>::value,
@@ -212,7 +212,7 @@ public:
       m_cDimensions = cDimensions;
    }
 
-   inline ActiveDataType * GetSplitPointer(const size_t iDimension) {
+   inline UIntSplit * GetSplitPointer(const size_t iDimension) {
       EBM_ASSERT(iDimension < m_cDimensions);
       return GetDimensions()[iDimension].m_aSplits;
    }

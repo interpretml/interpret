@@ -302,8 +302,8 @@ ErrorEbm BoosterCore::Create(
             &cNonDefaultsSparse
          );
          EBM_ASSERT(!bSparse); // we do not handle yet
-         if(IsConvertError<size_t>(countBins)) {
-            LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<size_t>(countBins)");
+         if(IsConvertError<size_t>(countBins) && IsConvertError<UIntSplit>(countBins)) {
+            LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<size_t>(countBins) && IsConvertError<UIntSplit>(countBins)");
             return Error_IllegalParamVal;
          }
          const size_t cBins = static_cast<size_t>(countBins);
