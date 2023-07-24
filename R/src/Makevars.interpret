@@ -46,6 +46,5 @@ OBJECTS = \
    $(NATIVEDIR)/compute/Objective.o \
    $(NATIVEDIR)/compute/Registration.o \
    $(NATIVEDIR)/compute/zoned_bridge_c_functions.o \
-   $(NATIVEDIR)/compute/cpu_ebm/cpu_32.o \
    $(NATIVEDIR)/compute/cpu_ebm/cpu_64.o \
    interpret_R.o
