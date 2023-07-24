@@ -23,12 +23,12 @@ extern void ConvertAddBin(
    const size_t cScores,
    const bool bHessian,
    const size_t cBins,
-   const bool bDoubleDest,
-   const bool bUInt64Dest,
-   void * const aAddDest,
-   const bool bDoubleSrc,
    const bool bUInt64Src,
-   const void * const aSrc
+   const bool bDoubleSrc,
+   const void * const aSrc,
+   const bool bUInt64Dest,
+   const bool bDoubleDest,
+   void * const aAddDest
 ) {
    EBM_ASSERT(0 < cScores);
    EBM_ASSERT(0 < cBins);
@@ -43,10 +43,10 @@ extern void ConvertAddBin(
    ptrdiff_t iDestGradient;
    ptrdiff_t iDestHessian = -1;
 
-   if(bDoubleDest) {
-      typedef double TFloatSpecific;
-      if(bUInt64Dest) {
-         typedef uint64_t TUIntSpecific;
+   if(bUInt64Dest) {
+      typedef uint64_t TUIntSpecific;
+      if(bDoubleDest) {
+         typedef double TFloatSpecific;
          cDestBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
          if(bHessian) {
             constexpr bool bHessianSpecific = true;
@@ -71,7 +71,7 @@ extern void ConvertAddBin(
             iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
          }
       } else {
-         typedef uint32_t TUIntSpecific;
+         typedef float TFloatSpecific;
          cDestBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
          if(bHessian) {
             constexpr bool bHessianSpecific = true;
@@ -97,9 +97,9 @@ extern void ConvertAddBin(
          }
       }
    } else {
-      typedef float TFloatSpecific;
-      if(bUInt64Dest) {
-         typedef uint64_t TUIntSpecific;
+      typedef uint32_t TUIntSpecific;
+      if(bDoubleDest) {
+         typedef double TFloatSpecific;
          cDestBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
          if(bHessian) {
             constexpr bool bHessianSpecific = true;
@@ -124,7 +124,7 @@ extern void ConvertAddBin(
             iDestGradient = offsetof(GradientPairSpecific, m_sumGradients);
          }
       } else {
-         typedef uint32_t TUIntSpecific;
+         typedef float TFloatSpecific;
          cDestBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
          if(bHessian) {
             constexpr bool bHessianSpecific = true;
@@ -159,10 +159,10 @@ extern void ConvertAddBin(
    ptrdiff_t iSrcGradient;
    ptrdiff_t iSrcHessian = -1;
 
-   if(bDoubleSrc) {
-      typedef double TFloatSpecific;
-      if(bUInt64Src) {
-         typedef uint64_t TUIntSpecific;
+   if(bUInt64Src) {
+      typedef uint64_t TUIntSpecific;
+      if(bDoubleSrc) {
+         typedef double TFloatSpecific;
          cSrcBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
          if(bHessian) {
             constexpr bool bHessianSpecific = true;
@@ -187,7 +187,7 @@ extern void ConvertAddBin(
             iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
          }
       } else {
-         typedef uint32_t TUIntSpecific;
+         typedef float TFloatSpecific;
          cSrcBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
          if(bHessian) {
             constexpr bool bHessianSpecific = true;
@@ -213,9 +213,9 @@ extern void ConvertAddBin(
          }
       }
    } else {
-      typedef float TFloatSpecific;
-      if(bUInt64Src) {
-         typedef uint64_t TUIntSpecific;
+      typedef uint32_t TUIntSpecific;
+      if(bDoubleSrc) {
+         typedef double TFloatSpecific;
          cSrcBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
          if(bHessian) {
             constexpr bool bHessianSpecific = true;
@@ -240,7 +240,7 @@ extern void ConvertAddBin(
             iSrcGradient = offsetof(GradientPairSpecific, m_sumGradients);
          }
       } else {
-         typedef uint32_t TUIntSpecific;
+         typedef float TFloatSpecific;
          cSrcBinBytes = GetBinSize<TFloatSpecific, TUIntSpecific>(bHessian, cScores);
          if(bHessian) {
             constexpr bool bHessianSpecific = true;

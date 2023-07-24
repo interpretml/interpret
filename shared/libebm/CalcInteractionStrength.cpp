@@ -30,12 +30,12 @@ extern void ConvertAddBin(
    const size_t cScores,
    const bool bHessian,
    const size_t cBins,
-   const bool bDoubleDest,
-   const bool bUInt64Dest,
-   void * const aAddDest,
-   const bool bDoubleSrc,
    const bool bUInt64Src,
-   const void * const aSrc
+   const bool bDoubleSrc,
+   const void * const aSrc,
+   const bool bUInt64Dest,
+   const bool bDoubleDest,
+   void * const aAddDest
 );
 
 extern void TensorTotalsBuild(
@@ -372,12 +372,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
          cScores,
          pInteractionCore->IsHessian(),
          cTensorBins,
-         std::is_same<FloatMain, double>::value,
-         std::is_same<UIntMain, uint64_t>::value,
-         aMainBins,
-         sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes,
          sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes,
-         aFastBins
+         sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes,
+         aFastBins,
+         std::is_same<UIntMain, uint64_t>::value,
+         std::is_same<FloatMain, double>::value,
+         aMainBins
       );
 
       ++pSubset;

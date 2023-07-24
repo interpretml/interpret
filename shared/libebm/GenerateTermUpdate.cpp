@@ -36,12 +36,12 @@ extern void ConvertAddBin(
    const size_t cScores,
    const bool bHessian,
    const size_t cBins,
-   const bool bDoubleDest,
-   const bool bUInt64Dest,
-   void * const aAddDest,
-   const bool bDoubleSrc,
    const bool bUInt64Src,
-   const void * const aSrc
+   const bool bDoubleSrc,
+   const void * const aSrc,
+   const bool bUInt64Dest,
+   const bool bDoubleDest,
+   void * const aAddDest
 );
 
 extern void TensorTotalsBuild(
@@ -745,19 +745,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             }
 
             size_t cBytesPerFastBin;
-            if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatBig)) {
-               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntBig)) {
+            if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntBig)) {
+               if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatBig)) {
                   cBytesPerFastBin = GetBinSize<FloatBig, UIntBig>(pBoosterCore->IsHessian(), cScores);
                } else {
-                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntSmall));
-                  cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(pBoosterCore->IsHessian(), cScores);
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatSmall));
+                  cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(pBoosterCore->IsHessian(), cScores);
                }
             } else {
-               EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatSmall));
-               if(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntBig)) {
-                  cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(pBoosterCore->IsHessian(), cScores);
+               EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntSmall));
+               if(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatBig)) {
+                  cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(pBoosterCore->IsHessian(), cScores);
                } else {
-                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntSmall));
+                  EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatSmall));
                   cBytesPerFastBin = GetBinSize<FloatSmall, UIntSmall>(pBoosterCore->IsHessian(), cScores);
                }
             }
@@ -787,12 +787,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
                cScores,
                pBoosterCore->IsHessian(),
                cTensorBins,
-               std::is_same<FloatMain, double>::value,
-               std::is_same<UIntMain, uint64_t>::value,
-               aMainBins,
-               pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatBig),
                pSubset->GetObjectiveWrapper()->m_cUIntBytes == sizeof(UIntBig),
-               aFastBins
+               pSubset->GetObjectiveWrapper()->m_cFloatBytes == sizeof(FloatBig),
+               aFastBins,
+               std::is_same<UIntMain, uint64_t>::value,
+               std::is_same<FloatMain, double>::value,
+               aMainBins
             );
             ++pSubset;
          } while(pSubsetsEnd != pSubset);

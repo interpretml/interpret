@@ -239,7 +239,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       const FloatBig * const pUpdateBigEnd = aUpdateScores + pTerm->GetCountTensorBins() * GetCountScores(pBoosterCore->GetCountClasses());
       do {
          *reinterpret_cast<FloatSmall *>(pUpdateSmall) = SafeConvertFloat<FloatSmall>(*reinterpret_cast<FloatBig *>(pUpdateBig));
-         pUpdateBig = IndexByte(pUpdateBig, sizeof(FloatBig));;
+         pUpdateBig = IndexByte(pUpdateBig, sizeof(FloatBig));
          pUpdateSmall = IndexByte(pUpdateSmall, sizeof(FloatSmall));
       } while(pUpdateBigEnd != pUpdateBig);
    }

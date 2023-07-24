@@ -73,15 +73,15 @@ struct Bin final : BinBase {
    //       and add a bool bWeight template parameter to indicate if weight should be kept
 
    friend void ConvertAddBin(
-      const size_t,
-      const bool,
-      const size_t,
-      const bool,
-      const bool,
-      void * const,
-      const bool,
-      const bool,
-      const void * const
+      const size_t cScores,
+      const bool bHessian,
+      const size_t cBins,
+      const bool bUInt64Src,
+      const bool bDoubleSrc,
+      const void * const aSrc,
+      const bool bUInt64Dest,
+      const bool bDoubleDest,
+      void * const aAddDest
    );
    template<typename, typename> friend bool IsOverflowBinSize(const bool, const size_t);
    template<typename, typename> GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const size_t);
