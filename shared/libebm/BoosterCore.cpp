@@ -545,79 +545,21 @@ ErrorEbm BoosterCore::Create(
 
       Term ** ppTerm = pBoosterCore->m_apTerms;
       const Term * const * const ppTermsEnd = nullptr == ppTerm ? nullptr : ppTerm + cTerms;
-      if(sizeof(UIntSmall) == pBoosterCore->m_objectiveCpu.m_cUIntBytes) {
+      if(sizeof(UIntBig) == pBoosterCore->m_objectiveCpu.m_cUIntBytes) {
          size_t cBytes;
-         if(sizeof(FloatSmall) == pBoosterCore->m_objectiveCpu.m_cFloatBytes) {
-            if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
-               LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
-               return Error_OutOfMemory;
-            }
-            cBytes = GetBinSize<FloatSmall, UIntSmall>(bHessian, cScores);
-         } else {
-            EBM_ASSERT(sizeof(FloatBig) == pBoosterCore->m_objectiveCpu.m_cFloatBytes);
-            if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
-               LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
-               return Error_OutOfMemory;
-            }
-            cBytes = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
-         }
-         if(IsMultiplyError(cBytes, cFastBinsMax)) {
-            LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
-            return Error_IllegalParamVal;
-         }
-         cBytes *= cFastBinsMax;
-         if(IsConvertError<UIntSmall>(cBytes - 1)) {
-            // In BinSumsBoosting we use the SIMD pack to hold an index to memory, so we need to be able to hold
-            // the entire fast bin tensor
-            LOG_0(Trace_Error, "ERROR BoosterCore::Create fast tensor indexes cannot fit into compute zone indexes");
-            return Error_IllegalParamVal;
-         }
-         if(IsMulticlass(cClasses)) {
-            // TODO: we currently index into the gradient array using the target, but the gradient array is also
-            // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
-            // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
-            size_t cIndexes = static_cast<size_t>(cClasses);
-            if(bHessian) {
-               if(IsMultiplyError(size_t { 2 }, cIndexes)) {
-                  LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
-                  return Error_IllegalParamVal;
-               }
-               cIndexes *= 2;
-            }
-            // restriction from LogLossMulticlassObjective.hpp
-            // we use the target value to index into the temp exp array and adjust the target gradient
-            if(IsConvertError<typename std::make_signed<UIntSmall>::type>(cIndexes - size_t { 1 })) {
-               LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
-               return Error_IllegalParamVal;
-            }
-         }
-         for(; ppTermsEnd != ppTerm ; ++ppTerm) {
-            const size_t cTensorBins = (*ppTerm)->GetCountTensorBins();
-            // we need to fit the tensor index into a packed data unit, and we also use SIMD to index into the
-            // score tensors, so we need to multiply by cScores. Since we use the TFloat::Load function we
-            // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
-            // instructions use signed indexes
-            if(0 != cTensorBins && IsConvertError<typename std::make_signed<UIntSmall>::type>(cTensorBins * cScores - size_t { 1 })) {
-               LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UIntSmall>((*ppTerm)->GetCountTensorBins())");
-               return Error_IllegalParamVal;
-            }
-         }
-      } else {
-         EBM_ASSERT(sizeof(UIntBig) == pBoosterCore->m_objectiveCpu.m_cUIntBytes);
-         size_t cBytes;
-         if(sizeof(FloatSmall) == pBoosterCore->m_objectiveCpu.m_cFloatBytes) {
-            if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
-               LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
-               return Error_OutOfMemory;
-            }
-            cBytes = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
-         } else {
-            EBM_ASSERT(sizeof(FloatBig) == pBoosterCore->m_objectiveCpu.m_cFloatBytes);
+         if(sizeof(FloatBig) == pBoosterCore->m_objectiveCpu.m_cFloatBytes) {
             if(IsOverflowBinSize<FloatBig, UIntBig>(bHessian, cScores)) {
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                return Error_OutOfMemory;
             }
             cBytes = GetBinSize<FloatBig, UIntBig>(bHessian, cScores);
+         } else {
+            EBM_ASSERT(sizeof(FloatSmall) == pBoosterCore->m_objectiveCpu.m_cFloatBytes);
+            if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
+               LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
+               return Error_OutOfMemory;
+            }
+            cBytes = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
          }
          if(IsMultiplyError(cBytes, cFastBinsMax)) {
             LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
@@ -660,88 +602,84 @@ ErrorEbm BoosterCore::Create(
                return Error_IllegalParamVal;
             }
          }
+      } else {
+         EBM_ASSERT(sizeof(UIntSmall) == pBoosterCore->m_objectiveCpu.m_cUIntBytes);
+         size_t cBytes;
+         if(sizeof(FloatBig) == pBoosterCore->m_objectiveCpu.m_cFloatBytes) {
+            if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
+               LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
+               return Error_OutOfMemory;
+            }
+            cBytes = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
+         } else {
+            EBM_ASSERT(sizeof(FloatSmall) == pBoosterCore->m_objectiveCpu.m_cFloatBytes);
+            if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
+               LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
+               return Error_OutOfMemory;
+            }
+            cBytes = GetBinSize<FloatSmall, UIntSmall>(bHessian, cScores);
+         }
+         if(IsMultiplyError(cBytes, cFastBinsMax)) {
+            LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
+            return Error_IllegalParamVal;
+         }
+         cBytes *= cFastBinsMax;
+         if(IsConvertError<UIntSmall>(cBytes - 1)) {
+            // In BinSumsBoosting we use the SIMD pack to hold an index to memory, so we need to be able to hold
+            // the entire fast bin tensor
+            LOG_0(Trace_Error, "ERROR BoosterCore::Create fast tensor indexes cannot fit into compute zone indexes");
+            return Error_IllegalParamVal;
+         }
+         if(IsMulticlass(cClasses)) {
+            // TODO: we currently index into the gradient array using the target, but the gradient array is also
+            // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
+            // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
+            size_t cIndexes = static_cast<size_t>(cClasses);
+            if(bHessian) {
+               if(IsMultiplyError(size_t { 2 }, cIndexes)) {
+                  LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
+                  return Error_IllegalParamVal;
+               }
+               cIndexes *= 2;
+            }
+            // restriction from LogLossMulticlassObjective.hpp
+            // we use the target value to index into the temp exp array and adjust the target gradient
+            if(IsConvertError<typename std::make_signed<UIntSmall>::type>(cIndexes - size_t { 1 })) {
+               LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
+               return Error_IllegalParamVal;
+            }
+         }
+         for(; ppTermsEnd != ppTerm; ++ppTerm) {
+            const size_t cTensorBins = (*ppTerm)->GetCountTensorBins();
+            // we need to fit the tensor index into a packed data unit, and we also use SIMD to index into the
+            // score tensors, so we need to multiply by cScores. Since we use the TFloat::Load function we
+            // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
+            // instructions use signed indexes
+            if(0 != cTensorBins && IsConvertError<typename std::make_signed<UIntSmall>::type>(cTensorBins * cScores - size_t { 1 })) {
+               LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UIntSmall>((*ppTerm)->GetCountTensorBins())");
+               return Error_IllegalParamVal;
+            }
+         }
       }
 
       if(0 != pBoosterCore->m_objectiveSIMD.m_cUIntBytes) {
          bool bRemoveSIMD = false;
          while(true) {
-            if(sizeof(UIntSmall) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes) {
+            if(sizeof(UIntBig) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes) {
                size_t cBytes;
-               if(sizeof(FloatSmall) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes) {
-                  if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
-                     bRemoveSIMD = true;
-                     break;
-                  }
-                  cBytes = GetBinSize<FloatSmall, UIntSmall>(bHessian, cScores);
-               } else {
-                  EBM_ASSERT(sizeof(FloatBig) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes);
-                  if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
-                     bRemoveSIMD = true;
-                     break;
-                  }
-                  cBytes = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
-               }
-               if(IsMultiplyError(cBytes, cFastBinsMax)) {
-                  bRemoveSIMD = true;
-                  break;
-               }
-               cBytes *= cFastBinsMax;
-               if(IsConvertError<UIntSmall>(cBytes - 1)) {
-                  // In BinSumsBoosting we use the SIMD pack to hold an index to memory, so we need to be able to hold
-                  // the entire fast bin tensor
-                  bRemoveSIMD = true;
-                  break;
-               }
-               if(IsMulticlass(cClasses)) {
-                  // TODO: we currently index into the gradient array using the target, but the gradient array is also
-                  // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
-                  // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
-                  size_t cIndexes = static_cast<size_t>(cClasses);
-                  if(bHessian) {
-                     if(IsMultiplyError(size_t { 2 }, cIndexes)) {
-                        bRemoveSIMD = true;
-                        break;
-                     }
-                     cIndexes *= 2;
-                  }
-                  if(IsMultiplyError(cIndexes, pBoosterCore->m_objectiveSIMD.m_cSIMDPack)) {
-                     bRemoveSIMD = true;
-                     break;
-                  }
-                  // restriction from LogLossMulticlassObjective.hpp
-                  // we use the target value to index into the temp exp array and adjust the target gradient
-                  if(IsConvertError<typename std::make_signed<UIntSmall>::type>(cIndexes * pBoosterCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
-                     bRemoveSIMD = true;
-                     break;
-                  }
-               }
-               for(; ppTermsEnd != ppTerm; ++ppTerm) {
-                  const size_t cTensorBins = (*ppTerm)->GetCountTensorBins();
-                  // we need to fit the tensor index into a packed data unit, and we also use SIMD to index into the
-                  // score tensors, so we need to multiply by cScores. Since we use the TFloat::Load function we
-                  // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
-                  // instructions use signed indexes
-                  if(0 != cTensorBins && IsConvertError<typename std::make_signed<UIntSmall>::type>(cTensorBins * cScores - size_t { 1 })) {
-                     bRemoveSIMD = true;
-                     break;
-                  }
-               }
-            } else {
-               EBM_ASSERT(sizeof(UIntBig) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes);
-               size_t cBytes;
-               if(sizeof(FloatSmall) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes) {
-                  if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
-                     bRemoveSIMD = true;
-                     break;
-                  }
-                  cBytes = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
-               } else {
-                  EBM_ASSERT(sizeof(FloatBig) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes);
+               if(sizeof(FloatBig) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes) {
                   if(IsOverflowBinSize<FloatBig, UIntBig>(bHessian, cScores)) {
                      bRemoveSIMD = true;
                      break;
                   }
                   cBytes = GetBinSize<FloatBig, UIntBig>(bHessian, cScores);
+               } else {
+                  EBM_ASSERT(sizeof(FloatSmall) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes);
+                  if(IsOverflowBinSize<FloatSmall, UIntBig>(bHessian, cScores)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+                  cBytes = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
                }
                if(IsMultiplyError(cBytes, cFastBinsMax)) {
                   bRemoveSIMD = true;
@@ -784,6 +722,68 @@ ErrorEbm BoosterCore::Create(
                   // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
                   // instructions use signed indexes
                   if(0 != cTensorBins && IsConvertError<typename std::make_signed<UIntBig>::type>(cTensorBins * cScores - size_t { 1 })) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               }
+            } else {
+               EBM_ASSERT(sizeof(UIntSmall) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes);
+               size_t cBytes;
+               if(sizeof(FloatBig) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes) {
+                  if(IsOverflowBinSize<FloatBig, UIntSmall>(bHessian, cScores)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+                  cBytes = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
+               } else {
+                  EBM_ASSERT(sizeof(FloatSmall) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes);
+                  if(IsOverflowBinSize<FloatSmall, UIntSmall>(bHessian, cScores)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+                  cBytes = GetBinSize<FloatSmall, UIntSmall>(bHessian, cScores);
+               }
+               if(IsMultiplyError(cBytes, cFastBinsMax)) {
+                  bRemoveSIMD = true;
+                  break;
+               }
+               cBytes *= cFastBinsMax;
+               if(IsConvertError<UIntSmall>(cBytes - 1)) {
+                  // In BinSumsBoosting we use the SIMD pack to hold an index to memory, so we need to be able to hold
+                  // the entire fast bin tensor
+                  bRemoveSIMD = true;
+                  break;
+               }
+               if(IsMulticlass(cClasses)) {
+                  // TODO: we currently index into the gradient array using the target, but the gradient array is also
+                  // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
+                  // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
+                  size_t cIndexes = static_cast<size_t>(cClasses);
+                  if(bHessian) {
+                     if(IsMultiplyError(size_t { 2 }, cIndexes)) {
+                        bRemoveSIMD = true;
+                        break;
+                     }
+                     cIndexes *= 2;
+                  }
+                  if(IsMultiplyError(cIndexes, pBoosterCore->m_objectiveSIMD.m_cSIMDPack)) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+                  // restriction from LogLossMulticlassObjective.hpp
+                  // we use the target value to index into the temp exp array and adjust the target gradient
+                  if(IsConvertError<typename std::make_signed<UIntSmall>::type>(cIndexes * pBoosterCore->m_objectiveSIMD.m_cSIMDPack - size_t { 1 })) {
+                     bRemoveSIMD = true;
+                     break;
+                  }
+               }
+               for(; ppTermsEnd != ppTerm; ++ppTerm) {
+                  const size_t cTensorBins = (*ppTerm)->GetCountTensorBins();
+                  // we need to fit the tensor index into a packed data unit, and we also use SIMD to index into the
+                  // score tensors, so we need to multiply by cScores. Since we use the TFloat::Load function we
+                  // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
+                  // instructions use signed indexes
+                  if(0 != cTensorBins && IsConvertError<typename std::make_signed<UIntSmall>::type>(cTensorBins * cScores - size_t { 1 })) {
                      bRemoveSIMD = true;
                      break;
                   }
