@@ -1118,88 +1118,95 @@ static IntEbm AppendFeature(
       }
 
       // if there is only 1 bin we always know what it will be and we do not need to store anything
-      if(size_t { 0 } != cSamples && UIntShared { 1 } < cBins) {
-         const int cBitsRequiredMin = CountBitsRequired(cBins - UIntShared { 1 });
-         EBM_ASSERT(1 <= cBitsRequiredMin);
-         EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(UIntShared));
-
-         const int cItemsPerBitPack = GetCountItemsBitPacked<UIntShared>(cBitsRequiredMin);
-         EBM_ASSERT(1 <= cItemsPerBitPack);
-         EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(UIntShared));
-
-         const int cBitsPerItemMax = GetCountBits<UIntShared>(cItemsPerBitPack);
-         EBM_ASSERT(1 <= cBitsPerItemMax);
-         EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(UIntShared));
-
-         EBM_ASSERT(1 <= cSamples);
-         const size_t cDataUnits = (cSamples - size_t { 1 }) / static_cast<size_t>(cItemsPerBitPack) + size_t { 1 };
-
-         if(IsMultiplyError(sizeof(UIntShared), cDataUnits)) {
-            LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(UIntShared), cDataUnits)");
-            goto return_bad;
-         }
-         const size_t cBytesAllSamples = sizeof(UIntShared) * cDataUnits;
-
-         if(IsAddError(iByteCur, cBytesAllSamples)) {
-            LOG_0(Trace_Error, "ERROR AppendFeature IsAddError(iByteCur, cBytesAllSamples)");
-            goto return_bad;
-         }
-         const size_t iByteNext = iByteCur + cBytesAllSamples;
-
-         if(nullptr != pFillMem) {
-            if(cBytesAllocated < iByteNext) {
-               LOG_0(Trace_Error, "ERROR AppendFeature cBytesAllocated < iByteNext");
+      if(size_t { 0 } != cSamples) {
+         if(cBins <= UIntShared { 1 }) {
+            if(UIntShared { 0 } == cBins) {
+               LOG_0(Trace_Error, "ERROR AppendFeature UIntShared { 0 } == cBins");
                goto return_bad;
             }
+         } else {
+            const int cBitsRequiredMin = CountBitsRequired(cBins - UIntShared { 1 });
+            EBM_ASSERT(1 <= cBitsRequiredMin);
+            EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(UIntShared));
 
-            if(IsMultiplyError(sizeof(binIndexes[0]), cSamples)) {
-               LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(binIndexes[0]), cSamples)");
+            const int cItemsPerBitPack = GetCountItemsBitPacked<UIntShared>(cBitsRequiredMin);
+            EBM_ASSERT(1 <= cItemsPerBitPack);
+            EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(UIntShared));
+
+            const int cBitsPerItemMax = GetCountBits<UIntShared>(cItemsPerBitPack);
+            EBM_ASSERT(1 <= cBitsPerItemMax);
+            EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(UIntShared));
+
+            EBM_ASSERT(1 <= cSamples);
+            const size_t cDataUnits = (cSamples - size_t { 1 }) / static_cast<size_t>(cItemsPerBitPack) + size_t { 1 };
+
+            if(IsMultiplyError(sizeof(UIntShared), cDataUnits)) {
+               LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(UIntShared), cDataUnits)");
                goto return_bad;
             }
-            const IntEbm * pBinIndex = binIndexes;
-            const IntEbm * const pBinIndexsEnd = binIndexes + cSamples;
-            UIntShared * pFillData = reinterpret_cast<UIntShared *>(pFillMem + iByteCur);
+            const size_t cBytesAllSamples = sizeof(UIntShared) * cDataUnits;
 
-            int cShift = static_cast<int>((cSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
-            const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-            const IntEbm indexBinIllegal = countBins - (EBM_FALSE != isUnknown ? IntEbm { 0 } : IntEbm { 1 });
-            do {
-               UIntShared bits = 0;
+            if(IsAddError(iByteCur, cBytesAllSamples)) {
+               LOG_0(Trace_Error, "ERROR AppendFeature IsAddError(iByteCur, cBytesAllSamples)");
+               goto return_bad;
+            }
+            const size_t iByteNext = iByteCur + cBytesAllSamples;
+
+            if(nullptr != pFillMem) {
+               if(cBytesAllocated < iByteNext) {
+                  LOG_0(Trace_Error, "ERROR AppendFeature cBytesAllocated < iByteNext");
+                  goto return_bad;
+               }
+
+               if(IsMultiplyError(sizeof(binIndexes[0]), cSamples)) {
+                  LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(binIndexes[0]), cSamples)");
+                  goto return_bad;
+               }
+               const IntEbm * pBinIndex = binIndexes;
+               const IntEbm * const pBinIndexsEnd = binIndexes + cSamples;
+               UIntShared * pFillData = reinterpret_cast<UIntShared *>(pFillMem + iByteCur);
+
+               int cShift = static_cast<int>((cSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
+               const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+               const IntEbm indexBinIllegal = countBins - (EBM_FALSE != isUnknown ? IntEbm { 0 } : IntEbm { 1 });
                do {
-                  IntEbm indexBin = *pBinIndex;
-                  if(indexBinIllegal <= indexBin) {
-                     LOG_0(Trace_Error, "ERROR AppendFeature indexBinIllegal <= indexBin");
-                     goto return_bad;
-                  }
-                  if(EBM_FALSE != isMissing) {
-                     if(indexBin < IntEbm { 0 }) {
-                        LOG_0(Trace_Error, "ERROR AppendFeature indexBin can't be negative");
+                  UIntShared bits = 0;
+                  do {
+                     IntEbm indexBin = *pBinIndex;
+                     if(indexBinIllegal <= indexBin) {
+                        LOG_0(Trace_Error, "ERROR AppendFeature indexBinIllegal <= indexBin");
                         goto return_bad;
                      }
-                  } else {
-                     if(indexBin <= IntEbm { 0 }) {
-                        LOG_0(Trace_Error, "ERROR AppendFeature indexBin <= IntEbm { 0 }");
-                        goto return_bad;
+                     if(EBM_FALSE != isMissing) {
+                        if(indexBin < IntEbm { 0 }) {
+                           LOG_0(Trace_Error, "ERROR AppendFeature indexBin can't be negative");
+                           goto return_bad;
+                        }
+                     } else {
+                        if(indexBin <= IntEbm { 0 }) {
+                           LOG_0(Trace_Error, "ERROR AppendFeature indexBin <= IntEbm { 0 }");
+                           goto return_bad;
+                        }
+                        --indexBin;
                      }
-                     --indexBin;
-                  }
-                  ++pBinIndex;
+                     ++pBinIndex;
 
-                  // since countBins can be converted to these, so now can indexBin
-                  EBM_ASSERT(!IsConvertError<UIntShared>(indexBin));
+                     // since countBins can be converted to these, so now can indexBin
+                     EBM_ASSERT(!IsConvertError<UIntShared>(indexBin));
 
-                  EBM_ASSERT(0 <= cShift);
-                  EBM_ASSERT(cShift < COUNT_BITS(UIntShared));
-                  bits |= static_cast<UIntShared>(indexBin) << cShift;
-                  cShift -= cBitsPerItemMax;
-               } while(0 <= cShift);
-               cShift = cShiftReset;
-               *pFillData = bits;
-               ++pFillData;
-            } while(pBinIndexsEnd != pBinIndex);
-            EBM_ASSERT(reinterpret_cast<unsigned char *>(pFillData) == pFillMem + iByteNext);
+                     EBM_ASSERT(0 <= cShift);
+                     EBM_ASSERT(cShift < COUNT_BITS(UIntShared));
+                     bits |= static_cast<UIntShared>(indexBin) << cShift;
+                     cShift -= cBitsPerItemMax;
+                  } while(0 <= cShift);
+                  cShift = cShiftReset;
+                  *pFillData = bits;
+                  ++pFillData;
+               } while(pBinIndexsEnd != pBinIndex);
+               EBM_ASSERT(reinterpret_cast<unsigned char *>(pFillData) == pFillMem + iByteNext);
+            }
+            iByteCur = iByteNext;
          }
-         iByteCur = iByteNext;
       }
 
       if(nullptr != pFillMem) {

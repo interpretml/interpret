@@ -40,7 +40,7 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
    Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)> * const pBinOut
 ) {
    // these stay the same across boosting rounds, so we can calculate them once at init
-   pBinOut->SetCountSamples(cSamplesTotal);
+   pBinOut->SetCountSamples(static_cast<UIntMain>(cSamplesTotal));
    pBinOut->SetWeight(weightTotal);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();

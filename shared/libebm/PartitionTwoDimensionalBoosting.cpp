@@ -493,7 +493,7 @@ public:
                         return error;
                      }
                      const size_t temp1 = splitFirst2Best + 1;
-                     pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = temp1;
+                     pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = static_cast<UIntSplit>(temp1);
 
                      if(splitFirst2LowBest < splitFirst2HighBest) {
                         error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
@@ -507,9 +507,9 @@ public:
                            return error;
                         }
                         const size_t temp2 = splitFirst2LowBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = temp2;
+                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = static_cast<UIntSplit>(temp2);
                         const size_t temp3 = splitFirst2HighBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[1] = temp3;
+                        pInnerTermUpdate->GetSplitPointer(iDimension1)[1] = static_cast<UIntSplit>(temp3);
                      } else if(splitFirst2HighBest < splitFirst2LowBest) {
                         error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
                         if(Error_None != error) {
@@ -522,9 +522,9 @@ public:
                            return error;
                         }
                         const size_t temp4 = splitFirst2HighBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = temp4;
+                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = static_cast<UIntSplit>(temp4);
                         const size_t temp5 = splitFirst2LowBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[1] = temp5;
+                        pInnerTermUpdate->GetSplitPointer(iDimension1)[1] = static_cast<UIntSplit>(temp5);
                      } else {
                         error = pInnerTermUpdate->SetCountSlices(iDimension1, 2);
                         if(Error_None != error) {
@@ -538,7 +538,7 @@ public:
                            return error;
                         }
                         const size_t temp6 = splitFirst2LowBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = temp6;
+                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = static_cast<UIntSplit>(temp6);
                      }
 
                      auto * const pGradientPairTotals2LowLowBest = pTotals2LowLowBest->GetGradientPairs();
@@ -623,7 +623,7 @@ public:
                      // splitFirst1Best.  The Clang static analyzer does not seem to recognize this, so stop it
                      StopClangAnalysis();
                      const size_t temp7 = splitFirst1Best + 1;
-                     pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = temp7;
+                     pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = static_cast<UIntSplit>(temp7);
 
                      if(splitFirst1LowBest < splitFirst1HighBest) {
                         error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
@@ -638,9 +638,9 @@ public:
                            return error;
                         }
                         const size_t temp8 = splitFirst1LowBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = temp8;
+                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = static_cast<UIntSplit>(temp8);
                         const size_t temp9 = splitFirst1HighBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[1] = temp9;
+                        pInnerTermUpdate->GetSplitPointer(iDimension2)[1] = static_cast<UIntSplit>(temp9);
                      } else if(splitFirst1HighBest < splitFirst1LowBest) {
                         error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
                         if(Error_None != error) {
@@ -654,9 +654,9 @@ public:
                            return error;
                         }
                         const size_t temp10 = splitFirst1HighBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = temp10;
+                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = static_cast<UIntSplit>(temp10);
                         const size_t temp11 = splitFirst1LowBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[1] = temp11;
+                        pInnerTermUpdate->GetSplitPointer(iDimension2)[1] = static_cast<UIntSplit>(temp11);
                      } else {
                         error = pInnerTermUpdate->SetCountSlices(iDimension2, 2);
                         if(Error_None != error) {
@@ -669,7 +669,7 @@ public:
                            return error;
                         }
                         const size_t temp12 = splitFirst1LowBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = temp12;
+                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = static_cast<UIntSplit>(temp12);
                      }
 
                      auto * const pGradientPairTotals1LowLowBest = pTotals1LowLowBest->GetGradientPairs();

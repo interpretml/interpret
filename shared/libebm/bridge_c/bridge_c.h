@@ -27,8 +27,8 @@ typedef double FloatBig;
 typedef uint32_t UIntSmall;
 typedef float FloatSmall;
 
-static_assert(sizeof(FloatSmall) < sizeof(FloatBig), "FloatBig must be able to contain FloatSmall");
 static_assert(sizeof(UIntSmall) < sizeof(UIntBig), "UIntBig must be able to contain UIntSmall");
+static_assert(sizeof(FloatSmall) < sizeof(FloatBig), "FloatBig must be able to contain FloatSmall");
 
 struct ApplyUpdateBridge {
    size_t m_cScores;

@@ -236,7 +236,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       // these need to be void * to avoid breaking the C++ aliasing rules
       void * pUpdateSmall = aUpdateScores;
       void * pUpdateBig = aUpdateScores;
-      const FloatBig * const pUpdateBigEnd = aUpdateScores + pTerm->GetCountTensorBins() * GetCountScores(pBoosterCore->GetCountClasses());
+      const void * const pUpdateBigEnd = IndexByte(reinterpret_cast<void *>(aUpdateScores), 
+         sizeof(FloatBig) * GetCountScores(pBoosterCore->GetCountClasses()) * pTerm->GetCountTensorBins());
       do {
          *reinterpret_cast<FloatSmall *>(pUpdateSmall) = SafeConvertFloat<FloatSmall>(*reinterpret_cast<FloatBig *>(pUpdateBig));
          pUpdateBig = IndexByte(pUpdateBig, sizeof(FloatBig));

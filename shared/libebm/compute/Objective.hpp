@@ -477,15 +477,16 @@ protected:
    template<typename TObjective, typename TFloat, typename std::enable_if<TFloat::k_bCpu && TObjective::k_outputType == OutputType_Regression, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void * const aTargets) const noexcept {
       // regression
+      EBM_ASSERT(1 <= c);
       const TObjective * const pObjective = static_cast<const TObjective *>(this);
       const FloatShared * pTarget = static_cast<const FloatShared *>(aTargets);
       const FloatShared * const pTargetEnd = &pTarget[c];
-      while(pTargetEnd != pTarget) {
+      do {
          if(pObjective->CheckRegressionTarget(static_cast<double>(*pTarget))) {
             return EBM_TRUE;
          }
          ++pTarget;
-      }
+      } while(pTargetEnd != pTarget);
       return EBM_FALSE;
    }
    template<typename TObjective, typename TFloat, typename std::enable_if<TFloat::k_bCpu && TObjective::k_outputType == OutputType_GeneralClassification, void>::type * = nullptr>

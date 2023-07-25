@@ -1310,7 +1310,7 @@ class Booster(AbstractContextManager):
 
         flags = self.create_booster_flags
         if not native.simd:
-           flags |= Native.CreateBoosterFlags_DisableSIMD
+            flags |= Native.CreateBoosterFlags_DisableSIMD
 
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
@@ -1679,7 +1679,7 @@ class InteractionDetector(AbstractContextManager):
 
         flags = self.create_interaction_flags
         if not native.simd:
-           flags |= Native.CreateInteractionFlags_DisableSIMD
+            flags |= Native.CreateInteractionFlags_DisableSIMD
 
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
