@@ -1119,11 +1119,22 @@ static IntEbm AppendFeature(
 
       // if there is only 1 bin we always know what it will be and we do not need to store anything
       if(size_t { 0 } != cSamples) {
+         const IntEbm * pBinIndex = binIndexes;
+         const IntEbm * const pBinIndexsEnd = binIndexes + cSamples;
          if(cBins <= UIntShared { 1 }) {
             if(UIntShared { 0 } == cBins) {
                LOG_0(Trace_Error, "ERROR AppendFeature UIntShared { 0 } == cBins");
                goto return_bad;
             }
+            const IntEbm indexBinLegal = EBM_FALSE != isMissing ? IntEbm { 0 } : IntEbm { 1 };
+            do {
+               const IntEbm indexBin = *pBinIndex;
+               if(indexBinLegal != indexBin) {
+                  LOG_0(Trace_Error, "ERROR AppendFeature indexBinLegal != indexBin");
+                  goto return_bad;
+               }
+               ++pBinIndex;
+            } while(pBinIndexsEnd != pBinIndex);
          } else {
             const int cBitsRequiredMin = CountBitsRequired(cBins - UIntShared { 1 });
             EBM_ASSERT(1 <= cBitsRequiredMin);
@@ -1162,8 +1173,6 @@ static IntEbm AppendFeature(
                   LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(binIndexes[0]), cSamples)");
                   goto return_bad;
                }
-               const IntEbm * pBinIndex = binIndexes;
-               const IntEbm * const pBinIndexsEnd = binIndexes + cSamples;
                UIntShared * pFillData = reinterpret_cast<UIntShared *>(pFillMem + iByteCur);
 
                int cShift = static_cast<int>((cSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;

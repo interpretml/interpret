@@ -49,20 +49,19 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
       // C struct packing rules say these will be aligned within the struct to sizeof(typename TFloat::TInt)
       // and the compiler should (although some compilers have bugs) align the entire struct on the stack to 
       // alignof(typename TFloat::TInt) from the alignas directive above assuming TFloat::TInt is a large SIMD type
-      typename TFloat::TInt iBinCombined;
-      typename TFloat::TInt maskBits;
-      const typename TFloat::TInt::T * m_pData;
-      size_t m_cBins;
-      int m_cShift;
-      int m_cBitsPerItemMax;
-      int m_cShiftReset;
+      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER typename TFloat::TInt iBinCombined;
+      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER typename TFloat::TInt maskBits;
+      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER const typename TFloat::TInt::T * m_pData;
+      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER size_t m_cBins;
+      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER int m_cShift;
+      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER int m_cBitsPerItemMax;
+      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER int m_cShiftReset;
    };
 
    const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, pParams->m_cRuntimeRealDimensions);
 
    // this is on the stack and the compiler should be able to optimize these as if they were variables or registers
-   ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER DimensionalData 
-      aDimensionalData[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+   DimensionalData aDimensionalData[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
 
    size_t iDimensionInit = 0;
    do {

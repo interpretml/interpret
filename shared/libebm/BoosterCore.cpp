@@ -243,8 +243,12 @@ ErrorEbm BoosterCore::Create(
       return error;
    }
 
-   if(IsConvertError<size_t>(countSamples) || IsConvertError<UIntMain>(countSamples)) {
-      LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<size_t>(countSamples) || IsConvertError<UIntMain>(countSamples)");
+   if(IsConvertError<size_t>(countSamples)) {
+      LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<size_t>(countSamples)");
+      return Error_IllegalParamVal;
+   }
+   if(IsConvertError<UIntMain>(countSamples)) {
+      LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UIntMain>(countSamples)");
       return Error_IllegalParamVal;
    }
    size_t cSamples = static_cast<size_t>(countSamples);
@@ -294,8 +298,12 @@ ErrorEbm BoosterCore::Create(
             &cNonDefaultsSparse
          );
          EBM_ASSERT(!bSparse); // we do not handle yet
-         if(IsConvertError<size_t>(countBins) || IsConvertError<UIntSplit>(countBins)) {
-            LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<size_t>(countBins) || IsConvertError<UIntSplit>(countBins)");
+         if(IsConvertError<size_t>(countBins)) {
+            LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<size_t>(countBins)");
+            return Error_IllegalParamVal;
+         }
+         if(IsConvertError<UIntSplit>(countBins)) {
+            LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UIntSplit>(countBins)");
             return Error_IllegalParamVal;
          }
          const size_t cBins = static_cast<size_t>(countBins);
@@ -558,6 +566,7 @@ ErrorEbm BoosterCore::Create(
                   return Error_IllegalParamVal;
                }
                cBytes *= cFastBinsMax;
+               EBM_ASSERT(1 <= cBytes); // since cFastBinsMax is non-zero
                if(IsConvertError<UIntBig>(cBytes - 1)) {
                   // In BinSumsBoosting we use the SIMD pack to hold an index to memory, so we need to be able to hold
                   // the entire fast bin tensor
@@ -574,7 +583,7 @@ ErrorEbm BoosterCore::Create(
                         LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
                         return Error_IllegalParamVal;
                      }
-                     cIndexes *= 2;
+                     cIndexes <<= 1;
                   }
                   // restriction from LogLossMulticlassObjective.hpp
                   // we use the target value to index into the temp exp array and adjust the target gradient
@@ -591,7 +600,7 @@ ErrorEbm BoosterCore::Create(
                   // instructions use signed indexes
                   EBM_ASSERT(1 <= cTensorBins); // since cTensorBins can only be 0 if cSamples is 0, and we checked that
                   if(IsConvertError<typename std::make_signed<UIntBig>::type>(cTensorBins * cScores - size_t { 1 })) {
-                     LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UIntSmall>((*ppTerm)->GetCountTensorBins())");
+                     LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<UIntBig>((*ppTerm)->GetCountTensorBins())");
                      return Error_IllegalParamVal;
                   }
                   ++ppTerm;
@@ -619,6 +628,7 @@ ErrorEbm BoosterCore::Create(
                   return Error_IllegalParamVal;
                }
                cBytes *= cFastBinsMax;
+               EBM_ASSERT(1 <= cBytes); // since cFastBinsMax is non-zero
                if(IsConvertError<UIntSmall>(cBytes - 1)) {
                   // In BinSumsBoosting we use the SIMD pack to hold an index to memory, so we need to be able to hold
                   // the entire fast bin tensor
@@ -635,7 +645,7 @@ ErrorEbm BoosterCore::Create(
                         LOG_0(Trace_Error, "ERROR BoosterCore::Create target indexes cannot fit into compute zone indexes");
                         return Error_IllegalParamVal;
                      }
-                     cIndexes *= 2;
+                     cIndexes <<= 1;
                   }
                   // restriction from LogLossMulticlassObjective.hpp
                   // we use the target value to index into the temp exp array and adjust the target gradient
@@ -686,6 +696,7 @@ ErrorEbm BoosterCore::Create(
                         break;
                      }
                      cBytes *= cFastBinsMax;
+                     EBM_ASSERT(1 <= cBytes); // since cFastBinsMax is non-zero
                      if(IsConvertError<UIntBig>(cBytes - 1)) {
                         // In BinSumsBoosting we use the SIMD pack to hold an index to memory, so we need to be able to hold
                         // the entire fast bin tensor
@@ -702,7 +713,7 @@ ErrorEbm BoosterCore::Create(
                               bRemoveSIMD = true;
                               break;
                            }
-                           cIndexes *= 2;
+                           cIndexes <<= 1;
                         }
                         if(IsMultiplyError(cIndexes, pBoosterCore->m_objectiveSIMD.m_cSIMDPack)) {
                            bRemoveSIMD = true;
@@ -751,6 +762,7 @@ ErrorEbm BoosterCore::Create(
                         break;
                      }
                      cBytes *= cFastBinsMax;
+                     EBM_ASSERT(1 <= cBytes); // since cFastBinsMax is non-zero
                      if(IsConvertError<UIntSmall>(cBytes - 1)) {
                         // In BinSumsBoosting we use the SIMD pack to hold an index to memory, so we need to be able to hold
                         // the entire fast bin tensor
@@ -767,7 +779,7 @@ ErrorEbm BoosterCore::Create(
                               bRemoveSIMD = true;
                               break;
                            }
-                           cIndexes *= 2;
+                           cIndexes <<= 1;
                         }
                         if(IsMultiplyError(cIndexes, pBoosterCore->m_objectiveSIMD.m_cSIMDPack)) {
                            bRemoveSIMD = true;

@@ -491,6 +491,7 @@ ErrorEbm DataSetBoosting::InitTermData(
 
          DataSubsetBoosting * pSubset = m_aSubsets;
          do {
+            EBM_ASSERT(1 <= pTerm->GetBitsRequiredMin());
             const int cItemsPerBitPackTo =
                GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), pSubset->GetObjectiveWrapper()->m_cUIntBytes);
             EBM_ASSERT(1 <= cItemsPerBitPackTo);
@@ -957,6 +958,7 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
    EBM_ASSERT(nullptr != pObjectiveSIMD);
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm { -1 } == direction || BagEbm { 1 } == direction);
+   EBM_ASSERT(1 <= cTerms);
 
    EBM_ASSERT(0 == m_cSamples);
    EBM_ASSERT(0 == m_cSubsets);
@@ -1033,24 +1035,23 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
 
          pSubset->m_cSamples = cSubsetSamples;
 
-         if(0 != cTerms) {
-            if(IsMultiplyError(sizeof(void *), cTerms)) {
-               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting IsMultiplyError(sizeof(void *), cTerms)");
-               return Error_OutOfMemory;
-            }
-            void ** paTermData = static_cast<void **>(malloc(sizeof(void *) * cTerms));
-            if(nullptr == paTermData) {
-               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting nullptr == paTermData");
-               return Error_OutOfMemory;
-            }
-            pSubset->m_aaTermData = paTermData;
-
-            const void * const * const paTermDataEnd = paTermData + cTerms;
-            do {
-               *paTermData = nullptr;
-               ++paTermData;
-            } while(paTermDataEnd != paTermData);
+         EBM_ASSERT(1 <= cTerms);
+         if(IsMultiplyError(sizeof(void *), cTerms)) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting IsMultiplyError(sizeof(void *), cTerms)");
+            return Error_OutOfMemory;
          }
+         void ** paTermData = static_cast<void **>(malloc(sizeof(void *) * cTerms));
+         if(nullptr == paTermData) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting nullptr == paTermData");
+            return Error_OutOfMemory;
+         }
+         pSubset->m_aaTermData = paTermData;
+
+         const void * const * const paTermDataEnd = paTermData + cTerms;
+         do {
+            *paTermData = nullptr;
+            ++paTermData;
+         } while(paTermDataEnd != paTermData);
 
          InnerBag * const aInnerBags = InnerBag::AllocateInnerBags(cInnerBags);
          if(nullptr == aInnerBags) {
@@ -1095,19 +1096,17 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(
          }
       }
 
-      if(0 != cTerms) {
-         error = InitTermData(
-            pDataSetShared,
-            direction,
-            cSharedSamples,
-            aBag,
-            cTerms,
-            apTerms,
-            aiTermFeatures
-         );
-         if(Error_None != error) {
-            return error;
-         }
+      error = InitTermData(
+         pDataSetShared,
+         direction,
+         cSharedSamples,
+         aBag,
+         cTerms,
+         apTerms,
+         aiTermFeatures
+      );
+      if(Error_None != error) {
+         return error;
       }
 
       error = InitBags(
