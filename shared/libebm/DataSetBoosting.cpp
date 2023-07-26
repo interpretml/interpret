@@ -495,6 +495,7 @@ ErrorEbm DataSetBoosting::InitTermData(
             const int cItemsPerBitPackTo =
                GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), pSubset->GetObjectiveWrapper()->m_cUIntBytes);
             EBM_ASSERT(1 <= cItemsPerBitPackTo);
+            ANALYSIS_ASSERT(0 != cItemsPerBitPackTo);
 
             const int cBitsPerItemMaxTo = GetCountBits(cItemsPerBitPackTo, pSubset->GetObjectiveWrapper()->m_cUIntBytes);
             EBM_ASSERT(1 <= cBitsPerItemMaxTo);

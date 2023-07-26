@@ -280,7 +280,7 @@ static_assert(!IsConvertError<uint16_t>(int16_t { 0 }), "automated test with com
 static_assert(IsConvertError<uint16_t>(int16_t { -32768 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
-inline constexpr static typename std::enable_if <
+inline constexpr static typename std::enable_if<
    !std::is_signed<TTo>::value && std::is_signed<TFrom>::value &&
    std::numeric_limits<TTo>::max() < std::numeric_limits<TFrom>::max()
    , bool>::type IsConvertError(const TFrom number) noexcept {
@@ -330,7 +330,7 @@ static_assert(!IsConvertError<int32_t>(uint16_t { 32767 }), "automated test with
 static_assert(!IsConvertError<int32_t>(uint16_t { 0 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
-inline constexpr static typename std::enable_if <
+inline constexpr static typename std::enable_if<
    std::is_signed<TTo>::value && !std::is_signed<TFrom>::value &&
    std::numeric_limits<TTo>::max() < std::numeric_limits<TFrom>::max()
    , bool>::type IsConvertError(const TFrom number) noexcept {
@@ -387,7 +387,7 @@ static_assert(!IsConvertError<uint16_t>(uint16_t { 65535 }), "automated test wit
 static_assert(!IsConvertError<uint16_t>(uint16_t { 0 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
-inline constexpr static typename std::enable_if <
+inline constexpr static typename std::enable_if<
    !std::is_signed<TTo>::value && !std::is_signed<TFrom>::value &&
    std::numeric_limits<TTo>::max() < std::numeric_limits<TFrom>::max()
    , bool>::type IsConvertError(const TFrom number) noexcept {

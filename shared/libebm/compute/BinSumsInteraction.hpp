@@ -20,6 +20,8 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_MEMBER_VARIABLE
 template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
 GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams) {
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
@@ -49,13 +51,13 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
       // C struct packing rules say these will be aligned within the struct to sizeof(typename TFloat::TInt)
       // and the compiler should (although some compilers have bugs) align the entire struct on the stack to 
       // alignof(typename TFloat::TInt) from the alignas directive above assuming TFloat::TInt is a large SIMD type
-      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER typename TFloat::TInt iBinCombined;
-      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER typename TFloat::TInt maskBits;
-      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER const typename TFloat::TInt::T * m_pData;
-      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER size_t m_cBins;
-      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER int m_cShift;
-      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER int m_cBitsPerItemMax;
-      ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER int m_cShiftReset;
+      typename TFloat::TInt iBinCombined;
+      typename TFloat::TInt maskBits;
+      const typename TFloat::TInt::T * m_pData;
+      size_t m_cBins;
+      int m_cShift;
+      int m_cBitsPerItemMax;
+      int m_cShiftReset;
    };
 
    const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, pParams->m_cRuntimeRealDimensions);
@@ -260,6 +262,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
       pGradientAndHessian += cScores << (bHessian ? (TFloat::k_cSIMDShift + 1) : TFloat::k_cSIMDShift);
    }
 }
+WARNING_POP
 
 template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
 GPU_GLOBAL static void RemoteBinSumsInteraction(BinSumsInteractionBridge * const pParams) {

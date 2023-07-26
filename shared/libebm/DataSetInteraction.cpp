@@ -195,6 +195,7 @@ ErrorEbm DataSetInteraction::InitFeatureData(
 
             memset(pFeatureDataTo, 0, cBytes);
 
+            ANALYSIS_ASSERT(0 != cItemsPerBitPackTo);
             int cShiftTo = static_cast<int>((cParallelSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPackTo)) * cBitsPerItemMaxTo;
             const int cShiftResetTo = (cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo;
             do {

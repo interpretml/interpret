@@ -33,32 +33,32 @@ inline constexpr static int GetFirstBitPack(int cItemsPerBitPackMax, const int c
 }
 
 template<typename T, typename U, U multiplicator, int shiftEnd, int shift>
-struct Multiplier final {
-   GPU_DEVICE inline constexpr static T Multiply(const T val) {
-      return (U { 0 } != (multiplicator & (U { 1 } << shift)) ? (val << shift) : T { 0 }) + Multiplier<T, U, multiplicator, shiftEnd, shift + 1>::Multiply(val);
+struct MultiplierInternal final {
+   GPU_DEVICE inline constexpr static T Func(const T val) {
+      return (U { 0 } != (multiplicator & (U { 1 } << shift)) ? (val << shift) : T { 0 }) + MultiplierInternal<T, U, multiplicator, shiftEnd, shift + 1>::Func(val);
    }
 };
 template<typename T, typename U, U multiplicator, int shiftEnd>
-struct Multiplier<T, U, multiplicator, shiftEnd, shiftEnd> final {
-   GPU_DEVICE inline constexpr static T Multiply(const T) {
+struct MultiplierInternal<T, U, multiplicator, shiftEnd, shiftEnd> final {
+   GPU_DEVICE inline constexpr static T Func(const T) {
       return T { 0 };
    }
 };
 template<typename T, typename U, U multiplicator>
-GPU_DEVICE inline constexpr static T Multiply(const T val) {
+GPU_DEVICE inline constexpr static T MultiplyConst(const T val) {
    // Normally the compiler does a better job at choosing between multiplication or shifting, but it doesn't when
    // T is a SIMD packed datatype. Some SIMD implementation do not have a scalar multiply option in which case
    // this function will be a lot faster than the default of unpacking the SIMD type and multiplying the components.
    // And even if the SIMD implemention has a scalar multiply I think this function will be faster for multiplications
    // with less than 4 bits anywhere in multiplicator, which should most be the case for where we use it.
-   return Multiplier<T, U, multiplicator, COUNT_BITS(U), 0>::Multiply(val);
+   return MultiplierInternal<T, U, multiplicator, COUNT_BITS(U), 0>::Func(val);
 }
-template<typename T, typename U, bool bCompileTime, U multiplicator, typename std::enable_if<bCompileTime, void>::type * = nullptr>
-GPU_DEVICE inline constexpr static T Multiply(const T val, const U) {
-   return Multiply<T, U, multiplicator>(val);
+template<typename T, typename U, bool bCompileTime, U multiplicator>
+GPU_DEVICE inline constexpr static typename std::enable_if<bCompileTime, T>::type Multiply(const T val, const U) {
+   return MultiplyConst<T, U, multiplicator>(val);
 }
-template<typename T, typename U, bool bCompileTime, U multiplicator, typename std::enable_if<!bCompileTime, void>::type * = nullptr>
-GPU_DEVICE inline constexpr static T Multiply(const T val, const U runtimeMultiplicator) {
+template<typename T, typename U, bool bCompileTime, U multiplicator>
+GPU_DEVICE inline constexpr static typename std::enable_if<!bCompileTime, T>::type Multiply(const T val, const U runtimeMultiplicator) {
    return val * runtimeMultiplicator;
 }
 
@@ -70,6 +70,11 @@ static_assert(Multiply<uint32_t, uint32_t, true, 65280>(65536, 0) == uint32_t { 
 static_assert(Multiply<uint32_t, uint32_t, true, 65536>(65280, 0) == uint32_t { 4278190080 }, "failed Multiply");
 static_assert(Multiply<uint32_t, uint32_t, true, 4294967295>(1, 0) == uint32_t { 4294967295 }, "failed Multiply");
 static_assert(Multiply<uint32_t, uint32_t, true, 1>(4294967295, 0) == uint32_t { 4294967295 }, "failed Multiply");
+static_assert(Multiply<uint32_t, uint32_t, true, 2>(4294967295, 0) == uint32_t { 4294967294 }, "failed Multiply");
+static_assert(Multiply<uint64_t, uint64_t, true, 2>(4294967295, 0) == uint64_t { 8589934590 }, "failed Multiply");
+static_assert(Multiply<uint32_t, uint32_t, true, 4294967295>(2, 0) == uint32_t { 4294967294 }, "failed Multiply");
+static_assert(Multiply<uint64_t, uint64_t, true, 4294967295>(2, 0) == uint64_t { 8589934590 }, "failed Multiply");
+
 
 } // DEFINED_ZONE_NAME
 
