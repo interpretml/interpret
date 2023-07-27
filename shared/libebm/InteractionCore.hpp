@@ -70,7 +70,7 @@ public:
       m_REFERENCE_COUNT.fetch_add(1, std::memory_order_relaxed);
    };
 
-   inline ptrdiff_t GetCountClasses() {
+   inline ptrdiff_t GetCountClasses() const {
       return m_cClasses;
    }
 
