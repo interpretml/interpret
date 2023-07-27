@@ -109,30 +109,30 @@ static void BoostZeroDimensional(
       const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (TermBoostFlags_GradientSums & flags)) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(SafeConvertFloat<FloatCalc>(aGradientPairs[iScore].m_sumGradients));
-            aUpdateScores[iScore] = SafeConvertFloat<FloatScore>(updateScore);
+            const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients));
+            aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
          }
       } else {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdate(
-               SafeConvertFloat<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
-               SafeConvertFloat<FloatCalc>(aGradientPairs[iScore].GetHess())
+               static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
+               static_cast<FloatCalc>(aGradientPairs[iScore].GetHess())
             );
-            aUpdateScores[iScore] = SafeConvertFloat<FloatScore>(updateScore);
+            aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
          }
       }
    } else {
       const auto * const pBin = pMainBin->Specialize<FloatMain, UIntMain, false>();
       const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (TermBoostFlags_GradientSums & flags)) {
-         const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(SafeConvertFloat<FloatCalc>(aGradientPairs[0].m_sumGradients));
-         aUpdateScores[0] = SafeConvertFloat<FloatScore>(updateScore);
+         const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(static_cast<FloatCalc>(aGradientPairs[0].m_sumGradients));
+         aUpdateScores[0] = static_cast<FloatScore>(updateScore);
       } else {
          const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdate(
-            SafeConvertFloat<FloatCalc>(aGradientPairs[0].m_sumGradients),
-            SafeConvertFloat<FloatCalc>(pBin->GetWeight())
+            static_cast<FloatCalc>(aGradientPairs[0].m_sumGradients),
+            static_cast<FloatCalc>(pBin->GetWeight())
          );
-         aUpdateScores[0] = SafeConvertFloat<FloatScore>(updateScore);
+         aUpdateScores[0] = static_cast<FloatScore>(updateScore);
       }
    }
 
@@ -846,7 +846,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
                   pRng,
                   pBoosterShell,
                   cSignificantBinCount,
-                  SafeConvertFloat<FloatMain>(weightTotal),
+                  static_cast<FloatMain>(weightTotal),
                   iDimensionImportant,
                   cSamplesLeafMin,
                   lastDimensionLeavesMax,

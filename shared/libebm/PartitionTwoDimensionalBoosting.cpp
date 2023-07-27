@@ -132,12 +132,12 @@ static FloatCalc SweepMultiDimensional(
                static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
                
                const FloatCalc gain1 = EbmStats::CalcPartialGain(
-                  SafeConvertFloat<FloatCalc>(aGradientPairsLow[iScore].m_sumGradients), SafeConvertFloat<FloatCalc>(bUseLogitBoost ? aGradientPairsLow[iScore].GetHess() : binLow.GetWeight()));
+                  static_cast<FloatCalc>(aGradientPairsLow[iScore].m_sumGradients), static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairsLow[iScore].GetHess() : binLow.GetWeight()));
                EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                gain += gain1;
                
                const FloatCalc gain2 = EbmStats::CalcPartialGain(
-                  SafeConvertFloat<FloatCalc>(aGradientPairsHigh[iScore].m_sumGradients), SafeConvertFloat<FloatCalc>(bUseLogitBoost ? aGradientPairsHigh[iScore].GetHess() : binHigh.GetWeight()));
+                  static_cast<FloatCalc>(aGradientPairsHigh[iScore].m_sumGradients), static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairsHigh[iScore].GetHess() : binHigh.GetWeight()));
                EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
                gain += gain2;
 
@@ -466,8 +466,8 @@ public:
 
                static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
                const FloatCalc gain1 = EbmStats::CalcPartialGain(
-                  SafeConvertFloat<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
-                  SafeConvertFloat<FloatCalc>(bUseLogitBoost ? pGradientPairTotal[iScore].GetHess() : weightAll)
+                  static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
+                  static_cast<FloatCalc>(bUseLogitBoost ? pGradientPairTotal[iScore].GetHess() : weightAll)
                );
                EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                bestGain -= gain1;
@@ -553,60 +553,60 @@ public:
 
                         if(bHessian) {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].GetHess())
+                              static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].GetHess())
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].GetHess())
+                              static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].GetHess())
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].GetHess())
+                              static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].GetHess())
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].GetHess())
+                              static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].GetHess())
                            );
                         } else {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pTotals2LowLowBest->GetWeight())
+                              static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pTotals2LowLowBest->GetWeight())
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pTotals2LowHighBest->GetWeight())
+                              static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pTotals2LowHighBest->GetWeight())
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pTotals2HighLowBest->GetWeight())
+                              static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pTotals2HighLowBest->GetWeight())
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pTotals2HighHighBest->GetWeight())
+                              static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pTotals2HighHighBest->GetWeight())
                            );
                         }
 
                         FloatScore * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
                         if(splitFirst2LowBest < splitFirst2HighBest) {
-                           aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowLow);
-                           aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowHigh);
-                           aUpdateScores[2 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowHigh);
-                           aUpdateScores[3 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighLow);
-                           aUpdateScores[4 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighLow);
-                           aUpdateScores[5 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighHigh);
+                           aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
+                           aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
+                           aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
+                           aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
+                           aUpdateScores[4 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
+                           aUpdateScores[5 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
                         } else if(splitFirst2HighBest < splitFirst2LowBest) {
-                           aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowLow);
-                           aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowLow);
-                           aUpdateScores[2 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowHigh);
-                           aUpdateScores[3 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighLow);
-                           aUpdateScores[4 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighHigh);
-                           aUpdateScores[5 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighHigh);
+                           aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
+                           aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
+                           aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
+                           aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
+                           aUpdateScores[4 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           aUpdateScores[5 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
                         } else {
-                           aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowLow);
-                           aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowHigh);
-                           aUpdateScores[2 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighLow);
-                           aUpdateScores[3 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighHigh);
+                           aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
+                           aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
+                           aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
+                           aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
                         }
                      }
                   } else {
@@ -684,59 +684,59 @@ public:
 
                         if(bHessian) {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].GetHess())
+                              static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].GetHess())
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].GetHess())
+                              static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].GetHess())
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].GetHess())
+                              static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].GetHess())
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].GetHess())
+                              static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].GetHess())
                            );
                         } else {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pTotals1LowLowBest->GetWeight())
+                              static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pTotals1LowLowBest->GetWeight())
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pTotals1LowHighBest->GetWeight())
+                              static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pTotals1LowHighBest->GetWeight())
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pTotals1HighLowBest->GetWeight())
+                              static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pTotals1HighLowBest->GetWeight())
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              SafeConvertFloat<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].m_sumGradients),
-                              SafeConvertFloat<FloatCalc>(pTotals1HighHighBest->GetWeight())
+                              static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pTotals1HighHighBest->GetWeight())
                            );
                         }
                         FloatScore * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
                         if(splitFirst1LowBest < splitFirst1HighBest) {
-                           aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowLow);
-                           aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighLow);
-                           aUpdateScores[2 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowHigh);
-                           aUpdateScores[3 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighLow);
-                           aUpdateScores[4 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowHigh);
-                           aUpdateScores[5 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighHigh);
+                           aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
+                           aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
+                           aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
+                           aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
+                           aUpdateScores[4 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
+                           aUpdateScores[5 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
                         } else if(splitFirst1HighBest < splitFirst1LowBest) {
-                           aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowLow);
-                           aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighLow);
-                           aUpdateScores[2 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowLow);
-                           aUpdateScores[3 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighHigh);
-                           aUpdateScores[4 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowHigh);
-                           aUpdateScores[5 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighHigh);
+                           aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
+                           aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
+                           aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
+                           aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           aUpdateScores[4 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
+                           aUpdateScores[5 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
                         } else {
-                           aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowLow);
-                           aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighLow);
-                           aUpdateScores[2 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionLowHigh);
-                           aUpdateScores[3 * cScores + iScore] = SafeConvertFloat<FloatScore>(predictionHighHigh);
+                           aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
+                           aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
+                           aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
+                           aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
                         }
                      }
                   }
@@ -774,18 +774,18 @@ public:
          FloatCalc update;
          if(bHessian) {
             update = EbmStats::ComputeSinglePartitionUpdate(
-               SafeConvertFloat<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
-               SafeConvertFloat<FloatCalc>(pGradientPairTotal[iScore].GetHess())
+               static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
+               static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess())
             );
          } else {
             update = EbmStats::ComputeSinglePartitionUpdate(
-               SafeConvertFloat<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
-               SafeConvertFloat<FloatCalc>(weightAll)
+               static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
+               static_cast<FloatCalc>(weightAll)
             );
          }
 
          FloatScore * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
-         aUpdateScores[iScore] = SafeConvertFloat<FloatScore>(update);
+         aUpdateScores[iScore] = static_cast<FloatScore>(update);
       }
       return Error_None;
    }

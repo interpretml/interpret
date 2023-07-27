@@ -7,7 +7,7 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_internal.hpp" // SafeConvertFloat
+#include "ebm_internal.hpp"
 #include "dataset_shared.hpp" // UIntShared
 #include "DataSetInteraction.hpp"
 
@@ -325,7 +325,7 @@ ErrorEbm DataSetInteraction::InitWeights(
                --pWeightFrom;
             }
 
-            weight = SafeConvertFloat<double>(*pWeightFrom);
+            weight = static_cast<double>(*pWeightFrom);
             ++pWeightFrom;
 
             // these were checked when creating the shared dataset
@@ -338,10 +338,10 @@ ErrorEbm DataSetInteraction::InitWeights(
          subsetWeight += weight;
 
          if(sizeof(FloatBig) == pSubset->m_pObjective->m_cFloatBytes) {
-            *reinterpret_cast<FloatBig *>(pWeightTo) = SafeConvertFloat<FloatBig>(weight);
+            *reinterpret_cast<FloatBig *>(pWeightTo) = static_cast<FloatBig>(weight);
          } else {
             EBM_ASSERT(sizeof(FloatSmall) == pSubset->m_pObjective->m_cFloatBytes);
-            *reinterpret_cast<FloatSmall *>(pWeightTo) = SafeConvertFloat<FloatSmall>(weight);
+            *reinterpret_cast<FloatSmall *>(pWeightTo) = static_cast<FloatSmall>(weight);
          }
          pWeightTo = IndexByte(pWeightTo, pSubset->m_pObjective->m_cFloatBytes);
 

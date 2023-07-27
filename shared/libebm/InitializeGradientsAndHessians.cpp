@@ -11,7 +11,7 @@
 #include "common_c.h"
 #include "zones.h"
 
-#include "ebm_internal.hpp" //SafeConvertFloat
+#include "ebm_internal.hpp"
 
 #include "ebm_stats.hpp"
 #include "dataset_shared.hpp" // GetDataSetSharedTarget
@@ -107,14 +107,14 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
                // for RMSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
                // to keep the original scores when computing the gradient updates.
 
-               gradient = initScore - SafeConvertFloat<double>(data);
+               gradient = initScore - static_cast<double>(data);
             }
 
             if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-               *reinterpret_cast<FloatBig *>(pGradHess) = SafeConvertFloat<FloatBig>(gradient);
+               *reinterpret_cast<FloatBig *>(pGradHess) = static_cast<FloatBig>(gradient);
             } else {
                EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-               *reinterpret_cast<FloatSmall *>(pGradHess) = SafeConvertFloat<FloatSmall>(gradient);
+               *reinterpret_cast<FloatSmall *>(pGradHess) = static_cast<FloatSmall>(gradient);
             }
             pGradHess = IndexByte(pGradHess, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 
@@ -216,7 +216,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
                // for RMSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
                // to keep the original scores when computing the gradient updates.
 
-               gradient = initScore - SafeConvertFloat<double>(data);
+               gradient = initScore - static_cast<double>(data);
 
                if(nullptr != pWeight) {
                   // This is only used during the initialization of interaction detection. For boosting
@@ -225,15 +225,15 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
                   // Whether this multiplication happens or not is controlled by the caller by passing in the
                   // weight array or not.
                   pWeight += cSharedAdvances;
-                  gradient *= SafeConvertFloat<double>(pWeight[-1]);
+                  gradient *= static_cast<double>(pWeight[-1]);
                }
             }
 
             if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-               *reinterpret_cast<FloatBig *>(pGradHess) = SafeConvertFloat<FloatBig>(gradient);
+               *reinterpret_cast<FloatBig *>(pGradHess) = static_cast<FloatBig>(gradient);
             } else {
                EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-               *reinterpret_cast<FloatSmall *>(pGradHess) = SafeConvertFloat<FloatSmall>(gradient);
+               *reinterpret_cast<FloatSmall *>(pGradHess) = static_cast<FloatSmall>(gradient);
             }
             pGradHess = IndexByte(pGradHess, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 

@@ -36,21 +36,6 @@ typedef double FloatMain;
 typedef double FloatCalc;
 typedef double FloatScore;
 
-template<typename TTo, typename TFrom>
-INLINE_ALWAYS static TTo SafeConvertFloat(const TFrom val) {
-   // TODO: call this function from anywhere we convert floats of any kind
-
-   // In some IEEE-754 compatible implementations, you can get a float exception when converting a float64
-   // to a float32 when the result overflows to +-inf or (maybe underflow?).  This is likely to be a compiler
-   // specific thing and controlled by the floating point unit flags.  For now let's just do the conversion
-   // and if it becomes a problem in the future with over/under flow then explicitly check the range before
-   // making it a +-inf manually.  The caller can check the results for +-inf.
-
-   // TODO: If we end up manually checking bounds, then change this so that it doesn't do any checks if TFrom is a float64 or if both are float32
-   // TODO: test the overflow/underflow scenario on our compilers to see if they behave well, and check documentation
-
-   return static_cast<TTo>(val);
-}
 
 // TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the data type 
 //   minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  

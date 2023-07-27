@@ -14,7 +14,7 @@
 #include "common_cpp.hpp" // IsConvertError
 #include "bridge_cpp.hpp" // GetCountItemsBitPacked
 
-#include "ebm_internal.hpp" // SafeConvertFloat
+#include "ebm_internal.hpp"
 #include "dataset_shared.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -1402,7 +1402,7 @@ static IntEbm AppendWeight(
                   goto return_bad;
                }
 
-               *pFill = SafeConvertFloat<FloatShared>(weight);
+               *pFill = static_cast<FloatShared>(weight);
                ++pFill;
                ++pWeight;
             } while(pWeightsEnd != pWeight);
@@ -1632,7 +1632,7 @@ static IntEbm AppendTarget(
                      LOG_0(Trace_Error, "ERROR AppendTarget target is infinity");
                      goto return_bad;
                   }
-                  const FloatShared converted = SafeConvertFloat<FloatShared>(cleaned);
+                  const FloatShared converted = static_cast<FloatShared>(cleaned);
 
                   // TODO: clean this float in float32 format
 

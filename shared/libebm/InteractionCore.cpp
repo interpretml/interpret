@@ -13,7 +13,7 @@
 #include "bridge_cpp.hpp" // GetCountScores
 #include "Bin.hpp" // IsOverflowBinSize
 
-#include "ebm_internal.hpp" // SafeConvertFloat
+#include "ebm_internal.hpp"
 #include "Feature.hpp" // Feature
 #include "dataset_shared.hpp" // GetDataSetSharedHeader
 #include "InteractionCore.hpp"
@@ -515,10 +515,10 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                      }
 
                      if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-                        reinterpret_cast<FloatBig *>(pSampleScoreTo)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<FloatBig>(initScore);
+                        reinterpret_cast<FloatBig *>(pSampleScoreTo)[iScore * cSIMDPack + iPartition] = static_cast<FloatBig>(initScore);
                      } else {
                         EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-                        reinterpret_cast<FloatSmall *>(pSampleScoreTo)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<FloatSmall>(initScore);
+                        reinterpret_cast<FloatSmall *>(pSampleScoreTo)[iScore * cSIMDPack + iPartition] = static_cast<FloatSmall>(initScore);
                      }
                      ++iScore;
                   } while(cScores != iScore);
@@ -607,10 +607,10 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                pTargetTo = IndexByte(pTargetTo, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 
                if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-                  *reinterpret_cast<FloatBig *>(pSampleScoreTo) = SafeConvertFloat<FloatBig>(initScore);
+                  *reinterpret_cast<FloatBig *>(pSampleScoreTo) = static_cast<FloatBig>(initScore);
                } else {
                   EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-                  *reinterpret_cast<FloatSmall *>(pSampleScoreTo) = SafeConvertFloat<FloatSmall>(initScore);
+                  *reinterpret_cast<FloatSmall *>(pSampleScoreTo) = static_cast<FloatSmall>(initScore);
                }
                pSampleScoreTo = IndexByte(pSampleScoreTo, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 
@@ -689,14 +689,14 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                   }
                   size_t iScore = 0;
                   if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-                     const FloatBig weightConverted = SafeConvertFloat<FloatBig>(weight);
+                     const FloatBig weightConverted = static_cast<FloatBig>(weight);
                      do {
                         reinterpret_cast<FloatBig *>(pGradHess)[iScore * cSIMDPack + iPartition] *= weightConverted;
                         ++iScore;
                      } while(cTotalScores != iScore);
                   } else {
                      EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-                     const FloatSmall weightConverted = SafeConvertFloat<FloatSmall>(weight);
+                     const FloatSmall weightConverted = static_cast<FloatSmall>(weight);
                      do {
                         reinterpret_cast<FloatSmall *>(pGradHess)[iScore * cSIMDPack + iPartition] *= weightConverted;
                         ++iScore;

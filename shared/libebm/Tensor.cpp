@@ -9,7 +9,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <string.h> // memcpy
 
-#include "ebm_internal.hpp" // SafeConvertFloat
+#include "ebm_internal.hpp"
 #include "Feature.hpp"
 #include "Term.hpp"
 #include "Tensor.hpp"
@@ -216,7 +216,7 @@ ErrorEbm Tensor::Copy(const Tensor & rhs) {
 }
 
 bool Tensor::MultiplyAndCheckForIssues(const double v) {
-   const FloatScore vFloat = SafeConvertFloat<FloatScore>(v);
+   const FloatScore vFloat = static_cast<FloatScore>(v);
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
 
    size_t cTensorScores = m_cScores;

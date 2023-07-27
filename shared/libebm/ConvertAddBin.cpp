@@ -12,7 +12,7 @@
 
 #include "Bin.hpp"
 
-#include "ebm_internal.hpp" // SafeConvertFloat
+#include "ebm_internal.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -299,16 +299,16 @@ extern void ConvertAddBin(
       if(bDoubleSrc) {
          const double src = *reinterpret_cast<const double *>(pSrc + iSrcWeight);
          if(bDoubleDest) {
-            *reinterpret_cast<double *>(pAddDest + iDestWeight) += SafeConvertFloat<double>(src);
+            *reinterpret_cast<double *>(pAddDest + iDestWeight) += static_cast<double>(src);
          } else {
-            *reinterpret_cast<float *>(pAddDest + iDestWeight) += SafeConvertFloat<float>(src);
+            *reinterpret_cast<float *>(pAddDest + iDestWeight) += static_cast<float>(src);
          }
       } else {
          const float src = *reinterpret_cast<const float *>(pSrc + iSrcWeight);
          if(bDoubleDest) {
-            *reinterpret_cast<double *>(pAddDest + iDestWeight) += SafeConvertFloat<double>(src);
+            *reinterpret_cast<double *>(pAddDest + iDestWeight) += static_cast<double>(src);
          } else {
-            *reinterpret_cast<float *>(pAddDest + iDestWeight) += SafeConvertFloat<float>(src);
+            *reinterpret_cast<float *>(pAddDest + iDestWeight) += static_cast<float>(src);
          }
       }
 
@@ -319,27 +319,27 @@ extern void ConvertAddBin(
          if(bDoubleSrc) {
             const double src = *reinterpret_cast<const double *>(pSrcArray + iSrcGradient);
             if(bDoubleDest) {
-               *reinterpret_cast<double *>(pDestArray + iDestGradient) += SafeConvertFloat<double>(src);
+               *reinterpret_cast<double *>(pDestArray + iDestGradient) += static_cast<double>(src);
                if(0 <= iDestHessian) {
-                  *reinterpret_cast<double *>(pDestArray + iDestHessian) += SafeConvertFloat<double>(*reinterpret_cast<const double *>(pSrcArray + iSrcHessian));
+                  *reinterpret_cast<double *>(pDestArray + iDestHessian) += static_cast<double>(*reinterpret_cast<const double *>(pSrcArray + iSrcHessian));
                }
             } else {
-               *reinterpret_cast<float *>(pDestArray + iDestGradient) += SafeConvertFloat<float>(src);
+               *reinterpret_cast<float *>(pDestArray + iDestGradient) += static_cast<float>(src);
                if(0 <= iDestHessian) {
-                  *reinterpret_cast<float *>(pDestArray + iDestHessian) += SafeConvertFloat<float>(*reinterpret_cast<const double *>(pSrcArray + iSrcHessian));
+                  *reinterpret_cast<float *>(pDestArray + iDestHessian) += static_cast<float>(*reinterpret_cast<const double *>(pSrcArray + iSrcHessian));
                }
             }
          } else {
             const float src = *reinterpret_cast<const float *>(pSrcArray + iSrcGradient);
             if(bDoubleDest) {
-               *reinterpret_cast<double *>(pDestArray + iDestGradient) += SafeConvertFloat<double>(src);
+               *reinterpret_cast<double *>(pDestArray + iDestGradient) += static_cast<double>(src);
                if(0 <= iDestHessian) {
-                  *reinterpret_cast<double *>(pDestArray + iDestHessian) += SafeConvertFloat<double>(*reinterpret_cast<const float *>(pSrcArray + iSrcHessian));
+                  *reinterpret_cast<double *>(pDestArray + iDestHessian) += static_cast<double>(*reinterpret_cast<const float *>(pSrcArray + iSrcHessian));
                }
             } else {
-               *reinterpret_cast<float *>(pDestArray + iDestGradient) += SafeConvertFloat<float>(src);
+               *reinterpret_cast<float *>(pDestArray + iDestGradient) += static_cast<float>(src);
                if(0 <= iDestHessian) {
-                  *reinterpret_cast<float *>(pDestArray + iDestHessian) += SafeConvertFloat<float>(*reinterpret_cast<const float *>(pSrcArray + iSrcHessian));
+                  *reinterpret_cast<float *>(pDestArray + iDestHessian) += static_cast<float>(*reinterpret_cast<const float *>(pSrcArray + iSrcHessian));
                }
             }
          }

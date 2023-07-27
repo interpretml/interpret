@@ -7,7 +7,7 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_internal.hpp" // SafeConvertFloat
+#include "ebm_internal.hpp"
 #include "RandomDeterministic.hpp" // RandomDeterministic
 #include "RandomNondeterministic.hpp" // RandomNondeterministic
 #include "Feature.hpp" // Feature
@@ -182,10 +182,10 @@ ErrorEbm DataSetBoosting::InitSampleScores(
                size_t iScore = 0;
                do {
                   if(sizeof(FloatBig) == pSubset->m_pObjective->m_cFloatBytes) {
-                     reinterpret_cast<FloatBig *>(pSampleScore)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<FloatBig>(*pFrom);
+                     reinterpret_cast<FloatBig *>(pSampleScore)[iScore * cSIMDPack + iPartition] = static_cast<FloatBig>(*pFrom);
                   } else {
                      EBM_ASSERT(sizeof(FloatSmall) == pSubset->m_pObjective->m_cFloatBytes);
-                     reinterpret_cast<FloatSmall *>(pSampleScore)[iScore * cSIMDPack + iPartition] = SafeConvertFloat<FloatSmall>(*pFrom);
+                     reinterpret_cast<FloatSmall *>(pSampleScore)[iScore * cSIMDPack + iPartition] = static_cast<FloatSmall>(*pFrom);
                   }
 
                   ++iScore;
@@ -337,10 +337,10 @@ ErrorEbm DataSetBoosting::InitTargetData(
                ++pTargetFrom;
             }
             if(sizeof(FloatBig) == pSubset->m_pObjective->m_cFloatBytes) {
-               *reinterpret_cast<FloatBig *>(pTargetTo) = SafeConvertFloat<FloatBig>(data);
+               *reinterpret_cast<FloatBig *>(pTargetTo) = static_cast<FloatBig>(data);
             } else {
                EBM_ASSERT(sizeof(FloatSmall) == pSubset->m_pObjective->m_cFloatBytes);
-               *reinterpret_cast<FloatSmall *>(pTargetTo) = SafeConvertFloat<FloatSmall>(data);
+               *reinterpret_cast<FloatSmall *>(pTargetTo) = static_cast<FloatSmall>(data);
             }
             pTargetTo = IndexByte(pTargetTo, pSubset->m_pObjective->m_cFloatBytes);
 
@@ -855,7 +855,7 @@ ErrorEbm DataSetBoosting::InitBags(
                      --pWeightFrom;
                   }
 
-                  weight = SafeConvertFloat<double>(*pWeightFrom);
+                  weight = static_cast<double>(*pWeightFrom);
                   ++pWeightFrom;
 
                   // these were checked when creating the shared dataset
@@ -880,10 +880,10 @@ ErrorEbm DataSetBoosting::InitBags(
                subsetWeight += result;
 
                if(sizeof(FloatBig) == pSubset->m_pObjective->m_cFloatBytes) {
-                  *reinterpret_cast<FloatBig *>(pWeightTo) = SafeConvertFloat<FloatBig>(result);
+                  *reinterpret_cast<FloatBig *>(pWeightTo) = static_cast<FloatBig>(result);
                } else {
                   EBM_ASSERT(sizeof(FloatSmall) == pSubset->m_pObjective->m_cFloatBytes);
-                  *reinterpret_cast<FloatSmall *>(pWeightTo) = SafeConvertFloat<FloatSmall>(result);
+                  *reinterpret_cast<FloatSmall *>(pWeightTo) = static_cast<FloatSmall>(result);
                }
                pWeightTo = IndexByte(pWeightTo, pSubset->m_pObjective->m_cFloatBytes);
 

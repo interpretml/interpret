@@ -185,13 +185,13 @@ static ErrorEbm Flatten(
             FloatCalc updateScore;
             if(bHessian) {
                updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                  SafeConvertFloat<FloatCalc>(aGradientPair[iScore].m_sumGradients), SafeConvertFloat<FloatCalc>(aGradientPair[iScore].GetHess()));
+                  static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients), static_cast<FloatCalc>(aGradientPair[iScore].GetHess()));
             } else {
                updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                  SafeConvertFloat<FloatCalc>(aGradientPair[iScore].m_sumGradients), SafeConvertFloat<FloatCalc>(pTreeNode->GetWeight()));
+                  static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients), static_cast<FloatCalc>(pTreeNode->GetWeight()));
             }
 
-            *pUpdateScore = SafeConvertFloat<FloatScore>(updateScore);
+            *pUpdateScore = static_cast<FloatScore>(updateScore);
             ++pUpdateScore;
 
             ++iScore;
@@ -345,13 +345,13 @@ static int FindBestSplitGain(
 
          // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
          // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-         const FloatCalc gainRight = EbmStats::CalcPartialGain(SafeConvertFloat<FloatCalc>(sumGradientsRight), SafeConvertFloat<FloatCalc>(sumHessiansRight));
+         const FloatCalc gainRight = EbmStats::CalcPartialGain(static_cast<FloatCalc>(sumGradientsRight), static_cast<FloatCalc>(sumHessiansRight));
          EBM_ASSERT(std::isnan(gainRight) || 0 <= gainRight);
          gain += gainRight;
 
          // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
          // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-         const FloatCalc gainLeft = EbmStats::CalcPartialGain(SafeConvertFloat<FloatCalc>(sumGradientsLeft), SafeConvertFloat<FloatCalc>(sumHessiansLeft));
+         const FloatCalc gainLeft = EbmStats::CalcPartialGain(static_cast<FloatCalc>(sumGradientsLeft), static_cast<FloatCalc>(sumHessiansLeft));
          EBM_ASSERT(std::isnan(gainLeft) || 0 <= gainLeft);
          gain += gainLeft;
 
@@ -438,7 +438,7 @@ static int FindBestSplitGain(
             sumHessiansOverwrite = aParentGradientPairs[iScoreParent].GetHess();
          }
       }
-      const FloatCalc gain1 = EbmStats::CalcPartialGain(SafeConvertFloat<FloatCalc>(sumGradientsParent), SafeConvertFloat<FloatCalc>(sumHessiansOverwrite));
+      const FloatCalc gain1 = EbmStats::CalcPartialGain(static_cast<FloatCalc>(sumGradientsParent), static_cast<FloatCalc>(sumHessiansOverwrite));
       EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
       bestGain -= gain1;
 

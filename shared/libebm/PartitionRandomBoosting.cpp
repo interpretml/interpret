@@ -525,8 +525,8 @@ public:
             auto * const pGradientPair = pCollapsedBin2->GetGradientPairs();
 
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
-               const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(SafeConvertFloat<FloatCalc>(pGradientPair[iScore].m_sumGradients));
-               *pUpdateScore = SafeConvertFloat<FloatScore>(updateScore);
+               const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients));
+               *pUpdateScore = static_cast<FloatScore>(updateScore);
                ++pUpdateScore;
             }
             pCollapsedBin2 = IndexBin(pCollapsedBin2, cBytesPerBin);
@@ -551,16 +551,16 @@ public:
                   FloatCalc updateScore;
                   if(bHessian) {
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                        SafeConvertFloat<FloatCalc>(pGradientPair[iScore].m_sumGradients),
-                        SafeConvertFloat<FloatCalc>(pGradientPair[iScore].GetHess())
+                        static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                        static_cast<FloatCalc>(pGradientPair[iScore].GetHess())
                      );
                   } else {
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                        SafeConvertFloat<FloatCalc>(pGradientPair[iScore].m_sumGradients),
-                        SafeConvertFloat<FloatCalc>(pCollapsedBin2->GetWeight())
+                        static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                        static_cast<FloatCalc>(pCollapsedBin2->GetWeight())
                      );
                   }
-                  *pUpdateScore = SafeConvertFloat<FloatScore>(updateScore);
+                  *pUpdateScore = static_cast<FloatScore>(updateScore);
                   ++pUpdateScore;
                }
             }

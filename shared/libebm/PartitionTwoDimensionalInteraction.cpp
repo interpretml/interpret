@@ -174,17 +174,17 @@ public:
 
                            // n = numerator (sum_gradients), d = denominator (sum_hessians or weight)
 
-                           const FloatCalc n00 = SafeConvertFloat<FloatCalc>(aGradientPairs00[iScore].m_sumGradients);
-                           const FloatCalc d00 = SafeConvertFloat<FloatCalc>(bUseLogitBoost ? aGradientPairs00[iScore].GetHess() : bin00.GetWeight());
+                           const FloatCalc n00 = static_cast<FloatCalc>(aGradientPairs00[iScore].m_sumGradients);
+                           const FloatCalc d00 = static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs00[iScore].GetHess() : bin00.GetWeight());
 
-                           const FloatCalc n01 = SafeConvertFloat<FloatCalc>(aGradientPairs01[iScore].m_sumGradients);
-                           const FloatCalc d01 = SafeConvertFloat<FloatCalc>(bUseLogitBoost ? aGradientPairs01[iScore].GetHess() : bin01.GetWeight());
+                           const FloatCalc n01 = static_cast<FloatCalc>(aGradientPairs01[iScore].m_sumGradients);
+                           const FloatCalc d01 = static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs01[iScore].GetHess() : bin01.GetWeight());
 
-                           const FloatCalc n10 = SafeConvertFloat<FloatCalc>(aGradientPairs10[iScore].m_sumGradients);
-                           const FloatCalc d10 = SafeConvertFloat<FloatCalc>(bUseLogitBoost ? aGradientPairs10[iScore].GetHess() : bin10.GetWeight());
+                           const FloatCalc n10 = static_cast<FloatCalc>(aGradientPairs10[iScore].m_sumGradients);
+                           const FloatCalc d10 = static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs10[iScore].GetHess() : bin10.GetWeight());
 
-                           const FloatCalc n11 = SafeConvertFloat<FloatCalc>(aGradientPairs11[iScore].m_sumGradients);
-                           const FloatCalc d11 = SafeConvertFloat<FloatCalc>(bUseLogitBoost ? aGradientPairs11[iScore].GetHess() : bin11.GetWeight());
+                           const FloatCalc n11 = static_cast<FloatCalc>(aGradientPairs11[iScore].m_sumGradients);
+                           const FloatCalc d11 = static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs11[iScore].GetHess() : bin11.GetWeight());
 
                            if(0 != (CalcInteractionFlags_Pure & flags)) {
                               // purified gain
@@ -344,8 +344,8 @@ public:
 
             static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
             bestGain -= EbmStats::CalcPartialGain(
-               SafeConvertFloat<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
-               SafeConvertFloat<FloatCalc>(bUseLogitBoost ? aGradientPairs[iScore].GetHess() : weightAll)
+               static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
+               static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs[iScore].GetHess() : weightAll)
             );
          }
 
