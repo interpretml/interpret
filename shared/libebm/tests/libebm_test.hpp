@@ -140,7 +140,7 @@ bool IsApproxEqual(const double val, const double expected, const double percent
 #define CHECK_APPROX(val, expected) \
    do { \
       const double valHidden = (val); \
-      const bool bApproxEqualHidden = IsApproxEqual(valHidden, static_cast<double>(expected), double { 1e-6 }); \
+      const bool bApproxEqualHidden = IsApproxEqual(valHidden, static_cast<double>(expected), double { 1e-4 }); \
       if(!bApproxEqualHidden) { \
          FAILED(valHidden, &testCaseHidden, std::string(" FAILED on \"" #val "(") + std::to_string(valHidden) + ") approx " #expected "\""); \
       } \

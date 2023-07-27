@@ -871,7 +871,10 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
          data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
          data.m_bValidation = EBM_FALSE;
          data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
-         static_assert(std::is_same<FloatScore, FloatBig>::value, "If FloatScore is type FloatSmall then some of the zones might use FloatBig as their type and then read past the end of the aUpdateScores memory, which should always contain zeros. If we want to handle this scenario then we need to allocate a larger buffer of memory to zero out instead of using aUpdateScores");
+         // if FloatScore is type FloatSmall then some of the zones might use FloatBig as their type and then read 
+         // past the end of the aUpdateScores memory, which should always contain zeros.If we want to handle this 
+         // scenario then we need to allocate a larger buffer of memory to zero out instead of using aUpdateScores
+         EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes <= sizeof(FloatScore));
          data.m_aUpdateTensorScores = aUpdateScores;
          data.m_cSamples = pSubset->GetCountSamples();
          data.m_aPacked = nullptr;

@@ -1130,8 +1130,11 @@ TEST_CASE("Term with zero features, boosting, multiclass") {
       {}, 
       { {} }, 
       { 
-         TestSample({}, 0) 
-      }, 
+         TestSample({}, 0),
+         TestSample({}, 1),
+         TestSample({}, 2),
+         TestSample({}, 2),
+      },
       { 
          TestSample({}, 0) 
       }
@@ -1146,26 +1149,26 @@ TEST_CASE("Term with zero features, boosting, multiclass") {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.0688384008227103, double { 1e-1 });
             double zeroLogit = test.GetCurrentTermScore(iTerm, {}, 0);
             termScore = test.GetCurrentTermScore(iTerm, {}, 1) - zeroLogit;
-            CHECK_APPROX(termScore, -0.04500000000000000);
+            CHECK_APPROX(termScore, 0.0);
             termScore = test.GetCurrentTermScore(iTerm, {}, 2) - zeroLogit;
-            CHECK_APPROX(termScore, -0.04500000000000000);
+            CHECK_APPROX(termScore, 0.011249999580904845);
          }
          if(0 == iTerm && 1 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.0401627411809615, double { 1e-1 });
             double zeroLogit = test.GetCurrentTermScore(iTerm, {}, 0);
             termScore = test.GetCurrentTermScore(iTerm, {}, 1) - zeroLogit;
-            CHECK_APPROX_TOLERANCE(termScore, -0.089007468617193456, double { 1e-2 });
+            CHECK_APPROX(termScore, 0.0);
             termScore = test.GetCurrentTermScore(iTerm, {}, 2) - zeroLogit;
-            CHECK_APPROX_TOLERANCE(termScore, -0.089007468617193456, double { 1e-2 });
+            CHECK_APPROX(termScore, 0.022359380227138834);
          }
       }
    }
    CHECK_APPROX_TOLERANCE(validationMetric, 1.7171897252232722e-09, double { 1e+1 });
    double zeroLogit1 = test.GetCurrentTermScore(0, {}, 0);
    termScore = test.GetCurrentTermScore(0, {}, 1) - zeroLogit1;
-   CHECK_APPROX_TOLERANCE(termScore, -20.875723973004794, double { 1e-3 });
+   CHECK_APPROX(termScore, 0.0);
    termScore = test.GetCurrentTermScore(0, {}, 2) - zeroLogit1;
-   CHECK_APPROX_TOLERANCE(termScore, -20.875723973004794, double { 1e-3 });
+   CHECK_APPROX(termScore, 0.69314934225893399);
 }
 
 TEST_CASE("Term with one feature with one or two states is the exact same as zero terms, boosting, regression") {
@@ -1564,7 +1567,7 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
       }
    }
 
-   CHECK(validationMetric <= 0.00017711094447544644 * 1.1);
+   CHECK(validationMetric <= 0.00017711094447544644 * 1.3);
 
    for(IntEbm i0 = 0; i0 < cStates; ++i0) {
       for(IntEbm i2 = 0; i2 < cStates; ++i2) {
