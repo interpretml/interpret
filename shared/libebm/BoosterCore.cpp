@@ -169,7 +169,7 @@ template<typename TUInt>
 static bool CheckBoosterRestrictionsInternal(
    const BoosterCore * const pBoosterCore,
    const ObjectiveWrapper * const pObjectiveWrapper,
-   const size_t cFastBinsMax
+   const size_t cTensorBinsMax
 ) {
    EBM_ASSERT(nullptr != pBoosterCore);
    EBM_ASSERT(nullptr != pObjectiveWrapper);
@@ -192,12 +192,25 @@ static bool CheckBoosterRestrictionsInternal(
       }
       cBytes = GetBinSize<FloatSmall, TUInt>(bHessian, cScores);
    }
-   EBM_ASSERT(1 <= cFastBinsMax); // since cTensorBins can only be 0 if cSamples or cTerms is 0, and we checked that
-   if(IsMultiplyError(cBytes, cFastBinsMax)) {
+
+   EBM_ASSERT(1 <= cTensorBinsMax); // since cTensorBins can only be 0 if cSamples or cTerms is 0, and we checked that
+   if(IsMultiplyError(cTensorBinsMax, EbmMax(cBytes, cScores))) {
       return true;
    }
-   cBytes *= cFastBinsMax;
-   EBM_ASSERT(1 <= cBytes); // since cFastBinsMax is non-zero
+
+   if(IsConvertError<typename std::make_signed<TUInt>::type>(cTensorBinsMax * cScores - size_t { 1 })) {
+      // In all objectives we take the binned feature index and use it to lookup the score update in the update
+      // tensor. The lookup indexes are packed together in an array of SIMDable integers, so obviously the SIMDable
+      // integer needs to be large enough to hold the maximum feature index.
+      // 
+      // Additionally, we use a SIMD gather operations in the objectives to load from the score update tensor, which 
+      // use signed indexes, which means we need to restrict ourselves to the range of positive values.
+      
+      return true;
+   }
+
+   cBytes *= cTensorBinsMax;
+   EBM_ASSERT(1 <= cBytes); // since cTensorBinsMax is non-zero
    if(IsConvertError<TUInt>(cBytes - 1)) {
       // In BinSumsBoosting we use the SIMD pack to hold an index to memory, so we need to be able to hold
       // the entire fast bin tensor
@@ -223,22 +236,6 @@ static bool CheckBoosterRestrictionsInternal(
          return true;
       }
    }
-   const Term * const * ppTerm = pBoosterCore->GetTerms();
-   EBM_ASSERT(nullptr != ppTerm);
-   EBM_ASSERT(1 <= pBoosterCore->GetCountTerms());
-   const Term * const * ppTermsEnd = ppTerm + pBoosterCore->GetCountTerms();
-   do {
-      const size_t cTensorBins = (*ppTerm)->GetCountTensorBins();
-      // we need to fit the tensor index into a packed data unit, and we also use SIMD to index into the
-      // score tensors, so we need to multiply by cScores. Since we use the TFloat::Load function we
-      // need to further restrict ourselves to the non-negative range since the Intel SIMD gather/scatter
-      // instructions use signed indexes
-      EBM_ASSERT(1 <= cTensorBins); // since cTensorBins can only be 0 if cSamples is 0, and we checked that
-      if(IsConvertError<typename std::make_signed<TUInt>::type>(cTensorBins * cScores - size_t { 1 })) {
-         return true;
-      }
-      ++ppTerm;
-   } while(ppTermsEnd != ppTerm);
 
    return false;
 }
@@ -246,14 +243,14 @@ static bool CheckBoosterRestrictionsInternal(
 static bool CheckBoosterRestrictions(
    const BoosterCore * const pBoosterCore,
    const ObjectiveWrapper * const pObjectiveWrapper,
-   const size_t cFastBinsMax
+   const size_t cTensorBinsMax
 ) {
    EBM_ASSERT(nullptr != pObjectiveWrapper);
    if(sizeof(UIntBig) == pObjectiveWrapper->m_cUIntBytes) {
-      return CheckBoosterRestrictionsInternal<UIntBig>(pBoosterCore, pObjectiveWrapper, cFastBinsMax);
+      return CheckBoosterRestrictionsInternal<UIntBig>(pBoosterCore, pObjectiveWrapper, cTensorBinsMax);
    } else {
       EBM_ASSERT(sizeof(UIntSmall) == pObjectiveWrapper->m_cUIntBytes);
-      return CheckBoosterRestrictionsInternal<UIntSmall>(pBoosterCore, pObjectiveWrapper, cFastBinsMax);
+      return CheckBoosterRestrictionsInternal<UIntSmall>(pBoosterCore, pObjectiveWrapper, cTensorBinsMax);
    }
 }
 
@@ -421,7 +418,7 @@ ErrorEbm BoosterCore::Create(
    }
    LOG_0(Trace_Info, "BoosterCore::Create done feature processing");
 
-   size_t cFastBinsMax = 0;
+   size_t cTensorBinsMax = 0;
    size_t cMainBinsMax = 0;
    size_t cSingleDimensionBinsMax = 0;
 
@@ -464,7 +461,7 @@ ErrorEbm BoosterCore::Create(
          if(UNLIKELY(0 == cDimensions)) {
             LOG_0(Trace_Info, "INFO BoosterCore::Create empty term");
 
-            cFastBinsMax = EbmMax(cFastBinsMax, size_t { 1 });
+            cTensorBinsMax = EbmMax(cTensorBinsMax, size_t { 1 });
             cMainBinsMax = EbmMax(cMainBinsMax, size_t { 1 });
          } else {
             if(nullptr == piTermFeature) {
@@ -541,7 +538,7 @@ ErrorEbm BoosterCore::Create(
                ++pTermFeature;
             } while(pTermFeaturesEnd != pTermFeature);
 
-            cFastBinsMax = EbmMax(cFastBinsMax, cTensorBins);
+            cTensorBinsMax = EbmMax(cTensorBinsMax, cTensorBins);
             size_t cTotalMainBins = cTensorBins;
             if(LIKELY(size_t { 1 } < cTensorBins)) {
                EBM_ASSERT(1 <= cRealDimensions);
@@ -631,12 +628,12 @@ ErrorEbm BoosterCore::Create(
             }
             LOG_0(Trace_Info, "INFO BoosterCore::Create Targets verified");
 
-            if(CheckBoosterRestrictions(pBoosterCore, &pBoosterCore->m_objectiveCpu, cFastBinsMax)) {
+            if(CheckBoosterRestrictions(pBoosterCore, &pBoosterCore->m_objectiveCpu, cTensorBinsMax)) {
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create cannot fit indexes in the cpu zone");
                return Error_IllegalParamVal;
             }
             if(0 != pBoosterCore->m_objectiveSIMD.m_cUIntBytes) {
-               if(CheckBoosterRestrictions(pBoosterCore, &pBoosterCore->m_objectiveSIMD, cFastBinsMax)) {
+               if(CheckBoosterRestrictions(pBoosterCore, &pBoosterCore->m_objectiveSIMD, cTensorBinsMax)) {
                   FreeObjectiveWrapperInternals(&pBoosterCore->m_objectiveSIMD);
                   InitializeObjectiveWrapperUnfailing(&pBoosterCore->m_objectiveSIMD);
                }
@@ -767,11 +764,11 @@ ErrorEbm BoosterCore::Create(
                } while(pSubsetsEnd != pSubset);
             }
 
-            if(IsMultiplyError(cBytesPerFastBinMax, cFastBinsMax)) {
-               LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerFastBinMax, cFastBinsMax)");
+            if(IsMultiplyError(cBytesPerFastBinMax, cTensorBinsMax)) {
+               LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerFastBinMax, cTensorBinsMax)");
                return Error_OutOfMemory;
             }
-            pBoosterCore->m_cBytesFastBins = cBytesPerFastBinMax * cFastBinsMax;
+            pBoosterCore->m_cBytesFastBins = cBytesPerFastBinMax * cTensorBinsMax;
 
             if(IsOverflowBinSize<FloatMain, UIntMain>(bHessian, cScores)) {
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");

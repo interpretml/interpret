@@ -66,7 +66,8 @@ void InteractionCore::Free(InteractionCore * const pInteractionCore) {
 template<typename TUInt>
 static bool CheckInteractionRestrictionsInternal(
    const InteractionCore * const pInteractionCore,
-   const ObjectiveWrapper * const pObjectiveWrapper
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   size_t cBinsMax
 ) {
    EBM_ASSERT(nullptr != pInteractionCore);
    EBM_ASSERT(nullptr != pObjectiveWrapper);
@@ -86,6 +87,24 @@ static bool CheckInteractionRestrictionsInternal(
          return true;
       }
    }
+
+   EBM_ASSERT(1 <= cBinsMax); // since cBins can only be 0 if cSamples is 0, and we checked that
+   if(IsConvertError<TUInt>(cBinsMax - 1)) {
+      // In BinSumsInteractions we retrieve the binned feature index stored in an array of SIMDable integers, so 
+      // the SIMDable integer needs to be large enough to hold the maximum feature index.
+      //
+      // In BinSumsInteractions there are no other restrictions becasue we have a code path that does the tensor
+      // bin calculation in a non-SIMD size_t format. At interaction detection time we can alternatively select
+      // a faster version of that function if the SIMD type has enough space to multiply the indexes to fit
+      // the tensor and by the cBytesPerBin value.
+      // 
+      // Unlike in boosting, for interactions we use the objective code only to initialize, and for that
+      // we do not pass in the binned feature index, but instead pass in k_cItemsPerBitPackNone, so we do not
+      // need to restrict ourselves to positive numbers and we do not care about the number of bins there.
+
+      return true;
+   }
+
    if(IsMulticlass(cClasses)) {
       // TODO: we currently index into the gradient array using the target, but the gradient array is also
       // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
@@ -106,33 +125,21 @@ static bool CheckInteractionRestrictionsInternal(
          return true;
       }
    }
-   const FeatureInteraction * pFeature = pInteractionCore->GetFeatures();
-   EBM_ASSERT(nullptr != pFeature);
-   EBM_ASSERT(1 <= pInteractionCore->GetCountFeatures());
-   const FeatureInteraction * const pFeatureEnd = pFeature + pInteractionCore->GetCountFeatures();
-   do {
-      const size_t cBins = pFeature->GetCountBins();
-      // the bin index needs to fit into the bit packs
-      EBM_ASSERT(1 <= cBins); // since cBins can only be 0 if cSamples is 0, and we checked that
-      if(IsConvertError<TUInt>(cBins - 1)) {
-         return true;
-      }
-      ++pFeature;
-   } while(pFeatureEnd != pFeature);
 
    return false;
 }
 
 static bool CheckInteractionRestrictions(
    const InteractionCore * const pInteractionCore,
-   const ObjectiveWrapper * const pObjectiveWrapper
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   const size_t cBinsMax
 ) {
    EBM_ASSERT(nullptr != pObjectiveWrapper);
    if(sizeof(UIntBig) == pObjectiveWrapper->m_cUIntBytes) {
-      return CheckInteractionRestrictionsInternal<UIntBig>(pInteractionCore, pObjectiveWrapper);
+      return CheckInteractionRestrictionsInternal<UIntBig>(pInteractionCore, pObjectiveWrapper, cBinsMax);
    } else {
       EBM_ASSERT(sizeof(UIntSmall) == pObjectiveWrapper->m_cUIntBytes);
-      return CheckInteractionRestrictionsInternal<UIntSmall>(pInteractionCore, pObjectiveWrapper);
+      return CheckInteractionRestrictionsInternal<UIntSmall>(pInteractionCore, pObjectiveWrapper, cBinsMax);
    }
 }
 
@@ -176,6 +183,8 @@ ErrorEbm InteractionCore::Create(
    }
    // give ownership of our object back to the caller, even if there is a failure
    *ppInteractionCoreOut = pInteractionCore;
+
+   size_t cBinsMax = 0;
 
    LOG_0(Trace_Info, "InteractionCore::Create starting feature processing");
    if(0 != cFeatures) {
@@ -235,6 +244,8 @@ ErrorEbm InteractionCore::Create(
          }
          aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnknown, bNominal);
 
+         cBinsMax = EbmMax(cBinsMax, cBins);
+
          ++iFeatureInitialize;
       } while(cFeatures != iFeatureInitialize);
    }
@@ -288,12 +299,12 @@ ErrorEbm InteractionCore::Create(
          }
          LOG_0(Trace_Info, "INFO InteractionCore::Create Targets verified");
 
-         if(CheckInteractionRestrictions(pInteractionCore, &pInteractionCore->m_objectiveCpu)) {
+         if(CheckInteractionRestrictions(pInteractionCore, &pInteractionCore->m_objectiveCpu, cBinsMax)) {
             LOG_0(Trace_Warning, "WARNING InteractionCore::Create cannot fit indexes in the cpu zone");
             return Error_IllegalParamVal;
          }
          if(0 != pInteractionCore->m_objectiveSIMD.m_cUIntBytes) {
-            if(CheckInteractionRestrictions(pInteractionCore, &pInteractionCore->m_objectiveCpu)) {
+            if(CheckInteractionRestrictions(pInteractionCore, &pInteractionCore->m_objectiveCpu, cBinsMax)) {
                FreeObjectiveWrapperInternals(&pInteractionCore->m_objectiveSIMD);
                InitializeObjectiveWrapperUnfailing(&pInteractionCore->m_objectiveSIMD);
             }
