@@ -1037,3 +1037,32 @@ def test_exclude_implicit():
     assert (3,) in clf.term_features_
 
     valid_ebm(clf)
+
+def test_exclude_complete_feature():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingRegressor(
+        interactions=[], exclude=[0, 1]
+    )
+    clf.fit(X, y)
+    clf.predict(X)
+
+    assert (0,) not in clf.term_features_
+    assert (1,) not in clf.term_features_
+    assert (2,) in clf.term_features_
+    assert (3,) in clf.term_features_
+
+def test_exclude_all():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingRegressor(
+        interactions=[], exclude="mains"
+    )
+    clf.fit(X, y)
+    clf.predict(X)
+
+    assert len(clf.term_features_) == 0

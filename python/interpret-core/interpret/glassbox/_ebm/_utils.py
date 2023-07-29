@@ -264,6 +264,12 @@ def generate_term_types(feature_types, term_features):
 
 
 def order_terms(term_features, *args):
+    if len(term_features) == 0:
+        # in Python if only 1 item exists then the item is returned and not a tuple
+        if len(args) == 0:
+            return []
+        else:
+            return tuple([] for _ in range(len(args) + 1))
     keys = (
         [len(feature_idxs)] + sorted(feature_idxs) for feature_idxs in term_features
     )
@@ -297,6 +303,7 @@ def deduplicate_bins(bins):
     for feature_idx in range(len(bins)):
         bin_levels = bins[feature_idx]
         highest_key = None
+        highest_idx = -1
         for level_idx, feature_bins in enumerate(bin_levels):
             if isinstance(feature_bins, dict):
                 key = frozenset(feature_bins.items())
