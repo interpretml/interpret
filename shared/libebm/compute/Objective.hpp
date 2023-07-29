@@ -341,7 +341,6 @@ protected:
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
 
 #ifndef GPU_COMPILE
-      EBM_ASSERT(nullptr != pObjective);
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);

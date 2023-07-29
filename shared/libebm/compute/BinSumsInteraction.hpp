@@ -48,16 +48,17 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
    const typename TFloat::T * const pGradientsAndHessiansEnd = pGradientAndHessian + (bHessian ? size_t { 2 } : size_t { 1 }) * cScores * cSamples;
 
    struct alignas(EbmMax(alignof(typename TFloat::TInt), alignof(void *), alignof(size_t), alignof(int))) DimensionalData {
+      int m_cShift;
+      int m_cBitsPerItemMax;
+      int m_cShiftReset;
+      size_t m_cBins;
+      const typename TFloat::TInt::T * m_pData;
+
       // C struct packing rules say these will be aligned within the struct to sizeof(typename TFloat::TInt)
       // and the compiler should (although some compilers have bugs) align the entire struct on the stack to 
       // alignof(typename TFloat::TInt) from the alignas directive above assuming TFloat::TInt is a large SIMD type
       typename TFloat::TInt iBinCombined;
       typename TFloat::TInt maskBits;
-      const typename TFloat::TInt::T * m_pData;
-      size_t m_cBins;
-      int m_cShift;
-      int m_cBitsPerItemMax;
-      int m_cShiftReset;
    };
 
    const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, pParams->m_cRuntimeRealDimensions);
@@ -127,6 +128,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
       TFloat::Execute([aBins, &apBins](const int i) {
          apBins[i] = aBins;
       });
+      size_t cBins;
       {
          DimensionalData * const pDimensionalData = &aDimensionalDataShifted[-1];
 
@@ -144,7 +146,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
 
          const typename TFloat::TInt iBin = (pDimensionalData->iBinCombined >> pDimensionalData->m_cShift) & pDimensionalData->maskBits;
 
-         const size_t cBins = pDimensionalData->m_cBins;
+         cBins = pDimensionalData->m_cBins;
          // earlier we return an interaction strength of 0.0 on any useless dimensions having 1 bin
 #ifndef NDEBUG
 #ifndef GPU_COMPILE
@@ -158,13 +160,13 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
          TFloat::TInt::Execute([&apBins, cTensorBytes](const int i, const typename TFloat::TInt::T x) {
             apBins[i] = IndexByte(apBins[i], static_cast<size_t>(x) * cTensorBytes);
          }, iBin);
-
-         cTensorBytes *= cBins;
       }
       static constexpr bool isNotOneDimensional = 1 != cCompilerDimensions;
       if(isNotOneDimensional) {
          size_t iDimension = 0;
          do {
+            cTensorBytes *= cBins;
+
             DimensionalData * const pDimensionalData = &aDimensionalDataShifted[iDimension];
 
             pDimensionalData->m_cShift -= pDimensionalData->m_cBitsPerItemMax;
@@ -176,7 +178,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
 
             const typename TFloat::TInt iBin = (pDimensionalData->iBinCombined >> pDimensionalData->m_cShift) & pDimensionalData->maskBits;
 
-            const size_t cBins = pDimensionalData->m_cBins;
+            cBins = pDimensionalData->m_cBins;
             // earlier we return an interaction strength of 0.0 on any useless dimensions having 1 bin
 #ifndef NDEBUG
 #ifndef GPU_COMPILE
@@ -194,8 +196,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
                // do the multiplication with SIMD to avoid most of the cost when the result will fit into a 32 bit result
                apBins[i] = IndexByte(apBins[i], static_cast<size_t>(x) * cTensorBytes);
             }, iBin);
-
-            cTensorBytes *= cBins;
 
             ++iDimension;
          } while(cRealDimensionsMinusOne != iDimension);

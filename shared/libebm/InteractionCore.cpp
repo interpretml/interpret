@@ -73,10 +73,12 @@ static bool CheckInteractionRestrictionsInternal(
    EBM_ASSERT(nullptr != pObjectiveWrapper);
    EBM_ASSERT(1 <= pInteractionCore->GetCountFeatures());
 
-   const bool bHessian = EBM_FALSE != pObjectiveWrapper->m_bObjectiveHasHessian;
    const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
    const size_t cScores = GetCountScores(cClasses);
+   const bool bHessian = EBM_FALSE != pObjectiveWrapper->m_bObjectiveHasHessian;
 
+   // In BinSumsInteraction we calculate the BinSize value but keep it as a size_t, so the only requirement is
+   // that the bin size is calculatable
    if(sizeof(FloatBig) == pObjectiveWrapper->m_cFloatBytes) {
       if(IsOverflowBinSize<FloatBig, TUInt>(bHessian, cScores)) {
          return true;

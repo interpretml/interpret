@@ -175,10 +175,21 @@ static bool CheckBoosterRestrictionsInternal(
    EBM_ASSERT(nullptr != pObjectiveWrapper);
    EBM_ASSERT(1 <= pBoosterCore->GetCountTerms());
 
-   const bool bHessian = EBM_FALSE != pObjectiveWrapper->m_bObjectiveHasHessian;
    const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
    const size_t cScores = GetCountScores(cClasses);
 
+   if(IsConvertError<TUInt>(cScores)) {
+      // restriction from LogLossMulticlassObjective.hpp
+      // we cast the cScores value into a SIMD type before later multiplying.  If cScores was 1 + the max SIMD type
+      // value then it could overflow back to 0 before the multiplication. Normally this would be very rare, but
+      // we need to consider adversarial inputs to make this crash.
+
+      return true;
+   }
+
+   const bool bHessian = EBM_FALSE != pObjectiveWrapper->m_bObjectiveHasHessian;
+
+   // In BinSumsBoosting we calculate the BinSize value and put it into a SIMD pack, so it needs to fit
    size_t cBytes;
    if(sizeof(FloatBig) == pObjectiveWrapper->m_cFloatBytes) {
       if(IsOverflowBinSize<FloatBig, TUInt>(bHessian, cScores)) {
@@ -197,7 +208,6 @@ static bool CheckBoosterRestrictionsInternal(
    if(IsMultiplyError(cTensorBinsMax, EbmMax(cBytes, cScores))) {
       return true;
    }
-
    if(IsConvertError<typename std::make_signed<TUInt>::type>(cTensorBinsMax * cScores - size_t { 1 })) {
       // In all objectives we take the binned feature index and use it to lookup the score update in the update
       // tensor. The lookup indexes are packed together in an array of SIMDable integers, so obviously the SIMDable
@@ -208,7 +218,6 @@ static bool CheckBoosterRestrictionsInternal(
       
       return true;
    }
-
    cBytes *= cTensorBinsMax;
    EBM_ASSERT(1 <= cBytes); // since cTensorBinsMax is non-zero
    if(IsConvertError<TUInt>(cBytes - 1)) {
@@ -216,6 +225,7 @@ static bool CheckBoosterRestrictionsInternal(
       // the entire fast bin tensor
       return true;
    }
+
    if(IsMulticlass(cClasses)) {
       // TODO: we currently index into the gradient array using the target, but the gradient array is also
       // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random

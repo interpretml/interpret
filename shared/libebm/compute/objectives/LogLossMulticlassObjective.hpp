@@ -108,7 +108,6 @@ struct LogLossMulticlassObjective : MulticlassObjective {
          reinterpret_cast<typename TFloat::T *>(pData->m_aMulticlassMidwayTemp) : aLocalExpVector;
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
-      const typename TFloat::TInt::T cCastScores = static_cast<typename TFloat::TInt::T>(cScores);
 
       const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
 
@@ -122,6 +121,7 @@ struct LogLossMulticlassObjective : MulticlassObjective {
       int cShiftReset;
       typename TFloat::TInt maskBits;
       const typename TFloat::TInt::T * pInputData;
+      typename TFloat::TInt::T cCastScores;
 
       if(!bCompilerZeroDimensional) {
          const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
@@ -146,6 +146,8 @@ struct LogLossMulticlassObjective : MulticlassObjective {
 #ifndef GPU_COMPILE
          EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
+
+         cCastScores = static_cast<typename TFloat::TInt::T>(cScores);
       }
 
       const typename TFloat::TInt::T * pTargetData = reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aTargets);

@@ -43,7 +43,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    const size_t cSamples = pParams->m_cSamples;
 
    const typename TFloat::T * pGradientAndHessian = reinterpret_cast<const typename TFloat::T *>(pParams->m_aGradientsAndHessians);
-   const typename TFloat::T * const pGradientsAndHessiansEnd = pGradientAndHessian + (bHessian ? 2 : 1) * cScores * cSamples;
+   const typename TFloat::T * const pGradientsAndHessiansEnd = pGradientAndHessian + (bHessian ? size_t { 2 } : size_t { 1 }) * cScores * cSamples;
 
    typename TFloat::TInt::T cBytesPerBin;
    int cBitsPerItemMax;
@@ -79,17 +79,19 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 #endif // GPU_COMPILE
    }
 
-   const uint8_t * pCountOccurrences;
-   if(bReplication) {
-      pCountOccurrences = pParams->m_pCountOccurrences;
-   }
-
    const typename TFloat::T * pWeight;
+   const uint8_t * pCountOccurrences;
    if(bWeight) {
       pWeight = reinterpret_cast<const typename TFloat::T *>(pParams->m_aWeights);
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pWeight);
 #endif // GPU_COMPILE
+      if(bReplication) {
+         pCountOccurrences = pParams->m_pCountOccurrences;
+#ifndef GPU_COMPILE
+         EBM_ASSERT(nullptr != pCountOccurrences);
+#endif // GPU_COMPILE
+      }
    }
 
    do {
