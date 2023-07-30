@@ -51,8 +51,8 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
       int m_cShift;
       int m_cBitsPerItemMax;
       int m_cShiftReset;
-      size_t m_cBins;
       const typename TFloat::TInt::T * m_pData;
+      size_t m_cBins;
 
       // C struct packing rules say these will be aligned within the struct to sizeof(typename TFloat::TInt)
       // and the compiler should (although some compilers have bugs) align the entire struct on the stack to 
@@ -131,16 +131,18 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
       size_t cBins;
       {
          DimensionalData * const pDimensionalData = &aDimensionalDataShifted[-1];
-
-         pDimensionalData->m_cShift -= pDimensionalData->m_cBitsPerItemMax;
-         if(pDimensionalData->m_cShift < 0) {
+         
+         const int shift = pDimensionalData->m_cShift - pDimensionalData->m_cBitsPerItemMax;
+         pDimensionalData->m_cShift = shift;
+         if(shift < 0) {
             if(pGradientsAndHessiansEnd == pGradientAndHessian) {
                // we only need to check this for the first dimension since all dimensions will reach
                // this point simultaneously
                return;
             }
-            pDimensionalData->iBinCombined = TFloat::TInt::Load(pDimensionalData->m_pData);
-            pDimensionalData->m_pData = pDimensionalData->m_pData + TFloat::TInt::k_cSIMDPack;
+            const typename TFloat::TInt::T * const pData = pDimensionalData->m_pData;
+            pDimensionalData->iBinCombined = TFloat::TInt::Load(pData);
+            pDimensionalData->m_pData = pData + TFloat::TInt::k_cSIMDPack;
             pDimensionalData->m_cShift = pDimensionalData->m_cShiftReset;
          }
 
@@ -169,10 +171,12 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
 
             DimensionalData * const pDimensionalData = &aDimensionalDataShifted[iDimension];
 
-            pDimensionalData->m_cShift -= pDimensionalData->m_cBitsPerItemMax;
-            if(pDimensionalData->m_cShift < 0) {
-               pDimensionalData->iBinCombined = TFloat::TInt::Load(pDimensionalData->m_pData);
-               pDimensionalData->m_pData = pDimensionalData->m_pData + TFloat::TInt::k_cSIMDPack;
+            const int shift = pDimensionalData->m_cShift - pDimensionalData->m_cBitsPerItemMax;
+            pDimensionalData->m_cShift = shift;
+            if(shift < 0) {
+               const typename TFloat::TInt::T * const pData = pDimensionalData->m_pData;
+               pDimensionalData->iBinCombined = TFloat::TInt::Load(pData);
+               pDimensionalData->m_pData = pData + TFloat::TInt::k_cSIMDPack;
                pDimensionalData->m_cShift = pDimensionalData->m_cShiftReset;
             }
 

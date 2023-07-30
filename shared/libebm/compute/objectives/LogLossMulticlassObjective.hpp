@@ -109,7 +109,8 @@ struct LogLossMulticlassObjective : MulticlassObjective {
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
 
-      const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
+      const typename TFloat::T * const aUpdateTensorScores = 
+         reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
 
@@ -150,7 +151,8 @@ struct LogLossMulticlassObjective : MulticlassObjective {
          cCastScores = static_cast<typename TFloat::TInt::T>(cScores);
       }
 
-      const typename TFloat::TInt::T * pTargetData = reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aTargets);
+      const typename TFloat::TInt::T * pTargetData = 
+         reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aTargets);
 
       const typename TFloat::T * pWeight;
       TFloat metricSum;
@@ -179,15 +181,20 @@ struct LogLossMulticlassObjective : MulticlassObjective {
             typename TFloat::TInt iTensorBin;
             if(!bCompilerZeroDimensional) {
                iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-               // TODO: this multiplication is expensive since there isn't a good SIMD multiplication until SSE 4.1
-               // and even then it has high latency and cost.  We could avoid it entirely by changing the memory
-               // layout of the tensor at aUpdateTensorScores.  If we made cScores separate tensors, where we put
-               // all the updates for each class, then we could use the non-multiplied indexes to fetch the
-               // tensor bins from the first class, then we would add cTensorBins * sizeof(TFloat) to the pointer
-               // that is the base of each tensor.  This elimaintes all multiplication and we just need to add
-               // the value in a register to a pointer each iteration.  It also reduces the amount of memory we
-               // need to access each load, which might be an issue for some big tensors.  It also eliminates the
-               // "iTensorBin += 1" instruction below since we'll be doing that to the pointer instead of the indexes
+
+               // TODO: (explore this) This multiplication is expensive since some processors (ARM) do not have SIMD multiplication
+               // and even if SIMD multiplication exists it has high latency and cost.  We could avoid it entirely 
+               // by changing the memory layout of the tensor at aUpdateTensorScores.  If we made cScores separate 
+               // tensors, where we colocated all the updates for each class, then we could use the non-multiplied 
+               // indexes to fetch the tensor bins from the first class, then we would add cTensorBins * sizeof(TFloat)
+               // to each iTensorBin value each to proceed to the next class score. This elimaintes all multiplication 
+               // and we just need to add the value in a SIMD register to another SIMD register. This addition is free
+               // since we already have a "iTensorBin += 1" instruction below. The potential drawback is that if the
+               // tensors are really large we might benefit from keeping the scores for each clase co-located where
+               // they would probably be loaded as a single cache line load, and perhpas might be prefetched 
+               // speculativley by the CPU more reliably. Since we typically use shifts to do the multiplication
+               // we only really benefit a lot potentially when k_dynamicScores == cCompilerScores.
+
                iTensorBin = Multiply<typename TFloat::TInt, typename TFloat::TInt::T, k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack, static_cast<typename TFloat::TInt::T>(cCompilerScores)>(iTensorBin, cCastScores);
             }
 

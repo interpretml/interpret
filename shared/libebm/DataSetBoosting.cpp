@@ -58,7 +58,7 @@ ErrorEbm DataSetBoosting::InitGradHess(
          LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitGradHess IsMultiplyError(size_t { 2 }, cTotalScores)");
          return Error_OutOfMemory;
       }
-      cTotalScores = size_t { 2 } * cTotalScores;
+      cTotalScores = cTotalScores << 1;
    }
 
    DataSubsetBoosting * pSubset = m_aSubsets;
@@ -105,6 +105,8 @@ ErrorEbm DataSetBoosting::InitSampleScores(
    EBM_ASSERT(nullptr != aBag || BagEbm { 1 } == direction);  // if aBag is nullptr then we have no validation samples
 
    DataSubsetBoosting * pSubset = m_aSubsets;
+   EBM_ASSERT(nullptr != pSubset);
+   EBM_ASSERT(1 <= m_cSubsets);
    const DataSubsetBoosting * const pSubsetsEnd = pSubset + m_cSubsets;
 
    if(nullptr == aInitScores) {
@@ -141,6 +143,7 @@ ErrorEbm DataSetBoosting::InitSampleScores(
          EBM_ASSERT(1 <= cSubsetSamples);
 
          const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
+         EBM_ASSERT(1 <= cSIMDPack);
          EBM_ASSERT(0 == cSubsetSamples % cSIMDPack);
 
          if(IsMultiplyError(pSubset->m_pObjective->m_cFloatBytes, cScores, cSubsetSamples)) {
@@ -554,10 +557,12 @@ ErrorEbm DataSetBoosting::InitTermData(
                                  const int cItemsPerBitPackFrom = pDimensionInfo->m_cItemsPerBitPackFrom;
                                  size_t cCompleteAdvanced = cAdvances / static_cast<size_t>(cItemsPerBitPackFrom);
                                  int iShiftFrom = pDimensionInfo->m_iShiftFrom;
+                                 EBM_ASSERT(0 <= iShiftFrom);
                                  iShiftFrom -= static_cast<int>(cAdvances % static_cast<size_t>(cItemsPerBitPackFrom));
                                  pDimensionInfo->m_iShiftFrom = iShiftFrom;
                                  if(iShiftFrom < 0) {
                                     pDimensionInfo->m_iShiftFrom = iShiftFrom + cItemsPerBitPackFrom;
+                                    EBM_ASSERT(0 <= pDimensionInfo->m_iShiftFrom);
                                     ++cCompleteAdvanced;
                                  }
                                  pDimensionInfo->m_pFeatureDataFrom += cCompleteAdvanced;
@@ -766,6 +771,7 @@ ErrorEbm DataSetBoosting::InitBags(
 
                EBM_ASSERT(cSubsetSamples <= cIncludedSamples);
 
+               EBM_ASSERT(sizeof(uint8_t) <= pSubset->m_pObjective->m_cFloatBytes);
                uint8_t * pOccurrencesTo = static_cast<uint8_t *>(AlignedAlloc(sizeof(uint8_t) * cSubsetSamples));
                if(nullptr == pOccurrencesTo) {
                   LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags nullptr == pOccurrences");
@@ -826,6 +832,7 @@ ErrorEbm DataSetBoosting::InitBags(
             uint8_t * pOccurrencesTo;
             if(nullptr != pOccurrencesFrom) {
                EBM_ASSERT(cSubsetSamples <= cIncludedSamples);
+               EBM_ASSERT(sizeof(uint8_t) <= pSubset->m_pObjective->m_cFloatBytes);
                pOccurrencesTo = static_cast<uint8_t *>(AlignedAlloc(sizeof(uint8_t) * cSubsetSamples));
                if(nullptr == pOccurrencesTo) {
                   LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags nullptr == aCountOccurrences");

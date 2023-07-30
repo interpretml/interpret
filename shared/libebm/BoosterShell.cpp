@@ -105,13 +105,20 @@ ErrorEbm BoosterShell::FillAllocations() {
       }
 
       if(IsMulticlass(cClasses)) {
-         size_t cFloatBytesMax = 0;
-
+         size_t cBytesMulticlassMidwayMax = 0;
          if(0 != GetBoosterCore()->GetTrainingSet()->GetCountSamples()) {
             DataSubsetBoosting * pSubset = GetBoosterCore()->GetTrainingSet()->GetSubsets();
             const DataSubsetBoosting * const pSubsetsEnd = pSubset + GetBoosterCore()->GetTrainingSet()->GetCountSubsets();
             do {
-               cFloatBytesMax = EbmMax(pSubset->GetObjectiveWrapper()->m_cFloatBytes, cFloatBytesMax);
+               const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
+               const size_t cFloatBytes = pSubset->GetObjectiveWrapper()->m_cFloatBytes;
+               const size_t cMultiple = cFloatBytes * cSIMDPack;
+               if(IsMultiplyError(cMultiple, cScores)) {
+                  goto failed_allocation;
+               }
+               const size_t cBytesMulticlassMidway = cMultiple * cScores;
+               cBytesMulticlassMidwayMax = EbmMax(cBytesMulticlassMidwayMax, cBytesMulticlassMidway);
+
                ++pSubset;
             } while(pSubsetsEnd != pSubset);
          }
@@ -120,18 +127,22 @@ ErrorEbm BoosterShell::FillAllocations() {
             DataSubsetBoosting * pSubset = GetBoosterCore()->GetValidationSet()->GetSubsets();
             const DataSubsetBoosting * const pSubsetsEnd = pSubset + GetBoosterCore()->GetValidationSet()->GetCountSubsets();
             do {
-               cFloatBytesMax = EbmMax(pSubset->GetObjectiveWrapper()->m_cFloatBytes, cFloatBytesMax);
+               const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
+               const size_t cFloatBytes = pSubset->GetObjectiveWrapper()->m_cFloatBytes;
+               const size_t cMultiple = cFloatBytes * cSIMDPack;
+               if(IsMultiplyError(cMultiple, cScores)) {
+                  goto failed_allocation;
+               }
+               const size_t cBytesMulticlassMidway = cMultiple * cScores;
+               cBytesMulticlassMidwayMax = EbmMax(cBytesMulticlassMidwayMax, cBytesMulticlassMidway);
+
                ++pSubset;
             } while(pSubsetsEnd != pSubset);
          }
 
          // if there are zero samples, cFloatBytesMax will be zero
-         if(0 != cFloatBytesMax) {
-            const size_t cSIMDPack = m_pBoosterCore->SIMDPackMax();
-            if(IsMultiplyError(cFloatBytesMax * cSIMDPack, cScores)) {
-               goto failed_allocation;
-            }
-            m_aMulticlassMidwayTemp = AlignedAlloc(cFloatBytesMax * cSIMDPack * cScores);
+         if(0 != cBytesMulticlassMidwayMax) {
+            m_aMulticlassMidwayTemp = AlignedAlloc(cBytesMulticlassMidwayMax);
             if(nullptr == m_aMulticlassMidwayTemp) {
                goto failed_allocation;
             }

@@ -247,18 +247,6 @@ public:
       EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
       return m_objectiveCpu.m_bMaximizeMetric;
    }
-
-   inline size_t SIMDPackMax() {
-      EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
-      const size_t cRet = m_objectiveSIMD.m_cSIMDPack;
-      if(0 == cRet) {
-         EBM_ASSERT(1 == m_objectiveCpu.m_cSIMDPack);
-         return size_t { 1 };
-      } else {
-         EBM_ASSERT(2 <= cRet);
-         return cRet;
-      }
-   }
 };
 
 } // DEFINED_ZONE_NAME

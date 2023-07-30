@@ -381,16 +381,17 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       size_t cBytesTempMax = 0;
       size_t cBytesTargetMax = 0;
       DataSubsetInteraction * pSubsetInit = GetDataSetInteraction()->GetSubsets();
+      EBM_ASSERT(nullptr != pSubsetInit);
       EBM_ASSERT(1 <= GetDataSetInteraction()->GetCountSubsets());
       const DataSubsetInteraction * const pSubsetsEnd = pSubsetInit + GetDataSetInteraction()->GetCountSubsets();
       do {
          size_t cSamples = pSubsetInit->GetCountSamples();
          EBM_ASSERT(1 <= cSamples);
 
-         if(IsMultiplyError(pSubsetInit->GetObjectiveWrapper()->m_cFloatBytes, cScores, 
-            EbmMax(cSamples, pSubsetInit->GetObjectiveWrapper()->m_cSIMDPack))) 
-         {
-            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(pSubsetInit->GetObjectiveWrapper()->m_cFloatBytes, cScores, EbmMax(cSamples, pSubsetInit->GetObjectiveWrapper()->m_cSIMDPack))");
+         EBM_ASSERT(0 == cSamples % pSubsetInit->GetObjectiveWrapper()->m_cSIMDPack);
+         EBM_ASSERT(pSubsetInit->GetObjectiveWrapper()->m_cSIMDPack <= cSamples);
+         if(IsMultiplyError(pSubsetInit->GetObjectiveWrapper()->m_cFloatBytes, cScores, cSamples)) {
+            LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(pSubsetInit->GetObjectiveWrapper()->m_cFloatBytes, cScores, cSamples)");
             return Error_OutOfMemory;
          }
          const size_t cBytesScores = pSubsetInit->GetObjectiveWrapper()->m_cFloatBytes * cScores;
@@ -477,7 +478,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             void * pTargetTo = aTargetTo;
             void * pSampleScoreTo = aSampleScoreTo;
             const void * const pTargetToEnd = IndexByte(aTargetTo, pSubset->GetObjectiveWrapper()->m_cUIntBytes * pSubset->GetCountSamples());
-            double initScore = 0;
+            double initScore = 0.0;
             do {
                size_t iPartition = 0;
                do {
@@ -519,12 +520,10 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
                   }
                   pTargetTo = IndexByte(pTargetTo, pSubset->GetObjectiveWrapper()->m_cUIntBytes);
 
-                  const double * pInitScoreFromLoop = pInitScoreFromOld;
                   size_t iScore = 0;
                   do {
-                     if(nullptr != pInitScoreFromLoop) {
-                        initScore = *pInitScoreFromLoop;
-                        ++pInitScoreFromLoop;
+                     if(nullptr != pInitScoreFromOld) {
+                        initScore = pInitScoreFromOld[iScore];
                      }
 
                      if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
@@ -576,7 +575,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          const BagEbm * pSampleReplication = aBag;
          const double * pInitScoreFrom = aInitScores;
          BagEbm replication = 0;
-         double initScore = 0;
+         double initScore = 0.0;
          FloatShared target;
 
          DataSubsetInteraction * pSubset = GetDataSetInteraction()->GetSubsets();
@@ -613,25 +612,21 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
 
                if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
                   *reinterpret_cast<FloatBig *>(pTargetTo) = static_cast<FloatBig>(target);
-               } else {
-                  EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-                  *reinterpret_cast<FloatSmall *>(pTargetTo) = static_cast<FloatSmall>(target);
-               }
-               pTargetTo = IndexByte(pTargetTo, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-
-               if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
                   *reinterpret_cast<FloatBig *>(pSampleScoreTo) = static_cast<FloatBig>(initScore);
                } else {
                   EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
+                  *reinterpret_cast<FloatSmall *>(pTargetTo) = static_cast<FloatSmall>(target);
                   *reinterpret_cast<FloatSmall *>(pSampleScoreTo) = static_cast<FloatSmall>(initScore);
                }
+               pTargetTo = IndexByte(pTargetTo, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
                pSampleScoreTo = IndexByte(pSampleScoreTo, pSubset->GetObjectiveWrapper()->m_cFloatBytes);
 
                --replication;
 
             } while(pTargetToEnd != pTargetTo);
 
-            data.m_cScores = cScores;
+            EBM_ASSERT(1 == cScores);
+            data.m_cScores = 1;
             data.m_cPack = k_cItemsPerBitPackNone;
             data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
             data.m_bValidation = EBM_FALSE;
@@ -668,7 +663,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          size_t cTotalScores = cScores;
          if(IsHessian()) {
             EBM_ASSERT(!IsMultiplyError(size_t { 2 }, cTotalScores)); // we are accessing allocated memory
-            cTotalScores = size_t { 2 } * cTotalScores;
+            cTotalScores = cTotalScores << 1;
          }
 
          const BagEbm * pSampleReplication = aBag;

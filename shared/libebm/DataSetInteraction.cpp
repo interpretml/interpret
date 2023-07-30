@@ -51,7 +51,7 @@ ErrorEbm DataSetInteraction::InitGradHess(
          LOG_0(Trace_Warning, "WARNING DataSetInteraction::InitGradHess IsMultiplyError(size_t { 2 }, cTotalScores)");
          return Error_OutOfMemory;
       }
-      cTotalScores = size_t { 2 } * cTotalScores;
+      cTotalScores = cTotalScores << 1;
    }
 
    DataSubsetInteraction * pSubset = m_aSubsets;
@@ -216,6 +216,7 @@ ErrorEbm DataSetInteraction::InitFeatureData(
                            iShiftFrom -= static_cast<int>(cAdvances % static_cast<size_t>(cItemsPerBitPackFrom));
                            if(iShiftFrom < 0) {
                               iShiftFrom += cItemsPerBitPackFrom;
+                              EBM_ASSERT(0 <= iShiftFrom);
                               ++cCompleteAdvanced;
                            }
                            pFeatureDataFrom += cCompleteAdvanced;

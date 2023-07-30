@@ -24,6 +24,11 @@ template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, b
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge * const pParams) {
    static_assert(bWeight || !bReplication, "bReplication cannot be true if bWeight is false");
 
+   // TODO: we can improve the zero dimensional scenario quite a bit because we know that all the scores added will
+   // eventually be added into the same bin.  Instead of adding the gradients & hessians & weights & counts from
+   // each sample to the bin in order, we can just add those values together for all samples in SIMD variables
+   // and then add the totals into the bins. We probably want to write a completely separate function for handling
+   // it this way though.
    static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
