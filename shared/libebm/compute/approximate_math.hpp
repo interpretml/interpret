@@ -391,6 +391,7 @@ GPU_DEVICE INLINE_ALWAYS static T ExpApproxSchraudolph(T val, const int32_t addE
    return val;
 }
 
+#ifdef NEVER
 template<bool bNegateInput = false, typename T>
 GPU_DEVICE INLINE_ALWAYS static T ExpForBinaryClassification(const T val) {
 #ifdef FAST_EXP
@@ -423,6 +424,7 @@ GPU_DEVICE INLINE_ALWAYS static T ExpForMulticlass(const T val) {
    return std::exp(bNegateInput ? -val : val);
 #endif // FAST_EXP
 }
+#endif // NEVER
 
 
 
@@ -560,6 +562,7 @@ GPU_DEVICE INLINE_ALWAYS static T LogApproxSchraudolph(T val, const float addLog
    return val;
 }
 
+#ifdef NEVER
 template<bool bNegateOutput = false, typename T>
 GPU_DEVICE INLINE_ALWAYS static T LogForLogLoss(const T val) {
 
@@ -594,6 +597,7 @@ GPU_DEVICE INLINE_ALWAYS static T LogForLogLoss(const T val) {
    return ret;
 #endif // FAST_LOG
 }
+#endif // NEVER
 
 } // DEFINED_ZONE_NAME
 

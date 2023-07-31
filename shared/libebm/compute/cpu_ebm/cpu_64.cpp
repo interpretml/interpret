@@ -267,6 +267,28 @@ struct Cpu_64_Float final {
       return Cpu_64_Float(std::log(val.m_data));
    }
 
+   template<bool bNegateInput = false>
+   static inline Cpu_64_Float ApproxExp(const Cpu_64_Float & val) noexcept {
+#ifdef FAST_LOG
+      // TODO: we might want different constants for binary classification and multiclass. See notes in approximate_math.hpp
+      return Cpu_64_Float(ExpApproxSchraudolph<bNegateInput, true, true, true, false>(
+         val.m_data, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit));
+#else // FAST_LOG
+      return Exp(bNegateInput ? -val : val);
+#endif // FAST_LOG
+   }
+
+   template<bool bNegateOutput = false>
+   static inline Cpu_64_Float ApproxLog(const Cpu_64_Float & val) noexcept {
+#ifdef FAST_LOG
+      return Cpu_64_Float(LogApproxSchraudolph<bNegateOutput, true, false, false, false>(
+         val.m_data, k_logTermLowerBoundInputCloseToOne));
+#else // FAST_LOG
+      const Cpu_64_Float ret = Log(val);
+      return bNegateOutput ? -ret : ret;
+#endif // FAST_LOG
+   }
+
    friend inline T Sum(const Cpu_64_Float & val) noexcept {
       return val.m_data;
    }

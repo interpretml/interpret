@@ -277,6 +277,28 @@ struct Cuda_32_Float final {
       return Cuda_32_Float(logf(val.m_data));
    }
 
+   template<bool bNegateInput = false>
+   GPU_DEVICE static inline Cuda_32_Float ApproxExp(const Cuda_32_Float & val) noexcept {
+#ifdef FAST_LOG
+      // TODO: we might want different constants for binary classification and multiclass. See notes in approximate_math.hpp
+      return Cuda_32_Float(ExpApproxSchraudolph<bNegateInput, true, true, true, false>(
+         val.m_data, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit));
+#else // FAST_LOG
+      return Exp(bNegateInput ? -val : val);
+#endif // FAST_LOG
+   }
+
+   template<bool bNegateOutput = false>
+   GPU_DEVICE static inline Cuda_32_Float ApproxLog(const Cuda_32_Float & val) noexcept {
+#ifdef FAST_LOG
+      return Cuda_32_Float(LogApproxSchraudolph<bNegateOutput, true, false, false, false>(
+         val.m_data, k_logTermLowerBoundInputCloseToOne));
+#else // FAST_LOG
+      const Cuda_32_Float ret = Log(val);
+      return bNegateOutput ? -ret : ret;
+#endif // FAST_LOG
+   }
+
    GPU_BOTH friend inline T Sum(const Cuda_32_Float & val) noexcept {
       return val.m_data;
    }

@@ -214,7 +214,7 @@ struct LogLossMulticlassObjective : MulticlassObjective {
                sampleScore.Store(pSampleScore);
                pSampleScore += TFloat::k_cSIMDPack;
 
-               const TFloat oneExp = ApplyFunc([](typename TFloat::T x) { return ExpForMulticlass<false>(x); }, sampleScore);
+               const TFloat oneExp = TFloat::ApproxExp<false>(sampleScore);
                oneExp.Store(&aExps[iScore1 << TFloat::k_cSIMDShift]);
                sumExp += oneExp;
 
@@ -237,8 +237,7 @@ struct LogLossMulticlassObjective : MulticlassObjective {
                // identical, so instead of calling LoadScattered we'll be able to call LoadAligned
                const TFloat itemExp = TFloat::Load(aExps, target);
                const TFloat invertedProbability = FastApproxDivide(sumExp, itemExp);
-               TFloat metric =
-                  ApplyFunc([](typename TFloat::T x) { return LogForLogLoss<false>(x); }, invertedProbability);
+               TFloat metric = TFloat::ApproxLog<false>(invertedProbability);
 
                if(bWeight) {
                   const TFloat weight = TFloat::Load(pWeight);

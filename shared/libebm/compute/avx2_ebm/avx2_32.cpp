@@ -367,6 +367,26 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       return ApplyFunc([](T x) { return std::log(x); }, val);
    }
 
+   template<bool bNegateInput = false>
+   static inline Avx2_32_Float ApproxExp(const Avx2_32_Float & val) noexcept {
+#ifdef FAST_LOG
+      // TODO: we might want different constants for binary classification and multiclass. See notes in approximate_math.hpp
+      return ApplyFunc([](T x) { return ExpApproxSchraudolph<bNegateInput, true, true, true, false>(x, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit); }, val);
+#else // FAST_LOG
+      return Exp(bNegateInput ? -val : val);
+#endif // FAST_LOG
+   }
+
+   template<bool bNegateOutput = false>
+   static inline Avx2_32_Float ApproxLog(const Avx2_32_Float & val) noexcept {
+#ifdef FAST_LOG
+      return ApplyFunc([](T x) { return LogApproxSchraudolph<bNegateOutput, true, false, false, false>(x, k_logTermLowerBoundInputCloseToOne); }, val);
+#else // FAST_LOG
+      const Avx2_32_Float ret = Log(val);
+      return bNegateOutput ? -ret : ret;
+#endif // FAST_LOG
+   }
+
    friend inline T Sum(const Avx2_32_Float & val) noexcept {
       const __m128 vlow = _mm256_castps256_ps128(val.m_data);
       const __m128 vhigh = _mm256_extractf128_ps(val.m_data, 1);
