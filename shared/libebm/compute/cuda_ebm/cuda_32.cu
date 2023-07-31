@@ -277,22 +277,36 @@ struct Cuda_32_Float final {
       return Cuda_32_Float(logf(val.m_data));
    }
 
-   template<bool bNegateInput = false>
+   template<
+      bool bNegateInput = false,
+      bool bNaNPossible = true,
+      bool bUnderflowPossible = true,
+      bool bOverflowPossible = true,
+      bool bSpecialCaseZero = false
+   >
    GPU_DEVICE static inline Cuda_32_Float ApproxExp(const Cuda_32_Float & val) noexcept {
 #ifdef FAST_LOG
       // TODO: we might want different constants for binary classification and multiclass. See notes in approximate_math.hpp
-      return Cuda_32_Float(ExpApproxSchraudolph<bNegateInput, true, true, true, false>(
-         val.m_data, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit));
+      return Cuda_32_Float(ExpApproxSchraudolph<
+         bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero
+      >(val.m_data, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit));
 #else // FAST_LOG
       return Exp(bNegateInput ? -val : val);
 #endif // FAST_LOG
    }
 
-   template<bool bNegateOutput = false>
+   template<
+      bool bNegateOutput = false,
+      bool bNaNPossible = true,
+      bool bNegativePossible = false,
+      bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a big positive number
+      bool bPositiveInfinityPossible = false // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
+   >
    GPU_DEVICE static inline Cuda_32_Float ApproxLog(const Cuda_32_Float & val) noexcept {
 #ifdef FAST_LOG
-      return Cuda_32_Float(LogApproxSchraudolph<bNegateOutput, true, false, false, false>(
-         val.m_data, k_logTermLowerBoundInputCloseToOne));
+      return Cuda_32_Float(LogApproxSchraudolph<
+         bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible
+      >(val.m_data, k_logTermLowerBoundInputCloseToOne));
 #else // FAST_LOG
       const Cuda_32_Float ret = Log(val);
       return bNegateOutput ? -ret : ret;

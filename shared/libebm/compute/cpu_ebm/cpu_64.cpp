@@ -267,22 +267,36 @@ struct Cpu_64_Float final {
       return Cpu_64_Float(std::log(val.m_data));
    }
 
-   template<bool bNegateInput = false>
+   template<
+      bool bNegateInput = false,
+      bool bNaNPossible = true,
+      bool bUnderflowPossible = true,
+      bool bOverflowPossible = true,
+      bool bSpecialCaseZero = false
+   >
    static inline Cpu_64_Float ApproxExp(const Cpu_64_Float & val) noexcept {
 #ifdef FAST_LOG
       // TODO: we might want different constants for binary classification and multiclass. See notes in approximate_math.hpp
-      return Cpu_64_Float(ExpApproxSchraudolph<bNegateInput, true, true, true, false>(
-         val.m_data, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit));
+      return Cpu_64_Float(ExpApproxSchraudolph<
+         bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero
+      >(val.m_data, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit));
 #else // FAST_LOG
       return Exp(bNegateInput ? -val : val);
 #endif // FAST_LOG
    }
 
-   template<bool bNegateOutput = false>
+   template<
+      bool bNegateOutput = false,
+      bool bNaNPossible = true,
+      bool bNegativePossible = false,
+      bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a big positive number
+      bool bPositiveInfinityPossible = false // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
+   >
    static inline Cpu_64_Float ApproxLog(const Cpu_64_Float & val) noexcept {
 #ifdef FAST_LOG
-      return Cpu_64_Float(LogApproxSchraudolph<bNegateOutput, true, false, false, false>(
-         val.m_data, k_logTermLowerBoundInputCloseToOne));
+      return Cpu_64_Float(LogApproxSchraudolph<
+         bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible
+      >(val.m_data, k_logTermLowerBoundInputCloseToOne));
 #else // FAST_LOG
       const Cpu_64_Float ret = Log(val);
       return bNegateOutput ? -ret : ret;
