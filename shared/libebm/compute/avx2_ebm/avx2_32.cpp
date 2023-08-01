@@ -394,10 +394,32 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit
    ) noexcept {
 #ifdef FAST_LOG
-      // TODO: we might want different constants for binary classification and multiclass. See notes in approximate_math.hpp
-      return ApplyFunc([addExpSchraudolphTerm](T x) { return ExpApproxSchraudolph<
-         bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero
-      >(x, addExpSchraudolphTerm); }, val);
+      static constexpr float signedExpMultiple = bNegateInput ? -k_expMultiple : k_expMultiple;
+      const __m256 product = (val * signedExpMultiple).m_data;
+      // TODO: use a fused multiply add here (see approximate_math.hpp)
+      const __m256i retInt = _mm256_add_epi32(_mm256_cvttps_epi32(product), _mm256_set1_epi32(addExpSchraudolphTerm));
+      Avx2_32_Float result = Avx2_32_Float(_mm256_castsi256_ps(retInt));
+      if(bSpecialCaseZero) {
+         result = IfEqual(0.0, val, 1.0, result);
+      }
+      if(bOverflowPossible) {
+         if(bNegateInput) {
+            result = IfLess(val, static_cast<T>(-k_expOverflowPoint), std::numeric_limits<T>::infinity(), result);
+         } else {
+            result = IfLess(static_cast<T>(k_expOverflowPoint), val, std::numeric_limits<T>::infinity(), result);
+         }
+      }
+      if(bUnderflowPossible) {
+         if(bNegateInput) {
+            result = IfLess(static_cast<T>(-k_expUnderflowPoint), val, 0.0, result);
+         } else {
+            result = IfLess(val, static_cast<T>(k_expUnderflowPoint), 0.0, result);
+         }
+      }
+      if(bNaNPossible) {
+         result = IfNaN(val, val, result);
+      }
+      return result;
 #else // FAST_LOG
       return Exp(bNegateInput ? -val : val);
 #endif // FAST_LOG
@@ -415,9 +437,28 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne
    ) noexcept {
 #ifdef FAST_LOG
-      return ApplyFunc([addLogSchraudolphTerm](T x) { return LogApproxSchraudolph<
-         bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible
-      >(x, addLogSchraudolphTerm); }, val);
+      const __m256i retInt = _mm256_castps_si256(val.m_data);
+      Avx2_32_Float result = Avx2_32_Float(_mm256_cvtepi32_ps(retInt));
+      if(bNegateOutput) {
+         // TODO: use a fused multiply add here
+         result = result * (-k_logMultiple) + (-addLogSchraudolphTerm);
+      } else {
+         // TODO: use a fused multiply add here
+         result = result * k_logMultiple + addLogSchraudolphTerm;
+      }
+      if(bPositiveInfinityPossible) {
+         result = IfEqual(std::numeric_limits<T>::infinity(), val, bNegateOutput ? -std::numeric_limits<T>::infinity() : std::numeric_limits<T>::infinity(), result);
+      }
+      if(bZeroPossible) {
+         result = IfEqual(0.0, val, bNegateOutput ? std::numeric_limits<T>::infinity() : -std::numeric_limits<T>::infinity(), result);
+      }
+      if(bNegativePossible) {
+         result = IfLess(val, 0.0, std::numeric_limits<T>::quiet_NaN(), result);
+      }
+      if(bNaNPossible) {
+         result = IfNaN(val, val, result);
+      }
+      return result;
 #else // FAST_LOG
       const Avx2_32_Float ret = Log(val);
       return bNegateOutput ? -ret : ret;

@@ -410,19 +410,41 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       bool bOverflowPossible = true,
       bool bSpecialCaseZero = false
    >
-   static inline Avx512f_32_Float ApproxExp(
-      const Avx512f_32_Float & val, 
-      const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit
-   ) noexcept {
+      static inline Avx512f_32_Float ApproxExp(
+         const Avx512f_32_Float & val,
+         const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit
+      ) noexcept {
 #ifdef FAST_LOG
-      // TODO: we might want different constants for binary classification and multiclass. See notes in approximate_math.hpp
-      return ApplyFunc([addExpSchraudolphTerm](T x) { return ExpApproxSchraudolph<
-         bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero
-      >(x, addExpSchraudolphTerm); }, val);
+      static constexpr float signedExpMultiple = bNegateInput ? -k_expMultiple : k_expMultiple;
+      const __m512 product = (val * signedExpMultiple).m_data;
+      // TODO: use a fused multiply add here (see approximate_math.hpp)
+      const __m512i retInt = _mm512_add_epi32(_mm512_cvttps_epi32(product), _mm512_set1_epi32(addExpSchraudolphTerm));
+      Avx512f_32_Float result = Avx512f_32_Float(_mm512_castsi512_ps(retInt));
+      if(bSpecialCaseZero) {
+         result = IfEqual(0.0, val, 1.0, result);
+      }
+      if(bOverflowPossible) {
+         if(bNegateInput) {
+            result = IfLess(val, static_cast<T>(-k_expOverflowPoint), std::numeric_limits<T>::infinity(), result);
+         } else {
+            result = IfLess(static_cast<T>(k_expOverflowPoint), val, std::numeric_limits<T>::infinity(), result);
+         }
+      }
+      if(bUnderflowPossible) {
+         if(bNegateInput) {
+            result = IfLess(static_cast<T>(-k_expUnderflowPoint), val, 0.0, result);
+         } else {
+            result = IfLess(val, static_cast<T>(k_expUnderflowPoint), 0.0, result);
+         }
+      }
+      if(bNaNPossible) {
+         result = IfNaN(val, val, result);
+      }
+      return result;
 #else // FAST_LOG
       return Exp(bNegateInput ? -val : val);
 #endif // FAST_LOG
-   }
+      }
 
    template<
       bool bNegateOutput = false,
@@ -431,14 +453,33 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a big positive number
       bool bPositiveInfinityPossible = false // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
    >
-   static inline Avx512f_32_Float ApproxLog(
-      const Avx512f_32_Float & val, 
-      const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne
-   ) noexcept {
+      static inline Avx512f_32_Float ApproxLog(
+         const Avx512f_32_Float & val,
+         const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne
+      ) noexcept {
 #ifdef FAST_LOG
-      return ApplyFunc([addLogSchraudolphTerm](T x) { return LogApproxSchraudolph<
-         bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible
-      >(x, addLogSchraudolphTerm); }, val);
+      const __m512i retInt = _mm512_castps_si512(val.m_data);
+      Avx512f_32_Float result = Avx512f_32_Float(_mm512_cvtepi32_ps(retInt));
+      if(bNegateOutput) {
+         // TODO: use a fused multiply add here
+         result = result * (-k_logMultiple) + (-addLogSchraudolphTerm);
+      } else {
+         // TODO: use a fused multiply add here
+         result = result * k_logMultiple + addLogSchraudolphTerm;
+      }
+      if(bPositiveInfinityPossible) {
+         result = IfEqual(std::numeric_limits<T>::infinity(), val, bNegateOutput ? -std::numeric_limits<T>::infinity() : std::numeric_limits<T>::infinity(), result);
+      }
+      if(bZeroPossible) {
+         result = IfEqual(0.0, val, bNegateOutput ? std::numeric_limits<T>::infinity() : -std::numeric_limits<T>::infinity(), result);
+      }
+      if(bNegativePossible) {
+         result = IfLess(val, 0.0, std::numeric_limits<T>::quiet_NaN(), result);
+      }
+      if(bNaNPossible) {
+         result = IfNaN(val, val, result);
+      }
+      return result;
 #else // FAST_LOG
       const Avx512f_32_Float ret = Log(val);
       return bNegateOutput ? -ret : ret;
