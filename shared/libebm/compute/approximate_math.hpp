@@ -549,7 +549,10 @@ GPU_DEVICE INLINE_ALWAYS static T LogApproxSchraudolph(T val, const float addLog
 
          float retFloat = static_cast<float>(retInt);
 
-         // use a fused multiply add assembly instruction, so don't add the addLogSchraudolphTerm prior to multiplying
+         // TODO: it might be possible and useful to add addLogSchraudolphTerm / k_logMultiple to retInt before
+         // converting it from int to float which would use an integer add instead of a float add. I'm not 
+         // sure if this causes an overflow, or if it's better since we can use a fused multiply add instruction
+         // at least for SIMD with this construction, which makes the add part zero cost.
          if(bNegateOutput) {
             retFloat = (-k_logMultiple) * retFloat + (-addLogSchraudolphTerm);
          } else {

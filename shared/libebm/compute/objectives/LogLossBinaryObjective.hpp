@@ -159,6 +159,16 @@ struct LogLossBinaryObjective : BinaryObjective {
             pInputData += TFloat::TInt::k_cSIMDPack;
          }
          while(true) {
+            // TODO: the speed of this loop can probably be improved by (AFTER eliminating the target by sorting the data):
+            //   0) eliminate the target by sorting the data and making it a templated argument, so it has 0 CPU cost
+            //   1) fetch the score from memory (predictable load is fast)
+            //   2) issue the gather operation FOR THE NEXT loop(unpredictable load is slow)
+            //   3) move the fetched gather operation from the previous loop into a new register
+            //   4) do the computation using the fetched score and updateScore from the previous loop iteration
+            // This will allow the CPU to do the gathering operation in the background while it works on computation.
+            // Probably we want to put the code below inside the loop into an inline function that we can call
+            // either at the start during init or the end once the rest is done.. not sure which.
+
             if(!bCompilerZeroDimensional) {
                const typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
                updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);

@@ -412,6 +412,15 @@ protected:
 #endif // GPU_COMPILE
       }
       do {
+         // TODO: the speed of this loop can probably be improved by:
+         //   1) fetch the score from memory (predictable load is fast)
+         //   2) issue the gather operation FOR THE NEXT loop(unpredictable load is slow)
+         //   3) move the fetched gather operation from the previous loop into a new register
+         //   4) do the computation using the fetched score and updateScore from the previous loop iteration
+         // This will allow the CPU to do the gathering operation in the background while it works on computation.
+         // Probably we want to put the code below inside the loop into an inline function that we can call
+         // either at the start during init or the end once the rest is done.. not sure which.
+
          typename TFloat::TInt iTensorBinCombined;
          if(!bCompilerZeroDimensional) {
             iTensorBinCombined = TFloat::TInt::Load(pInputData);

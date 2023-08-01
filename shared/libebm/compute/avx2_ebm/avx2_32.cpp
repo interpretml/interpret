@@ -393,11 +393,18 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       const Avx2_32_Float & val, 
       const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit
    ) noexcept {
+      // This code will make no sense until you read the Nicol N. Schraudolph paper:
+      // https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
+      // and also see approximate_math.hpp
 #ifdef FAST_LOG
       static constexpr float signedExpMultiple = bNegateInput ? -k_expMultiple : k_expMultiple;
+#ifdef EXP_INT_SIMD
       const __m256 product = (val * signedExpMultiple).m_data;
-      // TODO: use a fused multiply add here (see approximate_math.hpp)
       const __m256i retInt = _mm256_add_epi32(_mm256_cvttps_epi32(product), _mm256_set1_epi32(addExpSchraudolphTerm));
+#else // EXP_INT_SIMD
+      const __m256 retFloat = FusedMultiplyAdd(val, signedExpMultiple, static_cast<T>(addExpSchraudolphTerm)).m_data;
+      const __m256i retInt = _mm256_cvttps_epi32(retFloat);
+#endif // EXP_INT_SIMD
       Avx2_32_Float result = Avx2_32_Float(_mm256_castsi256_ps(retInt));
       if(bSpecialCaseZero) {
          result = IfEqual(0.0, val, 1.0, result);
@@ -421,6 +428,7 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       }
       return result;
 #else // FAST_LOG
+      UNUSED(addExpSchraudolphTerm);
       return Exp(bNegateInput ? -val : val);
 #endif // FAST_LOG
    }
@@ -436,15 +444,16 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       const Avx2_32_Float & val, 
       const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne
    ) noexcept {
+      // This code will make no sense until you read the Nicol N. Schraudolph paper:
+      // https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
+      // and also see approximate_math.hpp
 #ifdef FAST_LOG
       const __m256i retInt = _mm256_castps_si256(val.m_data);
       Avx2_32_Float result = Avx2_32_Float(_mm256_cvtepi32_ps(retInt));
       if(bNegateOutput) {
-         // TODO: use a fused multiply add here
-         result = result * (-k_logMultiple) + (-addLogSchraudolphTerm);
+         result = FusedMultiplyAdd(result, -k_logMultiple, -addLogSchraudolphTerm);
       } else {
-         // TODO: use a fused multiply add here
-         result = result * k_logMultiple + addLogSchraudolphTerm;
+         result = FusedMultiplyAdd(result, k_logMultiple, addLogSchraudolphTerm);
       }
       if(bPositiveInfinityPossible) {
          result = IfEqual(std::numeric_limits<T>::infinity(), val, bNegateOutput ? -std::numeric_limits<T>::infinity() : std::numeric_limits<T>::infinity(), result);
@@ -460,6 +469,7 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       }
       return result;
 #else // FAST_LOG
+      UNUSED(addLogSchraudolphTerm);
       const Avx2_32_Float ret = Log(val);
       return bNegateOutput ? -ret : ret;
 #endif // FAST_LOG

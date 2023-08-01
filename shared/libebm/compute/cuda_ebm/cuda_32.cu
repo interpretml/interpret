@@ -302,6 +302,7 @@ struct Cuda_32_Float final {
          bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero
       >(val.m_data, addExpSchraudolphTerm));
 #else // FAST_LOG
+      UNUSED(addExpSchraudolphTerm);
       return Exp(bNegateInput ? -val : val);
 #endif // FAST_LOG
    }
@@ -322,6 +323,7 @@ struct Cuda_32_Float final {
          bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible
       >(val.m_data, addLogSchraudolphTerm));
 #else // FAST_LOG
+      UNUSED(addLogSchraudolphTerm);
       const Cuda_32_Float ret = Log(val);
       return bNegateOutput ? -ret : ret;
 #endif // FAST_LOG

@@ -292,6 +292,7 @@ struct Cpu_64_Float final {
          bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero
       >(val.m_data, addExpSchraudolphTerm));
 #else // FAST_LOG
+      UNUSED(addExpSchraudolphTerm);
       return Exp(bNegateInput ? -val : val);
 #endif // FAST_LOG
    }
@@ -312,6 +313,7 @@ struct Cpu_64_Float final {
          bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible
       >(val.m_data, addLogSchraudolphTerm));
 #else // FAST_LOG
+      UNUSED(addLogSchraudolphTerm);
       const Cpu_64_Float ret = Log(val);
       return bNegateOutput ? -ret : ret;
 #endif // FAST_LOG
