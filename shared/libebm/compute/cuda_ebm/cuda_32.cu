@@ -241,6 +241,14 @@ struct Cuda_32_Float final {
       return cmp1.m_data < cmp2.m_data ? trueVal : falseVal;
    }
 
+   GPU_BOTH friend inline Cuda_32_Float IfEqual(const Cuda_32_Float & cmp1, const Cuda_32_Float & cmp2, const Cuda_32_Float & trueVal, const Cuda_32_Float & falseVal) noexcept {
+      return cmp1.m_data == cmp2.m_data ? trueVal : falseVal;
+   }
+
+   GPU_BOTH friend inline Cuda_32_Float IfNaN(const Cuda_32_Float & cmp, const Cuda_32_Float & trueVal, const Cuda_32_Float & falseVal) noexcept {
+      return isnan(cmp.m_data) ? trueVal : falseVal;
+   }
+
    GPU_BOTH friend inline Cuda_32_Float IfEqual(const Cuda_32_Int & cmp1, const Cuda_32_Int & cmp2, const Cuda_32_Float & trueVal, const Cuda_32_Float & falseVal) noexcept {
       return cmp1.m_data == cmp2.m_data ? trueVal : falseVal;
    }
@@ -284,12 +292,15 @@ struct Cuda_32_Float final {
       bool bOverflowPossible = true,
       bool bSpecialCaseZero = false
    >
-   GPU_DEVICE static inline Cuda_32_Float ApproxExp(const Cuda_32_Float & val) noexcept {
+   GPU_DEVICE static inline Cuda_32_Float ApproxExp(
+      const Cuda_32_Float & val, 
+      const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit
+   ) noexcept {
 #ifdef FAST_LOG
       // TODO: we might want different constants for binary classification and multiclass. See notes in approximate_math.hpp
       return Cuda_32_Float(ExpApproxSchraudolph<
          bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero
-      >(val.m_data, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit));
+      >(val.m_data, addExpSchraudolphTerm));
 #else // FAST_LOG
       return Exp(bNegateInput ? -val : val);
 #endif // FAST_LOG
@@ -302,11 +313,14 @@ struct Cuda_32_Float final {
       bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a big positive number
       bool bPositiveInfinityPossible = false // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
    >
-   GPU_DEVICE static inline Cuda_32_Float ApproxLog(const Cuda_32_Float & val) noexcept {
+   GPU_DEVICE static inline Cuda_32_Float ApproxLog(
+      const Cuda_32_Float & val, 
+      const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne
+   ) noexcept {
 #ifdef FAST_LOG
       return Cuda_32_Float(LogApproxSchraudolph<
          bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible
-      >(val.m_data, k_logTermLowerBoundInputCloseToOne));
+      >(val.m_data, addLogSchraudolphTerm));
 #else // FAST_LOG
       const Cuda_32_Float ret = Log(val);
       return bNegateOutput ? -ret : ret;

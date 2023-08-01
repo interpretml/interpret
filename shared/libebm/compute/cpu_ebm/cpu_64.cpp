@@ -231,6 +231,14 @@ struct Cpu_64_Float final {
       return cmp1.m_data < cmp2.m_data ? trueVal : falseVal;
    }
 
+   friend inline Cpu_64_Float IfEqual(const Cpu_64_Float & cmp1, const Cpu_64_Float & cmp2, const Cpu_64_Float & trueVal, const Cpu_64_Float & falseVal) noexcept {
+      return cmp1.m_data == cmp2.m_data ? trueVal : falseVal;
+   }
+
+   friend inline Cpu_64_Float IfNaN(const Cpu_64_Float & cmp, const Cpu_64_Float & trueVal, const Cpu_64_Float & falseVal) noexcept {
+      return std::isnan(cmp.m_data) ? trueVal : falseVal;
+   }
+
    friend inline Cpu_64_Float IfEqual(const Cpu_64_Int & cmp1, const Cpu_64_Int & cmp2, const Cpu_64_Float & trueVal, const Cpu_64_Float & falseVal) noexcept {
       return cmp1.m_data == cmp2.m_data ? trueVal : falseVal;
    }
@@ -274,12 +282,15 @@ struct Cpu_64_Float final {
       bool bOverflowPossible = true,
       bool bSpecialCaseZero = false
    >
-   static inline Cpu_64_Float ApproxExp(const Cpu_64_Float & val) noexcept {
+   static inline Cpu_64_Float ApproxExp(
+      const Cpu_64_Float & val, 
+      const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit
+   ) noexcept {
 #ifdef FAST_LOG
       // TODO: we might want different constants for binary classification and multiclass. See notes in approximate_math.hpp
       return Cpu_64_Float(ExpApproxSchraudolph<
          bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero
-      >(val.m_data, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit));
+      >(val.m_data, addExpSchraudolphTerm));
 #else // FAST_LOG
       return Exp(bNegateInput ? -val : val);
 #endif // FAST_LOG
@@ -292,11 +303,14 @@ struct Cpu_64_Float final {
       bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a big positive number
       bool bPositiveInfinityPossible = false // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
    >
-   static inline Cpu_64_Float ApproxLog(const Cpu_64_Float & val) noexcept {
+   static inline Cpu_64_Float ApproxLog(
+      const Cpu_64_Float & val, 
+      const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne
+   ) noexcept {
 #ifdef FAST_LOG
       return Cpu_64_Float(LogApproxSchraudolph<
          bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible
-      >(val.m_data, k_logTermLowerBoundInputCloseToOne));
+      >(val.m_data, addLogSchraudolphTerm));
 #else // FAST_LOG
       const Cpu_64_Float ret = Log(val);
       return bNegateOutput ? -ret : ret;

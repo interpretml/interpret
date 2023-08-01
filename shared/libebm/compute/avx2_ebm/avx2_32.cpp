@@ -314,6 +314,21 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, mask));
    }
 
+   friend inline Avx2_32_Float IfEqual(const Avx2_32_Float & cmp1, const Avx2_32_Float & cmp2, const Avx2_32_Float & trueVal, const Avx2_32_Float & falseVal) noexcept {
+      const __m256 mask = _mm256_cmp_ps(cmp1.m_data, cmp2.m_data, _CMP_EQ_OQ);
+      return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, mask));
+   }
+
+   friend inline Avx2_32_Float IfNaN(const Avx2_32_Float & cmp, const Avx2_32_Float & trueVal, const Avx2_32_Float & falseVal) noexcept {
+      // rely on the fact that a == a can only be false if a is a NaN
+      //
+      // TODO: _mm256_cmp_ps has a latency of 4 and a throughput of 0.5.  It might be faster to convert to integers,
+      //       use an AND with _mm256_and_si256 to select just the NaN bits, then compare to zero with 
+      //       _mm256_cmpeq_epi32, but that has an overall latency of 2 and a throughput of 0.83333, which is lower 
+      //       throughput, so experiment with this
+      return IfEqual(cmp, cmp, falseVal, trueVal);
+   }
+
    friend inline Avx2_32_Float IfEqual(const Avx2_32_Int & cmp1, const Avx2_32_Int & cmp2, const Avx2_32_Float & trueVal, const Avx2_32_Float & falseVal) noexcept {
       const __m256i mask = _mm256_cmpeq_epi32(cmp1.m_data, cmp2.m_data);
       return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, _mm256_castsi256_ps(mask)));
@@ -374,12 +389,15 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       bool bOverflowPossible = true,
       bool bSpecialCaseZero = false
    >
-   static inline Avx2_32_Float ApproxExp(const Avx2_32_Float & val) noexcept {
+   static inline Avx2_32_Float ApproxExp(
+      const Avx2_32_Float & val, 
+      const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit
+   ) noexcept {
 #ifdef FAST_LOG
       // TODO: we might want different constants for binary classification and multiclass. See notes in approximate_math.hpp
-      return ApplyFunc([](T x) { return ExpApproxSchraudolph<
+      return ApplyFunc([addExpSchraudolphTerm](T x) { return ExpApproxSchraudolph<
          bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero
-      >(x, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit); }, val);
+      >(x, addExpSchraudolphTerm); }, val);
 #else // FAST_LOG
       return Exp(bNegateInput ? -val : val);
 #endif // FAST_LOG
@@ -392,11 +410,14 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a big positive number
       bool bPositiveInfinityPossible = false // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
    >
-   static inline Avx2_32_Float ApproxLog(const Avx2_32_Float & val) noexcept {
+   static inline Avx2_32_Float ApproxLog(
+      const Avx2_32_Float & val, 
+      const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne
+   ) noexcept {
 #ifdef FAST_LOG
-      return ApplyFunc([](T x) { return LogApproxSchraudolph<
+      return ApplyFunc([addLogSchraudolphTerm](T x) { return LogApproxSchraudolph<
          bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible
-      >(x, k_logTermLowerBoundInputCloseToOne); }, val);
+      >(x, addLogSchraudolphTerm); }, val);
 #else // FAST_LOG
       const Avx2_32_Float ret = Log(val);
       return bNegateOutput ? -ret : ret;
