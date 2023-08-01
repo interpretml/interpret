@@ -512,7 +512,7 @@ GPU_DEVICE INLINE_ALWAYS static T LogApproxSchraudolph(T val, const float addLog
             if(UNLIKELY(!(T { 0 } < val))) {
                if(bZeroPossible) {
                   return PREDICTABLE(T { 0 } == val) ? 
-                     -std::numeric_limits<T>::infinity() : std::numeric_limits<T>::quiet_NaN();
+                     (bNegateOutput ? std::numeric_limits<T>::infinity() : -std::numeric_limits<T>::infinity()) : std::numeric_limits<T>::quiet_NaN();
                } else {
                   return std::numeric_limits<T>::quiet_NaN();
                }
@@ -520,7 +520,7 @@ GPU_DEVICE INLINE_ALWAYS static T LogApproxSchraudolph(T val, const float addLog
          } else {
             if(bZeroPossible) {
                if(UNLIKELY(T { 0 } == val)) {
-                  return -std::numeric_limits<T>::infinity();
+                  return bNegateOutput ? std::numeric_limits<T>::infinity() : -std::numeric_limits<T>::infinity();
                }
             }
          }
@@ -528,7 +528,7 @@ GPU_DEVICE INLINE_ALWAYS static T LogApproxSchraudolph(T val, const float addLog
             if(UNLIKELY(static_cast<T>(std::numeric_limits<float>::max()) < val)) {
                // if val is a non-float32, and it has a value outside of the float range, then it would result in 
                // undefined behavior if we converted it to a float, so check it here and return
-               return std::numeric_limits<T>::infinity();
+               return bNegateOutput ? -std::numeric_limits<T>::infinity() : std::numeric_limits<T>::infinity();
             }
          }
 
@@ -557,6 +557,10 @@ GPU_DEVICE INLINE_ALWAYS static T LogApproxSchraudolph(T val, const float addLog
          }
 
          val = static_cast<T>(retFloat);
+      } else {
+         if(bNegateOutput) {
+            val = -std::numeric_limits<T>::infinity();
+         }
       }
    }
    return val;
