@@ -105,6 +105,7 @@ class Registration {
    }
 
 protected:
+   const bool m_bCpuOnly;
 
    static void CheckParamNames(const char * const sParamName, std::vector<const char *> usedParamNames);
 
@@ -173,7 +174,7 @@ protected:
       void * const pWrapperOut
    ) const = 0;
 
-   Registration(const char * const sRegistrationName);
+   Registration(const bool bCpuOnly, const char * const sRegistrationName);
 
 public:
 
@@ -197,6 +198,7 @@ class RegistrationPack final : public Registration {
 
    // this lambda function holds our templated parameter pack until we need it
    std::function<bool(
+      const bool bCpuOnly,
       const Config * const pConfig,
       const char * const sRegistration,
       const char * const sRegistrationEnd,
@@ -217,6 +219,7 @@ class RegistrationPack final : public Registration {
 
    template<typename... ArgsConverted>
    static bool CheckAndCallNew(
+      const bool bCpuOnly,
       const Config * const pConfig,
       const char * const sRegistration,
       const char * const sRegistrationEnd,
@@ -255,7 +258,7 @@ class RegistrationPack final : public Registration {
             EBM_ASSERT(nullptr != pRegistrable); // since allocation already happened
             EBM_ASSERT(pRegistrableMemory == pRegistrable);
             // this cannot fail or throw exceptions.  It takes ownership of our pRegistrable pointer
-            pRegistrable->FillWrapper(pWrapperOut);
+            pRegistrable->FillWrapper(bCpuOnly, pWrapperOut);
             return false;
          } catch(const SkipRegistrationException &) {
             AlignedFree(pRegistrableMemory);
@@ -293,18 +296,19 @@ class RegistrationPack final : public Registration {
       }
 
       // m_callBack contains the parameter pack that our constructor was created with, so we're regaining access here
-      return m_callBack(pConfig, sRegistration, sRegistrationEnd, pWrapperOut);
+      return m_callBack(m_bCpuOnly, pConfig, sRegistration, sRegistrationEnd, pWrapperOut);
    }
 
 public:
 
-   RegistrationPack(const char * sRegistrationName, const Args &... args) : Registration(sRegistrationName) {
+   RegistrationPack(const bool bCpuOnly, const char * sRegistrationName, const Args &... args) : Registration(bCpuOnly, sRegistrationName) {
 
       std::vector<const char *> usedParamNames;
       UnpackRecursive(usedParamNames, args...);
 
       // hide our parameter pack in a lambda so that we don't have to think about it yet. The lambda also makes a copy.
       m_callBack = [args...](
+         const bool bCpuOnlyLambda,
          const Config * const pConfig,
          const char * const sRegistration,
          const char * const sRegistrationEnd,
@@ -322,6 +326,7 @@ public:
          // the UnpackParam functions are called, but we are guaranteed that they are all called before 
          // CheckAndCallNew is called, so inside there we verify whether all the parameters were used
          return CheckAndCallNew(
+            bCpuOnlyLambda,
             pConfig,
             sRegistration,
             sRegistrationEnd,
@@ -333,9 +338,9 @@ public:
 };
 
 template<template <typename> class TRegistrable, typename TFloat, typename... Args>
-std::shared_ptr<const Registration> Register(const char * const sRegistrationName, const Args &... args) {
+std::shared_ptr<const Registration> Register(const bool bCpuOnly, const char * const sRegistrationName, const Args &... args) {
    // ideally we'd be returning unique_ptr here, but we pass this to an initialization list which doesn't work in C++11
-   return std::make_shared<const RegistrationPack<TRegistrable, TFloat, Args...>>(sRegistrationName, args...);
+   return std::make_shared<const RegistrationPack<TRegistrable, TFloat, Args...>>(bCpuOnly, sRegistrationName, args...);
 }
 
 } // DEFINED_ZONE_NAME

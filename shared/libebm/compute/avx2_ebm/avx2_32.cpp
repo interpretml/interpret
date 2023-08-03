@@ -518,9 +518,13 @@ static_assert(std::is_standard_layout<Avx2_32_Float>::value && std::is_trivially
 
 // FIRST, define the RegisterObjective function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions
-template<template <typename> class TRegistrable, typename... Args>
-INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterObjective(const char * const sRegistrationName, const Args &... args) {
-   return Register<TRegistrable, Avx2_32_Float>(sRegistrationName, args...);
+template<template <typename> class TRegistrable, bool bCpuOnly, typename... Args>
+INLINE_ALWAYS static typename std::enable_if<bCpuOnly, std::shared_ptr<const Registration>>::type RegisterObjective(const char * const, const Args &...) {
+   return nullptr;
+}
+template<template <typename> class TRegistrable, bool bCpuOnly, typename... Args>
+INLINE_ALWAYS static typename std::enable_if<!bCpuOnly, std::shared_ptr<const Registration>>::type RegisterObjective(const char * const sRegistrationName, const Args &... args) {
+   return Register<TRegistrable, Avx2_32_Float>(bCpuOnly, sRegistrationName, args...);
 }
 
 // now include all our special objective registrations which will use the RegisterObjective function we defined above!

@@ -169,7 +169,7 @@ extern ErrorEbm GetObjective(
       return error;
    }
 
-   if(nullptr != pSIMDObjectiveWrapperOut) {
+   if(EBM_FALSE == pCpuObjectiveWrapperOut->m_bCpuOnly && nullptr != pSIMDObjectiveWrapperOut) {
       // TODO: add a flag in the pCpuObjectiveWrapperOut struct that indicates if the objective can be SIMDed
       //       we first make the cpu version and if that says it can't be SIMDed then we shouldn't try
       while(true) {

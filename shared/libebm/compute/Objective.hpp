@@ -531,7 +531,7 @@ protected:
    }
 
    template<typename TObjective, typename TFloat>
-   INLINE_RELEASE_TEMPLATED void FillObjectiveWrapper(void * const pWrapperOut) noexcept {
+   INLINE_RELEASE_TEMPLATED void FillObjectiveWrapper(const bool bCpuOnly, void * const pWrapperOut) noexcept {
       EBM_ASSERT(nullptr != pWrapperOut);
       ObjectiveWrapper * const pObjectiveWrapperOut = static_cast<ObjectiveWrapper *>(pWrapperOut);
       FunctionPointersCpp * const pFunctionPointers =
@@ -587,6 +587,8 @@ protected:
       pObjectiveWrapperOut->m_bRmse = TObjective::k_bRmse ? EBM_TRUE : EBM_FALSE;
 
       pObjectiveWrapperOut->m_pObjective = this;
+
+      pObjectiveWrapperOut->m_bCpuOnly = bCpuOnly ? EBM_TRUE : EBM_FALSE;
 
       SetCpu<TObjective, TFloat>(pObjectiveWrapperOut);
    }
@@ -713,11 +715,11 @@ protected:
       static BoolEbm StaticCheckTargets(const Objective * const pThis, const size_t c, const void * const aTargets) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->ParentCheckTargets<const __EBM_TYPE<TFloat>, TFloat>(c, aTargets); \
       } \
-      void FillWrapper(void * const pWrapperOut) noexcept { \
+      void FillWrapper(const bool bCpuOnly, void * const pWrapperOut) noexcept { \
          static_assert( \
             std::is_same<__EBM_TYPE<TFloat>, typename std::remove_pointer<decltype(this)>::type>::value, \
             "*Objective types mismatch"); \
-         FillObjectiveWrapper<typename std::remove_pointer<decltype(this)>::type, TFloat>(pWrapperOut); \
+         FillObjectiveWrapper<typename std::remove_pointer<decltype(this)>::type, TFloat>(bCpuOnly, pWrapperOut); \
       }
 
 #define OBJECTIVE_TEMPLATE_BOILERPLATE \

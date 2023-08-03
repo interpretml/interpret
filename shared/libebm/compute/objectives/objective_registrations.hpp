@@ -38,14 +38,14 @@
 static const std::vector<std::shared_ptr<const Registration>> RegisterObjectives() {
    // IMPORTANT: the parameter types listed here must match the parameters types in the Objective class constructor
    return {
-      RegisterObjective<ExampleRegressionObjective>("example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
-      RegisterObjective<RmseRegressionObjective>("rmse"),
-      RegisterObjective<RmseLogLinkRegressionObjective>("rmse_log"),
-      RegisterObjective<PoissonDevianceRegressionObjective>("poisson_deviance"),
-      RegisterObjective<TweedieDevianceRegressionObjective>("tweedie_deviance", FloatParam("variance_power", 1.5)),
-      RegisterObjective<GammaDevianceRegressionObjective>("gamma_deviance"),
-      RegisterObjective<PseudoHuberRegressionObjective>("pseudo_huber", FloatParam("delta", 1.0)),
-      RegisterObjective<LogLossBinaryObjective>("log_loss"),
-      RegisterObjective<LogLossMulticlassObjective>("log_loss"),
+      RegisterObjective<ExampleRegressionObjective, true>("example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
+      RegisterObjective<RmseRegressionObjective, false>("rmse"),
+      RegisterObjective<RmseLogLinkRegressionObjective, false>("rmse_log"),
+      RegisterObjective<PoissonDevianceRegressionObjective, false>("poisson_deviance"),
+      RegisterObjective<TweedieDevianceRegressionObjective, false>("tweedie_deviance", FloatParam("variance_power", 1.5)),
+      RegisterObjective<GammaDevianceRegressionObjective, false>("gamma_deviance"),
+      RegisterObjective<PseudoHuberRegressionObjective, false>("pseudo_huber", FloatParam("delta", 1.0)),
+      RegisterObjective<LogLossBinaryObjective, false>("log_loss"),
+      RegisterObjective<LogLossMulticlassObjective, false>("log_loss"),
    };
 }

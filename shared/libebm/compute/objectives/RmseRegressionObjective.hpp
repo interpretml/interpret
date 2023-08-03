@@ -25,8 +25,8 @@ struct RmseRegressionObjective : RegressionObjective {
    static BoolEbm StaticCheckTargets(const Objective * const pThis, const size_t c, const void * const aTargets) {
       return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentCheckTargets<const RmseRegressionObjective<TFloat>, TFloat>(c, aTargets);
    }
-   void FillWrapper(void * const pWrapperOut) noexcept {
-      FillObjectiveWrapper<RmseRegressionObjective, TFloat>(pWrapperOut);
+   void FillWrapper(const bool bCpuOnly, void * const pWrapperOut) noexcept {
+      FillObjectiveWrapper<RmseRegressionObjective, TFloat>(bCpuOnly, pWrapperOut);
    }
 
    inline RmseRegressionObjective(const Config & config) {

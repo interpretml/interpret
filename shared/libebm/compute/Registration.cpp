@@ -48,8 +48,9 @@ ParamBase::ParamBase(const char * const sParamName) :
    }
 }
 
-Registration::Registration(const char * const sRegistrationName) : 
-   m_sRegistrationName(sRegistrationName) 
+Registration::Registration(const bool bCpuOnly, const char * const sRegistrationName) :
+   m_sRegistrationName(sRegistrationName),
+   m_bCpuOnly(bCpuOnly)
 {
    if(CheckForIllegalCharacters(sRegistrationName)) {
       throw IllegalRegistrationNameException();
@@ -95,8 +96,6 @@ bool Registration::CreateRegistrable(
    bool bNoMatch = true;
    for(const std::shared_ptr<const Registration> & registration : registrations) {
       if(nullptr != registration) {
-         // normally we shouldn't have nullptr registrations, but let's not complain if someone is writing
-         // their own custom one and accidentally puts one in.  We still understand the intent.
          bNoMatch = registration->AttemptCreate(pConfig, sRegistration, sRegistrationEnd, pWrapperOut);
          if(!bNoMatch) {
             break;

@@ -134,6 +134,8 @@ struct ObjectiveWrapper {
    size_t m_cFloatBytes;
    size_t m_cUIntBytes;
 
+   BoolEbm m_bCpuOnly;
+
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface
    void * m_pFunctionPointersCpp;
 };
