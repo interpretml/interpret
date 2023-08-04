@@ -55,7 +55,7 @@ set_visualize_provider(InlineProvider())
   - open anaconda console window
   - cd <PACKAGE_DOWNLOAD_DIRECTORY>
   - conda env list  # see the list of existing environments
-  - conda create --name interpret_N python=3.10
+  - conda create --yes --name interpret_N python=3.10
   - conda activate interpret_N
   - IN WINDOWS: get the Visual studio environment with: "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
   - pip install interpret-core-*.tar.gz[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]

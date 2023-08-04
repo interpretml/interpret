@@ -17,6 +17,7 @@
 
 #include "libebm.h"
 #include "logging.h"
+#include "common_c.h"
 #include "zones.h"
 
 //#include "approximate_math.hpp"
@@ -29,6 +30,14 @@ namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
+
+static_assert(COUNT_BITS(uint8_t) == 8, "automated test with compiler");
+static_assert(COUNT_BITS(uint16_t) == 16, "automated test with compiler");
+static_assert(COUNT_BITS(uint32_t) == 32, "automated test with compiler");
+static_assert(COUNT_BITS(uint64_t) == 64, "automated test with compiler");
+
+
+
 
 
 //#define INCLUDE_TESTS_IN_RELEASE

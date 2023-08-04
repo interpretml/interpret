@@ -194,11 +194,6 @@ INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * const dest, const char * c
 
 #define COUNT_BITS(uintType)  STATIC_CAST(int, sizeof(uintType) * CHAR_BIT)
 
-static_assert(COUNT_BITS(uint8_t) == 8, "automated test with compiler");
-static_assert(COUNT_BITS(uint16_t) == 16, "automated test with compiler");
-static_assert(COUNT_BITS(uint32_t) == 32, "automated test with compiler");
-static_assert(COUNT_BITS(uint64_t) == 64, "automated test with compiler");
-
 extern void * AlignedAlloc(const size_t cBytes);
 extern void AlignedFree(void * const p);
 extern void * AlignedRealloc(void * const p, const size_t cOldBytes, const size_t cNewBytes);

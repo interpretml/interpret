@@ -302,7 +302,6 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/compute/Objective.cpp" -o "$tmp_path/Objective.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/compute/Registration.cpp" -o "$tmp_path/Registration.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/compute/zoned_bridge_c_functions.cpp" -o "$tmp_path/zoned_bridge_c_functions.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/compute/cpu_ebm/cpu_32.cpp" -o "$tmp_path/cpu_32.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/compute/cpu_ebm/cpu_64.cpp" -o "$tmp_path/cpu_64.o"
 
    ${CC} -c ${CPPFLAGS} ${CFLAGS} ${extras} -DZONE_cpu "$code_path/common_c/common_c.c" -o "$tmp_path/common_c.o"
@@ -343,7 +342,6 @@ if [ -n "${CC}" ] && [ -n "${CXX}" ]; then
    "$tmp_path/Objective.o" \
    "$tmp_path/Registration.o" \
    "$tmp_path/zoned_bridge_c_functions.o" \
-   "$tmp_path/cpu_32.o" \
    "$tmp_path/cpu_64.o" \
    "$tmp_path/common_c.o" \
    "$tmp_path/logging.o" \
