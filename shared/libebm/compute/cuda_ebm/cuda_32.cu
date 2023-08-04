@@ -499,7 +499,7 @@ INLINE_ALWAYS static typename std::enable_if<bCpuOnly, std::shared_ptr<const Reg
 }
 template<template <typename> class TRegistrable, bool bCpuOnly, typename... Args>
 INLINE_ALWAYS static typename std::enable_if<!bCpuOnly, std::shared_ptr<const Registration>>::type RegisterObjective(const char * const sRegistrationName, const Args &... args) {
-   return Register<TRegistrable, Cuda_32_Float, bCpuOnly>(sRegistrationName, args...);
+   return Register<TRegistrable, Cuda_32_Float>(bCpuOnly, sRegistrationName, args...);
 }
 
 // now include all our special objective registrations which will use the RegisterObjective function we defined above!

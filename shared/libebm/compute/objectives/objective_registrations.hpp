@@ -20,8 +20,12 @@
 //   8) Update/verify that the constructor arguments on the new Objective class match the parameters in the 
 //      objective registration below. If the list of parameters in the function RegisterObjectives() do not match the 
 //      constructor parameters in the new Objective class, it will not compile and cryptic compile errors will be produced.
-//   9) Recompile the C++ with either build.sh or build.bat depending on the operating system.
-//   10) Enjoy your new Objective, and send us a PR on Github if you think others would benefit.
+//   9) The bool value to the right of the class name in the template parameters for RegisterObjective determines
+//      whether the objective can be executed with SIMD, or on a GPU. True means it can only operate with simple CPU
+//      instructions and false means compile it for SIMD and GPU. The ExampleRegressionObjective is set by default
+//      to only operate in CPU mode, but it is generally faster to set this to false if possible.
+//   10) Recompile the C++ with either build.sh or build.bat depending on the operating system.
+//   11) Enjoy your new Objective, and send us a PR on Github if you think others would benefit.
 
 // Add new "*Objective.h" include files here:
 #include "ExampleRegressionObjective.hpp"
