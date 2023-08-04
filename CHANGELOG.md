@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.3] - 2023-08-04
+### Changed
+- Training speed improvements due to the use of SIMD on Intel processors. 
+  Results may vary, but expect approx 2.75x faster for classification and 1.3x faster for RMSE regression
+- Changed from using 64-bit floats to using 32-bit floats internally. Regression performed on datasets with large 
+  targets that sum to greater than 3.4E+38 will overflow.
+### Fixed
+- Fixed an issue with the monotonize function that would occur when monotonizing a feature with missing values
+- Resolved issue where excluding the 1st feature would cause an exception
+
 ## [v0.4.2] - 2023-05-31
 ### Added
 - support for specifying outer bags
