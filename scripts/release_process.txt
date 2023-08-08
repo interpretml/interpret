@@ -151,7 +151,7 @@ set_visualize_provider(InlineProvider())
     - wait for the merged code to build. conda-forge will publish it to conda.org if the build completes successfully
     - check that the package was uploaded at: https://anaconda.org/conda-forge/interpret-core
     - wait a bit longer (30 minutes seems to sometimes work) for the CDN to have an updated copy. If a rebuild is needed use: @conda-forge-admin, please restart ci
-  - interpret:
+  - interpret (consider waiting to publish interpret until interpret-core is tested):
     - fork into a new github username repo from (if not already forked): https://github.com/conda-forge/interpret-feedstock
     - sync the fork, if not already synced
     - edit the local repo in github: https://github.com/<USERNAME>/interpret-feedstock/blob/main/recipe/meta.yaml
@@ -186,7 +186,7 @@ from interpret.provider import InlineProvider
 set_visualize_provider(InlineProvider())
   - re-run all the notebooks and check the visualizations again
 
-- publish on PyPI:
+- publish on PyPI (consider waiting to publish interpret until interpret-core is tested):
   - upload the sdist and bdist together:
     - cd <PACKAGE_DOWNLOAD_DIRECTORY>
     - pip install twine
