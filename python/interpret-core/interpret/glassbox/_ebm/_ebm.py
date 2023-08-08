@@ -2145,6 +2145,89 @@ class EBMModel(BaseEstimator):
 
         return self
 
+    def reweight_terms(self, weights, new_intercept=None):
+        """Reweight the individual term contributions. For example, you can 
+        remove specific terms by setting their corresponding weights to zero. 
+        This is useful for introducing sparsity by post-processing the model via 
+        the LASSO. See the EBM documentation for examples and further details.
+
+        Args:
+            weights: List of weights (one weight for each term in the model). 
+                This should be a list or numpy vector (i.e., 1-d array) of 
+                floats whose i-th element corresponds to the i-th element of the
+                ``.term_*_`` attributes (e.g., ``.term_names_``).
+            new_intercept: Optional new/updated intercept.
+
+        Returns: 
+            Itself.
+        """
+        check_is_fitted(self, "has_fitted_")
+
+        if is_classifier(self) and 2 < len(self.classes_):
+            msg = "reweight_terms not supported for multiclass"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        if len(weights) != len(self.term_names_):
+            msg = "need to supply one weight for each term"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        # Copy any fields we'll overwrite in case someone has a shallow copy of self
+        term_features = self.term_features_.copy()
+        term_names = self.term_names_.copy()
+        term_scores = self.term_scores_.copy()
+        bagged_scores = self.bagged_scores_.copy()
+        bin_weights = self.bin_weights_.copy()
+        standard_deviations = self.standard_deviations_.copy()
+
+        for idw, w in enumerate(weights):
+
+            scores = term_scores[idw].copy()
+            bscores = bagged_scores[idw].copy()
+            stdevs = standard_deviations[idw].copy()
+            # the missing and unknown bins are not part of the continuous range
+            y = scores[1:-1]
+            y_bagged = bscores[1:-1]
+            y_sd = stdevs[1:-1]
+            y *= w  # multiplying by scalar works for np arrays
+            y_bagged *= w
+            y_sd *= w
+            scores[1:-1] = y
+            bscores[1:-1] = y_bagged
+            stdevs[1:-1] = y_sd
+            term_scores[idw] = scores
+            bagged_scores[idw] = bscores
+            standard_deviations[idw] = stdevs
+
+        # Delete components that have a weight of zero
+        is_zero = np.where(weights == 0)[0].tolist()
+        if len(is_zero) > 0:
+            def remove_indices(x, idx):  # FIXME: More robust way?
+                # Remove elements of a list based on provided index
+                return [i for j, i in enumerate(x) if j not in idx]
+            term_features = remove_indices(term_features, idx=is_zero)
+            term_names = remove_indices(term_names, idx=is_zero)
+            term_scores = remove_indices(term_scores, idx=is_zero)
+            bagged_scores = remove_indices(bagged_scores, idx=is_zero)
+            standard_deviations = remove_indices(standard_deviations, idx=is_zero)
+            bin_weights = remove_indices(bin_weights, idx=is_zero)
+
+        # Update components of self
+        self.term_features_ = term_features
+        self.term_names_ = term_names
+        self.term_scores_ = term_scores
+        self.bagged_scores_ = bagged_scores
+        self.standard_deviations_ = standard_deviations
+        self.bin_weights_ = bin_weights
+
+        # Update intercept
+        if new_intercept is not None:
+            # FIXME: Doesn't seem to like <class 'numpy.float64'>?
+            self.intercept_ = float(new_intercept)
+
+        return self
+
 
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     """An Explainable Boosting Classifier
