@@ -2208,8 +2208,8 @@ class EBMModel(BaseEstimator):
                 floats whose i-th element corresponds to the i-th element of the
                 ``.term_*_`` attributes (e.g., ``.term_names_``).
             remove_nil_terms: Logical indicating whether or not to automatically
-                remove all terms that provide zero contribution to the fit 
-                (e.g., any term with a weight of zero).
+                remove all terms that are given a weight of zero; terms with a
+                weight of zero provide zero contribution to the fit.
 
         Returns: 
             Itself.
@@ -2262,8 +2262,8 @@ class EBMModel(BaseEstimator):
 
         # Delete "nil" terms (i.e., terms providing zero contribution to the fit)
         if remove_nil_terms:  # should automatically catch zero weight terms
-            # Grab indices of terms with zero contribution
-            term_list = np.where(self.term_importances() == 0)[0].tolist()
+            # Delete components that have a weight of zero
+            term_list = np.where(weights == 0)[0].tolist()
             return self.remove_terms(term_list)
         else:
             return self
