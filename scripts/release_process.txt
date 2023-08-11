@@ -177,6 +177,7 @@ set_visualize_provider(InlineProvider())
   - conda install --yes -c conda-forge interpret
   - cd <REPO_ROOT>
   - cd examples/python
+  - pip install --yes jupyter
   - jupyter notebook
   - open all the example notebooks, run them, and check the visualizations
   - clear all outputs on all notebooks
