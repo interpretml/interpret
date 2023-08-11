@@ -2145,6 +2145,129 @@ class EBMModel(BaseEstimator):
 
         return self
 
+    def remove_terms(self, term_list):
+        """Removes terms (and their associated components) from a fitted EBM. Note 
+        that this will change the structure (i.e., by removing the specified 
+        indices) of the following components of ``self``: ``term_features_``,
+        ``term_names_``, ``term_scores_``, ``bagged_scores_``, 
+        ``standard_deviations_``, and ``bin_weights_``.
+
+        Args:
+            term_list: A list of term names or indices.
+
+        Returns:
+            Itself.
+        """
+        check_is_fitted(self, "has_fitted_")
+
+        # If term_list contains term names, convert them to indices
+        term_list = [self.term_names_.index(term) if isinstance(term, str) 
+                    else term for term in term_list]
+
+        # Copy any fields we'll overwrite in case someone has a shallow copy of self
+        term_features = self.term_features_.copy()
+        term_names = self.term_names_.copy()
+        term_scores = self.term_scores_.copy()
+        bagged_scores = self.bagged_scores_.copy()
+        bin_weights = self.bin_weights_.copy()
+        standard_deviations = self.standard_deviations_.copy()
+
+        def _remove_indices(x, idx):
+            # Remove elements of a list based on provided index
+            return [i for j, i in enumerate(x) if j not in idx]
+        term_features = _remove_indices(term_features, idx=term_list)
+        term_names = _remove_indices(term_names, idx=term_list)
+        term_scores = _remove_indices(term_scores, idx=term_list)
+        bagged_scores = _remove_indices(bagged_scores, idx=term_list)
+        standard_deviations = _remove_indices(standard_deviations, idx=term_list)
+        bin_weights = _remove_indices(bin_weights, idx=term_list)
+
+        # Update components of self
+        self.term_features_ = term_features
+        self.term_names_ = term_names
+        self.term_scores_ = term_scores
+        self.bagged_scores_ = bagged_scores
+        self.standard_deviations_ = standard_deviations
+        self.bin_weights_ = bin_weights
+
+        return self
+
+    def reweight_terms(self, weights, remove_nil_terms=False):
+        """Reweight the individual term contributions. For example, you can 
+        nullify the contribution of specific terms by setting their corresponding 
+        weights to zero; this would cause the associated global explanations (e.g.,
+        variable importance) to also be zero. A couple of things are worth noting: 
+        1) this method has no affect on the fitted intercept and users will have to 
+        change that attribute directly if desired, and 2) reweighting specific term 
+        contributions will also reweight their related components in a similar 
+        manner (e.g., variable importance scores, standard deviations, etc.).
+
+        Args:
+            weights: A list of weights (one weight for each term in the model). 
+                This should be a list or numpy vector (i.e., 1-d array) of 
+                floats whose i-th element corresponds to the i-th element of the
+                ``.term_*_`` attributes (e.g., ``.term_names_``).
+            remove_nil_terms: Logical indicating whether or not to automatically
+                remove all terms that provide zero contribution to the fit 
+                (e.g., any term with a weight of zero).
+
+        Returns: 
+            Itself.
+        """
+        check_is_fitted(self, "has_fitted_")
+
+        if len(weights) != len(self.term_names_):
+            msg = "need to supply one weight for each term"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        # Copy any fields we'll overwrite in case someone has a shallow copy of self
+        term_features = self.term_features_.copy()
+        term_names = self.term_names_.copy()
+        term_scores = self.term_scores_.copy()
+        bagged_scores = self.bagged_scores_.copy()
+        bin_weights = self.bin_weights_.copy()
+        standard_deviations = self.standard_deviations_.copy()
+
+        for idw, w in enumerate(weights):
+
+            scores = term_scores[idw].copy()
+            bscores = bagged_scores[idw].copy()
+            stdevs = standard_deviations[idw].copy()
+            # FIXME: Does it make sense to omit the missing and unknown bins (first 
+            # and last elements, respectively)?
+            y = scores[1:-1]
+            y_bagged = bscores[1:-1]
+            y_sd = stdevs[1:-1]
+
+            # Reweight relevant components by scalar multiple given by weight
+            y *= w  
+            y_bagged *= w
+            y_sd *= w
+
+            scores[1:-1] = y
+            bscores[1:-1] = y_bagged
+            stdevs[1:-1] = y_sd
+            term_scores[idw] = scores
+            bagged_scores[idw] = bscores
+            standard_deviations[idw] = stdevs
+
+        # Update components of self
+        self.term_features_ = term_features
+        self.term_names_ = term_names
+        self.term_scores_ = term_scores
+        self.bagged_scores_ = bagged_scores
+        self.standard_deviations_ = standard_deviations
+        self.bin_weights_ = bin_weights
+
+        # Delete "nil" terms (i.e., terms providing zero contribution to the fit)
+        if remove_nil_terms:  # should automatically catch zero weight terms
+            # Grab indices of terms with zero contribution
+            term_list = np.where(self.term_importances() == 0)[0].tolist()
+            return self.remove_terms(term_list)
+        else:
+            return self
+
 
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     """An Explainable Boosting Classifier
