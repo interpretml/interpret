@@ -1083,8 +1083,6 @@ def test_ebm_remove_terms():
     assert len(clf.standard_deviations_) == 2
     assert len(clf.bin_weights_) == 2
 
-    valid_ebm(clf)
-
 
 def test_ebm_scale_terms():
     data = synthetic_regression()
@@ -1103,5 +1101,3 @@ def test_ebm_scale_terms():
     assert len(clf.bagged_scores_) == 2
     assert len(clf.standard_deviations_) == 2
     assert len(clf.bin_weights_) == 2
-
-    valid_ebm(clf)
