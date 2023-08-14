@@ -2164,23 +2164,15 @@ class EBMModel(BaseEstimator):
         terms = [self.term_names_.index(term) if isinstance(term, str) 
                 else term for term in terms]
 
-        # Copy any fields we'll overwrite in case someone has a shallow copy of self
-        term_features = self.term_features_.copy()
-        term_names = self.term_names_.copy()
-        term_scores = self.term_scores_.copy()
-        bagged_scores = self.bagged_scores_.copy()
-        bin_weights = self.bin_weights_.copy()
-        standard_deviations = self.standard_deviations_.copy()
-
         def _remove_indices(x, idx):
             # Remove elements of a list based on provided index
             return [i for j, i in enumerate(x) if j not in idx]
-        term_features = _remove_indices(term_features, idx=terms)
-        term_names = _remove_indices(term_names, idx=terms)
-        term_scores = _remove_indices(term_scores, idx=terms)
-        bagged_scores = _remove_indices(bagged_scores, idx=terms)
-        standard_deviations = _remove_indices(standard_deviations, idx=terms)
-        bin_weights = _remove_indices(bin_weights, idx=terms)
+        term_features = _remove_indices(self.term_features_, idx=terms)
+        term_names = _remove_indices(self.term_names_, idx=terms)
+        term_scores = _remove_indices(self.term_scores_, idx=terms)
+        bagged_scores = _remove_indices(self.bagged_scores_, idx=terms)
+        standard_deviations = _remove_indices(self.standard_deviations_, idx=terms)
+        bin_weights = _remove_indices(self.bin_weights_, idx=terms)
 
         # Update components of self
         self.term_features_ = term_features
