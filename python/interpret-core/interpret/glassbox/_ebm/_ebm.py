@@ -2223,31 +2223,26 @@ class EBMModel(BaseEstimator):
             scores = term_scores[idw].copy()
             bscores = bagged_scores[idw].copy()
             stdevs = standard_deviations[idw].copy()
-            # FIXME: Does it make sense to omit the missing and unknown bins (first 
-            # and last elements, respectively)?
-            y = scores[1:-1]
-            y_bagged = bscores[1:-1]
-            y_sd = stdevs[1:-1]
+            y = scores
+            y_bagged = bscores
+            y_sd = stdevs
 
             # Reweight relevant components by scalar multiple given by weight
             y *= w  
             y_bagged *= w
             y_sd *= w
 
-            scores[1:-1] = y
-            bscores[1:-1] = y_bagged
-            stdevs[1:-1] = y_sd
+            scores = y
+            bscores = y_bagged
+            stdevs = y_sd
             term_scores[idw] = scores
             bagged_scores[idw] = bscores
             standard_deviations[idw] = stdevs
 
         # Update components of self
-        self.term_features_ = term_features
-        self.term_names_ = term_names
         self.term_scores_ = term_scores
         self.bagged_scores_ = bagged_scores
         self.standard_deviations_ = standard_deviations
-        self.bin_weights_ = bin_weights
 
         # Delete "nil" terms (i.e., terms providing zero contribution to the fit)
         if remove_nil_terms:  # should automatically catch zero weight terms
