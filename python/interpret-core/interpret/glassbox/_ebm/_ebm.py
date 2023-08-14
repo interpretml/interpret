@@ -2207,7 +2207,7 @@ class EBMModel(BaseEstimator):
                 This should be a list or numpy vector (i.e., 1-d array) of 
                 floats whose i-th element corresponds to the i-th element of the
                 ``.term_*_`` attributes (e.g., ``.term_names_``).
-            remove_nil_terms: Logical indicating whether or not to automatically
+            remove_nil_terms: Boolean indicating whether or not to automatically
                 remove all terms that are given a weight of zero; terms with a
                 weight of zero provide zero contribution to the fit.
 
