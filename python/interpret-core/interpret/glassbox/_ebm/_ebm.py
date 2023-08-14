@@ -2217,6 +2217,9 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
+        if isinstance(weights, list):
+            weights = np.array(weights)
+
         # Copy any fields we'll overwrite in case someone has a shallow copy of self
         term_scores = self.term_scores_.copy()
         bagged_scores = self.bagged_scores_.copy()
