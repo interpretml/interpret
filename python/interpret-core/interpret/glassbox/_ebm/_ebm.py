@@ -2214,11 +2214,8 @@ class EBMModel(BaseEstimator):
             raise ValueError(msg)
 
         # Copy any fields we'll overwrite in case someone has a shallow copy of self
-        term_features = self.term_features_.copy()
-        term_names = self.term_names_.copy()
         term_scores = self.term_scores_.copy()
         bagged_scores = self.bagged_scores_.copy()
-        bin_weights = self.bin_weights_.copy()
         standard_deviations = self.standard_deviations_.copy()
 
         for idw, w in enumerate(weights):
