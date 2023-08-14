@@ -2184,15 +2184,16 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def reweight_terms(self, weights, remove_nil_terms=False):
-        """Reweight the individual term contributions. For example, you can 
-        nullify the contribution of specific terms by setting their corresponding 
-        weights to zero; this would cause the associated global explanations (e.g.,
-        variable importance) to also be zero. A couple of things are worth noting: 
-        1) this method has no affect on the fitted intercept and users will have to 
-        change that attribute directly if desired, and 2) reweighting specific term 
-        contributions will also reweight their related components in a similar 
-        manner (e.g., variable importance scores, standard deviations, etc.).
+    def scale_terms(self, weights, remove_nil_terms=False):
+        """Scale the individual term contributions by a constant multiple. For 
+        example, you can nullify the contribution of specific terms by setting 
+        their corresponding weights to zero; this would cause the associated 
+        global explanations (e.g., variable importance) to also be zero. A 
+        couple of things are worth noting: 1) this method has no affect on the 
+        fitted intercept and users will have to change that attribute directly 
+        (if desired), and 2) reweighting specific term contributions will also 
+        reweight their related components in a similar manner (e.g., variable 
+        importance scores, standard deviations, etc.).
 
         Args:
             weights: A list of weights (one weight for each term in the model). 
