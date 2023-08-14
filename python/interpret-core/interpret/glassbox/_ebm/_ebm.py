@@ -2145,7 +2145,7 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def remove_terms(self, term_list):
+    def remove_terms(self, terms):
         """Removes terms (and their associated components) from a fitted EBM. Note 
         that this will change the structure (i.e., by removing the specified 
         indices) of the following components of ``self``: ``term_features_``,
@@ -2153,16 +2153,16 @@ class EBMModel(BaseEstimator):
         ``standard_deviations_``, and ``bin_weights_``.
 
         Args:
-            term_list: A list of term names or indices.
+            terms: A list (or other enumerable object) of term names or indices.
 
         Returns:
             Itself.
         """
         check_is_fitted(self, "has_fitted_")
 
-        # If term_list contains term names, convert them to indices
-        term_list = [self.term_names_.index(term) if isinstance(term, str) 
-                    else term for term in term_list]
+        # If terms contains term names, convert them to indices
+        terms = [self.term_names_.index(term) if isinstance(term, str) 
+                else term for term in terms]
 
         # Copy any fields we'll overwrite in case someone has a shallow copy of self
         term_features = self.term_features_.copy()
@@ -2175,12 +2175,12 @@ class EBMModel(BaseEstimator):
         def _remove_indices(x, idx):
             # Remove elements of a list based on provided index
             return [i for j, i in enumerate(x) if j not in idx]
-        term_features = _remove_indices(term_features, idx=term_list)
-        term_names = _remove_indices(term_names, idx=term_list)
-        term_scores = _remove_indices(term_scores, idx=term_list)
-        bagged_scores = _remove_indices(bagged_scores, idx=term_list)
-        standard_deviations = _remove_indices(standard_deviations, idx=term_list)
-        bin_weights = _remove_indices(bin_weights, idx=term_list)
+        term_features = _remove_indices(term_features, idx=terms)
+        term_names = _remove_indices(term_names, idx=terms)
+        term_scores = _remove_indices(term_scores, idx=terms)
+        bagged_scores = _remove_indices(bagged_scores, idx=terms)
+        standard_deviations = _remove_indices(standard_deviations, idx=terms)
+        bin_weights = _remove_indices(bin_weights, idx=terms)
 
         # Update components of self
         self.term_features_ = term_features
@@ -2263,8 +2263,8 @@ class EBMModel(BaseEstimator):
         # Delete "nil" terms (i.e., terms providing zero contribution to the fit)
         if remove_nil_terms:  # should automatically catch zero weight terms
             # Delete components that have a weight of zero
-            term_list = np.where(weights == 0)[0].tolist()
-            return self.remove_terms(term_list)
+            terms = np.where(weights == 0)[0].tolist()
+            return self.remove_terms(terms)
         else:
             return self
 
