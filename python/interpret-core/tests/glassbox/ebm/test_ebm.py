@@ -1066,3 +1066,42 @@ def test_exclude_all():
     clf.predict(X)
 
     assert len(clf.term_features_) == 0
+
+def test_ebm_remove_terms():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
+    clf.fit(X, y)
+    assert clf.term_names_ == ["A", "B", "C", "D"]
+    clf.remove_terms(["A", "C"])   
+    assert clf.term_names_ == ["B", "D"]
+    assert len(clf.term_features_) == 2
+    assert len(clf.term_names_) == 2
+    assert len(clf.term_scores_) == 2
+    assert len(clf.bagged_scores_) == 2
+    assert len(clf.standard_deviations_) == 2
+    assert len(clf.bin_weights_) == 2
+
+    valid_ebm(clf)
+
+def test_ebm_scale_terms():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
+    clf.fit(X, y)
+    assert clf.term_names_ == ["A", "B", "C", "D"]
+    # The following is equivalent to calling `clf.remove_terms(["A", "C"])`
+    clf.scale_terms(weights=[0, 1.0, 0, 1.0], remove_nil_terms=True)   
+    assert clf.term_names_ == ["B", "D"]
+    assert len(clf.term_features_) == 2
+    assert len(clf.term_names_) == 2
+    assert len(clf.term_scores_) == 2
+    assert len(clf.bagged_scores_) == 2
+    assert len(clf.standard_deviations_) == 2
+    assert len(clf.bin_weights_) == 2
+
+    valid_ebm(clf)
