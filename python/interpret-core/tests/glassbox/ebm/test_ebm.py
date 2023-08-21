@@ -47,7 +47,6 @@ def valid_ebm(ebm):
         assert all_finite
 
 
-@pytest.mark.slow
 def test_monotonize():
     data = synthetic_classification()
     X = data["full"]["X"]
@@ -73,6 +72,20 @@ def test_monotonize():
     diff = np.diff(clf.term_features_[2])
     assert np.all(diff >= 0) or np.all(diff <= 0)
     assert intercept == clf.intercept_
+
+
+def test_copy():
+    data = synthetic_classification()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingClassifier()
+    clf.fit(X, y)
+
+    ebm_copy = clf.copy()
+    clf.term_scores_ = None  # make the original invalid
+
+    valid_ebm(ebm_copy)
 
 
 @pytest.mark.slow

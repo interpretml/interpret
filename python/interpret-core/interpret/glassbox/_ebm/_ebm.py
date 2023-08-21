@@ -3,6 +3,7 @@
 
 
 from typing import Optional, List, Tuple, Sequence, Dict, Mapping, Union
+from copy import deepcopy
 
 from itertools import count
 
@@ -2045,6 +2046,17 @@ class EBMModel(BaseEstimator):
             )
         else:
             raise ValueError(f"Unrecognized importance_type: {importance_type}")
+
+    def copy(self):
+        """Makes a deepcopy of the EBM.
+
+        Args:
+
+        Returns:
+            The new copy.
+        """
+
+        return deepcopy(self)
 
     def monotonize(self, term, increasing="auto", passthrough=0.0):
         """Adjusts a term to be monotone using isotonic regression. An important consideration
