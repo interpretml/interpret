@@ -74,6 +74,32 @@ def test_monotonize():
     assert intercept == clf.intercept_
 
 
+def test_ebm_remove_features():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingRegressor(interactions=[(1, 2), (1, 3)])
+    clf.fit(X, y)
+    clf.remove_features(["A", 2], remove_dependent_terms=True)
+    assert clf.term_names_ == ["B", "D", "B & D"]
+    assert len(clf.term_features_) == 3
+    assert len(clf.term_scores_) == 3
+    assert len(clf.bagged_scores_) == 3
+    assert len(clf.standard_deviations_) == 3
+    assert len(clf.bin_weights_) == 3
+
+    assert clf.feature_names_in_ == ["B", "D"]
+    assert len(clf.histogram_edges_) == 2
+    assert len(clf.histogram_weights_) == 2
+    assert len(clf.unique_val_counts_) == 2
+    assert len(clf.bins_) == 2
+    assert len(clf.feature_names_in_) == 2
+    assert len(clf.feature_types_in_) == 2
+    assert clf.feature_bounds_.shape[0] == 2
+    assert clf.n_features_in_ == 2
+
+
 def test_copy():
     data = synthetic_classification()
     X = data["full"]["X"]

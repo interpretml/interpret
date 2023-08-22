@@ -2199,6 +2199,72 @@ class EBMModel(BaseEstimator):
 
         return self
 
+    def remove_features(self, features, remove_dependent_terms=False):
+        """Removes features (and their associated components) from a fitted EBM. Note
+        that this will change the structure (i.e., by removing the specified
+        indices) of the following components of ``self``: ``histogram_edges_``,
+        ``histogram_weights_``, ``unique_val_counts_``, ``bins_``,
+        ``feature_names_in_``, ``feature_types_in_``, and ``feature_bounds_``.
+        The following attributes that the caller passed to the \_\_init\_\_ function are
+        not modified: ``feature_names``, and ``feature_types``.
+
+        Args:
+            features: A list or enumerable of feature names or indices.
+            remove_dependent_terms: Boolean indicating if this function should delete any
+                terms that use a feature being deleted. An exception is raised otherwise.
+
+        Returns:
+            Itself.
+        """
+
+        check_is_fitted(self, "has_fitted_")
+
+        drop_features = set()
+        for feature in features:
+            if isinstance(feature, str):
+                feature = self.feature_names_in_.index(feature)
+            elif isinstance(feature, float) and not feature.is_integer():
+                msg = "features must contain integers or feature names"
+                _log.error(msg)
+                raise ValueError(msg)
+            feature = int(feature)
+            drop_features.add(feature)
+
+        drop_terms = [
+            term_idx
+            for term_idx, feature_idxs in enumerate(self.term_features_)
+            if any(feature_idx in drop_features for feature_idx in feature_idxs)
+        ]
+        if len(drop_terms) != 0:
+            if remove_dependent_terms is True:
+                self.remove_terms(drop_terms)
+            else:
+                msg = "A feature could not be deleted since it was used by a term. If you wish to force delete the terms used by the features, set remove_dependent_terms=True"
+                _log.error(msg)
+                raise ValueError(msg)
+
+        self.histogram_edges_ = [
+            v for i, v in enumerate(self.histogram_edges_) if i not in drop_features
+        ]
+        self.histogram_weights_ = [
+            v for i, v in enumerate(self.histogram_weights_) if i not in drop_features
+        ]
+        self.bins_ = [v for i, v in enumerate(self.bins_) if i not in drop_features]
+        self.feature_names_in_ = [
+            v for i, v in enumerate(self.feature_names_in_) if i not in drop_features
+        ]
+        self.feature_types_in_ = [
+            v for i, v in enumerate(self.feature_types_in_) if i not in drop_features
+        ]
+
+        drop_features = list(drop_features)
+        self.unique_val_counts_ = np.delete(self.unique_val_counts_, drop_features)
+        self.feature_bounds_ = np.delete(self.feature_bounds_, drop_features, axis=0)
+
+        self.n_features_in_ = len(self.bins_)
+
+        return self
+
     def scale_terms(self, factors, remove_nil_terms=False):
         """Scale the individual term contributions by a constant factor. For
         example, you can nullify the contribution of specific terms by setting
