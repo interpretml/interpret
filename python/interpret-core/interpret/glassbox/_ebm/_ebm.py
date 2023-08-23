@@ -2209,7 +2209,8 @@ class EBMModel(BaseEstimator):
         not modified: ``feature_names``, and ``feature_types``.
 
         Args:
-            features: A list or enumerable of feature names or indices.
+            features: A list or enumerable of feature names or indices or
+                booleans indicating which features to remove.
             remove_dependent_terms: Boolean indicating if this function should delete any
                 terms that use a feature being deleted. An exception is raised otherwise.
 
@@ -2219,20 +2220,56 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        drop_features = set()
-        for feature in features:
-            if isinstance(feature, str):
-                feature = self.feature_names_in_.index(feature)
-            elif isinstance(feature, float) and not feature.is_integer():
-                msg = "features must contain integers or feature names"
+        if all(isinstance(v, bool) or isinstance(v, np.bool_) for v in features):
+            if len(features) != len(self.bins_):
+                msg = "If features contains booleans, it must be the same length as the number of features in the EBM."
                 _log.error(msg)
                 raise ValueError(msg)
-            feature = int(feature)
-            if feature < 0 or len(self.bins_) <= feature:
-                msg = "feature index out of bounds"
-                _log.error(msg)
-                raise ValueError(msg)
-            drop_features.add(feature)
+            drop_features = set(i for i, v in enumerate(features) if v)
+        else:
+            names = getattr(self, "feature_names_in_", None)
+            if names is not None:
+                names = dict(zip(names, count()))
+            drop_features = set()
+            for feature in features:
+                if isinstance(feature, str):
+                    if names is None:
+                        msg = "features cannot be indexed by name since self.feature_names_in_ has been removed."
+                        _log.error(msg)
+                        raise ValueError(msg)
+                    try:
+                        feature = names[feature]
+                    except:
+                        msg = f'self.feature_names_in_ does not contain "{feature}".'
+                        _log.error(msg)
+                        raise ValueError(msg)
+                else:
+                    if isinstance(feature, int):
+                        pass
+                    elif isinstance(feature, float):
+                        if feature.is_integer():
+                            feature = int(feature)
+                        else:
+                            msg = (
+                                f"features contains {feature}, which is not an integer."
+                            )
+                            _log.error(msg)
+                            raise ValueError(msg)
+                    elif isinstance(feature, bool) or isinstance(feature, np.bool_):
+                        msg = "If features contains booleans, all values must be booleans."
+                        _log.error(msg)
+                        raise ValueError(msg)
+                    else:
+                        msg = "features must contain integers or feature names or booleans."
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+                    if feature < 0 or len(self.bins_) <= feature:
+                        msg = f"feature index {feature} out of bounds."
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+                drop_features.add(feature)
 
         drop_terms = [
             term_idx
@@ -2301,7 +2338,7 @@ class EBMModel(BaseEstimator):
             for term in self.term_features_:
                 for feature_idx in term:
                     features.itemset(feature_idx, False)
-            self.remove_features(features.nonzero()[0])
+            self.remove_features(features)
 
     def scale_terms(self, factors, remove_nil_terms=False):
         """Scale the individual term contributions by a constant factor. For

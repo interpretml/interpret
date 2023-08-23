@@ -100,6 +100,7 @@ def test_ebm_remove_features():
     assert len(clf.standard_deviations_) == 3
     assert len(clf.bin_weights_) == 3
 
+
 def test_ebm_sweep():
     data = synthetic_regression()
     X = data["full"]["X"]
@@ -108,8 +109,8 @@ def test_ebm_sweep():
     clf = ExplainableBoostingRegressor(interactions=[(1, 2), (1, 3)])
     clf.fit(X, y)
 
-    clf.term_scores_[0].fill(0) # set 'A' to zero
-    clf.term_scores_[len(clf.term_scores_) - 1].fill(0) # set 'B & D' to zero
+    clf.term_scores_[0].fill(0)  # set 'A' to zero
+    clf.term_scores_[len(clf.term_scores_) - 1].fill(0)  # set 'B & D' to zero
 
     clf.sweep(sweep_terms=True, sweep_bins=True, sweep_features=True)
 
@@ -125,9 +126,9 @@ def test_ebm_sweep():
     assert clf.n_features_in_ == 3
 
     # check that sweep_bins deleted the pair bins in D
-    assert len(clf.bins_[0]) == 2 # feature 'B'
-    assert len(clf.bins_[1]) == 2 # feature 'C'
-    assert len(clf.bins_[2]) == 1 # feature 'D'
+    assert len(clf.bins_[0]) == 2  # feature 'B'
+    assert len(clf.bins_[1]) == 2  # feature 'C'
+    assert len(clf.bins_[2]) == 1  # feature 'D'
 
     # check that sweep_terms removed the zeroed terms
     assert clf.term_names_ == ["B", "C", "D", "B & C"]
@@ -136,6 +137,7 @@ def test_ebm_sweep():
     assert len(clf.bagged_scores_) == 4
     assert len(clf.standard_deviations_) == 4
     assert len(clf.bin_weights_) == 4
+
 
 def test_copy():
     data = synthetic_classification()
