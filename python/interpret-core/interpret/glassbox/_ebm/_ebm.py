@@ -2110,12 +2110,8 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        # copy any fields we overwrite in case someone has a shalow copy of self
-        term_scores = self.term_scores_.copy()
-        scores = term_scores[term].copy()
-
         # the missing and unknown bins are not part of the continuous range
-        y = scores[1:-1]
+        y = self.term_scores_[term][1:-1]
         x = np.arange(len(y), dtype=np.int64)
 
         all_weights = self.bin_weights_[term]
@@ -2132,28 +2128,19 @@ class EBMModel(BaseEstimator):
         change = (original_mean - result_mean) * (1.0 - passthrough)
         y += change
 
-        scores[1:-1] = y
+        self.term_scores_[term][1:-1] = y
 
         if 0.0 < passthrough:
-            mean = np.average(scores, weights=all_weights)
-            scores -= mean
+            mean = np.average(self.term_scores_[term], weights=all_weights)
+            self.term_scores_[term] -= mean
             self.intercept_ += mean
-
-        term_scores[term] = scores
-        self.term_scores_ = term_scores
-
-        bagged_scores = self.bagged_scores_.copy()
-        standard_deviations = self.standard_deviations_.copy()
 
         # TODO: in the future we can apply monotonize to the individual outer bags in bagged_scores_
         #       and then re-compute standard_deviations_ and term_scores_ from the monotonized bagged scores.
         #       but first we need to do some testing to figure out if this gives a worse result than applying
         #       IsotonicRegression to the final model which should be more regularized
-        bagged_scores[term] = None
-        standard_deviations[term] = None
-
-        self.bagged_scores_ = bagged_scores
-        self.standard_deviations_ = standard_deviations
+        self.bagged_scores_[term] = None
+        self.standard_deviations_[term] = None
 
         return self
 
@@ -2373,35 +2360,10 @@ class EBMModel(BaseEstimator):
         if isinstance(factors, list):
             factors = np.array(factors)
 
-        # Copy any fields we'll overwrite in case someone has a shallow copy of self
-        term_scores = self.term_scores_.copy()
-        bagged_scores = self.bagged_scores_.copy()
-        standard_deviations = self.standard_deviations_.copy()
-
         for idw, w in enumerate(factors):
-            scores = term_scores[idw].copy()
-            bscores = bagged_scores[idw].copy()
-            stdevs = standard_deviations[idw].copy()
-            y = scores
-            y_bagged = bscores
-            y_sd = stdevs
-
-            # Reweight relevant components by scalar multiple given by weight
-            y *= w
-            y_bagged *= w
-            y_sd *= w
-
-            scores = y
-            bscores = y_bagged
-            stdevs = y_sd
-            term_scores[idw] = scores
-            bagged_scores[idw] = bscores
-            standard_deviations[idw] = stdevs
-
-        # Update components of self
-        self.term_scores_ = term_scores
-        self.bagged_scores_ = bagged_scores
-        self.standard_deviations_ = standard_deviations
+            self.term_scores_[idw] *= w
+            self.bagged_scores_[idw] *= w
+            self.standard_deviations_[idw] *= w
 
         # Delete "nil" terms (i.e., terms providing zero contribution to the fit)
         if remove_nil_terms:  # should automatically catch zero weight terms
