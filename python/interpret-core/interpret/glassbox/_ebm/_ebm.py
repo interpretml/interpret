@@ -2228,6 +2228,10 @@ class EBMModel(BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
             feature = int(feature)
+            if feature < 0 or len(self.bins_) <= feature:
+                msg = "feature index out of bounds"
+                _log.error(msg)
+                raise ValueError(msg)
             drop_features.add(feature)
 
         drop_terms = [
@@ -2264,6 +2268,40 @@ class EBMModel(BaseEstimator):
         self.n_features_in_ = len(self.bins_)
 
         return self
+
+    def sweep(self, sweep_terms=True, sweep_bins=True, sweep_features=False):
+        """Purges unused elements from a fitted EBM.
+
+        Args:
+            sweep_terms: Boolean indicating if zeroed terms that do not affect the output
+                should be purged from the model.
+            sweep_bins: Boolean indicating if unused bin levels that do not affect the output
+                should be purged from the model.
+            sweep_features: Boolean indicating if features that are not used in any terms
+                and therefore do not affect the output should be purged from the model.
+
+        Returns:
+            Itself.
+        """
+
+        check_is_fitted(self, "has_fitted_")
+
+        if sweep_terms is True:
+            terms = [
+                i for i, v in enumerate(self.term_scores_) if np.count_nonzero(v) == 0
+            ]
+            self.remove_terms(terms)
+
+        if sweep_bins is True:
+            remove_unused_higher_bins(self.term_features_, self.bins_)
+            deduplicate_bins(self.bins_)
+
+        if sweep_features is True:
+            features = np.ones(len(self.bins_), np.bool_)
+            for term in self.term_features_:
+                for feature_idx in term:
+                    features.itemset(feature_idx, False)
+            self.remove_features(features.nonzero()[0])
 
     def scale_terms(self, factors, remove_nil_terms=False):
         """Scale the individual term contributions by a constant factor. For

@@ -82,12 +82,6 @@ def test_ebm_remove_features():
     clf = ExplainableBoostingRegressor(interactions=[(1, 2), (1, 3)])
     clf.fit(X, y)
     clf.remove_features(["A", 2], remove_dependent_terms=True)
-    assert clf.term_names_ == ["B", "D", "B & D"]
-    assert len(clf.term_features_) == 3
-    assert len(clf.term_scores_) == 3
-    assert len(clf.bagged_scores_) == 3
-    assert len(clf.standard_deviations_) == 3
-    assert len(clf.bin_weights_) == 3
 
     assert clf.feature_names_in_ == ["B", "D"]
     assert len(clf.histogram_edges_) == 2
@@ -99,6 +93,49 @@ def test_ebm_remove_features():
     assert clf.feature_bounds_.shape[0] == 2
     assert clf.n_features_in_ == 2
 
+    assert clf.term_names_ == ["B", "D", "B & D"]
+    assert len(clf.term_features_) == 3
+    assert len(clf.term_scores_) == 3
+    assert len(clf.bagged_scores_) == 3
+    assert len(clf.standard_deviations_) == 3
+    assert len(clf.bin_weights_) == 3
+
+def test_ebm_sweep():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingRegressor(interactions=[(1, 2), (1, 3)])
+    clf.fit(X, y)
+
+    clf.term_scores_[0].fill(0) # set 'A' to zero
+    clf.term_scores_[len(clf.term_scores_) - 1].fill(0) # set 'B & D' to zero
+
+    clf.sweep(sweep_terms=True, sweep_bins=True, sweep_features=True)
+
+    # check that sweep_features removed feature 'A' which was not used in a term
+    assert clf.feature_names_in_ == ["B", "C", "D"]
+    assert len(clf.histogram_edges_) == 3
+    assert len(clf.histogram_weights_) == 3
+    assert len(clf.unique_val_counts_) == 3
+    assert len(clf.bins_) == 3
+    assert len(clf.feature_names_in_) == 3
+    assert len(clf.feature_types_in_) == 3
+    assert clf.feature_bounds_.shape[0] == 3
+    assert clf.n_features_in_ == 3
+
+    # check that sweep_bins deleted the pair bins in D
+    assert len(clf.bins_[0]) == 2 # feature 'B'
+    assert len(clf.bins_[1]) == 2 # feature 'C'
+    assert len(clf.bins_[2]) == 1 # feature 'D'
+
+    # check that sweep_terms removed the zeroed terms
+    assert clf.term_names_ == ["B", "C", "D", "B & C"]
+    assert len(clf.term_features_) == 4
+    assert len(clf.term_scores_) == 4
+    assert len(clf.bagged_scores_) == 4
+    assert len(clf.standard_deviations_) == 4
+    assert len(clf.bin_weights_) == 4
 
 def test_copy():
     data = synthetic_classification()
