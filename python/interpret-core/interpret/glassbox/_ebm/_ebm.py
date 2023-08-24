@@ -20,7 +20,7 @@ from ._utils import (
     generate_term_names,
     generate_term_types,
 )
-from ...utils._misc import clean_index
+from ...utils._misc import clean_index, clean_indexes
 from ...utils._histogram import make_all_histogram_edges
 from ...utils._link import inv_link
 from ...utils._seed import normalize_initial_seed
@@ -2158,7 +2158,7 @@ class EBMModel(BaseEstimator):
         ``standard_deviations_``, and ``bin_weights_``.
 
         Args:
-            terms: A list (or other enumerable object) of term names or indices.
+            terms: A list (or other enumerable object) of term names or indices or booleans.
 
         Returns:
             Itself.
@@ -2166,10 +2166,13 @@ class EBMModel(BaseEstimator):
         check_is_fitted(self, "has_fitted_")
 
         # If terms contains term names, convert them to indices
-        terms = [
-            self.term_names_.index(term) if isinstance(term, str) else term
-            for term in terms
-        ]
+        terms = clean_indexes(
+            terms,
+            len(self.term_features_),
+            getattr(self, "term_names_", None),
+            "terms",
+            "self.term_names_",
+        )
 
         def _remove_indices(x, idx):
             # Remove elements of a list based on provided index
@@ -2213,56 +2216,13 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        if all(isinstance(v, bool) or isinstance(v, np.bool_) for v in features):
-            if len(features) != len(self.bins_):
-                msg = "If features contains booleans, it must be the same length as the number of features in the EBM."
-                _log.error(msg)
-                raise ValueError(msg)
-            drop_features = set(i for i, v in enumerate(features) if v)
-        else:
-            names = getattr(self, "feature_names_in_", None)
-            if names is not None:
-                names = dict(zip(names, count()))
-            drop_features = set()
-            for feature in features:
-                if isinstance(feature, str):
-                    if names is None:
-                        msg = "features cannot be indexed by name since self.feature_names_in_ has been removed."
-                        _log.error(msg)
-                        raise ValueError(msg)
-                    try:
-                        feature = names[feature]
-                    except:
-                        msg = f'self.feature_names_in_ does not contain "{feature}".'
-                        _log.error(msg)
-                        raise ValueError(msg)
-                else:
-                    if isinstance(feature, int):
-                        pass
-                    elif isinstance(feature, float):
-                        if feature.is_integer():
-                            feature = int(feature)
-                        else:
-                            msg = (
-                                f"features contains {feature}, which is not an integer."
-                            )
-                            _log.error(msg)
-                            raise ValueError(msg)
-                    elif isinstance(feature, bool) or isinstance(feature, np.bool_):
-                        msg = "If features contains booleans, all values must be booleans."
-                        _log.error(msg)
-                        raise ValueError(msg)
-                    else:
-                        msg = "features must contain integers or feature names or booleans."
-                        _log.error(msg)
-                        raise ValueError(msg)
-
-                    if feature < 0 or len(self.bins_) <= feature:
-                        msg = f"feature index {feature} out of bounds."
-                        _log.error(msg)
-                        raise ValueError(msg)
-
-                drop_features.add(feature)
+        drop_features = clean_indexes(
+            features,
+            len(self.bins_),
+            getattr(self, "feature_names_in_", None),
+            "features",
+            "self.feature_names_in_",
+        )
 
         drop_terms = [
             term_idx
