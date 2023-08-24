@@ -20,6 +20,7 @@ from ._utils import (
     generate_term_names,
     generate_term_types,
 )
+from ...utils._misc import clean_index
 from ...utils._histogram import make_all_histogram_edges
 from ...utils._link import inv_link
 from ...utils._seed import normalize_initial_seed
@@ -2084,8 +2085,13 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        if isinstance(term, str):
-            term = self.term_names_.index(term)
+        term = clean_index(
+            term,
+            len(self.term_features_),
+            getattr(self, "term_names_", None),
+            "term",
+            "self.term_names_",
+        )
 
         features = self.term_features_[term]
         if 2 <= len(features):
