@@ -1171,10 +1171,10 @@ def test_ebm_scale():
     clf.fit(X, y)
     assert clf.term_names_ == ["A", "B", "C", "D"]
     # The following is equivalent to calling `clf.remove_terms(["A", "C"])`
-    clf.scale_term(0, factor=0)
-    clf.scale_term("B", factor=0.5)
-    clf.scale_term("C", factor=0)
-    clf.scale_term(3, factor=2.0)
+    clf.scale(0, factor=0)
+    clf.scale("B", factor=0.5)
+    clf.scale("C", factor=0)
+    clf.scale(3, factor=2.0)
     clf.sweep()
     assert clf.term_names_ == ["B", "D"]
     assert len(clf.term_features_) == 2

@@ -2362,7 +2362,6 @@ class EBMModel(BaseEstimator):
             "self.term_names_",
         )
 
-
         self.term_scores_[term] *= factor
         self.bagged_scores_[term] *= factor
         self.standard_deviations_[term] *= factor
