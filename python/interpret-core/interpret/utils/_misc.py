@@ -1,6 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+
 def clean_index(index, n_items, names, param_name, attribute_name):
     if isinstance(index, str):
         if names is None:
@@ -29,7 +30,7 @@ def clean_index(index, n_items, names, param_name, attribute_name):
             raise ValueError(msg)
 
         if index < 0 or n_items <= index:
-            msg = f"{param_name} index {term} out of bounds."
+            msg = f"{param_name} index {index} out of bounds."
             _log.error(msg)
             raise ValueError(msg)
     return index
