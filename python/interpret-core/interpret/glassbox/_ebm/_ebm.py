@@ -2333,8 +2333,8 @@ class EBMModel(BaseEstimator):
                     features.itemset(feature_idx, False)
             self.remove_features(features)
 
-    def scale_terms(self, factors, remove_nil_terms=False):
-        """Scale the individual term contributions by a constant factor. For
+    def scale(self, term, factor):
+        """Scale the individual term contribution by a constant factor. For
         example, you can nullify the contribution of specific terms by setting
         their corresponding weights to zero; this would cause the associated
         global explanations (e.g., variable importance) to also be zero. A
@@ -2345,39 +2345,29 @@ class EBMModel(BaseEstimator):
         importance scores, standard deviations, etc.).
 
         Args:
-            factors: A list of weights/factors (one for each term in the model).
-                This should be a list or numpy vector (i.e., 1-d array) of
-                floats whose i-th element corresponds to the i-th element of the
-                ``.term_*_`` attributes (e.g., ``.term_names_``).
-            remove_nil_terms: Boolean indicating whether or not to automatically
-                remove all terms that are given a weight of zero; terms with a
-                weight of zero provide zero contribution to the fit.
+            term: term index or name of the term to be scaled.
+            factor: The amount to scale the term by.
 
         Returns:
             Itself.
         """
+
         check_is_fitted(self, "has_fitted_")
 
-        if len(factors) != len(self.term_names_):
-            msg = "need to supply one weight for each term"
-            _log.error(msg)
-            raise ValueError(msg)
+        term = clean_index(
+            term,
+            len(self.term_features_),
+            getattr(self, "term_names_", None),
+            "term",
+            "self.term_names_",
+        )
 
-        if isinstance(factors, list):
-            factors = np.array(factors)
 
-        for idw, w in enumerate(factors):
-            self.term_scores_[idw] *= w
-            self.bagged_scores_[idw] *= w
-            self.standard_deviations_[idw] *= w
+        self.term_scores_[term] *= factor
+        self.bagged_scores_[term] *= factor
+        self.standard_deviations_[term] *= factor
 
-        # Delete "nil" terms (i.e., terms providing zero contribution to the fit)
-        if remove_nil_terms:  # should automatically catch zero weight terms
-            # Delete components that have a weight of zero
-            terms = np.where(factors == 0)[0].tolist()
-            return self.remove_terms(terms)
-        else:
-            return self
+        return self
 
 
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):

@@ -1162,7 +1162,7 @@ def test_ebm_remove_terms():
     assert len(clf.bin_weights_) == 2
 
 
-def test_ebm_scale_terms():
+def test_ebm_scale():
     data = synthetic_regression()
     X = data["full"]["X"]
     y = data["full"]["y"]
@@ -1171,7 +1171,11 @@ def test_ebm_scale_terms():
     clf.fit(X, y)
     assert clf.term_names_ == ["A", "B", "C", "D"]
     # The following is equivalent to calling `clf.remove_terms(["A", "C"])`
-    clf.scale_terms(factors=[0, 1.0, 0, 1.0], remove_nil_terms=True)
+    clf.scale_term(0, factor=0)
+    clf.scale_term("B", factor=0.5)
+    clf.scale_term("C", factor=0)
+    clf.scale_term(3, factor=2.0)
+    clf.sweep()
     assert clf.term_names_ == ["B", "D"]
     assert len(clf.term_features_) == 2
     assert len(clf.term_names_) == 2
