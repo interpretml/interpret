@@ -7,6 +7,7 @@ from copy import deepcopy
 
 from itertools import count
 
+import os
 from ...utils._explanation import gen_perf_dicts
 from ._boost import boost
 from ._utils import (
@@ -1216,11 +1217,11 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def _to_inner_jsonable(self, properties="all"):
+    def _to_json_inner(self, detail="all"):
         """Converts the inner model to a JSONable representation.
 
         Args:
-            properties: 'minimal', 'interpretable', 'mergeable', 'all'
+            detail: 'minimal', 'interpretable', 'mergeable', 'all'
 
         Returns:
             JSONable object
@@ -1228,16 +1229,16 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        if properties == "minimal":
+        if detail == "minimal":
             level = 0
-        elif properties == "interpretable":
+        elif detail == "interpretable":
             level = 1
-        elif properties == "mergeable":
+        elif detail == "mergeable":
             level = 2
-        elif properties == "all":
+        elif detail == "all":
             level = 3
         else:
-            msg = f"Unrecognized export properties: {properties}"
+            msg = f"Unrecognized to_json detail: {detail}"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -1331,6 +1332,9 @@ class EBMModel(BaseEstimator):
             if hasattr(self, "greediness"):
                 params["greediness"] = self.greediness
 
+            if hasattr(self, "smoothing_rounds"):
+                params["smoothing_rounds"] = self.smoothing_rounds
+
             if hasattr(self, "max_rounds"):
                 params["max_rounds"] = self.max_rounds
 
@@ -1345,6 +1349,9 @@ class EBMModel(BaseEstimator):
 
             if hasattr(self, "max_leaves"):
                 params["max_leaves"] = self.max_leaves
+
+            if hasattr(self, "objective"):
+                params["objective"] = self.objective
 
             if hasattr(self, "n_jobs"):
                 params["n_jobs"] = self.n_jobs
@@ -1460,11 +1467,11 @@ class EBMModel(BaseEstimator):
 
         return j
 
-    def _to_outer_jsonable(self, properties="all"):
+    def _to_json_outer(self, detail="all"):
         """Converts the outer model to a JSONable representation.
 
         Args:
-            properties: 'minimal', 'interpretable', 'mergeable', 'all'
+            detail: 'minimal', 'interpretable', 'mergeable', 'all'
 
         Returns:
             JSONable object
@@ -1517,7 +1524,7 @@ class EBMModel(BaseEstimator):
         #   and "edits", which would contain a list of the edits.  These fields wouldn't be present in a scikit-learn
         #   generated EBM, but would appear if the user edited the EBM, or if they loaded one that had edits.
 
-        inner = self._to_inner_jsonable(properties)
+        inner = self._to_json_inner(detail)
 
         outer = {}
         outer["version"] = "1.0"
@@ -1525,18 +1532,42 @@ class EBMModel(BaseEstimator):
 
         return outer
 
-    def _to_json(self, properties="all"):
-        """Converts the model to a JSON representation.
+    def to_json(self, file=None, indent=2, detail="all"):
+        """Exports the model to a JSON representation.
 
         Args:
-            properties: 'minimal', 'interpretable', 'mergeable', 'all'
+            file: None to return a JSONable object, a path-like object (str or os.PathLike)
+                to write a file, or a file-like object implementing .write().
+            indent: If indent is a non-negative integer or string, then JSON array
+                elements and object members will be pretty-printed with that indent
+                level. An indent level of 0, negative, or "" will only insert newlines.
+                None (the default) selects the most compact representation. Using a
+                positive integer indent indents that many spaces per level. If indent
+                is a string (such as "\t"), that string is used to indent each level.
+            detail: 'minimal', 'interpretable', 'mergeable', 'all'
 
         Returns:
-            JSON string
+            JSONable object if file=None, otherwise returns None.
         """
 
-        outer = self._to_outer_jsonable(properties)
-        return json.dumps(outer, allow_nan=False, indent=2)
+        check_is_fitted(self, "has_fitted_")
+
+        warn(
+            "The function to_json is in beta. The JSON format may change in a future version."
+        )
+
+        if file is None:
+            # return JSONable object
+            return self._to_json_outer(detail)
+        elif isinstance(file, (str, os.PathLike)):
+            # file is a path-like object (str or os.PathLike)
+            with open(file, "w") as fp:
+                outer = self._to_json_outer(detail)
+                json.dump(outer, fp, allow_nan=False, indent=indent)
+        else:
+            # file is a file-like object implementing .write()
+            outer = self._to_json_outer(detail)
+            json.dump(outer, file, allow_nan=False, indent=indent)
 
     def decision_function(self, X, init_score=None):
         """Predict scores from model before calling the link function.

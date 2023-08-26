@@ -416,13 +416,14 @@ def jsonify_lists(vals):
     if len(vals) != 0:
         if type(vals[0]) is float:
             for idx, val in enumerate(vals):
-                # JSON doesn't have NaN, or infinities, but javaScript has these, so use javaScript strings
+                # JSON doesn't have NaN, or infinities, but javaScript
+                # uses dynamic typing so we can use strings instead.
                 if isnan(val):
-                    vals[idx] = "NaN"  # this is what JavaScript outputs for 0/0
+                    vals[idx] = "nan"  # standardize as lower case for all characters
                 elif val == np.inf:
-                    vals[idx] = "Infinity"  # this is what JavaScript outputs for 1/0
+                    vals[idx] = "+inf"  # use a '+' to allow searching for just +inf
                 elif val == -np.inf:
-                    vals[idx] = "-Infinity"  # this is what JavaScript outputs for -1/0
+                    vals[idx] = "-inf"
         else:
             for nested in vals:
                 jsonify_lists(nested)
@@ -430,11 +431,12 @@ def jsonify_lists(vals):
 
 
 def jsonify_item(val):
-    # JSON doesn't have NaN, or infinities, but javaScript has these, so use javaScript strings
+    # JSON doesn't have NaN, or infinities, but javaScript
+    # uses dynamic typing so we can use strings instead.
     if isnan(val):
-        val = "NaN"  # this is what JavaScript outputs for 0/0
+        val = "nan"  # standardize as lower case for all characters
     elif val == np.inf:
-        val = "Infinity"  # this is what JavaScript outputs for 1/0
+        val = "+inf"  # use a '+' to allow searching for just +inf
     elif val == -np.inf:
-        val = "-Infinity"  # this is what JavaScript outputs for -1/0
+        val = "-inf"
     return val

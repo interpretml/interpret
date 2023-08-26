@@ -22,6 +22,8 @@ from interpret.privacy import (
     DPExplainableBoostingRegressor,
 )
 
+from io import StringIO
+import json
 import numpy as np
 import pandas as pd  # type: ignore
 from sklearn.model_selection import cross_validate, StratifiedShuffleSplit, train_test_split  # type: ignore
@@ -1020,7 +1022,7 @@ def test_json_classification():
 
     clf.bin_weights_[0] = np.delete(clf.bin_weights_[0], 1)
 
-    clf._to_json(properties="all")
+    clf.to_json(detail="all")
 
 
 def test_json_multiclass():
@@ -1033,7 +1035,7 @@ def test_json_multiclass():
         max_bins=10, feature_types=feature_types, interactions=0
     )
     clf.fit(X, y)
-    clf._to_json(properties="all")
+    clf.to_json(detail="all")
 
 
 def test_json_regression():
@@ -1049,7 +1051,7 @@ def test_json_regression():
         interactions=[(1, 2), (2, 3)],
     )
     clf.fit(X, y)
-    clf._to_json(properties="all")
+    clf.to_json(detail="all")
 
 
 def test_json_dp_classification():
@@ -1063,7 +1065,7 @@ def test_json_dp_classification():
     clf.term_scores_[0][0] = np.nan
     clf.term_scores_[0][1] = np.inf
     clf.term_scores_[0][2] = -np.inf
-    clf._to_json(properties="all")
+    clf.to_json(detail="all")
 
 
 def test_json_dp_regression():
@@ -1074,7 +1076,22 @@ def test_json_dp_regression():
     feature_types[0] = "nominal"
     clf = DPExplainableBoostingRegressor(max_bins=5, feature_types=feature_types)
     clf.fit(X, y)
-    clf._to_json(properties="all")
+    clf.to_json(detail="all")
+
+
+def test_to_json():
+    data = synthetic_classification()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingClassifier()
+    clf.fit(X, y)
+
+    file_like_string_writer = StringIO()
+    jsonable = clf.to_json(file_like_string_writer)
+    json_data = file_like_string_writer.getvalue()
+    jsonable = json.loads(json_data)
+    assert "ebm" in jsonable
 
 
 def test_exclude_explicit():
