@@ -83,7 +83,7 @@ def test_ebm_remove_features():
 
     clf = ExplainableBoostingRegressor(interactions=[(1, 2), (1, 3)])
     clf.fit(X, y)
-    clf.remove_features(["A", 2], remove_dependent_terms=True)
+    clf.remove_features(["A", 2])
 
     assert clf.feature_names_in_ == ["B", "D"]
     assert len(clf.histogram_edges_) == 2
@@ -114,9 +114,9 @@ def test_ebm_sweep():
     clf.term_scores_[0].fill(0)  # set 'A' to zero
     clf.term_scores_[len(clf.term_scores_) - 1].fill(0)  # set 'B & D' to zero
 
-    clf.sweep(sweep_terms=True, sweep_bins=True, sweep_features=True)
+    clf.sweep(terms=True, bins=True, features=True)
 
-    # check that sweep_features removed feature 'A' which was not used in a term
+    # check that sweeping the features removed feature 'A' which was not used in a term
     assert clf.feature_names_in_ == ["B", "C", "D"]
     assert len(clf.histogram_edges_) == 3
     assert len(clf.histogram_weights_) == 3
@@ -127,12 +127,12 @@ def test_ebm_sweep():
     assert clf.feature_bounds_.shape[0] == 3
     assert clf.n_features_in_ == 3
 
-    # check that sweep_bins deleted the pair bins in D
+    # check that sweeping the bins deleted the pair bins in D
     assert len(clf.bins_[0]) == 2  # feature 'B'
     assert len(clf.bins_[1]) == 2  # feature 'C'
     assert len(clf.bins_[2]) == 1  # feature 'D'
 
-    # check that sweep_terms removed the zeroed terms
+    # check that sweeping the terms removed the zeroed terms
     assert clf.term_names_ == ["B", "C", "D", "B & C"]
     assert len(clf.term_features_) == 4
     assert len(clf.term_scores_) == 4

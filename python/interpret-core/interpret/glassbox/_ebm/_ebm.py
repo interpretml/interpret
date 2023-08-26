@@ -2226,20 +2226,19 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def remove_features(self, features, remove_dependent_terms=False):
+    def remove_features(self, features):
         """Removes features (and their associated components) from a fitted EBM. Note
         that this will change the structure (i.e., by removing the specified
         indices) of the following components of ``self``: ``histogram_edges_``,
         ``histogram_weights_``, ``unique_val_counts_``, ``bins_``,
         ``feature_names_in_``, ``feature_types_in_``, and ``feature_bounds_``.
+        Also, any terms that use the features being deleted will be deleted.
         The following attributes that the caller passed to the \_\_init\_\_ function are
         not modified: ``feature_names``, and ``feature_types``.
 
         Args:
             features: A list or enumerable of feature names or indices or
                 booleans indicating which features to remove.
-            remove_dependent_terms: Boolean indicating if this function should delete any
-                terms that use a feature being deleted. An exception is raised otherwise.
 
         Returns:
             Itself.
@@ -2260,13 +2259,7 @@ class EBMModel(BaseEstimator):
             for term_idx, feature_idxs in enumerate(self.term_features_)
             if any(feature_idx in drop_features for feature_idx in feature_idxs)
         ]
-        if len(drop_terms) != 0:
-            if remove_dependent_terms is True:
-                self.remove_terms(drop_terms)
-            else:
-                msg = "A feature could not be deleted since it was used by a term. If you wish to force delete the terms used by the features, set remove_dependent_terms=True"
-                _log.error(msg)
-                raise ValueError(msg)
+        self.remove_terms(drop_terms)
 
         self.histogram_edges_ = [
             v for i, v in enumerate(self.histogram_edges_) if i not in drop_features
@@ -2290,15 +2283,15 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def sweep(self, sweep_terms=True, sweep_bins=True, sweep_features=False):
+    def sweep(self, terms=True, bins=True, features=False):
         """Purges unused elements from a fitted EBM.
 
         Args:
-            sweep_terms: Boolean indicating if zeroed terms that do not affect the output
+            terms: Boolean indicating if zeroed terms that do not affect the output
                 should be purged from the model.
-            sweep_bins: Boolean indicating if unused bin levels that do not affect the output
+            bins: Boolean indicating if unused bin levels that do not affect the output
                 should be purged from the model.
-            sweep_features: Boolean indicating if features that are not used in any terms
+            features: Boolean indicating if features that are not used in any terms
                 and therefore do not affect the output should be purged from the model.
 
         Returns:
@@ -2307,22 +2300,34 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        if sweep_terms is True:
+        if terms is True:
             terms = [
                 i for i, v in enumerate(self.term_scores_) if np.count_nonzero(v) == 0
             ]
             self.remove_terms(terms)
+        elif terms is not False:
+            msg = "terms must be True or False"
+            _log.error(msg)
+            raise ValueError(msg)
 
-        if sweep_bins is True:
+        if bins is True:
             remove_unused_higher_bins(self.term_features_, self.bins_)
             deduplicate_bins(self.bins_)
+        elif bins is not False:
+            msg = "bins must be True or False"
+            _log.error(msg)
+            raise ValueError(msg)
 
-        if sweep_features is True:
+        if features is True:
             features = np.ones(len(self.bins_), np.bool_)
             for term in self.term_features_:
                 for feature_idx in term:
                     features.itemset(feature_idx, False)
             self.remove_features(features)
+        elif features is not False:
+            msg = "features must be True or False"
+            _log.error(msg)
+            raise ValueError(msg)
 
     def scale(self, term, factor):
         """Scale the individual term contribution by a constant factor. For
