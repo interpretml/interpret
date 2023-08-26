@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.4] - 2023-08-26
+### Added
+- added the following model editing functions: copy, remove_terms, remove_features, sweep, scale
+- added expirmental support for a JSON exporter function: to_json
+
 ## [v0.4.3] - 2023-08-04
 ### Changed
 - Training speed improvements due to the use of SIMD on Intel processors. 
