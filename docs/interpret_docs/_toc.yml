@@ -1,16 +1,9 @@
 format: jb-book
-root: intro
-parts:
-- caption: Quick Overview
-  chapters:
-  - file: getting-started-intro
-    sections:
-    - file: getting-started
-  - file: what-the-faq
-    sections:
-    - file: faq
-- caption: Algorithms
-  chapters:
+root: index
+chapters:
+- file: faq
+- file: algorithms
+  sections:
   - file: glassbox
     sections:
     - file: ebm
@@ -26,20 +19,20 @@ parts:
   - file: privacy
     sections:
     - file: dpebm
-- caption: More EBMs
-  chapters:
-  - file: ebm-internals
+- file: ebm-internals
+  sections:
+  - file: ebm-internals-regression
+  - file: ebm-internals-classification
+  - file: ebm-internals-multiclass
+- file: interpret
+  sections:
+  - file: interpret-glassbox
     sections:
-    - file: ebm-internals-regression
-    - file: ebm-internals-classification
-    - file: ebm-internals-multiclass
-- caption: Framework
-  chapters:
-  - file: framework
-- caption: Deployment Guide
-  chapters:
-  - file: deployment-guide
-- caption: Development Guide
-  chapters:
+    - file: ExplainableBoostingClassifier
+    - file: ExplainableBoostingRegressor
+- file: framework
+- file: deployment-guide
+- file: development
+  sections:
   - file: installation-guide
   - file: debugging-guide
