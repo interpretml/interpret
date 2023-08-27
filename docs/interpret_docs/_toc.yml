@@ -30,6 +30,11 @@ chapters:
     sections:
     - file: ExplainableBoostingClassifier
     - file: ExplainableBoostingRegressor
+  - file: interpret-privacy
+    sections:
+    - file: DPExplainableBoostingClassifier
+    - file: DPExplainableBoostingRegressor
+  - file: show
 - file: framework
 - file: deployment-guide
 - file: development
