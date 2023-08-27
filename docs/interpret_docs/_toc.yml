@@ -30,6 +30,11 @@ chapters:
     sections:
     - file: ExplainableBoostingClassifier
     - file: ExplainableBoostingRegressor
+    - file: LogisticRegression
+    - file: LinearRegression
+    - file: ClassificationTree
+    - file: RegressionTree
+    - file: DecisionListClassifier
   - file: interpret-privacy
     sections:
     - file: DPExplainableBoostingClassifier
