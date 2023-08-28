@@ -35,6 +35,12 @@ chapters:
     - file: ClassificationTree
     - file: RegressionTree
     - file: DecisionListClassifier
+  - file: interpret-blackbox
+    sections:
+    - file: ShapKernel
+    - file: LimeTabular
+    - file: PartialDependence
+    - file: MorrisSensitivity
   - file: interpret-privacy
     sections:
     - file: DPExplainableBoostingClassifier
