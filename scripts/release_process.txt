@@ -250,7 +250,7 @@ set_visualize_provider(InlineProvider())
   - escape any underscores with '\' characters
   - make sure the first line has the following format:
     ## [v0.x.x] - yyyy-mm-dd
-  - Add the following at the bottom. It will make the version a link to the code:
+  - Add the following at the bottom (put an empty line between them). It will make the version a link to the code:
     [v0.x.x]: https://github.com/interpretml/interpret/tree/v0.x.x
   - preview it just to be sure
   - click "publish release".  Github will automatically attach the source code .zip and .tar.gz files

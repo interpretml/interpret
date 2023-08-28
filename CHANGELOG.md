@@ -7,7 +7,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 ## [v0.4.4] - 2023-08-26
 ### Added
 - added the following model editing functions: copy, remove_terms, remove_features, sweep, scale
-- added expirmental support for a JSON exporter function: to_json
+- added experimental support for a JSON exporter function: to_json
 
 ## [v0.4.3] - 2023-08-04
 ### Changed
