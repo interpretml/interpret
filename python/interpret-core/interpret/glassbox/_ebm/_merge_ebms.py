@@ -274,9 +274,11 @@ def _harmonize_tensor(
 
 
 def merge_ebms(models):
-    """Merging multiple EBM models trained on the same dataset.
+    """Merges EBM models trained on similar datasets that have the same set of features.
+
     Args:
         models: List of EBM models to be merged.
+
     Returns:
         An EBM model with averaged mean and standard deviation of input models.
     """
