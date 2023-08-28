@@ -1,29 +1,6 @@
 format: jb-book
 root: index
 chapters:
-- file: faq
-- file: algorithms
-  sections:
-  - file: glassbox
-    sections:
-    - file: ebm
-    - file: lr
-    - file: dt
-    - file: dr
-  - file: blackbox
-    sections:
-    - file: shap
-    - file: lime
-    - file: pdp
-    - file: msa
-  - file: privacy
-    sections:
-    - file: dpebm
-- file: ebm-internals
-  sections:
-  - file: ebm-internals-regression
-  - file: ebm-internals-classification
-  - file: ebm-internals-multiclass
 - file: interpret
   sections:
   - file: interpret-glassbox
@@ -74,9 +51,32 @@ chapters:
   - file: status_show_server
   - file: set_visualize_provider
   - file: get_visualize_provider
+- file: algorithms
+  sections:
+  - file: glassbox
+    sections:
+    - file: ebm
+    - file: lr
+    - file: dt
+    - file: dr
+  - file: blackbox
+    sections:
+    - file: shap
+    - file: lime
+    - file: pdp
+    - file: msa
+  - file: privacy
+    sections:
+    - file: dpebm
+- file: ebm-internals
+  sections:
+  - file: ebm-internals-regression
+  - file: ebm-internals-classification
+  - file: ebm-internals-multiclass
 - file: framework
 - file: deployment-guide
 - file: development
   sections:
   - file: installation-guide
   - file: debugging-guide
+- file: faq
