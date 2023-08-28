@@ -227,6 +227,10 @@ set_visualize_provider(InlineProvider())
 
 - publish the docs:
   - delete all the files in the docs repo (except the .git directory)
+    - Also, keep the redirect files for:
+      https://interpret.ml/docs/getting-started-intro.html
+      https://interpret.ml/docs/getting-started.html
+      https://interpret.ml/docs/intro.html
   - copy the docs that we got from the azure build pipeline into the docs repo
   - git add --all
   - git commit -m "update docs to v0.."
