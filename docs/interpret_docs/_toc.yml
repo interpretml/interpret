@@ -35,17 +35,45 @@ chapters:
     - file: ClassificationTree
     - file: RegressionTree
     - file: DecisionListClassifier
+    - file: merge_ebms
   - file: interpret-blackbox
     sections:
     - file: ShapKernel
     - file: LimeTabular
     - file: PartialDependence
     - file: MorrisSensitivity
+  - file: interpret-greybox
+    sections:
+    - file: ShapTree
+  - file: interpret-perf
+    sections:
+    - file: RegressionPerf
+    - file: ROC
+    - file: PR
+  - file: interpret-data
+    sections:
+    - file: ClassHistogram
+    - file: Marginal
   - file: interpret-privacy
     sections:
     - file: DPExplainableBoostingClassifier
     - file: DPExplainableBoostingRegressor
+  - file: interpret-utils
+    sections:
+    - file: measure_interactions
+  - file: interpret-develop
+    sections:
+    - file: debug_mode
   - file: show
+  - file: show_link
+  - file: set_show_addr
+  - file: get_show_addr
+  - file: preserve
+  - file: shutdown_show_server
+  - file: init_show_server
+  - file: status_show_server
+  - file: set_visualize_provider
+  - file: get_visualize_provider
 - file: framework
 - file: deployment-guide
 - file: development

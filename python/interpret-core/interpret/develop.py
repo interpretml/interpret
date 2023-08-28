@@ -136,6 +136,7 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True, simd
         log_filename: A string that is the filepath to log to, or sys.stderr/sys.stdout.
         log_level: Logging level. For example, "DEBUG".
         native_debug: Load debug versions of native libraries if True.
+        simd: Turns on or off the use of SIMD on systems that support it.
 
     Returns:
         Logging handler.
