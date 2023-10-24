@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <VCProjectVersion>16.0</VCProjectVersion>
+    <VCProjectVersion>17.0</VCProjectVersion>
     <ProjectGuid>{9C227F82-E92F-445C-9832-5A2EEDB7924B}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>libebm</RootNamespace>
@@ -29,26 +29,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -104,7 +104,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>precompiled_header_cpp.hpp</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <ControlFlowGuard>Guard</ControlFlowGuard>
@@ -116,14 +116,17 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <FloatingPointModel>Precise</FloatingPointModel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>libebm_exports.def</ModuleDefinitionFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
-      <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
@@ -150,9 +153,8 @@ EXIT /B 0
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>precompiled_header_cpp.hpp</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <OmitFramePointers>false</OmitFramePointers>
       <StringPooling>true</StringPooling>
       <ControlFlowGuard>Guard</ControlFlowGuard>
       <FloatingPointExceptions>false</FloatingPointExceptions>
@@ -163,13 +165,17 @@ EXIT /B 0
       <TreatWarningAsError>true</TreatWarningAsError>
       <FloatingPointModel>Precise</FloatingPointModel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>libebm_exports.def</ModuleDefinitionFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
@@ -221,6 +227,7 @@ EXIT /B 0
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>libebm_exports.def</ModuleDefinitionFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
@@ -252,7 +259,6 @@ EXIT /B 0
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <OmitFramePointers>true</OmitFramePointers>
       <StringPooling>true</StringPooling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <ControlFlowGuard>false</ControlFlowGuard>
@@ -272,6 +278,7 @@ EXIT /B 0
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>libebm_exports.def</ModuleDefinitionFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
@@ -394,18 +401,18 @@ EXIT /B 0
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="libebm_exports.txt">
+    <Text Include="libebm_exports.txt">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="include_ordering.txt">
+    </Text>
+    <Text Include="include_ordering.txt">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </None>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="compute\avx512f_ebm\avx512f_ebm.vcxproj">
@@ -421,11 +428,6 @@ EXIT /B 0
   <ItemGroup Condition="exists('$(VCTargetsPath)\BuildCustomizations\CUDA 11.2.props')">
     <ProjectReference Include="compute\cuda_ebm\cuda_ebm.vcxproj">
       <Project>{26b3484d-e3dc-4dcd-95a2-b4fffaf43a9a}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup Condition="!exists('$(VCTargetsPath)\BuildCustomizations\CUDA 11.2.props')">
-    <ProjectReference Include="compute\no_cuda_ebm\no_cuda_ebm.vcxproj">
-      <Project>{059d61c6-0fc9-4ea5-b4af-5cb0d8d0980b}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

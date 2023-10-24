@@ -102,8 +102,10 @@
     <None Include="libebm_exports.def" />
     <None Include="CODING_STYLE.md" />
     <None Include="IMPORTANT.md" />
-    <None Include="include_ordering.txt" />
-    <None Include="libebm_exports.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="include_ordering.txt" />
+    <Text Include="libebm_exports.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="inc">

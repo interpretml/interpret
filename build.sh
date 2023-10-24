@@ -149,7 +149,7 @@ compile_compute() {
    l6_asm="$6"
    l6_zone="$7"
 
-   compile_directory_cpp "$l6_compiler" "$l6_compiler_args_sanitized -DZONE_$l6_zone" "$l6_src_path_unsanitized/compute" "$l6_obj_path_unsanitized" "$l6_asm" "$l6_zone"
+   #compile_directory_cpp "$l6_compiler" "$l6_compiler_args_sanitized -DZONE_$l6_zone" "$l6_src_path_unsanitized/compute" "$l6_obj_path_unsanitized" "$l6_asm" "$l6_zone"
    compile_directory_cpp "$l6_compiler" "$l6_compiler_args_sanitized -I$l6_src_path_sanitized/compute/${l6_zone}_ebm -DZONE_$l6_zone" "$l6_src_path_unsanitized/compute/${l6_zone}_ebm" "$l6_obj_path_unsanitized" "$l6_asm" "$l6_zone"
 }
 

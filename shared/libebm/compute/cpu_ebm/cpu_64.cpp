@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "precompiled_header_cpp.hpp"
+#define _CRT_SECURE_NO_DEPRECATE
 
 #include <cmath> // exp, log
 #include <limits> // numeric_limits
@@ -22,6 +22,11 @@
 
 #include "approximate_math.hpp"
 #include "compute_wrapper.hpp"
+
+// Include the shared C++ files. Yes, this is very weird, but it is required.
+#include "Objective.cpp"
+#include "Registration.cpp"
+#include "zoned_bridge_c_functions.cpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

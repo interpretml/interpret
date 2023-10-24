@@ -1,18 +1,10 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.28729.10
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34202.233
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libebm_test", "tests\libebm_test.vcxproj", "{B1F39CA2-B315-45AC-8D98-C2271EE3B46D}"
-	ProjectSection(ProjectDependencies) = postProject
-		{9C227F82-E92F-445C-9832-5A2EEDB7924B} = {9C227F82-E92F-445C-9832-5A2EEDB7924B}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libebm", "libebm.vcxproj", "{9C227F82-E92F-445C-9832-5A2EEDB7924B}"
-	ProjectSection(ProjectDependencies) = postProject
-		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A} = {26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}
-		{510BED68-1ABE-4FAA-8666-A0051EE308C1} = {510BED68-1ABE-4FAA-8666-A0051EE308C1}
-	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "root", "root", "{F5894036-AD18-466C-825A-9347FA61CF2D}"
 	ProjectSection(SolutionItems) = preProject
@@ -64,8 +56,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{589FA769-174
 		..\..\R\src\Makevars.interpret = ..\..\R\src\Makevars.interpret
 	EndProjectSection
 EndProject
-Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "interpret-core", "..\..\python\interpret-core\interpret-core.pyproj", "{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cpu_ebm", "compute\cpu_ebm\cpu_ebm.vcxproj", "{AFCFB34C-7555-4399-88BD-560CAD86CE6E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3DB96E-A28F-4032-8E41-C6D2E408FC72}"
@@ -75,10 +65,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3D
 		compute\BinSumsInteraction.hpp = compute\BinSumsInteraction.hpp
 		compute\compute.hpp = compute\compute.hpp
 		compute\compute_wrapper.hpp = compute\compute_wrapper.hpp
-		compute\Directory.Build.targets = compute\Directory.Build.targets
 		compute\Objective.cpp = compute\Objective.cpp
 		compute\Objective.hpp = compute\Objective.hpp
-		compute\precompiled_header_cpp.hpp = compute\precompiled_header_cpp.hpp
 		compute\Registration.cpp = compute\Registration.cpp
 		compute\Registration.hpp = compute\Registration.hpp
 		compute\registration_exceptions.hpp = compute\registration_exceptions.hpp
@@ -115,14 +103,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "metrics", "metrics", "{43E2
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cuda_ebm", "compute\cuda_ebm\cuda_ebm.vcxproj", "{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "no_cuda_ebm", "compute\no_cuda_ebm\no_cuda_ebm.vcxproj", "{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "vis", "vis", "{CBBC34D4-01A5-4787-91B0-3883C8F406BD}"
 	ProjectSection(SolutionItems) = preProject
 		..\vis\.babelrc = ..\vis\.babelrc
 		..\vis\.eslintrc.json = ..\vis\.eslintrc.json
 		..\vis\.gitignore = ..\vis\.gitignore
-		..\vis\package-lock.json = ..\vis\package-lock.json
 		..\vis\package.json = ..\vis\package.json
 		..\vis\README.md = ..\vis\README.md
 		..\vis\webpack.config.js = ..\vis\webpack.config.js
@@ -160,10 +145,6 @@ Global
 		{9C227F82-E92F-445C-9832-5A2EEDB7924B}.Release|x64.Build.0 = Release|x64
 		{9C227F82-E92F-445C-9832-5A2EEDB7924B}.Release|x86.ActiveCfg = Release|Win32
 		{9C227F82-E92F-445C-9832-5A2EEDB7924B}.Release|x86.Build.0 = Release|Win32
-		{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}.Release|x64.ActiveCfg = Release|Any CPU
-		{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}.Release|x86.ActiveCfg = Release|Any CPU
 		{AFCFB34C-7555-4399-88BD-560CAD86CE6E}.Debug|x64.ActiveCfg = Debug|x64
 		{AFCFB34C-7555-4399-88BD-560CAD86CE6E}.Debug|x64.Build.0 = Debug|x64
 		{AFCFB34C-7555-4399-88BD-560CAD86CE6E}.Debug|x86.ActiveCfg = Debug|Win32
@@ -181,21 +162,9 @@ Global
 		{F2EA4B57-0DF5-40A9-A8DE-6E92C7F898A1}.Release|x86.ActiveCfg = Release|Win32
 		{F2EA4B57-0DF5-40A9-A8DE-6E92C7F898A1}.Release|x86.Build.0 = Release|Win32
 		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}.Debug|x64.ActiveCfg = Debug|x64
-		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}.Debug|x64.Build.0 = Debug|x64
 		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}.Debug|x86.ActiveCfg = Debug|Win32
-		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}.Debug|x86.Build.0 = Debug|Win32
 		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}.Release|x64.ActiveCfg = Release|x64
-		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}.Release|x64.Build.0 = Release|x64
 		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}.Release|x86.ActiveCfg = Release|Win32
-		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}.Release|x86.Build.0 = Release|Win32
-		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Debug|x64.ActiveCfg = Debug|x64
-		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Debug|x64.Build.0 = Debug|x64
-		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Debug|x86.ActiveCfg = Debug|Win32
-		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Debug|x86.Build.0 = Debug|Win32
-		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Release|x64.ActiveCfg = Release|x64
-		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Release|x64.Build.0 = Release|x64
-		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Release|x86.ActiveCfg = Release|Win32
-		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Release|x86.Build.0 = Release|Win32
 		{510BED68-1ABE-4FAA-8666-A0051EE308C1}.Debug|x64.ActiveCfg = Debug|x64
 		{510BED68-1ABE-4FAA-8666-A0051EE308C1}.Debug|x64.Build.0 = Debug|x64
 		{510BED68-1ABE-4FAA-8666-A0051EE308C1}.Debug|x86.ActiveCfg = Debug|Win32
@@ -217,7 +186,6 @@ Global
 		{8CAB82C2-DF15-49B3-9F7D-DFF3E71FCC22} = {5B3DB96E-A28F-4032-8E41-C6D2E408FC72}
 		{43E23DAD-B0D6-4148-B12A-F58560778CB3} = {5B3DB96E-A28F-4032-8E41-C6D2E408FC72}
 		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A} = {5B3DB96E-A28F-4032-8E41-C6D2E408FC72}
-		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B} = {5B3DB96E-A28F-4032-8E41-C6D2E408FC72}
 		{46F44B3D-A29F-4D68-97A3-62EE1E96DE54} = {CBBC34D4-01A5-4787-91B0-3883C8F406BD}
 		{510BED68-1ABE-4FAA-8666-A0051EE308C1} = {5B3DB96E-A28F-4032-8E41-C6D2E408FC72}
 	EndGlobalSection
