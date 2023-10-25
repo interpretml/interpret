@@ -134,6 +134,10 @@ jobs:
     runCodesignValidationInjection: false
   steps:
   - script: | 
+      sudo apt-get update
+      if [ $? -ne 0 ]; then
+        exit 201
+      fi
       sudo apt install --yes texlive-latex-base texlive-fonts-extra
       if [ $? -ne 0 ]; then
         exit 201

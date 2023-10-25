@@ -43,8 +43,5 @@ OBJECTS = \
    $(NATIVEDIR)/TensorTotalsBuild.o \
    $(NATIVEDIR)/common_c/common_c.o \
    $(NATIVEDIR)/common_c/logging.o \
-   $(NATIVEDIR)/compute/Objective.o \
-   $(NATIVEDIR)/compute/Registration.o \
-   $(NATIVEDIR)/compute/zoned_bridge_c_functions.o \
    $(NATIVEDIR)/compute/cpu_ebm/cpu_64.o \
    interpret_R.o
