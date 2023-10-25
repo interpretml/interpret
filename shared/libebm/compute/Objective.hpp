@@ -9,6 +9,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <memory> // shared_ptr, unique_ptr
+#include <type_traits> // is_same
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT

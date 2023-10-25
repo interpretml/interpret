@@ -76,17 +76,17 @@
     <IntDir>$(ProjectDir)..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>libebm_win_x86_debug</TargetName>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>libebm_win_x64_debug</TargetName>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>libebm_win_x86</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <TargetName>libebm_win_x64_debug</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -101,55 +101,6 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>ZONE_cpu;BRIDGE_AVX2_32;LIBEBM_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>precompiled_header_cpp.hpp</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <StringPooling>true</StringPooling>
-      <ControlFlowGuard>Guard</ControlFlowGuard>
-      <FloatingPointExceptions>false</FloatingPointExceptions>
-      <CreateHotpatchableImage>false</CreateHotpatchableImage>
-      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <OpenMPSupport>false</OpenMPSupport>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <FloatingPointModel>Precise</FloatingPointModel>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-    </ClCompile>
-    <Link>
-      <SubSystem>Windows</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>libebm_exports.def</ModuleDefinitionFile>
-      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
-      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
-    </Link>
-    <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
-ECHO robocopy returned error code %ERRORLEVEL%
-IF %ERRORLEVEL% GEQ 2 (
-   EXIT /B %ERRORLEVEL%
-)
-robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
-ECHO robocopy returned error code %ERRORLEVEL%
-IF %ERRORLEVEL% GEQ 2 (
-   EXIT /B %ERRORLEVEL%
-)
-EXIT /B 0
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <WarningLevel>Level4</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>ZONE_cpu;BRIDGE_AVX2_32;LIBEBM_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>precompiled_header_cpp.hpp</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
@@ -218,6 +169,55 @@ EXIT /B 0
       <OpenMPSupport>false</OpenMPSupport>
       <TreatWarningAsError>true</TreatWarningAsError>
       <FloatingPointModel>Precise</FloatingPointModel>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableUAC>false</EnableUAC>
+      <ModuleDefinitionFile>libebm_exports.def</ModuleDefinitionFile>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+    </Link>
+    <PostBuildEvent>
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+ECHO robocopy returned error code %ERRORLEVEL%
+IF %ERRORLEVEL% GEQ 2 (
+   EXIT /B %ERRORLEVEL%
+)
+robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+ECHO robocopy returned error code %ERRORLEVEL%
+IF %ERRORLEVEL% GEQ 2 (
+   EXIT /B %ERRORLEVEL%
+)
+EXIT /B 0
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>ZONE_cpu;BRIDGE_AVX2_32;LIBEBM_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeaderFile>precompiled_header_cpp.hpp</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <StringPooling>true</StringPooling>
+      <ControlFlowGuard>Guard</ControlFlowGuard>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <CreateHotpatchableImage>false</CreateHotpatchableImage>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <FloatingPointModel>Precise</FloatingPointModel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
