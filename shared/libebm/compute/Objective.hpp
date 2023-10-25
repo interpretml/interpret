@@ -542,46 +542,55 @@ protected:
       pFunctionPointers->m_pApplyUpdateCpp = &TObjective::StaticApplyUpdate;
       
       const auto bMaximizeMetric = TObjective::k_bMaximizeMetric;
-      static_assert(std::is_same<decltype(bMaximizeMetric), const BoolEbm>::value, "TObjective::k_bMaximizeMetric should be a BoolEbm");
+      constexpr bool bMaximizeMetricGood = std::is_same<decltype(bMaximizeMetric), const BoolEbm>::value;
+      static_assert(bMaximizeMetricGood, "TObjective::k_bMaximizeMetric should be a BoolEbm");
       pObjectiveWrapperOut->m_bMaximizeMetric = bMaximizeMetric;
 
       pObjectiveWrapperOut->m_linkFunction = TObjective::k_linkFunction;
 
       const auto linkParam = (static_cast<TObjective *>(this))->LinkParam();
-      static_assert(std::is_same<decltype(linkParam), const double>::value, "this->LinkParam() should return a double");
+      constexpr bool bLinkParamGood = std::is_same<decltype(linkParam), const double>::value;
+      static_assert(bLinkParamGood, "this->LinkParam() should return a double");
       pObjectiveWrapperOut->m_linkParam = linkParam;
 
       const auto learningRateAdjustmentDifferentialPrivacy = (static_cast<TObjective *>(this))->LearningRateAdjustmentDifferentialPrivacy();
-      static_assert(std::is_same<decltype(learningRateAdjustmentDifferentialPrivacy), const double>::value, 
+      constexpr bool bLearningRateAdjustmentDifferentialPrivacyGood = std::is_same<decltype(learningRateAdjustmentDifferentialPrivacy), const double>::value;
+      static_assert(bLearningRateAdjustmentDifferentialPrivacyGood,
          "this->LearningRateAdjustmentDifferentialPrivacy() should return a double");
       pObjectiveWrapperOut->m_learningRateAdjustmentDifferentialPrivacy = learningRateAdjustmentDifferentialPrivacy;
 
       const auto learningRateAdjustmentGradientBoosting = (static_cast<TObjective *>(this))->LearningRateAdjustmentGradientBoosting();
-      static_assert(std::is_same<decltype(learningRateAdjustmentGradientBoosting), const double>::value, 
+      constexpr bool bLearningRateAdjustmentGradientBoostingGood = std::is_same<decltype(learningRateAdjustmentGradientBoosting), const double>::value;
+      static_assert(bLearningRateAdjustmentGradientBoostingGood,
          "this->LearningRateAdjustmentGradientBoosting() should return a double");
       pObjectiveWrapperOut->m_learningRateAdjustmentGradientBoosting = learningRateAdjustmentGradientBoosting;
 
       const auto learningRateAdjustmentHessianBoosting = (static_cast<TObjective *>(this))->LearningRateAdjustmentHessianBoosting();
-      static_assert(std::is_same<decltype(learningRateAdjustmentHessianBoosting), const double>::value, 
+      constexpr bool bLearningRateAdjustmentHessianBoostingGood = std::is_same<decltype(learningRateAdjustmentHessianBoosting), const double>::value;
+      static_assert(bLearningRateAdjustmentHessianBoostingGood,
          "this->LearningRateAdjustmentHessianBoosting() should return a double");
       pObjectiveWrapperOut->m_learningRateAdjustmentHessianBoosting = learningRateAdjustmentHessianBoosting;
 
       const auto gainAdjustmentGradientBoosting = (static_cast<TObjective *>(this))->GainAdjustmentGradientBoosting();
-      static_assert(std::is_same<decltype(gainAdjustmentGradientBoosting), const double>::value, 
+      constexpr bool bGainAdjustmentGradientBoostingGood = std::is_same<decltype(gainAdjustmentGradientBoosting), const double>::value;
+      static_assert(bGainAdjustmentGradientBoostingGood,
          "this->GainAdjustmentGradientBoosting() should return a double");
       pObjectiveWrapperOut->m_gainAdjustmentGradientBoosting = gainAdjustmentGradientBoosting;
 
       const auto gainAdjustmentHessianBoosting = (static_cast<TObjective *>(this))->GainAdjustmentHessianBoosting();
-      static_assert(std::is_same<decltype(gainAdjustmentHessianBoosting), const double>::value, 
+      constexpr bool bGainAdjustmentHessianBoostingGood = std::is_same<decltype(gainAdjustmentHessianBoosting), const double>::value;
+      static_assert(bGainAdjustmentHessianBoostingGood,
          "this->GainAdjustmentHessianBoosting() should return a double");
       pObjectiveWrapperOut->m_gainAdjustmentHessianBoosting = gainAdjustmentHessianBoosting;
 
       const auto gradientConstant = (static_cast<TObjective *>(this))->GradientConstant();
-      static_assert(std::is_same<decltype(gradientConstant), const double>::value, "this->GradientConstant() should return a double");
+      constexpr bool bGradientConstantGood = std::is_same<decltype(gradientConstant), const double>::value;
+      static_assert(bGradientConstantGood, "this->GradientConstant() should return a double");
       pObjectiveWrapperOut->m_gradientConstant = gradientConstant;
       
       const auto hessianConstant = (static_cast<TObjective *>(this))->HessianConstant();
-      static_assert(std::is_same<decltype(hessianConstant), const double>::value, "this->HessianConstant() should return a double");
+      constexpr bool bHessianConstantGood = std::is_same<decltype(hessianConstant), const double>::value;
+      static_assert(bHessianConstantGood, "this->HessianConstant() should return a double");
       pObjectiveWrapperOut->m_hessianConstant = hessianConstant;
 
       pObjectiveWrapperOut->m_bObjectiveHasHessian = HasHessian<TObjective>() ? EBM_TRUE : EBM_FALSE;
