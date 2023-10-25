@@ -70,9 +70,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3D
 		compute\Registration.cpp = compute\Registration.cpp
 		compute\Registration.hpp = compute\Registration.hpp
 		compute\registration_exceptions.hpp = compute\registration_exceptions.hpp
+		compute\zoned_bridge_cpp_functions.hpp = compute\zoned_bridge_cpp_functions.hpp
 		compute\zoned_bridge_c_functions.cpp = compute\zoned_bridge_c_functions.cpp
 		compute\zoned_bridge_c_functions.h = compute\zoned_bridge_c_functions.h
-		compute\zoned_bridge_cpp_functions.hpp = compute\zoned_bridge_cpp_functions.hpp
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "avx512f_ebm", "compute\avx512f_ebm\avx512f_ebm.vcxproj", "{F2EA4B57-0DF5-40A9-A8DE-6E92C7F898A1}"
@@ -120,6 +120,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{46F44B3D-A29
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "avx2_ebm", "compute\avx2_ebm\avx2_ebm.vcxproj", "{510BED68-1ABE-4FAA-8666-A0051EE308C1}"
+EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "interpret-core", "..\..\python\interpret-core\interpret-core.pyproj", "{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -173,6 +175,10 @@ Global
 		{510BED68-1ABE-4FAA-8666-A0051EE308C1}.Release|x64.Build.0 = Release|x64
 		{510BED68-1ABE-4FAA-8666-A0051EE308C1}.Release|x86.ActiveCfg = Release|Win32
 		{510BED68-1ABE-4FAA-8666-A0051EE308C1}.Release|x86.Build.0 = Release|Win32
+		{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}.Release|x64.ActiveCfg = Release|Any CPU
+		{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
