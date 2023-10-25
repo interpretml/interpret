@@ -18,10 +18,60 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="bit_packing_extremes.cpp" />
+    <ClCompile Include="boosting_unusual_inputs.cpp" />
+    <ClCompile Include="CutQuantileTest.cpp" />
+    <ClCompile Include="CutUniformTest.cpp" />
+    <ClCompile Include="CutWinsorizedTest.cpp" />
+    <ClCompile Include="dataset_shared_test.cpp" />
+    <ClCompile Include="DiscretizeTest.cpp" />
+    <ClCompile Include="include_c.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="interaction_unusual_inputs.cpp" />
+    <ClCompile Include="libebm_test.cpp" />
+    <ClCompile Include="precompiled_header_test.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="random_test.cpp" />
+    <ClCompile Include="rehydrate_booster.cpp" />
+    <ClCompile Include="SuggestGraphBoundsTest.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="libebm_test.hpp" />
+    <ClInclude Include="precompiled_header_test.hpp" />
+    <ClInclude Include="RandomStreamTest.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\libebm.vcxproj">
+      <Project>{9c227f82-e92f-445c-9832-5a2eedb7924b}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="libebm_test.bat">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
+    <None Include="libebm_test.sh">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
-    <ProjectGuid>{B1F39CA2-B315-45AC-8D98-C2271EE3B46D}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{B1F39CA2-B315-45AC-8D98-C2271EE3B46D}</ProjectGuid>
     <RootNamespace>libebm_test</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -30,7 +80,6 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -44,7 +93,6 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -73,247 +121,201 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
+    <GenerateManifest>false</GenerateManifest>
     <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>true</LinkIncremental>
+    <GenerateManifest>false</GenerateManifest>
     <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <GenerateManifest>false</GenerateManifest>
+    <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>true</LinkIncremental>
+    <GenerateManifest>false</GenerateManifest>
     <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LinkIncremental>true</LinkIncremental>
+    <GenerateManifest>false</GenerateManifest>
     <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <GenerateManifest>false</GenerateManifest>
+    <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
-      <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CONSOLE;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <StringPooling>false</StringPooling>
+      <ControlFlowGuard>false</ControlFlowGuard>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <CreateHotpatchableImage>false</CreateHotpatchableImage>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <PrecompiledHeader>Use</PrecompiledHeader>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\libebm\inc</AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <FloatingPointExceptions>false</FloatingPointExceptions>
-      <StringPooling>false</StringPooling>
-      <OpenMPSupport>false</OpenMPSupport>
-      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <ControlFlowGuard>false</ControlFlowGuard>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <FloatingPointModel>Precise</FloatingPointModel>
-      <CreateHotpatchableImage>false</CreateHotpatchableImage>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
-      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <OptimizeReferences>false</OptimizeReferences>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\libebm_win_x86_debug.dll</Outputs>
       <Inputs>$(ProjectDir)..\..\..\staging\libebm_win_x86_debug.dll</Inputs>
       <Message>Copying libebm DLL to libebm_test</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" libebm_win_x86_debug.dll libebm_win_x86_debug.pdb
-ECHO robocopy returned error code %ERRORLEVEL%
-IF %ERRORLEVEL% GEQ 2 (
-   EXIT /B %ERRORLEVEL%
-)
-EXIT /B 0
-</Command>
+              ECHO robocopy returned error code %ERRORLEVEL%
+              IF %ERRORLEVEL% GEQ 2 (
+              EXIT /B %ERRORLEVEL%
+              )
+              EXIT /B 0
+          </Command>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
-      <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CONSOLE;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\libebm\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <FloatingPointExceptions>false</FloatingPointExceptions>
-      <StringPooling>false</StringPooling>
-      <OpenMPSupport>false</OpenMPSupport>
-      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <ControlFlowGuard>false</ControlFlowGuard>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <SupportJustMyCode>true</SupportJustMyCode>
-      <FloatingPointModel>Precise</FloatingPointModel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <StringPooling>false</StringPooling>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <ControlFlowGuard>false</ControlFlowGuard>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
       <CreateHotpatchableImage>false</CreateHotpatchableImage>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\libebm\inc</AdditionalIncludeDirectories>
+      <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
       <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
-      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\libebm_win_x86.dll</Outputs>
       <Inputs>$(ProjectDir)..\..\..\staging\libebm_win_x86.dll</Inputs>
       <Message>Copying libebm DLL to libebm_test</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" libebm_win_x86.dll libebm_win_x86.pdb
-ECHO robocopy returned error code %ERRORLEVEL%
-IF %ERRORLEVEL% GEQ 2 (
-   EXIT /B %ERRORLEVEL%
-)
-EXIT /B 0
-</Command>
+              ECHO robocopy returned error code %ERRORLEVEL%
+              IF %ERRORLEVEL% GEQ 2 (
+              EXIT /B %ERRORLEVEL%
+              )
+              EXIT /B 0
+          </Command>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
-      <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CONSOLE;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <StringPooling>false</StringPooling>
+      <ControlFlowGuard>false</ControlFlowGuard>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <CreateHotpatchableImage>false</CreateHotpatchableImage>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <PrecompiledHeader>Use</PrecompiledHeader>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\libebm\inc</AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <FloatingPointExceptions>false</FloatingPointExceptions>
-      <StringPooling>false</StringPooling>
-      <OpenMPSupport>false</OpenMPSupport>
-      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <ControlFlowGuard>false</ControlFlowGuard>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <FloatingPointModel>Precise</FloatingPointModel>
-      <CreateHotpatchableImage>false</CreateHotpatchableImage>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
-      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <OptimizeReferences>false</OptimizeReferences>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\libebm_win_x64_debug.dll</Outputs>
       <Inputs>$(ProjectDir)..\..\..\staging\libebm_win_x64_debug.dll</Inputs>
       <Message>Copying libebm DLL to libebm_test</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" libebm_win_x64_debug.dll libebm_win_x64_debug.pdb
-ECHO robocopy returned error code %ERRORLEVEL%
-IF %ERRORLEVEL% GEQ 2 (
-   EXIT /B %ERRORLEVEL%
-)
-EXIT /B 0
-</Command>
+              ECHO robocopy returned error code %ERRORLEVEL%
+              IF %ERRORLEVEL% GEQ 2 (
+              EXIT /B %ERRORLEVEL%
+              )
+              EXIT /B 0
+          </Command>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
-      <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CONSOLE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\libebm\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <FloatingPointExceptions>false</FloatingPointExceptions>
-      <StringPooling>false</StringPooling>
-      <OpenMPSupport>false</OpenMPSupport>
-      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <ControlFlowGuard>false</ControlFlowGuard>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <SupportJustMyCode>true</SupportJustMyCode>
-      <FloatingPointModel>Precise</FloatingPointModel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <StringPooling>false</StringPooling>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <ControlFlowGuard>false</ControlFlowGuard>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
       <CreateHotpatchableImage>false</CreateHotpatchableImage>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\libebm\inc</AdditionalIncludeDirectories>
+      <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
       <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
-      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\libebm_win_x64.dll</Outputs>
       <Inputs>$(ProjectDir)..\..\..\staging\libebm_win_x64.dll</Inputs>
       <Message>Copying libebm DLL to libebm_test</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" libebm_win_x64.dll libebm_win_x64.pdb
-            ECHO robocopy returned error code %ERRORLEVEL%
-            IF %ERRORLEVEL% GEQ 2 (
-            EXIT /B %ERRORLEVEL%
-            )
-            EXIT /B 0
-        </Command>
+              ECHO robocopy returned error code %ERRORLEVEL%
+              IF %ERRORLEVEL% GEQ 2 (
+              EXIT /B %ERRORLEVEL%
+              )
+              EXIT /B 0
+          </Command>
     </CustomBuildStep>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="bit_packing_extremes.cpp" />
-    <ClCompile Include="boosting_unusual_inputs.cpp" />
-    <ClCompile Include="dataset_shared_test.cpp" />
-    <ClCompile Include="include_c.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="DiscretizeTest.cpp" />
-    <ClCompile Include="CutQuantileTest.cpp" />
-    <ClCompile Include="CutUniformTest.cpp" />
-    <ClCompile Include="CutWinsorizedTest.cpp" />
-    <ClCompile Include="interaction_unusual_inputs.cpp" />
-    <ClCompile Include="precompiled_header_test.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="libebm_test.cpp" />
-    <ClCompile Include="random_test.cpp" />
-    <ClCompile Include="rehydrate_booster.cpp" />
-    <ClCompile Include="SuggestGraphBoundsTest.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="libebm_test.hpp" />
-    <ClInclude Include="precompiled_header_test.hpp" />
-    <ClInclude Include="RandomStreamTest.hpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="libebm_test.bat" />
-    <None Include="libebm_test.sh" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\libebm.vcxproj">
-      <Project>{9c227f82-e92f-445c-9832-5a2eedb7924b}</Project>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

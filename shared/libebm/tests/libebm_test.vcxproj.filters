@@ -1,35 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="libebm_test.cpp">
-      <Filter>non_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="precompiled_header_test.cpp">
-      <Filter>non_tests</Filter>
-    </ClCompile>
     <ClCompile Include="bit_packing_extremes.cpp" />
     <ClCompile Include="boosting_unusual_inputs.cpp" />
-    <ClCompile Include="DiscretizeTest.cpp" />
-    <ClCompile Include="interaction_unusual_inputs.cpp" />
-    <ClCompile Include="rehydrate_booster.cpp" />
-    <ClCompile Include="SuggestGraphBoundsTest.cpp" />
-    <ClCompile Include="random_test.cpp" />
-    <ClCompile Include="include_c.c" />
     <ClCompile Include="CutQuantileTest.cpp" />
     <ClCompile Include="CutUniformTest.cpp" />
     <ClCompile Include="CutWinsorizedTest.cpp" />
     <ClCompile Include="dataset_shared_test.cpp" />
+    <ClCompile Include="DiscretizeTest.cpp" />
+    <ClCompile Include="include_c.c" />
+    <ClCompile Include="interaction_unusual_inputs.cpp" />
+    <ClCompile Include="random_test.cpp" />
+    <ClCompile Include="rehydrate_booster.cpp" />
+    <ClCompile Include="SuggestGraphBoundsTest.cpp" />
+    <ClCompile Include="precompiled_header_test.cpp">
+      <Filter>non_tests</Filter>
+    </ClCompile>
+    <ClCompile Include="libebm_test.cpp">
+      <Filter>non_tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="libebm_test.hpp">
+    <ClInclude Include="precompiled_header_test.hpp">
       <Filter>non_tests</Filter>
     </ClInclude>
-    <ClInclude Include="precompiled_header_test.hpp">
+    <ClInclude Include="libebm_test.hpp">
       <Filter>non_tests</Filter>
     </ClInclude>
     <ClInclude Include="RandomStreamTest.hpp">
       <Filter>non_tests</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="non_tests">
+      <UniqueIdentifier>{17c0ab0a-1529-4e60-8718-6e8963a228bf}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="libebm_test.bat">
@@ -38,10 +43,5 @@
     <None Include="libebm_test.sh">
       <Filter>non_tests</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="non_tests">
-      <UniqueIdentifier>{84b2958e-0438-486e-bd4e-5cd6c8baf903}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
 </Project>

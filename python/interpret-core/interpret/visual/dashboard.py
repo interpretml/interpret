@@ -6,7 +6,7 @@ import re
 import requests
 import threading
 import os
-import time  
+import time
 from . import _udash
 
 from gevent.pywsgi import WSGIServer
