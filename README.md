@@ -117,7 +117,7 @@ show(dp_ebm.explain_global()) # Identical function calls to standard EBMs
 <br/>
 <br/>
 
-For more information, see the [documentation](https://interpret.ml/docs/getting-started.html).
+For more information, see the [documentation](https://interpret.ml/docs).
 <br/>
 <br/>
 
