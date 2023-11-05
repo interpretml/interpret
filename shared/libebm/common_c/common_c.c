@@ -14,7 +14,7 @@
 extern "C" {
 #endif // __cplusplus
 
-extern const char * SkipWhitespace(const char * s) {
+INTERNAL_IMPORT_EXPORT_BODY const char * SkipWhitespace(const char * s) {
    char oneChar = *s;
    while(0x20 == oneChar || (0x9 <= oneChar && oneChar <= 0xd)) {
       // skip whitespace
@@ -24,7 +24,7 @@ extern const char * SkipWhitespace(const char * s) {
    return s;
 }
 
-extern const char * ConvertStringToFloat(const char * const s, double * const pResultOut) {
+INTERNAL_IMPORT_EXPORT_BODY const char * ConvertStringToFloat(const char * const s, double * const pResultOut) {
    // we skip beginning whitespaces (strtod guarantees this)
    // unlike strtod, we also skip trailing whitespaces
 
@@ -48,7 +48,7 @@ extern const char * ConvertStringToFloat(const char * const s, double * const pR
    return SkipWhitespace(sNext);
 }
 
-extern const char * IsStringEqualsCaseInsensitive(const char * sMain, const char * sLabel) {
+INTERNAL_IMPORT_EXPORT_BODY const char * IsStringEqualsCaseInsensitive(const char * sMain, const char * sLabel) {
    // this function returns nullptr if there is no match, otherwise it returns a pointer to the 
    // first non-whitespace character following a successfully equal comparison
 
@@ -81,7 +81,7 @@ extern const char * IsStringEqualsCaseInsensitive(const char * sMain, const char
    return sMain;
 }
 
-extern BoolEbm IsStringEqualsForgiving(const char * sMain, const char * sLabel) {
+INTERNAL_IMPORT_EXPORT_BODY BoolEbm IsStringEqualsForgiving(const char * sMain, const char * sLabel) {
    sMain = IsStringEqualsCaseInsensitive(sMain, sLabel);
    if(NULL == sMain || '\0' != *sMain) {
       return EBM_FALSE;
@@ -89,7 +89,7 @@ extern BoolEbm IsStringEqualsForgiving(const char * sMain, const char * sLabel) 
    return EBM_TRUE;
 }
 
-extern BoolEbm CheckForIllegalCharacters(const char * s) {
+INTERNAL_IMPORT_EXPORT_BODY BoolEbm CheckForIllegalCharacters(const char * s) {
    if(NULL != s) {
       // to be generously safe towards people adding new objective/metric registrations, check for nullptr
       while(EBM_TRUE) {
@@ -114,7 +114,7 @@ extern BoolEbm CheckForIllegalCharacters(const char * s) {
    return EBM_TRUE;
 }
 
-extern const char * CheckRegistrationName(
+INTERNAL_IMPORT_EXPORT_BODY const char * CheckRegistrationName(
    const char * sRegistration, 
    const char * const sRegistrationEnd,
    const char * const sRegistrationName
@@ -143,7 +143,7 @@ extern const char * CheckRegistrationName(
    return sRegistration;
 }
 
-extern size_t CountParams(
+INTERNAL_IMPORT_EXPORT_BODY size_t CountParams(
    const char * sRegistration,
    const char * const sRegistrationEnd
 ) {
@@ -182,7 +182,7 @@ extern size_t CountParams(
    return cParams;
 }
 
-extern void * AlignedAlloc(const size_t cBytes) {
+INTERNAL_IMPORT_EXPORT_BODY void * AlignedAlloc(const size_t cBytes) {
    EBM_ASSERT(0 != cBytes);
    if(SIZE_MAX - (sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1) < cBytes) {
       return NULL;
@@ -199,12 +199,12 @@ extern void * AlignedAlloc(const size_t cBytes) {
    *(REINTERPRET_CAST(void **, pointer) - 1) = p;
    return REINTERPRET_CAST(void *, pointer);
 }
-extern void AlignedFree(void * const p) {
+INTERNAL_IMPORT_EXPORT_BODY void AlignedFree(void * const p) {
    if(NULL != p) {
       free(*(REINTERPRET_CAST(void **, p) - 1));
    }
 }
-extern void * AlignedRealloc(void * const p, const size_t cOldBytes, const size_t cNewBytes) {
+INTERNAL_IMPORT_EXPORT_BODY void * AlignedRealloc(void * const p, const size_t cOldBytes, const size_t cNewBytes) {
    EBM_ASSERT(NULL != p);
    EBM_ASSERT(0 != cOldBytes);
    EBM_ASSERT(0 != cNewBytes);

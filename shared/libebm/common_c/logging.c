@@ -14,14 +14,15 @@
 extern "C" {
 #endif // __cplusplus
 
-const char g_sTrue[] = "true";
-const char g_sFalse[] = "false";
+INTERNAL_IMPORT_EXPORT_BODY const char g_sTrue[] = "true";
+INTERNAL_IMPORT_EXPORT_BODY const char g_sFalse[] = "false";
+
+INTERNAL_IMPORT_EXPORT_BODY TraceEbm g_traceLevel = Trace_Off;
+
+static LogCallbackFunction g_pLogCallbackFunction = NULL;
 
 static const char g_sAssertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";
 static const char g_sLoggingParamError[] = "Error in vsnprintf parameters for logging.";
-
-TraceEbm g_traceLevel = Trace_Off;
-static LogCallbackFunction g_pLogCallbackFunction = NULL;
 
 EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm traceLevel) {
    static const char g_sTraceOff[] = "OFF";
@@ -113,7 +114,7 @@ EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbm traceLevel) {
    g_traceLevel = traceLevel;
 }
 
-extern void InteralLogWithArguments(const TraceEbm traceLevel, const char * const sMessage, ...) {
+INTERNAL_IMPORT_EXPORT_BODY void InteralLogWithArguments(const TraceEbm traceLevel, const char * const sMessage, ...) {
    assert(NULL != g_pLogCallbackFunction);
    // it is illegal for g_pLogCallbackFunction to be NULL at this point, but in the interest of not crashing check it
    if(NULL != g_pLogCallbackFunction) {
@@ -142,7 +143,7 @@ extern void InteralLogWithArguments(const TraceEbm traceLevel, const char * cons
    }
 }
 
-extern void InteralLogWithoutArguments(const TraceEbm traceLevel, const char * const sMessage) {
+INTERNAL_IMPORT_EXPORT_BODY void InteralLogWithoutArguments(const TraceEbm traceLevel, const char * const sMessage) {
    assert(NULL != g_pLogCallbackFunction);
    // it is illegal for g_pLogCallbackFunction to be NULL at this point, but in the interest of not crashing check it
    if(NULL != g_pLogCallbackFunction) {
@@ -150,7 +151,7 @@ extern void InteralLogWithoutArguments(const TraceEbm traceLevel, const char * c
    }
 }
 
-extern void LogAssertFailure(
+INTERNAL_IMPORT_EXPORT_BODY void LogAssertFailure(
    const unsigned long long lineNumber,
    const char * const sFileName,
    const char * const sFunctionName,

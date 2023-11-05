@@ -9,16 +9,12 @@
 
 #include "libebm.h" // ErrorEbm, BoolEbm, etc..
 
+#include "logging.h"
 #include "common_c.h"
 
 #ifdef __cplusplus
 extern "C" {
-#define INTERNAL_IMPORT_EXPORT_BODY extern "C"
-#else // __cplusplus
-#define INTERNAL_IMPORT_EXPORT_BODY extern
 #endif // __cplusplus
-
-#define INTERNAL_IMPORT_EXPORT_INCLUDE extern
 
 typedef double FloatShared;
 

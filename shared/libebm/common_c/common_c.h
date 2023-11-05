@@ -9,6 +9,7 @@
 #include <limits.h>
 
 #include "libebm.h" // BoolEbm
+#include "logging.h"
 
 #ifdef __CUDACC__
 #define GPU_COMPILE
@@ -194,16 +195,16 @@ INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * const dest, const char * c
 
 #define COUNT_BITS(uintType)  STATIC_CAST(int, sizeof(uintType) * CHAR_BIT)
 
-extern void * AlignedAlloc(const size_t cBytes);
-extern void AlignedFree(void * const p);
-extern void * AlignedRealloc(void * const p, const size_t cOldBytes, const size_t cNewBytes);
+INTERNAL_IMPORT_EXPORT_INCLUDE void * AlignedAlloc(const size_t cBytes);
+INTERNAL_IMPORT_EXPORT_INCLUDE void AlignedFree(void * const p);
+INTERNAL_IMPORT_EXPORT_INCLUDE void * AlignedRealloc(void * const p, const size_t cOldBytes, const size_t cNewBytes);
 
 static const char k_registrationSeparator = ',';
 
-extern const char * SkipWhitespace(const char * s);
-extern const char * ConvertStringToFloat(const char * const s, double * const pResultOut);
-extern const char * IsStringEqualsCaseInsensitive(const char * sMain, const char * sLabel);
-extern BoolEbm IsStringEqualsForgiving(const char * sMain, const char * sLabel);
+INTERNAL_IMPORT_EXPORT_INCLUDE const char * SkipWhitespace(const char * s);
+INTERNAL_IMPORT_EXPORT_INCLUDE const char * ConvertStringToFloat(const char * const s, double * const pResultOut);
+INTERNAL_IMPORT_EXPORT_INCLUDE const char * IsStringEqualsCaseInsensitive(const char * sMain, const char * sLabel);
+INTERNAL_IMPORT_EXPORT_INCLUDE BoolEbm IsStringEqualsForgiving(const char * sMain, const char * sLabel);
 
 
 // TODO: use k_cFloatSumLimit in more places (in the histogram generation!!)
@@ -239,15 +240,15 @@ static const char k_paramSeparator = ';';
 static const char k_valueSeparator = '=';
 static const char k_typeTerminator = ':';
 
-extern BoolEbm CheckForIllegalCharacters(const char * s);
+INTERNAL_IMPORT_EXPORT_INCLUDE BoolEbm CheckForIllegalCharacters(const char * s);
 
-extern const char * CheckRegistrationName(
+INTERNAL_IMPORT_EXPORT_INCLUDE const char * CheckRegistrationName(
    const char * sRegistration,
    const char * const sRegistrationEnd,
    const char * const sRegistrationName
 );
 
-extern size_t CountParams(
+INTERNAL_IMPORT_EXPORT_INCLUDE size_t CountParams(
    const char * sRegistration,
    const char * const sRegistrationEnd
 );

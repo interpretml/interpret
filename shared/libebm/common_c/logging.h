@@ -10,8 +10,13 @@
 #include "libebm.h" // TraceEbm
 
 #ifdef __cplusplus
-extern "C" {
+   extern "C" {
+#define INTERNAL_IMPORT_EXPORT_BODY extern "C"
+#else // __cplusplus
+#define INTERNAL_IMPORT_EXPORT_BODY extern
 #endif // __cplusplus
+
+#define INTERNAL_IMPORT_EXPORT_INCLUDE extern
 
 #ifdef __clang__ // compiler type (clang++)
 
@@ -27,18 +32,18 @@ extern "C" {
 
 #endif // __clang__
 
-extern const char g_sTrue[];
-extern const char g_sFalse[];
+INTERNAL_IMPORT_EXPORT_INCLUDE const char g_sTrue[];
+INTERNAL_IMPORT_EXPORT_INCLUDE const char g_sFalse[];
 
 inline static const char * ObtainTruth(const BoolEbm b) {
    return EBM_FALSE != b ? g_sTrue : g_sFalse;
 }
 
-extern TraceEbm g_traceLevel;
+INTERNAL_IMPORT_EXPORT_INCLUDE TraceEbm g_traceLevel;
 
-extern void InteralLogWithArguments(const TraceEbm traceLevel, const char * const sMessage, ...);
-extern void InteralLogWithoutArguments(const TraceEbm traceLevel, const char * const sMessage);
-extern void LogAssertFailure(
+INTERNAL_IMPORT_EXPORT_INCLUDE void InteralLogWithArguments(const TraceEbm traceLevel, const char * const sMessage, ...);
+INTERNAL_IMPORT_EXPORT_INCLUDE void InteralLogWithoutArguments(const TraceEbm traceLevel, const char * const sMessage);
+INTERNAL_IMPORT_EXPORT_INCLUDE void LogAssertFailure(
    const unsigned long long lineNumber,
    const char * const sFileName,
    const char * const sFunctionName,
