@@ -138,9 +138,6 @@ struct ObjectiveWrapper {
 };
 
 inline static void InitializeObjectiveWrapperUnfailing(ObjectiveWrapper * const pObjectiveWrapper) {
-   pObjectiveWrapper->m_pApplyUpdateC = NULL;
-   pObjectiveWrapper->m_pBinSumsBoostingC = NULL;
-   pObjectiveWrapper->m_pBinSumsInteractionC = NULL;
    pObjectiveWrapper->m_pObjective = NULL;
    pObjectiveWrapper->m_bMaximizeMetric = EBM_FALSE;
    pObjectiveWrapper->m_linkFunction = Link_ERROR;

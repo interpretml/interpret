@@ -22,7 +22,6 @@
 // everything below here more or less depends on all the above includes
 
 // compute side include files
-#include "zoned_bridge_c_functions.h" // ONLY depends on libebm.h, bridge_c.h, zones.h
 #include "zoned_bridge_cpp_functions.hpp" // depends on libebm.h, zones.h    circular pointer to Objective.hpp.  pointers to structs in bridge_c.h
 #include "compute.hpp" // GENERAL include file in the compute zones.  Depends on zones.h, and bridge_cpp.hpp, and indirectly through bridge_cpp.hpp depends on libebm.h, bridge_c.h, common_cpp.hpp
 #include "approximate_math.hpp"

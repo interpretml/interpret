@@ -23,9 +23,6 @@
 #include "approximate_math.hpp"
 #include "compute_wrapper.hpp"
 
-// Include the shared C++ files. Yes, this is very weird, but it is required.
-#include "zoned_bridge_c_functions.cpp"
-
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
@@ -355,6 +352,63 @@ private:
 static_assert(std::is_standard_layout<Cpu_64_Float>::value && std::is_trivially_copyable<Cpu_64_Float>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm ApplyUpdate_Cpu_64(
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   ApplyUpdateBridge * const pData
+) {
+   const Objective * const pObjective = static_cast<const Objective *>(pObjectiveWrapper->m_pObjective);
+   const APPLY_UPDATE_CPP pApplyUpdateCpp =
+      (static_cast<FunctionPointersCpp*>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pApplyUpdateCpp;
+
+   // all our memory should be aligned. It is required by SIMD for correctness or performance
+   EBM_ASSERT(IsAligned(pData->m_aMulticlassMidwayTemp));
+   EBM_ASSERT(IsAligned(pData->m_aUpdateTensorScores));
+   EBM_ASSERT(IsAligned(pData->m_aPacked));
+   EBM_ASSERT(IsAligned(pData->m_aTargets));
+   EBM_ASSERT(IsAligned(pData->m_aWeights));
+   EBM_ASSERT(IsAligned(pData->m_aSampleScores));
+   EBM_ASSERT(IsAligned(pData->m_aGradientsAndHessians));
+
+   return (*pApplyUpdateCpp)(pObjective, pData);
+}
+
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm BinSumsBoosting_Cpu_64(
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   BinSumsBoostingBridge * const pParams
+) {
+   const BIN_SUMS_BOOSTING_CPP pBinSumsBoostingCpp =
+      (static_cast<FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pBinSumsBoostingCpp;
+
+   // all our memory should be aligned. It is required by SIMD for correctness or performance
+   EBM_ASSERT(IsAligned(pParams->m_aGradientsAndHessians));
+   EBM_ASSERT(IsAligned(pParams->m_aWeights));
+   EBM_ASSERT(IsAligned(pParams->m_pCountOccurrences));
+   EBM_ASSERT(IsAligned(pParams->m_aPacked));
+   EBM_ASSERT(IsAligned(pParams->m_aFastBins));
+
+   return (*pBinSumsBoostingCpp)(pParams);
+}
+
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm BinSumsInteraction_Cpu_64(
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   BinSumsInteractionBridge * const pParams
+) {
+   const BIN_SUMS_INTERACTION_CPP pBinSumsInteractionCpp =
+      (static_cast<FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pBinSumsInteractionCpp;
+
+#ifndef NDEBUG
+   // all our memory should be aligned. It is required by SIMD for correctness or performance
+   EBM_ASSERT(IsAligned(pParams->m_aGradientsAndHessians));
+   EBM_ASSERT(IsAligned(pParams->m_aWeights));
+   EBM_ASSERT(IsAligned(pParams->m_aFastBins));
+   for (size_t iDebug = 0; iDebug < pParams->m_cRuntimeRealDimensions; ++iDebug) {
+      EBM_ASSERT(IsAligned(pParams->m_aaPacked[iDebug]));
+   }
+#endif // NDEBUG
+
+   return (*pBinSumsInteractionCpp)(pParams);
+}
+
 INTERNAL_IMPORT_EXPORT_BODY double FinishMetricC(
    const ObjectiveWrapper * const pObjectiveWrapper,
    const double metricSum
@@ -397,6 +451,9 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Cpu_64(
    const char * const sObjectiveEnd,
    ObjectiveWrapper * const pObjectiveWrapperOut
 ) {
+   pObjectiveWrapperOut->m_pApplyUpdateC = ApplyUpdate_Cpu_64;
+   pObjectiveWrapperOut->m_pBinSumsBoostingC = BinSumsBoosting_Cpu_64;
+   pObjectiveWrapperOut->m_pBinSumsInteractionC = BinSumsInteraction_Cpu_64;
    ErrorEbm error = ComputeWrapper<Cpu_64_Float>::FillWrapper(pObjectiveWrapperOut);
    if(Error_None != error) {
       return error;

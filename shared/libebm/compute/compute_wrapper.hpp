@@ -8,7 +8,6 @@
 #include "libebm.h" // ErrorEbm
 #include "zones.h"
 
-#include "zoned_bridge_c_functions.h"
 #include "BinSumsBoosting.hpp"
 #include "BinSumsInteraction.hpp"
 
@@ -39,9 +38,6 @@ struct ComputeWrapper final {
 
       pFunctionPointersCpp->m_pBinSumsBoostingCpp = StaticBinSumsBoosting;
       pFunctionPointersCpp->m_pBinSumsInteractionCpp = StaticBinSumsInteraction;
-
-      pObjectiveWrapperOut->m_pBinSumsBoostingC = MAKE_ZONED_C_FUNCTION_NAME(BinSumsBoosting);
-      pObjectiveWrapperOut->m_pBinSumsInteractionC = MAKE_ZONED_C_FUNCTION_NAME(BinSumsInteraction);
 
       pObjectiveWrapperOut->m_cSIMDPack = static_cast<size_t>(TFloat::k_cSIMDPack);
 

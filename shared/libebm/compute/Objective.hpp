@@ -18,7 +18,6 @@
 #include "zones.h"
 
 #include "bridge_cpp.hpp" // IsRegressionOutput, etc.
-#include "zoned_bridge_c_functions.h"
 #include "zoned_bridge_cpp_functions.hpp" // FunctionPointersCpp
 #include "compute.hpp" // GPU_GLOBAL
 #include "registration_exceptions.hpp"
@@ -641,7 +640,6 @@ public:
          const bool bFailed = Registration::CreateRegistrable(pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut, registrations);
          if(!bFailed) {
             EBM_ASSERT(nullptr != pObjectiveWrapperOut->m_pObjective);
-            pObjectiveWrapperOut->m_pApplyUpdateC = MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate);
 
             LOG_0(Trace_Info, "Exited Objective::CreateObjective");
             return Error_None;
