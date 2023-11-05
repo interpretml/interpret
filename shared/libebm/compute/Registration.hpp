@@ -83,8 +83,6 @@ public:
 };
 
 class Registration {
-   const char * const m_sRegistrationName;
-
    // these ConvertStringToRegistrationType functions are here to de-template the various Param types
 
    INLINE_ALWAYS static const char * ConvertStringToRegistrationType(
@@ -106,6 +104,7 @@ class Registration {
 
 protected:
    const bool m_bCpuOnly;
+   const char * const m_sRegistrationName;
 
    static void CheckParamNames(const char * const sParamName, std::vector<const char *> usedParamNames);
 
@@ -165,7 +164,6 @@ protected:
       const char * const sRegistrationEnd,
       const size_t cUsedParams
    );
-   const char * CheckRegistrationName(const char * sRegistration, const char * const sRegistrationEnd) const;
 
    virtual bool AttemptCreate(
       const Config * const pConfig,
@@ -177,10 +175,6 @@ protected:
    Registration(const bool bCpuOnly, const char * const sRegistrationName);
 
 public:
-
-   static constexpr const char k_paramSeparator = ';';
-   static constexpr char k_valueSeparator = '=';
-   static constexpr char k_typeTerminator = ':';
 
    static bool CreateRegistrable(
       const Config * const pConfig,
@@ -289,7 +283,7 @@ class RegistrationPack final : public Registration {
       const char * const sRegistrationEnd,
       void * const pWrapperOut
    ) const override {
-      sRegistration = CheckRegistrationName(sRegistration, sRegistrationEnd);
+      sRegistration = CheckRegistrationName(sRegistration, sRegistrationEnd, m_sRegistrationName);
       if(nullptr == sRegistration) {
          // we are not the specified registration function
          return true;

@@ -13,35 +13,10 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-static bool CheckForIllegalCharacters(const char * s) noexcept {
-   if(nullptr != s) {
-      // to be generously safe towards people adding new objective/metric registrations, check for nullptr
-      while(true) {
-         const char chr = *s;
-         if('\0' == chr) {
-            return false;
-         }
-         if(0x20 == chr || (0x9 <= chr && chr <= 0xd)) {
-            // whitespace is illegal
-            break;
-         }
-         if(k_registrationSeparator == chr ||
-            Registration::k_paramSeparator == chr ||
-            Registration::k_valueSeparator == chr ||
-            Registration::k_typeTerminator == chr
-         ) {
-            break;
-         }
-         ++s;
-      }
-   }
-   return true;
-}
-
 ParamBase::ParamBase(const char * const sParamName) : 
    m_sParamName(sParamName) 
 {
-   if(CheckForIllegalCharacters(sParamName)) {
+   if(EBM_FALSE != CheckForIllegalCharacters(sParamName)) {
       throw IllegalParamNameException();
    }
 }
@@ -50,7 +25,7 @@ Registration::Registration(const bool bCpuOnly, const char * const sRegistration
    m_sRegistrationName(sRegistrationName),
    m_bCpuOnly(bCpuOnly)
 {
-   if(CheckForIllegalCharacters(sRegistrationName)) {
+   if(EBM_FALSE != CheckForIllegalCharacters(sRegistrationName)) {
       throw IllegalRegistrationNameException();
    }
 }
@@ -147,34 +122,6 @@ void Registration::FinalCheckParams(
       // process as params.  cRemainingParams should be a very big number since we would have underflowed
       throw ParamUnknownException();
    }
-}
-
-const char * Registration::CheckRegistrationName(
-   const char * sRegistration, 
-   const char * const sRegistrationEnd
-) const {
-   EBM_ASSERT(nullptr != sRegistration);
-   EBM_ASSERT(nullptr != sRegistrationEnd);
-   EBM_ASSERT(sRegistration < sRegistrationEnd); // empty string not allowed
-   EBM_ASSERT('\0' != *sRegistration);
-   EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
-   EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd);
-
-   sRegistration = IsStringEqualsCaseInsensitive(sRegistration, m_sRegistrationName);
-   if(nullptr == sRegistration) {
-      // we are not the specified registration function
-      return nullptr;
-   }
-   EBM_ASSERT(sRegistration <= sRegistrationEnd);
-   if(sRegistrationEnd != sRegistration) {
-      if(k_typeTerminator != *sRegistration) {
-         // we are not the specified objective, but the objective could still be something with a longer string
-         // eg: the given tag was "something_else:" but our tag was "something:", so we matched on "something" only
-         return nullptr;
-      }
-      sRegistration = SkipWhitespace(sRegistration + 1);
-   }
-   return sRegistration;
 }
 
 } // DEFINED_ZONE_NAME

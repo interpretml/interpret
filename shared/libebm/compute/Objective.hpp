@@ -639,7 +639,7 @@ public:
       try {
          const std::vector<std::shared_ptr<const Registration>> registrations = (*registerObjectivesFunction)();
          const bool bFailed = Registration::CreateRegistrable(pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut, registrations);
-         if (!bFailed) {
+         if(!bFailed) {
             EBM_ASSERT(nullptr != pObjectiveWrapperOut->m_pObjective);
             pObjectiveWrapperOut->m_pApplyUpdateC = MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate);
 #ifdef ZONE_cpu
@@ -656,50 +656,50 @@ public:
          EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
          LOG_0(Trace_Info, "Exited Objective::CreateObjective unknown objective");
          error = Error_ObjectiveUnknown;
-      } catch (const ParamValMalformedException&) {
+      } catch(const ParamValMalformedException &) {
          EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamValMalformedException");
          error = Error_ObjectiveParamValMalformed;
-      } catch (const ParamUnknownException&) {
+      } catch(const ParamUnknownException &) {
          EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamUnknownException");
          error = Error_ObjectiveParamUnknown;
-      } catch (const RegistrationConstructorException&) {
+      } catch(const RegistrationConstructorException &) {
          EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective RegistrationConstructorException");
          error = Error_ObjectiveConstructorException;
-      } catch (const ParamValOutOfRangeException&) {
+      } catch(const ParamValOutOfRangeException &) {
          EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamValOutOfRangeException");
          error = Error_ObjectiveParamValOutOfRange;
-      } catch (const ParamMismatchWithConfigException&) {
+      } catch(const ParamMismatchWithConfigException &) {
          EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamMismatchWithConfigException");
          error = Error_ObjectiveParamMismatchWithConfig;
-      } catch (const IllegalRegistrationNameException&) {
+      } catch(const IllegalRegistrationNameException &) {
          EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective IllegalRegistrationNameException");
          error = Error_ObjectiveIllegalRegistrationName;
-      } catch (const IllegalParamNameException&) {
+      } catch(const IllegalParamNameException &) {
          EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective IllegalParamNameException");
          error = Error_ObjectiveIllegalParamName;
-      } catch (const DuplicateParamNameException&) {
+      } catch(const DuplicateParamNameException &) {
          EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective DuplicateParamNameException");
          error = Error_ObjectiveDuplicateParamName;
-      } catch (const NonPrivateRegistrationException&) {
+      } catch(const NonPrivateRegistrationException &) {
          EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective NonPrivateRegistrationException");
          error = Error_ObjectiveNonPrivate;
-      } catch (const NonPrivateParamException&) {
+      } catch(const NonPrivateParamException &) {
          EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective NonPrivateParamException");
          error = Error_ObjectiveParamNonPrivate;
-      } catch (const std::bad_alloc&) {
+      } catch(const std::bad_alloc &) {
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective Out of Memory");
          error = Error_OutOfMemory;
-      } catch (...) {
+      } catch(...) {
          LOG_0(Trace_Warning, "WARNING Objective::CreateObjective internal error, unknown exception");
          error = Error_UnexpectedInternal;
       }

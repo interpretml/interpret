@@ -89,6 +89,60 @@ extern BoolEbm IsStringEqualsForgiving(const char * sMain, const char * sLabel) 
    return EBM_TRUE;
 }
 
+extern BoolEbm CheckForIllegalCharacters(const char * s) {
+   if(NULL != s) {
+      // to be generously safe towards people adding new objective/metric registrations, check for nullptr
+      while(EBM_TRUE) {
+         const char chr = *s;
+         if('\0' == chr) {
+            return EBM_FALSE;
+         }
+         if(0x20 == chr || (0x9 <= chr && chr <= 0xd)) {
+            // whitespace is illegal
+            break;
+         }
+         if(k_registrationSeparator == chr ||
+            k_paramSeparator == chr ||
+            k_valueSeparator == chr ||
+            k_typeTerminator == chr
+         ) {
+            break;
+         }
+         ++s;
+      }
+   }
+   return EBM_TRUE;
+}
+
+extern const char * CheckRegistrationName(
+   const char * sRegistration, 
+   const char * const sRegistrationEnd,
+   const char * const sRegistrationName
+) {
+   EBM_ASSERT(NULL != sRegistration);
+   EBM_ASSERT(NULL != sRegistrationEnd);
+   EBM_ASSERT(sRegistration < sRegistrationEnd); // empty string not allowed
+   EBM_ASSERT('\0' != *sRegistration);
+   EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
+   EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd);
+
+   sRegistration = IsStringEqualsCaseInsensitive(sRegistration, sRegistrationName);
+   if(NULL == sRegistration) {
+      // we are not the specified registration function
+      return NULL;
+   }
+   EBM_ASSERT(sRegistration <= sRegistrationEnd);
+   if(sRegistrationEnd != sRegistration) {
+      if(k_typeTerminator != *sRegistration) {
+         // we are not the specified objective, but the objective could still be something with a longer string
+         // eg: the given tag was "something_else:" but our tag was "something:", so we matched on "something" only
+         return NULL;
+      }
+      sRegistration = SkipWhitespace(sRegistration + 1);
+   }
+   return sRegistration;
+}
+
 extern void * AlignedAlloc(const size_t cBytes) {
    EBM_ASSERT(0 != cBytes);
    if(SIZE_MAX - (sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1) < cBytes) {

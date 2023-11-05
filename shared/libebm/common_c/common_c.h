@@ -235,6 +235,17 @@ static const size_t k_cFloatSumLimit = 524288;
 // and the need to have multiples ones and the need to have memory for other things
 #define k_cDimensionsMax      (STATIC_CAST(size_t, 30))
 
+static const char k_paramSeparator = ';';
+static const char k_valueSeparator = '=';
+static const char k_typeTerminator = ':';
+
+extern BoolEbm CheckForIllegalCharacters(const char * s);
+
+extern const char * CheckRegistrationName(
+   const char * sRegistration,
+   const char * const sRegistrationEnd,
+   const char * const sRegistrationName
+);
 
 #ifdef __cplusplus
 } // extern "C"
