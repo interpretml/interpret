@@ -37,10 +37,10 @@
     <ClCompile Include="special\precompiled_header_cpp.cpp">
       <Filter>special</Filter>
     </ClCompile>
-    <ClCompile Include="common_c\common_c.c">
+    <ClCompile Include="common_c\common_c.cpp">
       <Filter>common_c</Filter>
     </ClCompile>
-    <ClCompile Include="common_c\logging.c">
+    <ClCompile Include="common_c\logging.cpp">
       <Filter>common_c</Filter>
     </ClCompile>
     <ClCompile Include="random.cpp" />
