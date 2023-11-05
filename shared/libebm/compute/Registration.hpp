@@ -110,7 +110,23 @@ protected:
    const bool m_bCpuOnly;
    const char * const m_sRegistrationName;
 
-   static void CheckParamNames(const char * const sParamName, std::vector<const char *> usedParamNames);
+   static void CheckParamNames(const char * const sParamName, std::vector<const char *> usedParamNames) {
+      EBM_ASSERT(nullptr != sParamName);
+
+      // yes, this is exponential, but it's only exponential for parameters that we define in this executable so
+      // we have complete control, and objective/metric params should not exceed a handfull
+      for(const char * const sOtherParamName : usedParamNames) {
+         EBM_ASSERT(nullptr != sOtherParamName);
+
+         const char * const sParamNameEnd = IsStringEqualsCaseInsensitive(sParamName, sOtherParamName);
+         if(nullptr != sParamNameEnd) {
+            if('\0' == *sParamNameEnd) {
+               throw DuplicateParamNameException();
+            }
+         }
+      }
+      usedParamNames.push_back(sParamName);
+   }
 
    template<typename TParam>
    static typename TParam::ParamType UnpackParam(
@@ -167,7 +183,13 @@ protected:
       const char * sRegistration, 
       const char * const sRegistrationEnd,
       const size_t cUsedParams
-   );
+   ) {
+      if(cUsedParams != CountParams(sRegistration, sRegistrationEnd)) {
+         // our counts don't match up, so there are strings in the sRegistration string that we didn't
+         // process as params.
+         throw ParamUnknownException();
+      }
+   }
 
    virtual bool AttemptCreate(
       const Config * const pConfig,
@@ -193,7 +215,31 @@ public:
       const char * sRegistrationEnd,
       void * const pWrapperOut,
       const std::vector<std::shared_ptr<const Registration>> & registrations
-   );
+   ) {
+      EBM_ASSERT(nullptr != pConfig);
+      EBM_ASSERT(nullptr != sRegistration);
+      EBM_ASSERT(nullptr != sRegistrationEnd);
+      EBM_ASSERT(sRegistration < sRegistrationEnd); // empty string not allowed
+      EBM_ASSERT('\0' != *sRegistration);
+      EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
+      EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd);
+      EBM_ASSERT(nullptr != pWrapperOut);
+
+      LOG_0(Trace_Info, "Entered Registrable::CreateRegistrable");
+
+      bool bNoMatch = true;
+      for(const std::shared_ptr<const Registration> & registration : registrations) {
+         if(nullptr != registration) {
+            bNoMatch = registration->AttemptCreate(pConfig, sRegistration, sRegistrationEnd, pWrapperOut);
+            if(!bNoMatch) {
+               break;
+            }
+         }
+      }
+
+      LOG_0(Trace_Info, "Exited Registrable::CreateRegistrable");
+      return bNoMatch;
+   }
 
    virtual ~Registration() = default;
 };
