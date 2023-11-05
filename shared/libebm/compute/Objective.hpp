@@ -10,6 +10,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <memory> // shared_ptr, unique_ptr
 #include <type_traits> // is_same
+#include <vector>
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
@@ -17,8 +18,11 @@
 #include "zones.h"
 
 #include "bridge_cpp.hpp" // IsRegressionOutput, etc.
+#include "zoned_bridge_c_functions.h"
 #include "zoned_bridge_cpp_functions.hpp" // FunctionPointersCpp
 #include "compute.hpp" // GPU_GLOBAL
+#include "registration_exceptions.hpp"
+#include "Registration.hpp"
 
 struct ApplyUpdateBridge;
 
@@ -27,7 +31,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-class Registration;
 typedef const std::vector<std::shared_ptr<const Registration>> (* REGISTER_OBJECTIVES_FUNCTION)();
 
 struct SingletaskObjective;
@@ -614,7 +617,95 @@ public:
       const char * const sObjective,
       const char * const sObjectiveEnd,
       ObjectiveWrapper * const pObjectiveWrapperOut
-   ) noexcept;
+   ) noexcept {
+      EBM_ASSERT(nullptr != registerObjectivesFunction);
+      EBM_ASSERT(nullptr != pConfig);
+      EBM_ASSERT(1 <= pConfig->cOutputs);
+      EBM_ASSERT(EBM_FALSE == pConfig->isDifferentialPrivacy || EBM_TRUE == pConfig->isDifferentialPrivacy);
+      EBM_ASSERT(nullptr != sObjective);
+      EBM_ASSERT(nullptr != sObjectiveEnd);
+      EBM_ASSERT(sObjective < sObjectiveEnd); // empty string not allowed
+      EBM_ASSERT('\0' != *sObjective);
+      EBM_ASSERT(!(0x20 == *sObjective || (0x9 <= *sObjective && *sObjective <= 0xd)));
+      EBM_ASSERT('\0' == *sObjectiveEnd);
+      EBM_ASSERT(nullptr != pObjectiveWrapperOut);
+      EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+      EBM_ASSERT(nullptr != pObjectiveWrapperOut->m_pFunctionPointersCpp);
+
+      LOG_0(Trace_Info, "Entered Objective::CreateObjective");
+
+      ErrorEbm error;
+
+      try {
+         const std::vector<std::shared_ptr<const Registration>> registrations = (*registerObjectivesFunction)();
+         const bool bFailed = Registration::CreateRegistrable(pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut, registrations);
+         if (!bFailed) {
+            EBM_ASSERT(nullptr != pObjectiveWrapperOut->m_pObjective);
+            pObjectiveWrapperOut->m_pApplyUpdateC = MAKE_ZONED_C_FUNCTION_NAME(ApplyUpdate);
+#ifdef ZONE_cpu
+            pObjectiveWrapperOut->m_pFinishMetricC = MAKE_ZONED_C_FUNCTION_NAME(FinishMetric);
+            pObjectiveWrapperOut->m_pCheckTargetsC = MAKE_ZONED_C_FUNCTION_NAME(CheckTargets);
+#else // ZONE_cpu
+            pObjectiveWrapperOut->m_pFinishMetricC = nullptr;
+            pObjectiveWrapperOut->m_pCheckTargetsC = nullptr;
+#endif // ZONE_cpu
+
+            LOG_0(Trace_Info, "Exited Objective::CreateObjective");
+            return Error_None;
+         }
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Info, "Exited Objective::CreateObjective unknown objective");
+         error = Error_ObjectiveUnknown;
+      } catch (const ParamValMalformedException&) {
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamValMalformedException");
+         error = Error_ObjectiveParamValMalformed;
+      } catch (const ParamUnknownException&) {
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamUnknownException");
+         error = Error_ObjectiveParamUnknown;
+      } catch (const RegistrationConstructorException&) {
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective RegistrationConstructorException");
+         error = Error_ObjectiveConstructorException;
+      } catch (const ParamValOutOfRangeException&) {
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamValOutOfRangeException");
+         error = Error_ObjectiveParamValOutOfRange;
+      } catch (const ParamMismatchWithConfigException&) {
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective ParamMismatchWithConfigException");
+         error = Error_ObjectiveParamMismatchWithConfig;
+      } catch (const IllegalRegistrationNameException&) {
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective IllegalRegistrationNameException");
+         error = Error_ObjectiveIllegalRegistrationName;
+      } catch (const IllegalParamNameException&) {
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective IllegalParamNameException");
+         error = Error_ObjectiveIllegalParamName;
+      } catch (const DuplicateParamNameException&) {
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective DuplicateParamNameException");
+         error = Error_ObjectiveDuplicateParamName;
+      } catch (const NonPrivateRegistrationException&) {
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective NonPrivateRegistrationException");
+         error = Error_ObjectiveNonPrivate;
+      } catch (const NonPrivateParamException&) {
+         EBM_ASSERT(nullptr == pObjectiveWrapperOut->m_pObjective);
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective NonPrivateParamException");
+         error = Error_ObjectiveParamNonPrivate;
+      } catch (const std::bad_alloc&) {
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective Out of Memory");
+         error = Error_OutOfMemory;
+      } catch (...) {
+         LOG_0(Trace_Warning, "WARNING Objective::CreateObjective internal error, unknown exception");
+         error = Error_UnexpectedInternal;
+      }
+
+      return error;
+   }
 };
 static_assert(std::is_standard_layout<Objective>::value && std::is_trivially_copyable<Objective>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");

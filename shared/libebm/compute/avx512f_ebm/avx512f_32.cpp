@@ -25,7 +25,6 @@
 #include "compute_wrapper.hpp"
 
 // Include the shared C++ files. Yes, this is very weird, but it is required.
-#include "Objective.cpp"
 #include "Registration.cpp"
 #include "zoned_bridge_c_functions.cpp"
 
