@@ -176,7 +176,14 @@ protected:
       void * const pWrapperOut
    ) const = 0;
 
-   Registration(const bool bCpuOnly, const char * const sRegistrationName);
+   INLINE_ALWAYS Registration(const bool bCpuOnly, const char * const sRegistrationName) :
+      m_sRegistrationName(sRegistrationName),
+      m_bCpuOnly(bCpuOnly)
+   {
+      if(EBM_FALSE != CheckForIllegalCharacters(sRegistrationName)) {
+         throw IllegalRegistrationNameException();
+      }
+   }
 
 public:
 

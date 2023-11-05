@@ -13,15 +13,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-Registration::Registration(const bool bCpuOnly, const char * const sRegistrationName) :
-   m_sRegistrationName(sRegistrationName),
-   m_bCpuOnly(bCpuOnly)
-{
-   if(EBM_FALSE != CheckForIllegalCharacters(sRegistrationName)) {
-      throw IllegalRegistrationNameException();
-   }
-}
-
 void Registration::CheckParamNames(const char * const sParamName, std::vector<const char *> usedParamNames) {
    EBM_ASSERT(nullptr != sParamName);
 
