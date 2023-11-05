@@ -143,6 +143,45 @@ extern const char * CheckRegistrationName(
    return sRegistration;
 }
 
+extern size_t CountParams(
+   const char * sRegistration,
+   const char * const sRegistrationEnd
+) {
+   EBM_ASSERT(NULL != sRegistration);
+   EBM_ASSERT(NULL != sRegistrationEnd);
+   EBM_ASSERT(sRegistration <= sRegistrationEnd); // sRegistration contains the part after the tag now
+   EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
+   EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd);
+
+   // cUsedParams will have been filled by the time we reach this point since all the calls to UnpackParam
+   // are guaranteed to have occured before we get called.
+
+   size_t cParams = 0;
+   while(EBM_TRUE) {
+      // first let's find what we would consider as the next valid param
+      while(EBM_TRUE) {
+         sRegistration = SkipWhitespace(sRegistration);
+         EBM_ASSERT(sRegistration <= sRegistrationEnd);
+         if(k_paramSeparator != *sRegistration) {
+            break;
+         }
+         ++sRegistration; // get past the ';' character
+      }
+      EBM_ASSERT(sRegistration <= sRegistrationEnd);
+      if(sRegistrationEnd == sRegistration) {
+         break;
+      }
+      ++cParams;
+
+      sRegistration = strchr(sRegistration, k_paramSeparator);
+      if(NULL == sRegistration || sRegistrationEnd <= sRegistration) {
+         break;
+      }
+      ++sRegistration; // skip past the ';' character
+   }
+   return cParams;
+}
+
 extern void * AlignedAlloc(const size_t cBytes) {
    EBM_ASSERT(0 != cBytes);
    if(SIZE_MAX - (sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1) < cBytes) {

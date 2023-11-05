@@ -247,6 +247,11 @@ extern const char * CheckRegistrationName(
    const char * const sRegistrationName
 );
 
+extern size_t CountParams(
+   const char * sRegistration,
+   const char * const sRegistrationEnd
+);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif // __cplusplus

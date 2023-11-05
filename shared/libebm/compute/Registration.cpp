@@ -68,41 +68,9 @@ void Registration::FinalCheckParams(
    const char * const sRegistrationEnd,
    const size_t cUsedParams
 ) {
-   EBM_ASSERT(nullptr != sRegistration);
-   EBM_ASSERT(nullptr != sRegistrationEnd);
-   EBM_ASSERT(sRegistration <= sRegistrationEnd); // sRegistration contains the part after the tag now
-   EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
-   EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd);
-
-   // cUsedParams will have been filled by the time we reach this point since all the calls to UnpackParam
-   // are guaranteed to have occured before we get called.
-
-   size_t cRemainingParams = cUsedParams;
-   while(true) {
-      // first let's find what we would consider as the next valid param
-      while(true) {
-         sRegistration = SkipWhitespace(sRegistration);
-         EBM_ASSERT(sRegistration <= sRegistrationEnd);
-         if(k_paramSeparator != *sRegistration) {
-            break;
-         }
-         ++sRegistration; // get past the ';' character
-      }
-      EBM_ASSERT(sRegistration <= sRegistrationEnd);
-      if(sRegistrationEnd == sRegistration) {
-         break;
-      }
-      --cRemainingParams; // this will underflow if we're missing a param, but underflow for unsigned is legal
-
-      sRegistration = strchr(sRegistration, k_paramSeparator);
-      if(nullptr == sRegistration || sRegistrationEnd <= sRegistration) {
-         break;
-      }
-      ++sRegistration; // skip past the ';' character
-   }
-   if(size_t { 0 } != cRemainingParams) {
+   if(cUsedParams != CountParams(sRegistration, sRegistrationEnd)) {
       // our counts don't match up, so there are strings in the sRegistration string that we didn't
-      // process as params.  cRemainingParams should be a very big number since we would have underflowed
+      // process as params.
       throw ParamUnknownException();
    }
 }
