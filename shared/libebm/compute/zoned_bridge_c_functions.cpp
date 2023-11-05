@@ -82,31 +82,4 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(BinSumsInteracti
    return (*pBinSumsInteractionCpp)(pParams);
 }
 
-#ifdef ZONE_cpu
-INTERNAL_IMPORT_EXPORT_BODY double MAKE_ZONED_C_FUNCTION_NAME(FinishMetric) (
-   const ObjectiveWrapper * const pObjectiveWrapper,
-   const double metricSum
-) {
-   const Objective * const pObjective = static_cast<const Objective *>(pObjectiveWrapper->m_pObjective);
-   const FINISH_METRIC_CPP pFinishMetricCpp =
-      (static_cast<const FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pFinishMetricCpp;
-   return (*pFinishMetricCpp)(pObjective, metricSum);
-}
-
-INTERNAL_IMPORT_EXPORT_BODY BoolEbm MAKE_ZONED_C_FUNCTION_NAME(CheckTargets) (
-   const ObjectiveWrapper * const pObjectiveWrapper,
-   const size_t c, 
-   const void * const aTargets
-) {
-   EBM_ASSERT(nullptr != pObjectiveWrapper);
-   EBM_ASSERT(nullptr != aTargets);
-   const Objective * const pObjective = static_cast<const Objective *>(pObjectiveWrapper->m_pObjective);
-   EBM_ASSERT(nullptr != pObjective);
-   const CHECK_TARGETS_CPP pCheckTargetsCpp =
-      (static_cast<const FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pCheckTargetsCpp;
-   EBM_ASSERT(nullptr != pCheckTargetsCpp);
-   return (*pCheckTargetsCpp)(pObjective, c, aTargets);
-}
-#endif // ZONE_cpu
-
 } // DEFINED_ZONE_NAME

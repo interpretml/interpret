@@ -112,8 +112,7 @@ public:
    inline BoolEbm CheckTargets(const size_t c, const void * const aTargets) const noexcept {
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
-      EBM_ASSERT(nullptr != m_objectiveCpu.m_pCheckTargetsC);
-      return (*m_objectiveCpu.m_pCheckTargetsC)(&m_objectiveCpu, c, aTargets);
+      return CheckTargetsC(&m_objectiveCpu, c, aTargets);
    }
 
    inline bool IsRmse() {

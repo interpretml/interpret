@@ -100,9 +100,6 @@ typedef ErrorEbm (* BIN_SUMS_INTERACTION_C)(const ObjectiveWrapper * const pObje
 
 struct ObjectiveWrapper {
    APPLY_UPDATE_C m_pApplyUpdateC;
-   FINISH_METRIC_C m_pFinishMetricC;
-   CHECK_TARGETS_C m_pCheckTargetsC;
-
    BIN_SUMS_BOOSTING_C m_pBinSumsBoostingC;
    BIN_SUMS_INTERACTION_C m_pBinSumsInteractionC;
    // everything below here the C++ *Objective specific class needs to fill out
@@ -142,8 +139,6 @@ struct ObjectiveWrapper {
 
 inline static void InitializeObjectiveWrapperUnfailing(ObjectiveWrapper * const pObjectiveWrapper) {
    pObjectiveWrapper->m_pApplyUpdateC = NULL;
-   pObjectiveWrapper->m_pFinishMetricC = NULL;
-   pObjectiveWrapper->m_pCheckTargetsC = NULL;
    pObjectiveWrapper->m_pBinSumsBoostingC = NULL;
    pObjectiveWrapper->m_pBinSumsInteractionC = NULL;
    pObjectiveWrapper->m_pObjective = NULL;
@@ -209,6 +204,16 @@ INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateMetric_Cpu_64(
    const char * const sMetric,
    const char * const sMetricEnd
    //   MetricWrapper * const pMetricWrapperOut,
+);
+
+INTERNAL_IMPORT_EXPORT_INCLUDE double FinishMetricC(
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   const double metricSum
+);
+INTERNAL_IMPORT_EXPORT_INCLUDE BoolEbm CheckTargetsC(
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   const size_t c, 
+   const void * const aTargets
 );
 
 #ifdef __cplusplus

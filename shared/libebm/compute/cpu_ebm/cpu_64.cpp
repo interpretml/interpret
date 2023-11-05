@@ -355,6 +355,31 @@ private:
 static_assert(std::is_standard_layout<Cpu_64_Float>::value && std::is_trivially_copyable<Cpu_64_Float>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
+INTERNAL_IMPORT_EXPORT_BODY double FinishMetricC(
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   const double metricSum
+) {
+   const Objective * const pObjective = static_cast<const Objective *>(pObjectiveWrapper->m_pObjective);
+   const FINISH_METRIC_CPP pFinishMetricCpp =
+      (static_cast<const FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pFinishMetricCpp;
+   return (*pFinishMetricCpp)(pObjective, metricSum);
+}
+
+INTERNAL_IMPORT_EXPORT_BODY BoolEbm CheckTargetsC(
+   const ObjectiveWrapper * const pObjectiveWrapper,
+   const size_t c, 
+   const void * const aTargets
+) {
+   EBM_ASSERT(nullptr != pObjectiveWrapper);
+   EBM_ASSERT(nullptr != aTargets);
+   const Objective * const pObjective = static_cast<const Objective *>(pObjectiveWrapper->m_pObjective);
+   EBM_ASSERT(nullptr != pObjective);
+   const CHECK_TARGETS_CPP pCheckTargetsCpp =
+      (static_cast<const FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp))->m_pCheckTargetsCpp;
+   EBM_ASSERT(nullptr != pCheckTargetsCpp);
+   return (*pCheckTargetsCpp)(pObjective, c, aTargets);
+}
+
 
 // FIRST, define the RegisterObjective function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions

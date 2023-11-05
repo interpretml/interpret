@@ -28,19 +28,6 @@ INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm MAKE_ZONED_C_FUNCTION_NAME(BinSumsIntera
    BinSumsInteractionBridge * const pParams
 );
 
-#ifdef ZONE_cpu
-INTERNAL_IMPORT_EXPORT_INCLUDE double MAKE_ZONED_C_FUNCTION_NAME(FinishMetric) (
-   const ObjectiveWrapper * const pObjectiveWrapper,
-   const double metricSum
-);
-INTERNAL_IMPORT_EXPORT_INCLUDE BoolEbm MAKE_ZONED_C_FUNCTION_NAME(CheckTargets) (
-   const ObjectiveWrapper * const pObjectiveWrapper,
-   const size_t c, 
-   const void * const aTargets
-);
-#endif // ZONE_cpu
-
-
 #ifdef __cplusplus
 }
 #endif // __cplusplus
