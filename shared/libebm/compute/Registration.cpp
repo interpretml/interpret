@@ -13,14 +13,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-ParamBase::ParamBase(const char * const sParamName) : 
-   m_sParamName(sParamName) 
-{
-   if(EBM_FALSE != CheckForIllegalCharacters(sParamName)) {
-      throw IllegalParamNameException();
-   }
-}
-
 Registration::Registration(const bool bCpuOnly, const char * const sRegistrationName) :
    m_sRegistrationName(sRegistrationName),
    m_bCpuOnly(bCpuOnly)

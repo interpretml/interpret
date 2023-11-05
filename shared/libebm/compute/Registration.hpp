@@ -33,7 +33,11 @@ class ParamBase {
 
 protected:
 
-   ParamBase(const char * const sParamName);
+   INLINE_ALWAYS ParamBase(const char * const sParamName) : m_sParamName(sParamName) {
+      if(EBM_FALSE != CheckForIllegalCharacters(sParamName)) {
+         throw IllegalParamNameException();
+      }
+   }
 
 public:
 
