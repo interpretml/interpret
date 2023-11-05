@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#define _CRT_SECURE_NO_DEPRECATE
+#include "precompiled_header_cpp.hpp"
 
 #include <assert.h>
 #include <stdio.h>
