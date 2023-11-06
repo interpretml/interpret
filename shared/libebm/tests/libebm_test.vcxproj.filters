@@ -21,7 +21,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="precompiled_header_test.hpp">
+    <ClInclude Include="pch_test.hpp">
       <Filter>non_tests</Filter>
     </ClInclude>
     <ClInclude Include="libebm_test.hpp">

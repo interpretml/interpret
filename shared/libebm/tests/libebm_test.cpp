@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "precompiled_header_test.hpp"
+#include "pch_test.hpp"
 
 // we roll our own test framework here since it's nice having no dependencies, and we just need a few simple tests for the C API.
 // If we ended up needing something more substantial, I'd consider using doctest ( https://github.com/onqtam/doctest ) because:

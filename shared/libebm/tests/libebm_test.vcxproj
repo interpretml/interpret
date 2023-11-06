@@ -46,7 +46,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libebm_test.hpp" />
-    <ClInclude Include="precompiled_header_test.hpp" />
+    <ClInclude Include="pch_test.hpp" />
     <ClInclude Include="RandomStreamTest.hpp" />
   </ItemGroup>
   <ItemGroup>
@@ -160,7 +160,7 @@
       <OpenMPSupport>false</OpenMPSupport>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\libebm\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>pch_test.hpp</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -206,7 +206,7 @@
       <OpenMPSupport>false</OpenMPSupport>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\libebm\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>pch_test.hpp</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -247,7 +247,7 @@
       <OpenMPSupport>false</OpenMPSupport>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\libebm\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>pch_test.hpp</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -293,7 +293,7 @@
       <OpenMPSupport>false</OpenMPSupport>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\libebm\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>pch_test.hpp</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
