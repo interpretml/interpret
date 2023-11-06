@@ -28,6 +28,8 @@
 // https://stackoverflow.com/questions/36461555/is-it-possible-to-statically-link-libstdc-and-wrap-memcpy
 //
 
+#include "pch.hpp"
+
 #include <string.h>
 #include <math.h>
 
