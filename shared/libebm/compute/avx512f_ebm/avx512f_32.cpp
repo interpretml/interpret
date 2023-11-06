@@ -7,7 +7,7 @@
 #include <cmath> // exp, log
 #include <limits> // numeric_limits
 #include <type_traits> // is_unsigned
-#include <immintrin.h> // SIMD.  Do not include in precompiled_header_cpp.hpp!
+#include <immintrin.h> // SIMD.  Do not include in pch.hpp!
 
 #include "libebm.h"
 #include "logging.h"

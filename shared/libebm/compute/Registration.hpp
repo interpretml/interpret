@@ -199,8 +199,8 @@ protected:
    ) const = 0;
 
    INLINE_ALWAYS Registration(const bool bCpuOnly, const char * const sRegistrationName) :
-      m_sRegistrationName(sRegistrationName),
-      m_bCpuOnly(bCpuOnly)
+      m_bCpuOnly(bCpuOnly),
+      m_sRegistrationName(sRegistrationName)
    {
       if(EBM_FALSE != CheckForIllegalCharacters(sRegistrationName)) {
          throw IllegalRegistrationNameException();

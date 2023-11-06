@@ -228,7 +228,7 @@ if [ -n "${CXX}" ]; then
    mkdir ./python/interpret-core/interpret
    mkdir ./python/interpret-core/interpret/lib
 
-   extras="-DLIBEBM_EXPORTS -DNDEBUG -I$code_path/inc -I$code_path/common_c -I$code_path/common_cpp -I$code_path/bridge_c -I$code_path/bridge_cpp -I$code_path -I$code_path/compute -I$code_path/compute/objectives -I$code_path/compute/metrics"
+   extras="-DLIBEBM_EXPORTS -DNDEBUG -I$code_path/inc -I$code_path/pch -I$code_path/common_c -I$code_path/common_cpp -I$code_path/bridge_c -I$code_path/bridge_cpp -I$code_path -I$code_path/compute -I$code_path/compute/objectives -I$code_path/compute/metrics"
 
    mkdir ./tmp
    mkdir ./tmp/mk
@@ -275,7 +275,6 @@ if [ -n "${CXX}" ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/Tensor.cpp" -o "$tmp_path/Tensor.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/TensorTotalsBuild.cpp" -o "$tmp_path/TensorTotalsBuild.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/compute/cpu_ebm/cpu_64.cpp" -o "$tmp_path/cpu_64.o"
-
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/common_c/common_c.cpp" -o "$tmp_path/common_c.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/common_c/logging.cpp" -o "$tmp_path/logging.o"
 
@@ -400,6 +399,7 @@ cpp_args="$cpp_args -Wold-style-cast"
 cpp_args="$cpp_args -fvisibility-inlines-hidden"
 
 common_args="-I$src_path_sanitized/inc"
+common_args="$common_args -I$src_path_sanitized/pch"
 common_args="$common_args -I$src_path_sanitized/common_c"
 common_args="$common_args -I$src_path_sanitized/common_cpp"
 

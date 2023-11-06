@@ -17,6 +17,7 @@
 #endif // __cplusplus
 
 #define INTERNAL_IMPORT_EXPORT_INCLUDE extern
+#define INTERNAL_EXPORT_VAR_INCLUDE    extern
 
 #ifdef __clang__ // compiler type (clang++)
 
@@ -32,14 +33,14 @@
 
 #endif // __clang__
 
-INTERNAL_IMPORT_EXPORT_INCLUDE const char g_sTrue[];
-INTERNAL_IMPORT_EXPORT_INCLUDE const char g_sFalse[];
+INTERNAL_EXPORT_VAR_INCLUDE const char g_sTrue[];
+INTERNAL_EXPORT_VAR_INCLUDE const char g_sFalse[];
 
 inline static const char * ObtainTruth(const BoolEbm b) {
    return EBM_FALSE != b ? g_sTrue : g_sFalse;
 }
 
-INTERNAL_IMPORT_EXPORT_INCLUDE TraceEbm g_traceLevel;
+INTERNAL_EXPORT_VAR_INCLUDE TraceEbm g_traceLevel;
 
 INTERNAL_IMPORT_EXPORT_INCLUDE void InteralLogWithArguments(const TraceEbm traceLevel, const char * const sMessage, ...);
 INTERNAL_IMPORT_EXPORT_INCLUDE void InteralLogWithoutArguments(const TraceEbm traceLevel, const char * const sMessage);

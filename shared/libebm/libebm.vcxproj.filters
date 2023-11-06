@@ -58,7 +58,6 @@
     <ClInclude Include="DataSetInteraction.hpp" />
     <ClInclude Include="DataSetBoosting.hpp" />
     <ClInclude Include="ebm_internal.hpp" />
-    <ClInclude Include="precompiled_header_cpp.hpp" />
     <ClInclude Include="RandomDeterministic.hpp" />
     <ClInclude Include="InnerBag.hpp" />
     <ClInclude Include="Tensor.hpp" />
@@ -97,6 +96,9 @@
     </ClInclude>
     <ClInclude Include="Transpose.hpp" />
     <ClInclude Include="ebm_stats.hpp" />
+    <ClInclude Include="pch\pch.hpp">
+      <Filter>pch</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="libebm_exports.def" />
@@ -125,6 +127,9 @@
     </Filter>
     <Filter Include="common_cpp">
       <UniqueIdentifier>{48382ee5-df51-4d4d-92ce-dbd4c773ed4e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="pch">
+      <UniqueIdentifier>{f9e8fb56-17ab-4d99-8c95-ff83a6d1f7d0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

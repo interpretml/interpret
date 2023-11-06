@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "precompiled_header_cpp.hpp"
+#include "pch.hpp"
 
 #include <assert.h>
 #include <stdio.h>
@@ -14,10 +14,10 @@
 extern "C" {
 #endif // __cplusplus
 
-INTERNAL_IMPORT_EXPORT_BODY const char g_sTrue[] = "true";
-INTERNAL_IMPORT_EXPORT_BODY const char g_sFalse[] = "false";
+const char g_sTrue[] = "true";
+const char g_sFalse[] = "false";
 
-INTERNAL_IMPORT_EXPORT_BODY TraceEbm g_traceLevel = Trace_Off;
+TraceEbm g_traceLevel = Trace_Off;
 
 static LogCallbackFunction g_pLogCallbackFunction = NULL;
 
