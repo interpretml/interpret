@@ -34,8 +34,8 @@
     <ClCompile Include="special\windows_DllMain.cpp">
       <Filter>special</Filter>
     </ClCompile>
-    <ClCompile Include="special\precompiled_header_cpp.cpp">
-      <Filter>special</Filter>
+    <ClCompile Include="pch\pch.cpp">
+      <Filter>pch</Filter>
     </ClCompile>
     <ClCompile Include="common_c\common_c.cpp">
       <Filter>common_c</Filter>

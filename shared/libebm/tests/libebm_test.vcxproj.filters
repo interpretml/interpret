@@ -13,7 +13,7 @@
     <ClCompile Include="random_test.cpp" />
     <ClCompile Include="rehydrate_booster.cpp" />
     <ClCompile Include="SuggestGraphBoundsTest.cpp" />
-    <ClCompile Include="precompiled_header_test.cpp">
+    <ClCompile Include="pch_test.cpp">
       <Filter>non_tests</Filter>
     </ClCompile>
     <ClCompile Include="libebm_test.cpp">

@@ -38,7 +38,7 @@ INTERNAL_IMPORT_EXPORT_BODY const char * ConvertStringToFloat(const char * const
    //
    // But, I'm unwilling to trust that there is no variation in the C++ runtime libraries, so I'll do my best to 
    // trust but verify by setting sNext before calling strtod, even though that involves a const cast
-   char * sNext = (char *)(s);
+   char * sNext = const_cast<char *>(s);
    const double ret = strtod(s, &sNext);
    if(s == sNext || NULL == sNext) {
       // technically, sNext should never be nullptr, but we're again verifying our trust of the C++ library
