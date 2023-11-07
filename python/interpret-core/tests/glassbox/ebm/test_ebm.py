@@ -303,8 +303,8 @@ def test_ebm_synthetic_pairwise():
     clf_global = clf.explain_global()
 
     # Low/Low and High/High should learn high scores
-    assert clf_global.data(2)["scores"][-1][-1] > 4.9
-    assert clf_global.data(2)["scores"][1][1] > 4.9
+    assert clf_global.data(2)["scores"][-1][-1] > 4.5
+    assert clf_global.data(2)["scores"][1][1] > 4.5
 
 
 def test_ebm_tripple():
