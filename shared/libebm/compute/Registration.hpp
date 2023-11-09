@@ -244,7 +244,7 @@ public:
    virtual ~Registration() = default;
 };
 
-template<template <typename> class TRegistrable, typename TFloat, typename... Args>
+template<typename TFloat, template <typename> class TRegistrable, typename... Args>
 class RegistrationPack final : public Registration {
 
    // this lambda function holds our templated parameter pack until we need it
@@ -388,10 +388,15 @@ public:
    }
 };
 
-template<template <typename> class TRegistrable, typename TFloat, typename... Args>
-std::shared_ptr<const Registration> Register(const bool bCpuOnly, const char * const sRegistrationName, const Args &... args) {
+template<typename TFloat, template <typename> class TRegistrable, bool bCpuOnly, typename... Args>
+typename std::enable_if<TFloat::k_bCpu || !bCpuOnly, std::shared_ptr<const Registration>>::type Register(const char * const sRegistrationName, const Args &... args) {
    // ideally we'd be returning unique_ptr here, but we pass this to an initialization list which doesn't work in C++11
-   return std::make_shared<const RegistrationPack<TRegistrable, TFloat, Args...>>(bCpuOnly, sRegistrationName, args...);
+   return std::make_shared<const RegistrationPack<TFloat, TRegistrable, Args...>>(bCpuOnly, sRegistrationName, args...);
+}
+
+template<typename TFloat, template <typename> class TRegistrable, bool bCpuOnly, typename... Args>
+typename std::enable_if<!TFloat::k_bCpu && bCpuOnly, std::shared_ptr<const Registration>>::type Register(const char * const, const Args &...) {
+   return nullptr;
 }
 
 } // DEFINED_ZONE_NAME

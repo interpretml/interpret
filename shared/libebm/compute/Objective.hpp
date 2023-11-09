@@ -30,7 +30,8 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-typedef const std::vector<std::shared_ptr<const Registration>> (* REGISTER_OBJECTIVES_FUNCTION)();
+template<typename TFloat>
+static const std::vector<std::shared_ptr<const Registration>> RegisterObjectives();
 
 struct SingletaskObjective;
 struct BinaryObjective;
@@ -610,14 +611,13 @@ protected:
 
 public:
 
+   template<typename TFloat>
    static ErrorEbm CreateObjective(
-      const REGISTER_OBJECTIVES_FUNCTION registerObjectivesFunction,
       const Config * const pConfig,
       const char * const sObjective,
       const char * const sObjectiveEnd,
       ObjectiveWrapper * const pObjectiveWrapperOut
    ) noexcept {
-      EBM_ASSERT(nullptr != registerObjectivesFunction);
       EBM_ASSERT(nullptr != pConfig);
       EBM_ASSERT(1 <= pConfig->cOutputs);
       EBM_ASSERT(EBM_FALSE == pConfig->isDifferentialPrivacy || EBM_TRUE == pConfig->isDifferentialPrivacy);
@@ -636,7 +636,7 @@ public:
       ErrorEbm error;
 
       try {
-         const std::vector<std::shared_ptr<const Registration>> registrations = (*registerObjectivesFunction)();
+         const std::vector<std::shared_ptr<const Registration>> registrations = RegisterObjectives<TFloat>();
          const bool bFailed = Registration::CreateRegistrable(pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut, registrations);
          if(!bFailed) {
             EBM_ASSERT(nullptr != pObjectiveWrapperOut->m_pObjective);

@@ -2,10 +2,6 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifdef OBJECTIVE_REGISTRATIONS_HPP
-#error objective_registrations.hpp is very special and should only be included once in a translation unit (*.cpp file).
-#endif
-#define OBJECTIVE_REGISTRATIONS_HPP
 
 // Steps for adding a new objective in C++:
 //   1) Copy one of the existing "*Objective.h" include files into a newly renamed "*Objective.h" file
@@ -39,17 +35,18 @@
 #include "LogLossMulticlassObjective.hpp"
 
 // Add new *Objective type registrations to this list:
+template<typename TFloat>
 static const std::vector<std::shared_ptr<const Registration>> RegisterObjectives() {
    // IMPORTANT: the parameter types listed here must match the parameters types in the Objective class constructor
    return {
-      RegisterObjective<ExampleRegressionObjective, true>("example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
-      RegisterObjective<RmseRegressionObjective, false>("rmse"),
-      RegisterObjective<RmseLogLinkRegressionObjective, false>("rmse_log"),
-      RegisterObjective<PoissonDevianceRegressionObjective, false>("poisson_deviance"),
-      RegisterObjective<TweedieDevianceRegressionObjective, false>("tweedie_deviance", FloatParam("variance_power", 1.5)),
-      RegisterObjective<GammaDevianceRegressionObjective, false>("gamma_deviance"),
-      RegisterObjective<PseudoHuberRegressionObjective, false>("pseudo_huber", FloatParam("delta", 1.0)),
-      RegisterObjective<LogLossBinaryObjective, false>("log_loss"),
-      RegisterObjective<LogLossMulticlassObjective, false>("log_loss"),
+      Register<TFloat, ExampleRegressionObjective, true>("example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
+      Register<TFloat, RmseRegressionObjective, false>("rmse"),
+      Register<TFloat, RmseLogLinkRegressionObjective, false>("rmse_log"),
+      Register<TFloat, PoissonDevianceRegressionObjective, false>("poisson_deviance"),
+      Register<TFloat, TweedieDevianceRegressionObjective, false>("tweedie_deviance", FloatParam("variance_power", 1.5)),
+      Register<TFloat, GammaDevianceRegressionObjective, false>("gamma_deviance"),
+      Register<TFloat, PseudoHuberRegressionObjective, false>("pseudo_huber", FloatParam("delta", 1.0)),
+      Register<TFloat, LogLossBinaryObjective, false>("log_loss"),
+      Register<TFloat, LogLossMulticlassObjective, false>("log_loss"),
    };
 }

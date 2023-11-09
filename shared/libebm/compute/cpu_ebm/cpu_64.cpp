@@ -28,6 +28,9 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+// this is super-special and included inside the zone namespace
+#include "objective_registrations.hpp"
+
 struct Cpu_64_Float;
 
 struct Cpu_64_Int final {
@@ -434,17 +437,6 @@ INTERNAL_IMPORT_EXPORT_BODY BoolEbm CheckTargetsC(
    return (*pCheckTargetsCpp)(pObjective, c, aTargets);
 }
 
-
-// FIRST, define the RegisterObjective function that we'll be calling from our registrations.  This is a static 
-// function, so we can have duplicate named functions in other files and they'll refer to different functions
-template<template <typename> class TRegistrable, bool bCpuOnly, typename... Args>
-INLINE_ALWAYS static std::shared_ptr<const Registration> RegisterObjective(const char * const sRegistrationName, const Args &... args) {
-   return Register<TRegistrable, Cpu_64_Float>(bCpuOnly, sRegistrationName, args...);
-}
-
-// now include all our special objective registrations which will use the RegisterObjective function we defined above!
-#include "objective_registrations.hpp"
-
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Cpu_64(
    const Config * const pConfig,
    const char * const sObjective,
@@ -458,7 +450,7 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Cpu_64(
    if(Error_None != error) {
       return error;
    }
-   return Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
+   return Objective::CreateObjective<Cpu_64_Float>(pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
 }
 
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateMetric_Cpu_64(
