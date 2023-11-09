@@ -249,7 +249,7 @@ private:
    }
 
 
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore == cCompilerScores && !TFloat::k_bCpu, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore == cCompilerScores && Z_CPU != TFloat::k_zone, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm PackApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, k_cItemsPerBitPackNone>(pData);
@@ -271,7 +271,7 @@ private:
          return BitPack<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, GetFirstBitPack<typename TFloat::TInt::T>(TObjective::k_cItemsPerBitPackMax, TObjective::k_cItemsPerBitPackMin)>::Func(this, pData);
       }
    }
-   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore != cCompilerScores || TFloat::k_bCpu, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, typename std::enable_if<k_oneScore != cCompilerScores || Z_CPU == TFloat::k_zone, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbm PackApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          return OperatorApplyUpdate<TObjective, TFloat, cCompilerScores, bValidation, bWeight, bHessian, k_cItemsPerBitPackNone>(pData);
@@ -486,7 +486,7 @@ protected:
       return TypeApplyUpdate<TObjective, TFloat>(pData);
    }
 
-   template<typename TObjective, typename TFloat, typename std::enable_if<TFloat::k_bCpu && TObjective::k_outputType == OutputType_Regression, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, typename std::enable_if<Z_CPU == TFloat::k_zone && TObjective::k_outputType == OutputType_Regression, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void * const aTargets) const noexcept {
       // regression
       EBM_ASSERT(1 <= c);
@@ -501,33 +501,33 @@ protected:
       } while(pTargetEnd != pTarget);
       return EBM_FALSE;
    }
-   template<typename TObjective, typename TFloat, typename std::enable_if<TFloat::k_bCpu && TObjective::k_outputType == OutputType_GeneralClassification, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, typename std::enable_if<Z_CPU == TFloat::k_zone && TObjective::k_outputType == OutputType_GeneralClassification, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void * const aTargets) const noexcept {
       // classification
       UNUSED(c);
       UNUSED(aTargets);
       return EBM_FALSE;
    }
-   template<typename TObjective, typename TFloat, typename std::enable_if<TFloat::k_bCpu && TObjective::k_outputType == OutputType_Ranking, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, typename std::enable_if<Z_CPU == TFloat::k_zone && TObjective::k_outputType == OutputType_Ranking, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void * const aTargets) const noexcept {
       // classification
       UNUSED(c);
       UNUSED(aTargets);
       return EBM_FALSE;
    }
-   template<typename TObjective, typename TFloat, typename std::enable_if<TFloat::k_bCpu, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, typename std::enable_if<Z_CPU == TFloat::k_zone, void>::type * = nullptr>
    inline BoolEbm ParentCheckTargets(const size_t c, const void * const aTargets) const noexcept {
       static_assert(IsEdgeObjective<TObjective>(), "TObjective must inherit from one of the children of the Objective class");
       return TypeCheckTargets<TObjective, TFloat>(c, aTargets);
    }
 
-   template<typename TObjective, typename TFloat, typename std::enable_if<TFloat::k_bCpu, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, typename std::enable_if<Z_CPU == TFloat::k_zone, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED static void SetCpu(ObjectiveWrapper * const pObjectiveWrapper) noexcept {
       FunctionPointersCpp * const pFunctionPointers = static_cast<FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp);
       pFunctionPointers->m_pFinishMetricCpp = &TObjective::StaticFinishMetric;
       pFunctionPointers->m_pCheckTargetsCpp = &TObjective::StaticCheckTargets;
    }
-   template<typename TObjective, typename TFloat, typename std::enable_if<!TFloat::k_bCpu, void>::type * = nullptr>
+   template<typename TObjective, typename TFloat, typename std::enable_if<Z_CPU != TFloat::k_zone, void>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED static void SetCpu(ObjectiveWrapper * const pObjectiveWrapper) noexcept {
       FunctionPointersCpp * const pFunctionPointers = static_cast<FunctionPointersCpp *>(pObjectiveWrapper->m_pFunctionPointersCpp);
       pFunctionPointers->m_pFinishMetricCpp = nullptr;
@@ -535,7 +535,7 @@ protected:
    }
 
    template<typename TObjective, typename TFloat>
-   INLINE_RELEASE_TEMPLATED void FillObjectiveWrapper(const bool bCpuOnly, void * const pWrapperOut) noexcept {
+   INLINE_RELEASE_TEMPLATED void FillObjectiveWrapper(const ZoneEbm zones, void * const pWrapperOut) noexcept {
       EBM_ASSERT(nullptr != pWrapperOut);
       ObjectiveWrapper * const pObjectiveWrapperOut = static_cast<ObjectiveWrapper *>(pWrapperOut);
       FunctionPointersCpp * const pFunctionPointers =
@@ -601,7 +601,7 @@ protected:
 
       pObjectiveWrapperOut->m_pObjective = this;
 
-      pObjectiveWrapperOut->m_bCpuOnly = bCpuOnly ? EBM_TRUE : EBM_FALSE;
+      pObjectiveWrapperOut->m_zones = zones;
 
       SetCpu<TObjective, TFloat>(pObjectiveWrapperOut);
    }
@@ -799,19 +799,19 @@ protected:
       static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->ParentApplyUpdate<const __EBM_TYPE<TFloat>, TFloat>(pData); \
       } \
-      template<typename T = void, typename std::enable_if<TFloat::k_bCpu, T>::type * = nullptr> \
+      template<typename T = void, typename std::enable_if<Z_CPU == TFloat::k_zone, T>::type * = nullptr> \
       static double StaticFinishMetric(const Objective * const pThis, const double metricSum) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->FinishMetric(metricSum); \
       } \
-      template<typename T = void, typename std::enable_if<TFloat::k_bCpu, T>::type * = nullptr> \
+      template<typename T = void, typename std::enable_if<Z_CPU == TFloat::k_zone, T>::type * = nullptr> \
       static BoolEbm StaticCheckTargets(const Objective * const pThis, const size_t c, const void * const aTargets) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->ParentCheckTargets<const __EBM_TYPE<TFloat>, TFloat>(c, aTargets); \
       } \
-      void FillWrapper(const bool bCpuOnly, void * const pWrapperOut) noexcept { \
+      void FillWrapper(const ZoneEbm zones, void * const pWrapperOut) noexcept { \
          static_assert( \
             std::is_same<__EBM_TYPE<TFloat>, typename std::remove_pointer<decltype(this)>::type>::value, \
             "*Objective types mismatch"); \
-         FillObjectiveWrapper<typename std::remove_pointer<decltype(this)>::type, TFloat>(bCpuOnly, pWrapperOut); \
+         FillObjectiveWrapper<typename std::remove_pointer<decltype(this)>::type, TFloat>(zones, pWrapperOut); \
       }
 
 #define OBJECTIVE_TEMPLATE_BOILERPLATE \

@@ -10,6 +10,7 @@
 #include "libebm.h" // ErrorEbm, BoolEbm, etc..
 
 #include "logging.h"
+#include "zones.h"
 #include "common_c.h"
 
 #ifdef __cplusplus
@@ -127,7 +128,7 @@ struct ObjectiveWrapper {
    size_t m_cFloatBytes;
    size_t m_cUIntBytes;
 
-   BoolEbm m_bCpuOnly;
+   ZoneEbm m_zones;
 
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface
    void * m_pFunctionPointersCpp;

@@ -17,16 +17,16 @@ struct RmseRegressionObjective : RegressionObjective {
    static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) {
       return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentApplyUpdate<const RmseRegressionObjective<TFloat>, TFloat>(pData);
    }
-   template<typename T = void, typename std::enable_if<TFloat::k_bCpu, T>::type * = nullptr>
+   template<typename T = void, typename std::enable_if<Z_CPU == TFloat::k_zone, T>::type * = nullptr>
    static double StaticFinishMetric(const Objective * const pThis, const double metricSum) {
       return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->FinishMetric(metricSum);
    }
-   template<typename T = void, typename std::enable_if<TFloat::k_bCpu, T>::type * = nullptr>
+   template<typename T = void, typename std::enable_if<Z_CPU == TFloat::k_zone, T>::type * = nullptr>
    static BoolEbm StaticCheckTargets(const Objective * const pThis, const size_t c, const void * const aTargets) {
       return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentCheckTargets<const RmseRegressionObjective<TFloat>, TFloat>(c, aTargets);
    }
-   void FillWrapper(const bool bCpuOnly, void * const pWrapperOut) noexcept {
-      FillObjectiveWrapper<RmseRegressionObjective, TFloat>(bCpuOnly, pWrapperOut);
+   void FillWrapper(const ZoneEbm zones, void * const pWrapperOut) noexcept {
+      FillObjectiveWrapper<RmseRegressionObjective, TFloat>(zones, pWrapperOut);
    }
 
    inline RmseRegressionObjective(const Config & config) {

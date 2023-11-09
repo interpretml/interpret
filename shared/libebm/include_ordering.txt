@@ -6,12 +6,13 @@
 
 // anywhere
 #include "libebm.h" // PUBLIC. Cannot have dependencies on our other private include files
+
+// zone control
+#include "zones.h" // defines zone definition bits that we use in the bridge
+
 #include "logging.h" // ONLY depends on libebm.h. Designed to be included everywhere else
 #include "common_c.h" // Currently has no dependencies, but could someday depend on libebm.h and logging.h. Designed to be included everywhere except logging.h with signatures for shared extern functions
 #include "bridge_c.h" // Currently only depends on libebm.h, but could see dependencies on logging.h, common_c.h in the future
-
-// zone control
-#include "zones.h" // no dependencies, but there is no reason to include it above any hpp files
 
 // common and bridge that depend on zoning
 #include "common_cpp.hpp" // depends only on zones.h, but could someday also depend on libebm.h, logging.h, common_c.h

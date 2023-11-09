@@ -169,33 +169,37 @@ extern ErrorEbm GetObjective(
       return error;
    }
 
-   if(EBM_FALSE == pCpuObjectiveWrapperOut->m_bCpuOnly && nullptr != pSIMDObjectiveWrapperOut) {
+   if(nullptr != pSIMDObjectiveWrapperOut) {
       // TODO: add a flag in the pCpuObjectiveWrapperOut struct that indicates if the objective can be SIMDed
       //       we first make the cpu version and if that says it can't be SIMDed then we shouldn't try
       while(true) {
 #ifdef BRIDGE_AVX512F_32
-         // TODO: enabled AVX512f, but only after we've had some time verifying AVX2 works
-         //       before enabling this we need to test that it produces nearly identical results as AVX2
-         LOG_0(Trace_Info, "INFO GetObjective checking for AVX512F compatibility");
-         if(9 <= DetectInstructionset()) {
-            LOG_0(Trace_Info, "INFO GetObjective creating AVX512F SIMD Objective");
-            error = CreateObjective_Avx512f_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
-            if(Error_None != error) {
-               return error;
+         if(0 != (Z_AVX512F & pCpuObjectiveWrapperOut->m_zones)) {
+            // TODO: enabled AVX512f, but only after we've had some time verifying AVX2 works
+            //       before enabling this we need to test that it produces nearly identical results as AVX2
+            LOG_0(Trace_Info, "INFO GetObjective checking for AVX512F compatibility");
+            if(9 <= DetectInstructionset()) {
+               LOG_0(Trace_Info, "INFO GetObjective creating AVX512F SIMD Objective");
+               error = CreateObjective_Avx512f_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
+               if(Error_None != error) {
+                  return error;
+               }
+               break;
             }
-            break;
          }
 #endif // BRIDGE_AVX512F_32
 
 #ifdef BRIDGE_AVX2_32
-         LOG_0(Trace_Info, "INFO GetObjective checking for AVX2 compatibility");
-         if(8 <= DetectInstructionset() && IsFMA3()) {
-            LOG_0(Trace_Info, "INFO GetObjective creating AVX2 SIMD Objective");
-            error = CreateObjective_Avx2_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
-            if(Error_None != error) {
-               return error;
+         if(0 != (Z_AVX2 & pCpuObjectiveWrapperOut->m_zones)) {
+            LOG_0(Trace_Info, "INFO GetObjective checking for AVX2 compatibility");
+            if(8 <= DetectInstructionset() && IsFMA3()) {
+               LOG_0(Trace_Info, "INFO GetObjective creating AVX2 SIMD Objective");
+               error = CreateObjective_Avx2_32(pConfig, sObjective, sObjectiveEnd, pSIMDObjectiveWrapperOut);
+               if(Error_None != error) {
+                  return error;
+               }
+               break;
             }
-            break;
          }
 #endif // BRIDGE_AVX2_32
 
