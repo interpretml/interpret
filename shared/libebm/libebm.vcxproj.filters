@@ -37,11 +37,11 @@
     <ClCompile Include="pch\pch.cpp">
       <Filter>pch</Filter>
     </ClCompile>
-    <ClCompile Include="common_c\common_c.cpp">
-      <Filter>common_c</Filter>
+    <ClCompile Include="unzoned\unzoned.cpp">
+      <Filter>unzoned</Filter>
     </ClCompile>
-    <ClCompile Include="common_c\logging.cpp">
-      <Filter>common_c</Filter>
+    <ClCompile Include="unzoned\logging.cpp">
+      <Filter>unzoned</Filter>
     </ClCompile>
     <ClCompile Include="random.cpp" />
     <ClCompile Include="DetermineLinkFunction.cpp" />
@@ -67,32 +67,32 @@
     <ClInclude Include="inc\libebm.h">
       <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="bridge_c\bridge_c.h">
-      <Filter>bridge_c</Filter>
+    <ClInclude Include="bridge\bridge.h">
+      <Filter>bridge</Filter>
     </ClInclude>
-    <ClInclude Include="bridge_c\zones.h">
-      <Filter>bridge_c</Filter>
+    <ClInclude Include="bridge\zones.h">
+      <Filter>bridge</Filter>
     </ClInclude>
-    <ClInclude Include="common_c\common_c.h">
-      <Filter>common_c</Filter>
+    <ClInclude Include="unzoned\unzoned.h">
+      <Filter>unzoned</Filter>
     </ClInclude>
-    <ClInclude Include="bridge_cpp\bridge_cpp.hpp">
-      <Filter>bridge_cpp</Filter>
+    <ClInclude Include="bridge\bridge.hpp">
+      <Filter>bridge</Filter>
     </ClInclude>
-    <ClInclude Include="common_cpp\common_cpp.hpp">
-      <Filter>common_cpp</Filter>
+    <ClInclude Include="bridge\common.hpp">
+      <Filter>bridge</Filter>
     </ClInclude>
-    <ClInclude Include="common_c\logging.h">
-      <Filter>common_c</Filter>
+    <ClInclude Include="unzoned\logging.h">
+      <Filter>unzoned</Filter>
     </ClInclude>
     <ClInclude Include="dataset_shared.hpp" />
     <ClInclude Include="GaussianDistribution.hpp" />
     <ClInclude Include="RandomNondeterministic.hpp" />
-    <ClInclude Include="bridge_cpp\Bin.hpp">
-      <Filter>bridge_cpp</Filter>
+    <ClInclude Include="bridge\Bin.hpp">
+      <Filter>bridge</Filter>
     </ClInclude>
-    <ClInclude Include="bridge_cpp\GradientPair.hpp">
-      <Filter>bridge_cpp</Filter>
+    <ClInclude Include="bridge\GradientPair.hpp">
+      <Filter>bridge</Filter>
     </ClInclude>
     <ClInclude Include="Transpose.hpp" />
     <ClInclude Include="ebm_stats.hpp" />
@@ -116,17 +116,11 @@
     <Filter Include="special">
       <UniqueIdentifier>{3c75c63a-6df6-4cd6-91e2-ee80ef96f468}</UniqueIdentifier>
     </Filter>
-    <Filter Include="bridge_c">
+    <Filter Include="bridge">
       <UniqueIdentifier>{32bfc9ca-2159-409b-89d1-af8034257dd1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="common_c">
+    <Filter Include="unzoned">
       <UniqueIdentifier>{1daae48a-6372-46a2-a0e9-dda3519eb4b4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="bridge_cpp">
-      <UniqueIdentifier>{00aba3da-146d-462c-8f27-c3675127ae35}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="common_cpp">
-      <UniqueIdentifier>{48382ee5-df51-4d4d-92ce-dbd4c773ed4e}</UniqueIdentifier>
     </Filter>
     <Filter Include="pch">
       <UniqueIdentifier>{f9e8fb56-17ab-4d99-8c95-ff83a6d1f7d0}</UniqueIdentifier>

@@ -19,14 +19,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bridge_cpp\Bin.hpp" />
-    <ClInclude Include="bridge_cpp\bridge_cpp.hpp" />
-    <ClInclude Include="bridge_cpp\GradientPair.hpp" />
-    <ClInclude Include="bridge_c\bridge_c.h" />
-    <ClInclude Include="common_c\logging.h" />
-    <ClInclude Include="bridge_c\zones.h" />
-    <ClInclude Include="common_cpp\common_cpp.hpp" />
-    <ClInclude Include="common_c\common_c.h" />
+    <ClInclude Include="bridge\Bin.hpp" />
+    <ClInclude Include="bridge\bridge.hpp" />
+    <ClInclude Include="bridge\GradientPair.hpp" />
+    <ClInclude Include="bridge\bridge.h" />
+    <ClInclude Include="unzoned\logging.h" />
+    <ClInclude Include="bridge\zones.h" />
+    <ClInclude Include="bridge\common.hpp" />
+    <ClInclude Include="unzoned\unzoned.h" />
     <ClInclude Include="dataset_shared.hpp" />
     <ClInclude Include="ebm_stats.hpp" />
     <ClInclude Include="GaussianDistribution.hpp" />
@@ -52,8 +52,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApplyTermUpdate.cpp" />
-    <ClCompile Include="common_c\logging.cpp" />
-    <ClCompile Include="common_c\common_c.cpp" />
+    <ClCompile Include="unzoned\logging.cpp" />
+    <ClCompile Include="unzoned\unzoned.cpp" />
     <ClCompile Include="compute_accessors.cpp" />
     <ClCompile Include="ConvertAddBin.cpp" />
     <ClCompile Include="dataset_shared.cpp" />
@@ -233,7 +233,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)pch;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)pch;$(ProjectDir)inc;$(ProjectDir)unzoned;$(ProjectDir)bridge;$(ProjectDir);</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <TreatWarningAsError>true</TreatWarningAsError>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
@@ -283,7 +283,7 @@ EXIT /B 0
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)pch;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)pch;$(ProjectDir)inc;$(ProjectDir)unzoned;$(ProjectDir)bridge;$(ProjectDir);</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -332,7 +332,7 @@ EXIT /B 0
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)pch;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)pch;$(ProjectDir)inc;$(ProjectDir)unzoned;$(ProjectDir)bridge;$(ProjectDir);</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <TreatWarningAsError>true</TreatWarningAsError>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
@@ -383,7 +383,7 @@ EXIT /B 0
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)pch;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)pch;$(ProjectDir)inc;$(ProjectDir)unzoned;$(ProjectDir)bridge;$(ProjectDir);</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
