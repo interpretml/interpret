@@ -13,10 +13,10 @@
 
 #include "libebm.h"
 #include "logging.h"
-#include "common_c.h" // LIKELY
+#include "unzoned.h" // LIKELY
 #include "zones.h"
 
-#include "common_cpp.hpp" // IsConvertError
+#include "common.hpp" // IsConvertError
 
 // TODO: check this file for how we handle subnormal numbers!  It's tricky if we get them
 

@@ -11,8 +11,8 @@
 #include <atomic>
 
 #include "libebm.h" // ErrorEbm
-#include "common_c.h"
-#include "bridge_c.h" // ObjectiveWrapper
+#include "unzoned.h"
+#include "bridge.h" // ObjectiveWrapper
 #include "zones.h"
 
 #include "ebm_internal.hpp" // FloatMain

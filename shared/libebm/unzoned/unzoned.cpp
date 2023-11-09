@@ -8,7 +8,7 @@
 
 #include "libebm.h" // BoolEbm
 #include "logging.h"
-#include "common_c.h"
+#include "unzoned.h"
 
 #ifdef __cplusplus
 extern "C" {

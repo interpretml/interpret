@@ -9,7 +9,7 @@
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // LIKELY
+#include "unzoned.h" // LIKELY
 #include "zones.h"
 
 #include "GradientPair.hpp"

@@ -5,18 +5,18 @@
   AND they should include their associated hpp file first and then all other include files in order below
 
 // anywhere
-#include "libebm.h" // PUBLIC. Cannot have dependencies on our other private include files
+#include "libebm.h" // PUBLIC. Cannot have dependencies on any private files
+#include "logging.h" // depends on libebm.h ONLY. Designed to be included everywhere else
+#include "unzoned.h" // depends on libebm.h and logging.h
 
 // zone control
 #include "zones.h" // defines zone definition bits that we use in the bridge
 
-#include "logging.h" // ONLY depends on libebm.h. Designed to be included everywhere else
-#include "common_c.h" // Currently has no dependencies, but could someday depend on libebm.h and logging.h. Designed to be included everywhere except logging.h with signatures for shared extern functions
-#include "bridge_c.h" // Currently only depends on libebm.h, but could see dependencies on logging.h, common_c.h in the future
+#include "bridge.h" // depends on libebm.h, logging.h, unzoned.h, zones.h
 
-// common and bridge that depend on zoning
-#include "common_cpp.hpp" // depends only on zones.h, but could someday also depend on libebm.h, logging.h, common_c.h
-#include "bridge_cpp.hpp" // depends on libebm.h (via bridge_c.h), bridge_c.h, zones.h, common_cpp.hpp.  Could someday depend on logging.h, common_c.h
+// bridge files that depend on zoning
+#include "common.hpp"
+#include "bridge.hpp"
 #include "GradientPair.hpp"
 #include "Bin.hpp" // depends on GradientPair.hpp
 

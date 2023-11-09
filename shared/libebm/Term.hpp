@@ -9,8 +9,8 @@
 
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
-#include "common_cpp.hpp" // k_cDimensionsMax
-#include "bridge_cpp.hpp"
+#include "common.hpp" // k_cDimensionsMax
+#include "bridge.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

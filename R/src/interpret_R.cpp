@@ -11,7 +11,7 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "common_cpp.hpp"
+#include "common.hpp"
 
 #include "ebm_internal.hpp"
 #include "Feature.hpp"

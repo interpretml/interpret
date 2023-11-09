@@ -10,7 +10,7 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "common_cpp.hpp" // IsMultiplyError
+#include "common.hpp" // IsMultiplyError
 #include "GradientPair.hpp"
 #include "Bin.hpp"
 

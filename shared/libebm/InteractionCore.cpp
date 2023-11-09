@@ -10,7 +10,7 @@
 
 #include "logging.h" // EBM_ASSERT
 
-#include "bridge_cpp.hpp" // GetCountScores
+#include "bridge.hpp" // GetCountScores
 #include "Bin.hpp" // IsOverflowBinSize
 
 #include "ebm_internal.hpp"

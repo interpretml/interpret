@@ -11,7 +11,7 @@
 
 #include "logging.h" // EBM_ASSERT
 
-#include "common_cpp.hpp" // IsConvertError, IsMultiplyError
+#include "common.hpp" // IsConvertError, IsMultiplyError
 #include "Bin.hpp" // IsOverflowBinSize
 
 #include "ebm_internal.hpp"

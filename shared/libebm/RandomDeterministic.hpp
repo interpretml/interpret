@@ -11,10 +11,10 @@
 
 #include "libebm.h" // SeedEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // INLINE_ALWAYS, COUNT_BITS
+#include "unzoned.h" // INLINE_ALWAYS, COUNT_BITS
 #include "zones.h"
 
-#include "common_cpp.hpp" // CountBitsRequiredPositiveMax
+#include "common.hpp" // CountBitsRequiredPositiveMax
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

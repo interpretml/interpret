@@ -10,7 +10,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "logging.h"
-#include "common_c.h"
+#include "unzoned.h"
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {

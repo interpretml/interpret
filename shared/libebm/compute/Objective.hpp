@@ -14,10 +14,10 @@
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // INLINE_ALWAYS
+#include "unzoned.h" // INLINE_ALWAYS
 #include "zones.h"
 
-#include "bridge_cpp.hpp" // IsRegressionOutput, etc.
+#include "bridge.hpp" // IsRegressionOutput, etc.
 #include "zoned_bridge_cpp_functions.hpp" // FunctionPointersCpp
 #include "compute.hpp" // GPU_GLOBAL
 #include "registration_exceptions.hpp"

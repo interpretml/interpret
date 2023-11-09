@@ -12,11 +12,11 @@
 
 #include "libebm.h"
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // INLINE_ALWAYS
-#include "bridge_c.h" // Config
+#include "unzoned.h" // INLINE_ALWAYS
+#include "bridge.h" // Config
 #include "zones.h"
 
-#include "bridge_cpp.hpp"
+#include "bridge.hpp"
 
 #include "registration_exceptions.hpp"
 

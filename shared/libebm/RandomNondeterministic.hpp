@@ -9,7 +9,7 @@
 
 #include "libebm.h" // SeedEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // INLINE_ALWAYS, COUNT_BITS
+#include "unzoned.h" // INLINE_ALWAYS, COUNT_BITS
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {

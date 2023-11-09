@@ -7,8 +7,8 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "common_cpp.hpp"
-#include "bridge_cpp.hpp"
+#include "common.hpp"
+#include "bridge.hpp"
 
 #include "dataset_shared.hpp" // GetDataSetSharedHeader
 #include "InteractionCore.hpp"

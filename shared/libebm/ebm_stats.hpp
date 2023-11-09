@@ -9,10 +9,10 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // INLINE_ALWAYS, LIKELY, UNLIKELY
+#include "unzoned.h" // INLINE_ALWAYS, LIKELY, UNLIKELY
 #include "zones.h"
 
-#include "common_cpp.hpp"
+#include "common.hpp"
 
 #include "ebm_internal.hpp"
 

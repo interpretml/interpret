@@ -9,7 +9,7 @@
 #include <string.h> // memcpy
 
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // AlignedFree
+#include "unzoned.h" // AlignedFree
 
 #include "ebm_internal.hpp"
 #include "InnerBag.hpp"

@@ -15,13 +15,13 @@
 
 #include "libebm.h"
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h"
-#include "bridge_c.h"
+#include "unzoned.h"
+#include "bridge.h"
 #include "zones.h"
 
 // TODO: try and remove the dependency on bridge_cpp.hpp and common_cpp.hpp in the future once all our templated performance stuff is in the compute zone
-#include "common_cpp.hpp"
-#include "bridge_cpp.hpp"
+#include "common.hpp"
+#include "bridge.hpp"
 
 // TODO: try and remove EbmInternal.h from as many places as possible after we've transitioned most of this stuff into common_c.h and common_c.hpp
 

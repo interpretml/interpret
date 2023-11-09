@@ -10,12 +10,12 @@
 
 #include "libebm.h"
 #include "logging.h"
-#include "common_c.h"
-#include "bridge_c.h"
+#include "unzoned.h"
+#include "bridge.h"
 #include "zones.h"
 
-#include "common_cpp.hpp"
-#include "bridge_cpp.hpp"
+#include "common.hpp"
+#include "bridge.hpp"
 
 #include "Registration.hpp"
 #include "Objective.hpp"
@@ -27,6 +27,9 @@ namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
+
+// this is super-special and included inside the zone namespace
+#include "objective_registrations.hpp"
 
 template <typename TObjective>
 GPU_GLOBAL void TestGpuAdd(const Objective * const pObjective, const int * const pVal1, const int * const pVal2, int * const pResult) {
@@ -491,31 +494,20 @@ static_assert(std::is_standard_layout<Cuda_32_Float>::value && std::is_trivially
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 
-// FIRST, define the RegisterObjective function that we'll be calling from our registrations.  This is a static 
-// function, so we can have duplicate named functions in other files and they'll refer to different functions
-template<template <typename> class TRegistrable, bool bCpuOnly, typename... Args>
-INLINE_ALWAYS static typename std::enable_if<bCpuOnly, std::shared_ptr<const Registration>>::type RegisterObjective(const char * const, const Args &...) {
-   return nullptr;
-}
-template<template <typename> class TRegistrable, bool bCpuOnly, typename... Args>
-INLINE_ALWAYS static typename std::enable_if<!bCpuOnly, std::shared_ptr<const Registration>>::type RegisterObjective(const char * const sRegistrationName, const Args &... args) {
-   return Register<TRegistrable, Cuda_32_Float>(bCpuOnly, sRegistrationName, args...);
-}
-
-// now include all our special objective registrations which will use the RegisterObjective function we defined above!
-#include "objective_registrations.hpp"
-
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Cuda_32(
    const Config * const pConfig,
    const char * const sObjective,
    const char * const sObjectiveEnd,
    ObjectiveWrapper * const pObjectiveWrapperOut
 ) {
+   pObjectiveWrapperOut->m_pApplyUpdateC = ApplyUpdate_Cuda_32;
+   pObjectiveWrapperOut->m_pBinSumsBoostingC = BinSumsBoosting_Cuda_32;
+   pObjectiveWrapperOut->m_pBinSumsInteractionC = BinSumsInteraction_Cuda_32;
    ErrorEbm error = ComputeWrapper<Cuda_32_Float>::FillWrapper(pObjectiveWrapperOut);
    if(Error_None != error) {
       return error;
    }
-   return Objective::CreateObjective(&RegisterObjectives, pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
+   return Objective::CreateObjective<Cuda_32_Float>(pConfig, sObjective, sObjectiveEnd, pObjectiveWrapperOut);
 }
 
 } // DEFINED_ZONE_NAME

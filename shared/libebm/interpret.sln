@@ -69,8 +69,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3D
 		compute\Registration.hpp = compute\Registration.hpp
 		compute\registration_exceptions.hpp = compute\registration_exceptions.hpp
 		compute\zoned_bridge_cpp_functions.hpp = compute\zoned_bridge_cpp_functions.hpp
-		compute\zoned_bridge_c_functions.cpp = compute\zoned_bridge_c_functions.cpp
-		compute\zoned_bridge_c_functions.h = compute\zoned_bridge_c_functions.h
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "avx512f_ebm", "compute\avx512f_ebm\avx512f_ebm.vcxproj", "{F2EA4B57-0DF5-40A9-A8DE-6E92C7F898A1}"

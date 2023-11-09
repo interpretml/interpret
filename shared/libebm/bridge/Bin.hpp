@@ -11,10 +11,10 @@
 #include <string.h> // memcpy
 
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // UNUSED
+#include "unzoned.h" // UNUSED
 #include "zones.h"
 
-#include "common_cpp.hpp"
+#include "common.hpp"
 
 #include "GradientPair.hpp"
 

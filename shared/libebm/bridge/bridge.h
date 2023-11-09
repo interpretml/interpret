@@ -11,7 +11,7 @@
 
 #include "logging.h"
 #include "zones.h"
-#include "common_c.h"
+#include "unzoned.h"
 
 #ifdef __cplusplus
 extern "C" {

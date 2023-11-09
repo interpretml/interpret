@@ -10,8 +10,8 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
-#include "common_cpp.hpp" // k_cDimensionsMax
-#include "bridge_cpp.hpp" // BinSumsInteractionBridge
+#include "common.hpp" // k_cDimensionsMax
+#include "bridge.hpp" // BinSumsInteractionBridge
 #include "GradientPair.hpp" // GradientPair
 #include "Bin.hpp" // Bin
 

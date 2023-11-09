@@ -227,7 +227,7 @@ if [ -n "${CXX}" ]; then
    mkdir ./python/interpret-core/interpret
    mkdir ./python/interpret-core/interpret/lib
 
-   extras="-DLIBEBM_EXPORTS -DNDEBUG -I$code_path/inc -I$code_path/pch -I$code_path/common_c -I$code_path/common_cpp -I$code_path/bridge_c -I$code_path/bridge_cpp -I$code_path -I$code_path/compute -I$code_path/compute/objectives -I$code_path/compute/metrics"
+   extras="-DLIBEBM_EXPORTS -DNDEBUG -I$code_path/pch -I$code_path/inc -I$code_path/unzoned -I$code_path/bridge -I$code_path -I$code_path/compute -I$code_path/compute/objectives -I$code_path/compute/metrics"
 
    mkdir ./tmp
    mkdir ./tmp/mk
@@ -273,8 +273,8 @@ if [ -n "${CXX}" ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/InnerBag.cpp" -o "$tmp_path/InnerBag.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/Tensor.cpp" -o "$tmp_path/Tensor.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/TensorTotalsBuild.cpp" -o "$tmp_path/TensorTotalsBuild.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/common_c/logging.cpp" -o "$tmp_path/logging.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/common_c/common_c.cpp" -o "$tmp_path/common_c.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/unzoned/logging.cpp" -o "$tmp_path/logging.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/unzoned/unzoned.cpp" -o "$tmp_path/unzoned.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} -DZONE_cpu "$code_path/compute/cpu_ebm/cpu_64.cpp" -o "$tmp_path/cpu_64.o"
 
    ${CXX} ${LDFLAGS} -shared \
@@ -310,7 +310,7 @@ if [ -n "${CXX}" ]; then
    "$tmp_path/Tensor.o" \
    "$tmp_path/TensorTotalsBuild.o" \
    "$tmp_path/logging.o" \
-   "$tmp_path/common_c.o" \
+   "$tmp_path/unzoned.o" \
    "$tmp_path/cpu_64.o" \
    ${LOADLIBES} ${LDLIBS} -o "$final_binary"
 
@@ -399,25 +399,21 @@ all_args="$all_args -I$src_path_sanitized/inc"
 
 cpu_args="-DZONE_cpu"
 cpu_args="$cpu_args -I$src_path_sanitized/pch"
-cpu_args="$cpu_args -I$src_path_sanitized/common_c"
-cpu_args="$cpu_args -I$src_path_sanitized/bridge_c"
-cpu_args="$cpu_args -I$src_path_sanitized/common_cpp"
-cpu_args="$cpu_args -I$src_path_sanitized/bridge_cpp"
+cpu_args="$cpu_args -I$src_path_sanitized/unzoned"
+cpu_args="$cpu_args -I$src_path_sanitized/bridge"
 cpu_args="$cpu_args -I$src_path_sanitized"
 
 compute_args=""
-compute_args="$compute_args -I$src_path_sanitized/common_c"
-compute_args="$compute_args -I$src_path_sanitized/bridge_c"
-compute_args="$compute_args -I$src_path_sanitized/common_cpp"
-compute_args="$compute_args -I$src_path_sanitized/bridge_cpp"
+compute_args="$compute_args -I$src_path_sanitized/unzoned"
+compute_args="$compute_args -I$src_path_sanitized/bridge"
+compute_args="$compute_args -I$src_path_sanitized/compute"
 compute_args="$compute_args -I$src_path_sanitized/compute/objectives"
 compute_args="$compute_args -I$src_path_sanitized/compute/metrics"
-compute_args="$compute_args -I$src_path_sanitized/compute"
 
 # add any other non-include options
-common_args=""
-common_args="$common_args -I$src_path_sanitized/pch"
-common_args="$common_args -I$src_path_sanitized/common_c"
+unzoned_args=""
+unzoned_args="$unzoned_args -I$src_path_sanitized/pch"
+unzoned_args="$unzoned_args -I$src_path_sanitized/unzoned"
 
 link_args=""
 
@@ -467,8 +463,8 @@ if [ "$os_type" = "Linux" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_file "$cpp_compiler" "$specific_args $common_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "$is_asm"
-      compile_directory "$cpp_compiler" "$specific_args $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "$is_asm"
+      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "$is_asm"
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $cpu_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
       compile_compute "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
       compile_compute "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "avx2"
@@ -495,8 +491,8 @@ if [ "$os_type" = "Linux" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_file "$cpp_compiler" "$specific_args $common_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0
-      compile_directory "$cpp_compiler" "$specific_args $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" 0
+      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $cpu_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0
       compile_compute "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "cpu"
       compile_compute "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "avx2"
@@ -523,8 +519,8 @@ if [ "$os_type" = "Linux" ]; then
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
       check_install "$tmp_path_unsanitized" "g++-multilib"
-      compile_file "$cpp_compiler" "$specific_args $common_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0
-      compile_directory "$cpp_compiler" "$specific_args $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" 0
+      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $cpu_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0
       compile_compute "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "cpu"
       compile_compute "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "avx2"
@@ -551,8 +547,8 @@ if [ "$os_type" = "Linux" ]; then
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
       check_install "$tmp_path_unsanitized" "g++-multilib"
-      compile_file "$cpp_compiler" "$specific_args $common_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0
-      compile_directory "$cpp_compiler" "$specific_args $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" 0
+      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $cpu_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0
       compile_compute "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "cpu"
       compile_compute "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "avx2"
@@ -606,7 +602,7 @@ elif [ "$os_type" = "Darwin" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$cpp_compiler" "$specific_args $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "$is_asm"
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $cpu_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
       compile_compute "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
       compile_compute "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "avx2"
@@ -633,7 +629,7 @@ elif [ "$os_type" = "Darwin" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$cpp_compiler" "$specific_args $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" 0
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $cpu_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0
       compile_compute "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "cpu"
       compile_compute "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "avx2"
@@ -659,7 +655,7 @@ elif [ "$os_type" = "Darwin" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$cpp_compiler" "$specific_args $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "$is_asm"
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $cpu_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
       compile_compute "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
       link_file "$cpp_compiler" "-install_name @rpath/$bin_file $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
@@ -684,7 +680,7 @@ elif [ "$os_type" = "Darwin" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$cpp_compiler" "$specific_args $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" 0
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $cpu_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0
       compile_compute "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0 "cpu"
       link_file "$cpp_compiler" "-install_name @rpath/$bin_file $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"

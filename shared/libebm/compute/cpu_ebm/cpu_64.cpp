@@ -10,12 +10,12 @@
 
 #include "libebm.h"
 #include "logging.h"
-#include "common_c.h"
-#include "bridge_c.h"
+#include "unzoned.h"
+#include "bridge.h"
 #include "zones.h"
 
-#include "common_cpp.hpp"
-#include "bridge_cpp.hpp"
+#include "common.hpp"
+#include "bridge.hpp"
 
 #include "Registration.hpp"
 #include "Objective.hpp"

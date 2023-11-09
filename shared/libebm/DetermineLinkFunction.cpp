@@ -6,10 +6,10 @@
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // LIKELY
+#include "unzoned.h" // LIKELY
 #include "zones.h"
 
-#include "bridge_cpp.hpp" // IsRegressionOutput, IsClassificationOutput, IsRankingOutput
+#include "bridge.hpp" // IsRegressionOutput, IsClassificationOutput, IsRankingOutput
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

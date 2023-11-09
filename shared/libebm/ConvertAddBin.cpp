@@ -7,7 +7,7 @@
 #include <stddef.h> // size_t, ptrdiff_t, offsetof
 
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h"
+#include "unzoned.h"
 #include "zones.h"
 
 #include "Bin.hpp"

@@ -10,8 +10,8 @@
 #include "logging.h" // EBM_ASSERT
 #include "zones.h"
 
-#include "common_cpp.hpp" // Multiply
-#include "bridge_cpp.hpp" // BinSumsBoostingBridge
+#include "common.hpp" // Multiply
+#include "bridge.hpp" // BinSumsBoostingBridge
 #include "GradientPair.hpp"
 #include "Bin.hpp"
 

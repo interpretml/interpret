@@ -108,7 +108,7 @@
       <CreateHotpatchableImage>false</CreateHotpatchableImage>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <OpenMPSupport>false</OpenMPSupport>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..;$(ProjectDir)..\objectives;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\unzoned;$(ProjectDir)..\..\bridge;$(ProjectDir)..;$(ProjectDir)..\objectives;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
       <ControlFlowGuard>Guard</ControlFlowGuard>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
@@ -148,7 +148,7 @@
       <CreateHotpatchableImage>false</CreateHotpatchableImage>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <OpenMPSupport>false</OpenMPSupport>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..;$(ProjectDir)..\objectives;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\unzoned;$(ProjectDir)..\..\bridge;$(ProjectDir)..;$(ProjectDir)..\objectives;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
     </ClCompile>
@@ -182,7 +182,7 @@
       <CreateHotpatchableImage>false</CreateHotpatchableImage>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <OpenMPSupport>false</OpenMPSupport>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..;$(ProjectDir)..\objectives;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\unzoned;$(ProjectDir)..\..\bridge;$(ProjectDir)..;$(ProjectDir)..\objectives;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
       <ControlFlowGuard>Guard</ControlFlowGuard>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
@@ -221,7 +221,7 @@
       <CreateHotpatchableImage>false</CreateHotpatchableImage>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <OpenMPSupport>false</OpenMPSupport>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..;$(ProjectDir)..\objectives;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\unzoned;$(ProjectDir)..\..\bridge;$(ProjectDir)..;$(ProjectDir)..\objectives;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
     </ClCompile>

@@ -13,7 +13,7 @@
 #include <string.h> // memcpy
 
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // INLINE_ALWAYS, LIKELY, UNLIKELY
+#include "unzoned.h" // INLINE_ALWAYS, LIKELY, UNLIKELY
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {

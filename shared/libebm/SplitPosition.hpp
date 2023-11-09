@@ -9,10 +9,10 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // FloatMain
+#include "unzoned.h" // FloatMain
 #include "zones.h"
 
-#include "common_cpp.hpp" // IsAddError
+#include "common.hpp" // IsAddError
 #include "Bin.hpp"
 
 namespace DEFINED_ZONE_NAME {

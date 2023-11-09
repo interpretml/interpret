@@ -7,7 +7,7 @@
 
 #include "zones.h"
 
-#include "bridge_cpp.hpp"
+#include "bridge.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

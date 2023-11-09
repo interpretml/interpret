@@ -10,7 +10,7 @@
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h"
+#include "unzoned.h"
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {

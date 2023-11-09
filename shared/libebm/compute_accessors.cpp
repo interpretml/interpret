@@ -23,11 +23,11 @@
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h"
-#include "bridge_c.h" // CreateObjective_*
+#include "unzoned.h"
+#include "bridge.h" // CreateObjective_*
 #include "zones.h"
 
-#include "common_cpp.hpp" // INLINE_RELEASE_UNTEMPLATED
+#include "common.hpp" // INLINE_RELEASE_UNTEMPLATED
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

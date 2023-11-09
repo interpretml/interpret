@@ -11,10 +11,10 @@
 
 #include "libebm.h" // EBM_API_BODY
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // LIKELY
+#include "unzoned.h" // LIKELY
 #include "zones.h"
 
-#include "common_cpp.hpp" // IsConvertError
+#include "common.hpp" // IsConvertError
 
 #include "ebm_internal.hpp" // FloatTickIncrement
 

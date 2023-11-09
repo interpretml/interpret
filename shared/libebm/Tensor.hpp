@@ -10,11 +10,11 @@
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
-#include "common_c.h" // FloatScore
-#include "bridge_c.h" // UIntSplit
+#include "unzoned.h" // FloatScore
+#include "bridge.h" // UIntSplit
 #include "zones.h"
 
-#include "common_cpp.hpp" // ArrayToPointer
+#include "common.hpp" // ArrayToPointer
 #include "ebm_internal.hpp"
 
 namespace DEFINED_ZONE_NAME {

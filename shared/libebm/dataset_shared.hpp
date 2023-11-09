@@ -8,7 +8,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "libebm.h" // UIntEbm
-#include "bridge_c.h" // FloatShared
+#include "bridge.h" // FloatShared
 #include "zones.h"
 
 #include "ebm_internal.hpp"

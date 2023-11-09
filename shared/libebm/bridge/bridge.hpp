@@ -7,7 +7,7 @@
 
 #include "libebm.h" // bridge_c.h depends on libebm.h and we probably will eventually too
 #include "logging.h"
-#include "bridge_c.h" // UIntMain
+#include "bridge.h" // UIntMain
 #include "zones.h"
 
 #include "Bin.hpp"
