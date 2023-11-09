@@ -91,7 +91,7 @@ compile_file() {
       # If this fails then ignore the error and we'll just be missing this file.
       l3_asm_full_file_unsanitized="$l3_obj_path_unsanitized/${l3_file_body_unsanitized}_$l3_zone.s"
       l3_asm_full_file_sanitized=`sanitize "$l3_asm_full_file_unsanitized"`
-      l3_compile_specific_asm="$l3_compiler $l3_compiler_args_sanitized -fverbose-asm -S $l3_file_sanitized -o $l3_asm_full_file_sanitized 2>&1"
+      l3_compile_specific_asm="$l3_compiler $l3_compiler_args_sanitized -DZONE_$l3_zone -fverbose-asm -S $l3_file_sanitized -o $l3_asm_full_file_sanitized 2>&1"
       l3_compile_out_asm=`eval "$l3_compile_specific_asm"`
    fi
 }
