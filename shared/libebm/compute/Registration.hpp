@@ -390,12 +390,14 @@ public:
 
 template<typename TFloat, template <typename> class TRegistrable, ZoneEbm zones, typename... Args>
 typename std::enable_if<0 != (TFloat::k_zone & zones), std::shared_ptr<const Registration>>::type Register(const char * const sRegistrationName, const Args &... args) {
+   static_assert(0 != (Z_CPU & zones), "Must specify Z_CPU in the call to Register to have a fallback CPU zone handler.");
    // ideally we'd be returning unique_ptr here, but we pass this to an initialization list which doesn't work in C++11
    return std::make_shared<const RegistrationPack<TFloat, TRegistrable, Args...>>(zones, sRegistrationName, args...);
 }
 
 template<typename TFloat, template <typename> class TRegistrable, ZoneEbm zones, typename... Args>
 typename std::enable_if<0 == (TFloat::k_zone & zones), std::shared_ptr<const Registration>>::type Register(const char * const, const Args &...) {
+   static_assert(0 != (Z_CPU & zones), "Must specify Z_CPU in the call to Register to have a fallback CPU zone handler.");
    return nullptr;
 }
 
