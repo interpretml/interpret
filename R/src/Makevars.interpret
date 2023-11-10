@@ -41,7 +41,7 @@ OBJECTS = \
    $(NATIVEDIR)/InnerBag.o \
    $(NATIVEDIR)/Tensor.o \
    $(NATIVEDIR)/TensorTotalsBuild.o \
-   $(NATIVEDIR)/unzoned/unzoned.o \
    $(NATIVEDIR)/unzoned/logging.o \
+   $(NATIVEDIR)/unzoned/unzoned.o \
    $(NATIVEDIR)/compute/cpu_ebm/cpu_64.o \
    interpret_R.o

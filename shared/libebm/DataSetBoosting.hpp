@@ -10,8 +10,9 @@
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h"
-#include "bridge.h" // UIntMain
+
 #include "zones.h"
+#include "bridge.h" // UIntMain
 
 #include "InnerBag.hpp" // InnerBag
 

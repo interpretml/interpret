@@ -13,9 +13,9 @@
 #include "libebm.h"
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h" // INLINE_ALWAYS
-#include "bridge.h" // Config
-#include "zones.h"
 
+#include "zones.h"
+#include "bridge.h" // Config
 #include "bridge.hpp"
 
 #include "registration_exceptions.hpp"

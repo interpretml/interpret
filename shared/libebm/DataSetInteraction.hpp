@@ -10,8 +10,9 @@
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h"
-#include "bridge.h" // UIntMain
+
 #include "zones.h"
+#include "bridge.h" // UIntMain
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

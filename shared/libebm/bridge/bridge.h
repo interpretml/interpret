@@ -10,8 +10,9 @@
 #include "libebm.h" // ErrorEbm, BoolEbm, etc..
 
 #include "logging.h"
-#include "zones.h"
 #include "unzoned.h"
+
+#include "zones.h"
 
 #ifdef __cplusplus
 extern "C" {

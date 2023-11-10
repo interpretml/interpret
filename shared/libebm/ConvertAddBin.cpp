@@ -8,8 +8,8 @@
 
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h"
-#include "zones.h"
 
+#include "zones.h"
 #include "Bin.hpp"
 
 #include "ebm_internal.hpp"

@@ -12,8 +12,8 @@
 #include "libebm.h" // SeedEbm
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h" // INLINE_ALWAYS, COUNT_BITS
-#include "zones.h"
 
+#include "zones.h"
 #include "common.hpp" // CountBitsRequiredPositiveMax
 
 namespace DEFINED_ZONE_NAME {

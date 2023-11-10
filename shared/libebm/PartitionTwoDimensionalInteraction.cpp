@@ -8,8 +8,8 @@
 
 #include "logging.h"
 #include "unzoned.h" // LIKELY
-#include "zones.h"
 
+#include "zones.h"
 #include "GradientPair.hpp"
 #include "Bin.hpp"
 

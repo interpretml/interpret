@@ -12,9 +12,9 @@
 #include "libebm.h"
 #include "logging.h"
 #include "unzoned.h"
-#include "bridge.h"
-#include "zones.h"
 
+#include "zones.h"
+#include "bridge.h"
 #include "common.hpp"
 #include "bridge.hpp"
 

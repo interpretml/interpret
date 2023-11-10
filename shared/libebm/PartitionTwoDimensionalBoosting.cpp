@@ -10,8 +10,8 @@
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h" // LIKELY
-#include "zones.h"
 
+#include "zones.h"
 #include "GradientPair.hpp"
 #include "Bin.hpp"
 

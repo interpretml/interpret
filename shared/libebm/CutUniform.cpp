@@ -10,8 +10,8 @@
 #include "libebm.h" // EBM_API_BODY
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h" // LIKELY
-#include "zones.h"
 
+#include "zones.h"
 #include "common.hpp" // IsConvertError
 
 #include "ebm_internal.hpp" // CleanFloat, FloatTickIncrement

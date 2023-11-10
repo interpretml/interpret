@@ -397,6 +397,11 @@ fi
 
 all_args="$all_args -I$src_path_sanitized/inc"
 
+# add any other non-include options
+unzoned_args=""
+unzoned_args="$unzoned_args -I$src_path_sanitized/pch"
+unzoned_args="$unzoned_args -I$src_path_sanitized/unzoned"
+
 cpu_args="-DZONE_cpu"
 cpu_args="$cpu_args -I$src_path_sanitized/pch"
 cpu_args="$cpu_args -I$src_path_sanitized/unzoned"
@@ -409,11 +414,6 @@ compute_args="$compute_args -I$src_path_sanitized/bridge"
 compute_args="$compute_args -I$src_path_sanitized/compute"
 compute_args="$compute_args -I$src_path_sanitized/compute/objectives"
 compute_args="$compute_args -I$src_path_sanitized/compute/metrics"
-
-# add any other non-include options
-unzoned_args=""
-unzoned_args="$unzoned_args -I$src_path_sanitized/pch"
-unzoned_args="$unzoned_args -I$src_path_sanitized/unzoned"
 
 link_args=""
 

@@ -24,9 +24,9 @@
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h"
-#include "bridge.h" // CreateObjective_*
-#include "zones.h"
 
+#include "zones.h"
+#include "bridge.h" // CreateObjective_*
 #include "common.hpp" // INLINE_RELEASE_UNTEMPLATED
 
 namespace DEFINED_ZONE_NAME {
