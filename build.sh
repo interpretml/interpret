@@ -396,7 +396,6 @@ fi
 all_args="$all_args -I$src_path_sanitized/inc"
 
 unzoned_args=""
-unzoned_args="$unzoned_args -I$src_path_sanitized/pch"
 unzoned_args="$unzoned_args -I$src_path_sanitized/unzoned"
 
 compute_args=""
