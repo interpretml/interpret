@@ -6,7 +6,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // std::numeric_limits
-#include <string.h> // strchr, memmove, memcpy
+#include <string.h> // strcpy, strchr, memmove, memcpy
 
 #include "libebm.h"
 #include "logging.h" // EBM_ASSERT
@@ -384,6 +384,11 @@ static double StringToFloatWithFixup(
    }
 
    return ret;
+}
+
+INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * const dest, const char * const src) EBM_NOEXCEPT {
+   StopClangAnalysis();
+   return strcpy(dest, src);
 }
 
 static bool StringToFloatChopped(

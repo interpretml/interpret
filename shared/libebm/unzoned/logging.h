@@ -7,7 +7,7 @@
 
 #include <assert.h>
 
-#include "libebm.h" // TraceEbm
+#include "libebm.h" // TraceEbm, BoolEbm
 
 #ifdef __cplusplus
    extern "C" {
@@ -84,7 +84,7 @@ INTERNAL_IMPORT_EXPORT_INCLUDE void LogAssertFailure(
       static_assert(Trace_Off < LOG__traceLevel, "traceLevel can't be Trace_Off or lower for call to LOG_0(traceLevel, sMessage, ...)"); \
       static_assert(LOG__traceLevel <= Trace_Verbose, "traceLevel can't be higher than Trace_Verbose for call to LOG_0(traceLevel, sMessage, ...)"); \
       if(LOG__traceLevel <= g_traceLevel) { \
-         static const char LOG__sMessage[] = sMessage; \
+         static const char LOG__sMessage[] = (sMessage); \
          InteralLogWithoutArguments(LOG__traceLevel, LOG__sMessage); \
       } \
    } while( (void)0, 0)
@@ -96,7 +96,7 @@ INTERNAL_IMPORT_EXPORT_INCLUDE void LogAssertFailure(
       static_assert(LOG__traceLevel <= Trace_Verbose, \
          "traceLevel can't be higher than Trace_Verbose for call to LOG_N(traceLevel, sMessage, ...)"); \
       if(LOG__traceLevel <= g_traceLevel) { \
-         static const char LOG__sMessage[] = sMessage; \
+         static const char LOG__sMessage[] = (sMessage); \
          InteralLogWithArguments(LOG__traceLevel, LOG__sMessage, __VA_ARGS__); \
       } \
    } while( (void)0, 0)
@@ -130,7 +130,7 @@ INTERNAL_IMPORT_EXPORT_INCLUDE void LogAssertFailure(
             } else { \
                LOG__traceLevelLogging = LOG__traceLevelAfter; \
             }\
-            static const char LOG__sMessage[] = sMessage; \
+            static const char LOG__sMessage[] = (sMessage); \
             InteralLogWithoutArguments(LOG__traceLevelLogging, LOG__sMessage); \
          } while( (void)0, 0); \
       } \
@@ -165,7 +165,7 @@ INTERNAL_IMPORT_EXPORT_INCLUDE void LogAssertFailure(
             } else { \
                LOG__traceLevelLogging = LOG__traceLevelAfter; \
             }\
-            static const char LOG__sMessage[] = sMessage; \
+            static const char LOG__sMessage[] = (sMessage); \
             InteralLogWithArguments(LOG__traceLevelLogging, LOG__sMessage, __VA_ARGS__); \
          } while( (void)0, 0); \
       } \

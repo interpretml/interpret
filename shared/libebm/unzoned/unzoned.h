@@ -2,14 +2,13 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef COMMON_C_H
-#define COMMON_C_H
+#ifndef UNZONED_H
+#define UNZONED_H
 
-#include <string.h>
-#include <limits.h>
+#include <limits.h> // CHAR_BIT
 
-#include "libebm.h" // BoolEbm
-#include "logging.h"
+#include "libebm.h" // STATIC_CAST, BoolEbm
+#include "logging.h" // INTERNAL_IMPORT_EXPORT_INCLUDE
 
 #ifdef __CUDACC__
 #define GPU_COMPILE
@@ -174,11 +173,6 @@ extern "C" {
 INLINE_ALWAYS static void StopClangAnalysis(void) EBM_NOEXCEPT ANALYZER_NORETURN {
 }
 
-INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * const dest, const char * const src) EBM_NOEXCEPT {
-   StopClangAnalysis();
-   return strcpy(dest, src);
-}
-
 #define ANALYSIS_ASSERT(b) \
    do { \
       if(!(b)) \
@@ -257,4 +251,4 @@ INTERNAL_IMPORT_EXPORT_INCLUDE size_t CountParams(
 } // extern "C"
 #endif // __cplusplus
 
-#endif // COMMON_C_H
+#endif // UNZONED_H

@@ -2,9 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include <assert.h>
-#include <stdio.h>
-#include <stdarg.h>
+#include <stdio.h> // vsnprintf
+#include <stdarg.h> // va_start
 
 #include "logging.h"
 
@@ -18,9 +17,6 @@ const char g_sFalse[] = "false";
 TraceEbm g_traceLevel = Trace_Off;
 
 static LogCallbackFunction g_pLogCallbackFunction = NULL;
-
-static const char g_sAssertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";
-static const char g_sLoggingParamError[] = "Error in vsnprintf parameters for logging.";
 
 EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm traceLevel) {
    static const char g_sTraceOff[] = "OFF";
@@ -60,14 +56,14 @@ EBM_API_BODY void EBM_CALLING_CONVENTION SetLogCallback(LogCallbackFunction logC
 #define COMPILE_MODE "RELEASE"
 #endif // NDEBUG
 
-static const char sStartLogOff[] = "Native logging set to OFF in " COMPILE_MODE " build.";
-static const char sStartLogError[] = "Native logging set to ERROR in " COMPILE_MODE " build.";
-static const char sStartLogWarning[] = "Native logging set to WARNING in " COMPILE_MODE " build.";
-static const char sStartLogInfo[] = "Native logging set to INFO in " COMPILE_MODE " build.";
-static const char sStartLogVerbose[] = "Native logging set to VERBOSE in " COMPILE_MODE " build.";
-static const char sStartLogIllegal[] = "Native logging set to ILLEGAL in " COMPILE_MODE " build.";
-
 EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbm traceLevel) {
+   static const char sStartLogOff[] = "Native logging set to OFF in " COMPILE_MODE " build.";
+   static const char sStartLogError[] = "Native logging set to ERROR in " COMPILE_MODE " build.";
+   static const char sStartLogWarning[] = "Native logging set to WARNING in " COMPILE_MODE " build.";
+   static const char sStartLogInfo[] = "Native logging set to INFO in " COMPILE_MODE " build.";
+   static const char sStartLogVerbose[] = "Native logging set to VERBOSE in " COMPILE_MODE " build.";
+   static const char sStartLogIllegal[] = "Native logging set to ILLEGAL in " COMPILE_MODE " build.";
+
    const char * sMessage;
    switch(traceLevel) {
    case Trace_Off:
@@ -132,6 +128,7 @@ INTERNAL_IMPORT_EXPORT_BODY void InteralLogWithArguments(const TraceEbm traceLev
       // turn off clang-tidy warning about insecurity of vsnprintf
       // NOLINTNEXTLINE
       if(vsnprintf(messageSpace, sizeof(messageSpace) / sizeof(messageSpace[0]), sMessage, args) < 0) {
+         static const char g_sLoggingParamError[] = "Error in vsnprintf parameters for logging.";
          (*g_pLogCallbackFunction)(traceLevel, g_sLoggingParamError);
       } else {
          // if messageSpace overflows, we clip the message, but it's still legal
@@ -156,6 +153,7 @@ INTERNAL_IMPORT_EXPORT_BODY void LogAssertFailure(
    const char * const sAssertText
 ) LOGGING_ANALYZER_NORETURN {
    if(Trace_Error <= g_traceLevel) {
+      static const char g_sAssertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";
       InteralLogWithArguments(Trace_Error, g_sAssertLogMessage, lineNumber, sFileName, sFunctionName, sAssertText);
    }
 }

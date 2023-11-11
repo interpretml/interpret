@@ -2,12 +2,9 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#define _CRT_SECURE_NO_DEPRECATE
+#include <string.h> // memcpy, strchr
+#include <stdlib.h> // strtod, malloc, free
 
-#include <stdlib.h>
-
-#include "libebm.h" // BoolEbm
-#include "logging.h"
 #include "unzoned.h"
 
 #ifdef __cplusplus
