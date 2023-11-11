@@ -198,7 +198,7 @@ protected:
       void * const pWrapperOut
    ) const = 0;
 
-   INLINE_ALWAYS Registration(const ZoneEbm zones, const char * const sRegistrationName) :
+   INLINE_ALWAYS Registration(const ComputeFlags zones, const char * const sRegistrationName) :
       m_zones(zones),
       m_sRegistrationName(sRegistrationName)
    {
@@ -249,7 +249,7 @@ class RegistrationPack final : public Registration {
 
    // this lambda function holds our templated parameter pack until we need it
    std::function<bool(
-      const ZoneEbm zones,
+      const ComputeFlags zones,
       const Config * const pConfig,
       const char * const sRegistration,
       const char * const sRegistrationEnd,
@@ -270,7 +270,7 @@ class RegistrationPack final : public Registration {
 
    template<typename... ArgsConverted>
    static bool CheckAndCallNew(
-      const ZoneEbm zones,
+      const ComputeFlags zones,
       const Config * const pConfig,
       const char * const sRegistration,
       const char * const sRegistrationEnd,
@@ -352,14 +352,14 @@ class RegistrationPack final : public Registration {
 
 public:
 
-   RegistrationPack(const ZoneEbm zones, const char * sRegistrationName, const Args &... args) : Registration(zones, sRegistrationName) {
+   RegistrationPack(const ComputeFlags zones, const char * sRegistrationName, const Args &... args) : Registration(zones, sRegistrationName) {
 
       std::vector<const char *> usedParamNames;
       UnpackRecursive(usedParamNames, args...);
 
       // hide our parameter pack in a lambda so that we don't have to think about it yet. The lambda also makes a copy.
       m_callBack = [args...](
-         const ZoneEbm zonesLambda,
+         const ComputeFlags zonesLambda,
          const Config * const pConfig,
          const char * const sRegistration,
          const char * const sRegistrationEnd,
@@ -388,16 +388,16 @@ public:
    }
 };
 
-template<typename TFloat, template <typename> class TRegistrable, ZoneEbm zones, typename... Args>
+template<typename TFloat, template <typename> class TRegistrable, ComputeFlags zones, typename... Args>
 typename std::enable_if<0 != (TFloat::k_zone & zones), std::shared_ptr<const Registration>>::type Register(const char * const sRegistrationName, const Args &... args) {
-   static_assert(0 != (Z_CPU & zones), "Must specify Z_CPU in the call to Register to have a fallback CPU zone handler.");
+   static_assert(0 != (ComputeFlags_Cpu & zones), "Must specify ComputeFlags_Cpu in the call to Register to have a fallback CPU zone handler.");
    // ideally we'd be returning unique_ptr here, but we pass this to an initialization list which doesn't work in C++11
    return std::make_shared<const RegistrationPack<TFloat, TRegistrable, Args...>>(zones, sRegistrationName, args...);
 }
 
-template<typename TFloat, template <typename> class TRegistrable, ZoneEbm zones, typename... Args>
+template<typename TFloat, template <typename> class TRegistrable, ComputeFlags zones, typename... Args>
 typename std::enable_if<0 == (TFloat::k_zone & zones), std::shared_ptr<const Registration>>::type Register(const char * const, const Args &...) {
-   static_assert(0 != (Z_CPU & zones), "Must specify Z_CPU in the call to Register to have a fallback CPU zone handler.");
+   static_assert(0 != (ComputeFlags_Cpu & zones), "Must specify ComputeFlags_Cpu in the call to Register to have a fallback CPU zone handler.");
    return nullptr;
 }
 

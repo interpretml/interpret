@@ -174,7 +174,7 @@ extern ErrorEbm GetObjective(
       //       we first make the cpu version and if that says it can't be SIMDed then we shouldn't try
       while(true) {
 #ifdef BRIDGE_AVX512F_32
-         if(0 != (Z_AVX512F & pCpuObjectiveWrapperOut->m_zones)) {
+         if(0 != (ComputeFlags_AVX512F & pCpuObjectiveWrapperOut->m_zones)) {
             // TODO: enabled AVX512f, but only after we've had some time verifying AVX2 works
             //       before enabling this we need to test that it produces nearly identical results as AVX2
             LOG_0(Trace_Info, "INFO GetObjective checking for AVX512F compatibility");
@@ -190,7 +190,7 @@ extern ErrorEbm GetObjective(
 #endif // BRIDGE_AVX512F_32
 
 #ifdef BRIDGE_AVX2_32
-         if(0 != (Z_AVX2 & pCpuObjectiveWrapperOut->m_zones)) {
+         if(0 != (ComputeFlags_AVX2 & pCpuObjectiveWrapperOut->m_zones)) {
             LOG_0(Trace_Info, "INFO GetObjective checking for AVX2 compatibility");
             if(8 <= DetectInstructionset() && IsFMA3()) {
                LOG_0(Trace_Info, "INFO GetObjective creating AVX2 SIMD Objective");
