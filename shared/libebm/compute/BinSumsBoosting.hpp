@@ -184,14 +184,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    const typename TFloat::T * pGradientAndHessian = reinterpret_cast<const typename TFloat::T *>(pParams->m_aGradientsAndHessians);
    const typename TFloat::T * const pGradientsAndHessiansEnd = pGradientAndHessian + (bHessian ? size_t { 2 } : size_t { 1 }) * cSamples;
 
-   typename TFloat::TInt::T cBytesPerBin;
-   int cBitsPerItemMax;
-   int cShift;
-   int cShiftReset;
-   typename TFloat::TInt maskBits;
-   const typename TFloat::TInt::T * pInputData;
-
-   cBytesPerBin = static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, size_t { 1 }));
+   const typename TFloat::TInt::T cBytesPerBin = static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, size_t { 1 }));
 
    const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
 #ifndef GPU_COMPILE
@@ -200,18 +193,18 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-   cBitsPerItemMax = GetCountBits<typename TFloat::TInt::T>(cItemsPerBitPack);
+   const int cBitsPerItemMax = GetCountBits<typename TFloat::TInt::T>(cItemsPerBitPack);
 #ifndef GPU_COMPILE
    EBM_ASSERT(1 <= cBitsPerItemMax);
    EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-   cShift = static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
-   cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+   int cShift = static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
+   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
-   maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
+   const typename TFloat::TInt maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
-   pInputData = reinterpret_cast<const typename TFloat::TInt::T *>(pParams->m_aPacked);
+   const typename TFloat::TInt::T * pInputData = reinterpret_cast<const typename TFloat::TInt::T *>(pParams->m_aPacked);
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
@@ -232,8 +225,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    }
 
    do {
-      typename TFloat::TInt iTensorBinCombined;
-      iTensorBinCombined = TFloat::TInt::Load(pInputData);
+      const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
       do {
          Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, size_t { 1 }> * apBins[TFloat::k_cSIMDPack];
@@ -307,7 +299,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          }
 
          if(bHessian) {
-            TFloat gradient = TFloat::Load(&pGradientAndHessian[0]);
+            TFloat gradient = TFloat::Load(pGradientAndHessian);
             TFloat hessian = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
             if(bWeight) {
                gradient *= weight;
@@ -327,7 +319,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                pGradientPair->SetHess(binHess);
             }, gradient, hessian);
          } else {
-            TFloat gradient = TFloat::Load(&pGradientAndHessian[0]);
+            TFloat gradient = TFloat::Load(pGradientAndHessian);
             if(bWeight) {
                gradient *= weight;
             }
@@ -341,7 +333,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             }, gradient);
          }
 
-         pGradientAndHessian += bHessian ? (size_t { 2 } * TFloat::k_cSIMDPack) : TFloat::k_cSIMDPack;
+         pGradientAndHessian += (bHessian ? size_t { 2 } : size_t { 1 }) * TFloat::k_cSIMDPack;
 
          cShift -= cBitsPerItemMax;
       } while(0 <= cShift);
@@ -381,14 +373,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    const typename TFloat::T * pGradientAndHessian = reinterpret_cast<const typename TFloat::T *>(pParams->m_aGradientsAndHessians);
    const typename TFloat::T * const pGradientsAndHessiansEnd = pGradientAndHessian + (bHessian ? size_t { 2 } : size_t { 1 }) * cScores * cSamples;
 
-   typename TFloat::TInt::T cBytesPerBin;
-   int cBitsPerItemMax;
-   int cShift;
-   int cShiftReset;
-   typename TFloat::TInt maskBits;
-   const typename TFloat::TInt::T * pInputData;
-
-   cBytesPerBin = static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cScores));
+   const typename TFloat::TInt::T cBytesPerBin = static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cScores));
 
    const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
 #ifndef GPU_COMPILE
@@ -397,18 +382,18 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-   cBitsPerItemMax = GetCountBits<typename TFloat::TInt::T>(cItemsPerBitPack);
+   const int cBitsPerItemMax = GetCountBits<typename TFloat::TInt::T>(cItemsPerBitPack);
 #ifndef GPU_COMPILE
    EBM_ASSERT(1 <= cBitsPerItemMax);
    EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-   cShift = static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
-   cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+   int cShift = static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
+   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
-   maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
+   const typename TFloat::TInt maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
-   pInputData = reinterpret_cast<const typename TFloat::TInt::T *>(pParams->m_aPacked);
+   const typename TFloat::TInt::T * pInputData = reinterpret_cast<const typename TFloat::TInt::T *>(pParams->m_aPacked);
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
@@ -429,8 +414,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    }
 
    do {
-      typename TFloat::TInt iTensorBinCombined;
-      iTensorBinCombined = TFloat::TInt::Load(pInputData);
+      const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
       do {
          Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores> * apBins[TFloat::k_cSIMDPack];
@@ -502,10 +486,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                pBin->SetWeight(pBin->GetWeight() + typename TFloat::T { 1.0 });
             });
          }
-
-         // TODO: we probably want a templated version of this function for Bins with only 1 cScore so that
-         //       we don't have a loop here, which will mean that the cCompilerPack will be the only loop which
-         //       will allow the compiler to unroll that loop (since it only unrolls one level of loops)
 
          size_t iScore = 0;
          do {
