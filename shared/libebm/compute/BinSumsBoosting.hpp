@@ -228,7 +228,31 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
       do {
-         Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, size_t { 1 }> * apBins[TFloat::k_cSIMDPack];
+         TFloat weight;
+         typename TFloat::TInt cOccurences;
+         if(bWeight) {
+            weight = TFloat::Load(pWeight);
+            pWeight += TFloat::k_cSIMDPack;
+            if(bReplication) {
+               cOccurences = TFloat::TInt::LoadBytes(pCountOccurrences);
+               pCountOccurrences += TFloat::k_cSIMDPack;
+            }
+         }
+
+         TFloat gradient = TFloat::Load(pGradientAndHessian);
+         TFloat hessian;
+         if(bHessian) {
+            hessian = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
+         }
+         pGradientAndHessian += (bHessian ? size_t { 2 } : size_t { 1 }) * TFloat::k_cSIMDPack;
+
+         if(bWeight) {
+            gradient *= weight;
+            if(bHessian) {
+               hessian *= weight;
+            }
+         }
+
          typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
             
          // normally the compiler is better at optimimizing multiplications into shifs, but it isn't better
@@ -238,7 +262,8 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             1 != TFloat::k_cSIMDPack, 
             static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, size_t { 1 }))>(
                iTensorBin, cBytesPerBin);
-            
+
+         Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, size_t { 1 }> * apBins[TFloat::k_cSIMDPack];
          TFloat::TInt::Execute([aBins, &apBins](const int i, const typename TFloat::TInt::T x) {
             apBins[i] = IndexBin(aBins, static_cast<size_t>(x));
          }, iTensorBin);
@@ -260,9 +285,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          //      for a feature, then we should prefer using this version that keeps only 1 histogram
 
          if(bReplication) {
-            const typename TFloat::TInt cOccurences = TFloat::TInt::LoadBytes(pCountOccurrences);
-            pCountOccurrences += TFloat::k_cSIMDPack;
-
             TFloat::TInt::Execute([apBins](const int i, const typename TFloat::TInt::T x) {
                auto * const pBin = apBins[i];
                // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
@@ -278,11 +300,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             });
          }
 
-         TFloat weight;
          if(bWeight) {
-            weight = TFloat::Load(pWeight);
-            pWeight += TFloat::k_cSIMDPack;
-
             TFloat::Execute([apBins](const int i, const typename TFloat::T x) {
                auto * const pBin = apBins[i];
                // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
@@ -299,12 +317,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          }
 
          if(bHessian) {
-            TFloat gradient = TFloat::Load(pGradientAndHessian);
-            TFloat hessian = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
-            if(bWeight) {
-               gradient *= weight;
-               hessian *= weight;
-            }
             TFloat::Execute([apBins](const int i, const typename TFloat::T grad, const typename TFloat::T hess) {
                // BEWARE: unless we generate a separate histogram for each SIMD stream and later merge them, pBin can 
                // point to the same bin in multiple samples within the SIMD pack, so we need to serialize fetching sums
@@ -319,10 +331,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                pGradientPair->SetHess(binHess);
             }, gradient, hessian);
          } else {
-            TFloat gradient = TFloat::Load(pGradientAndHessian);
-            if(bWeight) {
-               gradient *= weight;
-            }
             TFloat::Execute([apBins](const int i, const typename TFloat::T grad) {
                // TODO: for this special case of having just 1 bin, we could sum all the gradients and hessians
                // before then adding them to the only bin
@@ -332,8 +340,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                pGradientPair->m_sumGradients += grad;
             }, gradient);
          }
-
-         pGradientAndHessian += (bHessian ? size_t { 2 } : size_t { 1 }) * TFloat::k_cSIMDPack;
 
          cShift -= cBitsPerItemMax;
       } while(0 <= cShift);
