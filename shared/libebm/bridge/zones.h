@@ -5,8 +5,6 @@
 #ifndef ZONES_H
 #define ZONES_H
 
-#include <stdint.h> // uint32_t
-
 #ifdef __cplusplus
 extern "C" {
 #else // __cplusplus
