@@ -312,6 +312,107 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       func(7, a0[7], a1[7]);
    }
 
+   template<typename TFunc>
+   static inline void Execute(const TFunc & func, const Avx2_32_Int & val0, const Avx2_32_Float & val1) noexcept {
+      alignas(k_cAlignment) TInt::T a0[k_cSIMDPack];
+      val0.Store(a0);
+      alignas(k_cAlignment) T a1[k_cSIMDPack];
+      val1.Store(a1);
+
+      func(0, a0[0], a1[0]);
+      func(1, a0[1], a1[1]);
+      func(2, a0[2], a1[2]);
+      func(3, a0[3], a1[3]);
+      func(4, a0[4], a1[4]);
+      func(5, a0[5], a1[5]);
+      func(6, a0[6], a1[6]);
+      func(7, a0[7], a1[7]);
+   }
+
+   template<typename TFunc>
+   static inline void Execute(const TFunc & func, const Avx2_32_Int & val0, const Avx2_32_Float & val1, const Avx2_32_Float & val2) noexcept {
+      alignas(k_cAlignment) TInt::T a0[k_cSIMDPack];
+      val0.Store(a0);
+      alignas(k_cAlignment) T a1[k_cSIMDPack];
+      val1.Store(a1);
+      alignas(k_cAlignment) T a2[k_cSIMDPack];
+      val2.Store(a2);
+
+      func(0, a0[0], a1[0], a2[0]);
+      func(1, a0[1], a1[1], a2[1]);
+      func(2, a0[2], a1[2], a2[2]);
+      func(3, a0[3], a1[3], a2[3]);
+      func(4, a0[4], a1[4], a2[4]);
+      func(5, a0[5], a1[5], a2[5]);
+      func(6, a0[6], a1[6], a2[6]);
+      func(7, a0[7], a1[7], a2[7]);
+   }
+
+   template<typename TFunc>
+   static inline void Execute(const TFunc & func, const Avx2_32_Int & val0, const Avx2_32_Float & val1, const Avx2_32_Float & val2, const Avx2_32_Float & val3) noexcept {
+      alignas(k_cAlignment) TInt::T a0[k_cSIMDPack];
+      val0.Store(a0);
+      alignas(k_cAlignment) T a1[k_cSIMDPack];
+      val1.Store(a1);
+      alignas(k_cAlignment) T a2[k_cSIMDPack];
+      val2.Store(a2);
+      alignas(k_cAlignment) T a3[k_cSIMDPack];
+      val3.Store(a3);
+
+      func(0, a0[0], a1[0], a2[0], a3[0]);
+      func(1, a0[1], a1[1], a2[1], a3[1]);
+      func(2, a0[2], a1[2], a2[2], a3[2]);
+      func(3, a0[3], a1[3], a2[3], a3[3]);
+      func(4, a0[4], a1[4], a2[4], a3[4]);
+      func(5, a0[5], a1[5], a2[5], a3[5]);
+      func(6, a0[6], a1[6], a2[6], a3[6]);
+      func(7, a0[7], a1[7], a2[7], a3[7]);
+   }
+
+   template<typename TFunc>
+   static inline void Execute(const TFunc & func, const Avx2_32_Int & val0, const Avx2_32_Int & val1, const Avx2_32_Float & val2, const Avx2_32_Float & val3) noexcept {
+      alignas(k_cAlignment) TInt::T a0[k_cSIMDPack];
+      val0.Store(a0);
+      alignas(k_cAlignment) TInt::T a1[k_cSIMDPack];
+      val1.Store(a1);
+      alignas(k_cAlignment) T a2[k_cSIMDPack];
+      val2.Store(a2);
+      alignas(k_cAlignment) T a3[k_cSIMDPack];
+      val3.Store(a3);
+
+      func(0, a0[0], a1[0], a2[0], a3[0]);
+      func(1, a0[1], a1[1], a2[1], a3[1]);
+      func(2, a0[2], a1[2], a2[2], a3[2]);
+      func(3, a0[3], a1[3], a2[3], a3[3]);
+      func(4, a0[4], a1[4], a2[4], a3[4]);
+      func(5, a0[5], a1[5], a2[5], a3[5]);
+      func(6, a0[6], a1[6], a2[6], a3[6]);
+      func(7, a0[7], a1[7], a2[7], a3[7]);
+   }
+
+   template<typename TFunc>
+   static inline void Execute(const TFunc & func, const Avx2_32_Int & val0, const Avx2_32_Int & val1, const Avx2_32_Float & val2, const Avx2_32_Float & val3, const Avx2_32_Float & val4) noexcept {
+      alignas(k_cAlignment) TInt::T a0[k_cSIMDPack];
+      val0.Store(a0);
+      alignas(k_cAlignment) TInt::T a1[k_cSIMDPack];
+      val1.Store(a1);
+      alignas(k_cAlignment) T a2[k_cSIMDPack];
+      val2.Store(a2);
+      alignas(k_cAlignment) T a3[k_cSIMDPack];
+      val3.Store(a3);
+      alignas(k_cAlignment) T a4[k_cSIMDPack];
+      val4.Store(a4);
+
+      func(0, a0[0], a1[0], a2[0], a3[0], a4[0]);
+      func(1, a0[1], a1[1], a2[1], a3[1], a4[1]);
+      func(2, a0[2], a1[2], a2[2], a3[2], a4[2]);
+      func(3, a0[3], a1[3], a2[3], a3[3], a4[3]);
+      func(4, a0[4], a1[4], a2[4], a3[4], a4[4]);
+      func(5, a0[5], a1[5], a2[5], a3[5], a4[5]);
+      func(6, a0[6], a1[6], a2[6], a3[6], a4[6]);
+      func(7, a0[7], a1[7], a2[7], a3[7], a4[7]);
+   }
+
    friend inline Avx2_32_Float IfLess(const Avx2_32_Float & cmp1, const Avx2_32_Float & cmp2, const Avx2_32_Float & trueVal, const Avx2_32_Float & falseVal) noexcept {
       const __m256 mask = _mm256_cmp_ps(cmp1.m_data, cmp2.m_data, _CMP_LT_OQ);
       return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, mask));

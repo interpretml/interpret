@@ -263,18 +263,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, size_t { 1 }))>(
                iTensorBin, cBytesPerBin);
 
-         Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, size_t { 1 }> * apBins[TFloat::k_cSIMDPack];
-         TFloat::TInt::Execute([aBins, &apBins](const int i, const typename TFloat::TInt::T x) {
-            apBins[i] = IndexBin(aBins, static_cast<size_t>(x));
-         }, iTensorBin);
-#ifndef NDEBUG
-#ifndef GPU_COMPILE
-         TFloat::Execute([cBytesPerBin, apBins, pParams](const int i) {
-            ASSERT_BIN_OK(cBytesPerBin, apBins[i], pParams->m_pDebugFastBinsEnd);
-         });
-#endif // GPU_COMPILE
-#endif // NDEBUG
-
          // TODO: the ultimate version of this algorithm would:
          //   1) Write to k_cSIMDPack histograms simutaneously to avoid collisions of indexes
          //   2) Sum up the final histograms using SIMD operations in parallel.  If we hvae k_cSIMDPack
@@ -284,61 +272,142 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          //   3) Only do the above if there aren't too many bins. If we put each sample into it's own bin
          //      for a feature, then we should prefer using this version that keeps only 1 histogram
 
-         if(bReplication) {
-            TFloat::TInt::Execute([apBins](const int i, const typename TFloat::TInt::T x) {
-               auto * const pBin = apBins[i];
-               // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
-               //       such that we can remove that field optionally
-               pBin->SetCountSamples(pBin->GetCountSamples() + x);
-            }, cOccurences);
-         } else {
-            TFloat::Execute([apBins](const int i) {
-               auto * const pBin = apBins[i];
-               // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
-               //       such that we can remove that field optionally
-               pBin->SetCountSamples(pBin->GetCountSamples() + typename TFloat::TInt::T { 1 });
-            });
-         }
-
+         // BEWARE: unless we generate a separate histogram for each SIMD stream and later merge them, pBin can 
+         // point to the same bin in multiple samples within the SIMD pack, so we need to serialize fetching sums
          if(bWeight) {
-            TFloat::Execute([apBins](const int i, const typename TFloat::T x) {
-               auto * const pBin = apBins[i];
-               // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
-               //       such that we can remove that field optionally
-               pBin->SetWeight(pBin->GetWeight() + x);
-            }, weight);
+            if(bReplication) {
+               if(bHessian) {
+                  TFloat::Execute([aBins](
+                     int, 
+                     const typename TFloat::TInt::T i, 
+                     const typename TFloat::TInt::T c, 
+                     const typename TFloat::T w, 
+                     const typename TFloat::T grad, 
+                     const typename TFloat::T hess
+                  ) {
+                     auto * const pBin = IndexBin(aBins, static_cast<size_t>(i));
+                     auto * const pGradientPair = pBin->GetGradientPairs();
+                     typename TFloat::TInt::T cBinSamples = pBin->GetCountSamples();
+                     typename TFloat::T binWeight = pBin->GetWeight();
+                     typename TFloat::T binGrad = pGradientPair->m_sumGradients;
+                     typename TFloat::T binHess = pGradientPair->GetHess();
+                     cBinSamples += c;
+                     binWeight += w;
+                     binGrad += grad;
+                     binHess += hess;
+                     pBin->SetCountSamples(cBinSamples);
+                     pBin->SetWeight(binWeight);
+                     pGradientPair->m_sumGradients = binGrad;
+                     pGradientPair->SetHess(binHess);
+                  }, iTensorBin, cOccurences, weight, gradient, hessian);
+               } else {
+                  TFloat::Execute([aBins](
+                     int, 
+                     const typename TFloat::TInt::T i, 
+                     const typename TFloat::TInt::T c, 
+                     const typename TFloat::T w, 
+                     const typename TFloat::T grad
+                  ) {
+                     auto * const pBin = IndexBin(aBins, static_cast<size_t>(i));
+                     auto * const pGradientPair = pBin->GetGradientPairs();
+                     typename TFloat::TInt::T cBinSamples = pBin->GetCountSamples();
+                     typename TFloat::T binWeight = pBin->GetWeight();
+                     typename TFloat::T binGrad = pGradientPair->m_sumGradients;
+                     cBinSamples += c;
+                     binWeight += w;
+                     binGrad += grad;
+                     pBin->SetCountSamples(cBinSamples);
+                     pBin->SetWeight(binWeight);
+                     pGradientPair->m_sumGradients = binGrad;
+                  }, iTensorBin, cOccurences, weight, gradient);
+               }
+            } else {
+               if(bHessian) {
+                  TFloat::Execute([aBins](
+                     int, 
+                     const typename TFloat::TInt::T i, 
+                     const typename TFloat::T w, 
+                     const typename TFloat::T grad, 
+                     const typename TFloat::T hess
+                  ) {
+                     auto * const pBin = IndexBin(aBins, static_cast<size_t>(i));
+                     auto * const pGradientPair = pBin->GetGradientPairs();
+                     typename TFloat::TInt::T cBinSamples = pBin->GetCountSamples(); // TODO: eliminate this by eliminating the field in the future
+                     typename TFloat::T binWeight = pBin->GetWeight();
+                     typename TFloat::T binGrad = pGradientPair->m_sumGradients;
+                     typename TFloat::T binHess = pGradientPair->GetHess();
+                     cBinSamples += typename TFloat::TInt::T { 1 }; // TODO: eliminate this by eliminating the field in the future
+                     binWeight += w;
+                     binGrad += grad;
+                     binHess += hess;
+                     pBin->SetCountSamples(cBinSamples); // TODO: eliminate this by eliminating the field in the future
+                     pBin->SetWeight(binWeight);
+                     pGradientPair->m_sumGradients = binGrad;
+                     pGradientPair->SetHess(binHess);
+                  }, iTensorBin, weight, gradient, hessian);
+               } else {
+                  TFloat::Execute([aBins](
+                     int, 
+                     const typename TFloat::TInt::T i, 
+                     const typename TFloat::T w, 
+                     const typename TFloat::T grad
+                  ) {
+                     auto * const pBin = IndexBin(aBins, static_cast<size_t>(i));
+                     auto * const pGradientPair = pBin->GetGradientPairs();
+                     typename TFloat::TInt::T cBinSamples = pBin->GetCountSamples(); // TODO: eliminate this by eliminating the field in the future
+                     typename TFloat::T binWeight = pBin->GetWeight();
+                     typename TFloat::T binGrad = pGradientPair->m_sumGradients;
+                     cBinSamples += typename TFloat::TInt::T { 1 }; // TODO: eliminate this by eliminating the field in the future
+                     binWeight += w;
+                     binGrad += grad;
+                     pBin->SetCountSamples(cBinSamples); // TODO: eliminate this by eliminating the field in the future
+                     pBin->SetWeight(binWeight);
+                     pGradientPair->m_sumGradients = binGrad;
+                  }, iTensorBin, weight, gradient);
+               }
+            }
          } else {
-            TFloat::Execute([apBins](const int i) {
-               auto * const pBin = apBins[i];
-               // TODO: In the future we'd like to eliminate this but we need the ability to change the Bin class
-               //       such that we can remove that field optionally
-               pBin->SetWeight(pBin->GetWeight() + typename TFloat::T { 1.0 });
-            });
-         }
-
-         if(bHessian) {
-            TFloat::Execute([apBins](const int i, const typename TFloat::T grad, const typename TFloat::T hess) {
-               // BEWARE: unless we generate a separate histogram for each SIMD stream and later merge them, pBin can 
-               // point to the same bin in multiple samples within the SIMD pack, so we need to serialize fetching sums
-               auto * const pBin = apBins[i];
-               auto * const aGradientPair = pBin->GetGradientPairs();
-               auto * const pGradientPair = &aGradientPair[0];
-               typename TFloat::T binGrad = pGradientPair->m_sumGradients;
-               typename TFloat::T binHess = pGradientPair->GetHess();
-               binGrad += grad;
-               binHess += hess;
-               pGradientPair->m_sumGradients = binGrad;
-               pGradientPair->SetHess(binHess);
-            }, gradient, hessian);
-         } else {
-            TFloat::Execute([apBins](const int i, const typename TFloat::T grad) {
-               // TODO: for this special case of having just 1 bin, we could sum all the gradients and hessians
-               // before then adding them to the only bin
-               auto * const pBin = apBins[i];
-               auto * const aGradientPair = pBin->GetGradientPairs();
-               auto * const pGradientPair = &aGradientPair[0];
-               pGradientPair->m_sumGradients += grad;
-            }, gradient);
+            if(bHessian) {
+               TFloat::Execute([aBins](
+                  int, 
+                  const typename TFloat::TInt::T i, 
+                  const typename TFloat::T grad, 
+                  const typename TFloat::T hess
+               ) {
+                  auto * const pBin = IndexBin(aBins, static_cast<size_t>(i));
+                  auto * const pGradientPair = pBin->GetGradientPairs();
+                  typename TFloat::TInt::T cBinSamples = pBin->GetCountSamples(); // TODO: eliminate this by eliminating the field in the future
+                  typename TFloat::T binWeight = pBin->GetWeight(); // TODO: eliminate this by eliminating the field in the future
+                  typename TFloat::T binGrad = pGradientPair->m_sumGradients;
+                  typename TFloat::T binHess = pGradientPair->GetHess();
+                  cBinSamples += typename TFloat::TInt::T { 1 }; // TODO: eliminate this by eliminating the field in the future
+                  binWeight += typename TFloat::T { 1.0 }; // TODO: eliminate this by eliminating the field in the future
+                  binGrad += grad;
+                  binHess += hess;
+                  pBin->SetCountSamples(cBinSamples); // TODO: eliminate this by eliminating the field in the future
+                  pBin->SetWeight(binWeight); // TODO: eliminate this by eliminating the field in the future
+                  pGradientPair->m_sumGradients = binGrad;
+                  pGradientPair->SetHess(binHess);
+               }, iTensorBin, gradient, hessian);
+            } else {
+               TFloat::Execute([aBins](
+                  int, 
+                  const typename TFloat::TInt::T i, 
+                  const typename TFloat::T grad
+               ) {
+                  auto * const pBin = IndexBin(aBins, static_cast<size_t>(i));
+                  auto * const pGradientPair = pBin->GetGradientPairs();
+                  typename TFloat::TInt::T cBinSamples = pBin->GetCountSamples(); // TODO: eliminate this by eliminating the field in the future
+                  typename TFloat::T binWeight = pBin->GetWeight(); // TODO: eliminate this by eliminating the field in the future
+                  typename TFloat::T binGrad = pGradientPair->m_sumGradients;
+                  cBinSamples += typename TFloat::TInt::T { 1 }; // TODO: eliminate this by eliminating the field in the future
+                  binWeight += typename TFloat::T { 1.0 }; // TODO: eliminate this by eliminating the field in the future
+                  binGrad += grad;
+                  pBin->SetCountSamples(cBinSamples); // TODO: eliminate this by eliminating the field in the future
+                  pBin->SetWeight(binWeight); // TODO: eliminate this by eliminating the field in the future
+                  pGradientPair->m_sumGradients = binGrad;
+               }, iTensorBin, gradient);
+            }
          }
 
          cShift -= cBitsPerItemMax;
