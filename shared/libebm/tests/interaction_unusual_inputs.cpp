@@ -26,6 +26,7 @@ TEST_CASE("Zero interaction samples, interaction, binary") {
       { FeatureTest(2) },
       {},
       k_testCreateInteractionFlags_Default,
+      k_testComputeFlags_Default,
       nullptr,
       0
    );
@@ -99,6 +100,7 @@ TEST_CASE("Term with zero features, interaction, binary") {
       {},
       { TestSample({}, 0) },
       k_testCreateInteractionFlags_Default,
+      k_testComputeFlags_Default,
       nullptr,
       0
    );
@@ -135,6 +137,7 @@ TEST_CASE("Term with one feature with one state, interaction, binary") {
       { FeatureTest(2, true, false) }, 
       { TestSample({ 0 }, 0) },
       k_testCreateInteractionFlags_Default,
+      k_testComputeFlags_Default,
       nullptr,
       0
    );
@@ -518,6 +521,7 @@ TEST_CASE("tweedie, interaction") {
          TestSample({ 1, 1 }, 12)
       },
       k_testCreateInteractionFlags_Default,
+      k_testComputeFlags_Default,
       "tweedie_deviance:variance_power=1.3"
    );
 

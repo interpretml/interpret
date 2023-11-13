@@ -19,6 +19,7 @@ namespace DEFINED_ZONE_NAME {
 extern ErrorEbm GetObjective(
    const Config * const pConfig,
    const char * sObjective,
+   const ComputeFlags disableCompute,
    ObjectiveWrapper * const pCpuObjectiveWrapperOut,
    ObjectiveWrapper * const pSIMDObjectiveWrapperOut
 ) noexcept;
@@ -49,7 +50,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    Config config;
    config.cOutputs = 1; // this is kind of cheating, but it should work
    config.isDifferentialPrivacy = EBM_FALSE != isDifferentialPrivacy ? EBM_TRUE : EBM_FALSE;
-   const ErrorEbm error = GetObjective(&config, objective, &objectiveWrapper, nullptr);
+   const ErrorEbm error = GetObjective(&config, objective, ComputeFlags_ALL, &objectiveWrapper, nullptr);
    if(Error_None != error) {
       LOG_0(Trace_Error, "ERROR DetermineLinkFunction GetObjective failed");
 

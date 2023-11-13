@@ -41,6 +41,7 @@ extern ErrorEbm Unbag(
 extern ErrorEbm GetObjective(
    const Config * const pConfig,
    const char * sObjective,
+   const ComputeFlags disableCompute,
    ObjectiveWrapper * const pCpuObjectiveWrapperOut,
    ObjectiveWrapper * const pSIMDObjectiveWrapperOut
 ) noexcept;
@@ -280,6 +281,7 @@ ErrorEbm BoosterCore::Create(
    const BagEbm * const aBag,
    const double * const aInitScores,
    const CreateBoosterFlags flags,
+   const ComputeFlags disableCompute,
    const char * const sObjective,
    BoosterCore ** const ppBoosterCoreOut
 ) {
@@ -608,9 +610,10 @@ ErrorEbm BoosterCore::Create(
       config.isDifferentialPrivacy = 0 != (CreateBoosterFlags_DifferentialPrivacy & flags) ? EBM_TRUE : EBM_FALSE;
       error = GetObjective(
          &config,
-         sObjective,
+         sObjective, 
+         disableCompute,
          &pBoosterCore->m_objectiveCpu,
-         0 != (CreateBoosterFlags_DisableSIMD & flags) ? nullptr : &pBoosterCore->m_objectiveSIMD
+         &pBoosterCore->m_objectiveSIMD
       );
       if(Error_None != error) {
          // already logged

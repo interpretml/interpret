@@ -33,6 +33,7 @@ extern ErrorEbm Unbag(
 extern ErrorEbm GetObjective(
    const Config * const pConfig,
    const char * sObjective,
+   const ComputeFlags disableCompute,
    ObjectiveWrapper * const pCpuObjectiveWrapperOut,
    ObjectiveWrapper * const pSIMDObjectiveWrapperOut
 ) noexcept;
@@ -152,6 +153,7 @@ ErrorEbm InteractionCore::Create(
    const size_t cWeights,
    const BagEbm * const aBag,
    const CreateInteractionFlags flags,
+   const ComputeFlags disableCompute,
    const char * const sObjective,
    const double * const experimentalParams,
    InteractionCore ** const ppInteractionCoreOut
@@ -272,8 +274,9 @@ ErrorEbm InteractionCore::Create(
       error = GetObjective(
          &config, 
          sObjective, 
+         disableCompute,
          &pInteractionCore->m_objectiveCpu, 
-         0 != (CreateInteractionFlags_DisableSIMD & flags) ? nullptr : &pInteractionCore->m_objectiveSIMD
+         &pInteractionCore->m_objectiveSIMD
       );
       if(Error_None != error) {
          // already logged

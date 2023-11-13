@@ -49,6 +49,7 @@ TEST_CASE("zero learning rate, boosting, binary") {
       },
       k_countInnerBagsDefault,
       k_testCreateBoosterFlags_Default,
+      k_testComputeFlags_Default,
       nullptr,
       0
    );
@@ -156,7 +157,8 @@ TEST_CASE("negative learning rate, boosting, binary") {
       },
       k_countInnerBagsDefault,
       k_testCreateBoosterFlags_Default,
-      nullptr, 
+      k_testComputeFlags_Default,
+      nullptr,
       0
    );
 
@@ -706,7 +708,8 @@ TEST_CASE("Zero training samples, boosting, binary") {
       },
       k_countInnerBagsDefault,
       k_testCreateBoosterFlags_Default,
-      nullptr, 
+      k_testComputeFlags_Default,
+      nullptr,
       0
    );
 
@@ -795,7 +798,8 @@ TEST_CASE("Zero validation samples, boosting, binary") {
       {},
       k_countInnerBagsDefault,
       k_testCreateBoosterFlags_Default,
-      nullptr, 
+      k_testComputeFlags_Default,
+      nullptr,
       0
    );
 
@@ -1019,7 +1023,8 @@ TEST_CASE("zero terms, boosting, binary") {
       },
       k_countInnerBagsDefault,
       k_testCreateBoosterFlags_Default,
-      nullptr, 
+      k_testComputeFlags_Default,
+      nullptr,
       0
    );
 
@@ -1092,7 +1097,8 @@ TEST_CASE("Term with zero features, boosting, binary") {
       },
       k_countInnerBagsDefault,
       k_testCreateBoosterFlags_Default,
-      nullptr, 
+      k_testComputeFlags_Default,
+      nullptr,
       0
    );
 
@@ -1240,7 +1246,8 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
       },
       k_countInnerBagsDefault,
       k_testCreateBoosterFlags_Default,
-      nullptr, 
+      k_testComputeFlags_Default,
+      nullptr,
       0
    );
 
@@ -1256,7 +1263,8 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
       },
       k_countInnerBagsDefault,
       k_testCreateBoosterFlags_Default,
-      nullptr, 
+      k_testComputeFlags_Default,
+      nullptr,
       0
    );
 
@@ -1272,7 +1280,8 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
       },
       k_countInnerBagsDefault,
       k_testCreateBoosterFlags_Default,
-      nullptr, 
+      k_testComputeFlags_Default,
+      nullptr,
       0
    );
 
@@ -1886,6 +1895,7 @@ TEST_CASE("tweedie, boosting") {
       },
       k_countInnerBagsDefault,
       k_testCreateBoosterFlags_Default,
+      k_testComputeFlags_Default,
       "tweedie_deviance:variance_power=1.3"
    );
 

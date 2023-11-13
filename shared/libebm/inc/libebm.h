@@ -197,7 +197,7 @@ typedef struct _InteractionHandle {
 
 #define CreateBoosterFlags_Default                 (CREATE_BOOSTER_FLAGS_CAST(0x00000000))
 #define CreateBoosterFlags_DifferentialPrivacy     (CREATE_BOOSTER_FLAGS_CAST(0x00000001))
-#define CreateBoosterFlags_DisableSIMD             (CREATE_BOOSTER_FLAGS_CAST(0x00000002))
+#define CreateBoosterFlags_DisableApproximates     (CREATE_BOOSTER_FLAGS_CAST(0x00000002))
 
 #define TermBoostFlags_Default                     (TERM_BOOST_FLAGS_CAST(0x00000000))
 #define TermBoostFlags_DisableNewtonGain           (TERM_BOOST_FLAGS_CAST(0x00000001))
@@ -207,12 +207,13 @@ typedef struct _InteractionHandle {
 
 #define CreateInteractionFlags_Default             (CREATE_INTERACTION_FLAGS_CAST(0x00000000))
 #define CreateInteractionFlags_DifferentialPrivacy (CREATE_INTERACTION_FLAGS_CAST(0x00000001))
-#define CreateInteractionFlags_DisableSIMD         (CREATE_INTERACTION_FLAGS_CAST(0x00000002))
+#define CreateInteractionFlags_DisableApproximates (CREATE_INTERACTION_FLAGS_CAST(0x00000002))
 
 #define CalcInteractionFlags_Default               (CALC_INTERACTION_FLAGS_CAST(0x00000000))
 #define CalcInteractionFlags_Pure                  (CALC_INTERACTION_FLAGS_CAST(0x00000001))
 #define CalcInteractionFlags_EnableNewton          (CALC_INTERACTION_FLAGS_CAST(0x00000002))
 
+#define ComputeFlags_Default                       (COMPUTE_CAST(0x00000000))
 #define ComputeFlags_Cpu                           (COMPUTE_CAST(0x00000001))
 #define ComputeFlags_Nvidia                        (COMPUTE_CAST(0x00000002))
 #define ComputeFlags_AVX2                          (COMPUTE_CAST(0x00000004))
@@ -458,6 +459,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    const IntEbm * featureIndexes,
    IntEbm countInnerBags,
    CreateBoosterFlags flags,
+   ComputeFlags disableCompute,
    const char * objective,
    const double * experimentalParams,
    BoosterHandle * boosterHandleOut
@@ -516,6 +518,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    // TODO: add a baseScore parameter here for symmetry with CreateBooster
    const double * initScores, // only samples with non-zeros in the bag are included
    CreateInteractionFlags flags,
+   ComputeFlags disableCompute,
    const char * objective,
    const double * experimentalParams,
    InteractionHandle * interactionHandleOut

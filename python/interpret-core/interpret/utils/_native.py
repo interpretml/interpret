@@ -18,7 +18,7 @@ class Native:
     # CreateBoosterFlags
     CreateBoosterFlags_Default = 0x00000000
     CreateBoosterFlags_DifferentialPrivacy = 0x00000001
-    CreateBoosterFlags_DisableSIMD = 0x00000002
+    CreateBoosterFlags_DisableApproximates = 0x00000002
 
     # TermBoostFlags
     TermBoostFlags_Default = 0x00000000
@@ -30,11 +30,21 @@ class Native:
     # CreateInteractionFlags
     CreateInteractionFlags_Default = 0x00000000
     CreateInteractionFlags_DifferentialPrivacy = 0x00000001
-    CreateInteractionFlags_DisableSIMD = 0x00000002
+    CreateInteractionFlags_DisableApproximates = 0x00000002
 
     # CalcInteractionFlags
     CalcInteractionFlags_Default = 0x00000000
     CalcInteractionFlags_Pure = 0x00000001
+
+    # ComputeFlags
+    ComputeFlags_Default = 0x00000000
+    ComputeFlags_Nvidia = 0x00000002
+    ComputeFlags_AVX2 = 0x00000004
+    ComputeFlags_AVX512F = 0x00000008
+    ComputeFlags_IntelSIMD = ComputeFlags_AVX2 | ComputeFlags_AVX512F
+    ComputeFlags_SIMD = ComputeFlags_IntelSIMD
+    ComputeFlags_GPU = ComputeFlags_Nvidia
+    ComputeFlags_ALL = 0xFFFFFFFF
 
     # TraceLevel
     _Trace_Off = 0
@@ -678,7 +688,8 @@ class Native:
 
     def _initialize(self, is_debug, simd):
         self.is_debug = is_debug
-        self.simd = simd
+        self.disable_compute = Native.ComputeFlags_Default if simd else Native.ComputeFlags_ALL
+        self.approximates = True
 
         self._log_callback_func = None
         self._unsafe = ct.cdll.LoadLibrary(Native._get_ebm_lib_path(debug=is_debug))
@@ -1067,6 +1078,8 @@ class Native:
             ct.c_int64,
             # CreateBoosterFlags flags
             ct.c_int32,
+            # ComputeFlags disableCompute
+            ct.c_int32,
             # char * objective
             ct.c_char_p,
             # double * experimentalParams
@@ -1168,6 +1181,8 @@ class Native:
             # double * initScores
             ct.c_void_p,
             # CreateInteractionFlags flags
+            ct.c_int32,
+            # ComputeFlags disableCompute
             ct.c_int32,
             # char * objective
             ct.c_char_p,
@@ -1309,8 +1324,8 @@ class Booster(AbstractContextManager):
                 raise ValueError(f"init_scores should have {n_class_scores} scores")
 
         flags = self.create_booster_flags
-        if not native.simd:
-            flags |= Native.CreateBoosterFlags_DisableSIMD
+        if not native.approximates:
+            flags |= Native.CreateBoosterFlags_DisableApproximates
 
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
@@ -1326,6 +1341,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
             flags,
+            native.disable_compute,
             self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(booster_handle),
@@ -1678,8 +1694,8 @@ class InteractionDetector(AbstractContextManager):
                 raise ValueError(f"init_scores should have {n_class_scores} scores")
 
         flags = self.create_interaction_flags
-        if not native.simd:
-            flags |= Native.CreateInteractionFlags_DisableSIMD
+        if not native.approximates:
+            flags |= Native.CreateInteractionFlags_DisableApproximates
 
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
@@ -1691,6 +1707,7 @@ class InteractionDetector(AbstractContextManager):
                 self.init_scores, np.float64, 2 if 1 < n_class_scores else 1, True
             ),
             flags,
+            native.disable_compute,
             self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(interaction_handle),

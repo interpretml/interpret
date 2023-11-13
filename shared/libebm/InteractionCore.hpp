@@ -97,6 +97,7 @@ public:
       const size_t cWeights,
       const BagEbm * const aBag,
       const CreateInteractionFlags flags,
+      const ComputeFlags disableCompute,
       const char * const sObjective,
       const double * const experimentalParams,
       InteractionCore ** const ppInteractionCoreOut
