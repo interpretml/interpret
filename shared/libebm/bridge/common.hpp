@@ -585,7 +585,7 @@ static_assert(IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 1 }, uint8_
 static_assert(IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 2 }, uint8_t { 0 }), "automated test with compiler");
 
 
-template<typename T, typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value, void *>::type = nullptr>
+template<typename T, typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value, int>::type = 0>
 struct internal_is_twos_complement {
    // this struct is only defined for negative integral numbers
 
