@@ -285,6 +285,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                      const typename TFloat::T grad, 
                      const typename TFloat::T hess
                   ) {
+                     COVER(COV_BinSumsBoostingInternal_Weight_Replication_Hessian);
                      auto * const pBin = IndexBin(aBins, static_cast<size_t>(i));
                      auto * const pGradientPair = pBin->GetGradientPairs();
                      typename TFloat::TInt::T cBinSamples = pBin->GetCountSamples();
@@ -308,6 +309,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                      const typename TFloat::T w, 
                      const typename TFloat::T grad
                   ) {
+                     COVER(COV_BinSumsBoostingInternal_Weight_Replication_NoHessian);
                      auto * const pBin = IndexBin(aBins, static_cast<size_t>(i));
                      auto * const pGradientPair = pBin->GetGradientPairs();
                      typename TFloat::TInt::T cBinSamples = pBin->GetCountSamples();
@@ -330,6 +332,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                      const typename TFloat::T grad, 
                      const typename TFloat::T hess
                   ) {
+                     COVER(COV_BinSumsBoostingInternal_Weight_NoReplication_Hessian);
                      auto * const pBin = IndexBin(aBins, static_cast<size_t>(i));
                      auto * const pGradientPair = pBin->GetGradientPairs();
                      typename TFloat::TInt::T cBinSamples = pBin->GetCountSamples(); // TODO: eliminate this by eliminating the field in the future
@@ -352,6 +355,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                      const typename TFloat::T w, 
                      const typename TFloat::T grad
                   ) {
+                     COVER(COV_BinSumsBoostingInternal_Weight_NoReplication_NoHessian);
                      auto * const pBin = IndexBin(aBins, static_cast<size_t>(i));
                      auto * const pGradientPair = pBin->GetGradientPairs();
                      typename TFloat::TInt::T cBinSamples = pBin->GetCountSamples(); // TODO: eliminate this by eliminating the field in the future
@@ -374,6 +378,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                   const typename TFloat::T grad, 
                   const typename TFloat::T hess
                ) {
+                  COVER(COV_BinSumsBoostingInternal_NoWeight_NoReplication_Hessian);
                   auto * const pBin = IndexBin(aBins, static_cast<size_t>(i));
                   auto * const pGradientPair = pBin->GetGradientPairs();
                   typename TFloat::TInt::T cBinSamples = pBin->GetCountSamples(); // TODO: eliminate this by eliminating the field in the future
@@ -395,6 +400,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                   const typename TFloat::TInt::T i, 
                   const typename TFloat::T grad
                ) {
+                  COVER(COV_BinSumsBoostingInternal_NoWeight_NoReplication_NoHessian);
                   auto * const pBin = IndexBin(aBins, static_cast<size_t>(i));
                   auto * const pGradientPair = pBin->GetGradientPairs();
                   typename TFloat::TInt::T cBinSamples = pBin->GetCountSamples(); // TODO: eliminate this by eliminating the field in the future

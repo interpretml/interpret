@@ -10,12 +10,10 @@
 #include "libebm.h" // TraceEbm, BoolEbm
 
 #ifdef __cplusplus
-   extern "C" {
-#define INTERNAL_IMPORT_EXPORT_BODY extern "C"
-#else // __cplusplus
-#define INTERNAL_IMPORT_EXPORT_BODY extern
+extern "C" {
 #endif // __cplusplus
 
+#define INTERNAL_IMPORT_EXPORT_BODY EBM_EXTERN_C
 #define INTERNAL_IMPORT_EXPORT_INCLUDE extern
 #define INTERNAL_EXPORT_VAR_INCLUDE    extern
 
@@ -32,6 +30,20 @@
 #define LOGGING_ANALYZER_NORETURN
 
 #endif // __clang__
+
+#ifndef NDEBUG
+enum TestCoverage {
+   COV_BinSumsBoostingInternal_Weight_Replication_Hessian,
+   COV_BinSumsBoostingInternal_Weight_Replication_NoHessian,
+   COV_BinSumsBoostingInternal_Weight_NoReplication_Hessian,
+   COV_BinSumsBoostingInternal_Weight_NoReplication_NoHessian,
+   COV_BinSumsBoostingInternal_NoWeight_NoReplication_Hessian,
+   COV_BinSumsBoostingInternal_NoWeight_NoReplication_NoHessian,
+   TEST_COVERAGE_COUNT
+};
+
+INTERNAL_EXPORT_VAR_INCLUDE unsigned int g_coverage[TEST_COVERAGE_COUNT];
+#endif // NDEBUG
 
 INTERNAL_EXPORT_VAR_INCLUDE const char g_sTrue[];
 INTERNAL_EXPORT_VAR_INCLUDE const char g_sFalse[];
@@ -177,8 +189,17 @@ INTERNAL_IMPORT_EXPORT_INCLUDE void LogAssertFailure(
 // the original failure in the message this allows us to use whatever behavior has been chosen by the C runtime library implementor for assertion 
 // failures without using the undocumented function that assert calls internally on each platform
 #define EBM_ASSERT(bCondition) ((void)((bCondition) || (LogAssertFailure(STATIC_CAST(unsigned long long, __LINE__), __FILE__, __func__, #bCondition), assert(!  #bCondition), 0)))
+#define COVER(__coverage_id) \
+   do { \
+      const TestCoverage LOG__coverage_id = (__coverage_id); \
+      static_assert(0 <= LOG__coverage_id, "coverage_id must be positive"); \
+      static_assert(LOG__coverage_id < TEST_COVERAGE_COUNT, "coverage_id must be within the range of the tests"); \
+      ++g_coverage[LOG__coverage_id]; \
+   } while( (void)0, 0)
+
 #else // NDEBUG
 #define EBM_ASSERT(bCondition) ((void)0)
+#define COVER(__coverage_id)   ((void)0)
 #endif // NDEBUG
 
 #ifdef __cplusplus

@@ -990,7 +990,7 @@ extern void DisplayCuts(
    std::cout << std::endl << std::endl;
 }
 
-extern "C" void TestCHeaderConstructs();
+EBM_EXTERN_C void TestCHeaderConstructs();
 
 int main() {
 #ifdef _MSC_VER

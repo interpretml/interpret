@@ -18,6 +18,10 @@ TraceEbm g_traceLevel = Trace_Off;
 
 static LogCallbackFunction g_pLogCallbackFunction = NULL;
 
+#ifndef NDEBUG
+unsigned int g_coverage[TEST_COVERAGE_COUNT] = { 0 };
+#endif // NDEBUG
+
 EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm traceLevel) {
    static const char g_sTraceOff[] = "OFF";
    static const char g_sTraceError[] = "ERROR";
