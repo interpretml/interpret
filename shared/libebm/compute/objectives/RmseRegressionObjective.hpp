@@ -8,6 +8,7 @@
 
 template<typename TFloat>
 struct RmseRegressionObjective : RegressionObjective {
+   using TFloatInternal = TFloat;
    static constexpr bool k_bRmse = true;
    static constexpr BoolEbm k_bMaximizeMetric = MINIMIZE_METRIC;
    static constexpr LinkEbm k_linkFunction = Link_identity;
@@ -15,7 +16,7 @@ struct RmseRegressionObjective : RegressionObjective {
    static constexpr int k_cItemsPerBitPackMax = 64;
    static constexpr int k_cItemsPerBitPackMin = 1;
    static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) {
-      return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentApplyUpdate<const RmseRegressionObjective<TFloat>, TFloat>(pData);
+      return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentApplyUpdate<const RmseRegressionObjective<TFloat>>(pData);
    }
    template<typename T = void, typename std::enable_if<ComputeFlags_Cpu == TFloat::k_zone, T>::type * = nullptr>
    static double StaticFinishMetric(const Objective * const pThis, const double metricSum) {
@@ -23,10 +24,10 @@ struct RmseRegressionObjective : RegressionObjective {
    }
    template<typename T = void, typename std::enable_if<ComputeFlags_Cpu == TFloat::k_zone, T>::type * = nullptr>
    static BoolEbm StaticCheckTargets(const Objective * const pThis, const size_t c, const void * const aTargets) {
-      return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentCheckTargets<const RmseRegressionObjective<TFloat>, TFloat>(c, aTargets);
+      return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentCheckTargets<const RmseRegressionObjective<TFloat>>(c, aTargets);
    }
    void FillWrapper(const ComputeFlags zones, void * const pWrapperOut) noexcept {
-      FillObjectiveWrapper<RmseRegressionObjective, TFloat>(zones, pWrapperOut);
+      FillObjectiveWrapper<RmseRegressionObjective>(zones, pWrapperOut);
    }
 
    inline RmseRegressionObjective(const Config & config) {
