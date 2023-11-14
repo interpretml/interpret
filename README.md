@@ -604,6 +604,7 @@ We also build on top of many great packages. Please check them out!
 
 # Papers that use or compare EBMs
 
+- [Explainable Boosting Machines with Sparsity - Maintaining Explainability in High-Dimensional Settings](https://arxiv.org/abs/2311.07452)
 - [LLMs Understand Glass-Box Models, Discover Surprises, and Suggest Repairs](https://arxiv.org/pdf/2308.01157.pdf)
 - [Model Interpretability in Credit Insurance](http://hdl.handle.net/10400.5/27507)
 - [Federated Boosted Decision Trees with Differential Privacy](https://arxiv.org/pdf/2210.02910.pdf)
