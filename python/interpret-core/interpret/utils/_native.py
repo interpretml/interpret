@@ -688,7 +688,9 @@ class Native:
 
     def _initialize(self, is_debug, simd):
         self.is_debug = is_debug
-        self.disable_compute = Native.ComputeFlags_Default if simd else Native.ComputeFlags_ALL
+        self.disable_compute = (
+            Native.ComputeFlags_Default if simd else Native.ComputeFlags_ALL
+        )
         self.approximates = True
 
         self._log_callback_func = None
