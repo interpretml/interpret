@@ -506,7 +506,7 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x86/libebm"
       bin_file="libebm_linux_x86.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_linux_x86_build_log.txt"
-      specific_args="$all_args -msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
+      specific_args="$all_args -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
       
       g_all_object_files_sanitized=""
@@ -534,7 +534,7 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x86/libebm"
       bin_file="libebm_linux_x86_debug.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_debug_linux_x86_build_log.txt"
-      specific_args="$all_args -msse2 -mfpmath=sse -m32 -O1"
+      specific_args="$all_args -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -msse2 -mfpmath=sse -m32 -O1"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
       
       g_all_object_files_sanitized=""

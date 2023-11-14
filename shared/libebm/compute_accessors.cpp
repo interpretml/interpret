@@ -171,8 +171,9 @@ extern ErrorEbm GetObjective(
    }
 
    const ComputeFlags zones = pCpuObjectiveWrapperOut->m_zones & static_cast<ComputeFlags>(~disableCompute);
+   UNUSED(zones); // when compiled with only CPU this variable isn't used
 
-   while(true) {
+   do {
 #ifdef BRIDGE_AVX512F_32
       if(0 != (ComputeFlags_AVX512F & zones)) {
          LOG_0(Trace_Info, "INFO GetObjective checking for AVX512F compatibility");
@@ -204,8 +205,7 @@ extern ErrorEbm GetObjective(
 #endif // BRIDGE_AVX2_32
 
       LOG_0(Trace_Info, "INFO GetObjective no SIMD option found");
-      break;
-   }
+   } while(false);
 
    return Error_None;
 }

@@ -510,13 +510,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          TFloat::TInt::Execute([aBins, &apBins](const int i, const typename TFloat::TInt::T x) {
             apBins[i] = IndexBin(aBins, static_cast<size_t>(x));
          }, iTensorBin);
-#ifndef NDEBUG
-#ifndef GPU_COMPILE
-         TFloat::Execute([cBytesPerBin, apBins, pParams](const int i) {
-            ASSERT_BIN_OK(cBytesPerBin, apBins[i], pParams->m_pDebugFastBinsEnd);
-         });
-#endif // GPU_COMPILE
-#endif // NDEBUG
 
          // TODO: the ultimate version of this algorithm would:
          //   1) Write to k_cSIMDPack histograms simutaneously to avoid collisions of indexes
