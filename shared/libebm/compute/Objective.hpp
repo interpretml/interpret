@@ -232,14 +232,19 @@ private:
    }
    template<typename TObjective, bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox, typename std::enable_if<TObjective::IsMultiScore && std::is_base_of<MulticlassMultitaskObjective, TObjective>::value, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm CountApplyUpdate(ApplyUpdateBridge * const pData) const {
-      // multiclass multitask is going to need some really special handling, so use dynamic scores
-      return PackApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores>(pData);
+      // multiclass multitask is going to need some really special handling, so use dynamic scores, and skip the bit packing too
+      if(k_cItemsPerBitPackNone == pData->m_cPack) {
+         // don't blow up our complexity if we have only 1 bin or during init. Just use dynamic for the count of scores
+         return OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores, k_cItemsPerBitPackNone>(pData);
+      } else {
+         return OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores, k_cItemsPerBitPackDynamic>(pData);
+      }
    }
    template<typename TObjective, bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox, typename std::enable_if<TObjective::IsMultiScore && !std::is_base_of<MulticlassMultitaskObjective, TObjective>::value, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm CountApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          // don't blow up our complexity if we have only 1 bin or during init. Just use dynamic for the count of scores
-         return PackApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores>(pData);
+         return OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores, k_cItemsPerBitPackNone>(pData);
       } else {
          return CountScores<TObjective, bValidation, bWeight, bHessian, bDisableApprox, (k_cCompilerScoresMax < k_cCompilerScoresStart ? k_dynamicScores : k_cCompilerScoresStart)>::Func(this, pData);
       }
@@ -250,7 +255,11 @@ private:
    struct CountScores final {
       INLINE_ALWAYS static ErrorEbm Func(const Objective * const pObjective, ApplyUpdateBridge * const pData) {
          if(cCompilerScores == pData->m_cScores) {
-            return pObjective->PackApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores>(pData);
+            if(k_cItemsPerBitPackNone == pData->m_cPack) {
+               return pObjective->OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores, k_cItemsPerBitPackNone>(pData);
+            } else {
+               return pObjective->OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores, k_cItemsPerBitPackDynamic>(pData);
+            }
          } else {
             return CountScores<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_cCompilerScoresMax == cCompilerScores ? k_dynamicScores : cCompilerScores + 1>::Func(pObjective, pData);
          }
@@ -259,12 +268,16 @@ private:
    template<typename TObjective, bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox>
    struct CountScores<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores> final {
       INLINE_ALWAYS static ErrorEbm Func(const Objective * const pObjective, ApplyUpdateBridge * const pData) {
-         return pObjective->PackApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores>(pData);
+         if(k_cItemsPerBitPackNone == pData->m_cPack) {
+            return pObjective->OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores, k_cItemsPerBitPackNone>(pData);
+         } else {
+            return pObjective->OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores, k_cItemsPerBitPackDynamic>(pData);
+         }
       }
    };
             
 
-   template<typename TObjective, bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox, size_t cCompilerScores, typename std::enable_if<k_oneScore == cCompilerScores && ComputeFlags_Cpu != TObjective::TFloatInternal::k_zone, int>::type = 0>
+   template<typename TObjective, bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox, size_t cCompilerScores, typename std::enable_if<ComputeFlags_Cpu != TObjective::TFloatInternal::k_zone, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm PackApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          return OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores, k_cItemsPerBitPackNone>(pData);
@@ -286,7 +299,7 @@ private:
          return BitPack<TObjective, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores, GetFirstBitPack<typename TObjective::TFloatInternal::TInt::T>(TObjective::k_cItemsPerBitPackMax, TObjective::k_cItemsPerBitPackMin)>::Func(this, pData);
       }
    }
-   template<typename TObjective, bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox, size_t cCompilerScores, typename std::enable_if<k_oneScore != cCompilerScores || ComputeFlags_Cpu == TObjective::TFloatInternal::k_zone, int>::type = 0>
+   template<typename TObjective, bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox, size_t cCompilerScores, typename std::enable_if<ComputeFlags_Cpu == TObjective::TFloatInternal::k_zone, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm PackApplyUpdate(ApplyUpdateBridge * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          return OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores, k_cItemsPerBitPackNone>(pData);
