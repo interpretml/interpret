@@ -73,7 +73,7 @@ struct LogLossBinaryObjective : BinaryObjective {
       return GradientHessian<TFloat>(0.0, 0.0);
    }
 
-   template<bool bDisableApprox, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, int cCompilerPack>
+   template<bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox, size_t cCompilerScores, int cCompilerPack>
    GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
       static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");

@@ -110,7 +110,7 @@ struct RmseRegressionObjective : RegressionObjective {
    }
 
 
-   template<bool bDisableApprox, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, int cCompilerPack>
+   template<bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox, size_t cCompilerScores, int cCompilerPack>
    GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_oneScore == cCompilerScores, "for RMSE regression there should always be one score");
       static_assert(!bHessian, "for RMSE regression we should never need the hessians");
