@@ -22,7 +22,7 @@ namespace DEFINED_ZONE_NAME {
 
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_MEMBER_VARIABLE
-template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
+template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores, size_t cCompilerDimensions>
 GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractionBridge * const pParams) {
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
@@ -268,60 +268,49 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
 }
 WARNING_POP
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
+template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores, size_t cCompilerDimensions>
 GPU_GLOBAL static void RemoteBinSumsInteraction(BinSumsInteractionBridge * const pParams) {
-   BinSumsInteractionInternal<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
+   BinSumsInteractionInternal<TFloat, bHessian, bWeight, cCompilerScores, cCompilerDimensions>(pParams);
 }
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
+template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores, size_t cCompilerDimensions>
 INLINE_RELEASE_TEMPLATED ErrorEbm OperatorBinSumsInteraction(BinSumsInteractionBridge * const pParams) {
-   return TFloat::template OperatorBinSumsInteraction<bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
-}
-
-template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions>
-INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptionsInteraction(BinSumsInteractionBridge * const pParams) {
-   if(nullptr != pParams->m_aWeights) {
-      static constexpr bool bWeight = true;
-      return OperatorBinSumsInteraction<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
-   } else {
-      static constexpr bool bWeight = false;
-      return OperatorBinSumsInteraction<TFloat, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
-   }
+   return TFloat::template OperatorBinSumsInteraction<bHessian, bWeight, cCompilerScores, cCompilerDimensions>(pParams);
 }
 
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, size_t cCompilerDimensionsPossible>
+template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores, size_t cCompilerDimensionsPossible>
 struct CountDimensionsInteraction final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
       if(cCompilerDimensionsPossible == pParams->m_cRuntimeRealDimensions) {
-         return FinalOptionsInteraction<TFloat, bHessian, cCompilerScores, cCompilerDimensionsPossible>(pParams);
+         return OperatorBinSumsInteraction<TFloat, bHessian, bWeight, cCompilerScores, cCompilerDimensionsPossible>(pParams);
       } else {
-         return CountDimensionsInteraction<TFloat, bHessian, cCompilerScores, cCompilerDimensionsPossible + 1>::Func(pParams);
+         return CountDimensionsInteraction<TFloat, bHessian, bWeight, cCompilerScores, cCompilerDimensionsPossible + 1>::Func(pParams);
       }
    }
 };
-template<typename TFloat, bool bHessian, size_t cCompilerScores>
-struct CountDimensionsInteraction<TFloat, bHessian, cCompilerScores, k_cCompilerOptimizedCountDimensionsMax + 1> final {
+template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores>
+struct CountDimensionsInteraction<TFloat, bHessian, bWeight, cCompilerScores, k_cCompilerOptimizedCountDimensionsMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
-      return FinalOptionsInteraction<TFloat, bHessian, cCompilerScores, k_dynamicDimensions>(pParams);
+      return OperatorBinSumsInteraction<TFloat, bHessian, bWeight, cCompilerScores, k_dynamicDimensions>(pParams);
    }
 };
 
 
-template<typename TFloat, bool bHessian, size_t cPossibleScores>
+template<typename TFloat, bool bHessian, bool bWeight, size_t cPossibleScores>
 struct CountClassesInteraction final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
       if(cPossibleScores == pParams->m_cScores) {
-         return CountDimensionsInteraction<TFloat, bHessian, cPossibleScores, 1>::Func(pParams);
+         return CountDimensionsInteraction<TFloat, bHessian, bWeight, cPossibleScores, 1>::Func(pParams);
       } else {
-         return CountClassesInteraction<TFloat, bHessian, cPossibleScores + 1>::Func(pParams);
+         return CountClassesInteraction<TFloat, bHessian, bWeight, cPossibleScores + 1>::Func(pParams);
       }
    }
 };
-template<typename TFloat, bool bHessian>
-struct CountClassesInteraction<TFloat, bHessian, k_cCompilerScoresMax + 1> final {
+template<typename TFloat, bool bHessian, bool bWeight>
+struct CountClassesInteraction<TFloat, bHessian, bWeight, k_cCompilerScoresMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsInteractionBridge * const pParams) {
-      return CountDimensionsInteraction<TFloat, bHessian, k_dynamicScores, 1>::Func(pParams);
+      return CountDimensionsInteraction<TFloat, bHessian, bWeight, k_dynamicScores, 1>::Func(pParams);
    }
 };
 
@@ -343,18 +332,42 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteraction(BinSumsInteractionBr
 
    EBM_ASSERT(1 <= pParams->m_cScores);
    if(EBM_FALSE != pParams->m_bHessian) {
-      if(size_t { 1 } != pParams->m_cScores) {
-         // muticlass
-         error = CountClassesInteraction<TFloat, true, k_cCompilerScoresStart>::Func(pParams);
+      static constexpr bool bHessian = true;
+      if(nullptr != pParams->m_aWeights) {
+         static constexpr bool bWeights = true;
+         if(size_t { 1 } != pParams->m_cScores) {
+            // muticlass
+            error = CountClassesInteraction<TFloat, bHessian, bWeights, k_cCompilerScoresStart>::Func(pParams);
+         } else {
+            error = CountDimensionsInteraction<TFloat, bHessian, bWeights, k_oneScore, 1>::Func(pParams);
+         }
       } else {
-         error = CountDimensionsInteraction<TFloat, true, k_oneScore, 1>::Func(pParams);
+         static constexpr bool bWeights = false;
+         if(size_t { 1 } != pParams->m_cScores) {
+            // muticlass
+            error = CountClassesInteraction<TFloat, bHessian, bWeights, k_cCompilerScoresStart>::Func(pParams);
+         } else {
+            error = CountDimensionsInteraction<TFloat, bHessian, bWeights, k_oneScore, 1>::Func(pParams);
+         }
       }
    } else {
-      if(size_t { 1 } != pParams->m_cScores) {
-         // Odd: gradient multiclass. Allow it, but do not optimize for it
-         error = FinalOptionsInteraction<TFloat, false, k_dynamicScores, k_dynamicDimensions>(pParams);
+      static constexpr bool bHessian = false;
+      if(nullptr != pParams->m_aWeights) {
+         static constexpr bool bWeights = true;
+         if(size_t { 1 } != pParams->m_cScores) {
+            // Odd: gradient multiclass. Allow it, but do not optimize for it
+            error = OperatorBinSumsInteraction<TFloat, bHessian, bWeights, k_dynamicScores, k_dynamicDimensions>(pParams);
+         } else {
+            error = CountDimensionsInteraction<TFloat, bHessian, bWeights, k_oneScore, 1>::Func(pParams);
+         }
       } else {
-         error = CountDimensionsInteraction<TFloat, false, k_oneScore, 1>::Func(pParams);
+         static constexpr bool bWeights = false;
+         if(size_t { 1 } != pParams->m_cScores) {
+            // Odd: gradient multiclass. Allow it, but do not optimize for it
+            error = OperatorBinSumsInteraction<TFloat, bHessian, bWeights, k_dynamicScores, k_dynamicDimensions>(pParams);
+         } else {
+            error = CountDimensionsInteraction<TFloat, bHessian, bWeights, k_oneScore, 1>::Func(pParams);
+         }
       }
    }
 

@@ -659,9 +659,9 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
    }
 
 
-   template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions, bool bWeight>
+   template<bool bHessian, bool bWeight, size_t cCompilerScores, size_t cCompilerDimensions>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsInteraction(BinSumsInteractionBridge * const pParams) noexcept {
-      RemoteBinSumsInteraction<Avx512f_32_Float, bHessian, cCompilerScores, cCompilerDimensions, bWeight>(pParams);
+      RemoteBinSumsInteraction<Avx512f_32_Float, bHessian, bWeight, cCompilerScores, cCompilerDimensions>(pParams);
       return Error_None;
    }
 
