@@ -180,8 +180,6 @@ INLINE_ALWAYS static void StopClangAnalysis(void) EBM_NOEXCEPT ANALYZER_NORETURN
    } while( (void)0, 0)
 
 
-#define FAST_EXP
-#define FAST_LOG
 #define FAST_DIVISION
 
 // 16 byte alignment works for *most* SIMD implementation, but it's even better to align with the 64 byte cache!

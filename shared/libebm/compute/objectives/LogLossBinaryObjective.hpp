@@ -190,9 +190,9 @@ struct LogLossBinaryObjective : BinaryObjective {
                //       This will eliminate both the IfEqual call, and also the negation, so it's a great optimization.
                
                TFloat metric = IfEqual(typename TFloat::TInt(0), target, sampleScore, -sampleScore);
-               metric = TFloat::template ApproxExp<false>(metric);
+               metric = TFloat::template ApproxExp<bDisableApprox, false>(metric);
                metric += 1.0;
-               metric = TFloat::template ApproxLog<false>(metric);
+               metric = TFloat::template ApproxLog<bDisableApprox, false>(metric);
 
                if(bWeight) {
                   const TFloat weight = TFloat::Load(pWeight);
@@ -239,7 +239,7 @@ struct LogLossBinaryObjective : BinaryObjective {
 
                const TFloat numerator = IfEqual(typename TFloat::TInt(0), target, TFloat(1), TFloat(-1));
                TFloat denominator = IfEqual(typename TFloat::TInt(0), target, -sampleScore, sampleScore);
-               denominator = TFloat::template ApproxExp<false>(denominator);
+               denominator = TFloat::template ApproxExp<bDisableApprox, false>(denominator);
                denominator += 1.0;
 
                // I think using FastApproxDivide means that sometimes the gradient can be slightly above 1.0

@@ -278,48 +278,80 @@ struct Cpu_64_Float final {
       return Cpu_64_Float(std::log(val.m_data));
    }
 
+
+
+
    template<
+      bool bDisableApprox,
       bool bNegateInput = false,
       bool bNaNPossible = true,
       bool bUnderflowPossible = true,
       bool bOverflowPossible = true,
-      bool bSpecialCaseZero = false
+      bool bSpecialCaseZero = false,
+      typename std::enable_if<bDisableApprox, int>::type = 0
+   >
+   static inline Cpu_64_Float ApproxExp(
+      const Cpu_64_Float & val,
+      const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit
+   ) noexcept {
+      UNUSED(addExpSchraudolphTerm);
+      return Exp(bNegateInput ? -val : val);
+   }
+
+   template<
+      bool bDisableApprox,
+      bool bNegateInput = false,
+      bool bNaNPossible = true,
+      bool bUnderflowPossible = true,
+      bool bOverflowPossible = true,
+      bool bSpecialCaseZero = false,
+      typename std::enable_if<!bDisableApprox, int>::type = 0
    >
    static inline Cpu_64_Float ApproxExp(
       const Cpu_64_Float & val, 
       const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit
    ) noexcept {
-#ifdef FAST_LOG
       // TODO: we might want different constants for binary classification and multiclass. See notes in approximate_math.hpp
       return Cpu_64_Float(ExpApproxSchraudolph<
          bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero
       >(val.m_data, addExpSchraudolphTerm));
-#else // FAST_LOG
-      UNUSED(addExpSchraudolphTerm);
-      return Exp(bNegateInput ? -val : val);
-#endif // FAST_LOG
    }
 
+
    template<
+      bool bDisableApprox,
       bool bNegateOutput = false,
       bool bNaNPossible = true,
       bool bNegativePossible = false,
       bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a big positive number
-      bool bPositiveInfinityPossible = false // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
+      bool bPositiveInfinityPossible = false, // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
+      typename std::enable_if<bDisableApprox, int>::type = 0
    >
    static inline Cpu_64_Float ApproxLog(
       const Cpu_64_Float & val, 
       const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne
    ) noexcept {
-#ifdef FAST_LOG
+      UNUSED(addLogSchraudolphTerm);
+      Cpu_64_Float ret = Log(val);
+      return bNegateOutput ? -ret : ret;
+   }
+
+   template<
+      bool bDisableApprox,
+      bool bNegateOutput = false,
+      bool bNaNPossible = true,
+      bool bNegativePossible = false,
+      bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a big positive number
+      bool bPositiveInfinityPossible = false, // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
+      typename std::enable_if<!bDisableApprox, int>::type = 0
+   >
+   static inline Cpu_64_Float ApproxLog(
+      const Cpu_64_Float & val, 
+      const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne
+   ) noexcept {
       return Cpu_64_Float(LogApproxSchraudolph<
          bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible
       >(val.m_data, addLogSchraudolphTerm));
-#else // FAST_LOG
-      UNUSED(addLogSchraudolphTerm);
-      const Cpu_64_Float ret = Log(val);
-      return bNegateOutput ? -ret : ret;
-#endif // FAST_LOG
    }
 
    friend inline T Sum(const Cpu_64_Float & val) noexcept {

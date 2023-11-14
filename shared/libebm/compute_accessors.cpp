@@ -171,7 +171,10 @@ extern ErrorEbm GetObjective(
    }
 
    const ComputeFlags zones = pCpuObjectiveWrapperOut->m_zones & static_cast<ComputeFlags>(~disableCompute);
-   UNUSED(zones); // when compiled with only CPU this variable isn't used
+
+   // when compiled with only CPU these variables are not used
+   UNUSED(zones);
+   UNUSED(pSIMDObjectiveWrapperOut);
 
    do {
 #ifdef BRIDGE_AVX512F_32

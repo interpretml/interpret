@@ -487,11 +487,30 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
    }
 
    template<
+      bool bDisableApprox,
       bool bNegateInput = false,
       bool bNaNPossible = true,
       bool bUnderflowPossible = true,
       bool bOverflowPossible = true,
-      bool bSpecialCaseZero = false
+      bool bSpecialCaseZero = false,
+      typename std::enable_if<bDisableApprox, int>::type = 0
+   >
+   static inline Avx2_32_Float ApproxExp(
+      const Avx2_32_Float & val, 
+      const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit
+   ) noexcept {
+      UNUSED(addExpSchraudolphTerm);
+      return Exp(bNegateInput ? -val : val);
+   }
+
+   template<
+      bool bDisableApprox,
+      bool bNegateInput = false,
+      bool bNaNPossible = true,
+      bool bUnderflowPossible = true,
+      bool bOverflowPossible = true,
+      bool bSpecialCaseZero = false,
+      typename std::enable_if<!bDisableApprox, int>::type = 0
    >
    static inline Avx2_32_Float ApproxExp(
       const Avx2_32_Float & val, 
@@ -500,7 +519,6 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       // This code will make no sense until you read the Nicol N. Schraudolph paper:
       // https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
       // and also see approximate_math.hpp
-#ifdef FAST_LOG
       static constexpr float signedExpMultiple = bNegateInput ? -k_expMultiple : k_expMultiple;
 #ifdef EXP_INT_SIMD
       const __m256 product = (val * signedExpMultiple).m_data;
@@ -531,18 +549,35 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
          result = IfNaN(val, val, result);
       }
       return result;
-#else // FAST_LOG
-      UNUSED(addExpSchraudolphTerm);
-      return Exp(bNegateInput ? -val : val);
-#endif // FAST_LOG
    }
 
+
    template<
+      bool bDisableApprox,
       bool bNegateOutput = false,
       bool bNaNPossible = true,
       bool bNegativePossible = false,
       bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a big positive number
-      bool bPositiveInfinityPossible = false // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
+      bool bPositiveInfinityPossible = false, // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
+      typename std::enable_if<bDisableApprox, int>::type = 0
+   >
+   static inline Avx2_32_Float ApproxLog(
+      const Avx2_32_Float & val, 
+      const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne
+   ) noexcept {
+      UNUSED(addLogSchraudolphTerm);
+      Avx2_32_Float ret = Log(val);
+      return bNegateOutput ? -ret : ret;
+   }
+
+   template<
+      bool bDisableApprox,
+      bool bNegateOutput = false,
+      bool bNaNPossible = true,
+      bool bNegativePossible = false,
+      bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a big positive number
+      bool bPositiveInfinityPossible = false, // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
+      typename std::enable_if<!bDisableApprox, int>::type = 0
    >
    static inline Avx2_32_Float ApproxLog(
       const Avx2_32_Float & val, 
@@ -551,7 +586,6 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       // This code will make no sense until you read the Nicol N. Schraudolph paper:
       // https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
       // and also see approximate_math.hpp
-#ifdef FAST_LOG
       const __m256i retInt = _mm256_castps_si256(val.m_data);
       Avx2_32_Float result = Avx2_32_Float(_mm256_cvtepi32_ps(retInt));
       if(bNegateOutput) {
@@ -572,11 +606,6 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
          result = IfNaN(val, val, result);
       }
       return result;
-#else // FAST_LOG
-      UNUSED(addLogSchraudolphTerm);
-      const Avx2_32_Float ret = Log(val);
-      return bNegateOutput ? -ret : ret;
-#endif // FAST_LOG
    }
 
    friend inline T Sum(const Avx2_32_Float & val) noexcept {
