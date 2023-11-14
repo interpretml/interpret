@@ -23,9 +23,9 @@ namespace DEFINED_ZONE_NAME {
 template<
    typename TFloat, 
    bool bHessian, 
-   size_t cCompilerScores, 
-   bool bWeight, 
-   bool bReplication, 
+   bool bWeight,
+   bool bReplication,
+   size_t cCompilerScores,
    int cCompilerPack, 
    typename std::enable_if<k_cItemsPerBitPackNone == cCompilerPack, int>::type = 0
 >
@@ -157,9 +157,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 template<
    typename TFloat, 
    bool bHessian, 
-   size_t cCompilerScores, 
-   bool bWeight, 
-   bool bReplication, 
+   bool bWeight,
+   bool bReplication,
+   size_t cCompilerScores,
    int cCompilerPack, 
    typename std::enable_if<k_cItemsPerBitPackNone != cCompilerPack && 1 == cCompilerScores, int>::type = 0
 >
@@ -423,9 +423,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 template<
    typename TFloat, 
    bool bHessian, 
-   size_t cCompilerScores, 
-   bool bWeight, 
-   bool bReplication, 
+   bool bWeight,
+   bool bReplication,
+   size_t cCompilerScores,
    int cCompilerPack, 
    typename std::enable_if<k_cItemsPerBitPackNone != cCompilerPack && 1 != cCompilerScores, int>::type = 0
 >
@@ -614,67 +614,44 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 }
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, int cCompilerPack>
+template<typename TFloat, bool bHessian, bool bWeight, bool bReplication, size_t cCompilerScores, int cCompilerPack>
 GPU_GLOBAL static void RemoteBinSumsBoosting(BinSumsBoostingBridge * const pParams) {
-   BinSumsBoostingInternal<TFloat, bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
+   BinSumsBoostingInternal<TFloat, bHessian, bWeight, bReplication, cCompilerScores, cCompilerPack>(pParams);
 }
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication, int cCompilerPack>
+template<typename TFloat, bool bHessian, bool bWeight, bool bReplication, size_t cCompilerScores, int cCompilerPack>
 INLINE_RELEASE_TEMPLATED ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge * const pParams) {
-   return TFloat::template OperatorBinSumsBoosting<bHessian, cCompilerScores, bWeight, bReplication, cCompilerPack>(pParams);
+   return TFloat::template OperatorBinSumsBoosting<bHessian, bWeight, bReplication, cCompilerScores, cCompilerPack>(pParams);
 }
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores, bool bWeight, bool bReplication>
+template<typename TFloat, bool bHessian, bool bWeight, bool bReplication, size_t cCompilerScores>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BitPackBoosting(BinSumsBoostingBridge * const pParams) {
    if(k_cItemsPerBitPackNone != pParams->m_cPack) {
-      return OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication, k_cItemsPerBitPackDynamic>(pParams);
+      return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bReplication, cCompilerScores, k_cItemsPerBitPackDynamic>(pParams);
    } else {
       // this needs to be special cased because otherwise we would inject comparisons into the dynamic version
-      return OperatorBinSumsBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication, k_cItemsPerBitPackNone>(pParams);
+      return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bReplication, cCompilerScores, k_cItemsPerBitPackNone>(pParams);
    }
 }
 
 
-template<typename TFloat, bool bHessian, size_t cCompilerScores>
-INLINE_RELEASE_TEMPLATED static ErrorEbm FinalOptionsBoosting(BinSumsBoostingBridge * const pParams) {
-   if(nullptr != pParams->m_aWeights) {
-      static constexpr bool bWeight = true;
-
-      if(nullptr != pParams->m_pCountOccurrences) {
-         static constexpr bool bReplication = true;
-         return BitPackBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication>(pParams);
-      } else {
-         static constexpr bool bReplication = false;
-         return BitPackBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication>(pParams);
-      }
-   } else {
-      static constexpr bool bWeight = false;
-
-      // we use the weights to hold both the weights and the inner bag counts if there are inner bags
-      EBM_ASSERT(nullptr == pParams->m_pCountOccurrences);
-      static constexpr bool bReplication = false;
-
-      return BitPackBoosting<TFloat, bHessian, cCompilerScores, bWeight, bReplication>(pParams);
-   }
-}
-
-
-template<typename TFloat, bool bHessian, size_t cPossibleScores>
+template<typename TFloat, bool bHessian, bool bWeight, bool bReplication, size_t cPossibleScores>
 struct CountClassesBoosting final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsBoostingBridge * const pParams) {
       if(cPossibleScores == pParams->m_cScores) {
-         return FinalOptionsBoosting<TFloat, bHessian, cPossibleScores>(pParams);
+         return BitPackBoosting<TFloat, bHessian, bWeight, bReplication, cPossibleScores>(pParams);
       } else {
-         return CountClassesBoosting<TFloat, bHessian, cPossibleScores + 1>::Func(pParams);
+         return CountClassesBoosting<TFloat, bHessian, bWeight, bReplication, cPossibleScores + 1>::Func(pParams);
       }
    }
 };
-template<typename TFloat, bool bHessian>
-struct CountClassesBoosting<TFloat, bHessian, k_cCompilerScoresMax + 1> final {
+template<typename TFloat, bool bHessian, bool bWeight, bool bReplication>
+struct CountClassesBoosting<TFloat, bHessian, bWeight, bReplication, k_cCompilerScoresMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsBoostingBridge * const pParams) {
-      return FinalOptionsBoosting<TFloat, bHessian, k_dynamicScores>(pParams);
+      return BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_dynamicScores>(pParams);
    }
 };
+
 
 template<typename TFloat>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoosting(BinSumsBoostingBridge * const pParams) {
@@ -691,18 +668,74 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoosting(BinSumsBoostingBridge *
 
    EBM_ASSERT(1 <= pParams->m_cScores);
    if(EBM_FALSE != pParams->m_bHessian) {
-      if(size_t { 1 } != pParams->m_cScores) {
-         // muticlass
-         error = CountClassesBoosting<TFloat, true, k_cCompilerScoresStart>::Func(pParams);
+      static constexpr bool bHessian = true;
+      if(nullptr != pParams->m_aWeights) {
+         static constexpr bool bWeight = true;
+         if(nullptr != pParams->m_pCountOccurrences) {
+            static constexpr bool bReplication = true;
+            if(size_t { 1 } != pParams->m_cScores) {
+               // muticlass
+               error = CountClassesBoosting<TFloat, bHessian, bWeight, bReplication, k_cCompilerScoresStart>::Func(pParams);
+            } else {
+               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
+            }
+         } else {
+            static constexpr bool bReplication = false;
+            if(size_t { 1 } != pParams->m_cScores) {
+               // muticlass
+               error = CountClassesBoosting<TFloat, bHessian, bWeight, bReplication, k_cCompilerScoresStart>::Func(pParams);
+            } else {
+               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
+            }
+         }
       } else {
-         error = FinalOptionsBoosting<TFloat, true, k_oneScore>(pParams);
+         static constexpr bool bWeight = false;
+
+         // we use the weights to hold both the weights and the inner bag counts if there are inner bags
+         EBM_ASSERT(nullptr == pParams->m_pCountOccurrences);
+         static constexpr bool bReplication = false;
+
+         if(size_t { 1 } != pParams->m_cScores) {
+            // muticlass
+            error = CountClassesBoosting<TFloat, bHessian, bWeight, bReplication, k_cCompilerScoresStart>::Func(pParams);
+         } else {
+            error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
+         }
       }
    } else {
-      if(size_t { 1 } != pParams->m_cScores) {
-         // Odd: gradient multiclass. Allow it, but do not optimize for it
-         error = FinalOptionsBoosting<TFloat, false, k_dynamicScores>(pParams);
+      static constexpr bool bHessian = false;
+      if(nullptr != pParams->m_aWeights) {
+         static constexpr bool bWeight = true;
+         if(nullptr != pParams->m_pCountOccurrences) {
+            static constexpr bool bReplication = true;
+            if(size_t { 1 } != pParams->m_cScores) {
+               // Odd: gradient multiclass. Allow it, but do not optimize for it
+               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_dynamicScores>(pParams);
+            } else {
+               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
+            }
+         } else {
+            static constexpr bool bReplication = false;
+            if(size_t { 1 } != pParams->m_cScores) {
+               // Odd: gradient multiclass. Allow it, but do not optimize for it
+               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_dynamicScores>(pParams);
+            } else {
+               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
+            }
+         }
       } else {
-         error = FinalOptionsBoosting<TFloat, false, k_oneScore>(pParams);
+         static constexpr bool bWeight = false;
+
+         // we use the weights to hold both the weights and the inner bag counts if there are inner bags
+         EBM_ASSERT(nullptr == pParams->m_pCountOccurrences);
+         static constexpr bool bReplication = false;
+
+         if(size_t { 1 } != pParams->m_cScores) {
+            // Odd: gradient multiclass. Allow it, but do not optimize for it
+            error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_dynamicScores>(pParams);
+         } else {
+            error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
+         }
       }
    }
 
