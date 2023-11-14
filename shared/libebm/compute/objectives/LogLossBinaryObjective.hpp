@@ -8,7 +8,7 @@
 
 template<typename TFloat>
 struct LogLossBinaryObjective : BinaryObjective {
-   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossBinaryObjective, MINIMIZE_METRIC, Link_logit, 64, 1)
+   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossBinaryObjective, MINIMIZE_METRIC, Link_logit, true, 64, 1)
 
    inline LogLossBinaryObjective(const Config & config) {
       if(1 != config.cOutputs) {
@@ -73,7 +73,7 @@ struct LogLossBinaryObjective : BinaryObjective {
       return GradientHessian<TFloat>(0.0, 0.0);
    }
 
-   template<size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, int cCompilerPack>
+   template<bool bDisableApprox, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, int cCompilerPack>
    GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
       static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");

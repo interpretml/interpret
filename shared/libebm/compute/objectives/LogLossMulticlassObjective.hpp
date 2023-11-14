@@ -8,7 +8,7 @@
 
 template<typename TFloat>
 struct LogLossMulticlassObjective : MulticlassObjective {
-   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossMulticlassObjective, MINIMIZE_METRIC, Link_logit, k_cItemsPerBitPackDynamic, k_cItemsPerBitPackDynamic)
+   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossMulticlassObjective, MINIMIZE_METRIC, Link_logit, true, k_cItemsPerBitPackDynamic, k_cItemsPerBitPackDynamic)
 
    inline LogLossMulticlassObjective(const Config & config) {
       if(1 == config.cOutputs) {
@@ -81,7 +81,7 @@ struct LogLossMulticlassObjective : MulticlassObjective {
       return GradientHessian<TFloat>(0.0, 0.0);
    }
 
-   template<size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, int cCompilerPack>
+   template<bool bDisableApprox, size_t cCompilerScores, bool bValidation, bool bWeight, bool bHessian, int cCompilerPack>
    GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
       static_assert(k_dynamicScores == cCompilerScores || 2 <= cCompilerScores, "Multiclass needs more than 1 score");
       static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");

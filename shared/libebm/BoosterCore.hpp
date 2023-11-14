@@ -40,6 +40,7 @@ class BoosterCore final {
    std::atomic_size_t m_REFERENCE_COUNT;
 
    ptrdiff_t m_cClasses;
+   BoolEbm m_bDisableApprox;
 
    size_t m_cFeatures;
    FeatureBoosting * m_aFeatures;
@@ -80,6 +81,7 @@ class BoosterCore final {
    inline BoosterCore() noexcept :
       m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
       m_cClasses(0),
+      m_bDisableApprox(EBM_FALSE),
       m_cFeatures(0),
       m_aFeatures(nullptr),
       m_cTerms(0),
@@ -206,6 +208,10 @@ public:
    inline bool IsHessian() {
       EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
       return EBM_FALSE != m_objectiveCpu.m_bObjectiveHasHessian;
+   }
+
+   inline BoolEbm IsDisableApprox() const {
+      return m_bDisableApprox;
    }
 
    inline double LearningRateAdjustmentDifferentialPrivacy() const noexcept {

@@ -18,7 +18,7 @@ class Native:
     # CreateBoosterFlags
     CreateBoosterFlags_Default = 0x00000000
     CreateBoosterFlags_DifferentialPrivacy = 0x00000001
-    CreateBoosterFlags_DisableApproximates = 0x00000002
+    CreateBoosterFlags_DisableApprox = 0x00000002
 
     # TermBoostFlags
     TermBoostFlags_Default = 0x00000000
@@ -30,7 +30,7 @@ class Native:
     # CreateInteractionFlags
     CreateInteractionFlags_Default = 0x00000000
     CreateInteractionFlags_DifferentialPrivacy = 0x00000001
-    CreateInteractionFlags_DisableApproximates = 0x00000002
+    CreateInteractionFlags_DisableApprox = 0x00000002
 
     # CalcInteractionFlags
     CalcInteractionFlags_Default = 0x00000000
@@ -1325,7 +1325,7 @@ class Booster(AbstractContextManager):
 
         flags = self.create_booster_flags
         if not native.approximates:
-            flags |= Native.CreateBoosterFlags_DisableApproximates
+            flags |= Native.CreateBoosterFlags_DisableApprox
 
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
@@ -1695,7 +1695,7 @@ class InteractionDetector(AbstractContextManager):
 
         flags = self.create_interaction_flags
         if not native.approximates:
-            flags |= Native.CreateInteractionFlags_DisableApproximates
+            flags |= Native.CreateInteractionFlags_DisableApprox
 
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)

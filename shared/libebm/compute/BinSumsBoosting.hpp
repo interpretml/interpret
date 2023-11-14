@@ -141,8 +141,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                gradient *= weight;
             }
             TFloat::Execute([aBins, iScore](int, const typename TFloat::T grad) {
-               // TODO: for this special case of having just 1 bin, we could sum all the gradients and hessians
-               // before then adding them to the only bin
                auto * const pBin = aBins;
                auto * const aGradientPair = pBin->GetGradientPairs();
                auto * const pGradientPair = &aGradientPair[iScore];
@@ -548,6 +546,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             });
          }
 
+         // TODO: if bWeight and bReplication then we can load both together before adding and the storing them
+         //       we'd need to write something like we have in the 1 == cCompilerScores function above
+
          TFloat weight;
          if(bWeight) {
             weight = TFloat::Load(pWeight);
@@ -596,8 +597,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                   gradient *= weight;
                }
                TFloat::Execute([apBins, iScore](const int i, const typename TFloat::T grad) {
-                  // TODO: for this special case of having just 1 bin, we could sum all the gradients and hessians
-                  // before then adding them to the only bin
                   auto * const pBin = apBins[i];
                   auto * const aGradientPair = pBin->GetGradientPairs();
                   auto * const pGradientPair = &aGradientPair[iScore];

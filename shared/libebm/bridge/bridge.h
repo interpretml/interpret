@@ -35,6 +35,7 @@ struct ApplyUpdateBridge {
    BoolEbm m_bHessianNeeded;
 
    BoolEbm m_bValidation;
+   BoolEbm m_bDisableApprox;
    void * m_aMulticlassMidwayTemp; // float or double
    const void * m_aUpdateTensorScores; // float or double
    size_t m_cSamples;

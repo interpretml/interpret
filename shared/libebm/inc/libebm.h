@@ -197,7 +197,7 @@ typedef struct _InteractionHandle {
 
 #define CreateBoosterFlags_Default                 (CREATE_BOOSTER_FLAGS_CAST(0x00000000))
 #define CreateBoosterFlags_DifferentialPrivacy     (CREATE_BOOSTER_FLAGS_CAST(0x00000001))
-#define CreateBoosterFlags_DisableApproximates     (CREATE_BOOSTER_FLAGS_CAST(0x00000002))
+#define CreateBoosterFlags_DisableApprox           (CREATE_BOOSTER_FLAGS_CAST(0x00000002))
 
 #define TermBoostFlags_Default                     (TERM_BOOST_FLAGS_CAST(0x00000000))
 #define TermBoostFlags_DisableNewtonGain           (TERM_BOOST_FLAGS_CAST(0x00000001))
@@ -207,7 +207,7 @@ typedef struct _InteractionHandle {
 
 #define CreateInteractionFlags_Default             (CREATE_INTERACTION_FLAGS_CAST(0x00000000))
 #define CreateInteractionFlags_DifferentialPrivacy (CREATE_INTERACTION_FLAGS_CAST(0x00000001))
-#define CreateInteractionFlags_DisableApproximates (CREATE_INTERACTION_FLAGS_CAST(0x00000002))
+#define CreateInteractionFlags_DisableApprox       (CREATE_INTERACTION_FLAGS_CAST(0x00000002))
 
 #define CalcInteractionFlags_Default               (CALC_INTERACTION_FLAGS_CAST(0x00000000))
 #define CalcInteractionFlags_Pure                  (CALC_INTERACTION_FLAGS_CAST(0x00000001))

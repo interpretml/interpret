@@ -188,6 +188,8 @@ ErrorEbm InteractionCore::Create(
    // give ownership of our object back to the caller, even if there is a failure
    *ppInteractionCoreOut = pInteractionCore;
 
+   pInteractionCore->m_bDisableApprox = 0 != (CreateInteractionFlags_DisableApprox & flags) ? EBM_TRUE : EBM_FALSE;
+
    size_t cBinsMax = 0;
 
    LOG_0(Trace_Info, "InteractionCore::Create starting feature processing");
@@ -547,6 +549,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             data.m_cScores = cScores;
             data.m_cPack = k_cItemsPerBitPackNone;
             data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
+            data.m_bDisableApprox = IsDisableApprox();
             data.m_bValidation = EBM_FALSE;
             data.m_cSamples = pSubset->GetCountSamples();
             data.m_aPacked = nullptr;
@@ -632,6 +635,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
             data.m_cScores = 1;
             data.m_cPack = k_cItemsPerBitPackNone;
             data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
+            data.m_bDisableApprox = IsDisableApprox();
             data.m_bValidation = EBM_FALSE;
             data.m_cSamples = pSubset->GetCountSamples();
             data.m_aPacked = nullptr;
