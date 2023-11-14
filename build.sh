@@ -225,7 +225,7 @@ if [ -n "${CXX}" ]; then
    mkdir ./python/interpret-core/interpret
    mkdir ./python/interpret-core/interpret/lib
 
-   extras="-DLIBEBM_EXPORTS -DNDEBUG -I$code_path/pch -I$code_path/inc -I$code_path/unzoned -I$code_path/bridge -I$code_path -I$code_path/compute -I$code_path/compute/objectives -I$code_path/compute/metrics"
+   extras="-DLIBEBM_EXPORTS -DNDEBUG -I$code_path/inc -I$code_path/unzoned -I$code_path/bridge -I$code_path -I$code_path/compute -I$code_path/compute/objectives -I$code_path/compute/metrics"
 
    mkdir ./tmp
    mkdir ./tmp/mk
@@ -406,7 +406,6 @@ compute_args="$compute_args -I$src_path_sanitized/compute/objectives"
 compute_args="$compute_args -I$src_path_sanitized/compute/metrics"
 
 main_args="-DZONE_main"
-main_args="$main_args -I$src_path_sanitized/pch"
 main_args="$main_args -I$src_path_sanitized/unzoned"
 main_args="$main_args -I$src_path_sanitized/bridge"
 main_args="$main_args -I$src_path_sanitized"

@@ -34,8 +34,8 @@
     <ClCompile Include="special\windows_DllMain.cpp">
       <Filter>special</Filter>
     </ClCompile>
-    <ClCompile Include="pch\pch.cpp">
-      <Filter>pch</Filter>
+    <ClCompile Include="special\pch.cpp">
+      <Filter>special</Filter>
     </ClCompile>
     <ClCompile Include="unzoned\unzoned.cpp">
       <Filter>unzoned</Filter>
@@ -96,9 +96,7 @@
     </ClInclude>
     <ClInclude Include="Transpose.hpp" />
     <ClInclude Include="ebm_stats.hpp" />
-    <ClInclude Include="pch\pch.hpp">
-      <Filter>pch</Filter>
-    </ClInclude>
+    <ClInclude Include="pch.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="libebm_exports.def" />
@@ -121,9 +119,6 @@
     </Filter>
     <Filter Include="unzoned">
       <UniqueIdentifier>{1daae48a-6372-46a2-a0e9-dda3519eb4b4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="pch">
-      <UniqueIdentifier>{f9e8fb56-17ab-4d99-8c95-ff83a6d1f7d0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
