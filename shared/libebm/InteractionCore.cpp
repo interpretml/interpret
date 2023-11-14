@@ -10,7 +10,7 @@
 
 #include "logging.h" // EBM_ASSERT
 
-#include "bridge.hpp" // GetCountScores
+#include "bridge.hpp" // ObjectiveWrapper
 #include "Bin.hpp" // IsOverflowBinSize
 
 #include "ebm_internal.hpp"
@@ -74,8 +74,7 @@ static bool CheckInteractionRestrictionsInternal(
    EBM_ASSERT(nullptr != pObjectiveWrapper);
    EBM_ASSERT(1 <= pInteractionCore->GetCountFeatures());
 
-   const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
-   const size_t cScores = GetCountScores(cClasses);
+   const size_t cScores = pInteractionCore->GetCountScores();
    const bool bHessian = EBM_FALSE != pObjectiveWrapper->m_bObjectiveHasHessian;
 
    // In BinSumsInteraction we calculate the BinSize value but keep it as a size_t, so the only requirement is
@@ -108,11 +107,11 @@ static bool CheckInteractionRestrictionsInternal(
       return true;
    }
 
-   if(IsMulticlass(cClasses)) {
+   if(size_t { 1 } != cScores) {
       // TODO: we currently index into the gradient array using the target, but the gradient array is also
       // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
       // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
-      size_t cIndexes = static_cast<size_t>(cClasses);
+      size_t cIndexes = cScores;
       if(bHessian) {
          if(IsMultiplyError(size_t { 2 }, cIndexes)) {
             return true;
@@ -264,10 +263,15 @@ ErrorEbm InteractionCore::Create(
       LOG_0(Trace_Warning, "WARNING InteractionCore::Create cClasses cannot fit into ptrdiff_t");
       return Error_IllegalParamVal;
    }
-   pInteractionCore->m_cClasses = cClasses;
 
    if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
-      const size_t cScores = GetCountScores(cClasses);
+      size_t cScores;
+      if(0 != (CreateInteractionFlags_BinaryAsMulticlass & flags)) {
+         cScores = cClasses < ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+      } else {
+         cScores = cClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+      }
+      pInteractionCore->m_cScores = cScores;
 
       LOG_0(Trace_Info, "INFO InteractionCore::Create determining Objective");
       Config config;
@@ -378,7 +382,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       EBM_ASSERT(nullptr != aTargetsFrom); // we previously called GetDataSetSharedTarget and got back a non-null result
       EBM_ASSERT(0 != cClasses); // no gradients if 0 == cClasses
       EBM_ASSERT(1 != cClasses); // no gradients if 1 == cClasses
-      const size_t cScores = GetCountScores(cClasses);
+      const size_t cScores = GetCountScores();
       EBM_ASSERT(1 <= cScores);
 
       size_t cBytesScoresMax = 0;
@@ -455,7 +459,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          }
          data.m_aTargets = aTargetTo;
 
-         if(IsMulticlass(cClasses)) {
+         if(size_t { 1 } != cScores) {
             void * const aMulticlassMidwayTemp = AlignedAlloc(cBytesTempMax);
             if(UNLIKELY(nullptr == aMulticlassMidwayTemp)) {
                LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aMulticlassMidwayTemp");

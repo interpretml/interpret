@@ -163,6 +163,8 @@ inline constexpr static bool IsClassification(const OutputType cClasses) {
    return OutputType_GeneralClassification <= cClasses;
 }
 
+//#define EXPAND_BINARY_LOGITS
+
 inline constexpr static size_t GetCountScores(const OutputType cClasses) {
 #ifdef EXPAND_BINARY_LOGITS
    return OutputType_BinaryClassification <= cClasses ? static_cast<size_t>(cClasses) : (ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses ? size_t { 0 } : size_t { 1 });
@@ -331,8 +333,15 @@ static constexpr ptrdiff_t k_iZeroClassificationLogitDefault = ptrdiff_t { -1 };
 static constexpr IntEbm k_countInnerBagsDefault = IntEbm { 0 };
 static constexpr double k_learningRateDefault = double { 0.01 };
 static constexpr IntEbm k_minSamplesLeafDefault = IntEbm { 1 };
+
+#ifdef EXPAND_BINARY_LOGITS
+static constexpr CreateBoosterFlags k_testCreateBoosterFlags_Default = CreateBoosterFlags_BinaryAsMulticlass;
+static constexpr CreateInteractionFlags k_testCreateInteractionFlags_Default = CreateInteractionFlags_BinaryAsMulticlass;
+#else // EXPAND_BINARY_LOGITS
 static constexpr CreateBoosterFlags k_testCreateBoosterFlags_Default = CreateBoosterFlags_Default;
 static constexpr CreateInteractionFlags k_testCreateInteractionFlags_Default = CreateInteractionFlags_Default;
+#endif // EXPAND_BINARY_LOGITS
+
 static constexpr ComputeFlags k_testComputeFlags_Default = ComputeFlags_Default;
 
 static constexpr IntEbm k_leavesMaxFillDefault = 5;

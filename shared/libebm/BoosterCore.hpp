@@ -39,7 +39,7 @@ class BoosterCore final {
    // https://stackoverflow.com/questions/41308372/stdatomic-for-built-in-types-non-lock-free-vs-trivial-destructor
    std::atomic_size_t m_REFERENCE_COUNT;
 
-   ptrdiff_t m_cClasses;
+   size_t m_cScores;
    BoolEbm m_bDisableApprox;
 
    size_t m_cFeatures;
@@ -80,7 +80,7 @@ class BoosterCore final {
 
    inline BoosterCore() noexcept :
       m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
-      m_cClasses(0),
+      m_cScores(0),
       m_bDisableApprox(EBM_FALSE),
       m_cFeatures(0),
       m_aFeatures(nullptr),
@@ -110,8 +110,8 @@ public:
       m_REFERENCE_COUNT.fetch_add(1, std::memory_order_relaxed);
    };
 
-   inline ptrdiff_t GetCountClasses() const {
-      return m_cClasses;
+   inline size_t GetCountScores() const {
+      return m_cScores;
    }
 
    inline size_t GetCountBytesFastBins() const {

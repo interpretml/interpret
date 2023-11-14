@@ -55,7 +55,7 @@ public:
       ErrorEbm error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-      const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pBoosterCore->GetCountClasses()));
+      const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
       const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
       auto * const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
@@ -589,7 +589,7 @@ public:
       double * const pTotalGain
    ) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      if(cPossibleScores == GetCountScores(pBoosterCore->GetCountClasses())) {
+      if(cPossibleScores == pBoosterCore->GetCountScores()) {
          return PartitionRandomBoostingInternal<bHessian, cPossibleScores>::Func(
             pRng,
             pBoosterShell,
@@ -645,7 +645,7 @@ extern ErrorEbm PartitionRandomBoosting(
    double * const pTotalGain
 ) {
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const size_t cRuntimeScores = GetCountScores(pBoosterCore->GetCountClasses());
+   const size_t cRuntimeScores = pBoosterCore->GetCountScores();
 
    EBM_ASSERT(1 <= cRuntimeScores);
    if(pBoosterCore->IsHessian()) {

@@ -156,10 +156,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       return Error_IllegalParamVal;
    }
    *interactionHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
-
+   
    if(0 != (static_cast<UCreateInteractionFlags>(flags) & static_cast<UCreateInteractionFlags>(~(
       static_cast<UCreateInteractionFlags>(CreateInteractionFlags_DifferentialPrivacy) |
-      static_cast<UCreateInteractionFlags>(CreateInteractionFlags_DisableApprox)
+      static_cast<UCreateInteractionFlags>(CreateInteractionFlags_DisableApprox) |
+      static_cast<UCreateInteractionFlags>(CreateInteractionFlags_BinaryAsMulticlass)
    )))) {
       LOG_0(Trace_Error, "ERROR CreateInteractionDetector flags contains unknown flags. Ignoring extras.");
    }
@@ -221,7 +222,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       return Error_OutOfMemory;
    }
 
-   if(ptrdiff_t { 0 } != pInteractionCore->GetCountClasses() && ptrdiff_t { 1 } != pInteractionCore->GetCountClasses()) {
+   if(size_t { 0 } != pInteractionCore->GetCountScores()) {
       if(!pInteractionCore->IsRmse()) {
          error = pInteractionCore->InitializeInteractionGradientsAndHessians(
             static_cast<const unsigned char *>(dataSet),

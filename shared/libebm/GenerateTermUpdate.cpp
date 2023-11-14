@@ -97,7 +97,7 @@ static void BoostZeroDimensional(
    LOG_0(Trace_Verbose, "Entered BoostZeroDimensional");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
+   const size_t cScores = pBoosterCore->GetCountScores();
 
    BinBase * const pMainBin = pBoosterShell->GetBoostingMainBins();
    EBM_ASSERT(nullptr != pMainBin);
@@ -220,7 +220,7 @@ static ErrorEbm BoostMultiDimensional(
       ++pTermFeature;
    } while(pTermFeaturesEnd != pTermFeature);
 
-   const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
+   const size_t cScores = pBoosterCore->GetCountScores();
 
    const size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
 
@@ -551,8 +551,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate minSamplesLeaf can't be less than 1.  Adjusting to 1.");
    }
 
-   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   if(ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses) {
+   const size_t cScores = pBoosterCore->GetCountScores();
+   if(size_t { 0 } == cScores) {
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  
       // The term scores are a tensor with zero length array logits, which means for our representation that we have 
       // zero items in the array total. Since we can predit the output with 100% accuracy, our gain will be 0.
@@ -561,7 +561,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       }
       pBoosterShell->SetTermIndex(iTerm);
 
-      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses");
+      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate size_t { 0 } == cScores");
       return Error_None;
    }
    EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
@@ -700,8 +700,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          // but then collapse them afterwards into a single bin, but that's more work.
          cTensorBins = 1;
       }
-
-      const size_t cScores = GetCountScores(cClasses);
 
       BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
       EBM_ASSERT(nullptr != aFastBins);
@@ -917,13 +915,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       bool bBad;
       // we need to divide by the number of sampling sets that we constructed this from.
       // We also need to slow down our growth so that the more relevant Features get a chance to grow first so we multiply by a user defined learning rate
-      if(IsClassification(cClasses)) {
-#ifdef EXPAND_BINARY_LOGITS
-         static constexpr bool bExpandBinaryLogits = true;
-#else // EXPAND_BINARY_LOGITS
-         static constexpr bool bExpandBinaryLogits = false;
-#endif // EXPAND_BINARY_LOGITS
-
+      if(size_t { 2 } == cScores) {
          //if(0 <= k_iZeroLogit || ptrdiff_t { 2 } == pBoosterCore->m_cClasses && bExpandBinaryLogits) {
          //   EBM_ASSERT(ptrdiff_t { 2 } <= pBoosterCore->m_cClasses);
          //   // TODO : for classification with logit zeroing, is our learning rate essentially being inflated as 
@@ -946,12 +938,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          // Ping Li paper (algorithm #1, line 5, (K - 1) / K )
          // https://arxiv.org/pdf/1006.5051.pdf
 
-         const bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == cClasses;
-         if(bDividing) {
-            bBad = pBoosterShell->GetTermUpdate()->MultiplyAndCheckForIssues(multiple * 0.5);
-         } else {
-            bBad = pBoosterShell->GetTermUpdate()->MultiplyAndCheckForIssues(multiple);
-         }
+         bBad = pBoosterShell->GetTermUpdate()->MultiplyAndCheckForIssues(multiple * 0.5);
       } else {
          bBad = pBoosterShell->GetTermUpdate()->MultiplyAndCheckForIssues(multiple);
       }

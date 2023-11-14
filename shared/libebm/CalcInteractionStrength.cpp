@@ -174,8 +174,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
 
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
 
-   const ptrdiff_t cClasses = pInteractionCore->GetCountClasses();
-   if(ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses) {
+   const size_t cScores = pInteractionCore->GetCountScores();
+   if(size_t { 0 } == cScores) {
       LOG_0(Trace_Info, "INFO CalcInteractionStrength target with 1 class perfectly predicts the target");
       if(nullptr != avgInteractionStrengthOut) {
          *avgInteractionStrengthOut = 0.0;
@@ -267,8 +267,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(
       }
       return Error_None;
    }
-
-   const size_t cScores = GetCountScores(cClasses);
 
    static constexpr size_t cAuxillaryBinsForSplitting = 4;
    const size_t cAuxillaryBins = EbmMax(cAuxillaryBinsForBuildFastTotals, cAuxillaryBinsForSplitting);

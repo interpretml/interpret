@@ -880,10 +880,8 @@ SEXP GetBestTermScores_R(SEXP boosterHandleWrapped, SEXP indexTerm) {
       error("GetBestTermScores_R pBoosterCore->GetCountTerms() <= static_cast<size_t>(iTerm)");
    }
 
-   size_t cTensorScores = 0;
-   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
-      cTensorScores = GetCountScores(cClasses);
+   size_t cTensorScores = pBoosterCore->GetCountScores();
+   if(size_t { 0 } != cTensorScores) {
       const Term * const pTerm = pBoosterCore->GetTerms()[static_cast<size_t>(iTerm)];
       const size_t cDimensions = pTerm->GetCountDimensions();
       if(0 != cDimensions) {
@@ -934,10 +932,8 @@ SEXP GetCurrentTermScores_R(SEXP boosterHandleWrapped, SEXP indexTerm) {
       error("GetCurrentTermScores_R pBoosterCore->GetCountTerms() <= static_cast<size_t>(iTerm)");
    }
 
-   size_t cTensorScores = 0;
-   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
-      cTensorScores = GetCountScores(cClasses);
+   size_t cTensorScores = pBoosterCore->GetCountScores();
+   if(ptrdiff_t { 0 } != cTensorScores) {
       const Term * const pTerm = pBoosterCore->GetTerms()[static_cast<size_t>(iTerm)];
       const size_t cDimensions = pTerm->GetCountDimensions();
       if(0 != cDimensions) {

@@ -176,8 +176,7 @@ static bool CheckBoosterRestrictionsInternal(
    EBM_ASSERT(nullptr != pObjectiveWrapper);
    EBM_ASSERT(1 <= pBoosterCore->GetCountTerms());
 
-   const ptrdiff_t cClasses = pBoosterCore->GetCountClasses();
-   const size_t cScores = GetCountScores(cClasses);
+   const size_t cScores = pBoosterCore->GetCountScores();
 
    if(IsConvertError<TUInt>(cScores)) {
       // restriction from LogLossMulticlassObjective.hpp
@@ -227,11 +226,11 @@ static bool CheckBoosterRestrictionsInternal(
       return true;
    }
 
-   if(IsMulticlass(cClasses)) {
+   if(size_t { 1 } != cScores) {
       // TODO: we currently index into the gradient array using the target, but the gradient array is also
       // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
       // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
-      size_t cIndexes = static_cast<size_t>(cClasses);
+      size_t cIndexes = cScores;
       if(bHessian) {
          if(IsMultiplyError(size_t { 2 }, cIndexes)) {
             return true;
@@ -598,13 +597,18 @@ ErrorEbm BoosterCore::Create(
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create cClasses cannot fit into ptrdiff_t");
       return Error_IllegalParamVal;
    }
-   pBoosterCore->m_cClasses = cClasses;
 
    // having 1 class means that all predictions are perfect. In the C interface we reduce this into having 0 scores, 
    // which means that we do not write anything to our upper level callers, and we don't need a bunch of things
    // since they have zero memory allocated to them. Having 0 classes means there are also 0 samples.
    if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
-      const size_t cScores = GetCountScores(cClasses);
+      size_t cScores;
+      if(0 != (CreateBoosterFlags_BinaryAsMulticlass & flags)) {
+         cScores = cClasses < ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+      } else {
+         cScores = cClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+      }
+      pBoosterCore->m_cScores = cScores;
 
       LOG_0(Trace_Info, "INFO BoosterCore::Create determining Objective");
       Config config;
@@ -860,7 +864,7 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
 ) {
    DataSetBoosting * const pDataSet = GetTrainingSet();
    if(size_t { 0 } != pDataSet->GetCountSamples()) {
-      const size_t cScores = GetCountScores(GetCountClasses());
+      const size_t cScores = GetCountScores();
 
 #ifndef NDEBUG
       // we should be initted to zero

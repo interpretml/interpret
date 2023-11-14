@@ -44,7 +44,7 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(
    pBinOut->SetWeight(weightTotal);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pBoosterCore->GetCountClasses()));
+   const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
 
    // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
    GradientPair<FloatMain, bHessian> aSumGradientPairsLocal[GetArrayScores(cCompilerScores)];
@@ -124,7 +124,7 @@ static ErrorEbm Flatten(
    }
 
    const BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const size_t cScores = GetCountScores(pBoosterCore->GetCountClasses());
+   const size_t cScores = pBoosterCore->GetCountScores();
 
    EBM_ASSERT(!IsMultiplyError(cScores, cSlices));
    error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * cSlices);
@@ -269,7 +269,7 @@ static int FindBestSplitGain(
    }
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pBoosterCore->GetCountClasses()));
+   const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
 
    auto * const pLeftChild = GetLeftNode(pTreeNodeScratchSpace);
 #ifndef NDEBUG
@@ -554,7 +554,7 @@ public:
       EBM_ASSERT(nullptr != pTotalGain);
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pBoosterCore->GetCountClasses()));
+      const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
 
       const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
@@ -725,7 +725,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(
    ErrorEbm error;
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const size_t cRuntimeScores = GetCountScores(pBoosterCore->GetCountClasses());
+   const size_t cRuntimeScores = pBoosterCore->GetCountScores();
 
    EBM_ASSERT(1 <= cRuntimeScores);
    if(pBoosterCore->IsHessian()) {

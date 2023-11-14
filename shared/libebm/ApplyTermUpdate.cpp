@@ -81,7 +81,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       "Entered ApplyTermUpdate"
    );
 
-   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
+   if(size_t { 0 } == pBoosterCore->GetCountScores()) {
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  
       // The term scores are a tensor with zero length array logits, which means for our representation that we 
       // have zero items in the array total. Since we can predit the output with 100% accuracy, our log loss is 0.
@@ -150,7 +150,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
                bIgnored = true;
             } else {
                ApplyUpdateBridge data;
-               data.m_cScores = GetCountScores(pBoosterCore->GetCountClasses());
+               data.m_cScores = pBoosterCore->GetCountScores();
                data.m_cPack = 0 == pTerm->GetBitsRequiredMin() ? k_cItemsPerBitPackNone :
                   GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), pSubset->GetObjectiveWrapper()->m_cUIntBytes);
                data.m_bHessianNeeded = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
@@ -194,7 +194,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
                // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
                ApplyUpdateBridge data;
-               data.m_cScores = GetCountScores(pBoosterCore->GetCountClasses());
+               data.m_cScores = pBoosterCore->GetCountScores();
                data.m_cPack = 0 == pTerm->GetBitsRequiredMin() ? k_cItemsPerBitPackNone :
                   GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), pSubset->GetObjectiveWrapper()->m_cUIntBytes);
                // for the validation set we're calculating the metric and updating the scores, but we don't use
@@ -239,7 +239,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       void * pUpdateSmall = aUpdateScores;
       void * pUpdateBig = aUpdateScores;
       const void * const pUpdateBigEnd = IndexByte(reinterpret_cast<void *>(aUpdateScores), 
-         sizeof(FloatBig) * GetCountScores(pBoosterCore->GetCountClasses()) * pTerm->GetCountTensorBins());
+         sizeof(FloatBig) * pBoosterCore->GetCountScores() * pTerm->GetCountTensorBins());
       do {
          *reinterpret_cast<FloatSmall *>(pUpdateSmall) = static_cast<FloatSmall>(*reinterpret_cast<FloatBig *>(pUpdateBig));
          pUpdateBig = IndexByte(pUpdateBig, sizeof(FloatBig));
@@ -397,10 +397,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
       return Error_IllegalParamVal;
    }
 
-   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
+   if(size_t { 0 } == pBoosterCore->GetCountScores()) {
       // if we have 0 or 1 classes then there is no tensor, so return now
       *countSplitsInOut = 0;
-      LOG_0(Trace_Warning, "WARNING GetTermUpdateSplits ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()");
+      LOG_0(Trace_Warning, "WARNING GetTermUpdateSplits size_t { 0 } == pBoosterCore->GetCountScores()");
       return Error_None;
    }
    EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
@@ -486,7 +486,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(
    EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
    EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
-   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
+   if(size_t { 0 } == pBoosterCore->GetCountScores()) {
       return Error_None;
    }
    EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
@@ -512,7 +512,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(
    }
 
    FloatScore * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
-   Transpose<true>(pTerm, GetCountScores(pBoosterCore->GetCountClasses()), updateScoresTensorOut, aUpdateScores);
+   Transpose<true>(pTerm, pBoosterCore->GetCountScores(), updateScoresTensorOut, aUpdateScores);
 
    return Error_None;
 }
@@ -571,7 +571,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
       return Error_IllegalParamVal;
    }
 
-   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
+   if(size_t { 0 } == pBoosterCore->GetCountScores()) {
       pBoosterShell->SetTermIndex(iTerm);
       return Error_None;
    }
@@ -606,7 +606,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
    FloatScore * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
    // *updateScoresTensor is const, but Transpose can go either way.  When bCopyToIncrement is false like it
    // is below, then Transpose will treat updateScoresTensor as const
-   Transpose<false>(pTerm, GetCountScores(pBoosterCore->GetCountClasses()), const_cast<double *>(updateScoresTensor), aUpdateScores);
+   Transpose<false>(pTerm, pBoosterCore->GetCountScores(), const_cast<double *>(updateScoresTensor), aUpdateScores);
 
    pBoosterShell->SetTermIndex(iTerm);
 

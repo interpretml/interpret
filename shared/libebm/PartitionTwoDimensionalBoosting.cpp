@@ -200,7 +200,7 @@ public:
       auto * const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
       Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
-      const size_t cRuntimeScores = GetCountScores(pBoosterCore->GetCountClasses());
+      const size_t cRuntimeScores = pBoosterCore->GetCountScores();
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
       const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
@@ -810,7 +810,7 @@ public:
 #endif // NDEBUG
    ) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      if(cPossibleScores == GetCountScores(pBoosterCore->GetCountClasses())) {
+      if(cPossibleScores == pBoosterCore->GetCountScores()) {
          return PartitionTwoDimensionalBoostingInternal<bHessian, cPossibleScores>::Func(
             pBoosterShell,
             pTerm,
@@ -881,7 +881,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(
 #endif // NDEBUG
 ) {
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const size_t cRuntimeScores = GetCountScores(pBoosterCore->GetCountClasses());
+   const size_t cRuntimeScores = pBoosterCore->GetCountScores();
 
    EBM_ASSERT(1 <= cRuntimeScores);
    if(pBoosterCore->IsHessian()) {

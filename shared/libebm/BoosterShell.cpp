@@ -76,10 +76,8 @@ ErrorEbm BoosterShell::FillAllocations() {
 
    LOG_0(Trace_Info, "Entered BoosterShell::FillAllocations");
 
-   const ptrdiff_t cClasses = m_pBoosterCore->GetCountClasses();
-   if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
-      const size_t cScores = GetCountScores(cClasses);
-
+   const size_t cScores = m_pBoosterCore->GetCountScores();
+   if(size_t { 0 } != cScores) {
       m_pTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
       if(nullptr == m_pTermUpdate) {
          goto failed_allocation;
@@ -104,7 +102,7 @@ ErrorEbm BoosterShell::FillAllocations() {
          }
       }
 
-      if(IsMulticlass(cClasses)) {
+      if(size_t { 1 } != cScores) {
          size_t cBytesMulticlassMidwayMax = 0;
          if(0 != GetBoosterCore()->GetTrainingSet()->GetCountSamples()) {
             DataSubsetBoosting * pSubset = GetBoosterCore()->GetTrainingSet()->GetSubsets();
@@ -229,7 +227,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
 
    if(0 != (static_cast<UCreateBoosterFlags>(flags) & static_cast<UCreateBoosterFlags>(~(
       static_cast<UCreateBoosterFlags>(CreateBoosterFlags_DifferentialPrivacy) | 
-      static_cast<UCreateBoosterFlags>(CreateBoosterFlags_DisableApprox)
+      static_cast<UCreateBoosterFlags>(CreateBoosterFlags_DisableApprox) |
+      static_cast<UCreateBoosterFlags>(CreateBoosterFlags_BinaryAsMulticlass)
    )))) {
       LOG_0(Trace_Error, "ERROR CreateBooster flags contains unknown flags. Ignoring extras.");
    }
@@ -297,7 +296,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       return error;
    }
 
-   if(ptrdiff_t { 0 } != pBoosterCore->GetCountClasses() && ptrdiff_t { 1 } != pBoosterCore->GetCountClasses()) {
+   if(size_t { 0 } != pBoosterCore->GetCountScores()) {
       if(!pBoosterCore->IsRmse()) {
          error = pBoosterCore->InitializeBoosterGradientsAndHessians(
             pBoosterShell->GetMulticlassMidwayTemp(),
@@ -418,7 +417,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
       return Error_IllegalParamVal;
    }
 
-   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
+   if(size_t { 0 } == pBoosterCore->GetCountScores()) {
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
@@ -456,7 +455,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
    FloatScore * const aTermScores = pTensor->GetTensorScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
-   Transpose<true>(pTerm, GetCountScores(pBoosterCore->GetCountClasses()), termScoresTensorOut, aTermScores);
+   Transpose<true>(pTerm, pBoosterCore->GetCountScores(), termScoresTensorOut, aTermScores);
 
    LOG_0(Trace_Info, "Exited GetBestTermScores");
    return Error_None;
@@ -498,7 +497,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
       return Error_IllegalParamVal;
    }
 
-   if(ptrdiff_t { 0 } == pBoosterCore->GetCountClasses() || ptrdiff_t { 1 } == pBoosterCore->GetCountClasses()) {
+   if(size_t { 0 } == pBoosterCore->GetCountScores()) {
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
@@ -536,7 +535,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
    FloatScore * const aTermScores = pTensor->GetTensorScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
-   Transpose<true>(pTerm, GetCountScores(pBoosterCore->GetCountClasses()), termScoresTensorOut, aTermScores);
+   Transpose<true>(pTerm, pBoosterCore->GetCountScores(), termScoresTensorOut, aTermScores);
 
    LOG_0(Trace_Info, "Exited GetCurrentTermScores");
    return Error_None;

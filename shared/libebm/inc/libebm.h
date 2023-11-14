@@ -16,8 +16,6 @@ extern "C" {
 #define STATIC_CAST(type, val)  ((type)(val))
 #endif // __cplusplus
 
-//#define EXPAND_BINARY_LOGITS
-
 #if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
 
 #define EBM_API_INCLUDE extern
@@ -198,6 +196,7 @@ typedef struct _InteractionHandle {
 #define CreateBoosterFlags_Default                 (CREATE_BOOSTER_FLAGS_CAST(0x00000000))
 #define CreateBoosterFlags_DifferentialPrivacy     (CREATE_BOOSTER_FLAGS_CAST(0x00000001))
 #define CreateBoosterFlags_DisableApprox           (CREATE_BOOSTER_FLAGS_CAST(0x00000002))
+#define CreateBoosterFlags_BinaryAsMulticlass      (CREATE_BOOSTER_FLAGS_CAST(0x00000004))
 
 #define TermBoostFlags_Default                     (TERM_BOOST_FLAGS_CAST(0x00000000))
 #define TermBoostFlags_DisableNewtonGain           (TERM_BOOST_FLAGS_CAST(0x00000001))
@@ -208,6 +207,7 @@ typedef struct _InteractionHandle {
 #define CreateInteractionFlags_Default             (CREATE_INTERACTION_FLAGS_CAST(0x00000000))
 #define CreateInteractionFlags_DifferentialPrivacy (CREATE_INTERACTION_FLAGS_CAST(0x00000001))
 #define CreateInteractionFlags_DisableApprox       (CREATE_INTERACTION_FLAGS_CAST(0x00000002))
+#define CreateInteractionFlags_BinaryAsMulticlass  (CREATE_INTERACTION_FLAGS_CAST(0x00000004))
 
 #define CalcInteractionFlags_Default               (CALC_INTERACTION_FLAGS_CAST(0x00000000))
 #define CalcInteractionFlags_Pure                  (CALC_INTERACTION_FLAGS_CAST(0x00000001))

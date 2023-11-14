@@ -51,7 +51,7 @@ public:
       auto * const aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
 #endif // NDEBUG
 
-      const size_t cScores = GET_COUNT_SCORES(cCompilerScores, GetCountScores(pInteractionCore->GetCountClasses()));
+      const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pInteractionCore->GetCountScores());
       const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
       const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
@@ -390,7 +390,7 @@ public:
       , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      if(cPossibleScores == GetCountScores(pInteractionCore->GetCountClasses())) {
+      if(cPossibleScores == pInteractionCore->GetCountScores()) {
          return PartitionTwoDimensionalInteractionInternal<bHessian, cPossibleScores>::Func(
             pInteractionCore,
             cRealDimensions,
@@ -470,7 +470,7 @@ extern double PartitionTwoDimensionalInteraction(
    , const BinBase * const pBinsEndDebug
 #endif // NDEBUG
 ) {
-   const size_t cRuntimeScores = GetCountScores(pInteractionCore->GetCountClasses());
+   const size_t cRuntimeScores = pInteractionCore->GetCountScores();
 
    EBM_ASSERT(1 <= cRuntimeScores);
    if(pInteractionCore->IsHessian()) {

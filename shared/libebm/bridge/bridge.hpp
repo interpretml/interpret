@@ -35,30 +35,6 @@ inline constexpr static bool IsRegression(const ptrdiff_t cClasses) noexcept {
 inline constexpr static bool IsClassification(const ptrdiff_t cClasses) noexcept {
    return ptrdiff_t { OutputType_GeneralClassification } <= cClasses;
 }
-inline constexpr static bool IsBinaryClassification(const ptrdiff_t cClasses) noexcept {
-#ifdef EXPAND_BINARY_LOGITS
-   return UNUSED(cClasses), false;
-#else // EXPAND_BINARY_LOGITS
-   return ptrdiff_t { OutputType_BinaryClassification } == cClasses;
-#endif // EXPAND_BINARY_LOGITS
-}
-inline constexpr static bool IsMulticlass(const ptrdiff_t cClasses) noexcept {
-#ifdef EXPAND_BINARY_LOGITS
-   return ptrdiff_t { OutputType_GeneralClassification } <= cClasses;
-#else // EXPAND_BINARY_LOGITS
-   return ptrdiff_t { OutputType_BinaryClassification } < cClasses;
-#endif // EXPAND_BINARY_LOGITS
-}
-
-inline constexpr static size_t GetCountScores(const ptrdiff_t cClasses) noexcept {
-   // this will work for anything except if cClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the 
-   // dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
-#ifdef EXPAND_BINARY_LOGITS
-   return cClasses < ptrdiff_t { OutputType_BinaryClassification } ? size_t { 1 } : static_cast<size_t>(cClasses);
-#else // EXPAND_BINARY_LOGITS
-   return cClasses <= ptrdiff_t { OutputType_BinaryClassification } ? size_t { 1 } : static_cast<size_t>(cClasses);
-#endif // EXPAND_BINARY_LOGITS
-}
 
 static constexpr size_t k_oneScore = 1;
 static constexpr size_t k_dynamicScores = 0;
