@@ -37,6 +37,8 @@ chapters:
     - file: DPExplainableBoostingRegressor
   - file: interpret-utils
     sections:
+    - file: link_func
+    - file: inv_link
     - file: measure_interactions
   - file: interpret-develop
     sections:

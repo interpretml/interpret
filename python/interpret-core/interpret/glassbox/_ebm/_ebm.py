@@ -1566,13 +1566,16 @@ class EBMModel(BaseEstimator):
         )
 
     def predict_terms(self, X):
-        """Predicts on provided samples, returning explanations for each sample.
+        """The term scores returned will be identical to the local explanation values 
+           obtained by calling ebm.explain_local(X). Calling
+           interpret.utils.inv_link(ebm.predict_terms(X).sum(axis=1) + ebm.intercept\_, ebm.link\_)
+           is equivalent to calling ebm.predict(X) for regression or ebm.predict_proba(X) for classification.
 
         Args:
             X: Numpy array for samples.
 
         Returns:
-            local explanations for each sample.
+            local explanation scores for each term of each sample.
         """
 
         check_is_fitted(self, "has_fitted_")
