@@ -89,7 +89,7 @@ def measure_interactions(
     is_classification = None
     native = Native.get_native_singleton()
     if objective is not None:
-        if objective.isspace():
+        if len(objective.strip()) == 0:
             objective = None
         else:
             link, link_param = native.determine_link(is_differential_privacy, objective)

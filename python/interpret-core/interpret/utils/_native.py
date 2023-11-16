@@ -577,7 +577,7 @@ class Native:
         return bag
 
     def determine_link(self, is_private, objective):
-        if objective is None or objective.isspace():
+        if objective is None or len(objective.strip()) == 0:
             msg = "objective must be specified"
             _log.error(msg)
             raise Exception(msg)
@@ -604,7 +604,7 @@ class Native:
         return (link_str.decode("ascii"), link_param.value)
 
     def get_output_type(self, link):
-        if link is None or link.isspace():
+        if link is None or len(link.strip()) == 0:
             msg = "link must be set to a value"
             _log.error(msg)
             raise Exception(msg)
@@ -1265,7 +1265,7 @@ class Booster(AbstractContextManager):
     def __enter__(self):
         _log.info("Booster allocation start")
 
-        if self.objective is None or self.objective.isspace():
+        if self.objective is None or len(self.objective.strip()) == 0:
             msg = "objective must be specified"
             _log.error(msg)
             raise Exception(msg)
@@ -1629,7 +1629,7 @@ class InteractionDetector(AbstractContextManager):
     def __enter__(self):
         _log.info("Allocation interaction start")
 
-        if self.objective is None or self.objective.isspace():
+        if self.objective is None or len(self.objective.strip()) == 0:
             msg = "objective must be specified"
             _log.error(msg)
             raise Exception(msg)

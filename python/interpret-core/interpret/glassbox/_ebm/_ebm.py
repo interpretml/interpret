@@ -533,14 +533,14 @@ class EBMModel(BaseEstimator):
             # in two separate runs, which would flip the ordering of the classes within our score tensors.
             classes, y = np.unique(y, return_inverse=True)
             n_classes = len(classes)
-            if objective is None or objective.isspace():
+            if objective is None or len(objective.strip()) == 0:
                 objective = "log_loss"
         else:
             y = y.astype(np.float64, copy=False)
             min_target = y.min()
             max_target = y.max()
             n_classes = -1
-            if objective is None or objective.isspace():
+            if objective is None or len(objective.strip()) == 0:
                 objective = "rmse"
 
         if sample_weight is not None:
