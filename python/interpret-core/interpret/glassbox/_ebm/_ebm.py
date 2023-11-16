@@ -40,7 +40,7 @@ from ...utils._compressed_dataset import bin_native_by_dimension
 from ._bin import (
     eval_terms,
     ebm_decision_function,
-    ebm_decision_function_and_explain,
+    ebm_predict_terms,
     make_bin_weights,
 )
 from ._tensor import remove_last, trim_tensor
@@ -1571,6 +1571,33 @@ class EBMModel(BaseEstimator):
             init_score,
         )
 
+    def predict_terms(self, X):
+        """Predicts on provided samples, returning explanations for each sample.
+
+        Args:
+            X: Numpy array for samples.
+
+        Returns:
+            local explanations for each sample.
+        """
+
+        check_is_fitted(self, "has_fitted_")
+
+        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
+
+        explanations = ebm_predict_terms(
+            X,
+            n_samples,
+            len(self.classes_) if is_classifier(self) else -1,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.term_scores_,
+            self.term_features_,
+        )
+
+        return explanations
+
     def explain_global(self, name=None):
         """Provides global explanation for model.
 
@@ -2620,7 +2647,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         )
 
         if log_odds.ndim == 1:
-            # binary classification
+            # binary classification.  scikit-learn uses greater than semantics,
+            # so log_odds <= 0 means class_0, and 0 < log_odds means class_1
             return self.classes_[(0 < log_odds).astype(np.int8)]
         elif log_odds.shape[1] == 0:
             # mono classification
@@ -2628,66 +2656,6 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         else:
             # multiclass
             return self.classes_[np.argmax(log_odds, axis=1)]
-
-    def predict_and_contrib(self, X, output="probabilities", init_score=None):
-        """Predicts on provided samples, returning predictions and explanations for each sample.
-
-        Args:
-            X: Numpy array for samples.
-            output: Prediction type to output (i.e. one of 'probabilities', 'labels', 'logits')
-            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
-                If samples scores it should be the same length as X.
-
-        Returns:
-            Predictions and local explanations for each sample.
-        """
-
-        check_is_fitted(self, "has_fitted_")
-
-        if init_score is None:
-            X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-        else:
-            init_score, X, n_samples = clean_init_score_and_X(
-                self.link_,
-                self.link_param_,
-                init_score,
-                X,
-                self.feature_names_in_,
-                self.feature_types_in_,
-            )
-
-        scores, explanations = ebm_decision_function_and_explain(
-            X,
-            n_samples,
-            self.feature_names_in_,
-            self.feature_types_in_,
-            self.bins_,
-            self.intercept_,
-            self.term_scores_,
-            self.term_features_,
-            init_score,
-        )
-
-        if output == "probabilities":
-            result = inv_link(scores, self.link_, self.link_param_)
-        elif output == "labels":
-            if scores.ndim == 1:
-                # binary classification
-                result = self.classes_[(0 < scores).astype(np.int8)]
-            elif scores.shape[1] == 0:
-                # mono classification
-                result = np.full(len(scores), self.classes_[0], self.classes_.dtype)
-            else:
-                # multiclass
-                result = self.classes_[np.argmax(scores, axis=1)]
-        elif output == "logits":
-            result = scores
-        else:
-            msg = f"Argument 'output' has invalid value. Got '{output}', expected 'probabilities', 'labels', or 'logits'"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        return result, explanations
 
 
 class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
@@ -2946,45 +2914,6 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             init_score,
         )
         return inv_link(scores, self.link_, self.link_param_)
-
-    def predict_and_contrib(self, X, init_score=None):
-        """Predicts on provided samples, returning predictions and explanations for each sample.
-
-        Args:
-            X: Numpy array for samples.
-            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
-                If samples scores it should be the same length as X.
-
-        Returns:
-            Predictions and local explanations for each sample.
-        """
-
-        check_is_fitted(self, "has_fitted_")
-
-        if init_score is None:
-            X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-        else:
-            init_score, X, n_samples = clean_init_score_and_X(
-                self.link_,
-                self.link_param_,
-                init_score,
-                X,
-                self.feature_names_in_,
-                self.feature_types_in_,
-            )
-
-        scores, explanations = ebm_decision_function_and_explain(
-            X,
-            n_samples,
-            self.feature_names_in_,
-            self.feature_types_in_,
-            self.bins_,
-            self.intercept_,
-            self.term_scores_,
-            self.term_features_,
-            init_score,
-        )
-        return inv_link(scores, self.link_, self.link_param_), explanations
 
 
 class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
@@ -3259,7 +3188,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         )
 
         if log_odds.ndim == 1:
-            # binary classification
+            # binary classification.  scikit-learn uses greater than semantics,
+            # so log_odds <= 0 means class_0, and 0 < log_odds means class_1
             return self.classes_[(0 < log_odds).astype(np.int8)]
         elif log_odds.shape[1] == 0:
             # mono classification

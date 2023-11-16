@@ -27,7 +27,7 @@ def compute_group_importance(term_list, ebm, X, contributions=None):
     check_is_fitted(ebm, "has_fitted_")
 
     if contributions is None:
-        _, contributions = ebm.predict_and_contrib(X)
+        contributions = ebm.predict_terms(X)
     ebm_term_names = ebm.term_names_
     term_group_indices = []
 
@@ -166,7 +166,7 @@ def get_group_and_individual_importances(term_groups_list, ebm, X, contributions
         raise ValueError("term_groups_list should be a non-empty list.")
 
     if contributions is None:
-        _, contributions = ebm.predict_and_contrib(X)
+        contributions = ebm.predict_terms(X)
 
     dict = {}
 
@@ -206,7 +206,7 @@ def get_individual_importances(ebm, X, contributions=None):
        a dict where each entry is in the form 'term_name: term_importance'
     """
     if contributions is None:
-        _, contributions = ebm.predict_and_contrib(X)
+        contributions = ebm.predict_terms(X)
 
     dict = {}
     for term in ebm.term_names_:
@@ -236,7 +236,7 @@ def get_importance_per_top_groups(ebm, X):
     Returns:
        a pandas Dataframe with three columns: group_names, terms_per_group and importances
     """
-    _, contributions = ebm.predict_and_contrib(X)
+    contributions = ebm.predict_terms(X)
     individual_importances = get_individual_importances(ebm, X, contributions)
 
     # Create groups of terms starting with the most important and adding each subsequent term

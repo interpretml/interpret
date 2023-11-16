@@ -21,6 +21,7 @@ from interpret.privacy import (
     DPExplainableBoostingClassifier,
     DPExplainableBoostingRegressor,
 )
+from interpret.utils import inv_link
 
 from io import StringIO
 import json
@@ -414,21 +415,11 @@ def test_ebm_synthetic_singleclass_classification():
     assert scores.shape[0] == len(y)
     assert scores.shape[1] == 0
 
-    prob_scores, explanations = clf.predict_and_contrib(X, output="probabilities")
-    assert prob_scores.ndim == 2
-    assert prob_scores.shape[0] == len(y)
-    assert prob_scores.shape[1] == 1
-    assert (prob_scores == 1.0).all()
-
-    scores, explanations = clf.predict_and_contrib(X, output="logits")
-    assert scores.ndim == 2
-    assert scores.shape[0] == len(y)
-    assert scores.shape[1] == 0
-
-    predicts, explanations = clf.predict_and_contrib(X, output="labels")
-    assert predicts.ndim == 1
-    assert predicts.shape[0] == len(y)
-    assert not predicts.any()
+    explanations = clf.predict_terms(X)
+    assert explanations.ndim == 3
+    assert explanations.shape[0] == len(y)
+    assert explanations.shape[1] == len(clf.term_features_)
+    assert explanations.shape[2] == 0
 
 
 @pytest.mark.visual
@@ -542,87 +533,56 @@ def test_ebm_adult():
     smoke_test_explanations(global_exp, local_exp, 6000)
 
 
-def test_ebm_predict_and_contrib_proba():
-    data = adult_classification()
-    X_tr = data["train"]["X"]
-    y_tr = data["train"]["y"]
-    X_te = data["test"]["X"]
-
-    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=3)
-    clf.fit(X_tr, y_tr)
-
-    probabilities_orig = clf.predict_proba(X_te)
-    probabilities, explanations = clf.predict_and_contrib(X_te, output="probabilities")
-
-    assert np.allclose(probabilities_orig, probabilities)
-
-    # TODO: Make a better test to ensure explanations are correct
-    explanations_sum_orig = clf.decision_function(X_te)
-    explanations_sum = np.sum(explanations, axis=1)
-    explanations_sum += clf.intercept_
-
-    assert np.allclose(explanations_sum_orig, explanations_sum)
-
-
-def test_ebm_predict_and_contrib_logits():
-    data = adult_classification()
-    X_tr = data["train"]["X"]
-    y_tr = data["train"]["y"]
-    X_te = data["test"]["X"]
-
-    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=3)
-    clf.fit(X_tr, y_tr)
-
-    logits_orig = clf.decision_function(X_te)
-    logits, explanations = clf.predict_and_contrib(X_te, output="logits")
-
-    assert np.allclose(logits_orig, logits)
-
-    # TODO: Make a better test to ensure explanations are correct
-    explanations_sum = np.sum(explanations, axis=1)
-    explanations_sum += clf.intercept_
-
-    assert np.allclose(logits_orig, explanations_sum)
-
-
-def test_ebm_predict_and_contrib_labels():
-    data = adult_classification()
-    X_tr = data["train"]["X"]
-    y_tr = data["train"]["y"]
-    X_te = data["test"]["X"]
-
-    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=3)
-    clf.fit(X_tr, y_tr)
-
-    labels_orig = clf.predict(X_te)
-    labels, explanations = clf.predict_and_contrib(X_te, "labels")
-
-    assert np.array_equal(labels_orig, labels)
-
-    # TODO: Make a better test to ensure explanations are correct
-    explanations_sum_orig = clf.decision_function(X_te)
-    explanations_sum = np.sum(explanations, axis=1)
-    explanations_sum += clf.intercept_
-
-    assert np.allclose(explanations_sum_orig, explanations_sum)
-
-
-def test_ebm_predict_and_contrib_regression():
+def test_ebm_predict_terms_regression():
     data = synthetic_regression()
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
+    clf = ExplainableBoostingRegressor()
     clf.fit(X, y)
 
-    predictions_orig = clf.predict(X)
-    predictions, explanations = clf.predict_and_contrib(X)
+    explanations = clf.predict_terms(X)
 
-    assert np.allclose(predictions_orig, predictions)
+    scores = explanations.sum(axis=1) + clf.intercept_
+    assert np.allclose(clf.predict(X), scores)
 
-    explanations_sum = np.sum(explanations, axis=1)
-    explanations_sum += clf.intercept_
-    assert np.allclose(predictions_orig, explanations_sum)
+    # for RMSE with identity link, the scores are the predictions
+    predictions = inv_link(scores, clf.link_, clf.link_param_)
+    assert np.allclose(clf.predict(X), predictions)
+
+
+def test_ebm_predict_terms_binary():
+    data = synthetic_classification()
+    X = data["train"]["X"]
+    y = data["train"]["y"]
+
+    clf = ExplainableBoostingClassifier()
+    clf.fit(X, y)
+
+    explanations = clf.predict_terms(X)
+
+    scores = explanations.sum(axis=1) + clf.intercept_
+    assert np.allclose(clf.decision_function(X), scores)
+
+    probabilities = inv_link(scores, clf.link_, clf.link_param_)
+    assert np.allclose(clf.predict_proba(X), probabilities)
+
+
+def test_ebm_predict_terms_multiclass():
+    data = synthetic_multiclass()
+    X = data["train"]["X"]
+    y = data["train"]["y"]
+
+    clf = ExplainableBoostingClassifier()
+    clf.fit(X, y)
+
+    explanations = clf.predict_terms(X)
+
+    scores = explanations.sum(axis=1) + clf.intercept_
+    assert np.allclose(clf.decision_function(X), scores)
+
+    probabilities = inv_link(scores, clf.link_, clf.link_param_)
+    assert np.allclose(clf.predict_proba(X), probabilities)
 
 
 def test_ebm_sample_weight():

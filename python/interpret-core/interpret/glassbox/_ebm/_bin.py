@@ -158,41 +158,31 @@ def ebm_decision_function(
     return sample_scores
 
 
-def ebm_decision_function_and_explain(
+def ebm_predict_terms(
     X,
     n_samples,
+    n_classes,
     feature_names_in,
     feature_types_in,
     bins,
-    intercept,
     term_scores,
     term_features,
-    init_score=None,
 ):
-    if type(intercept) is float or len(intercept) == 1:
-        sample_scores = np.full(n_samples, intercept, dtype=np.float64)
-        explanations = np.empty((n_samples, len(term_features)), dtype=np.float64)
+    n_scores = Native.get_count_scores_c(n_classes)
+
+    if n_scores == 1:
+        shape = (n_samples, len(term_features))
     else:
-        # TODO: add a test for multiclass calls to ebm_decision_function_and_explain
-        sample_scores = np.full(
-            (n_samples, len(intercept)), intercept, dtype=np.float64
-        )
-        explanations = np.empty(
-            (n_samples, len(term_features), len(intercept)), dtype=np.float64
-        )
+        shape = (n_samples, len(term_features), n_scores)
+    explanations = np.empty(shape, dtype=np.float64)
 
     if 0 < n_samples:
         for term_idx, bin_indexes in eval_terms(
             X, n_samples, feature_names_in, feature_types_in, bins, term_features
         ):
-            scores = term_scores[term_idx][tuple(bin_indexes)]
-            sample_scores += scores
-            explanations[:, term_idx] = scores
+            explanations[:, term_idx] = term_scores[term_idx][tuple(bin_indexes)]
 
-    if init_score is not None:
-        sample_scores += init_score
-
-    return sample_scores, explanations
+    return explanations
 
 
 def make_bin_weights(
