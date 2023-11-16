@@ -12,7 +12,10 @@ def test_random_port():
     app_runner = AppRunner()
 
     app_runner.start()
-    sleep(10)
-    is_alive = app_runner.ping()
+    for _ in range(10):
+        sleep(10)
+        is_alive = app_runner.ping()
+        if is_alive:
+            break
     assert is_alive
     app_runner.stop()

@@ -6,7 +6,6 @@ import re
 import requests
 import threading
 import os
-import time
 from . import _udash
 
 from gevent.pywsgi import WSGIServer
@@ -144,17 +143,15 @@ class AppRunner:
     def ping(self):
         """Returns true if web service reachable, otherwise False."""
 
-        for _ in range(10):
-            try:
-                path = _build_path("")
-                url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
-                requests.get(url)
-                _log.info("Dashboard ping succeeded")
-                return True
-            except requests.exceptions.RequestException as e:  # pragma: no cover
-                _log.info("Dashboard ping failed: {0}".format(e))
-                time.sleep(10)
-        return False
+        try:
+            path = _build_path("")
+            url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
+            requests.get(url)
+            _log.info("Dashboard ping succeeded")
+            return True
+        except requests.exceptions.RequestException as e:  # pragma: no cover
+            _log.info("Dashboard ping failed: {0}".format(e))
+            return False
 
     def status(self):
         status_dict = {}

@@ -999,9 +999,7 @@ class EBMModel(BaseEstimator):
                     )
                     for rank, indices in enumerate(interaction_indices):
                         old_mean = pair_ranks.get(indices, 0)
-                        pair_ranks[indices] = old_mean + (
-                            (rank - old_mean) / (n + 1)
-                        )
+                        pair_ranks[indices] = old_mean + ((rank - old_mean) / (n + 1))
 
                 final_ranks = []
                 total_interactions = 0
@@ -1025,10 +1023,7 @@ class EBMModel(BaseEstimator):
 
                     max_dimensions = max(max_dimensions, len(feature_idxs))
                     sorted_tuple = tuple(sorted(feature_idxs))
-                    if (
-                        sorted_tuple not in uniquifier
-                        and sorted_tuple not in exclude
-                    ):
+                    if sorted_tuple not in uniquifier and sorted_tuple not in exclude:
                         uniquifier.add(sorted_tuple)
                         boost_groups.append(feature_idxs)
 

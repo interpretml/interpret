@@ -1290,7 +1290,9 @@ class Booster(AbstractContextManager):
             raise ValueError("n_targets must be 1")
 
         class_counts = native.extract_target_classes(self.dataset, n_targets)
-        n_class_scores = sum(Native.get_count_scores_c(n_classes) for n_classes in class_counts)
+        n_class_scores = sum(
+            Native.get_count_scores_c(n_classes) for n_classes in class_counts
+        )
 
         bin_counts = native.extract_bin_counts(self.dataset, n_features)
         self._term_shapes = []
@@ -1317,10 +1319,14 @@ class Booster(AbstractContextManager):
 
             if n_class_scores == 1:
                 if self.init_scores.ndim != 1:  # pragma: no cover
-                    raise ValueError(f"init_scores should have ndim == 1 for regression or binary classification")
+                    raise ValueError(
+                        f"init_scores should have ndim == 1 for regression or binary classification"
+                    )
             else:
                 if self.init_scores.ndim != 2:  # pragma: no cover
-                    raise ValueError(f"init_scores should have ndim == 2 for multiclass")
+                    raise ValueError(
+                        f"init_scores should have ndim == 2 for multiclass"
+                    )
                 if self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
                     raise ValueError(f"init_scores should have {n_class_scores} scores")
 
@@ -1641,7 +1647,9 @@ class InteractionDetector(AbstractContextManager):
             raise ValueError("n_targets must be 1")
 
         class_counts = native.extract_target_classes(self.dataset, n_targets)
-        n_class_scores = sum(Native.get_count_scores_c(n_classes) for n_classes in class_counts)
+        n_class_scores = sum(
+            Native.get_count_scores_c(n_classes) for n_classes in class_counts
+        )
 
         n_bagged_samples = n_samples
         if self.bag is not None:
@@ -1657,10 +1665,14 @@ class InteractionDetector(AbstractContextManager):
 
             if n_class_scores == 1:
                 if self.init_scores.ndim != 1:  # pragma: no cover
-                    raise ValueError(f"init_scores should have ndim == 1 for regression or binary classification")
+                    raise ValueError(
+                        f"init_scores should have ndim == 1 for regression or binary classification"
+                    )
             else:
                 if self.init_scores.ndim != 2:  # pragma: no cover
-                    raise ValueError(f"init_scores should have ndim == 2 for multiclass")
+                    raise ValueError(
+                        f"init_scores should have ndim == 2 for multiclass"
+                    )
                 if self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
                     raise ValueError(f"init_scores should have {n_class_scores} scores")
 

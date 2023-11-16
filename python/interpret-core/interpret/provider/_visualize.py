@@ -83,6 +83,8 @@ class PreserveProvider(VisualizeProvider):
         visual = explanation.visualize(key=key)
 
         # Output to front-end/file
+
+        # TODO: stop this call from writing to stdout or stderr
         self._preserve_output(
             explanation.name, visual, selector_key=key, file_name=file_name, **kwargs
         )

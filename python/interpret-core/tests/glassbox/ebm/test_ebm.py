@@ -925,9 +925,10 @@ def test_scikit_learn_compatibility():
             try:
                 check_func(estimator)
             except BaseException as e:
-                print(fullname)
-                print(f"{type(e).__name__}: {e}")
-                print()
+                # print(fullname)
+                # print(f"{type(e).__name__}: {e}")
+                # print()
+                pass
 
     for estimator, check_func in check_estimator(
         ExplainableBoostingRegressor(), generate_only=True
@@ -940,9 +941,10 @@ def test_scikit_learn_compatibility():
             try:
                 check_func(estimator)
             except BaseException as e:
-                print(fullname)
-                print(f"{type(e).__name__}: {e}")
-                print()
+                # print(fullname)
+                # print(f"{type(e).__name__}: {e}")
+                # print()
+                pass
 
     for estimator, check_func in check_estimator(
         DPExplainableBoostingClassifier(), generate_only=True
@@ -955,9 +957,10 @@ def test_scikit_learn_compatibility():
             try:
                 check_func(estimator)
             except BaseException as e:
-                print(fullname)
-                print(f"{type(e).__name__}: {e}")
-                print()
+                # print(fullname)
+                # print(f"{type(e).__name__}: {e}")
+                # print()
+                pass
 
     for estimator, check_func in check_estimator(
         DPExplainableBoostingRegressor(), generate_only=True
@@ -970,9 +973,10 @@ def test_scikit_learn_compatibility():
             try:
                 check_func(estimator)
             except BaseException as e:
-                print(fullname)
-                print(f"{type(e).__name__}: {e}")
-                print()
+                # print(fullname)
+                # print(f"{type(e).__name__}: {e}")
+                # print()
+                pass
 
 
 def test_json_classification():
@@ -1200,5 +1204,3 @@ def test_ebm_scale():
     assert len(clf.bagged_scores_) == 2
     assert len(clf.standard_deviations_) == 2
     assert len(clf.bin_weights_) == 2
-
-
