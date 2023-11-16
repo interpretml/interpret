@@ -12,9 +12,6 @@ def print_debug_info(file=None):
 
     Args:
         file: File to print to (default goes to sys.stdout).
-
-    Returns:
-        None
     """
     import json
 
@@ -23,7 +20,6 @@ def print_debug_info(file=None):
         file = sys.stdout
 
     print(json.dumps(debug_dict, indent=2), file=file)
-    return None
 
 
 def debug_info():

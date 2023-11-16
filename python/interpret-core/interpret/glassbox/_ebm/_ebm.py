@@ -1428,8 +1428,8 @@ class EBMModel(BaseEstimator):
 
         return j
 
-    def _to_json_outer(self, detail="all"):
-        """Converts the outer model to a JSONable representation.
+    def to_jsonable(self, detail="all"):
+        """Converts the model to a JSONable representation.
 
         Args:
             detail: 'minimal', 'interpretable', 'mergeable', 'all'
@@ -1437,6 +1437,10 @@ class EBMModel(BaseEstimator):
         Returns:
             JSONable object
         """
+
+        warn(
+            "JSON formats are in beta. The JSON format may change in a future version without compatibility between releases."
+        )
 
         # NOTES: When recording edits to the EBM within a single file, we should:
         #        1) Have the final EBM section first.  This allows people to diff two models and the diffs for
@@ -1493,41 +1497,31 @@ class EBMModel(BaseEstimator):
 
         return outer
 
-    def to_json(self, file=None, indent=2, detail="all"):
-        """Exports the model to a JSON representation.
+    def to_json(self, file, detail="all", indent=2):
+        """Exports the model to a JSON text file.
 
         Args:
-            file: None to return a JSONable object, a path-like object (str or os.PathLike)
-                to write a file, or a file-like object implementing .write().
+            file: a path-like object (str or os.PathLike),
+                or a file-like object implementing .write().
+            detail: 'minimal', 'interpretable', 'mergeable', 'all'
             indent: If indent is a non-negative integer or string, then JSON array
                 elements and object members will be pretty-printed with that indent
                 level. An indent level of 0, negative, or "" will only insert newlines.
                 None (the default) selects the most compact representation. Using a
                 positive integer indent indents that many spaces per level. If indent
                 is a string (such as "\t"), that string is used to indent each level.
-            detail: 'minimal', 'interpretable', 'mergeable', 'all'
-
-        Returns:
-            JSONable object if file=None, otherwise returns None.
         """
 
         check_is_fitted(self, "has_fitted_")
 
-        warn(
-            "The function to_json is in beta. The JSON format may change in a future version."
-        )
-
-        if file is None:
-            # return JSONable object
-            return self._to_json_outer(detail)
-        elif isinstance(file, (str, os.PathLike)):
+        if isinstance(file, (str, os.PathLike)):
             # file is a path-like object (str or os.PathLike)
             with open(file, "w") as fp:
-                outer = self._to_json_outer(detail)
+                outer = self.to_jsonable(detail)
                 json.dump(outer, fp, allow_nan=False, indent=indent)
         else:
             # file is a file-like object implementing .write()
-            outer = self._to_json_outer(detail)
+            outer = self.to_jsonable(detail)
             json.dump(outer, file, allow_nan=False, indent=indent)
 
     def decision_function(self, X, init_score=None):

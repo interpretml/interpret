@@ -43,8 +43,6 @@ def set_show_addr(addr):
 
     Args:
         addr: (ip, port) tuple as address to assign show method to.
-    Returns:
-        None.
     """
     addr = (addr[0], int(addr[1]))
     init_show_server(addr)
@@ -102,9 +100,6 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
         addr: (ip, port) tuple as address to assign show method to.
         base_url: Base url path as string. Used mostly when server is running behind a proxy.
         use_relative_links: Use relative links for what's returned to client. Otherwise have absolute links.
-
-    Returns:
-        None.
     """
 
     # If the user uses old methods such as init_show_server, we do an immediate override to the visualization provider.
@@ -130,8 +125,6 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
     )
     _log.info("Running dash provider at {}".format(addr))
 
-    return None
-
 
 def _get_integer_key(key, explanation):
     if key is not None and not isinstance(key, int):
@@ -152,9 +145,6 @@ def show(explanation, key=-1, **kwargs):
         explanation: Either a scalar Explanation or list of Explanations to render as visualization.
         key: Specific index of explanation to visualize.
         **kwargs: Kwargs passed down to provider's render() call.
-
-    Returns:
-        None.
     """
 
     try:
@@ -170,8 +160,6 @@ def show(explanation, key=-1, **kwargs):
     except Exception as e:  # pragma: no cover
         _log.error(e, exc_info=True)
         raise e
-
-    return None
 
 
 def show_link(explanation, share_tables=None):
@@ -221,9 +209,6 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
         selector_key: If integer, treat as index for explanation. Otherwise, looks up value in first column, gets index.
         file_name: If assigned, will save the visualization to this filename.
         **kwargs: Kwargs which are passed to the underlying render/export call.
-
-    Returns:
-        None.
     """
     if _current_module._preserve_provider is None:
         _current_module._preserve_provider = PreserveProvider()

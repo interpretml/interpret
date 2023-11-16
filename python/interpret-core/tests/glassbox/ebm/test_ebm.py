@@ -986,7 +986,7 @@ def test_json_classification():
 
     clf.bin_weights_[0] = np.delete(clf.bin_weights_[0], 1)
 
-    clf.to_json(detail="all")
+    clf.to_jsonable(detail="all")
 
 
 def test_json_multiclass():
@@ -999,7 +999,7 @@ def test_json_multiclass():
         max_bins=10, feature_types=feature_types, interactions=0
     )
     clf.fit(X, y)
-    clf.to_json(detail="all")
+    clf.to_jsonable(detail="all")
 
 
 def test_json_regression():
@@ -1015,7 +1015,7 @@ def test_json_regression():
         interactions=[(1, 2), (2, 3)],
     )
     clf.fit(X, y)
-    clf.to_json(detail="all")
+    clf.to_jsonable(detail="all")
 
 
 def test_json_dp_classification():
@@ -1029,7 +1029,7 @@ def test_json_dp_classification():
     clf.term_scores_[0][0] = np.nan
     clf.term_scores_[0][1] = np.inf
     clf.term_scores_[0][2] = -np.inf
-    clf.to_json(detail="all")
+    clf.to_jsonable(detail="all")
 
 
 def test_json_dp_regression():
@@ -1040,7 +1040,7 @@ def test_json_dp_regression():
     feature_types[0] = "nominal"
     clf = DPExplainableBoostingRegressor(max_bins=5, feature_types=feature_types)
     clf.fit(X, y)
-    clf.to_json(detail="all")
+    clf.to_jsonable(detail="all")
 
 
 def test_to_json():
