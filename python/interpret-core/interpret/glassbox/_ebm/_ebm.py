@@ -1950,7 +1950,7 @@ class EBMModel(BaseEstimator):
                 self.term_features_,
                 init_score,
             )
-            pred = inv_link(self.link_, self.link_param_, pred)
+            pred = inv_link(pred, self.link_, self.link_param_)
 
             classes = self.classes_ if is_classifier(self) else None
 
@@ -2580,7 +2580,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             init_score,
         )
 
-        return inv_link(self.link_, self.link_param_, log_odds)
+        return inv_link(log_odds, self.link_, self.link_param_)
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
@@ -2669,7 +2669,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         )
 
         if output == "probabilities":
-            result = inv_link(self.link_, self.link_param_, scores)
+            result = inv_link(scores, self.link_, self.link_param_)
         elif output == "labels":
             if scores.ndim == 1:
                 # binary classification
@@ -2945,7 +2945,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.term_features_,
             init_score,
         )
-        return inv_link(self.link_, self.link_param_, scores)
+        return inv_link(scores, self.link_, self.link_param_)
 
     def predict_and_contrib(self, X, init_score=None):
         """Predicts on provided samples, returning predictions and explanations for each sample.
@@ -2984,7 +2984,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.term_features_,
             init_score,
         )
-        return inv_link(self.link_, self.link_param_, scores), explanations
+        return inv_link(scores, self.link_, self.link_param_), explanations
 
 
 class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
@@ -3219,7 +3219,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             self.term_features_,
             init_score,
         )
-        return inv_link(self.link_, self.link_param_, log_odds)
+        return inv_link(log_odds, self.link_, self.link_param_)
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
@@ -3516,4 +3516,4 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             init_score,
         )
 
-        return inv_link(self.link_, self.link_param_, scores)
+        return inv_link(scores, self.link_, self.link_param_)

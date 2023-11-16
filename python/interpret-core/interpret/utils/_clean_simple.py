@@ -6,7 +6,7 @@ import numpy.ma as ma
 from sklearn.base import is_classifier, is_regressor
 
 from ._clean_x import preclean_X
-from ._link import link
+from ._link import link_func
 
 import logging
 
@@ -268,7 +268,7 @@ def typify_classification(vec):
 
 
 def clean_init_score_and_X(
-    link_function,
+    link,
     link_param,
     init_score,
     X,
@@ -308,7 +308,7 @@ def clean_init_score_and_X(
                     # do not check if probs are all one in case there is floating point noise
                     return np.empty((n_samples, 0), np.float64), X, n_samples
             probs = probs.astype(np.float64, copy=False)
-            init_score = link(link_function, link_param, probs)
+            init_score = link_func(probs, link, link_param)
             return init_score, X, n_samples
         except AttributeError:
             init_score = clean_dimensions(init_score.decision_function(X), "init_score")
@@ -346,7 +346,7 @@ def clean_init_score_and_X(
             _log.error(msg)
             raise ValueError(msg)
         predictions = predictions.astype(np.float64, copy=False)
-        init_score = link(link_function, link_param, predictions)
+        init_score = link_func(predictions, link, link_param)
         return init_score, X, n_samples
 
     init_score = clean_dimensions(init_score, "init_score")
