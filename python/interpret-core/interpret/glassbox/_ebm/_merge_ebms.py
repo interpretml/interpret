@@ -663,7 +663,7 @@ def merge_ebms(models):
         bin_weight_percentages = bin_weight_percentages / bin_weight_percentages.sum()
 
         additive_shape = bin_weight_percentages.shape
-        if 2 < n_classes:
+        if 0 <= n_classes and n_classes != 2:
             additive_shape = tuple(list(additive_shape) + [n_classes])
 
         new_bin_weights = []

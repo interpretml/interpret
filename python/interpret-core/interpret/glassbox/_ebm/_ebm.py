@@ -806,37 +806,143 @@ class EBMModel(BaseEstimator):
             min_samples_leaf = self.min_samples_leaf
             interactions = self.interactions
 
-        if n_classes == 1:
-            warn(
-                "Only 1 class detected for classification. The model will predict 1.0 whenever predict_proba is called."
+        provider = JobLibProvider(n_jobs=self.n_jobs)
+
+        dataset = bin_native_by_dimension(
+            n_classes,
+            1,
+            bins,
+            X,
+            y,
+            sample_weight,
+            feature_names_in,
+            feature_types_in,
+        )
+
+        parallel_args = []
+        for idx in range(self.outer_bags):
+            early_stopping_rounds_local = early_stopping_rounds
+            bag = internal_bags[idx]
+            if bag is None or (0 <= bag).all():
+                # if there are no validation samples, turn off early stopping
+                # because the validation metric cannot improve each round
+                early_stopping_rounds_local = 0
+
+            init_score_local = init_score
+            if (
+                init_score_local is not None
+                and bag is not None
+                and np.count_nonzero(bag) != len(bag)
+            ):
+                # TODO: instead of making these copies we should
+                # put init_score into the native shared dataframe
+                init_score_local = init_score_local[bag != 0]
+
+            parallel_args.append(
+                (
+                    dataset,
+                    bag,
+                    init_score_local,
+                    term_features,
+                    inner_bags,
+                    term_boost_flags,
+                    self.learning_rate,
+                    min_samples_leaf,
+                    self.max_leaves,
+                    greediness,
+                    smoothing_rounds,
+                    self.max_rounds,
+                    early_stopping_rounds_local,
+                    early_stopping_tolerance,
+                    noise_scale_boosting,
+                    bin_data_weights,
+                    rngs[idx],
+                    Native.CreateBoosterFlags_DifferentialPrivacy
+                    if is_differential_privacy
+                    else Native.CreateBoosterFlags_Default,
+                    objective,
+                    None,
+                )
             )
 
-            breakpoint_iteration = [[]]
-            models = []
-            for idx in range(self.outer_bags):
-                breakpoint_iteration[-1].append(0)
-                tensors = []
-                for bin_levels in bins:
-                    feature_bins = bin_levels[0]
-                    if isinstance(feature_bins, dict):
-                        # categorical feature
-                        n_bins = (
-                            2
-                            if len(feature_bins) == 0
-                            else max(feature_bins.values()) + 2
-                        )
-                    else:
-                        # continuous feature
-                        n_bins = len(feature_bins) + 3
-                    tensor = np.full(n_bins, -np.inf, np.float64)
-                    tensors.append(tensor)
-                models.append(tensors)
-        else:
-            provider = JobLibProvider(n_jobs=self.n_jobs)
+        results = provider.parallel(boost, parallel_args)
+
+        # let python reclaim the dataset memory via reference counting
+        del parallel_args  # parallel_args holds references to dataset, so must be deleted
+        del dataset
+
+        breakpoint_iteration = [[]]
+        models = []
+        rngs = []
+        for exception, model, bag_breakpoint_iteration, bagged_rng in results:
+            if exception is not None:
+                raise exception
+            breakpoint_iteration[-1].append(bag_breakpoint_iteration)
+            models.append(model)
+            # retrieve our rng state since this was used outside of our process
+            rngs.append(bagged_rng)
+
+        while True:  # this isn't for looping. Just for break statements to exit
+            if interactions is None:
+                break
+
+            if isinstance(interactions, int) or isinstance(interactions, float):
+                if interactions <= 0:
+                    if interactions == 0:
+                        break
+                    msg = "interactions cannot be negative"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
+                if interactions < 1.0:
+                    interactions = int(ceil(n_features_in * interactions))
+                elif isinstance(interactions, float):
+                    if not interactions.is_integer():
+                        msg = "interactions above 1 cannot be a float percentage and need to be an int instead"
+                        _log.error(msg)
+                        raise ValueError(msg)
+                    interactions = int(interactions)
+
+                if 2 < n_classes:
+                    warn(
+                        "Detected multiclass problem. Forcing interactions to 0. "
+                        "Multiclass interactions work except for global "
+                        "visualizations, so the break statement below that "
+                        "disables multiclass interactions can be removed."
+                    )
+                    break
+
+                # at this point interactions will be a positive, nonzero integer
+            else:
+                # interactions must be a list of the interactions
+                if len(interactions) == 0:
+                    break
+
+            initial_intercept = np.zeros(
+                Native.get_count_scores_c(n_classes), np.float64
+            )
+            scores_bags = []
+            for model, bag in zip(models, internal_bags):
+                # TODO: instead of going back to the original data in X, we
+                # could use the compressed and already binned data in dataset
+                scores = ebm_decision_function(
+                    X,
+                    n_samples,
+                    feature_names_in,
+                    feature_types_in,
+                    bins,
+                    initial_intercept,
+                    model,
+                    term_features,
+                    init_score,
+                )
+                if bag is not None and np.count_nonzero(bag) != len(bag):
+                    scores = scores[bag != 0]
+                scores_bags.append(scores)
 
             dataset = bin_native_by_dimension(
                 n_classes,
-                1,
+                2,
                 bins,
                 X,
                 y,
@@ -844,39 +950,120 @@ class EBMModel(BaseEstimator):
                 feature_names_in,
                 feature_types_in,
             )
+            del y  # we no longer need this, so allow the garbage collector to reclaim it
+
+            if isinstance(interactions, int):
+                _log.info("Estimating with FAST")
+
+                parallel_args = []
+                for idx in range(self.outer_bags):
+                    # TODO: the combinations below should be selected from the non-excluded features
+                    parallel_args.append(
+                        (
+                            dataset,
+                            internal_bags[idx],
+                            scores_bags[idx],
+                            combinations(range(n_features_in), 2),
+                            exclude,
+                            Native.CalcInteractionFlags_Default,
+                            max_cardinality,
+                            min_samples_leaf,
+                            Native.CreateInteractionFlags_DifferentialPrivacy
+                            if is_differential_privacy
+                            else Native.CreateInteractionFlags_Default,
+                            objective,
+                            None,
+                        )
+                    )
+
+                bagged_ranked_interaction = provider.parallel(
+                    rank_interactions, parallel_args
+                )
+
+                # this holds references to dataset, internal_bags, and scores_bags which we want python to reclaim later
+                del parallel_args
+
+                # Select merged pairs
+                pair_ranks = {}
+                for n, interaction_strengths_and_indices in enumerate(
+                    bagged_ranked_interaction
+                ):
+                    if isinstance(interaction_strengths_and_indices, Exception):
+                        raise interaction_strengths_and_indices
+
+                    interaction_indices = list(
+                        map(
+                            operator.itemgetter(1),
+                            interaction_strengths_and_indices,
+                        )
+                    )
+                    for rank, indices in enumerate(interaction_indices):
+                        old_mean = pair_ranks.get(indices, 0)
+                        pair_ranks[indices] = old_mean + (
+                            (rank - old_mean) / (n + 1)
+                        )
+
+                final_ranks = []
+                total_interactions = 0
+                for indices in pair_ranks:
+                    heapq.heappush(final_ranks, (pair_ranks[indices], indices))
+                    total_interactions += 1
+
+                n_interactions = min(interactions, total_interactions)
+                boost_groups = [
+                    heapq.heappop(final_ranks)[1] for _ in range(n_interactions)
+                ]
+            else:
+                # Check and remove duplicate interaction terms
+                uniquifier = set()
+                boost_groups = []
+                max_dimensions = 0
+
+                for feature_idxs in interactions:
+                    # clean these up since we expose them publically inside self.term_features_
+                    feature_idxs = tuple(map(int, feature_idxs))
+
+                    max_dimensions = max(max_dimensions, len(feature_idxs))
+                    sorted_tuple = tuple(sorted(feature_idxs))
+                    if (
+                        sorted_tuple not in uniquifier
+                        and sorted_tuple not in exclude
+                    ):
+                        uniquifier.add(sorted_tuple)
+                        boost_groups.append(feature_idxs)
+
+                # Warn the users that we have made change to the interactions list
+                if len(boost_groups) != len(interactions):
+                    warn("Removed interaction terms")
+
+                if 2 < max_dimensions:
+                    warn(
+                        "Interactions with 3 or more terms are not graphed in "
+                        "global explanations. Local explanations are still "
+                        "available and exact."
+                    )
 
             parallel_args = []
             for idx in range(self.outer_bags):
                 early_stopping_rounds_local = early_stopping_rounds
-                bag = internal_bags[idx]
-                if bag is None or (0 <= bag).all():
+                if internal_bags[idx] is None or (0 <= internal_bags[idx]).all():
                     # if there are no validation samples, turn off early stopping
                     # because the validation metric cannot improve each round
                     early_stopping_rounds_local = 0
 
-                init_score_local = init_score
-                if (
-                    init_score_local is not None
-                    and bag is not None
-                    and np.count_nonzero(bag) != len(bag)
-                ):
-                    # TODO: instead of making these copies we should
-                    # put init_score into the native shared dataframe
-                    init_score_local = init_score_local[bag != 0]
-
                 parallel_args.append(
                     (
                         dataset,
-                        bag,
-                        init_score_local,
-                        term_features,
+                        internal_bags[idx],
+                        scores_bags[idx],
+                        boost_groups,
                         inner_bags,
                         term_boost_flags,
                         self.learning_rate,
                         min_samples_leaf,
                         self.max_leaves,
                         greediness,
-                        smoothing_rounds,
+                        0,  # no smoothing rounds for interactions
                         self.max_rounds,
                         early_stopping_rounds_local,
                         early_stopping_tolerance,
@@ -893,243 +1080,22 @@ class EBMModel(BaseEstimator):
 
             results = provider.parallel(boost, parallel_args)
 
-            # let python reclaim the dataset memory via reference counting
-            del parallel_args  # parallel_args holds references to dataset, so must be deleted
+            # allow python to reclaim these big memory items via reference counting
+            del parallel_args  # this holds references to dataset, scores_bags, and bags
             del dataset
+            del scores_bags
 
-            breakpoint_iteration = [[]]
-            models = []
-            rngs = []
-            for exception, model, bag_breakpoint_iteration, bagged_rng in results:
-                if exception is not None:
-                    raise exception
-                breakpoint_iteration[-1].append(bag_breakpoint_iteration)
-                models.append(model)
-                # retrieve our rng state since this was used outside of our process
-                rngs.append(bagged_rng)
+            breakpoint_iteration.append([])
+            for idx in range(self.outer_bags):
+                if results[idx][0] is not None:
+                    raise results[idx][0]
+                breakpoint_iteration[-1].append(results[idx][2])
+                models[idx].extend(results[idx][1])
+                rngs[idx] = results[idx][3]
 
-            while True:  # this isn't for looping. Just for break statements to exit
-                if interactions is None:
-                    break
+            term_features.extend(boost_groups)
 
-                if isinstance(interactions, int) or isinstance(interactions, float):
-                    if interactions <= 0:
-                        if interactions == 0:
-                            break
-                        msg = "interactions cannot be negative"
-                        _log.error(msg)
-                        raise ValueError(msg)
-
-                    if interactions < 1.0:
-                        interactions = int(ceil(n_features_in * interactions))
-                    elif isinstance(interactions, float):
-                        if not interactions.is_integer():
-                            msg = "interactions above 1 cannot be a float percentage and need to be an int instead"
-                            _log.error(msg)
-                            raise ValueError(msg)
-                        interactions = int(interactions)
-
-                    if 2 < n_classes:
-                        warn(
-                            "Detected multiclass problem. Forcing interactions to 0. "
-                            "Multiclass interactions work except for global "
-                            "visualizations, so the break statement below that "
-                            "disables multiclass interactions can be removed."
-                        )
-                        break
-
-                    # at this point interactions will be a positive, nonzero integer
-                else:
-                    # interactions must be a list of the interactions
-                    if len(interactions) == 0:
-                        break
-
-                    if 2 < n_classes:
-                        raise ValueError(
-                            "Interactions are not supported for multiclass. "
-                            "Multiclass interactions work except for global "
-                            "visualizations, so this exception can be disabled "
-                            "if you know what you are doing."
-                        )
-
-                initial_intercept = np.zeros(
-                    Native.get_count_scores_c(n_classes), np.float64
-                )
-                scores_bags = []
-                for model, bag in zip(models, internal_bags):
-                    # TODO: instead of going back to the original data in X, we
-                    # could use the compressed and already binned data in dataset
-                    scores = ebm_decision_function(
-                        X,
-                        n_samples,
-                        feature_names_in,
-                        feature_types_in,
-                        bins,
-                        initial_intercept,
-                        model,
-                        term_features,
-                        init_score,
-                    )
-                    if bag is not None and np.count_nonzero(bag) != len(bag):
-                        scores = scores[bag != 0]
-                    scores_bags.append(scores)
-
-                dataset = bin_native_by_dimension(
-                    n_classes,
-                    2,
-                    bins,
-                    X,
-                    y,
-                    sample_weight,
-                    feature_names_in,
-                    feature_types_in,
-                )
-                del y  # we no longer need this, so allow the garbage collector to reclaim it
-
-                if isinstance(interactions, int):
-                    _log.info("Estimating with FAST")
-
-                    parallel_args = []
-                    for idx in range(self.outer_bags):
-                        # TODO: the combinations below should be selected from the non-excluded features
-                        parallel_args.append(
-                            (
-                                dataset,
-                                internal_bags[idx],
-                                scores_bags[idx],
-                                combinations(range(n_features_in), 2),
-                                exclude,
-                                Native.CalcInteractionFlags_Default,
-                                max_cardinality,
-                                min_samples_leaf,
-                                Native.CreateInteractionFlags_DifferentialPrivacy
-                                if is_differential_privacy
-                                else Native.CreateInteractionFlags_Default,
-                                objective,
-                                None,
-                            )
-                        )
-
-                    bagged_ranked_interaction = provider.parallel(
-                        rank_interactions, parallel_args
-                    )
-
-                    # this holds references to dataset, internal_bags, and scores_bags which we want python to reclaim later
-                    del parallel_args
-
-                    # Select merged pairs
-                    pair_ranks = {}
-                    for n, interaction_strengths_and_indices in enumerate(
-                        bagged_ranked_interaction
-                    ):
-                        if isinstance(interaction_strengths_and_indices, Exception):
-                            raise interaction_strengths_and_indices
-
-                        interaction_indices = list(
-                            map(
-                                operator.itemgetter(1),
-                                interaction_strengths_and_indices,
-                            )
-                        )
-                        for rank, indices in enumerate(interaction_indices):
-                            old_mean = pair_ranks.get(indices, 0)
-                            pair_ranks[indices] = old_mean + (
-                                (rank - old_mean) / (n + 1)
-                            )
-
-                    final_ranks = []
-                    total_interactions = 0
-                    for indices in pair_ranks:
-                        heapq.heappush(final_ranks, (pair_ranks[indices], indices))
-                        total_interactions += 1
-
-                    n_interactions = min(interactions, total_interactions)
-                    boost_groups = [
-                        heapq.heappop(final_ranks)[1] for _ in range(n_interactions)
-                    ]
-                else:
-                    # Check and remove duplicate interaction terms
-                    uniquifier = set()
-                    boost_groups = []
-                    max_dimensions = 0
-
-                    for feature_idxs in interactions:
-                        # clean these up since we expose them publically inside self.term_features_
-                        feature_idxs = tuple(map(int, feature_idxs))
-
-                        max_dimensions = max(max_dimensions, len(feature_idxs))
-                        sorted_tuple = tuple(sorted(feature_idxs))
-                        if (
-                            sorted_tuple not in uniquifier
-                            and sorted_tuple not in exclude
-                        ):
-                            uniquifier.add(sorted_tuple)
-                            boost_groups.append(feature_idxs)
-
-                    # Warn the users that we have made change to the interactions list
-                    if len(boost_groups) != len(interactions):
-                        warn("Removed interaction terms")
-
-                    if 2 < max_dimensions:
-                        warn(
-                            "Interactions with 3 or more terms are not graphed in "
-                            "global explanations. Local explanations are still "
-                            "available and exact."
-                        )
-
-                parallel_args = []
-                for idx in range(self.outer_bags):
-                    early_stopping_rounds_local = early_stopping_rounds
-                    if internal_bags[idx] is None or (0 <= internal_bags[idx]).all():
-                        # if there are no validation samples, turn off early stopping
-                        # because the validation metric cannot improve each round
-                        early_stopping_rounds_local = 0
-
-                    parallel_args.append(
-                        (
-                            dataset,
-                            internal_bags[idx],
-                            scores_bags[idx],
-                            boost_groups,
-                            inner_bags,
-                            term_boost_flags,
-                            self.learning_rate,
-                            min_samples_leaf,
-                            self.max_leaves,
-                            greediness,
-                            0,  # no smoothing rounds for interactions
-                            self.max_rounds,
-                            early_stopping_rounds_local,
-                            early_stopping_tolerance,
-                            noise_scale_boosting,
-                            bin_data_weights,
-                            rngs[idx],
-                            Native.CreateBoosterFlags_DifferentialPrivacy
-                            if is_differential_privacy
-                            else Native.CreateBoosterFlags_Default,
-                            objective,
-                            None,
-                        )
-                    )
-
-                results = provider.parallel(boost, parallel_args)
-
-                # allow python to reclaim these big memory items via reference counting
-                del parallel_args  # this holds references to dataset, scores_bags, and bags
-                del dataset
-                del scores_bags
-
-                breakpoint_iteration.append([])
-                for idx in range(self.outer_bags):
-                    if results[idx][0] is not None:
-                        raise results[idx][0]
-                    breakpoint_iteration[-1].append(results[idx][2])
-                    models[idx].extend(results[idx][1])
-                    rngs[idx] = results[idx][3]
-
-                term_features.extend(boost_groups)
-
-                break  # do not loop!
+            break  # do not loop!
 
         breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
 
@@ -1582,6 +1548,10 @@ class EBMModel(BaseEstimator):
         """
         check_is_fitted(self, "has_fitted_")
 
+        # TODO: scikit-learn API says the scores returned should be one vs rest, but we're returning scores
+        #       that need to be softmaxed, so we're not following the interface. We should either change
+        #       to match scikit-learn, or provide our own function that provides raw scores.
+
         if init_score is None:
             X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         else:
@@ -1593,8 +1563,6 @@ class EBMModel(BaseEstimator):
                 self.feature_names_in_,
                 self.feature_types_in_,
             )
-
-        # TODO: handle the 1 class case here
 
         return ebm_decision_function(
             X,
@@ -1934,7 +1902,7 @@ class EBMModel(BaseEstimator):
             )
 
             intercept = self.intercept_
-            if not is_classifier(self) or len(self.classes_) <= 2:
+            if not is_classifier(self) or len(self.classes_) == 2:
                 if isinstance(intercept, np.ndarray) or isinstance(intercept, list):
                     intercept = intercept[0]
 
@@ -1976,8 +1944,6 @@ class EBMModel(BaseEstimator):
                     else:
                         data_dicts[row_idx]["values"][term_idx] = ""
 
-            # TODO: handle the 1 class case here
-
             pred = ebm_decision_function(
                 X,
                 n_samples,
@@ -1989,8 +1955,7 @@ class EBMModel(BaseEstimator):
                 self.term_features_,
                 init_score,
             )
-            n_classes = len(self.classes_) if is_classifier(self) else -1
-            pred = inv_link(self.link_, self.link_param_, pred, n_classes)
+            pred = inv_link(self.link_, self.link_param_, pred)
 
             classes = self.classes_ if is_classifier(self) else None
 
@@ -2054,9 +2019,8 @@ class EBMModel(BaseEstimator):
             importances = np.empty(len(self.term_features_), np.float64)
             for i in range(len(self.term_features_)):
                 if is_classifier(self):
-                    mean_abs_score = (
-                        0  # everything is useless if we're predicting 1 class
-                    )
+                    # everything is useless if we're predicting 1 class
+                    mean_abs_score = 0
                     if 1 < len(self.classes_):
                         mean_abs_score = np.abs(self.term_scores_[i])
                         if 2 < len(self.classes_):
@@ -2072,6 +2036,7 @@ class EBMModel(BaseEstimator):
                 importances.itemset(i, mean_abs_score)
             return importances
         elif importance_type == "min_max":
+            # TODO: handle mono-classification
             return np.array(
                 [np.max(tensor) - np.min(tensor) for tensor in self.term_scores_],
                 np.float64,
@@ -2111,7 +2076,7 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        if is_classifier(self) and 2 < len(self.classes_):
+        if is_classifier(self) and len(self.classes_) != 2:
             msg = "monotonize not supported for multiclass"
             _log.error(msg)
             raise ValueError(msg)
@@ -2608,10 +2573,6 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
                 self.feature_types_in_,
             )
 
-        if len(self.classes_) == 1:
-            # if there is only one class then all probabilities are 100%
-            return np.full((n_samples, 1), 1.0, np.float64)
-
         log_odds = ebm_decision_function(
             X,
             n_samples,
@@ -2624,7 +2585,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             init_score,
         )
 
-        return inv_link(self.link_, self.link_param_, log_odds, len(self.classes_))
+        return inv_link(self.link_, self.link_param_, log_odds)
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
@@ -2651,8 +2612,6 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
                 self.feature_types_in_,
             )
 
-        # TODO: handle the 1 class case here
-
         log_odds = ebm_decision_function(
             X,
             n_samples,
@@ -2665,12 +2624,15 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             init_score,
         )
 
-        # TODO: for binary classification we could just look for values greater than zero instead of expanding
         if log_odds.ndim == 1:
-            # Handle binary classification case -- softmax only works with 0s appended
-            log_odds = np.c_[np.zeros(log_odds.shape), log_odds]
-
-        return self.classes_[np.argmax(log_odds, axis=1)]
+            # binary classification
+            return self.classes_[(0 < log_odds).astype(np.int8)]
+        elif log_odds.shape[1] == 0:
+            # mono classification
+            return np.full(len(log_odds), self.classes_[0], self.classes_.dtype)
+        else:
+            # multiclass
+            return self.classes_[np.argmax(log_odds, axis=1)]
 
     def predict_and_contrib(self, X, output="probabilities", init_score=None):
         """Predicts on provided samples, returning predictions and explanations for each sample.
@@ -2699,8 +2661,6 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
                 self.feature_types_in_,
             )
 
-        # TODO: handle the 1 class case here
-
         scores, explanations = ebm_decision_function_and_explain(
             X,
             n_samples,
@@ -2714,12 +2674,17 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         )
 
         if output == "probabilities":
-            result = inv_link(self.link_, self.link_param_, scores, len(self.classes_))
+            result = inv_link(self.link_, self.link_param_, scores)
         elif output == "labels":
-            # TODO: for binary classification we could just look for values greater than zero instead of expanding
             if scores.ndim == 1:
-                scores = np.c_[np.zeros(scores.shape), scores]
-            result = self.classes_[np.argmax(scores, axis=1)]
+                # binary classification
+                result = self.classes_[(0 < scores).astype(np.int8)]
+            elif scores.shape[1] == 0:
+                # mono classification
+                result = np.full(len(scores), self.classes_[0], self.classes_.dtype)
+            else:
+                # multiclass
+                result = self.classes_[np.argmax(scores, axis=1)]
         elif output == "logits":
             result = scores
         else:
@@ -2985,7 +2950,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.term_features_,
             init_score,
         )
-        return inv_link(self.link_, self.link_param_, scores, -1)
+        return inv_link(self.link_, self.link_param_, scores)
 
     def predict_and_contrib(self, X, init_score=None):
         """Predicts on provided samples, returning predictions and explanations for each sample.
@@ -3024,7 +2989,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.term_features_,
             init_score,
         )
-        return inv_link(self.link_, self.link_param_, scores, -1), explanations
+        return inv_link(self.link_, self.link_param_, scores), explanations
 
 
 class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
@@ -3248,10 +3213,6 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
                 self.feature_types_in_,
             )
 
-        if len(self.classes_) == 1:
-            # if there is only one class then all probabilities are 100%
-            return np.full((n_samples, 1), 1.0, np.float64)
-
         log_odds = ebm_decision_function(
             X,
             n_samples,
@@ -3263,7 +3224,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             self.term_features_,
             init_score,
         )
-        return inv_link(self.link_, self.link_param_, log_odds, len(self.classes_))
+        return inv_link(self.link_, self.link_param_, log_odds)
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
@@ -3290,8 +3251,6 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
                 self.feature_types_in_,
             )
 
-        # TODO: handle the 1 class case here
-
         log_odds = ebm_decision_function(
             X,
             n_samples,
@@ -3304,12 +3263,15 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             init_score,
         )
 
-        # TODO: for binary classification we could just look for values greater than zero instead of expanding
         if log_odds.ndim == 1:
-            # Handle binary classification case -- softmax only works with 0s appended
-            log_odds = np.c_[np.zeros(log_odds.shape), log_odds]
-
-        return self.classes_[np.argmax(log_odds, axis=1)]
+            # binary classification
+            return self.classes_[(0 < log_odds).astype(np.int8)]
+        elif log_odds.shape[1] == 0:
+            # mono classification
+            return np.full(len(log_odds), self.classes_[0], self.classes_.dtype)
+        else:
+            # multiclass
+            return self.classes_[np.argmax(log_odds, axis=1)]
 
 
 class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
@@ -3559,4 +3521,4 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             init_score,
         )
 
-        return inv_link(self.link_, self.link_param_, scores, -1)
+        return inv_link(self.link_, self.link_param_, scores)

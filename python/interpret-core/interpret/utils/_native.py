@@ -145,8 +145,7 @@ class Native:
 
     @staticmethod
     def get_count_scores_c(n_classes):
-        # this should reflect how the C code represents scores
-        if n_classes < 0 or 2 == n_classes:
+        if n_classes < 0 or n_classes == 2:
             return 1
         elif 2 < n_classes:
             return n_classes
@@ -1291,22 +1290,18 @@ class Booster(AbstractContextManager):
             raise ValueError("n_targets must be 1")
 
         class_counts = native.extract_target_classes(self.dataset, n_targets)
-        n_class_scores = sum(
-            (Native.get_count_scores_c(n_classes) for n_classes in class_counts)
-        )
+        n_class_scores = sum(Native.get_count_scores_c(n_classes) for n_classes in class_counts)
 
-        self._term_shapes = None
-        if 0 < n_class_scores:
-            bin_counts = native.extract_bin_counts(self.dataset, n_features)
-            self._term_shapes = []
-            for feature_idxs in self.term_features:
-                dimensions = [bin_counts[feature_idx] for feature_idx in feature_idxs]
+        bin_counts = native.extract_bin_counts(self.dataset, n_features)
+        self._term_shapes = []
+        for feature_idxs in self.term_features:
+            dimensions = [bin_counts[feature_idx] for feature_idx in feature_idxs]
 
-                # Array returned for multiclass is one higher dimension
-                if 1 < n_class_scores:
-                    dimensions.append(n_class_scores)
+            # multiclass and mono-classification need a second dimension
+            if n_class_scores != 1:
+                dimensions.append(n_class_scores)
 
-                self._term_shapes.append(tuple(dimensions))
+            self._term_shapes.append(tuple(dimensions))
 
         n_bagged_samples = n_samples
         if self.bag is not None:
@@ -1320,10 +1315,14 @@ class Booster(AbstractContextManager):
                     "init_scores should have the same length as the number of non-zero bag entries"
                 )
 
-            if (
-                n_class_scores != 1 and self.init_scores.shape[1] != n_class_scores
-            ):  # pragma: no cover
-                raise ValueError(f"init_scores should have {n_class_scores} scores")
+            if n_class_scores == 1:
+                if self.init_scores.ndim != 1:  # pragma: no cover
+                    raise ValueError(f"init_scores should have ndim == 1 for regression or binary classification")
+            else:
+                if self.init_scores.ndim != 2:  # pragma: no cover
+                    raise ValueError(f"init_scores should have ndim == 2 for multiclass")
+                if self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
+                    raise ValueError(f"init_scores should have {n_class_scores} scores")
 
         flags = self.create_booster_flags
         if not native.approximates:
@@ -1336,7 +1335,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
             Native._make_pointer(
-                self.init_scores, np.float64, 2 if 1 < n_class_scores else 1, True
+                self.init_scores, np.float64, 1 if 1 == n_class_scores else 2, True
             ),
             len(dimension_counts),
             Native._make_pointer(dimension_counts, np.int64),
@@ -1487,12 +1486,6 @@ class Booster(AbstractContextManager):
             An ndarray that represents the model.
         """
 
-        if self._term_shapes is None:  # pragma: no cover
-            # if there is only one legal state for a classification problem, then we know with 100%
-            # certainty what the result will be, and our model has no information since we always predict
-            # the only output
-            return None
-
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[term_idx]
@@ -1519,12 +1512,6 @@ class Booster(AbstractContextManager):
             An ndarray that represents the model.
         """
 
-        if self._term_shapes is None:  # pragma: no cover
-            # if there is only one legal state for a classification problem, then we know with 100%
-            # certainty what the result will be, and our model has no information since we always predict
-            # the only output
-            return None
-
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[term_idx]
@@ -1541,12 +1528,6 @@ class Booster(AbstractContextManager):
         return term_scores
 
     def _get_term_update_splits_dimension(self, dimension_index):
-        if self._term_shapes is None:  # pragma: no cover
-            # if there is only one legal state for a classification problem, then we know with 100%
-            # certainty what the result will be, and our model has no information since we always predict
-            # the only output
-            return np.empty(0, np.int64)
-
         native = Native.get_native_singleton()
 
         n_bins = self._term_shapes[self._term_idx][dimension_index]
@@ -1571,12 +1552,6 @@ class Booster(AbstractContextManager):
         if self._term_idx < 0:  # pragma: no cover
             raise RuntimeError("invalid internal self._term_idx")
 
-        if self._term_shapes is None:  # pragma: no cover
-            # if there is only one legal state for a classification problem, then we know with 100%
-            # certainty what the result will be, and our model has no information since we always predict
-            # the only output
-            return None
-
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[self._term_idx]
@@ -1593,14 +1568,6 @@ class Booster(AbstractContextManager):
 
     def set_term_update(self, term_idx, update_scores):
         self._term_idx = -1
-
-        if self._term_shapes is None:  # pragma: no cover
-            if update_scores is None:  # pragma: no cover
-                self._term_idx = term_idx
-                return
-            raise ValueError(
-                "a tensor with 1 class or less would be empty since the predictions would always be the same"
-            )
 
         shape = self._term_shapes[term_idx]
 
@@ -1674,9 +1641,7 @@ class InteractionDetector(AbstractContextManager):
             raise ValueError("n_targets must be 1")
 
         class_counts = native.extract_target_classes(self.dataset, n_targets)
-        n_class_scores = sum(
-            (Native.get_count_scores_c(n_classes) for n_classes in class_counts)
-        )
+        n_class_scores = sum(Native.get_count_scores_c(n_classes) for n_classes in class_counts)
 
         n_bagged_samples = n_samples
         if self.bag is not None:
@@ -1690,10 +1655,14 @@ class InteractionDetector(AbstractContextManager):
                     "init_scores should have the same length as the number of non-zero bag entries"
                 )
 
-            if (
-                n_class_scores != 1 and self.init_scores.shape[1] != n_class_scores
-            ):  # pragma: no cover
-                raise ValueError(f"init_scores should have {n_class_scores} scores")
+            if n_class_scores == 1:
+                if self.init_scores.ndim != 1:  # pragma: no cover
+                    raise ValueError(f"init_scores should have ndim == 1 for regression or binary classification")
+            else:
+                if self.init_scores.ndim != 2:  # pragma: no cover
+                    raise ValueError(f"init_scores should have ndim == 2 for multiclass")
+                if self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
+                    raise ValueError(f"init_scores should have {n_class_scores} scores")
 
         flags = self.create_interaction_flags
         if not native.approximates:
@@ -1706,7 +1675,7 @@ class InteractionDetector(AbstractContextManager):
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
             Native._make_pointer(
-                self.init_scores, np.float64, 2 if 1 < n_class_scores else 1, True
+                self.init_scores, np.float64, 1 if n_class_scores == 1 else 2, True
             ),
             flags,
             native.disable_compute,

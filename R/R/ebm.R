@@ -29,10 +29,12 @@ ebm_term <- function(feature_indexes) {
 }
 
 get_count_scores_c <- function(n_classes) {
-   if(n_classes <= 2) {
+   if(n_classes < 0 || n_classes == 2) {
       return (1)
-   } else {
+   } else if(2 < n_classes) {
       return (n_classes)
+   } else {
+      return (0)
    }
 }
 

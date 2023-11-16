@@ -395,7 +395,7 @@ def test_ebm_synthetic_singleclass_classification():
     X = data["full"]["X"]
     y = np.zeros(X.shape[0], np.bool_)
 
-    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0)
+    clf = ExplainableBoostingClassifier()
     clf.fit(X, y)
 
     prob_scores = clf.predict_proba(X)
@@ -410,9 +410,9 @@ def test_ebm_synthetic_singleclass_classification():
     assert not np.any(predicts)
 
     scores = clf.decision_function(X)
-    assert scores.ndim == 1
+    assert scores.ndim == 2
     assert scores.shape[0] == len(y)
-    assert (scores == -np.inf).all()
+    assert scores.shape[1] == 0
 
     prob_scores, explanations = clf.predict_and_contrib(X, output="probabilities")
     assert prob_scores.ndim == 2
@@ -421,9 +421,9 @@ def test_ebm_synthetic_singleclass_classification():
     assert (prob_scores == 1.0).all()
 
     scores, explanations = clf.predict_and_contrib(X, output="logits")
-    assert scores.ndim == 1
+    assert scores.ndim == 2
     assert scores.shape[0] == len(y)
-    assert (scores == -np.inf).all()
+    assert scores.shape[1] == 0
 
     predicts, explanations = clf.predict_and_contrib(X, output="labels")
     assert predicts.ndim == 1
@@ -1200,3 +1200,5 @@ def test_ebm_scale():
     assert len(clf.bagged_scores_) == 2
     assert len(clf.standard_deviations_) == 2
     assert len(clf.bin_weights_) == 2
+
+

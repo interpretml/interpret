@@ -7,6 +7,9 @@ from sklearn.utils.extmath import softmax  # type: ignore
 
 def link(link_function, link_param, predictions):
     if link_function == "logit":
+        if predictions.shape[1] == 1:
+            # mono-classification
+            return np.empty((len(predictions), 0), np.float64)
         maxes = np.amax(predictions, axis=1)
         with np.errstate(divide="ignore"):
             scores = np.log(predictions / maxes[:, np.newaxis])
@@ -21,15 +24,14 @@ def link(link_function, link_param, predictions):
         raise ValueError("Unsupported link function: {}".format(link_function))
 
 
-def inv_link(link_function, link_param, scores, n_classes):
+def inv_link(link_function, link_param, scores):
     if link_function == "logit":
-        if n_classes == 1:
-            # if there is only one class then all probabilities are 100%
-            return np.full((len(scores), 1), 1.0, np.float64)
-
         if scores.ndim == 1:
             # binary classification requires prepending a 0
             scores = np.c_[np.zeros(scores.shape), scores]
+        elif scores.shape[1] == 0:
+            # monoclassification has probability 1.0 for the only class
+            return np.full((len(scores), 1), 1.0, np.float64)
         return softmax(scores)
     elif link_function == "identity":
         return scores
