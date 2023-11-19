@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 # Author: Paul Koch <code@koch.ninja>
 
-normalize_initial_seed <- function(seed) {
+normalize_seed <- function(seed) {
    # Some languages do not support 64-bit values.  Other languages do not support unsigned integers.
    # Almost all languages support signed 32-bit integers, so we standardize on that for our 
    # random number seed values.  If the caller passes us a number that doesn't fit into a 

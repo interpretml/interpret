@@ -123,19 +123,16 @@ def measure_interactions(
         if link is None:
             link, _ = native.determine_link(is_differential_privacy, "rmse")
 
-    if init_score is None:
-        X, n_samples = preclean_X(X, feature_names, feature_types, len(y))
-    else:
-        init_score, X, n_samples = clean_init_score_and_X(
-            link, link_param, init_score, X, feature_names, feature_types, len(y)
-        )
-        if init_score.ndim == 2:
-            # it must be multiclass, or mono-classification
-            if is_classification is False:
-                raise ValueError(
-                    "objective is for regresion but the init_score is for a multiclass model"
-                )
-            is_classification = True
+    init_score, X, n_samples = clean_init_score_and_X(
+        link, link_param, init_score, X, feature_names, feature_types, len(y)
+    )
+    if init_score is not None and init_score.ndim == 2:
+        # it must be multiclass, or mono-classification
+        if is_classification is False:
+            raise ValueError(
+                "objective is for regresion but the init_score is for a multiclass model"
+            )
+        is_classification = True
 
     if is_classification is None:
         # type_of_target does not seem to like np.object_, so convert it to something that works

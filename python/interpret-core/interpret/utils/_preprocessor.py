@@ -15,7 +15,7 @@ from sklearn.utils.validation import check_is_fitted
 
 from ._clean_x import unify_columns, preclean_X, unify_feature_names
 from ._clean_simple import clean_dimensions
-from ._seed import normalize_initial_seed, increment_seed
+from ._seed import normalize_seed, increment_seed
 
 from ._native import Native
 from ._privacy import (
@@ -219,7 +219,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         unique_val_counts = np.zeros(n_features, dtype=np.int64)
 
         native = Native.get_native_singleton()
-        rng = native.create_rng(normalize_initial_seed(self.random_state))
+        rng = native.create_rng(normalize_seed(self.random_state))
         is_privacy_bounds_warning = False
         is_privacy_types_warning = False
         for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(
@@ -545,7 +545,7 @@ def construct_bins(
     binning="quantile",
     min_samples_bin=1,
     min_unique_continuous=0,
-    random_state=None,
+    seed=None,
     epsilon=None,
     delta=None,
     composition=None,
@@ -560,14 +560,14 @@ def construct_bins(
             binning,
             min_samples_bin,
             min_unique_continuous,
-            random_state,
+            seed,
             epsilon,
             delta,
             composition,
             privacy_bounds,
         )
 
-        random_state = increment_seed(random_state)
+        seed = increment_seed(seed)
 
         preprocessor.fit(X, y, sample_weight)
         if is_mains:

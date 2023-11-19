@@ -24,7 +24,7 @@ from ._utils import (
 from ...utils._misc import clean_index, clean_indexes
 from ...utils._histogram import make_all_histogram_edges
 from ...utils._link import inv_link
-from ...utils._seed import normalize_initial_seed
+from ...utils._seed import normalize_seed
 from ...utils._clean_x import preclean_X
 from ...utils._clean_simple import (
     clean_dimensions,
@@ -558,18 +558,15 @@ class EBMModel(BaseEstimator):
         native = Native.get_native_singleton()
         link, link_param = native.determine_link(is_differential_privacy, objective)
 
-        if init_score is None:
-            X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
-        else:
-            init_score, X, n_samples = clean_init_score_and_X(
-                link,
-                link_param,
-                init_score,
-                X,
-                self.feature_names,
-                self.feature_types,
-                len(y),
-            )
+        init_score, X, n_samples = clean_init_score_and_X(
+            link,
+            link_param,
+            init_score,
+            X,
+            self.feature_names,
+            self.feature_types,
+            len(y),
+        )
 
         # Privacy calculations
         if is_differential_privacy:
@@ -633,7 +630,7 @@ class EBMModel(BaseEstimator):
 
             bin_levels = [self.max_bins, self.max_interaction_bins]
 
-        init_random_state = normalize_initial_seed(self.random_state)
+        seed = normalize_seed(self.random_state)
 
         # after normalizing to a 32-bit signed integer, we pass the random_state into the EBMPreprocessor
         # exactly as passed to us. This means that we should get the same preprocessed data for the mains
@@ -649,7 +646,7 @@ class EBMModel(BaseEstimator):
             binning=binning,
             min_samples_bin=1,
             min_unique_continuous=min_unique_continuous,
-            random_state=init_random_state,
+            seed=seed,
             epsilon=bin_eps,
             delta=bin_delta,
             composition=composition,
@@ -688,22 +685,21 @@ class EBMModel(BaseEstimator):
             exclude = _clean_exclude(exclude, feature_map)
             term_features = [(x,) for x in range(n_features_in) if (x,) not in exclude]
 
-        rng = native.create_rng(init_random_state)
-        # branch it so we have no correlation to the binning rng that uses the same seed
-        rng = native.branch_rng(rng)
+        # branch so we have no correlation to the binning rng that uses the same seed
+        rng = native.branch_rng(native.create_rng(seed))
         used_seeds = set()
         rngs = []
         internal_bags = []
         for idx in range(self.outer_bags):
             while True:
                 bagged_rng = native.branch_rng(rng)
-                seed = native.generate_seed(bagged_rng)
-                # we really really do not want identical bags. branch_rng is pretty good but it can lead to
-                # collisions, so check with a 32-bit seed if we possibly have a collision and regenerate if so
-                if seed not in used_seeds:
+                check_seed = native.generate_seed(bagged_rng)
+                # We do not want identical bags. branch_rng is pretty good at avoiding
+                # collisions, but it is not a cryptographic RNG, so it is possible.
+                # Check with a 32-bit seed if we have a collision and regenerate if so.
+                if check_seed not in used_seeds:
                     break
-            # we do not need used_seeds if the rng is None, but it does not hurt anything
-            used_seeds.add(seed)
+            used_seeds.add(check_seed)
 
             if bags is None:
                 bag = make_bag(
@@ -712,7 +708,6 @@ class EBMModel(BaseEstimator):
                     bagged_rng,
                     is_classifier(self) and not is_differential_privacy,
                 )
-                # we bag within the same proces, so bagged_rng will progress inside make_bag
             else:
                 bag = bags[idx]
                 if not isinstance(bag, np.ndarray):
@@ -729,10 +724,7 @@ class EBMModel(BaseEstimator):
                     msg = "A value in bags is outside the valid range -128 to 127"
                     _log.error(msg)
                     raise ValueError(msg)
-                if bag.flags.c_contiguous:
-                    bag = bag.astype(np.int8, copy=False)
-                else:
-                    bag = bag.astype(np.int8, copy=True)
+                bag = bag.astype(np.int8, copy=not bag.flags.c_contiguous)
 
             rngs.append(bagged_rng)
             internal_bags.append(bag)
@@ -1438,6 +1430,8 @@ class EBMModel(BaseEstimator):
             JSONable object
         """
 
+        check_is_fitted(self, "has_fitted_")
+
         warn(
             "JSON formats are in beta. The JSON format may change in a future version without compatibility between releases."
         )
@@ -1541,17 +1535,14 @@ class EBMModel(BaseEstimator):
         #       that need to be softmaxed, so we're not following the interface. We should either change
         #       to match scikit-learn, or provide our own function that provides raw scores.
 
-        if init_score is None:
-            X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-        else:
-            init_score, X, n_samples = clean_init_score_and_X(
-                self.link_,
-                self.link_param_,
-                init_score,
-                X,
-                self.feature_names_in_,
-                self.feature_types_in_,
-            )
+        init_score, X, n_samples = clean_init_score_and_X(
+            self.link_,
+            self.link_param_,
+            init_score,
+            X,
+            self.feature_names_in_,
+            self.feature_types_in_,
+        )
 
         return ebm_decision_function(
             X,
@@ -1566,7 +1557,7 @@ class EBMModel(BaseEstimator):
         )
 
     def predict_terms(self, X):
-        """The term scores returned will be identical to the local explanation values 
+        """The term scores returned will be identical to the local explanation values
            obtained by calling ebm.explain_local(X). Calling
            interpret.utils.inv_link(ebm.predict_terms(X).sum(axis=1) + ebm.intercept\_, ebm.link\_)
            is equivalent to calling ebm.predict(X) for regression or ebm.predict_proba(X) for classification.
@@ -1893,20 +1884,15 @@ class EBMModel(BaseEstimator):
             else:
                 y = y.astype(np.float64, copy=False)
 
-        if init_score is None:
-            X, n_samples = preclean_X(
-                X, self.feature_names_in_, self.feature_types_in_, n_samples
-            )
-        else:
-            init_score, X, n_samples = clean_init_score_and_X(
-                self.link_,
-                self.link_param_,
-                init_score,
-                X,
-                self.feature_names_in_,
-                self.feature_types_in_,
-                n_samples,
-            )
+        init_score, X, n_samples = clean_init_score_and_X(
+            self.link_,
+            self.link_param_,
+            init_score,
+            X,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            n_samples,
+        )
 
         term_names = self.term_names_
         term_types = generate_term_types(self.feature_types_in_, self.term_features_)
@@ -2580,17 +2566,14 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        if init_score is None:
-            X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-        else:
-            init_score, X, n_samples = clean_init_score_and_X(
-                self.link_,
-                self.link_param_,
-                init_score,
-                X,
-                self.feature_names_in_,
-                self.feature_types_in_,
-            )
+        init_score, X, n_samples = clean_init_score_and_X(
+            self.link_,
+            self.link_param_,
+            init_score,
+            X,
+            self.feature_names_in_,
+            self.feature_types_in_,
+        )
 
         log_odds = ebm_decision_function(
             X,
@@ -2619,17 +2602,14 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        if init_score is None:
-            X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-        else:
-            init_score, X, n_samples = clean_init_score_and_X(
-                self.link_,
-                self.link_param_,
-                init_score,
-                X,
-                self.feature_names_in_,
-                self.feature_types_in_,
-            )
+        init_score, X, n_samples = clean_init_score_and_X(
+            self.link_,
+            self.link_param_,
+            init_score,
+            X,
+            self.feature_names_in_,
+            self.feature_types_in_,
+        )
 
         log_odds = ebm_decision_function(
             X,
@@ -2887,17 +2867,14 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        if init_score is None:
-            X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-        else:
-            init_score, X, n_samples = clean_init_score_and_X(
-                self.link_,
-                self.link_param_,
-                init_score,
-                X,
-                self.feature_names_in_,
-                self.feature_types_in_,
-            )
+        init_score, X, n_samples = clean_init_score_and_X(
+            self.link_,
+            self.link_param_,
+            init_score,
+            X,
+            self.feature_names_in_,
+            self.feature_types_in_,
+        )
 
         scores = ebm_decision_function(
             X,
@@ -3122,17 +3099,14 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         """
         check_is_fitted(self, "has_fitted_")
 
-        if init_score is None:
-            X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-        else:
-            init_score, X, n_samples = clean_init_score_and_X(
-                self.link_,
-                self.link_param_,
-                init_score,
-                X,
-                self.feature_names_in_,
-                self.feature_types_in_,
-            )
+        init_score, X, n_samples = clean_init_score_and_X(
+            self.link_,
+            self.link_param_,
+            init_score,
+            X,
+            self.feature_names_in_,
+            self.feature_types_in_,
+        )
 
         log_odds = ebm_decision_function(
             X,
@@ -3160,17 +3134,14 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         """
         check_is_fitted(self, "has_fitted_")
 
-        if init_score is None:
-            X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-        else:
-            init_score, X, n_samples = clean_init_score_and_X(
-                self.link_,
-                self.link_param_,
-                init_score,
-                X,
-                self.feature_names_in_,
-                self.feature_types_in_,
-            )
+        init_score, X, n_samples = clean_init_score_and_X(
+            self.link_,
+            self.link_param_,
+            init_score,
+            X,
+            self.feature_names_in_,
+            self.feature_types_in_,
+        )
 
         log_odds = ebm_decision_function(
             X,
@@ -3419,17 +3390,14 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        if init_score is None:
-            X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-        else:
-            init_score, X, n_samples = clean_init_score_and_X(
-                self.link_,
-                self.link_param_,
-                init_score,
-                X,
-                self.feature_names_in_,
-                self.feature_types_in_,
-            )
+        init_score, X, n_samples = clean_init_score_and_X(
+            self.link_,
+            self.link_param_,
+            init_score,
+            X,
+            self.feature_names_in_,
+            self.feature_types_in_,
+        )
 
         scores = ebm_decision_function(
             X,

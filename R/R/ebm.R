@@ -67,7 +67,7 @@ ebm_classify <- function(
    # TODO: add missing value support for X
    stopifnot(!any(is.na(X)))
 
-   random_state <- normalize_initial_seed(random_state)
+   random_state <- normalize_seed(random_state)
    rng <- create_rng(random_state)
    
    col_names <- colnames(X)

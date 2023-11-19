@@ -4,7 +4,7 @@
 from math import floor
 
 
-def normalize_initial_seed(seed):
+def normalize_seed(seed):
     # We want cross-language seeds, so we cannot use 64-bit integers since those are not supported
     # on all platforms. Unsigned integers are also not supported on many platforms. Most platforms will
     # either support 32-bit signed integers, or float64 values. Float64 values can represent all 32-bit integers

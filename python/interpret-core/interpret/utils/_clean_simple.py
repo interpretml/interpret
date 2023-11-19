@@ -277,6 +277,12 @@ def clean_init_score_and_X(
     n_samples=None,
     sample_source="y",
 ):
+    if init_score is None:
+        X, n_samples = preclean_X(
+            X, feature_names, feature_types, n_samples, sample_source
+        )
+        return None, X, n_samples
+
     if is_classifier(init_score):
         # scikit-learn estimators either have predict_proba or decision_function
         # first try predict_proba since we can more reliably detect mono-classification
