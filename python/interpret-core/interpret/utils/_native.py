@@ -1241,8 +1241,8 @@ class Booster(AbstractContextManager):
             bag: definition of what data is included. 1 = training, -1 = validation, 0 = not included
             init_scores: predictions from a prior predictor
                 that this class will boost on top of.  For regression
-                there is 1 prediction per sample.  For binary classification
-                there is one logit.  For multiclass there are n_classes logits
+                there is 1 score per sample.  For binary classification
+                there is one score.  For multiclass there are n_classes scores
             term_features: List of term feature indexes
             n_inner_bags: number of inner bags.
             rng: native random number generator
@@ -1613,8 +1613,8 @@ class InteractionDetector(AbstractContextManager):
             bag: definition of what data is included. 1 = training, -1 = validation, 0 = not included
             init_scores: predictions from a prior predictor
                 that this class will boost on top of.  For regression
-                there is 1 prediction per sample.  For binary classification
-                there is one logit.  For multiclass there are n_classes logits
+                there is 1 score per sample.  For binary classification
+                there is one score.  For multiclass there are n_classes scores
             experimental_params: unused data that can be passed into the native layer for debugging
 
         """

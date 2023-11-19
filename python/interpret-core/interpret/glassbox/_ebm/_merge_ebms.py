@@ -211,7 +211,7 @@ def _harmonize_tensor(
     n_cells = np.prod(new_shape)
 
     if 1 < n_multiclasses:
-        # for multiclass we need to add another dimension for the logits of each class
+        # for multiclass we need to add another dimension for the scores of each class
         new_shape += (n_multiclasses,)
 
     lookups.reverse()

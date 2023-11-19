@@ -1894,9 +1894,6 @@ class EBMModel(BaseEstimator):
             n_samples,
         )
 
-        term_names = self.term_names_
-        term_types = generate_term_types(self.feature_types_in_, self.term_features_)
-
         data_dicts = []
         perf_list = []
         if n_samples == 0:
@@ -1911,56 +1908,20 @@ class EBMModel(BaseEstimator):
                 if isinstance(intercept, np.ndarray) or isinstance(intercept, list):
                     intercept = intercept[0]
 
-            for _ in range(n_samples):
-                data_dict = {
-                    "type": "univariate",
-                    "names": [None] * len(self.term_features_),
-                    "scores": [None] * len(self.term_features_),
-                    "values": [None] * len(self.term_features_),
-                    "extra": {
-                        "names": ["Intercept"],
-                        "scores": [intercept],
-                        "values": [1],
-                    },
-                }
-                if is_classifier(self):
-                    # Classes should be numpy array, convert to list.
-                    data_dict["meta"] = {"label_names": self.classes_.tolist()}
-                data_dicts.append(data_dict)
-
-            for term_idx, bin_indexes in eval_terms(
+            explanations = ebm_predict_terms(
                 X,
                 n_samples,
+                len(self.classes_) if is_classifier(self) else -1,
                 self.feature_names_in_,
                 self.feature_types_in_,
                 self.bins_,
-                self.term_features_,
-            ):
-                scores = self.term_scores_[term_idx][tuple(bin_indexes)]
-                feature_idxs = self.term_features_[term_idx]
-                for row_idx in range(n_samples):
-                    term_name = term_names[term_idx]
-                    data_dicts[row_idx]["names"][term_idx] = term_name
-                    data_dicts[row_idx]["scores"][term_idx] = scores[row_idx]
-                    if len(feature_idxs) == 1:
-                        data_dicts[row_idx]["values"][term_idx] = X_unified[
-                            row_idx, feature_idxs[0]
-                        ]
-                    else:
-                        data_dicts[row_idx]["values"][term_idx] = ""
-
-            pred = ebm_decision_function(
-                X,
-                n_samples,
-                self.feature_names_in_,
-                self.feature_types_in_,
-                self.bins_,
-                self.intercept_,
                 self.term_scores_,
                 self.term_features_,
-                init_score,
             )
-            pred = inv_link(pred, self.link_, self.link_param_)
+            scores = explanations.sum(axis=1) + intercept
+            if init_score is not None:
+                scores += init_score
+            pred = inv_link(scores, self.link_, self.link_param_)
 
             classes = self.classes_ if is_classifier(self) else None
 
@@ -1968,7 +1929,27 @@ class EBMModel(BaseEstimator):
             for row_idx in range(n_samples):
                 perf = None if perf_dicts is None else perf_dicts[row_idx]
                 perf_list.append(perf)
-                data_dicts[row_idx]["perf"] = perf
+
+            for data, sample_scores, perf in zip(X_unified, explanations, perf_list):
+                values = [
+                    data[tfs[0]] if len(tfs) == 1 else "" for tfs in self.term_features_
+                ]
+                data_dict = {
+                    "type": "univariate",
+                    "names": list(self.term_names_),
+                    "scores": list(sample_scores),
+                    "values": values,
+                    "extra": {
+                        "names": ["Intercept"],
+                        "scores": [intercept],
+                        "values": [1],
+                    },
+                    "perf": perf,
+                }
+                if is_classifier(self):
+                    # Classes should be numpy array, convert to list.
+                    data_dict["meta"] = {"label_names": self.classes_.tolist()}
+                data_dicts.append(data_dict)
 
         selector = gen_local_selector(data_dicts, is_classification=is_classifier(self))
 
@@ -1999,10 +1980,11 @@ class EBMModel(BaseEstimator):
             }
         )
 
+        term_types = generate_term_types(self.feature_types_in_, self.term_features_)
         return EBMExplanation(
             "local",
             internal_obj,
-            feature_names=term_names,
+            feature_names=list(self.term_names_),
             feature_types=term_types,
             name=gen_name_from_class(self) if name is None else name,
             selector=selector,
@@ -2575,7 +2557,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_,
         )
 
-        log_odds = ebm_decision_function(
+        scores = ebm_decision_function(
             X,
             n_samples,
             self.feature_names_in_,
@@ -2587,7 +2569,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             init_score,
         )
 
-        return inv_link(log_odds, self.link_, self.link_param_)
+        return inv_link(scores, self.link_, self.link_param_)
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
@@ -2611,7 +2593,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_,
         )
 
-        log_odds = ebm_decision_function(
+        scores = ebm_decision_function(
             X,
             n_samples,
             self.feature_names_in_,
@@ -2623,16 +2605,16 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             init_score,
         )
 
-        if log_odds.ndim == 1:
+        if scores.ndim == 1:
             # binary classification.  scikit-learn uses greater than semantics,
-            # so log_odds <= 0 means class_0, and 0 < log_odds means class_1
-            return self.classes_[(0 < log_odds).astype(np.int8)]
-        elif log_odds.shape[1] == 0:
+            # so score <= 0 means class_0, and 0 < score means class_1
+            return self.classes_[(0 < scores).astype(np.int8)]
+        elif scores.shape[1] == 0:
             # mono classification
-            return np.full(len(log_odds), self.classes_[0], self.classes_.dtype)
+            return np.full(len(scores), self.classes_[0], self.classes_.dtype)
         else:
             # multiclass
-            return self.classes_[np.argmax(log_odds, axis=1)]
+            return self.classes_[np.argmax(scores, axis=1)]
 
 
 class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
@@ -2887,6 +2869,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.term_features_,
             init_score,
         )
+
         return inv_link(scores, self.link_, self.link_param_)
 
 
@@ -3108,7 +3091,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             self.feature_types_in_,
         )
 
-        log_odds = ebm_decision_function(
+        scores = ebm_decision_function(
             X,
             n_samples,
             self.feature_names_in_,
@@ -3119,7 +3102,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             self.term_features_,
             init_score,
         )
-        return inv_link(log_odds, self.link_, self.link_param_)
+
+        return inv_link(scores, self.link_, self.link_param_)
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
@@ -3143,7 +3127,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             self.feature_types_in_,
         )
 
-        log_odds = ebm_decision_function(
+        scores = ebm_decision_function(
             X,
             n_samples,
             self.feature_names_in_,
@@ -3155,16 +3139,16 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             init_score,
         )
 
-        if log_odds.ndim == 1:
+        if scores.ndim == 1:
             # binary classification.  scikit-learn uses greater than semantics,
-            # so log_odds <= 0 means class_0, and 0 < log_odds means class_1
-            return self.classes_[(0 < log_odds).astype(np.int8)]
-        elif log_odds.shape[1] == 0:
+            # so score <= 0 means class_0, and 0 < score means class_1
+            return self.classes_[(0 < scores).astype(np.int8)]
+        elif scores.shape[1] == 0:
             # mono classification
-            return np.full(len(log_odds), self.classes_[0], self.classes_.dtype)
+            return np.full(len(scores), self.classes_[0], self.classes_.dtype)
         else:
             # multiclass
-            return self.classes_[np.argmax(log_odds, axis=1)]
+            return self.classes_[np.argmax(scores, axis=1)]
 
 
 class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):

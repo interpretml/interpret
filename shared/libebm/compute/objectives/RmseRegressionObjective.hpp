@@ -106,7 +106,6 @@ struct RmseRegressionObjective : RegressionObjective {
       // This function is here to signal the RmseRegressionObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
-      return 0.0;
    }
 
 

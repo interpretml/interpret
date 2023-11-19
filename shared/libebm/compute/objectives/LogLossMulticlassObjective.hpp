@@ -71,14 +71,12 @@ struct LogLossMulticlassObjective : MulticlassObjective {
       // This function is here to signal the LogLossMulticlassObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
-      return 0.0;
    }
 
    GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat & score, const TFloat & target) const noexcept {
       // This function is here to signal the LogLossMulticlassObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
-      return GradientHessian<TFloat>(0.0, 0.0);
    }
 
    template<bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox, size_t cCompilerScores, int cCompilerPack>
