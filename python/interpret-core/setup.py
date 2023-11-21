@@ -10,101 +10,8 @@ from distutils.command.install import install
 from setuptools import setup, find_packages
 from setuptools.command.sdist import sdist
 
-name = "interpret-core"
 # NOTE: Version is replaced by a regex script.
 version = "0.4.4"
-long_description = """
-Core system for the interpret package.
-
-https://github.com/interpretml/interpret
-"""
-
-entry_points = {
-    "interpret_ext_blackbox": [
-        "ExampleBlackboxExplainer = interpret.ext.examples:ExampleBlackboxExplainer"
-    ],
-    "interpret_ext_data": [
-        "ExampleDataExplainer = interpret.ext.examples:ExampleDataExplainer"
-    ],
-    "interpret_ext_perf": [
-        "ExamplePerfExplainer = interpret.ext.examples:ExamplePerfExplainer"
-    ],
-    "interpret_ext_glassbox": [
-        "ExampleGlassboxExplainer = interpret.ext.examples:ExampleGlassboxExplainer"
-    ],
-    "interpret_ext_greybox": [
-        "ExampleGreyboxExplainer = interpret.ext.examples:ExampleGreyboxExplainer"
-    ],
-    "interpret_ext_provider": [
-        "ExampleVisualizeProvider = interpret.ext.examples:ExampleVisualizeProvider"
-    ],
-}
-package_data = {
-    "interpret": [
-        "lib/libebm_win_x64.dll",
-        "lib/libebm_linux_x64.so",
-        "lib/libebm_mac_x64.dylib",
-        "lib/libebm_mac_arm.dylib",
-        "lib/libebm_win_x64_debug.dll",
-        "lib/libebm_linux_x64_debug.so",
-        "lib/libebm_mac_x64_debug.dylib",
-        "lib/libebm_mac_arm_debug.dylib",
-        "lib/libebm_win_x64.pdb",
-        "lib/libebm_win_x64_debug.pdb",
-        "lib/interpret-inline.js",
-        "visual/assets/udash.css",
-        "visual/assets/udash.js",
-        "visual/assets/favicon.ico",
-    ]
-}
-sklearn_dep = "scikit-learn>=0.18.1"
-joblib_dep = "joblib>=0.11"
-extras = {
-    # Core
-    "required": [
-        "numpy>=1.11.1",
-        "scipy>=0.18.1",
-        "pandas>=0.19.2",
-        sklearn_dep,
-        joblib_dep,
-    ],
-    "debug": ["psutil>=5.6.2"],
-    "notebook": ["ipykernel>=4.10.0", "ipython>=5.5.0"],
-    # Plotly (required if .visualize is ever called)
-    "plotly": ["plotly>=3.8.1"],
-    # Explainers
-    "lime": ["lime>=0.1.1.33"],
-    "sensitivity": ["SALib>=1.3.3"],
-    "shap": ["shap>=0.28.5", "dill>=0.2.5"],
-    "ebm": [joblib_dep],
-    "linear": [],
-    "decisiontree": [joblib_dep],
-    "skoperules": ["skope-rules>=1.0.1"],
-    "treeinterpreter": ["treeinterpreter>=0.2.2"],
-    # Dash
-    "dash": [
-        # dash 2.* removed the dependencies on: dash-html-components, dash-core-components, dash-table
-        "dash>=1.0.0",
-        "dash-core-components>=1.0.0",  # dash 2.* removes the need for this dependency
-        "dash-html-components>=1.0.0",  # dash 2.* removes the need for this dependency
-        "dash-table>=4.1.0",  # dash 2.* removes the need for this dependency
-        "dash-cytoscape>=0.1.1",
-        "gevent>=1.3.6",
-        "requests>=2.19.0",
-    ],
-    # Testing
-    "testing": [
-        "pytest>=4.3.0",
-        "pytest-runner>=4.4",
-        "pytest-xdist>=1.29",
-        "nbconvert>=5.4.1",
-        "selenium>=3.141.0",
-        "pytest-cov>=2.6.1",
-        "flake8>=3.7.7",
-        "jupyter>=1.0.0",
-        "ipywidgets>=7.4.2",
-    ],
-}
 
 
 def _copy_native_code_to_setup():
@@ -218,12 +125,16 @@ class SDistCommand(sdist):
 
 
 setup(
-    name=name,
+    name="interpret-core",
     version=version,
     author="The InterpretML Contributors",
     author_email="interpret@microsoft.com",
     description="Fit interpretable models. Explain blackbox machine learning.",
-    long_description=long_description,
+    long_description="""
+Minimal dependency core system for the interpret package.
+
+https://github.com/interpretml/interpret
+""",
     url="https://github.com/interpretml/interpret",
     cmdclass={
         "install": InstallCommand,
@@ -231,7 +142,24 @@ setup(
         "build": BuildCommand,
     },
     packages=find_packages(exclude=["tests", "tests.*"]),
-    package_data=package_data,
+    package_data={
+        "interpret": [
+            "lib/libebm_win_x64.dll",
+            "lib/libebm_linux_x64.so",
+            "lib/libebm_mac_x64.dylib",
+            "lib/libebm_mac_arm.dylib",
+            "lib/libebm_win_x64_debug.dll",
+            "lib/libebm_linux_x64_debug.so",
+            "lib/libebm_mac_x64_debug.dylib",
+            "lib/libebm_mac_arm_debug.dylib",
+            "lib/libebm_win_x64.pdb",
+            "lib/libebm_win_x64_debug.pdb",
+            "lib/interpret-inline.js",
+            "visual/assets/udash.css",
+            "visual/assets/udash.js",
+            "visual/assets/favicon.ico",
+        ]
+    },
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
@@ -245,6 +173,67 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    extras_require=extras,
-    entry_points=entry_points,
+    entry_points={
+        "interpret_ext_blackbox": [
+            "ExampleBlackboxExplainer = interpret.ext.examples:ExampleBlackboxExplainer"
+        ],
+        "interpret_ext_data": [
+            "ExampleDataExplainer = interpret.ext.examples:ExampleDataExplainer"
+        ],
+        "interpret_ext_perf": [
+            "ExamplePerfExplainer = interpret.ext.examples:ExamplePerfExplainer"
+        ],
+        "interpret_ext_glassbox": [
+            "ExampleGlassboxExplainer = interpret.ext.examples:ExampleGlassboxExplainer"
+        ],
+        "interpret_ext_greybox": [
+            "ExampleGreyboxExplainer = interpret.ext.examples:ExampleGreyboxExplainer"
+        ],
+        "interpret_ext_provider": [
+            "ExampleVisualizeProvider = interpret.ext.examples:ExampleVisualizeProvider"
+        ],
+    },
+    install_requires=[
+        "numpy>=1.11.1",
+        "scipy>=0.18.1",
+        "pandas>=0.19.2",
+        "scikit-learn>=0.18.1",
+        "joblib>=0.11",
+    ],
+    extras_require={
+        "debug": ["psutil>=5.6.2"],
+        "notebook": ["ipykernel>=4.10.0", "ipython>=5.5.0"],
+        # Plotly (required if .visualize is ever called)
+        "plotly": ["plotly>=3.8.1"],
+        # Explainers
+        "lime": ["lime>=0.1.1.33"],
+        "sensitivity": ["SALib>=1.3.3"],
+        "shap": ["shap>=0.28.5", "dill>=0.2.5"],
+        "linear": [],
+        "skoperules": ["skope-rules>=1.0.1"],
+        "treeinterpreter": ["treeinterpreter>=0.2.2"],
+        # Dash
+        "dash": [
+            # dash 2.* removed the dependencies on: dash-html-components, dash-core-components, dash-table
+            "dash>=1.0.0",
+            "dash-core-components>=1.0.0",  # dash 2.* removes the need for this dependency
+            "dash-html-components>=1.0.0",  # dash 2.* removes the need for this dependency
+            "dash-table>=4.1.0",  # dash 2.* removes the need for this dependency
+            "dash-cytoscape>=0.1.1",
+            "gevent>=1.3.6",
+            "requests>=2.19.0",
+        ],
+        # Testing
+        "testing": [
+            "pytest>=4.3.0",
+            "pytest-runner>=4.4",
+            "pytest-xdist>=1.29",
+            "nbconvert>=5.4.1",
+            "selenium>=3.141.0",
+            "pytest-cov>=2.6.1",
+            "flake8>=3.7.7",
+            "jupyter>=1.0.0",
+            "ipywidgets>=7.4.2",
+        ],
+    },
 )

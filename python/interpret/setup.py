@@ -14,17 +14,14 @@ Let there be light.
 https://github.com/interpretml/interpret
 """
 interpret_core_extra = [
-    "required",
     "debug",
     "notebook",
     "plotly",
     "lime",
     "sensitivity",
     "shap",
-    "ebm",
     "skoperules",
     "linear",
-    "decisiontree",
     "dash",
     "treeinterpreter",
 ]
