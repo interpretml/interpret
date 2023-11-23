@@ -605,6 +605,9 @@ We also build on top of many great packages. Please check them out!
 # Papers that use or compare EBMs
 
 - [Explainable Boosting Machines with Sparsity - Maintaining Explainability in High-Dimensional Settings](https://arxiv.org/abs/2311.07452)
+- [Cost of Explainability in AI: An Example with Credit Scoring Models](https://link.springer.com/chapter/10.1007/978-3-031-44064-9_26)
+- [Signature Informed Sampling for Transcriptomic Data](https://www.biorxiv.org/content/biorxiv/early/2023/10/31/2023.10.26.564263.full.pdf)
+- [Interpretable Survival Analysis for Heart Failure Risk Prediction](https://arxiv.org/pdf/2310.15472.pdf)
 - [LLMs Understand Glass-Box Models, Discover Surprises, and Suggest Repairs](https://arxiv.org/pdf/2308.01157.pdf)
 - [Model Interpretability in Credit Insurance](http://hdl.handle.net/10400.5/27507)
 - [Federated Boosted Decision Trees with Differential Privacy](https://arxiv.org/pdf/2210.02910.pdf)
@@ -649,6 +652,7 @@ We also build on top of many great packages. Please check them out!
 - [Extending Explainable Boosting Machines to Scientific Image Data](https://arxiv.org/pdf/2305.16526.pdf)
 - [Pest Presence Prediction Using Interpretable Machine Learning](https://arxiv.org/pdf/2205.07723.pdf)
 - [Key Thresholds and Relative Contributions of Knee Geometry, Anteroposterior Laxity, and Body Weight as Risk Factors for Noncontact ACL Injury](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10184233/pdf/10.1177_23259671231163627.pdf)
+- [A clinical prediction model for 10-year risk of self-reported osteoporosis diagnosis in pre- and perimenopausal women](https://pubmed.ncbi.nlm.nih.gov/37273115/)
 - [epitope1D: Accurate Taxonomy-Aware B-Cell Linear Epitope Prediction](https://www.biorxiv.org/content/10.1101/2022.10.17.512613v1.full.pdf)
 - [Explainable Boosting Machines for Slope Failure Spatial Predictive Modeling](https://www.mdpi.com/2072-4292/13/24/4991/htm)
 - [Micromodels for Efficient, Explainable, and Reusable Systems: A Case Study on Mental Health](https://arxiv.org/pdf/2109.13770.pdf)
@@ -664,6 +668,8 @@ We also build on top of many great packages. Please check them out!
 - [ILMART: Interpretable Ranking with Constrained LambdaMART](https://arxiv.org/pdf/2206.00473.pdf)
 - [Integrating Co-Clustering and Interpretable Machine Learning for the Prediction of Intravenous Immunoglobulin Resistance in Kawasaki Disease](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9097874)
 - [GAMI-Net: An Explainable Neural Network based on Generalized Additive Models with Structured Interactions](https://arxiv.org/pdf/2003.07132v1.pdf)
+- [Interpretable Machine Learning based on Functional ANOVA Framework: Algorithms and Comparisons](https://arxiv.org/ftp/arxiv/papers/2305/2305.15670.pdf)
+- [Using Model-Based Trees with Boosting to Fit Low-Order Functional ANOVA Models](https://arxiv.org/ftp/arxiv/papers/2207/2207.06950.pdf)
 - [Interpretable generalized additive neural networks](https://pdf.sciencedirectassets.com/271700/AIP/1-s2.0-S0377221723005027/main.pdf?X-Amz-Security-Token=IQoJb3JpZ2luX2VjEOX%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIQDYA80LSoQY%2FmGTGsi8cQ2BzHoFU7410ljuYQwqt9ht0gIgBg4NSEN4e5jKUouf04uZCPIMh8NHH22jrY3opOG%2Fa1wqsgUIXhAFGgwwNTkwMDM1NDY4NjUiDFuCZlUMsD25uY5h3CqPBW0KcZyo1I0j19n0O26WHoCoxeimG0I7m02rUpQug4EiDYFVkx%2FRqfC4eL2Y0z7iO%2B95NIQ9UrOd3zWWZZPGpKCgHpU1GA4JwHSKNJDi8G2q%2FGm18%2Fl8B9jN4Lq3klUfU3HcjJh%2B4O1aZTJb3PmqDxKn%2BFQIftfS13xNcyqGnGBlw3yaSp3ZXoV55tKSX6b%2Fp5ZuXWORWiC2JlANxa0exR%2FkBeE75gfILdU8bH2TJ1wozoB0yTZwDAl1%2Bc4exGhVdhZRpvr9W6q%2BTG4tx6qhglAwv1uUQN8Zt1z8GEFHMTrtSv5pNJIpLqqMxp62UeufPMesYyoO5RfKjRS96PxYs1S%2FC5zfz0V63kkFtmSVn4IzVQ%2B9tLq%2FEWQ3BvTs8B0cH%2FOm6W8wn4nGk3HywJiUWvGexXahMqDW9o2pq7CWOSoFCKjjkOyxBXAzP0OX5LeCCgOF11BbhNcDSiIqlWQhqsk0738appUu99Yh12XmMWyu6YXAv1jvgrpaliMRkliAu9by418e6%2FBBA%2B%2BfcDQC3VkEv3NpSQklitMaIT2Y624jhM09ntjdC4IcONNRVE3Q5sHIh6DZsBHrPj9oKqpu9nPKnDBrKoAFdnQ%2BkLQ%2B8JAXyCHwd3YBUXQStlYTpUExESOnFFJ36HGJ%2FbkkFC5Ac9W%2BALq%2FkBYIvtPFNBWIGUSC%2BUgSH0kC%2BJqoyYUNHjfYZ3fxCDwI%2BAugNT3UtXtT%2BrnCKlH3f68ZAyOdkFLiHRQevc2%2FRBXJ5gAqCgZFDUVM%2BVjgB%2BInE458PRMxLuRwFHJarOqZhoDvC68ar2q3YDPyqmyUZxaiVrqn2xlJGdh0lcTVwNourzqlY2l4v87nYm7ncxJO%2FiiBQArtSRTOWmkw6JigpQY6sQEhgDdw23Gwj9rSPFlCHfUzj%2B%2BfdgeX3LZpuPITkl6%2BYwjKw0wXpR4c0Rj0IsCH1EAxJcxSLXhSSHgInlZR41EreEAByudeYNtxD0iAQcR3L4RlqTVuI6V3IIcxNltdg5rDAJwUqsGqhMrZOH0uJqQXvLJwxgfkOkckdjdnrfT%2FmOh%2BNjLCR4KTvwTJIC2YAmNHQco2TLKbC27i118DSoKwrYUvb%2BkCTwD3TMkxIf%2BrW5s%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20230707T133754Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIAQ3PHCVTYTYKBXRE7%2F20230707%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=389ecd144af85f4eae42ab9684f9d56696191a9d8d33c44386ee6af520187724&hash=e798cbd4d80d01d56a2a1ea75a3947b027daecaea5f6e6674a1dc2dbea97dab3&host=68042c943591013ac2b2430a89b270f6af2c76d8dfd086a07176afe7c76c2c61&pii=S0377221723005027&tid=spdf-79e45837-627e-4a9f-88f5-7359ecb4ca63&sid=7e54333b754ff04056483e557e54be0269ddgxrqa&type=client&tsoh=d3d3LnNjaWVuY2VkaXJlY3QuY29t&ua=0b1a5101565e5607565a&rr=7e307c188e87e7cb&cc=mx)
 - [A Concept and Argumentation based Interpretable Model in High Risk Domains](https://arxiv.org/pdf/2208.08149.pdf)
 - [Analyzing the Differences between Professional and Amateur Esports through Win Probability](https://dl.acm.org/doi/pdf/10.1145/3485447.3512277)
