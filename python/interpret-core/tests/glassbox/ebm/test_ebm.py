@@ -415,7 +415,7 @@ def test_ebm_synthetic_singleclass_classification():
     assert scores.shape[0] == len(y)
     assert scores.shape[1] == 0
 
-    explanations = clf.predict_terms(X)
+    explanations = clf.eval_terms(X)
     assert explanations.ndim == 3
     assert explanations.shape[0] == len(y)
     assert explanations.shape[1] == len(clf.term_features_)
@@ -533,7 +533,7 @@ def test_ebm_adult():
     smoke_test_explanations(global_exp, local_exp, 6000)
 
 
-def test_ebm_predict_terms_regression():
+def test_ebm_eval_terms_regression():
     data = synthetic_regression()
     X = data["full"]["X"]
     y = data["full"]["y"]
@@ -541,7 +541,7 @@ def test_ebm_predict_terms_regression():
     clf = ExplainableBoostingRegressor()
     clf.fit(X, y)
 
-    explanations = clf.predict_terms(X)
+    explanations = clf.eval_terms(X)
 
     scores = explanations.sum(axis=1) + clf.intercept_
     assert np.allclose(clf.predict(X), scores)
@@ -551,7 +551,7 @@ def test_ebm_predict_terms_regression():
     assert np.allclose(clf.predict(X), predictions)
 
 
-def test_ebm_predict_terms_binary():
+def test_ebm_eval_terms_binary():
     data = synthetic_classification()
     X = data["train"]["X"]
     y = data["train"]["y"]
@@ -559,7 +559,7 @@ def test_ebm_predict_terms_binary():
     clf = ExplainableBoostingClassifier()
     clf.fit(X, y)
 
-    explanations = clf.predict_terms(X)
+    explanations = clf.eval_terms(X)
 
     scores = explanations.sum(axis=1) + clf.intercept_
     assert np.allclose(clf.decision_function(X), scores)
@@ -568,7 +568,7 @@ def test_ebm_predict_terms_binary():
     assert np.allclose(clf.predict_proba(X), probabilities)
 
 
-def test_ebm_predict_terms_multiclass():
+def test_ebm_eval_terms_multiclass():
     data = synthetic_multiclass()
     X = data["train"]["X"]
     y = data["train"]["y"]
@@ -576,7 +576,7 @@ def test_ebm_predict_terms_multiclass():
     clf = ExplainableBoostingClassifier()
     clf.fit(X, y)
 
-    explanations = clf.predict_terms(X)
+    explanations = clf.eval_terms(X)
 
     scores = explanations.sum(axis=1) + clf.intercept_
     assert np.allclose(clf.decision_function(X), scores)

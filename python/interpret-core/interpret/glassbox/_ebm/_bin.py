@@ -158,7 +158,7 @@ def ebm_decision_function(
     return sample_scores
 
 
-def ebm_predict_terms(
+def ebm_eval_terms(
     X,
     n_samples,
     n_classes,

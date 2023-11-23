@@ -153,7 +153,7 @@ def test_individual_importances():
 
     ebm = ExplainableBoostingRegressor()
     ebm.fit(X, y)
-    contributions = ebm.predict_terms(X)
+    contributions = ebm.eval_terms(X)
 
     dict = get_individual_importances(ebm, X, contributions)
     assert dict["A"] == compute_group_importance(["A"], ebm, X, contributions)
@@ -214,7 +214,7 @@ def _check_group_importance(X, y, ebm):
         mixed_list, ebm, X
     )
 
-    contributions = ebm.predict_terms(X)
+    contributions = ebm.eval_terms(X)
     assert compute_group_importance(
         term_names, ebm, X, contributions
     ) == compute_group_importance(term_names, ebm, X)

@@ -40,7 +40,7 @@ from ...utils._compressed_dataset import bin_native_by_dimension
 from ._bin import (
     eval_terms,
     ebm_decision_function,
-    ebm_predict_terms,
+    ebm_eval_terms,
     make_bin_weights,
 )
 from ._tensor import remove_last, trim_tensor
@@ -1393,6 +1393,7 @@ class EBMModel(BaseEstimator):
         terms = []
         for term_idx in range(len(self.term_features_)):
             term = {}
+            # we already used "features", so use "term_features" to avoid confusion
             term["term_features"] = [
                 self.feature_names_in_[feature_idx]
                 for feature_idx in self.term_features_[term_idx]
@@ -1556,10 +1557,10 @@ class EBMModel(BaseEstimator):
             init_score,
         )
 
-    def predict_terms(self, X):
+    def eval_terms(self, X):
         """The term scores returned will be identical to the local explanation values
            obtained by calling ebm.explain_local(X). Calling
-           interpret.utils.inv_link(ebm.predict_terms(X).sum(axis=1) + ebm.intercept\_, ebm.link\_)
+           interpret.utils.inv_link(ebm.eval_terms(X).sum(axis=1) + ebm.intercept\_, ebm.link\_)
            is equivalent to calling ebm.predict(X) for regression or ebm.predict_proba(X) for classification.
 
         Args:
@@ -1573,7 +1574,7 @@ class EBMModel(BaseEstimator):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
-        explanations = ebm_predict_terms(
+        explanations = ebm_eval_terms(
             X,
             n_samples,
             len(self.classes_) if is_classifier(self) else -1,
@@ -1908,7 +1909,7 @@ class EBMModel(BaseEstimator):
                 if isinstance(intercept, np.ndarray) or isinstance(intercept, list):
                     intercept = intercept[0]
 
-            explanations = ebm_predict_terms(
+            explanations = ebm_eval_terms(
                 X,
                 n_samples,
                 len(self.classes_) if is_classifier(self) else -1,
