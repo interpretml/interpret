@@ -84,57 +84,51 @@ def measure_interactions(
 
     is_differential_privacy = False
 
+    output_type = None
+    classes = None
     link = None
     link_param = None
-    is_classification = None
     native = Native.get_native_singleton()
     if objective is not None:
         if len(objective.strip()) == 0:
             objective = None
         else:
             link, link_param = native.determine_link(is_differential_privacy, objective)
+            # "classification" or "regression"
             output_type = native.get_output_type(link)
-            if output_type == "classification":
-                is_classification = True
-            elif output_type == "regression":
-                is_classification = False
-            else:
-                msg = f"Unknown objective {objective}"
-                _log.error(msg)
-                raise ValueError(msg)
 
-    classes = None
     if is_classifier(init_score):
         # all scikit-learn classification models need to expose self.classes_
         classes = init_score.classes_
-        if is_classification is False:
+        if output_type is None:
+            output_type = "classification"
+            link, link_param = native.determine_link(is_differential_privacy, "log_loss")
+        elif output_type != "classification":
             raise ValueError(
-                "objective is for regresion but the init_score is a classification model"
+                f"init_score is a classifier, but the objective is: {objective}"
             )
-        is_classification = True
-        if link is None:
-            link, _ = native.determine_link(is_differential_privacy, "log_loss")
     elif is_regressor(init_score):
-        if is_classification is True:
+        if output_type is None:
+            output_type = "regression"
+            link, link_param = native.determine_link(is_differential_privacy, "rmse")
+        elif output_type != "regression":
             raise ValueError(
-                "objective is for classification but the init_score is a regression model"
+                f"init_score is a regressor, but the objective is: {objective}"
             )
-        is_classification = False
-        if link is None:
-            link, _ = native.determine_link(is_differential_privacy, "rmse")
 
     init_score, X, n_samples = clean_init_score_and_X(
         link, link_param, init_score, X, feature_names, feature_types, len(y)
     )
     if init_score is not None and init_score.ndim == 2:
         # it must be multiclass, or mono-classification
-        if is_classification is False:
+        if output_type is None:
+            output_type = "classification"
+        elif output_type != "classification":
             raise ValueError(
-                "objective is for regresion but the init_score is for a multiclass model"
+                f"init_score has 2 dimensions so it is a multiclass model, but the objective is: {objective}"
             )
-        is_classification = True
 
-    if is_classification is None:
+    if output_type is None:
         # type_of_target does not seem to like np.object_, so convert it to something that works
         try:
             y_discard = y.astype(dtype=np.float64, copy=False)
@@ -143,21 +137,21 @@ def measure_interactions(
 
         target_type = type_of_target(y_discard)
         if target_type == "continuous":
-            is_classification = False
+            output_type = "regression"
         elif target_type == "binary":
-            is_classification = True
+            output_type = "classification"
         elif target_type == "multiclass":
             if init_score is not None:
                 # type_of_target is guessing the model type. if init_score was multiclass then it
                 # should have a 2nd dimension, but it does not, so the guess made by type_of_target was wrong.
                 # The only other option is for it to be regression, so force that.
-                is_classification = False
+                output_type = "regression"
             else:
-                is_classification = True
+                output_type = "classification"
         else:
             raise ValueError("unrecognized target type in y")
 
-    if is_classification:
+    if output_type == "classification":
         y = typify_classification(y)
         if classes is None:
             # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
@@ -168,11 +162,15 @@ def measure_interactions(
         n_classes = len(classes)
         if objective is None:
             objective = "log_loss"
-    else:
+    elif output_type == "regression":
         y = y.astype(np.float64, copy=False)
         n_classes = -1
         if objective is None:
             objective = "rmse"
+    else:
+        msg = f"Unknown objective {objective}"
+        _log.error(msg)
+        raise ValueError(msg)
 
     if init_score is not None:
         if n_classes == 2 or n_classes == -1:
