@@ -8,7 +8,7 @@
 
 template<typename TFloat>
 struct LogLossMulticlassObjective : MulticlassObjective {
-   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossMulticlassObjective, MINIMIZE_METRIC, Link_logit, true, k_cItemsPerBitPackDynamic, k_cItemsPerBitPackDynamic)
+   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossMulticlassObjective, MINIMIZE_METRIC, Link_mlogit, true, k_cItemsPerBitPackDynamic, k_cItemsPerBitPackDynamic)
 
    inline LogLossMulticlassObjective(const Config & config) {
       if(1 == config.cOutputs) {

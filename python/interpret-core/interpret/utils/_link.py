@@ -2,8 +2,13 @@
 # Distributed under the MIT software license
 
 import numpy as np
-from sklearn.utils.extmath import softmax  # type: ignore
 
+import logging
+_log = logging.getLogger(__name__)
+
+def _softmax(x):
+    e_x = np.exp(x - x.max(axis=-1, keepdims=True))
+    return e_x / e_x.sum(axis=-1, keepdims=True)
 
 def link_func(predictions, link, link_param=np.nan):
     """Applies the link function to predictions to generate scores.
@@ -17,31 +22,35 @@ def link_func(predictions, link, link_param=np.nan):
         Scores converted by the link function.
     """
 
-    if link == "logit":
-        if predictions.ndim != 2:
-            msg = f"predictions must have 2 dimensions."
+    if link == "monoclassification":
+        if 2 <= predictions.shape[-1]:
+            msg = f"predictions must have 1 element in the last dimensions, but has {predictions.shape[-1]}."
             _log.error(msg)
             raise ValueError(msg)
-        if predictions.shape[1] <= 1:
-            # mono-classification
-            return np.empty((len(predictions), 0), np.float64)
-        maxes = np.amax(predictions, axis=1)
+        return np.empty(predictions.shape[:-1] + (0,), np.float64)
+    elif link == "logit":
+        if predictions.shape[-1] != 2:
+            msg = f"predictions must have 2 elements in the last dimensions, but has {predictions.shape[-1]}."
+            _log.error(msg)
+            raise ValueError(msg)
+        maxes = predictions.max(axis=-1, keepdims=True)
         with np.errstate(divide="ignore"):
-            scores = np.log(predictions / maxes[:, np.newaxis])
-        if scores.shape[1] == 2:  # binary classification
-            scores = scores[:, 1] - scores[:, 0]
+            scores = np.log(predictions / maxes)
+        scores = scores[..., 1] - scores[..., 0]
+        return scores
+    elif link == "mlogit":
+        # accept multinominal with 2 classes, even though it's weird
+        if predictions.shape[-1] <= 1:
+            msg = f"predictions must have 2 or more elements in the last dimensions, but has {predictions.shape[-1]}."
+            _log.error(msg)
+            raise ValueError(msg)
+        maxes = predictions.max(axis=-1, keepdims=True)
+        with np.errstate(divide="ignore"):
+            scores = np.log(predictions / maxes)
         return scores
     elif link == "identity":
-        if predictions.ndim != 1:
-            msg = f"predictions must have 1 dimensions."
-            _log.error(msg)
-            raise ValueError(msg)
-        return predictions
+        return predictions.copy()
     elif link == "log":
-        if predictions.ndim != 1:
-            msg = f"predictions must have 1 dimensions."
-            _log.error(msg)
-            raise ValueError(msg)
         return np.log(predictions)
     else:
         raise ValueError("Unsupported link function: {}".format(link))
@@ -59,29 +68,26 @@ def inv_link(scores, link, link_param=np.nan):
         Predictions converted by the link function.
     """
 
-    if link == "logit":
-        if scores.ndim != 1 and scores.ndim != 2:
-            msg = f"scores must have either 1 dimension or two."
+    if link == "monoclassification":
+        if scores.shape[-1] != 0:
+            msg = f"scores must have 0 elements in the last dimensions, but has {scores.shape[-1]}."
             _log.error(msg)
             raise ValueError(msg)
-        if scores.ndim == 1 or scores.shape[1] == 1:
-            # binary classification requires prepending a 0
-            scores = np.c_[np.zeros(scores.shape), scores]
-        elif scores.shape[1] == 0:
-            # mono classification has probability 1.0 for the only class
-            return np.full((len(scores), 1), 1.0, np.float64)
-        return softmax(scores)
+        return np.full(scores.shape[:-1] + (1,), 1.0, np.float64)
+    elif link == "logit":
+        scores = np.expand_dims(scores, axis=-1)
+        scores = np.insert(scores, 0, 0, axis=-1)
+        return _softmax(scores)
+    elif link == "mlogit":
+        # accept multinominal with 2 classes, even though it's weird
+        if scores.shape[-1] <= 1:
+            msg = f"scores must have 2 or more elements in the last dimensions, but has {scores.shape[-1]}."
+            _log.error(msg)
+            raise ValueError(msg)
+        return _softmax(scores)
     elif link == "identity":
-        if scores.ndim != 1:
-            msg = f"scores must have 1 dimension."
-            _log.error(msg)
-            raise ValueError(msg)
-        return scores
+        return scores.copy()
     elif link == "log":
-        if scores.ndim != 1:
-            msg = f"scores must have 1 dimension."
-            _log.error(msg)
-            raise ValueError(msg)
         return np.exp(scores)
     else:
         raise ValueError("Unsupported link function: {}".format(link))

@@ -25,32 +25,61 @@ extern ErrorEbm GetObjective(
 ) noexcept;
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
-   BoolEbm isDifferentialPrivacy,
+   LinkFlags flags,
    const char * objective,
+   IntEbm countClasses,
    LinkEbm * linkOut,
    double * linkParamOut
 ) {
    LOG_N(
       Trace_Info,
       "Entered DetermineLinkFunction: "
-      "isDifferentialPrivacy=%s, "
+      "flags=0x%" ULinkFlagsPrintf ", "
       "objective=%p, "
+      "countClasses=%" IntEbmPrintf ", "
       "linkOut=%p, "
       "linkParamOut=%p"
       ,
-      ObtainTruth(isDifferentialPrivacy),
+      static_cast<ULinkFlags>(flags), // signed to unsigned conversion is defined behavior in C++
       static_cast<const void *>(objective),
+      countClasses,
       static_cast<void *>(linkOut),
       static_cast<void *>(linkParamOut)
    );
+
+   if(IsConvertError<ptrdiff_t>(countClasses)) {
+      LOG_0(Trace_Error, "ERROR DetermineLinkFunction IsConvertError<ptrdiff_t>(countClasses)");
+      return Error_IllegalParamVal;
+   }
+   const ptrdiff_t cClasses = static_cast<ptrdiff_t>(countClasses);
+
+   if(ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses) {
+      if(nullptr != linkOut) {
+         *linkOut = Link_monoclassification;
+      }
+      if(nullptr != linkParamOut) {
+         *linkParamOut = std::numeric_limits<double>::quiet_NaN();
+      }
+
+      LOG_0(Trace_Info, "Exited DetermineLinkFunction");
+
+      return Error_None;
+   }
+
+   size_t cScores;
+   if(0 != (LinkFlags_BinaryAsMulticlass & flags)) {
+      cScores = cClasses < ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+   } else {
+      cScores = cClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+   }
 
    ObjectiveWrapper objectiveWrapper;
    InitializeObjectiveWrapperUnfailing(&objectiveWrapper);
 
    Config config;
-   config.cOutputs = 1; // this is kind of cheating, but it should work
-   config.isDifferentialPrivacy = EBM_FALSE != isDifferentialPrivacy ? EBM_TRUE : EBM_FALSE;
-   const ErrorEbm error = GetObjective(&config, objective, ComputeFlags_ALL, &objectiveWrapper, nullptr);
+   config.cOutputs = cScores;
+   config.isDifferentialPrivacy = 0 != (LinkFlags_DifferentialPrivacy & flags) ? EBM_TRUE : EBM_FALSE;
+   const ErrorEbm error = GetObjective(&config, objective, ComputeFlags_Cpu, &objectiveWrapper, nullptr);
    if(Error_None != error) {
       LOG_0(Trace_Error, "ERROR DetermineLinkFunction GetObjective failed");
 
@@ -79,14 +108,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
 }
 
 static const char g_sCustomRegression[] = "custom_regression";
-static const char g_sCustomClassification[] = "custom_classification";
 static const char g_sCustomRanking[] = "custom_ranking";
-static const char g_sPower[] = "power";
+static const char g_sMonoClassification[] = "monoclassification";
+static const char g_sCustomBinaryClassification[] = "custom_binary";
+static const char g_sCustomOvrClassification[] = "custom_ovr";
+static const char g_sCustomMultinomialClassification[] = "custom_multinomial";
+static const char g_sMultinominalLogit[] = "mlogit";
+static const char g_sOvrLogit[] = "vlogit";
 static const char g_sLogit[] = "logit";
 static const char g_sProbit[] = "probit";
 static const char g_sCloglog[] = "cloglog";
 static const char g_sLoglog[] = "loglog";
 static const char g_sCauchit[] = "cauchit";
+static const char g_sPower[] = "power";
 static const char g_sIdentity[] = "identity";
 static const char g_sLog[] = "log";
 static const char g_sInverse[] = "inverse";
@@ -97,12 +131,20 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionStr(LinkEbm link
    switch(link) {
    case Link_custom_regression:
       return g_sCustomRegression;
-   case Link_custom_classification:
-      return g_sCustomClassification;
    case Link_custom_ranking:
       return g_sCustomRanking;
-   case Link_power:
-      return g_sPower;
+   case Link_monoclassification:
+      return g_sMonoClassification;
+   case Link_custom_binary:
+      return g_sCustomBinaryClassification;
+   case Link_custom_ovr:
+      return g_sCustomOvrClassification;
+   case Link_custom_multinomial:
+      return g_sCustomMultinomialClassification;
+   case Link_mlogit:
+      return g_sMultinominalLogit;
+   case Link_vlogit:
+      return g_sOvrLogit;
    case Link_logit:
       return g_sLogit;
    case Link_probit:
@@ -113,6 +155,8 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionStr(LinkEbm link
       return g_sLoglog;
    case Link_cauchit:
       return g_sCauchit;
+   case Link_power:
+      return g_sPower;
    case Link_identity:
       return g_sIdentity;
    case Link_log:
@@ -131,15 +175,22 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionStr(LinkEbm link
 EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char * link) {
    if(nullptr != link) {
       link = SkipWhitespace(link);
-
       if(IsStringEqualsForgiving(link, g_sCustomRegression))
          return Link_custom_regression;
-      if(IsStringEqualsForgiving(link, g_sCustomClassification))
-         return Link_custom_classification;
       if(IsStringEqualsForgiving(link, g_sCustomRanking))
          return Link_custom_ranking;
-      if(IsStringEqualsForgiving(link, g_sPower))
-         return Link_power;
+      if(IsStringEqualsForgiving(link, g_sMonoClassification))
+         return Link_monoclassification;
+      if(IsStringEqualsForgiving(link, g_sCustomBinaryClassification))
+         return Link_custom_binary;
+      if(IsStringEqualsForgiving(link, g_sCustomOvrClassification))
+         return Link_custom_ovr;
+      if(IsStringEqualsForgiving(link, g_sCustomMultinomialClassification))
+         return Link_custom_multinomial;
+      if(IsStringEqualsForgiving(link, g_sMultinominalLogit))
+         return Link_mlogit;
+      if(IsStringEqualsForgiving(link, g_sOvrLogit))
+         return Link_vlogit;
       if(IsStringEqualsForgiving(link, g_sLogit))
          return Link_logit;
       if(IsStringEqualsForgiving(link, g_sProbit))
@@ -150,6 +201,8 @@ EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char * link
          return Link_loglog;
       if(IsStringEqualsForgiving(link, g_sCauchit))
          return Link_cauchit;
+      if(IsStringEqualsForgiving(link, g_sPower))
+         return Link_power;
       if(IsStringEqualsForgiving(link, g_sIdentity))
          return Link_identity;
       if(IsStringEqualsForgiving(link, g_sLog))

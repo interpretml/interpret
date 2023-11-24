@@ -84,37 +84,53 @@ def measure_interactions(
 
     is_differential_privacy = False
 
-    output_type = None
-    classes = None
-    link = None
-    link_param = None
+    flags = Native.LinkFlags_DifferentialPrivacy if is_differential_privacy else Native.LinkFlags_Default
+
     native = Native.get_native_singleton()
+
+    output_type = None
     if objective is not None:
         if len(objective.strip()) == 0:
             objective = None
         else:
-            link, link_param = native.determine_link(is_differential_privacy, objective)
             # "classification" or "regression"
-            output_type = native.get_output_type(link)
+            output_type = native.get_output_type(native.determine_link(flags, objective, -1)[0])
 
+    classes = None
+    link = None
+    link_param = None
     if is_classifier(init_score):
         # all scikit-learn classification models need to expose self.classes_
         classes = init_score.classes_
+        y = typify_classification(y)
+
+        invert_classes = dict(zip(classes, count()))
+        y = np.array([invert_classes[el] for el in y], dtype=np.int64)
+
         if output_type is None:
             output_type = "classification"
-            link, link_param = native.determine_link(is_differential_privacy, "log_loss")
-        elif output_type != "classification":
+            link, link_param = native.determine_link(flags, "log_loss", len(classes))
+        elif output_type == "classification":
+            link, link_param = native.determine_link(flags, objective, len(classes))
+        else:
             raise ValueError(
                 f"init_score is a classifier, but the objective is: {objective}"
             )
     elif is_regressor(init_score):
         if output_type is None:
             output_type = "regression"
-            link, link_param = native.determine_link(is_differential_privacy, "rmse")
-        elif output_type != "regression":
+            link, link_param = native.determine_link(flags, "rmse", -1)
+        elif output_type == "regression":
+            link, link_param = native.determine_link(flags, objective, -1)
+        else:
             raise ValueError(
                 f"init_score is a regressor, but the objective is: {objective}"
             )
+    elif output_type == "classification":
+        y = typify_classification(y)
+        # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
+        classes, y = np.unique(y, return_inverse=True)
+        link, link_param = native.determine_link(flags, objective, len(classes))
 
     init_score, X, n_samples = clean_init_score_and_X(
         link, link_param, init_score, X, feature_names, feature_types, len(y)
@@ -152,13 +168,10 @@ def measure_interactions(
             raise ValueError("unrecognized target type in y")
 
     if output_type == "classification":
-        y = typify_classification(y)
         if classes is None:
+            y = typify_classification(y)
             # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
             classes, y = np.unique(y, return_inverse=True)
-        else:
-            invert_classes = dict(zip(classes, count()))
-            y = np.array([invert_classes[el] for el in y], dtype=np.int64)
         n_classes = len(classes)
         if objective is None:
             objective = "log_loss"

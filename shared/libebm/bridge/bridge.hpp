@@ -86,7 +86,12 @@ inline constexpr static bool IsRegressionOutput(const LinkEbm link) noexcept {
 }
 inline constexpr static bool IsClassificationOutput(const LinkEbm link) noexcept {
    return
-      Link_custom_classification == link ||
+      Link_monoclassification == link ||
+      Link_custom_binary == link ||
+      Link_custom_ovr == link ||
+      Link_custom_multinomial == link ||
+      Link_mlogit == link ||
+      Link_vlogit == link ||
       Link_logit == link ||
       Link_probit == link ||
       Link_cloglog == link ||

@@ -15,6 +15,10 @@ _log = logging.getLogger(__name__)
 
 
 class Native:
+    # LinkFlags
+    LinkFlags_Default = 0x00000000
+    LinkFlags_DifferentialPrivacy = 0x00000001
+
     # CreateBoosterFlags
     CreateBoosterFlags_Default = 0x00000000
     CreateBoosterFlags_DifferentialPrivacy = 0x00000001
@@ -576,7 +580,7 @@ class Native:
 
         return bag
 
-    def determine_link(self, is_private, objective):
+    def determine_link(self, flags, objective, n_classes):
         if objective is None or len(objective.strip()) == 0:
             msg = "objective must be specified"
             _log.error(msg)
@@ -586,8 +590,9 @@ class Native:
         link_param = ct.c_double(np.nan)
 
         return_code = self._unsafe.DetermineLinkFunction(
-            is_private,
+            flags,
             objective.encode("ascii"),
+            n_classes,
             ct.byref(link),
             ct.byref(link_param),
         )
@@ -1037,10 +1042,12 @@ class Native:
         self._unsafe.SampleWithoutReplacementStratified.restype = ct.c_int32
 
         self._unsafe.DetermineLinkFunction.argtypes = [
-            # int32_t isDifferentialPrivacy
+            # LinkFlags flags
             ct.c_int32,
             # char * objective
             ct.c_char_p,
+            # int64_t countClasses
+            ct.c_int64,
             # int32_t * linkOut
             ct.c_void_p,
             # double * linkParamOut

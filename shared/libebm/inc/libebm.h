@@ -94,6 +94,10 @@ typedef int32_t BoolEbm;
 #define BoolEbmPrintf PRId32
 typedef int32_t ErrorEbm;
 #define ErrorEbmPrintf PRId32
+typedef int32_t LinkFlags;
+// printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
+typedef uint32_t ULinkFlags;
+#define ULinkFlagsPrintf PRIx32
 typedef int32_t CreateBoosterFlags;
 // printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
 typedef uint32_t UCreateBoosterFlags;
@@ -129,6 +133,7 @@ typedef struct _InteractionHandle {
 
 #define BOOL_CAST(val)                             (STATIC_CAST(BoolEbm, (val)))
 #define ERROR_CAST(val)                            (STATIC_CAST(ErrorEbm, (val)))
+#define LINK_FLAGS_CAST(val)                       (STATIC_CAST(LinkFlags, (val)))
 #define CREATE_BOOSTER_FLAGS_CAST(val)             (STATIC_CAST(CreateBoosterFlags, (val)))
 #define CREATE_INTERACTION_FLAGS_CAST(val)         (STATIC_CAST(CreateInteractionFlags, (val)))
 #define TERM_BOOST_FLAGS_CAST(val)                 (STATIC_CAST(TermBoostFlags, (val)))
@@ -193,6 +198,10 @@ typedef struct _InteractionHandle {
 #define Error_ObjectiveParamNonPrivate             (ERROR_CAST(-20))
 #define Error_ObjectiveIllegalTarget               (ERROR_CAST(-21))
 
+#define LinkFlags_Default                          (LINK_FLAGS_CAST(0x00000000))
+#define LinkFlags_DifferentialPrivacy              (LINK_FLAGS_CAST(0x00000001))
+#define LinkFlags_BinaryAsMulticlass               (LINK_FLAGS_CAST(0x00000002))
+
 #define CreateBoosterFlags_Default                 (CREATE_BOOSTER_FLAGS_CAST(0x00000000))
 #define CreateBoosterFlags_DifferentialPrivacy     (CREATE_BOOSTER_FLAGS_CAST(0x00000001))
 #define CreateBoosterFlags_DisableApprox           (CREATE_BOOSTER_FLAGS_CAST(0x00000002))
@@ -237,23 +246,33 @@ typedef struct _InteractionHandle {
 // https://www.sagepub.com/sites/default/files/upm-binaries/21121_Chapter_15.pdf
 // https://www.rdocumentation.org/packages/VGAM/versions/1.1-8/topics/Links
 #define Link_ERROR                                 (LINK_CAST(0))
-// uses link param potentially
+// custom (uses link param potentially)
 #define Link_custom_regression                     (LINK_CAST(1))
-#define Link_custom_classification                 (LINK_CAST(2))
-#define Link_custom_ranking                        (LINK_CAST(3))
-#define Link_power                                 (LINK_CAST(4))  // Tweedie regression (although we use log)
-// classification
-#define Link_logit                                 (LINK_CAST(5))  // Logistic regression
-#define Link_probit                                (LINK_CAST(6))  // Probit regression
-#define Link_cloglog                               (LINK_CAST(7))  // Complementary log-log regression
-#define Link_loglog                                (LINK_CAST(8))  // Log-log regression
-#define Link_cauchit                               (LINK_CAST(9))  // Cauchit regression
+#define Link_custom_ranking                        (LINK_CAST(2))
+#define Link_monoclassification                    (LINK_CAST(10))  // always 100%, so no customization
+#define Link_custom_binary                         (LINK_CAST(11))
+#define Link_custom_ovr                            (LINK_CAST(12))
+#define Link_custom_multinomial                    (LINK_CAST(13))
+// multinominal classification
+#define Link_mlogit                                (LINK_CAST(20))  // Multinominal logistic regression
+// one vs rest multiclass classification
+#define Link_vlogit                                (LINK_CAST(30))  // Multiclass one vs rest logistic regression
+// binary classification
+#define Link_logit                                 (LINK_CAST(40))  // Logistic regression
+#define Link_probit                                (LINK_CAST(41))  // Probit regression
+#define Link_cloglog                               (LINK_CAST(42))  // Complementary log-log regression
+#define Link_loglog                                (LINK_CAST(43))  // Log-log regression
+#define Link_cauchit                               (LINK_CAST(44))  // Cauchit regression
+// ranking and future
+//                                                 reserve 50-89
+// regression with link param
+#define Link_power                                 (LINK_CAST(90))  // Tweedie regression (although we use log)
 // regression
-#define Link_identity                              (LINK_CAST(10)) // Linear regression
-#define Link_log                                   (LINK_CAST(11)) // Poisson regression
-#define Link_inverse                               (LINK_CAST(12)) // Gamma regression (although we use log)
-#define Link_inverse_square                        (LINK_CAST(13)) // Inverse Gaussian regression
-#define Link_sqrt                                  (LINK_CAST(14)) // Square root regression
+#define Link_identity                              (LINK_CAST(100)) // Linear regression
+#define Link_log                                   (LINK_CAST(101)) // Poisson regression
+#define Link_inverse                               (LINK_CAST(102)) // Gamma regression (although we use log)
+#define Link_inverse_square                        (LINK_CAST(103)) // Inverse Gaussian regression
+#define Link_sqrt                                  (LINK_CAST(104)) // Square root regression
 
 #define OutputType_Ranking                         (OUTPUT_TYPE_CAST(-3))
 #define OutputType_Regression                      (OUTPUT_TYPE_CAST(-2))
@@ -430,8 +449,9 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratifi
 );
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
-   BoolEbm isDifferentialPrivacy,
+   LinkFlags flags,
    const char * objective,
+   IntEbm countClasses,
    LinkEbm * linkOut,
    double * linkParamOut
 );

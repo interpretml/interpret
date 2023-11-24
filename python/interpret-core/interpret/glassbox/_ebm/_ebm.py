@@ -556,7 +556,8 @@ class EBMModel(BaseEstimator):
         is_differential_privacy = is_private(self)
 
         native = Native.get_native_singleton()
-        link, link_param = native.determine_link(is_differential_privacy, objective)
+        flags = Native.LinkFlags_DifferentialPrivacy if is_differential_privacy else Native.LinkFlags_Default
+        link, link_param = native.determine_link(flags, objective, n_classes)
 
         init_score, X, n_samples = clean_init_score_and_X(
             link,
@@ -2436,7 +2437,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     link\\_ : str
         Link function used to convert the predictions or targets into linear space
         additive scores and vice versa via the inverse link. Possible values include:
-        "custom_classification", "logit", "probit", "cloglog", "loglog", "cauchit"
+        "monoclassification", "custom_binary", "custom_ovr", "custom_multinomial", 
+        "mlogit", "vlogit", "logit", "probit", "cloglog", "loglog", "cauchit"
     link_param\\_ : float
         Float value that can be used by the link function. For classification it is only used by "custom_classification".
     bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
@@ -2968,7 +2970,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
     link\\_ : str
         Link function used to convert the predictions or targets into linear space
         additive scores and vice versa via the inverse link. Possible values include:
-        "custom_classification", "logit", "probit", "cloglog", "loglog", "cauchit"
+        "monoclassification", "custom_binary", "custom_ovr", "custom_multinomial", 
+        "mlogit", "vlogit", "logit", "probit", "cloglog", "loglog", "cauchit"
     link_param\\_ : float
         Float value that can be used by the link function. For classification it is only used by "custom_classification".
     bag_weights\\_ : array of float with shape ``(n_outer_bags,)``

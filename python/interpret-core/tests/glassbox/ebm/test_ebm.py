@@ -399,6 +399,8 @@ def test_ebm_synthetic_singleclass_classification():
     clf = ExplainableBoostingClassifier()
     clf.fit(X, y)
 
+    assert clf.link_ == "monoclassification"
+
     prob_scores = clf.predict_proba(X)
     assert prob_scores.ndim == 2
     assert prob_scores.shape[0] == len(y)
