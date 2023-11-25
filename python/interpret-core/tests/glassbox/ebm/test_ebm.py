@@ -5,6 +5,7 @@
 # TODO PK add a test with a real regression dataset
 # TODO PK add a test with more than 1 multiclass interaction
 
+from sklearn.metrics import log_loss
 from ...tutils import (
     synthetic_multiclass,
     synthetic_classification,
@@ -48,6 +49,32 @@ def valid_ebm(ebm):
     for term_scores in ebm.term_scores_:
         all_finite = np.isfinite(term_scores).all()
         assert all_finite
+
+
+def test_binarize():
+    data = iris_classification()
+    X_train = data["train"]["X"]
+    y_train = data["train"]["y"]
+    X_test = data["test"]["X"]
+    y_test = data["test"]["y"]
+
+    clf = ExplainableBoostingClassifier(interactions=0)
+    clf.fit(X_train, y_train)
+
+    # slightly unbalance the EBM so that it is not centered anymore through editing
+    clf.term_scores_[0][1, 0] = 100
+
+    logloss_multinomial = log_loss(y_test, clf.predict_proba(X_test))
+
+    ebms = clf._multiclass_to_binary()
+
+    probas = np.array([ebm.predict_proba(X_test)[:, 1] for ebm in ebms]).T
+    probas /= np.sum(probas, axis=-1, keepdims=True)
+
+    logloss_ovr = log_loss(y_test, probas)
+    ratio = logloss_ovr / logloss_multinomial
+
+    assert 0.9 < ratio and ratio < 1.1
 
 
 def test_monotonize():

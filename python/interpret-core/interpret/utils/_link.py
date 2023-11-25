@@ -4,11 +4,14 @@
 import numpy as np
 
 import logging
+
 _log = logging.getLogger(__name__)
+
 
 def _softmax(x):
     e_x = np.exp(x - x.max(axis=-1, keepdims=True))
     return e_x / e_x.sum(axis=-1, keepdims=True)
+
 
 def link_func(predictions, link, link_param=np.nan):
     """Applies the link function to predictions to generate scores.
@@ -33,21 +36,15 @@ def link_func(predictions, link, link_param=np.nan):
             msg = f"predictions must have 2 elements in the last dimensions, but has {predictions.shape[-1]}."
             _log.error(msg)
             raise ValueError(msg)
-        maxes = predictions.max(axis=-1, keepdims=True)
-        with np.errstate(divide="ignore"):
-            scores = np.log(predictions / maxes)
-        scores = scores[..., 1] - scores[..., 0]
-        return scores
+        scores = np.log(predictions / predictions.max(axis=-1, keepdims=True))
+        return scores[..., 1] - scores[..., 0]
     elif link == "mlogit":
         # accept multinominal with 2 classes, even though it's weird
         if predictions.shape[-1] <= 1:
             msg = f"predictions must have 2 or more elements in the last dimensions, but has {predictions.shape[-1]}."
             _log.error(msg)
             raise ValueError(msg)
-        maxes = predictions.max(axis=-1, keepdims=True)
-        with np.errstate(divide="ignore"):
-            scores = np.log(predictions / maxes)
-        return scores
+        return np.log(predictions / predictions.max(axis=-1, keepdims=True))
     elif link == "identity":
         return predictions.copy()
     elif link == "log":
@@ -75,9 +72,7 @@ def inv_link(scores, link, link_param=np.nan):
             raise ValueError(msg)
         return np.full(scores.shape[:-1] + (1,), 1.0, np.float64)
     elif link == "logit":
-        scores = np.expand_dims(scores, axis=-1)
-        scores = np.insert(scores, 0, 0, axis=-1)
-        return _softmax(scores)
+        return _softmax(np.insert(np.expand_dims(scores, axis=-1), 0, 0, axis=-1))
     elif link == "mlogit":
         # accept multinominal with 2 classes, even though it's weird
         if scores.shape[-1] <= 1:

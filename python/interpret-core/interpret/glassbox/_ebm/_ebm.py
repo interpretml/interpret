@@ -23,7 +23,7 @@ from ._utils import (
 )
 from ...utils._misc import clean_index, clean_indexes
 from ...utils._histogram import make_all_histogram_edges
-from ...utils._link import inv_link
+from ...utils._link import link_func, inv_link
 from ...utils._seed import normalize_seed
 from ...utils._clean_x import preclean_X
 from ...utils._clean_simple import (
@@ -556,7 +556,11 @@ class EBMModel(BaseEstimator):
         is_differential_privacy = is_private(self)
 
         native = Native.get_native_singleton()
-        flags = Native.LinkFlags_DifferentialPrivacy if is_differential_privacy else Native.LinkFlags_Default
+        flags = (
+            Native.LinkFlags_DifferentialPrivacy
+            if is_differential_privacy
+            else Native.LinkFlags_Default
+        )
         link, link_param = native.determine_link(flags, objective, n_classes)
 
         init_score, X, n_samples = clean_init_score_and_X(
@@ -2318,6 +2322,64 @@ class EBMModel(BaseEstimator):
 
         return self
 
+    def _multiclass_to_binary(self):
+        # TODO: write multinomial_to_ovr and ovr_to_multinomial once we support OVR classifiers
+
+        check_is_fitted(self, "has_fitted_")
+
+        if self.link_ == "mlogit":
+            binary_link = "logit"
+            binary_param = np.nan
+        else:
+            msg = f"multiclass_to_binary can only be called on a multiclass classifier, but this classifier has link function {self.link_}."
+            _log.error(msg)
+            raise ValueError(msg)
+
+        intercept_multi = self.intercept_.copy()
+
+        # redo zero centering in-case the EBM has been unbalanced by editing
+        term_scores = []
+        for scores, weights in zip(self.term_scores_, self.bin_weights_):
+            mean = np.average(
+                scores.reshape(-1, scores.shape[-1]), axis=0, weights=weights.flatten()
+            )
+            intercept_multi += mean
+            term_scores.append(scores - mean)
+
+        prob = inv_link(intercept_multi, self.link_, self.link_param_)
+        prob = np.expand_dims(prob, axis=-1)
+        prob = np.c_[1.0 - prob, prob]
+        intercept_binary = link_func(prob, binary_link, binary_param)
+
+        ebms = []
+        for intercept_val in intercept_binary:
+            ebm = self.copy()
+            ebm.classes_ = np.array([0, 1], np.int64)
+            ebm.link_ = binary_link
+            ebm.link_param_ = binary_param
+            ebm.intercept_ = np.array([intercept_val], np.float64)
+
+            # TODO: do this per-bag in addition to the final scores:
+            ebm.bagged_scores_ = None
+            ebm.standard_deviations_ = None
+
+            ebm.term_scores_ = []
+
+            ebms.append(ebm)
+
+        n_classes = len(intercept_multi)
+        for scores in term_scores:
+            scores += intercept_multi
+            prob = inv_link(scores, self.link_, self.link_param_)
+            prob = np.expand_dims(prob, axis=-1)
+            prob = np.c_[1.0 - prob, prob]
+            scores = link_func(prob, binary_link, binary_param)
+            scores -= intercept_binary
+            for i in range(n_classes):
+                ebms[i].term_scores_.append(scores[..., i])
+
+        return ebms
+
 
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     """An Explainable Boosting Classifier
@@ -2437,7 +2499,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     link\\_ : str
         Link function used to convert the predictions or targets into linear space
         additive scores and vice versa via the inverse link. Possible values include:
-        "monoclassification", "custom_binary", "custom_ovr", "custom_multinomial", 
+        "monoclassification", "custom_binary", "custom_ovr", "custom_multinomial",
         "mlogit", "vlogit", "logit", "probit", "cloglog", "loglog", "cauchit"
     link_param\\_ : float
         Float value that can be used by the link function. For classification it is only used by "custom_classification".
@@ -2970,7 +3032,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
     link\\_ : str
         Link function used to convert the predictions or targets into linear space
         additive scores and vice versa via the inverse link. Possible values include:
-        "monoclassification", "custom_binary", "custom_ovr", "custom_multinomial", 
+        "monoclassification", "custom_binary", "custom_ovr", "custom_multinomial",
         "mlogit", "vlogit", "logit", "probit", "cloglog", "loglog", "cauchit"
     link_param\\_ : float
         Float value that can be used by the link function. For classification it is only used by "custom_classification".

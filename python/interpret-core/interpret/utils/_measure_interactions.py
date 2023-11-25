@@ -84,7 +84,11 @@ def measure_interactions(
 
     is_differential_privacy = False
 
-    flags = Native.LinkFlags_DifferentialPrivacy if is_differential_privacy else Native.LinkFlags_Default
+    flags = (
+        Native.LinkFlags_DifferentialPrivacy
+        if is_differential_privacy
+        else Native.LinkFlags_Default
+    )
 
     native = Native.get_native_singleton()
 
@@ -94,7 +98,9 @@ def measure_interactions(
             objective = None
         else:
             # "classification" or "regression"
-            output_type = native.get_output_type(native.determine_link(flags, objective, -1)[0])
+            output_type = native.get_output_type(
+                native.determine_link(flags, objective, -1)[0]
+            )
 
     classes = None
     link = None
