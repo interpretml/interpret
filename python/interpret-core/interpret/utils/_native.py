@@ -564,6 +564,10 @@ class Native:
 
         bag = np.empty(count_samples, dtype=np.int8, order="C")
 
+        if not targets.flags.c_contiguous:
+            # targets could be a slice with a stride. We need contiguous for C
+            targets = targets.copy()
+
         return_code = self._unsafe.SampleWithoutReplacementStratified(
             Native._make_pointer(rng, np.ubyte, is_null_allowed=True),
             n_classes,
@@ -1318,23 +1322,28 @@ class Booster(AbstractContextManager):
                 raise ValueError("bag should be len(n_samples)")
             n_bagged_samples = np.count_nonzero(self.bag)
 
-        if self.init_scores is not None:
-            if self.init_scores.shape[0] != n_bagged_samples:  # pragma: no cover
+        init_scores = self.init_scores
+        if init_scores is not None:
+            if not init_scores.flags.c_contiguous:
+                # init_scores could be a slice that has a stride.  We need contiguous for caling into C
+                init_scores = init_scores.copy()
+
+            if init_scores.shape[0] != n_bagged_samples:  # pragma: no cover
                 raise ValueError(
                     "init_scores should have the same length as the number of non-zero bag entries"
                 )
 
             if n_class_scores == 1:
-                if self.init_scores.ndim != 1:  # pragma: no cover
+                if init_scores.ndim != 1:  # pragma: no cover
                     raise ValueError(
                         f"init_scores should have ndim == 1 for regression or binary classification"
                     )
             else:
-                if self.init_scores.ndim != 2:  # pragma: no cover
+                if init_scores.ndim != 2:  # pragma: no cover
                     raise ValueError(
                         f"init_scores should have ndim == 2 for multiclass"
                     )
-                if self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
+                if init_scores.shape[1] != n_class_scores:  # pragma: no cover
                     raise ValueError(f"init_scores should have {n_class_scores} scores")
 
         flags = self.create_booster_flags
@@ -1348,7 +1357,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
             Native._make_pointer(
-                self.init_scores, np.float64, 1 if 1 == n_class_scores else 2, True
+                init_scores, np.float64, 1 if 1 == n_class_scores else 2, True
             ),
             len(dimension_counts),
             Native._make_pointer(dimension_counts, np.int64),
@@ -1664,23 +1673,28 @@ class InteractionDetector(AbstractContextManager):
                 raise ValueError("bag should be len(n_samples)")
             n_bagged_samples = np.count_nonzero(self.bag)
 
-        if self.init_scores is not None:
-            if self.init_scores.shape[0] != n_bagged_samples:  # pragma: no cover
+        init_scores = self.init_scores
+        if init_scores is not None:
+            if not init_scores.flags.c_contiguous:
+                # init_scores could be a slice that has a stride.  We need contiguous for caling into C
+                init_scores = init_scores.copy()
+
+            if init_scores.shape[0] != n_bagged_samples:  # pragma: no cover
                 raise ValueError(
                     "init_scores should have the same length as the number of non-zero bag entries"
                 )
 
             if n_class_scores == 1:
-                if self.init_scores.ndim != 1:  # pragma: no cover
+                if init_scores.ndim != 1:  # pragma: no cover
                     raise ValueError(
                         f"init_scores should have ndim == 1 for regression or binary classification"
                     )
             else:
-                if self.init_scores.ndim != 2:  # pragma: no cover
+                if init_scores.ndim != 2:  # pragma: no cover
                     raise ValueError(
                         f"init_scores should have ndim == 2 for multiclass"
                     )
-                if self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
+                if init_scores.shape[1] != n_class_scores:  # pragma: no cover
                     raise ValueError(f"init_scores should have {n_class_scores} scores")
 
         flags = self.create_interaction_flags
@@ -1694,7 +1708,7 @@ class InteractionDetector(AbstractContextManager):
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
             Native._make_pointer(
-                self.init_scores, np.float64, 1 if n_class_scores == 1 else 2, True
+                init_scores, np.float64, 1 if n_class_scores == 1 else 2, True
             ),
             flags,
             native.disable_compute,

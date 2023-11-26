@@ -39,7 +39,16 @@ def bin_native(
             request = (request[0], None)
         requests.append(request)
 
-    n_weights = 0 if sample_weight is None else 1
+    n_weights = 0
+    if sample_weight is not None:
+        n_weights = 1
+        if not sample_weight.flags.c_contiguous:
+            # sample_weight could be a slice that has a stride.  We need contiguous for caling into C
+            sample_weight = sample_weight.copy()
+
+    if not y.flags.c_contiguous:
+        # y could be a slice that has a stride.  We need contiguous for caling into C
+        y = y.copy()
 
     n_bytes = native.measure_dataset_header(len(requests), n_weights, 1)
     for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(
