@@ -35,7 +35,6 @@ def test_link_func_logit1():
     result = link_func(predictions, "logit")
     np.testing.assert_almost_equal(result, expected)
 
-
 def test_link_func_logit2():
     predictions = np.array(
         [
@@ -51,6 +50,13 @@ def test_link_func_logit2():
     )
     expected = np.array([[1.0986123, 1.0986123, np.inf, -np.inf, np.nan, np.nan]])
     result = link_func(predictions, "logit")
+    np.testing.assert_almost_equal(result, expected)
+
+
+def test_link_func_vlogit():
+    predictions = np.array([[[0.75, 1.0], [0.0, np.nan]]])
+    expected = np.array([[[1.0986123, np.inf], [-np.inf, np.nan]]])
+    result = link_func(predictions, "vlogit")
     np.testing.assert_almost_equal(result, expected)
 
 
@@ -122,6 +128,25 @@ def test_inv_link_logit():
         ]
     )
     result = inv_link(scores, "logit")
+    np.testing.assert_almost_equal(result, expected)
+
+
+def test_inv_link_vlogit():
+    scores = np.array([[np.inf, -np.inf, 999.0, -999.0, 0.0, 1.0986123, np.nan]])
+    expected = np.array(
+        [
+            [
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                0.5,
+                0.75,
+                np.nan,
+            ]
+        ]
+    )
+    result = inv_link(scores, "vlogit")
     np.testing.assert_almost_equal(result, expected)
 
 

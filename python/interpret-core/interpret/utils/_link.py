@@ -41,6 +41,16 @@ def link_func(predictions, link, link_param=np.nan):
             val /= 1.0 - val
             np.log(val, out=val)
         return val
+    elif link == "vlogit":
+        if predictions.shape[-1] <= 1:
+            msg = f"predictions must have 2 or more elements in the last dimensions, but has {predictions.shape[-1]}."
+            _log.error(msg)
+            raise ValueError(msg)
+        with np.errstate(divide="ignore"):
+            # val == 1.0 and log(0.0) gives warning otherwise
+            val = predictions / (1.0 - predictions)
+            np.log(val, out=val)
+        return val
     elif link == "mlogit":
         # accept multinominal with 2 classes, even though it's weird
         if predictions.shape[-1] <= 1:
@@ -91,6 +101,16 @@ def inv_link(scores, link, link_param=np.nan):
         val[inf_bool] = 1.0
         val = np.expand_dims(val, axis=-1)
         return np.c_[1.0 - val, val]
+    elif link == "vlogit":
+        with np.errstate(over="ignore"):
+            # scores == 999 gives warning otherwise
+            val = np.exp(scores)
+        inf_bool = val == np.inf
+        with np.errstate(invalid="ignore"):
+            # val == +inf gives warning otherwise
+            val /= val + 1.0
+        val[inf_bool] = 1.0
+        return val
     elif link == "mlogit":
         # accept multinominal with 2 classes, even though it's weird
         if scores.shape[-1] <= 1:
