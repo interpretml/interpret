@@ -66,7 +66,7 @@ def test_binarize():
 
     logloss_multinomial = log_loss(y_test, clf.predict_proba(X_test))
 
-    ebms = clf._multiclass_to_binary()
+    ebms = clf._binarize()
 
     probas = np.array([ebm.predict_proba(X_test)[:, 1] for ebm in ebms]).T
     probas /= np.sum(probas, axis=-1, keepdims=True)

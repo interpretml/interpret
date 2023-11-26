@@ -35,6 +35,7 @@ def test_link_func_logit1():
     result = link_func(predictions, "logit")
     np.testing.assert_almost_equal(result, expected)
 
+
 def test_link_func_logit2():
     predictions = np.array(
         [

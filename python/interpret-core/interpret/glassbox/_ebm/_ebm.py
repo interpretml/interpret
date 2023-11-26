@@ -2322,61 +2322,79 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def _multiclass_to_binary(self):
-        # TODO: write multinomial_to_ovr and ovr_to_multinomial once we support OVR classifiers
+    # def _multinomialize(self):
+    #     TODO: convert ovr model to multinomial
+    #     pass
 
+    def _ovrize(self):
         check_is_fitted(self, "has_fitted_")
 
         if self.link_ == "mlogit":
-            binary_link = "logit"
+            binary_link = "vlogit"
             binary_param = np.nan
         else:
-            msg = f"multiclass_to_binary can only be called on a multiclass classifier, but this classifier has link function {self.link_}."
+            msg = f"ovrize can only be called on a multinomial EBM classifier, but this classifier has link function {self.link_}."
             _log.error(msg)
             raise ValueError(msg)
 
         intercept_multi = self.intercept_.copy()
 
         # redo zero centering in-case the EBM has been unbalanced by editing
-        term_scores = []
-        for scores, weights in zip(self.term_scores_, self.bin_weights_):
-            mean = np.average(
-                scores.reshape(-1, scores.shape[-1]), axis=0, weights=weights.flatten()
-            )
+        terms = []
+        for scores, w in zip(self.term_scores_, self.bin_weights_):
+            mean = np.average(scores.reshape(-1, scores.shape[-1]), 0, w.flatten())
             intercept_multi += mean
-            term_scores.append(scores - mean)
+            terms.append(scores - mean)
 
         prob = inv_link(intercept_multi, self.link_, self.link_param_)
-        prob = np.expand_dims(prob, axis=-1)
         intercept_binary = link_func(prob, binary_link, binary_param)
 
-        ebms = []
-        for intercept_val in intercept_binary:
-            ebm = self.copy()
-            ebm.classes_ = np.array([0, 1], np.int64)
-            ebm.link_ = binary_link
-            ebm.link_param_ = binary_param
-            ebm.intercept_ = np.array([intercept_val], np.float64)
+        for i in range(len(terms)):
+            prob = inv_link(terms[i] + intercept_multi, self.link_, self.link_param_)
+            terms[i] = link_func(prob, binary_link, binary_param) - intercept_binary
 
-            # TODO: do this per-bag in addition to the final scores:
-            ebm.bagged_scores_ = None
-            ebm.standard_deviations_ = None
+        self.term_scores_ = terms
+        # TODO: do this per-bag in addition to the final scores:
+        self.bagged_scores_ = None
+        self.standard_deviations_ = None
 
-            ebm.term_scores_ = []
+        self.link_ = binary_link
+        self.link_param_ = binary_param
+        self.intercept_ = intercept_binary
 
-            ebms.append(ebm)
+        return self
 
-        n_classes = len(intercept_multi)
-        for scores in term_scores:
-            scores += intercept_multi
-            prob = inv_link(scores, self.link_, self.link_param_)
-            prob = np.expand_dims(prob, axis=-1)
-            scores = link_func(prob, binary_link, binary_param)
-            scores -= intercept_binary
-            for i in range(n_classes):
-                ebms[i].term_scores_.append(scores[..., i])
+    def _binarize(self):
+        check_is_fitted(self, "has_fitted_")
 
-        return ebms
+        original = self
+        if original.link_ == "mlogit":
+            original = self.copy()._ovrize()
+
+        if original.link_ == "vlogit":
+            binary_link = "logit"
+            binary_param = np.nan
+
+            ebms = []
+            for i in range(len(original.intercept_)):
+                ebm = original.copy()
+                ebm.classes_ = np.array([0, 1], np.int64)
+                ebm.link_ = binary_link
+                ebm.link_param_ = binary_param
+                ebm.intercept_ = np.array([original.intercept_[i]], np.float64)
+
+                # TODO: do this per-bag in addition to the final scores:
+                ebm.bagged_scores_ = None
+                ebm.standard_deviations_ = None
+                ebm.term_scores_ = [s[..., i] for s in original.term_scores_]
+
+                ebms.append(ebm)
+
+            return ebms
+        else:
+            msg = f"binarize can only be called on a multiclass EBM classifier, but this classifier has link function {self.link_}."
+            _log.error(msg)
+            raise ValueError(msg)
 
 
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
