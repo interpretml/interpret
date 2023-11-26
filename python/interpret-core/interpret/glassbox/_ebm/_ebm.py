@@ -2348,7 +2348,6 @@ class EBMModel(BaseEstimator):
 
         prob = inv_link(intercept_multi, self.link_, self.link_param_)
         prob = np.expand_dims(prob, axis=-1)
-        prob = np.c_[1.0 - prob, prob]
         intercept_binary = link_func(prob, binary_link, binary_param)
 
         ebms = []
@@ -2372,7 +2371,6 @@ class EBMModel(BaseEstimator):
             scores += intercept_multi
             prob = inv_link(scores, self.link_, self.link_param_)
             prob = np.expand_dims(prob, axis=-1)
-            prob = np.c_[1.0 - prob, prob]
             scores = link_func(prob, binary_link, binary_param)
             scores -= intercept_binary
             for i in range(n_classes):
