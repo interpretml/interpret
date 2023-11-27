@@ -161,15 +161,13 @@ def ebm_decision_function(
 def ebm_eval_terms(
     X,
     n_samples,
-    n_classes,
+    n_scores,
     feature_names_in,
     feature_types_in,
     bins,
     term_scores,
     term_features,
 ):
-    n_scores = Native.get_count_scores_c(n_classes)
-
     if n_scores == 1:
         shape = (n_samples, len(term_features))
     else:

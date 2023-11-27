@@ -52,6 +52,64 @@ def valid_ebm(ebm):
         assert all_finite
 
 
+def test_binarize_1term():
+    data = iris_classification()
+    X_train = data["train"]["X"]
+    y_train = data["train"]["y"]
+    X_test = data["test"]["X"]
+    y_test = data["test"]["y"]
+
+    clf = ExplainableBoostingClassifier(interactions=0)
+    clf.fit(X_train, y_train)
+
+    # an EBM with only one term should remain identical if we use passthrough
+    clf.remove_terms(range(1, len(clf.term_scores_)))
+
+    # slightly unbalance the EBM so that it is not centered anymore through editing
+    clf.term_scores_[0][1, 0] = 10
+
+    original_pred = clf.predict_proba(X_test)
+    clf._ovrize(1.0)
+    assert np.allclose(original_pred, clf.predict_proba(X_test))
+    clf._multinomialize(1.0)
+    assert np.allclose(original_pred, clf.predict_proba(X_test))
+
+
+def test_vlogit_2class():
+    data = synthetic_classification()
+    X_train = data["train"]["X"]
+    y_train = data["train"]["y"]
+    X_test = data["test"]["X"]
+    y_test = data["test"]["y"]
+
+    clf = ExplainableBoostingClassifier(interactions=10)
+    clf.fit(X_train, y_train)
+
+    # slightly unbalance the EBM so that it is not centered anymore through editing
+    clf.term_scores_[0][1] = 10
+
+    original_pred = clf.predict_proba(X_test)
+
+    # hack the EBM into being a 2-class OVR, which is not legal, but will work
+    mod = clf.copy()
+    mod.standard_deviations_ = None
+    mod.bagged_scores_ = None
+    for i in range(len(mod.term_scores_)):
+        term = np.expand_dims(mod.term_scores_[i], axis=-1)
+        mod.term_scores_[i] = np.c_[-term, term]
+    mod.intercept_ = np.array([-mod.intercept_[0], mod.intercept_[0]], np.float64)
+    mod.link_ = "vlogit"
+
+    assert np.allclose(original_pred, mod.predict_proba(X_test))
+    assert np.allclose(original_pred, mod._binarize(0.75)[1].predict_proba(X_test))
+    mod._multinomialize(0.625)
+    assert np.allclose(original_pred, mod.predict_proba(X_test))
+    assert np.allclose(original_pred, mod._binarize(0.5)[1].predict_proba(X_test))
+    mod._ovrize(0.125)
+    assert np.allclose(original_pred, mod.predict_proba(X_test))
+    assert np.allclose(original_pred, mod._binarize(0.25)[1].predict_proba(X_test))
+
+
 def test_binarize():
     data = iris_classification()
     X_train = data["train"]["X"]
@@ -76,13 +134,13 @@ def test_binarize():
     logloss_binary = log_loss(y_test, probas)
     ratio = logloss_binary / logloss_multinomial
     assert 0.9 < ratio and ratio < 1.1
-    
+
     logloss_ovr = log_loss(y_test, ovr.predict_proba(X_test))
 
     assert math.isclose(logloss_binary, logloss_ovr, rel_tol=1e-5)
 
     original = ovr.copy()._multinomialize()
-   
+
     logloss_original = log_loss(y_test, original.predict_proba(X_test))
 
     ratio2 = logloss_original / logloss_multinomial
@@ -574,7 +632,7 @@ def test_ebm_adult():
     smoke_test_explanations(global_exp, local_exp, 6000)
 
 
-def test_ebm_eval_terms_regression():
+def test_eval_terms_regression():
     data = synthetic_regression()
     X = data["full"]["X"]
     y = data["full"]["y"]
@@ -592,7 +650,7 @@ def test_ebm_eval_terms_regression():
     assert np.allclose(clf.predict(X), predictions)
 
 
-def test_ebm_eval_terms_binary():
+def test_eval_terms_binary():
     data = synthetic_classification()
     X = data["train"]["X"]
     y = data["train"]["y"]
@@ -609,7 +667,7 @@ def test_ebm_eval_terms_binary():
     assert np.allclose(clf.predict_proba(X), probabilities)
 
 
-def test_ebm_eval_terms_multiclass():
+def test_eval_terms_multiclass():
     data = synthetic_multiclass()
     X = data["train"]["X"]
     y = data["train"]["y"]

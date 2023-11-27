@@ -1579,10 +1579,12 @@ class EBMModel(BaseEstimator):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
+        n_scores = len(self.intercept_) if hasattr(self.intercept_, "__len__") else 1
+
         explanations = ebm_eval_terms(
             X,
             n_samples,
-            len(self.classes_) if is_classifier(self) else -1,
+            n_scores,
             self.feature_names_in_,
             self.feature_types_in_,
             self.bins_,
@@ -1914,10 +1916,14 @@ class EBMModel(BaseEstimator):
                 if isinstance(intercept, np.ndarray) or isinstance(intercept, list):
                     intercept = intercept[0]
 
+            n_scores = (
+                len(self.intercept_) if hasattr(self.intercept_, "__len__") else 1
+            )
+
             explanations = ebm_eval_terms(
                 X,
                 n_samples,
-                len(self.classes_) if is_classifier(self) else -1,
+                n_scores,
                 self.feature_names_in_,
                 self.feature_types_in_,
                 self.bins_,
@@ -2322,8 +2328,13 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def _multinomialize(self):
+    def _multinomialize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
+
+        if passthrough < 0.0 or 1.0 < passthrough:
+            msg = "passthrough must be between 0.0 and 1.0 inclusive"
+            _log.error(msg)
+            raise ValueError(msg)
 
         if self.link_ == "vlogit":
             multi_link = "mlogit"
@@ -2345,9 +2356,15 @@ class EBMModel(BaseEstimator):
         prob = inv_link(intercept_binary, self.link_, self.link_param_)
         intercept_multi = link_func(prob, multi_link, multi_param)
 
-        for i in range(len(terms)):
+        shift = np.zeros_like(intercept_multi)
+        for i, w in enumerate(self.bin_weights_):
             prob = inv_link(terms[i] + intercept_binary, self.link_, self.link_param_)
-            terms[i] = link_func(prob, multi_link, multi_param) - intercept_multi
+            term = link_func(prob, multi_link, multi_param) - intercept_multi
+            mean = np.average(term.reshape(-1, term.shape[-1]), 0, w.flatten())
+            shift += mean
+            terms[i] = term - mean
+
+        intercept_multi += shift * passthrough
 
         self.term_scores_ = terms
         # TODO: do this per-bag in addition to the final scores:
@@ -2360,8 +2377,13 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def _ovrize(self):
+    def _ovrize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
+
+        if passthrough < 0.0 or 1.0 < passthrough:
+            msg = "passthrough must be between 0.0 and 1.0 inclusive"
+            _log.error(msg)
+            raise ValueError(msg)
 
         if self.link_ == "mlogit":
             binary_link = "vlogit"
@@ -2383,9 +2405,15 @@ class EBMModel(BaseEstimator):
         prob = inv_link(intercept_multi, self.link_, self.link_param_)
         intercept_binary = link_func(prob, binary_link, binary_param)
 
-        for i in range(len(terms)):
+        shift = np.zeros_like(intercept_binary)
+        for i, w in enumerate(self.bin_weights_):
             prob = inv_link(terms[i] + intercept_multi, self.link_, self.link_param_)
-            terms[i] = link_func(prob, binary_link, binary_param) - intercept_binary
+            term = link_func(prob, binary_link, binary_param) - intercept_binary
+            mean = np.average(term.reshape(-1, term.shape[-1]), 0, w.flatten())
+            shift += mean
+            terms[i] = term - mean
+
+        intercept_binary += shift * passthrough
 
         self.term_scores_ = terms
         # TODO: do this per-bag in addition to the final scores:
@@ -2398,12 +2426,17 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def _binarize(self):
+    def _binarize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
+
+        if passthrough < 0.0 or 1.0 < passthrough:
+            msg = "passthrough must be between 0.0 and 1.0 inclusive"
+            _log.error(msg)
+            raise ValueError(msg)
 
         original = self
         if original.link_ == "mlogit":
-            original = self.copy()._ovrize()
+            original = self.copy()._ovrize(passthrough)
 
         if original.link_ == "vlogit":
             binary_link = "logit"
