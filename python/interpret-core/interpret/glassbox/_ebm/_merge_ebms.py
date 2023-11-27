@@ -10,6 +10,7 @@ from ._utils import (
     convert_categorical_to_continuous,
     deduplicate_bins,
 )
+from ...utils._native import Native
 
 import numpy as np
 import warnings
@@ -713,12 +714,16 @@ def merge_ebms(models):
         ebm.bin_weights_.append(np.sum(new_bin_weights, axis=0))
         ebm.bagged_scores_.append(np.array(new_bagged_scores, np.float64))
 
+    n_scores = Native.get_count_scores_c(n_classes)
     (
         ebm.term_scores_,
         ebm.standard_deviations_,
         ebm.intercept_,
         ebm.bagged_scores_,
-    ) = process_terms(n_classes, ebm.bagged_scores_, ebm.bin_weights_, ebm.bag_weights_)
+    ) = process_terms(n_scores, ebm.bagged_scores_, ebm.bin_weights_, ebm.bag_weights_)
+    if n_classes < 0:
+        # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
+        intercept = float(intercept[0])
 
     # TODO: we might be able to do these operations earlier
     remove_unused_higher_bins(ebm.term_features_, ebm.bins_)

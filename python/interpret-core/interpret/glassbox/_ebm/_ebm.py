@@ -39,7 +39,7 @@ from ...utils._compressed_dataset import bin_native_by_dimension
 
 from ._bin import (
     eval_terms,
-    ebm_decision_function,
+    ebm_predict_scores,
     ebm_eval_terms,
     make_bin_weights,
 )
@@ -543,6 +543,8 @@ class EBMModel(BaseEstimator):
             if objective is None or len(objective.strip()) == 0:
                 objective = "rmse"
 
+        n_scores = Native.get_count_scores_c(n_classes)
+
         if sample_weight is not None:
             sample_weight = clean_dimensions(sample_weight, "sample_weight")
             if sample_weight.ndim != 1:
@@ -902,12 +904,11 @@ class EBMModel(BaseEstimator):
 
                 if 2 < n_classes:
                     warn(
-                        "Detected multiclass problem. Forcing interactions to 0. "
-                        "Multiclass interactions work except for global "
-                        "visualizations, so the break statement below that "
-                        "disables multiclass interactions can be removed."
+                        "Multiclass interactions only have local explanations. "
+                        "They are not currently displayed in the global explanation "
+                        "visualizations. Set interactions=0 to disable this warning "
+                        "and multiclass interactions."
                     )
-                    break
 
                 # at this point interactions will be a positive, nonzero integer
             else:
@@ -915,14 +916,12 @@ class EBMModel(BaseEstimator):
                 if len(interactions) == 0:
                     break
 
-            initial_intercept = np.zeros(
-                Native.get_count_scores_c(n_classes), np.float64
-            )
+            initial_intercept = np.zeros(n_scores, np.float64)
             scores_bags = []
             for model, bag in zip(models, internal_bags):
                 # TODO: instead of going back to the original data in X, we
                 # could use the compressed and already binned data in dataset
-                scores = ebm_decision_function(
+                scores = ebm_predict_scores(
                     X,
                     n_samples,
                     feature_names_in,
@@ -1121,8 +1120,11 @@ class EBMModel(BaseEstimator):
             )
 
         term_scores, standard_deviations, intercept, bagged_scores = process_terms(
-            n_classes, bagged_scores, bin_weights, bag_weights
+            n_scores, bagged_scores, bin_weights, bag_weights
         )
+        if n_classes < 0:
+            # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
+            intercept = float(intercept[0])
 
         term_names = generate_term_names(feature_names_in, term_features)
 
@@ -1550,7 +1552,7 @@ class EBMModel(BaseEstimator):
             self.feature_types_in_,
         )
 
-        return ebm_decision_function(
+        return ebm_predict_scores(
             X,
             n_samples,
             self.feature_names_in_,
@@ -1565,7 +1567,7 @@ class EBMModel(BaseEstimator):
     def eval_terms(self, X):
         """The term scores returned will be identical to the local explanation values
            obtained by calling ebm.explain_local(X). Calling
-           interpret.utils.inv_link(ebm.eval_terms(X).sum(axis=1) + ebm.intercept\_, ebm.link\_)
+           interpret.utils.inv_link(ebm.eval_terms(X).sum(axis=1) + ebm.intercept\\_, ebm.link\\_)
            is equivalent to calling ebm.predict(X) for regression or ebm.predict_proba(X) for classification.
 
         Args:
@@ -1579,7 +1581,7 @@ class EBMModel(BaseEstimator):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
-        n_scores = len(self.intercept_) if hasattr(self.intercept_, "__len__") else 1
+        n_scores = 1 if type(self.intercept_) is float else len(self.intercept_)
 
         explanations = ebm_eval_terms(
             X,
@@ -1748,81 +1750,91 @@ class EBMModel(BaseEstimator):
 
                 data_dicts.append(data_dict)
             elif len(feature_idxs) == 2:
-                keep_idxs.append(term_idx)
-
-                bin_levels = self.bins_[feature_idxs[0]]
-                feature_bins = bin_levels[min(len(feature_idxs), len(bin_levels)) - 1]
-                if isinstance(feature_bins, dict):
-                    # categorical
-                    bin_labels = list(feature_bins.keys())
-                    if len(bin_labels) != model_graph.shape[0]:
-                        bin_labels.append("DPOther")
+                if is_classifier(self) and 3 <= len(self.classes_):
+                    warn(
+                        f"Dropping term {term_names[term_idx]} from explanation "
+                        "since we can't graph multinomial interactions."
+                    )
                 else:
-                    # continuous
-                    min_feature_val = np.nan
-                    max_feature_val = np.nan
-                    feature_bounds = getattr(self, "feature_bounds_", None)
-                    if feature_bounds is not None:
-                        min_feature_val = feature_bounds[feature_idxs[0], 0]
-                        max_feature_val = feature_bounds[feature_idxs[0], 1]
+                    keep_idxs.append(term_idx)
 
-                    # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_graph, max_graph = native.suggest_graph_bounds(
-                        feature_bins, min_feature_val, max_feature_val
-                    )
-                    bin_labels = list(
-                        np.concatenate(([min_graph], feature_bins, [max_graph]))
-                    )
+                    bin_levels = self.bins_[feature_idxs[0]]
+                    feature_bins = bin_levels[
+                        min(len(feature_idxs), len(bin_levels)) - 1
+                    ]
+                    if isinstance(feature_bins, dict):
+                        # categorical
+                        bin_labels = list(feature_bins.keys())
+                        if len(bin_labels) != model_graph.shape[0]:
+                            bin_labels.append("DPOther")
+                    else:
+                        # continuous
+                        min_feature_val = np.nan
+                        max_feature_val = np.nan
+                        feature_bounds = getattr(self, "feature_bounds_", None)
+                        if feature_bounds is not None:
+                            min_feature_val = feature_bounds[feature_idxs[0], 0]
+                            max_feature_val = feature_bounds[feature_idxs[0], 1]
 
-                bin_labels_left = bin_labels
+                        # this will have no effect in normal models, but will handle inconsistent editied models
+                        min_graph, max_graph = native.suggest_graph_bounds(
+                            feature_bins, min_feature_val, max_feature_val
+                        )
+                        bin_labels = list(
+                            np.concatenate(([min_graph], feature_bins, [max_graph]))
+                        )
 
-                bin_levels = self.bins_[feature_idxs[1]]
-                feature_bins = bin_levels[min(len(feature_idxs), len(bin_levels)) - 1]
-                if isinstance(feature_bins, dict):
-                    # categorical
-                    bin_labels = list(feature_bins.keys())
-                    if len(bin_labels) != model_graph.shape[1]:
-                        bin_labels.append("DPOther")
-                else:
-                    # continuous
-                    min_feature_val = np.nan
-                    max_feature_val = np.nan
-                    feature_bounds = getattr(self, "feature_bounds_", None)
-                    if feature_bounds is not None:
-                        min_feature_val = feature_bounds[feature_idxs[1], 0]
-                        max_feature_val = feature_bounds[feature_idxs[1], 1]
+                    bin_labels_left = bin_labels
 
-                    # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_graph, max_graph = native.suggest_graph_bounds(
-                        feature_bins, min_feature_val, max_feature_val
-                    )
-                    bin_labels = list(
-                        np.concatenate(([min_graph], feature_bins, [max_graph]))
-                    )
+                    bin_levels = self.bins_[feature_idxs[1]]
+                    feature_bins = bin_levels[
+                        min(len(feature_idxs), len(bin_levels)) - 1
+                    ]
+                    if isinstance(feature_bins, dict):
+                        # categorical
+                        bin_labels = list(feature_bins.keys())
+                        if len(bin_labels) != model_graph.shape[1]:
+                            bin_labels.append("DPOther")
+                    else:
+                        # continuous
+                        min_feature_val = np.nan
+                        max_feature_val = np.nan
+                        feature_bounds = getattr(self, "feature_bounds_", None)
+                        if feature_bounds is not None:
+                            min_feature_val = feature_bounds[feature_idxs[1], 0]
+                            max_feature_val = feature_bounds[feature_idxs[1], 1]
 
-                bin_labels_right = bin_labels
+                        # this will have no effect in normal models, but will handle inconsistent editied models
+                        min_graph, max_graph = native.suggest_graph_bounds(
+                            feature_bins, min_feature_val, max_feature_val
+                        )
+                        bin_labels = list(
+                            np.concatenate(([min_graph], feature_bins, [max_graph]))
+                        )
 
-                feature_dict = {
-                    "type": "interaction",
-                    "left_names": bin_labels_left,
-                    "right_names": bin_labels_right,
-                    "scores": model_graph,
-                    "scores_range": bounds,
-                }
-                feature_list.append(feature_dict)
-                density_list.append({})
+                    bin_labels_right = bin_labels
 
-                data_dict = {
-                    "type": "interaction",
-                    "left_names": bin_labels_left,
-                    "right_names": bin_labels_right,
-                    "scores": model_graph,
-                    "scores_range": bounds,
-                }
-                data_dicts.append(data_dict)
+                    feature_dict = {
+                        "type": "interaction",
+                        "left_names": bin_labels_left,
+                        "right_names": bin_labels_right,
+                        "scores": model_graph,
+                        "scores_range": bounds,
+                    }
+                    feature_list.append(feature_dict)
+                    density_list.append({})
+
+                    data_dict = {
+                        "type": "interaction",
+                        "left_names": bin_labels_left,
+                        "right_names": bin_labels_right,
+                        "scores": model_graph,
+                        "scores_range": bounds,
+                    }
+                    data_dicts.append(data_dict)
             else:  # pragma: no cover
                 warn(
-                    f"Dropping feature {term_names[term_idx]} from explanation "
+                    f"Dropping term {term_names[term_idx]} from explanation "
                     "since we can't graph more than 2 dimensions."
                 )
 
@@ -1916,9 +1928,7 @@ class EBMModel(BaseEstimator):
                 if isinstance(intercept, np.ndarray) or isinstance(intercept, list):
                     intercept = intercept[0]
 
-            n_scores = (
-                len(self.intercept_) if hasattr(self.intercept_, "__len__") else 1
-            )
+            n_scores = 1 if type(self.intercept_) is float else len(self.intercept_)
 
             explanations = ebm_eval_terms(
                 X,
@@ -2066,7 +2076,7 @@ class EBMModel(BaseEstimator):
             passthrough: the process of monotonization can result in a change to the mean response
                 of the model. If passthrough is set to 0.0 then the model's mean response to the
                 training set will not change. If passthrough is set to 1.0 then any change to the
-                mean response made by monotonization will be passed through to self.intercept\_.
+                mean response made by monotonization will be passed through to self.intercept\\_.
                 Values between 0 and 1 will result in that percentage being passed through.
 
         Returns:
@@ -2197,7 +2207,7 @@ class EBMModel(BaseEstimator):
         ``histogram_weights_``, ``unique_val_counts_``, ``bins_``,
         ``feature_names_in_``, ``feature_types_in_``, and ``feature_bounds_``.
         Also, any terms that use the features being deleted will be deleted.
-        The following attributes that the caller passed to the \_\_init\_\_ function are
+        The following attributes that the caller passed to the \\_\\_init\\_\\_ function are
         not modified: ``feature_names``, and ``feature_types``.
 
         Args:
@@ -2705,7 +2715,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_,
         )
 
-        scores = ebm_decision_function(
+        scores = ebm_predict_scores(
             X,
             n_samples,
             self.feature_names_in_,
@@ -2741,7 +2751,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_,
         )
 
-        scores = ebm_decision_function(
+        scores = ebm_predict_scores(
             X,
             n_samples,
             self.feature_names_in_,
@@ -3006,7 +3016,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.feature_types_in_,
         )
 
-        scores = ebm_decision_function(
+        scores = ebm_predict_scores(
             X,
             n_samples,
             self.feature_names_in_,
@@ -3240,7 +3250,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             self.feature_types_in_,
         )
 
-        scores = ebm_decision_function(
+        scores = ebm_predict_scores(
             X,
             n_samples,
             self.feature_names_in_,
@@ -3276,7 +3286,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             self.feature_types_in_,
         )
 
-        scores = ebm_decision_function(
+        scores = ebm_predict_scores(
             X,
             n_samples,
             self.feature_names_in_,
@@ -3532,7 +3542,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             self.feature_types_in_,
         )
 
-        scores = ebm_decision_function(
+        scores = ebm_predict_scores(
             X,
             n_samples,
             self.feature_names_in_,

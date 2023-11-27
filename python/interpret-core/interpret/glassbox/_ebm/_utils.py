@@ -165,7 +165,7 @@ def _create_proportional_tensor(axis_weights):
     return tensor.reshape(shape)
 
 
-def process_terms(n_classes, bagged_scores, bin_weights, bag_weights):
+def process_terms(n_scores, bagged_scores, bin_weights, bag_weights):
     term_scores = []
     standard_deviations = []
     new_bagged_scores = []
@@ -216,7 +216,6 @@ def process_terms(n_classes, bagged_scores, bin_weights, bag_weights):
                 _weighted_std(score_tensors, axis=0, weights=bag_weights)
             )
 
-    n_scores = Native.get_count_scores_c(n_classes)
     intercept = np.zeros(n_scores, np.float64)
     if n_scores == 1:
         for scores, weights in zip(term_scores, bin_weights):
@@ -227,15 +226,11 @@ def process_terms(n_classes, bagged_scores, bin_weights, bag_weights):
             intercept += score_mean
     elif n_scores != 0:
         # Postprocess model graphs for multiclass
-        multiclass_postprocess(n_classes, term_scores, bin_weights, intercept)
+        multiclass_postprocess(term_scores, bin_weights, intercept)
 
     for scores, weights in zip(term_scores, bin_weights):
         # set these to zero again since zero-centering them causes the missing/unknown to shift away from zero
         restore_missing_value_zeros(scores, weights)
-
-    if n_classes < 0:
-        # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
-        intercept = float(intercept)
 
     return term_scores, standard_deviations, intercept, new_bagged_scores
 

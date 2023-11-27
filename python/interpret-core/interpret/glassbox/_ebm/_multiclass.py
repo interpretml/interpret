@@ -74,24 +74,17 @@ def multiclass_postprocess_RESTORE_THIS(
     return {"feature_graphs": updated_feature_graphs, "intercepts": intercepts}
 
 
-def multiclass_postprocess(n_classes, term_scores, bin_weights, intercept):
+def multiclass_postprocess(term_scores, bin_weights, intercept):
     """Postprocesses multiclass model graphs with desired properties."""
 
-    # TODO: our existing implementation has a bug where it always uses the simpler method of taking
+    # TODO: The original intended algorithm from the paper is in the function multiclass_postprocess_RESTORE_THIS.
+    # That implementation has a bug where it always uses the simpler method of taking
     # the mean of the class scores.  Copy this behavior for now since it's a lot simpler when
-    # moving to the generator unify_columns function.  Also, this method generalizes to tensors
+    # moving to the generator unify_columns function.  Also, this method generalizes to tensors and we need
+    # to implement that in accordace with the descrition in the paper.
 
-    # TODO: we can probably do all the classes together, and that would make it generalize to interactions as well
-    # TODO: this code, if we continue to do multiclass this way, can be merged with binary and regression handling
-    #       Look at the alternate branch in the caller to multiclass_postprocess
-
-    # TODO: the original intended algorithm from the paper is in the function multiclass_postprocess_RESTORE_THIS
-
-    for i in range(len(term_scores)):
-        for k in range(n_classes):
-            mean = (
-                np.multiply(term_scores[i][:, k], bin_weights[i]).sum()
-                / bin_weights[i].sum()
-            )
-            term_scores[i][:, k] = np.subtract(term_scores[i][:, k], mean)
-            intercept[k] += mean
+    shape = (-1, len(intercept))
+    for scores, weights in zip(term_scores, bin_weights):
+        mean = np.average(scores.reshape(shape), 0, weights.flatten())
+        intercept += mean
+        scores -= mean

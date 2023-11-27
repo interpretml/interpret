@@ -128,7 +128,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                         requirements.clear()
 
 
-def ebm_decision_function(
+def ebm_predict_scores(
     X,
     n_samples,
     feature_names_in,
@@ -139,12 +139,10 @@ def ebm_decision_function(
     term_features,
     init_score=None,
 ):
-    if type(intercept) is float or len(intercept) == 1:
-        sample_scores = np.full(n_samples, intercept, dtype=np.float64)
-    else:
-        sample_scores = np.full(
-            (n_samples, len(intercept)), intercept, dtype=np.float64
-        )
+    shape = n_samples
+    if type(intercept) is not float and len(intercept) != 1:
+        shape = (n_samples, len(intercept))
+    sample_scores = np.full(shape, intercept, dtype=np.float64)
 
     if 0 < n_samples:
         for term_idx, bin_indexes in eval_terms(

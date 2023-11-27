@@ -7,7 +7,7 @@ import math
 from interpret.glassbox._ebm._bin import (
     eval_terms,
     make_bin_weights,
-    ebm_decision_function,
+    ebm_predict_scores,
 )
 from interpret.utils._clean_x import preclean_X
 
@@ -122,7 +122,7 @@ def test_eval_terms():
     assert result[5][2] == 0.000008
     assert result[5][3] == 0
 
-    scores = ebm_decision_function(
+    scores = ebm_predict_scores(
         X,
         n_samples,
         feature_names_in,
