@@ -2322,9 +2322,43 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    # def _multinomialize(self):
-    #     TODO: convert ovr model to multinomial
-    #     pass
+    def _multinomialize(self):
+        check_is_fitted(self, "has_fitted_")
+
+        if self.link_ == "vlogit":
+            multi_link = "mlogit"
+            multi_param = np.nan
+        else:
+            msg = f"multinomialize can only be called on a OVR EBM classifier, but this classifier has link function {self.link_}."
+            _log.error(msg)
+            raise ValueError(msg)
+
+        intercept_binary = self.intercept_.copy()
+
+        # redo zero centering in-case the EBM has been unbalanced by editing
+        terms = []
+        for scores, w in zip(self.term_scores_, self.bin_weights_):
+            mean = np.average(scores.reshape(-1, scores.shape[-1]), 0, w.flatten())
+            intercept_binary += mean
+            terms.append(scores - mean)
+
+        prob = inv_link(intercept_binary, self.link_, self.link_param_)
+        intercept_multi = link_func(prob, multi_link, multi_param)
+
+        for i in range(len(terms)):
+            prob = inv_link(terms[i] + intercept_binary, self.link_, self.link_param_)
+            terms[i] = link_func(prob, multi_link, multi_param) - intercept_multi
+
+        self.term_scores_ = terms
+        # TODO: do this per-bag in addition to the final scores:
+        self.bagged_scores_ = None
+        self.standard_deviations_ = None
+
+        self.link_ = multi_link
+        self.link_param_ = multi_param
+        self.intercept_ = intercept_multi
+
+        return self
 
     def _ovrize(self):
         check_is_fitted(self, "has_fitted_")

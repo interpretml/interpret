@@ -5,6 +5,7 @@
 # TODO PK add a test with a real regression dataset
 # TODO PK add a test with more than 1 multiclass interaction
 
+import math
 from sklearn.metrics import log_loss
 from ...tutils import (
     synthetic_multiclass,
@@ -62,19 +63,30 @@ def test_binarize():
     clf.fit(X_train, y_train)
 
     # slightly unbalance the EBM so that it is not centered anymore through editing
-    clf.term_scores_[0][1, 0] = 100
+    clf.term_scores_[0][1, 0] = 10
 
     logloss_multinomial = log_loss(y_test, clf.predict_proba(X_test))
 
-    ebms = clf._binarize()
+    ovr = clf.copy()._ovrize()
+    ebms = clf.copy()._binarize()
 
     probas = np.array([ebm.predict_proba(X_test)[:, 1] for ebm in ebms]).T
     probas /= np.sum(probas, axis=-1, keepdims=True)
 
-    logloss_ovr = log_loss(y_test, probas)
-    ratio = logloss_ovr / logloss_multinomial
-
+    logloss_binary = log_loss(y_test, probas)
+    ratio = logloss_binary / logloss_multinomial
     assert 0.9 < ratio and ratio < 1.1
+    
+    logloss_ovr = log_loss(y_test, ovr.predict_proba(X_test))
+
+    assert math.isclose(logloss_binary, logloss_ovr, rel_tol=1e-5)
+
+    original = ovr.copy()._multinomialize()
+   
+    logloss_original = log_loss(y_test, original.predict_proba(X_test))
+
+    ratio2 = logloss_original / logloss_multinomial
+    assert 0.7 < ratio and ratio < 1.3
 
 
 def test_monotonize():
