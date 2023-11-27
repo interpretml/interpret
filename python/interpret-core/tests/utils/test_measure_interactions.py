@@ -86,7 +86,7 @@ def test_init_binary_dummy_model():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    lr = DummyClassifier()  # has no decision_function only predict_proba
+    lr = DummyClassifier()
     lr.fit(X, y)
 
     ranked_pairs = measure_interactions(X, y, init_score=lr)
@@ -112,7 +112,7 @@ def test_init_multiclass_dummy_model():
 
     classes, y = np.unique(y, return_inverse=True)
 
-    lr = DummyClassifier()  # has no decision_function only predict_proba
+    lr = DummyClassifier()
     lr.fit(X, y)
 
     ranked_pairs = measure_interactions(X, y, init_score=lr)

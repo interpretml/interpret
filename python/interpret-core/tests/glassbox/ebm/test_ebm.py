@@ -509,7 +509,7 @@ def test_ebm_synthetic_singleclass_classification():
     assert predicts.shape[0] == len(y)
     assert not np.any(predicts)
 
-    scores = clf.decision_function(X)
+    scores = clf.predict_scores(X)
     assert scores.ndim == 2
     assert scores.shape[0] == len(y)
     assert scores.shape[1] == 0
@@ -661,7 +661,7 @@ def test_eval_terms_binary():
     explanations = clf.eval_terms(X)
 
     scores = explanations.sum(axis=1) + clf.intercept_
-    assert np.allclose(clf.decision_function(X), scores)
+    assert np.allclose(clf.predict_scores(X), scores)
 
     probabilities = inv_link(scores, clf.link_, clf.link_param_)
     assert np.allclose(clf.predict_proba(X), probabilities)
@@ -678,7 +678,7 @@ def test_eval_terms_multiclass():
     explanations = clf.eval_terms(X)
 
     scores = explanations.sum(axis=1) + clf.intercept_
-    assert np.allclose(clf.decision_function(X), scores)
+    assert np.allclose(clf.predict_scores(X), scores)
 
     probabilities = inv_link(scores, clf.link_, clf.link_param_)
     assert np.allclose(clf.predict_proba(X), probabilities)
@@ -971,7 +971,6 @@ def test_scikit_learn_compatibility():
         "check_supervised_y_2d",  # we ignore useless added dimensions
         "check_fit2d_predict1d",  # we accept 1d for predict
         "check_fit2d_1sample",  # TODO: we allow fitting on 1 sample, but this kind of input is likely a bug from the caller, so change this
-        "check_regressors_no_decision_function",  # TODO: fix this!
     }
     for estimator, check_func in check_estimator(
         ExplainableBoostingClassifier(), generate_only=True
