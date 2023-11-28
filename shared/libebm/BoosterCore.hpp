@@ -179,7 +179,7 @@ public:
       const BagEbm * const aBag,
       const double * const aInitScores,
       const CreateBoosterFlags flags,
-      const ComputeFlags disableCompute,
+      const AccelerationFlags acceleration,
       const char * const sObjective,
       BoosterCore ** const ppBoosterCoreOut
    );

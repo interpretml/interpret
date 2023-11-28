@@ -180,7 +180,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    const IntEbm * featureIndexes,
    IntEbm countInnerBags,
    CreateBoosterFlags flags,
-   ComputeFlags disableCompute,
+   AccelerationFlags acceleration,
    const char * objective,
    const double * experimentalParams,
    BoosterHandle * boosterHandleOut
@@ -197,7 +197,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       "featureIndexes=%p, "
       "countInnerBags=%" IntEbmPrintf ", "
       "flags=0x%" UCreateBoosterFlagsPrintf ", "
-      "disableCompute=0x%" UComputeFlagsPrintf ", "
+      "acceleration=0x%" UAccelerationFlagsPrintf ", "
       "objective=%p, "
       "experimentalParams=%p, "
       "boosterHandleOut=%p"
@@ -211,7 +211,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       static_cast<const void *>(featureIndexes),
       countInnerBags,
       static_cast<UCreateBoosterFlags>(flags), // signed to unsigned conversion is defined behavior in C++
-      static_cast<UComputeFlags>(disableCompute), // signed to unsigned conversion is defined behavior in C++
+      static_cast<UAccelerationFlags>(acceleration), // signed to unsigned conversion is defined behavior in C++
       static_cast<const void *>(objective), // do not print the string for security reasons
       static_cast<const void *>(experimentalParams),
       static_cast<const void *>(boosterHandleOut)
@@ -274,7 +274,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       bag,
       initScores,
       flags,
-      disableCompute,
+      acceleration,
       objective,
       &pBoosterCore
    );

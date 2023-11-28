@@ -33,7 +33,7 @@ extern ErrorEbm Unbag(
 extern ErrorEbm GetObjective(
    const Config * const pConfig,
    const char * sObjective,
-   const ComputeFlags disableCompute,
+   const AccelerationFlags acceleration,
    ObjectiveWrapper * const pCpuObjectiveWrapperOut,
    ObjectiveWrapper * const pSIMDObjectiveWrapperOut
 ) noexcept;
@@ -152,7 +152,7 @@ ErrorEbm InteractionCore::Create(
    const size_t cWeights,
    const BagEbm * const aBag,
    const CreateInteractionFlags flags,
-   const ComputeFlags disableCompute,
+   const AccelerationFlags acceleration,
    const char * const sObjective,
    const double * const experimentalParams,
    InteractionCore ** const ppInteractionCoreOut
@@ -280,7 +280,7 @@ ErrorEbm InteractionCore::Create(
       error = GetObjective(
          &config, 
          sObjective, 
-         disableCompute,
+         acceleration,
          &pInteractionCore->m_objectiveCpu, 
          &pInteractionCore->m_objectiveSIMD
       );

@@ -114,10 +114,10 @@ typedef int32_t CalcInteractionFlags;
 // printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
 typedef uint32_t UCalcInteractionFlags;
 #define UCalcInteractionFlagsPrintf PRIx32
-typedef int32_t ComputeFlags;
+typedef int32_t AccelerationFlags;
 // printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
-typedef uint32_t UComputeFlags;
-#define UComputeFlagsPrintf PRIx32
+typedef uint32_t UAccelerationFlags;
+#define UAccelerationFlagsPrintf PRIx32
 typedef int32_t LinkEbm;
 #define LinkEbmPrintf PRId32
 typedef int64_t OutputType;
@@ -138,7 +138,7 @@ typedef struct _InteractionHandle {
 #define CREATE_INTERACTION_FLAGS_CAST(val)         (STATIC_CAST(CreateInteractionFlags, (val)))
 #define TERM_BOOST_FLAGS_CAST(val)                 (STATIC_CAST(TermBoostFlags, (val)))
 #define CALC_INTERACTION_FLAGS_CAST(val)           (STATIC_CAST(CalcInteractionFlags, (val)))
-#define COMPUTE_CAST(val)                          (STATIC_CAST(ComputeFlags, (val)))
+#define ACCELERATION_CAST(val)                     (STATIC_CAST(AccelerationFlags, (val)))
 #define TRACE_CAST(val)                            (STATIC_CAST(TraceEbm, (val)))
 #define LINK_CAST(val)                             (STATIC_CAST(LinkEbm, (val)))
 #define OUTPUT_TYPE_CAST(val)                      (STATIC_CAST(OutputType, (val)))
@@ -222,15 +222,14 @@ typedef struct _InteractionHandle {
 #define CalcInteractionFlags_Pure                  (CALC_INTERACTION_FLAGS_CAST(0x00000001))
 #define CalcInteractionFlags_EnableNewton          (CALC_INTERACTION_FLAGS_CAST(0x00000002))
 
-#define ComputeFlags_Default                       (COMPUTE_CAST(0x00000000))
-#define ComputeFlags_Cpu                           (COMPUTE_CAST(0x00000001))
-#define ComputeFlags_Nvidia                        (COMPUTE_CAST(0x00000002))
-#define ComputeFlags_AVX2                          (COMPUTE_CAST(0x00000004))
-#define ComputeFlags_AVX512F                       (COMPUTE_CAST(0x00000008))
-#define ComputeFlags_IntelSIMD                     (ComputeFlags_AVX2 | ComputeFlags_AVX512F)
-#define ComputeFlags_SIMD                          (ComputeFlags_IntelSIMD)
-#define ComputeFlags_GPU                           (ComputeFlags_Nvidia)
-#define ComputeFlags_ALL                           (COMPUTE_CAST(~COMPUTE_CAST(0)))
+#define AccelerationFlags_NONE                     (ACCELERATION_CAST(0x00000000))
+#define AccelerationFlags_Nvidia                   (ACCELERATION_CAST(0x00000001))
+#define AccelerationFlags_AVX2                     (ACCELERATION_CAST(0x00000002))
+#define AccelerationFlags_AVX512F                  (ACCELERATION_CAST(0x00000004))
+#define AccelerationFlags_IntelSIMD                (AccelerationFlags_AVX2 | AccelerationFlags_AVX512F)
+#define AccelerationFlags_SIMD                     (AccelerationFlags_IntelSIMD)
+#define AccelerationFlags_GPU                      (AccelerationFlags_Nvidia)
+#define AccelerationFlags_ALL                      (ACCELERATION_CAST(~ACCELERATION_CAST(0)))
 
 // No messages will be logged. This is the default.
 #define Trace_Off                                  (TRACE_CAST(0))
@@ -479,7 +478,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    const IntEbm * featureIndexes,
    IntEbm countInnerBags,
    CreateBoosterFlags flags,
-   ComputeFlags disableCompute,
+   AccelerationFlags acceleration,
    const char * objective,
    const double * experimentalParams,
    BoosterHandle * boosterHandleOut
@@ -538,7 +537,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    // TODO: add a baseScore parameter here for symmetry with CreateBooster
    const double * initScores, // only samples with non-zeros in the bag are included
    CreateInteractionFlags flags,
-   ComputeFlags disableCompute,
+   AccelerationFlags acceleration,
    const char * objective,
    const double * experimentalParams,
    InteractionHandle * interactionHandleOut

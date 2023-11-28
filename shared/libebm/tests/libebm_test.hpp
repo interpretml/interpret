@@ -342,7 +342,7 @@ static constexpr CreateBoosterFlags k_testCreateBoosterFlags_Default = CreateBoo
 static constexpr CreateInteractionFlags k_testCreateInteractionFlags_Default = CreateInteractionFlags_Default;
 #endif // EXPAND_BINARY_LOGITS
 
-static constexpr ComputeFlags k_testComputeFlags_Default = ComputeFlags_Default;
+static constexpr AccelerationFlags k_testAccelerationFlags_Default = AccelerationFlags_ALL;
 
 static constexpr IntEbm k_leavesMaxFillDefault = 5;
 // 64 dimensions is the most we can express with a 64 bit IntEbm
@@ -450,7 +450,7 @@ public:
       const std::vector<TestSample> validation,
       const IntEbm countInnerBags = k_countInnerBagsDefault,
       const CreateBoosterFlags flags = k_testCreateBoosterFlags_Default,
-      const ComputeFlags disableCompute = k_testComputeFlags_Default,
+      const AccelerationFlags acceleration = k_testAccelerationFlags_Default,
       const char * const sObjective = nullptr,
       const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault
    );
@@ -500,7 +500,7 @@ public:
       const std::vector<FeatureTest> features,
       const std::vector<TestSample> samples,
       const CreateInteractionFlags flags = k_testCreateInteractionFlags_Default,
-      const ComputeFlags disableCompute = k_testComputeFlags_Default,
+      const AccelerationFlags acceleration = k_testAccelerationFlags_Default,
       const char * const sObjective = nullptr,
       const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault
    );

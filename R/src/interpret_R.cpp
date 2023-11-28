@@ -747,7 +747,7 @@ SEXP CreateBooster_R(
       aiTermFeatures,
       cInnerBags,
       CreateBoosterFlags_Default,
-      ComputeFlags_Default,
+      AccelerationFlags_ALL,
       "log_loss",
       nullptr,
       &boosterHandle
@@ -1033,7 +1033,7 @@ SEXP CreateInteractionDetector_R(SEXP dataSetWrapped, SEXP bag, SEXP initScores)
       aBag,
       aInitScores,
       CreateInteractionFlags_Default,
-      ComputeFlags_Default,
+      AccelerationFlags_ALL,
       "log_loss",
       nullptr,
       &interactionHandle

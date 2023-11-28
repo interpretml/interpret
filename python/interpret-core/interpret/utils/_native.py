@@ -40,15 +40,15 @@ class Native:
     CalcInteractionFlags_Default = 0x00000000
     CalcInteractionFlags_Pure = 0x00000001
 
-    # ComputeFlags
-    ComputeFlags_Default = 0x00000000
-    ComputeFlags_Nvidia = 0x00000002
-    ComputeFlags_AVX2 = 0x00000004
-    ComputeFlags_AVX512F = 0x00000008
-    ComputeFlags_IntelSIMD = ComputeFlags_AVX2 | ComputeFlags_AVX512F
-    ComputeFlags_SIMD = ComputeFlags_IntelSIMD
-    ComputeFlags_GPU = ComputeFlags_Nvidia
-    ComputeFlags_ALL = 0xFFFFFFFF
+    # AccelerationFlags
+    AccelerationFlags_NONE = 0x00000000
+    AccelerationFlags_Nvidia = 0x00000001
+    AccelerationFlags_AVX2 = 0x00000002
+    AccelerationFlags_AVX512F = 0x00000004
+    AccelerationFlags_IntelSIMD = AccelerationFlags_AVX2 | AccelerationFlags_AVX512F
+    AccelerationFlags_SIMD = AccelerationFlags_IntelSIMD
+    AccelerationFlags_GPU = AccelerationFlags_Nvidia
+    AccelerationFlags_ALL = 0xFFFFFFFF
 
     # TraceLevel
     _Trace_Off = 0
@@ -696,8 +696,8 @@ class Native:
 
     def _initialize(self, is_debug, simd):
         self.is_debug = is_debug
-        self.disable_compute = (
-            Native.ComputeFlags_Default if simd else Native.ComputeFlags_ALL
+        self.acceleration = (
+            Native.AccelerationFlags_ALL if simd else Native.AccelerationFlags_NONE
         )
         self.approximates = True
 
@@ -1090,7 +1090,7 @@ class Native:
             ct.c_int64,
             # CreateBoosterFlags flags
             ct.c_int32,
-            # ComputeFlags disableCompute
+            # AccelerationFlags acceleration
             ct.c_int32,
             # char * objective
             ct.c_char_p,
@@ -1194,7 +1194,7 @@ class Native:
             ct.c_void_p,
             # CreateInteractionFlags flags
             ct.c_int32,
-            # ComputeFlags disableCompute
+            # AccelerationFlags acceleration
             ct.c_int32,
             # char * objective
             ct.c_char_p,
@@ -1364,7 +1364,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
             flags,
-            native.disable_compute,
+            native.acceleration,
             self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(booster_handle),
@@ -1711,7 +1711,7 @@ class InteractionDetector(AbstractContextManager):
                 init_scores, np.float64, 1 if n_class_scores == 1 else 2, True
             ),
             flags,
-            native.disable_compute,
+            native.acceleration,
             self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(interaction_handle),

@@ -39,14 +39,14 @@ template<typename TFloat>
 static const std::vector<std::shared_ptr<const Registration>> RegisterObjectives() {
    // IMPORTANT: the parameter types listed here must match the parameters types in the Objective class constructor
    return {
-      Register<TFloat, ExampleRegressionObjective, ComputeFlags_Cpu>("example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
-      Register<TFloat, RmseRegressionObjective, ComputeFlags_ALL>("rmse"),
-      Register<TFloat, RmseLogLinkRegressionObjective, ComputeFlags_ALL>("rmse_log"),
-      Register<TFloat, PoissonDevianceRegressionObjective, ComputeFlags_ALL>("poisson_deviance"),
-      Register<TFloat, TweedieDevianceRegressionObjective, ComputeFlags_ALL>("tweedie_deviance", FloatParam("variance_power", 1.5)),
-      Register<TFloat, GammaDevianceRegressionObjective, ComputeFlags_ALL>("gamma_deviance"),
-      Register<TFloat, PseudoHuberRegressionObjective, ComputeFlags_ALL>("pseudo_huber", FloatParam("delta", 1.0)),
-      Register<TFloat, LogLossBinaryObjective, ComputeFlags_ALL>("log_loss"),
-      Register<TFloat, LogLossMulticlassObjective, ComputeFlags_ALL>("log_loss"),
+      Register<TFloat, ExampleRegressionObjective, AccelerationFlags_NONE>("example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
+      Register<TFloat, RmseRegressionObjective, AccelerationFlags_ALL>("rmse"),
+      Register<TFloat, RmseLogLinkRegressionObjective, AccelerationFlags_ALL>("rmse_log"),
+      Register<TFloat, PoissonDevianceRegressionObjective, AccelerationFlags_ALL>("poisson_deviance"),
+      Register<TFloat, TweedieDevianceRegressionObjective, AccelerationFlags_ALL>("tweedie_deviance", FloatParam("variance_power", 1.5)),
+      Register<TFloat, GammaDevianceRegressionObjective, AccelerationFlags_ALL>("gamma_deviance"),
+      Register<TFloat, PseudoHuberRegressionObjective, AccelerationFlags_ALL>("pseudo_huber", FloatParam("delta", 1.0)),
+      Register<TFloat, LogLossBinaryObjective, AccelerationFlags_ALL>("log_loss"),
+      Register<TFloat, LogLossMulticlassObjective, AccelerationFlags_ALL>("log_loss"),
    };
 }

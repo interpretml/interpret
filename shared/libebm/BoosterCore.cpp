@@ -41,7 +41,7 @@ extern ErrorEbm Unbag(
 extern ErrorEbm GetObjective(
    const Config * const pConfig,
    const char * sObjective,
-   const ComputeFlags disableCompute,
+   const AccelerationFlags acceleration,
    ObjectiveWrapper * const pCpuObjectiveWrapperOut,
    ObjectiveWrapper * const pSIMDObjectiveWrapperOut
 ) noexcept;
@@ -280,7 +280,7 @@ ErrorEbm BoosterCore::Create(
    const BagEbm * const aBag,
    const double * const aInitScores,
    const CreateBoosterFlags flags,
-   const ComputeFlags disableCompute,
+   const AccelerationFlags acceleration,
    const char * const sObjective,
    BoosterCore ** const ppBoosterCoreOut
 ) {
@@ -617,7 +617,7 @@ ErrorEbm BoosterCore::Create(
       error = GetObjective(
          &config,
          sObjective, 
-         disableCompute,
+         acceleration,
          &pBoosterCore->m_objectiveCpu,
          &pBoosterCore->m_objectiveSIMD
       );

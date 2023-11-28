@@ -124,7 +124,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
    const BagEbm * bag,
    const double * initScores, // only samples with non-zeros in the bag are included
    CreateInteractionFlags flags,
-   ComputeFlags disableCompute,
+   AccelerationFlags acceleration,
    const char * objective,
    const double * experimentalParams,
    InteractionHandle * interactionHandleOut
@@ -134,7 +134,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       "bag=%p, "
       "initScores=%p, "
       "flags=0x%" UCreateInteractionFlagsPrintf ", "
-      "disableCompute=0x%" UComputeFlagsPrintf ", "
+      "acceleration=0x%" UAccelerationFlagsPrintf ", "
       "objective=%p, "
       "experimentalParams=%p, "
       "interactionHandleOut=%p"
@@ -143,7 +143,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       static_cast<const void *>(bag),
       static_cast<const void *>(initScores),
       static_cast<UCreateInteractionFlags>(flags), // signed to unsigned conversion is defined behavior in C++
-      static_cast<UComputeFlags>(disableCompute), // signed to unsigned conversion is defined behavior in C++
+      static_cast<UAccelerationFlags>(acceleration), // signed to unsigned conversion is defined behavior in C++
       static_cast<const void *>(objective), // do not print the string for security reasons
       static_cast<const void *>(experimentalParams),
       static_cast<const void *>(interactionHandleOut)
@@ -203,7 +203,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(
       cWeights,
       bag,
       flags,
-      disableCompute,
+      acceleration,
       objective,
       experimentalParams,
       &pInteractionCore

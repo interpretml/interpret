@@ -141,7 +141,7 @@ static bool IsFMA3() {
 extern ErrorEbm GetObjective(
    const Config * const pConfig,
    const char * sObjective,
-   const ComputeFlags disableCompute,
+   const AccelerationFlags acceleration,
    ObjectiveWrapper * const pCpuObjectiveWrapperOut,
    ObjectiveWrapper * const pSIMDObjectiveWrapperOut
 ) noexcept {
@@ -150,6 +150,7 @@ extern ErrorEbm GetObjective(
    EBM_ASSERT(nullptr == pCpuObjectiveWrapperOut->m_pObjective);
    EBM_ASSERT(nullptr == pCpuObjectiveWrapperOut->m_pFunctionPointersCpp);
 
+   EBM_ASSERT(nullptr != pSIMDObjectiveWrapperOut || acceleration == AccelerationFlags_NONE);
    EBM_ASSERT(nullptr == pSIMDObjectiveWrapperOut || nullptr == pSIMDObjectiveWrapperOut->m_pObjective);
    EBM_ASSERT(nullptr == pSIMDObjectiveWrapperOut || nullptr == pSIMDObjectiveWrapperOut->m_pFunctionPointersCpp);
 
@@ -170,7 +171,7 @@ extern ErrorEbm GetObjective(
       return error;
    }
 
-   const ComputeFlags zones = pCpuObjectiveWrapperOut->m_zones & static_cast<ComputeFlags>(~disableCompute);
+   const AccelerationFlags zones = static_cast<AccelerationFlags>(pCpuObjectiveWrapperOut->m_zones & acceleration);
 
    // when compiled with only CPU these variables are not used
    UNUSED(zones);
@@ -178,7 +179,7 @@ extern ErrorEbm GetObjective(
 
    do {
 #ifdef BRIDGE_AVX512F_32
-      if(0 != (ComputeFlags_AVX512F & zones)) {
+      if(0 != (AccelerationFlags_AVX512F & zones)) {
          LOG_0(Trace_Info, "INFO GetObjective checking for AVX512F compatibility");
          EBM_ASSERT(nullptr != pSIMDObjectiveWrapperOut);
          if(9 <= DetectInstructionset()) {
@@ -193,7 +194,7 @@ extern ErrorEbm GetObjective(
 #endif // BRIDGE_AVX512F_32
 
 #ifdef BRIDGE_AVX2_32
-      if(0 != (ComputeFlags_AVX2 & zones)) {
+      if(0 != (AccelerationFlags_AVX2 & zones)) {
          LOG_0(Trace_Info, "INFO GetObjective checking for AVX2 compatibility");
          EBM_ASSERT(nullptr != pSIMDObjectiveWrapperOut);
          if(8 <= DetectInstructionset() && IsFMA3()) {

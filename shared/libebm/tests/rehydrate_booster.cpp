@@ -63,7 +63,7 @@ TEST_CASE("Test Rehydration, boosting, binary") {
       },
       k_countInnerBagsDefault, 
       k_testCreateBoosterFlags_Default,
-      k_testComputeFlags_Default,
+      k_testAccelerationFlags_Default,
       nullptr, 
       0
    );
@@ -87,7 +87,7 @@ TEST_CASE("Test Rehydration, boosting, binary") {
          },
          k_countInnerBagsDefault,
          k_testCreateBoosterFlags_Default,
-         k_testComputeFlags_Default,
+         k_testAccelerationFlags_Default,
          nullptr,
          0
       );
