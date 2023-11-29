@@ -8,7 +8,9 @@
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h" // LIKELY
 
+#define ZONE_main
 #include "zones.h"
+
 #include "common.hpp"
 
 #include "RandomDeterministic.hpp"

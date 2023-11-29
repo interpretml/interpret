@@ -4,6 +4,9 @@
 
 #include "pch.hpp"
 
+#define ZONE_main
+#include "zones.h"
+
 #include "RandomDeterministic.hpp"
 
 namespace DEFINED_ZONE_NAME {

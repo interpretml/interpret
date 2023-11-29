@@ -12,7 +12,9 @@
 #include "logging.h"
 #include "unzoned.h"
 
+#define ZONE_cuda
 #include "zones.h"
+
 #include "bridge.h"
 #include "common.hpp"
 #include "bridge.hpp"

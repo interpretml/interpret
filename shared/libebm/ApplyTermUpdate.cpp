@@ -9,6 +9,8 @@
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
+
+#define ZONE_main
 #include "zones.h"
 
 #include "Feature.hpp"

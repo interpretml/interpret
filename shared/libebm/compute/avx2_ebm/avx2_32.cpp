@@ -13,7 +13,9 @@
 #include "logging.h"
 #include "unzoned.h"
 
+#define ZONE_avx2
 #include "zones.h"
+
 #include "bridge.h"
 #include "common.hpp"
 #include "bridge.hpp"

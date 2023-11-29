@@ -8,6 +8,9 @@
 
 #include "unzoned.h" // UNLIKELY
 
+#define ZONE_main
+#include "zones.h"
+
 #include "Term.hpp"
 
 namespace DEFINED_ZONE_NAME {

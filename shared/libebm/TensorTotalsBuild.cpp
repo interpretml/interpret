@@ -8,6 +8,8 @@
 
 #include "libebm.h"
 #include "logging.h"
+
+#define ZONE_main
 #include "zones.h"
 
 #include "common.hpp" // IsMultiplyError

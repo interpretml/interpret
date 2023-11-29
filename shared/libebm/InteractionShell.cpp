@@ -7,6 +7,9 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
+#define ZONE_main
+#include "zones.h"
+
 #include "common.hpp"
 #include "bridge.hpp"
 

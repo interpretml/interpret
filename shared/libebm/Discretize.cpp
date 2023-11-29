@@ -15,7 +15,9 @@
 #include "logging.h"
 #include "unzoned.h" // LIKELY
 
+#define ZONE_main
 #include "zones.h"
+
 #include "common.hpp" // IsConvertError
 
 // TODO: check this file for how we handle subnormal numbers!  It's tricky if we get them

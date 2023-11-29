@@ -5,8 +5,6 @@
 #ifndef COMPUTE_HPP
 #define COMPUTE_HPP
 
-#include "zones.h"
-
 #include "bridge.hpp"
 
 namespace DEFINED_ZONE_NAME {

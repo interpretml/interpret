@@ -17,7 +17,6 @@
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h"
 
-#include "zones.h"
 #include "bridge.h"
 #include "common.hpp"
 #include "bridge.hpp"

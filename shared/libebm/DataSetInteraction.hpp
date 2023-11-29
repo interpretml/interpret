@@ -11,7 +11,6 @@
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h"
 
-#include "zones.h"
 #include "bridge.h" // UIntMain
 
 namespace DEFINED_ZONE_NAME {

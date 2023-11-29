@@ -8,7 +8,6 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "logging.h" // EBM_ASSERT
-#include "zones.h"
 
 #include "Feature.hpp"
 #include "Term.hpp"

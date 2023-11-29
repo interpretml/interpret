@@ -11,8 +11,6 @@
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h" // INLINE_ALWAYS, COUNT_BITS
 
-#include "zones.h"
-
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined

@@ -11,6 +11,8 @@
 
 #include "libebm.h" // EBM_API_BODY
 #include "logging.h" // EBM_ASSERT
+
+#define ZONE_main
 #include "zones.h"
 
 #include "GradientPair.hpp"

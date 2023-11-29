@@ -6,6 +6,8 @@
 
 #include "libebm.h" // EBM_API_BODY
 #include "logging.h" // LOG_
+
+#define ZONE_main
 #include "zones.h"
 
 #include "common.hpp"

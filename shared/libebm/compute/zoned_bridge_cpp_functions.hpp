@@ -6,7 +6,6 @@
 #define ZONED_BRIDGE_CPP_FUNCTIONS_HPP
 
 #include "libebm.h" // ErrorEbm
-#include "zones.h"
 
 struct ApplyUpdateBridge;
 struct BinSumsBoostingBridge;

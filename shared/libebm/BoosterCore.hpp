@@ -13,7 +13,6 @@
 #include "libebm.h" // ErrorEbm
 #include "unzoned.h"
 
-#include "zones.h"
 #include "bridge.h" // ObjectiveWrapper
 
 #include "ebm_internal.hpp" // FloatMain

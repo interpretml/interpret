@@ -11,6 +11,9 @@
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h"
 
+#define ZONE_main
+#include "zones.h"
+
 #include "common.hpp" // IsConvertError
 #include "bridge.hpp" // GetCountItemsBitPacked
 

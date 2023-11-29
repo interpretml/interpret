@@ -232,7 +232,6 @@
 #include <float.h> // DBL_MANT_DIG
 
 #include "logging.h" // EBM_ASSERT
-#include "zones.h"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

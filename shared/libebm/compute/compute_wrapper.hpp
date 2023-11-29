@@ -6,7 +6,6 @@
 #define COMPUTE_WRAPPER_HPP
 
 #include "libebm.h" // ErrorEbm
-#include "zones.h"
 
 #include "BinSumsBoosting.hpp"
 #include "BinSumsInteraction.hpp"

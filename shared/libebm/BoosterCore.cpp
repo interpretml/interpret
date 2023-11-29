@@ -11,6 +11,9 @@
 
 #include "logging.h" // EBM_ASSERT
 
+#define ZONE_main
+#include "zones.h"
+
 #include "common.hpp" // IsConvertError, IsMultiplyError
 #include "Bin.hpp" // IsOverflowBinSize
 

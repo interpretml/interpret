@@ -9,7 +9,9 @@
 #include "logging.h"
 #include "unzoned.h" // LIKELY
 
+#define ZONE_main
 #include "zones.h"
+
 #include "GradientPair.hpp"
 #include "Bin.hpp"
 

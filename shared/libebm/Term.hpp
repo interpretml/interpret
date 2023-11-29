@@ -8,7 +8,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "logging.h" // EBM_ASSERT
-#include "zones.h"
+
 #include "common.hpp" // k_cDimensionsMax
 #include "bridge.hpp"
 

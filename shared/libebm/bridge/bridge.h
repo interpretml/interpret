@@ -8,11 +8,8 @@
 #include <stdlib.h> // free
 
 #include "libebm.h" // ErrorEbm, BoolEbm, etc..
-
 #include "logging.h"
 #include "unzoned.h"
-
-#include "zones.h"
 
 #ifdef __cplusplus
 extern "C" {

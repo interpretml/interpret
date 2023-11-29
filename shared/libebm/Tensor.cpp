@@ -9,6 +9,9 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <string.h> // memcpy
 
+#define ZONE_main
+#include "zones.h"
+
 #include "ebm_internal.hpp"
 #include "Feature.hpp"
 #include "Term.hpp"

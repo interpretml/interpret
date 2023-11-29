@@ -16,7 +16,6 @@
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h" // INLINE_ALWAYS
 
-#include "zones.h"
 #include "bridge.hpp" // IsRegressionOutput, etc.
 
 #include "zoned_bridge_cpp_functions.hpp" // FunctionPointersCpp

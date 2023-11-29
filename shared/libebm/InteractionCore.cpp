@@ -10,6 +10,9 @@
 
 #include "logging.h" // EBM_ASSERT
 
+#define ZONE_main
+#include "zones.h"
+
 #include "bridge.hpp" // ObjectiveWrapper
 #include "Bin.hpp" // IsOverflowBinSize
 

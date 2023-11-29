@@ -9,7 +9,6 @@
 
 #include "libebm.h" // InteractionHandle
 #include "logging.h" // LOG_0
-#include "zones.h"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

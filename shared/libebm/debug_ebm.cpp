@@ -19,9 +19,8 @@
 #include "logging.h"
 #include "unzoned.h"
 
+#define ZONE_main
 #include "zones.h"
-
-//#include "approximate_math.hpp"
 
 #include "Feature.hpp"
 #include "Term.hpp"

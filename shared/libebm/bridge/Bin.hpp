@@ -13,9 +13,7 @@
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h" // UNUSED
 
-#include "zones.h"
 #include "common.hpp"
-
 #include "GradientPair.hpp"
 
 namespace DEFINED_ZONE_NAME {

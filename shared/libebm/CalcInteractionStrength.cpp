@@ -12,7 +12,9 @@
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h" // FloatMain
 
+#define ZONE_main
 #include "zones.h"
+
 #include "Bin.hpp" // GetBinSize
 
 #include "ebm_internal.hpp" // k_cDimensionsMax

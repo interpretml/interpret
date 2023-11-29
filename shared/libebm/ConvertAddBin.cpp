@@ -9,7 +9,9 @@
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h"
 
+#define ZONE_main
 #include "zones.h"
+
 #include "Bin.hpp"
 
 #include "ebm_internal.hpp"

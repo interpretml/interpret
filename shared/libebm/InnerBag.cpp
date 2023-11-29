@@ -11,6 +11,9 @@
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h" // AlignedFree
 
+#define ZONE_main
+#include "zones.h"
+
 #include "ebm_internal.hpp"
 #include "InnerBag.hpp"
 

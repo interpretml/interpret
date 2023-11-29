@@ -25,7 +25,9 @@
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h"
 
+#define ZONE_main
 #include "zones.h"
+
 #include "bridge.h" // CreateObjective_*
 #include "common.hpp" // INLINE_RELEASE_UNTEMPLATED
 
