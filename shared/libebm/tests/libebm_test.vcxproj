@@ -26,12 +26,6 @@
     <ClCompile Include="CutWinsorizedTest.cpp" />
     <ClCompile Include="dataset_shared_test.cpp" />
     <ClCompile Include="DiscretizeTest.cpp" />
-    <ClCompile Include="include_c.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="interaction_unusual_inputs.cpp" />
     <ClCompile Include="libebm_test.cpp" />
     <ClCompile Include="pch_test.cpp">

@@ -8,7 +8,6 @@
     <ClCompile Include="CutWinsorizedTest.cpp" />
     <ClCompile Include="dataset_shared_test.cpp" />
     <ClCompile Include="DiscretizeTest.cpp" />
-    <ClCompile Include="include_c.c" />
     <ClCompile Include="interaction_unusual_inputs.cpp" />
     <ClCompile Include="random_test.cpp" />
     <ClCompile Include="rehydrate_booster.cpp" />

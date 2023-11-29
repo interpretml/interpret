@@ -199,7 +199,7 @@ compile_file() {
    fi
 }
 
-compile_directory_c() {
+compile_directory() {
    l4_compiler="$1"
    l4_compiler_args_sanitized="$2"
    l4_src_path_unsanitized="$3"
@@ -208,12 +208,12 @@ compile_directory_c() {
    l4_zone="$6"
 
    # zsh (default shell in macs) terminates if you try to glob expand zero results, so check first
-   find "$l4_src_path_unsanitized" -maxdepth 1 -type f -name '*.c' 2>/dev/null | grep -q .
+   find "$l4_src_path_unsanitized" -maxdepth 1 -type f -name '*.cpp' 2>/dev/null | grep -q .
    l4_ret_code=$?
    if [ $l4_ret_code -eq 0 ]; then 
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for l4_file_unsanitized in "$l4_src_path_unsanitized"/*.c ; do
-         # glob expansion returns *.c when there are no matches, so we need to check for the existance of the file
+      for l4_file_unsanitized in "$l4_src_path_unsanitized"/*.cpp ; do
+         # glob expansion returns *.cpp when there are no matches, so we need to check for the existance of the file
          if [ -f "$l4_file_unsanitized" ] ; then
             compile_file "$l4_compiler" "$l4_compiler_args_sanitized" "$l4_file_unsanitized" "$l4_obj_path_unsanitized" "$l4_asm" "$l4_zone"
          fi
@@ -221,44 +221,22 @@ compile_directory_c() {
    fi
 }
 
-compile_directory_cpp() {
-   l5_compiler="$1"
-   l5_compiler_args_sanitized="$2"
-   l5_src_path_unsanitized="$3"
-   l5_obj_path_unsanitized="$4"
-   l5_asm="$5"
-   l5_zone="$6"
-
-   # zsh (default shell in macs) terminates if you try to glob expand zero results, so check first
-   find "$l5_src_path_unsanitized" -maxdepth 1 -type f -name '*.cpp' 2>/dev/null | grep -q .
-   l5_ret_code=$?
-   if [ $l5_ret_code -eq 0 ]; then 
-      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for l5_file_unsanitized in "$l5_src_path_unsanitized"/*.cpp ; do
-         # glob expansion returns *.cpp when there are no matches, so we need to check for the existance of the file
-         if [ -f "$l5_file_unsanitized" ] ; then
-            compile_file "$l5_compiler" "$l5_compiler_args_sanitized" "$l5_file_unsanitized" "$l5_obj_path_unsanitized" "$l5_asm" "$l5_zone"
-         fi
-      done
-   fi
-}
-
 link_file() {
-   l7_linker="$1"
-   l7_linker_args_sanitized="$2"
-   l7_bin_path_unsanitized="$3"
-   l7_bin_file="$4"
+   l5_linker="$1"
+   l5_linker_args_sanitized="$2"
+   l5_bin_path_unsanitized="$3"
+   l5_bin_file="$4"
 
-   l7_bin_path_sanitized=`sanitize "$l7_bin_path_unsanitized"`
+   l5_bin_path_sanitized=`sanitize "$l5_bin_path_unsanitized"`
    # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-   l7_compile_specific="$l7_linker $g_all_object_files_sanitized $l7_linker_args_sanitized -o $l7_bin_path_sanitized/$l7_bin_file 2>&1"
-   l7_compile_out=`eval "$l7_compile_specific"`
-   l7_ret_code=$?
-   g_compile_out_full="$g_compile_out_full$l7_compile_out"
-   if [ $l7_ret_code -ne 0 ]; then 
+   l5_compile_specific="$l5_linker $g_all_object_files_sanitized $l5_linker_args_sanitized -o $l5_bin_path_sanitized/$l5_bin_file 2>&1"
+   l5_compile_out=`eval "$l5_compile_specific"`
+   l5_ret_code=$?
+   g_compile_out_full="$g_compile_out_full$l5_compile_out"
+   if [ $l5_ret_code -ne 0 ]; then 
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
-      exit $l7_ret_code
+      exit $l5_ret_code
    fi
 }
 
@@ -431,8 +409,7 @@ if [ "$os_type" = "Linux" ]; then
       if [ $use_valgrind -ne 0 ]; then 
          check_install "$tmp_path_unsanitized" "valgrind"
       fi
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      compile_directory_cpp "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -483,8 +460,7 @@ if [ "$os_type" = "Linux" ]; then
       if [ $use_valgrind -ne 0 ]; then 
          check_install "$tmp_path_unsanitized" "valgrind"
       fi
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      compile_directory_cpp "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -532,8 +508,7 @@ if [ "$os_type" = "Linux" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      compile_directory_cpp "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -577,8 +552,7 @@ if [ "$os_type" = "Linux" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      compile_directory_cpp "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -644,8 +618,7 @@ elif [ "$os_type" = "Darwin" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      compile_directory_cpp "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -690,8 +663,7 @@ elif [ "$os_type" = "Darwin" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      compile_directory_cpp "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -736,8 +708,7 @@ elif [ "$os_type" = "Darwin" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      compile_directory_cpp "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -782,8 +753,7 @@ elif [ "$os_type" = "Darwin" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      compile_directory_cpp "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"

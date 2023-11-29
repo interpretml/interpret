@@ -96,98 +96,98 @@ compile_file() {
 }
 
 compile_directory() {
-   l5_compiler="$1"
-   l5_compiler_args_sanitized="$2"
-   l5_src_path_unsanitized="$3"
-   l5_obj_path_unsanitized="$4"
-   l5_asm="$5"
+   l4_compiler="$1"
+   l4_compiler_args_sanitized="$2"
+   l4_src_path_unsanitized="$3"
+   l4_obj_path_unsanitized="$4"
+   l4_asm="$5"
 
    # zsh (default shell in macs) terminates if you try to glob expand zero results, so check first
-   find "$l5_src_path_unsanitized" -maxdepth 1 -type f -name '*.cpp' 2>/dev/null | grep -q .
-   l5_ret_code=$?
-   if [ $l5_ret_code -eq 0 ]; then 
+   find "$l4_src_path_unsanitized" -maxdepth 1 -type f -name '*.cpp' 2>/dev/null | grep -q .
+   l4_ret_code=$?
+   if [ $l4_ret_code -eq 0 ]; then 
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for l5_file_unsanitized in "$l5_src_path_unsanitized"/*.cpp ; do
+      for l4_file_unsanitized in "$l4_src_path_unsanitized"/*.cpp ; do
          # glob expansion returns *.cpp when there are no matches, so we need to check for the existance of the file
-         if [ -f "$l5_file_unsanitized" ] ; then
-            compile_file "$l5_compiler" "$l5_compiler_args_sanitized" "$l5_file_unsanitized" "$l5_obj_path_unsanitized" "$l5_asm"
+         if [ -f "$l4_file_unsanitized" ] ; then
+            compile_file "$l4_compiler" "$l4_compiler_args_sanitized" "$l4_file_unsanitized" "$l4_obj_path_unsanitized" "$l4_asm"
          fi
       done
    fi
 }
 
 link_file() {
-   l7_linker="$1"
-   l7_linker_args_sanitized="$2"
-   l7_bin_path_unsanitized="$3"
-   l7_bin_file="$4"
+   l5_linker="$1"
+   l5_linker_args_sanitized="$2"
+   l5_bin_path_unsanitized="$3"
+   l5_bin_file="$4"
 
-   l7_bin_path_sanitized=`sanitize "$l7_bin_path_unsanitized"`
+   l5_bin_path_sanitized=`sanitize "$l5_bin_path_unsanitized"`
    # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-   l7_compile_specific="$l7_linker $g_all_object_files_sanitized $l7_linker_args_sanitized -o $l7_bin_path_sanitized/$l7_bin_file 2>&1"
-   l7_compile_out=`eval "$l7_compile_specific"`
-   l7_ret_code=$?
-   g_compile_out_full="$g_compile_out_full$l7_compile_out"
-   if [ $l7_ret_code -ne 0 ]; then 
+   l5_compile_specific="$l5_linker $g_all_object_files_sanitized $l5_linker_args_sanitized -o $l5_bin_path_sanitized/$l5_bin_file 2>&1"
+   l5_compile_out=`eval "$l5_compile_specific"`
+   l5_ret_code=$?
+   g_compile_out_full="$g_compile_out_full$l5_compile_out"
+   if [ $l5_ret_code -ne 0 ]; then 
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
-      exit $l7_ret_code
+      exit $l5_ret_code
    fi
 }
 
 copy_bin_files() {
-   l8_bin_path_unsanitized="$1"
-   l8_bin_file="$2"
-   l8_python_lib_unsanitized="$3"
-   l8_staging_path_unsanitized="$4"
+   l6_bin_path_unsanitized="$1"
+   l6_bin_file="$2"
+   l6_python_lib_unsanitized="$3"
+   l6_staging_path_unsanitized="$4"
 
-   cp "$l8_bin_path_unsanitized/$l8_bin_file" "$l8_python_lib_unsanitized/"
-   l8_ret_code=$?
-   if [ $l8_ret_code -ne 0 ]; then 
-      exit $l8_ret_code
+   cp "$l6_bin_path_unsanitized/$l6_bin_file" "$l6_python_lib_unsanitized/"
+   l6_ret_code=$?
+   if [ $l6_ret_code -ne 0 ]; then 
+      exit $l6_ret_code
    fi
-   cp "$l8_bin_path_unsanitized/$l8_bin_file" "$l8_staging_path_unsanitized/"
-   l8_ret_code=$?
-   if [ $l8_ret_code -ne 0 ]; then 
-      exit $l8_ret_code
+   cp "$l6_bin_path_unsanitized/$l6_bin_file" "$l6_staging_path_unsanitized/"
+   l6_ret_code=$?
+   if [ $l6_ret_code -ne 0 ]; then 
+      exit $l6_ret_code
    fi
 }
 
 copy_asm_files() {
-   l9_obj_path_unsanitized="$1"
-   l9_tmp_path_unsanitized="$2"
-   l9_bin_file_unsanitized="$3" 
-   l9_staging_tag="$4"
-   l9_asm="$5"
+   l7_obj_path_unsanitized="$1"
+   l7_tmp_path_unsanitized="$2"
+   l7_bin_file_unsanitized="$3" 
+   l7_staging_tag="$4"
+   l7_asm="$5"
 
-   if [ $l9_asm -ne 0 ]; then 
-      l9_tagged_path_unsanitized="$l9_tmp_path_unsanitized/staging_$l9_staging_tag"
+   if [ $l7_asm -ne 0 ]; then 
+      l7_tagged_path_unsanitized="$l7_tmp_path_unsanitized/staging_$l7_staging_tag"
 
-      [ -d "$l9_tagged_path_unsanitized" ] || mkdir -p "$l9_tagged_path_unsanitized"
-      l9_ret_code=$?
-      if [ $l9_ret_code -ne 0 ]; then 
-         exit $l9_ret_code
+      [ -d "$l7_tagged_path_unsanitized" ] || mkdir -p "$l7_tagged_path_unsanitized"
+      l7_ret_code=$?
+      if [ $l7_ret_code -ne 0 ]; then 
+         exit $l7_ret_code
       fi
 
-      cp "$l9_obj_path_unsanitized"/*.s "$l9_tagged_path_unsanitized/"
-      l9_ret_code=$?
-      if [ $l9_ret_code -ne 0 ]; then 
-         exit $l9_ret_code
+      cp "$l7_obj_path_unsanitized"/*.s "$l7_tagged_path_unsanitized/"
+      l7_ret_code=$?
+      if [ $l7_ret_code -ne 0 ]; then 
+         exit $l7_ret_code
       fi
 
       #also generate a disassembly from the final output that we can compare the individual files against
-      l9_bin_file_body_unsanitized=`get_file_body "$l9_bin_file_unsanitized"`
+      l7_bin_file_body_unsanitized=`get_file_body "$l7_bin_file_unsanitized"`
       os_type=`uname`
       if [ "$os_type" = "Linux" ]; then
          # - https://stackoverflow.com/questions/1289881/using-gcc-to-produce-readable-assembly
          # GNU objdump https://linux.die.net/man/1/objdump
-         objdump --disassemble --private-headers --reloc --dynamic-reloc --section-headers --syms --line-numbers --no-show-raw-insn --source "$l9_bin_file_unsanitized" > "$l9_tagged_path_unsanitized/$l9_bin_file_body_unsanitized.s"
+         objdump --disassemble --private-headers --reloc --dynamic-reloc --section-headers --syms --line-numbers --no-show-raw-insn --source "$l7_bin_file_unsanitized" > "$l7_tagged_path_unsanitized/$l7_bin_file_body_unsanitized.s"
       elif [ "$os_type" = "Darwin" ]; then
          # objdump on mac is actually llvm-objdump
          # https://llvm.org/docs/CommandGuide/llvm-objdump.html
          # otool might be a better choice on mac, but this does what we need in combination with the individual 
          # module assembly, so keep it consistent with linux unless we need something more in the future
-         objdump --disassemble --private-headers --reloc --dynamic-reloc --section-headers --syms --line-numbers --no-show-raw-insn --source --print-imm-hex "$l9_bin_file_unsanitized" > "$l9_tagged_path_unsanitized/$l9_bin_file_body_unsanitized.s"
+         objdump --disassemble --private-headers --reloc --dynamic-reloc --section-headers --syms --line-numbers --no-show-raw-insn --source --print-imm-hex "$l7_bin_file_unsanitized" > "$l7_tagged_path_unsanitized/$l7_bin_file_body_unsanitized.s"
       else
          exit 1
       fi
