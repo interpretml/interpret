@@ -994,14 +994,7 @@ extern void DisplayCuts(
    std::cout << std::endl << std::endl;
 }
 
-EBM_EXTERN_C void TestCHeaderConstructs();
-
 int main() {
-#ifdef _MSC_VER
-   // only test on the Visual Studio Compiler since it's easier.  If we support C later then add more compilers
-   TestCHeaderConstructs();
-#endif // _MSC_VER
-
    SetLogCallback(&LogCallback);
    SetTraceLevel(Trace_Verbose);
 
