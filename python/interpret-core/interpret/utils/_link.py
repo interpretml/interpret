@@ -25,31 +25,42 @@ def link_func(predictions, link, link_param=np.nan):
             msg = f"predictions must have 1 element in the last dimensions, but has {predictions.shape[-1]}."
             _log.error(msg)
             raise ValueError(msg)
+
         return np.empty(predictions.shape[:-1] + (0,), np.float64)
     elif link == "logit":
         if predictions.shape[-1] == 1:
-            val = predictions.reshape(predictions.shape[:-1])
+            val = predictions.squeeze(-1)
+            with np.errstate(divide="ignore"):
+                # val == 1.0 and log(0.0) gives warning otherwise
+                val /= 1.0 - val
+                np.log(val, out=val)
+            return val
         elif predictions.shape[-1] == 2:
             val = predictions[..., 1]
-            val /= predictions.sum(axis=-1)
+            tmp = predictions.sum(axis=-1)
+            val /= tmp
+            np.subtract(1.0, val, out=tmp)
+            with np.errstate(divide="ignore"):
+                # tmp == 0.0 and log(0.0) gives warning otherwise
+                val /= tmp
+                np.log(val, out=val)
+            return val
         else:
             msg = f"predictions must have 2 elements in the last dimensions, but has {predictions.shape[-1]}."
             _log.error(msg)
             raise ValueError(msg)
-        with np.errstate(divide="ignore"):
-            # val == 1.0 and log(0.0) gives warning otherwise
-            val /= 1.0 - val
-            np.log(val, out=val)
-        return val
     elif link == "vlogit":
         if predictions.shape[-1] <= 1:
             msg = f"predictions must have 2 or more elements in the last dimensions, but has {predictions.shape[-1]}."
             _log.error(msg)
             raise ValueError(msg)
+
+        val = 1.0 - predictions
         with np.errstate(divide="ignore"):
-            # val == 1.0 and log(0.0) gives warning otherwise
-            val = predictions / (1.0 - predictions)
+            # val == 0.0 and log(0.0) gives warning otherwise
+            np.divide(predictions, val, out=val)
             np.log(val, out=val)
+
         return val
     elif link == "mlogit":
         # accept multinominal with 2 classes, even though it's weird
@@ -57,10 +68,12 @@ def link_func(predictions, link, link_param=np.nan):
             msg = f"predictions must have 2 or more elements in the last dimensions, but has {predictions.shape[-1]}."
             _log.error(msg)
             raise ValueError(msg)
+
         val = predictions / predictions.max(axis=-1, keepdims=True)
         with np.errstate(divide="ignore"):
             # log(0.0) gives warning otherwise
             np.log(val, out=val)
+
         return val
     elif link == "identity":
         return predictions.copy()
@@ -89,23 +102,25 @@ def inv_link(scores, link, link_param=np.nan):
             msg = f"scores must have 0 elements in the last dimensions, but has {scores.shape[-1]}."
             _log.error(msg)
             raise ValueError(msg)
+
         return np.full(scores.shape[:-1] + (1,), 1.0, np.float64)
     elif link == "logit":
         with np.errstate(over="ignore"):
-            # scores == 999 gives warning otherwise
-            val = np.exp(scores)
-        inf_bool = val == np.inf
+            # scores == 999 gives warning otherwise from overflow
+            val = np.expand_dims(np.exp(scores), axis=-1)
+        inf_bool = np.isposinf(val)
+        tmp = val + 1.0
         with np.errstate(invalid="ignore"):
-            # val == +inf gives warning otherwise
-            val /= val + 1.0
+            # val == +inf gives warning otherwise during inf/inf
+            val /= tmp
         val[inf_bool] = 1.0
-        val = np.expand_dims(val, axis=-1)
-        return np.c_[1.0 - val, val]
+        np.subtract(1.0, val, out=tmp)
+        return np.c_[tmp, val]
     elif link == "vlogit":
         with np.errstate(over="ignore"):
             # scores == 999 gives warning otherwise
             val = np.exp(scores)
-        inf_bool = val == np.inf
+        inf_bool = np.isposinf(val)
         with np.errstate(invalid="ignore"):
             # val == +inf gives warning otherwise
             val /= val + 1.0
@@ -117,16 +132,23 @@ def inv_link(scores, link, link_param=np.nan):
             msg = f"scores must have 2 or more elements in the last dimensions, but has {scores.shape[-1]}."
             _log.error(msg)
             raise ValueError(msg)
+
+        reduced_float = scores.max(axis=-1, keepdims=True)  # max() preserves NaN
+        inf_bool = np.isposinf(scores)
+        reduced_bool = np.isneginf(reduced_float)
+        inf_bool |= reduced_bool
+        np.isnan(reduced_float, out=reduced_bool)
+        np.logical_not(reduced_bool, out=reduced_bool)
+        inf_bool &= reduced_bool
         with np.errstate(invalid="ignore"):
-            # val == +inf or all -inf gives warning otherwise
-            val = scores - scores.max(axis=-1, keepdims=True)
+            # reduced_float == +inf or all -inf gives warning otherwise
+            val = scores - reduced_float
         np.exp(val, out=val)
-        inf_bool = (
-            (scores == np.inf) | np.all(scores == -np.inf, axis=-1, keepdims=True)
-        ) & ~np.any(np.isnan(scores), axis=-1, keepdims=True)
-        val[np.any(inf_bool, axis=-1)] = 0.0
+        np.any(inf_bool, axis=-1, keepdims=True, out=reduced_bool)
+        val[reduced_bool.squeeze(-1)] = 0.0
         val[inf_bool] = 1.0
-        val /= val.sum(axis=-1, keepdims=True)
+        np.sum(val, axis=-1, keepdims=True, out=reduced_float)
+        val /= reduced_float
         return val
     elif link == "identity":
         return scores.copy()
