@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
+#ifdef BRIDGE_CUDA_32
+
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
@@ -513,3 +515,5 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Cuda_32(
 }
 
 } // DEFINED_ZONE_NAME
+
+#endif // BRIDGE_CUDA_32

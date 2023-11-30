@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
+#ifdef BRIDGE_AVX512F_32
+
 #define _CRT_SECURE_NO_DEPRECATE
 
 #include <cmath> // exp, log
@@ -781,3 +783,5 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateObjective_Avx512f_32(
 }
 
 } // DEFINED_ZONE_NAME
+
+#endif // BRIDGE_AVX512F_32

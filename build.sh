@@ -394,6 +394,7 @@ compute_args="$compute_args -I$src_path_sanitized/compute"
 compute_args="$compute_args -I$src_path_sanitized/compute/objectives"
 compute_args="$compute_args -I$src_path_sanitized/compute/metrics"
 
+main_args=""
 main_args="$main_args -I$src_path_sanitized/unzoned"
 main_args="$main_args -I$src_path_sanitized/bridge"
 main_args="$main_args -I$src_path_sanitized"
