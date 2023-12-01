@@ -558,9 +558,11 @@ def merge_ebms(models):
                 model.max_target_ for model in models if hasattr(model, "max_target_")
             )
         n_classes = -1
+    n_scores = Native.get_count_scores_c(n_classes)
 
     bag_weights = []
     model_weights = []
+    bagged_intercept = []
     for model in models:
         avg_weight = np.average([tensor.sum() for tensor in model.bin_weights_])
         model_weights.append(avg_weight)
@@ -581,11 +583,17 @@ def merge_ebms(models):
                 "self.bagged_weights_ should have the same length as n_outer_bags."
             )
 
+        model_bag_intercept = getattr(model, "bagged_intercept_", None)
+        if model_bag_intercept is None:
+            if n_scores == 1:
+                model_bag_intercept = np.zeros(n_outer_bags, np.float64)
+            else:
+                model_bag_intercept = np.zeros((n_outer_bags, n_scores), np.float64)
+
+        bagged_intercept.extend(model_bag_intercept)
         bag_weights.extend(model_bag_weights)
-    # this attribute wasn't available in the original model since we can calculate it for non-merged
-    # models, but once a model is merged we need to preserve it for future merging or other uses
-    # of the ebm.bagged_scores_ attribute
     ebm.bag_weights_ = bag_weights
+    ebm.bagged_intercept_ = np.array(bagged_intercept, np.float64)
 
     fg_dicts = []
     all_fg = set()
@@ -714,16 +722,16 @@ def merge_ebms(models):
         ebm.bin_weights_.append(np.sum(new_bin_weights, axis=0))
         ebm.bagged_scores_.append(np.array(new_bagged_scores, np.float64))
 
-    n_scores = Native.get_count_scores_c(n_classes)
     (
+        ebm.intercept_,
         ebm.term_scores_,
         ebm.standard_deviations_,
-        ebm.intercept_,
-        ebm.bagged_scores_,
-    ) = process_terms(n_scores, ebm.bagged_scores_, ebm.bin_weights_, ebm.bag_weights_)
+    ) = process_terms(
+        ebm.bagged_intercept_, ebm.bagged_scores_, ebm.bin_weights_, ebm.bag_weights_
+    )
     if n_classes < 0:
         # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
-        intercept = float(intercept[0])
+        ebm.intercept_ = float(ebm.intercept_[0])
 
     # TODO: we might be able to do these operations earlier
     remove_unused_higher_bins(ebm.term_features_, ebm.bins_)

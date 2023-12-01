@@ -1119,8 +1119,13 @@ class EBMModel(BaseEstimator):
                 term_features,
             )
 
-        term_scores, standard_deviations, intercept, bagged_scores = process_terms(
-            n_scores, bagged_scores, bin_weights, bag_weights
+        if n_scores == 1:
+            bagged_intercept = np.zeros(self.outer_bags, np.float64)
+        else:
+            bagged_intercept = np.zeros((self.outer_bags, n_scores), np.float64)
+
+        intercept, term_scores, standard_deviations = process_terms(
+            bagged_intercept, bagged_scores, bin_weights, bag_weights
         )
         if n_classes < 0:
             # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
@@ -1169,6 +1174,7 @@ class EBMModel(BaseEstimator):
 
         # general
         self.intercept_ = intercept
+        self.bagged_intercept_ = bagged_intercept
         self.link_ = link
         self.link_param_ = link_param
         self.bag_weights_ = bag_weights
@@ -1234,6 +1240,10 @@ class EBMModel(BaseEstimator):
             j["intercept"] = [jsonify_item(self.intercept_)]
         else:
             j["intercept"] = jsonify_lists(self.intercept_.tolist())
+
+        bagged_intercept = getattr(self, "bagged_intercept_", None)
+        if bagged_intercept is not None:
+            j["bagged_intercept"] = jsonify_lists(bagged_intercept.tolist())
 
         if 3 <= level:
             noise_scale_binning = getattr(self, "noise_scale_binning_", None)
@@ -2146,6 +2156,7 @@ class EBMModel(BaseEstimator):
         #       and then re-compute standard_deviations_ and term_scores_ from the monotonized bagged scores.
         #       but first we need to do some testing to figure out if this gives a worse result than applying
         #       IsotonicRegression to the final model which should be more regularized
+        self.bagged_intercept_ = None
         self.bagged_scores_[term] = None
         self.standard_deviations_[term] = None
 
@@ -2374,6 +2385,7 @@ class EBMModel(BaseEstimator):
 
         self.term_scores_ = terms
         # TODO: do this per-bag in addition to the final scores:
+        self.bagged_intercept_ = None
         self.bagged_scores_ = None
         self.standard_deviations_ = None
 
@@ -2423,6 +2435,7 @@ class EBMModel(BaseEstimator):
 
         self.term_scores_ = terms
         # TODO: do this per-bag in addition to the final scores:
+        self.bagged_intercept_ = None
         self.bagged_scores_ = None
         self.standard_deviations_ = None
 
@@ -2457,6 +2470,7 @@ class EBMModel(BaseEstimator):
                 ebm.intercept_ = np.array([original.intercept_[i]], np.float64)
 
                 # TODO: do this per-bag in addition to the final scores:
+                ebm.bagged_intercept_ = None
                 ebm.bagged_scores_ = None
                 ebm.standard_deviations_ = None
                 ebm.term_scores_ = [s[..., i] for s in original.term_scores_]
@@ -2600,6 +2614,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         and the count of interaction boosting rounds will be in breakpoint_iteration_[1].
     intercept\\_ : array of float with shape ``(n_classes,)`` or ``(1,)``
         Intercept of the model. Binary classification is shape ``(1,)``, and multiclass is shape ``(n_classes,)``.
+    bagged_intercept\\_ : array of float with shape ``(n_outer_bags, n_classes)`` or ``(n_outer_bags,)``
+        Bagged intercept of the model. Binary classification is shape ``(n_outer_bags,)``, and multiclass is shape ``(n_outer_bags, n_classes)``.
     """
 
     n_features_in_: int
@@ -2624,6 +2640,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
     classes_: np.ndarray  # np.int64, np.bool_, or np.unicode_, 1D[class]
     intercept_: np.ndarray  # np.float64, 1D[class]
+    bagged_intercept_: np.ndarray  # np.float64, 1D[bag], or 2D[bag, class]
 
     # TODO PK v.3 use underscores here like ClassifierMixin._estimator_type?
     available_explanations = ["global", "local"]
@@ -2869,6 +2886,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         and the count of interaction boosting rounds will be in breakpoint_iteration_[1].
     intercept\\_ : float
         Intercept of the model.
+    bagged_intercept\\_ : array of float with shape ``(n_outer_bags,)``
+        Bagged intercept of the model.
     min_target\\_ : float
         The minimum value found in 'y'.
     max_target\\_ : float
@@ -2896,6 +2915,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     unique_val_counts_: np.ndarray  # np.int64, 1D[feature]
 
     intercept_: float
+    bagged_intercept_: np.ndarray  # np.float64, 1D[bag]
     min_target_: float
     max_target_: float
 
@@ -3083,6 +3103,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         boosting rounds will be in breakpoint_iteration_[0].
     intercept\\_ : array of float with shape ``(1,)``
         Intercept of the model.
+    bagged_intercept\\_ : array of float with shape ``(n_outer_bags,)``
+        Bagged intercept of the model.
     noise_scale_binning\\_ : float
         The noise scale during binning.
     noise_scale_boosting\\_ : float
@@ -3110,6 +3132,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
 
     classes_: np.ndarray  # np.int64, np.bool_, or np.unicode_, 1D[class]
     intercept_: np.ndarray  # np.float64, 1D[class]
+    bagged_intercept_: np.ndarray  # np.float64, 1D[bag]
 
     available_explanations = ["global", "local"]
     explainer_type = "model"
@@ -3337,6 +3360,8 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         boosting rounds will be in breakpoint_iteration_[0].
     intercept\\_ : float
         Intercept of the model.
+    bagged_intercept\\_ : array of float with shape ``(n_outer_bags,)``
+        Bagged intercept of the model.
     min_target\\_ : float
         The minimum value found in 'y', or privacy_target_min if provided.
     max_target\\_ : float
@@ -3367,6 +3392,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     noise_scale_boosting_: float
 
     intercept_: float
+    bagged_intercept_: np.ndarray  # np.float64, 1D[bag]
     min_target_: float
     max_target_: float
 

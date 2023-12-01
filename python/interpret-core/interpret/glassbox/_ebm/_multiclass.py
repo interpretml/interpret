@@ -72,19 +72,3 @@ def multiclass_postprocess_RESTORE_THIS(
             )
             intercepts[k] += mean
     return {"feature_graphs": updated_feature_graphs, "intercepts": intercepts}
-
-
-def multiclass_postprocess(term_scores, bin_weights, intercept):
-    """Postprocesses multiclass model graphs with desired properties."""
-
-    # TODO: The original intended algorithm from the paper is in the function multiclass_postprocess_RESTORE_THIS.
-    # That implementation has a bug where it always uses the simpler method of taking
-    # the mean of the class scores.  Copy this behavior for now since it's a lot simpler when
-    # moving to the generator unify_columns function.  Also, this method generalizes to tensors and we need
-    # to implement that in accordace with the descrition in the paper.
-
-    shape = (-1, len(intercept))
-    for scores, weights in zip(term_scores, bin_weights):
-        mean = np.average(scores.reshape(shape), 0, weights.flatten())
-        intercept += mean
-        scores -= mean

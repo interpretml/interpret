@@ -10,8 +10,6 @@ import numpy as np
 import warnings
 from itertools import islice
 
-from ._multiclass import multiclass_postprocess
-
 import logging
 
 _log = logging.getLogger(__name__)
@@ -165,74 +163,68 @@ def _create_proportional_tensor(axis_weights):
     return tensor.reshape(shape)
 
 
-def process_terms(n_scores, bagged_scores, bin_weights, bag_weights):
+def process_bag_terms(n_scores, term_scores, bin_weights):
+    intercept = np.zeros(n_scores, np.float64)
+    # monoclassification requires no changes
+    if n_scores != 0:
+        shape = -1 if n_scores == 1 else (-1, n_scores)
+        for scores, weights in zip(term_scores, bin_weights):
+            mean = np.average(scores.reshape(shape), 0, weights.flatten())
+            intercept += mean
+            scores -= mean
+
+            # TODO: call purify() here from the glassbox\ebm\_research\_purify.py file
+
+            # TODO: for multiclass, call a fixed version of multiclass_postprocess_RESTORE_THIS
+            #       That implementation has a bug where it always uses the simpler
+            #       method of taking the mean of the class scores.
+
+            # if the missing/unknown bin has zero weight then whatever number was generated via boosting is
+            # effectively meaningless and can be ignored. Set the value to zero for interpretability reasons
+            restore_missing_value_zeros(scores, weights)
+    return intercept
+
+
+def process_terms(bagged_intercept, bagged_scores, bin_weights, bag_weights):
+    n_bags = len(bag_weights)
+    n_terms = len(bin_weights)
+    n_scores = 1 if bagged_intercept.ndim == 1 else bagged_intercept.shape[-1]
+    for bag_idx in range(n_bags):
+        term_scores = [bagged_tensor[bag_idx] for bagged_tensor in bagged_scores]
+        bagged_intercept[bag_idx] += process_bag_terms(
+            n_scores, term_scores, bin_weights
+        )
+        for term_idx in range(n_terms):
+            bagged_scores[term_idx][bag_idx] = term_scores[term_idx]
+
     term_scores = []
     standard_deviations = []
-    new_bagged_scores = []
-    for score_tensors, weights in zip(bagged_scores, bin_weights):
-        # if the missing/unknown bin has zero weight then whatever number was generated via boosting is
-        # effectively meaningless and can be ignored. Set the value to zero for interpretability reasons
-        tensor_bags = []
-        for tensor in score_tensors:
-            tensor_copy = tensor.copy()
-            restore_missing_value_zeros(tensor_copy, weights)
-            tensor_bags.append(tensor_copy)
-        # replace it to get stddev of 0 for weight of 0
-        score_tensors = np.array(tensor_bags, np.float64)
-        new_bagged_scores.append(score_tensors)
-
-        # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation
-        # It's possible to shift scores arbitary to the intercept, so we should be able to get any desired stddev
-
-        # TODO PK: Generally if a bin for missing/unknown has zero weight then it means that the score should be
-        # ignored since its value was set by boosting to be something useless based on adjacent bins. The normal
-        # way we deal with this is to set a missing/unknown bin that has zero weight to zero AFTER centering.
-        # This works well during fit, but there is an issue later if someone merges two models
-        # where one model had no missing/unknown data but the other model being merged did. Since we only use and
-        # keep a combined bin_weights field that contains the average of all bagged models, we no longer know that the
-        # scores in some of the original bagged models should have been ignored/zeroed. When a model with no
-        # missing/unknown data during fitting encounters missing/unknown data during prediction we chose a neutral
-        # answer by returning a value (zero) that is the average accross the training data for a centered graph.
-        # We wish to maintain that, but we do not want to have a separate attribute for the intercept of each
-        # bagged model. We can handle this by using the following procedure:
-        #   1) Center the models within each bag and generate a separate intercept for each bag
-        #   2) Zero the missing/unknown bins if the weights are zero
-        #   3) re-distribute the intercept back into the bagged models equitably. The missing/unknown bins
-        #      will now be non-zero, but if during merging we loose the information that they should have been
-        #      zeroed our missing/unknown bins will already be set to the value that will yield a neutral response
-
-        if score_tensors.shape[-1] == 0:
-            # monoclassification
-            term_scores.append(np.empty(score_tensors.shape[1:], np.float64))
-            standard_deviations.append(np.empty(score_tensors.shape[1:], np.float64))
-        elif (bag_weights == bag_weights[0]).all():
-            # if all the bags have the same total weight we can avoid some numeracy issues
-            # by using a non-weighted standard deviation
-            term_scores.append(np.average(score_tensors, axis=0))
-            standard_deviations.append(np.std(score_tensors, axis=0))
-        else:
-            term_scores.append(np.average(score_tensors, axis=0, weights=bag_weights))
+    if n_scores == 0:
+        # monoclassification
+        for scores in bagged_scores:
+            term_scores.append(np.empty(scores.shape[1:], np.float64))
+            standard_deviations.append(np.empty(scores.shape[1:], np.float64))
+        intercept = np.empty(0, np.float64)
+    elif (bag_weights == bag_weights[0]).all():
+        # if all the bags have the same total weight we can avoid some numeracy issues
+        # by using a non-weighted standard deviation
+        for scores in bagged_scores:
+            term_scores.append(np.average(scores, axis=0))
+            standard_deviations.append(np.std(scores, axis=0))
+        intercept = np.average(bagged_intercept, axis=0)
+    else:
+        for scores in bagged_scores:
+            term_scores.append(np.average(scores, axis=0, weights=bag_weights))
             standard_deviations.append(
-                _weighted_std(score_tensors, axis=0, weights=bag_weights)
+                _weighted_std(scores, axis=0, weights=bag_weights)
             )
+        intercept = np.average(bagged_intercept, axis=0, weights=bag_weights)
 
-    intercept = np.zeros(n_scores, np.float64)
     if n_scores == 1:
-        for scores, weights in zip(term_scores, bin_weights):
-            score_mean = np.average(scores, weights=weights)
-            scores -= score_mean
+        # np.average collapses to a float if input 1 dimensional, so restore to an array
+        intercept = np.full(1, intercept, np.float64)
 
-            # Add mean center adjustment back to intercept
-            intercept += score_mean
-    elif n_scores != 0:
-        # Postprocess model graphs for multiclass
-        multiclass_postprocess(term_scores, bin_weights, intercept)
-
-    for scores, weights in zip(term_scores, bin_weights):
-        # set these to zero again since zero-centering them causes the missing/unknown to shift away from zero
-        restore_missing_value_zeros(scores, weights)
-
-    return term_scores, standard_deviations, intercept, new_bagged_scores
+    return intercept, term_scores, standard_deviations
 
 
 def generate_term_names(feature_names, term_features):

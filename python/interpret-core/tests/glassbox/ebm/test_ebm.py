@@ -94,6 +94,7 @@ def test_vlogit_2class():
     mod = clf.copy()
     mod.standard_deviations_ = None
     mod.bagged_scores_ = None
+    mod.bagged_intercept_ = None
     for i in range(len(mod.term_scores_)):
         term = np.expand_dims(mod.term_scores_[i], axis=-1)
         mod.term_scores_[i] = np.c_[-term, term]
@@ -197,6 +198,7 @@ def test_ebm_remove_features():
     assert len(clf.term_features_) == 3
     assert len(clf.term_scores_) == 3
     assert len(clf.bagged_scores_) == 3
+    assert len(clf.bagged_intercept_) == len(clf.bagged_scores_[0])
     assert len(clf.standard_deviations_) == 3
     assert len(clf.bin_weights_) == 3
 
@@ -235,6 +237,7 @@ def test_ebm_sweep():
     assert len(clf.term_features_) == 4
     assert len(clf.term_scores_) == 4
     assert len(clf.bagged_scores_) == 4
+    assert len(clf.bagged_intercept_) == len(clf.bagged_scores_[0])
     assert len(clf.standard_deviations_) == 4
     assert len(clf.bin_weights_) == 4
 
@@ -1237,6 +1240,7 @@ def test_ebm_remove_terms():
     assert len(clf.term_names_) == 2
     assert len(clf.term_scores_) == 2
     assert len(clf.bagged_scores_) == 2
+    assert len(clf.bagged_intercept_) == len(clf.bagged_scores_[0])
     assert len(clf.standard_deviations_) == 2
     assert len(clf.bin_weights_) == 2
 
@@ -1260,5 +1264,6 @@ def test_ebm_scale():
     assert len(clf.term_names_) == 2
     assert len(clf.term_scores_) == 2
     assert len(clf.bagged_scores_) == 2
+    assert len(clf.bagged_intercept_) == len(clf.bagged_scores_[0])
     assert len(clf.standard_deviations_) == 2
     assert len(clf.bin_weights_) == 2
