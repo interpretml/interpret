@@ -7,6 +7,21 @@ import logging
 
 _log = logging.getLogger(__name__)
 
+def identify_task(link):
+    if link == "monoclassification":
+        return "classification"
+    elif link == "logit":
+        return "classification"
+    elif link == "vlogit":
+        return "classification"
+    elif link == "mlogit":
+        return "classification"
+    elif link == "identity":
+        return "regression"
+    elif link == "log":
+        return "regression"
+    else:
+        raise ValueError(f"Unsupported link function: {link}")
 
 def link_func(predictions, link, link_param=np.nan):
     """Applies the link function to predictions to generate scores.

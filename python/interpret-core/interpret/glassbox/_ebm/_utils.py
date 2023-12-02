@@ -386,32 +386,3 @@ def make_bag(y, test_size, rng, is_stratified):
     else:  # pragma: no cover
         raise Exception("test_size must be a positive numeric value.")
 
-
-def jsonify_lists(vals):
-    if len(vals) != 0:
-        if type(vals[0]) is float:
-            for idx, val in enumerate(vals):
-                # JSON doesn't have NaN, or infinities, but javaScript
-                # uses dynamic typing so we can use strings instead.
-                if isnan(val):
-                    vals[idx] = "nan"  # standardize as lower case for all characters
-                elif val == np.inf:
-                    vals[idx] = "+inf"  # use a '+' to allow searching for just +inf
-                elif val == -np.inf:
-                    vals[idx] = "-inf"
-        else:
-            for nested in vals:
-                jsonify_lists(nested)
-    return vals  # we modify in place, but return it just for easy access
-
-
-def jsonify_item(val):
-    # JSON doesn't have NaN, or infinities, but javaScript
-    # uses dynamic typing so we can use strings instead.
-    if isnan(val):
-        val = "nan"  # standardize as lower case for all characters
-    elif val == np.inf:
-        val = "+inf"  # use a '+' to allow searching for just +inf
-    elif val == -np.inf:
-        val = "-inf"
-    return val

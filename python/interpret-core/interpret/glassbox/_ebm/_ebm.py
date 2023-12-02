@@ -12,8 +12,6 @@ from ...utils._explanation import gen_perf_dicts
 from ._boost import boost
 from ._utils import (
     make_bag,
-    jsonify_item,
-    jsonify_lists,
     process_terms,
     order_terms,
     remove_unused_higher_bins,
@@ -21,6 +19,8 @@ from ._utils import (
     generate_term_names,
     generate_term_types,
 )
+from ._json import to_jsonable
+
 from ...utils._misc import clean_index, clean_indexes
 from ...utils._histogram import make_all_histogram_edges
 from ...utils._link import link_func, inv_link
@@ -78,7 +78,7 @@ from sklearn.base import (
     ClassifierMixin,
     RegressorMixin,
 )  # type: ignore
-from itertools import combinations, groupby
+from itertools import combinations
 
 import logging
 
@@ -1183,261 +1183,6 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def _to_json_inner(self, detail="all"):
-        """Converts the inner model to a JSONable representation.
-
-        Args:
-            detail: 'minimal', 'interpretable', 'mergeable', 'all'
-
-        Returns:
-            JSONable object
-        """
-
-        check_is_fitted(self, "has_fitted_")
-
-        if detail == "minimal":
-            level = 0
-        elif detail == "interpretable":
-            level = 1
-        elif detail == "mergeable":
-            level = 2
-        elif detail == "all":
-            level = 3
-        else:
-            msg = f"Unrecognized to_json detail: {detail}"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        j = {}
-
-        # future-proof support for multi-output models
-        outputs = []
-        output = {}
-        if is_classifier(self):
-            output["output_type"] = "classification"
-            output["classes"] = self.classes_.tolist()
-        else:
-            output["output_type"] = "regression"
-            if 3 <= level:
-                min_target = getattr(self, "min_target_", None)
-                if min_target is not None and not isnan(min_target):
-                    output["min_target"] = jsonify_item(min_target)
-                max_target = getattr(self, "max_target_", None)
-                if max_target is not None and not isnan(max_target):
-                    output["max_target"] = jsonify_item(max_target)
-
-        output["link"] = self.link_
-        output["link_param"] = jsonify_item(self.link_param_)
-
-        outputs.append(output)
-        j["outputs"] = outputs
-
-        if type(self.intercept_) is float:
-            # scikit-learn requires that we have a single float value as our intercept for compatibility with
-            # RegressorMixin, but in other scenarios where we want to support things like multi-output it would be
-            # easier if the regression intercept were handled identically to classification, so put it in an array
-            # for our JSON format to harmonize the cross-language representation
-            j["intercept"] = [jsonify_item(self.intercept_)]
-        else:
-            j["intercept"] = jsonify_lists(self.intercept_.tolist())
-
-        bagged_intercept = getattr(self, "bagged_intercept_", None)
-        if bagged_intercept is not None:
-            j["bagged_intercept"] = jsonify_lists(bagged_intercept.tolist())
-
-        if 3 <= level:
-            noise_scale_binning = getattr(self, "noise_scale_binning_", None)
-            if noise_scale_binning is not None:
-                j["noise_scale_binning"] = jsonify_item(noise_scale_binning)
-            noise_scale_boosting = getattr(self, "noise_scale_boosting_", None)
-            if noise_scale_boosting is not None:
-                j["noise_scale_boosting"] = jsonify_item(noise_scale_boosting)
-        if 2 <= level:
-            bag_weights = getattr(self, "bag_weights_", None)
-            if bag_weights is not None:
-                j["bag_weights"] = jsonify_lists(bag_weights.tolist())
-        if 3 <= level:
-            breakpoint_iteration = getattr(self, "breakpoint_iteration_", None)
-            if breakpoint_iteration is not None:
-                j["breakpoint_iteration"] = breakpoint_iteration.tolist()
-
-        if 3 <= level:
-            j["implementation"] = "python"
-            params = {}
-
-            # TODO: we need to clean up and validate our input parameters before putting them into JSON
-            # if we were pass a numpy array instead of a list or a numpy type these would fail
-            # for now we can just require that anything numpy as input is illegal
-
-            if hasattr(self, "feature_names"):
-                params["feature_names"] = self.feature_names
-
-            if hasattr(self, "feature_types"):
-                params["feature_types"] = self.feature_types
-
-            if hasattr(self, "max_bins"):
-                params["max_bins"] = self.max_bins
-
-            if hasattr(self, "max_interaction_bins"):
-                params["max_interaction_bins"] = self.max_interaction_bins
-
-            if hasattr(self, "interactions"):
-                params["interactions"] = self.interactions
-
-            if hasattr(self, "exclude"):
-                params["exclude"] = self.exclude
-
-            if hasattr(self, "validation_size"):
-                params["validation_size"] = self.validation_size
-
-            if hasattr(self, "outer_bags"):
-                params["outer_bags"] = self.outer_bags
-
-            if hasattr(self, "inner_bags"):
-                params["inner_bags"] = self.inner_bags
-
-            if hasattr(self, "learning_rate"):
-                params["learning_rate"] = self.learning_rate
-
-            if hasattr(self, "greediness"):
-                params["greediness"] = self.greediness
-
-            if hasattr(self, "smoothing_rounds"):
-                params["smoothing_rounds"] = self.smoothing_rounds
-
-            if hasattr(self, "max_rounds"):
-                params["max_rounds"] = self.max_rounds
-
-            if hasattr(self, "early_stopping_rounds"):
-                params["early_stopping_rounds"] = self.early_stopping_rounds
-
-            if hasattr(self, "early_stopping_tolerance"):
-                params["early_stopping_tolerance"] = self.early_stopping_tolerance
-
-            if hasattr(self, "min_samples_leaf"):
-                params["min_samples_leaf"] = self.min_samples_leaf
-
-            if hasattr(self, "max_leaves"):
-                params["max_leaves"] = self.max_leaves
-
-            if hasattr(self, "objective"):
-                params["objective"] = self.objective
-
-            if hasattr(self, "n_jobs"):
-                params["n_jobs"] = self.n_jobs
-
-            if hasattr(self, "random_state"):
-                params["random_state"] = self.random_state
-
-            if hasattr(self, "epsilon"):
-                params["epsilon"] = self.epsilon
-
-            if hasattr(self, "delta"):
-                params["delta"] = self.delta
-
-            if hasattr(self, "composition"):
-                params["composition"] = self.composition
-
-            if hasattr(self, "bin_budget_frac"):
-                params["bin_budget_frac"] = self.bin_budget_frac
-
-            if hasattr(self, "privacy_bounds"):
-                params["privacy_bounds"] = self.privacy_bounds
-
-            if hasattr(self, "privacy_target_min"):
-                params["privacy_target_min"] = self.privacy_target_min
-
-            if hasattr(self, "privacy_target_max"):
-                params["privacy_target_max"] = self.privacy_target_max
-
-            j["implementation_params"] = params
-
-        unique_val_counts = getattr(self, "unique_val_counts_", None)
-        feature_bounds = getattr(self, "feature_bounds_", None)
-        histogram_weights = getattr(self, "histogram_weights_", None)
-
-        features = []
-        for i in range(len(self.bins_)):
-            feature = {}
-
-            feature["name"] = self.feature_names_in_[i]
-            feature["type"] = self.feature_types_in_[i]
-
-            if 1 <= level:
-                if unique_val_counts is not None:
-                    feature["num_unique_vals"] = int(unique_val_counts[i])
-
-            if isinstance(self.bins_[i][0], dict):
-                categories = []
-                for bins in self.bins_[i]:
-                    leveled_categories = []
-                    feature_categories = list(map(tuple, map(reversed, bins.items())))
-                    feature_categories.sort()  # groupby requires sorted data
-                    for _, category_iter in groupby(feature_categories, lambda x: x[0]):
-                        category_group = [category for _, category in category_iter]
-                        if len(category_group) == 1:
-                            leveled_categories.append(category_group[0])
-                        else:
-                            leveled_categories.append(category_group)
-                    categories.append(leveled_categories)
-                feature["categories"] = categories
-            else:
-                cuts = []
-                for bins in self.bins_[i]:
-                    cuts.append(bins.tolist())
-                feature["cuts"] = cuts
-                if 1 <= level:
-                    if feature_bounds is not None:
-                        feature_min = feature_bounds[i, 0]
-                        if not isnan(feature_min):
-                            feature["min"] = jsonify_item(feature_min)
-                        feature_max = feature_bounds[i, 1]
-                        if not isnan(feature_max):
-                            feature["max"] = jsonify_item(feature_max)
-                    if histogram_weights is not None:
-                        feature_histogram_weights = histogram_weights[i]
-                        if feature_histogram_weights is not None:
-                            feature[
-                                "histogram_weights"
-                            ] = feature_histogram_weights.tolist()
-
-            features.append(feature)
-        j["features"] = features
-
-        standard_deviations_all = getattr(self, "standard_deviations_", None)
-        bagged_scores_all = getattr(self, "bagged_scores_", None)
-
-        terms = []
-        for term_idx in range(len(self.term_features_)):
-            term = {}
-            # we already used "features", so use "term_features" to avoid confusion
-            term["term_features"] = [
-                self.feature_names_in_[feature_idx]
-                for feature_idx in self.term_features_[term_idx]
-            ]
-            term["scores"] = jsonify_lists(self.term_scores_[term_idx].tolist())
-            if 1 <= level:
-                if standard_deviations_all is not None:
-                    standard_deviations = standard_deviations_all[term_idx]
-                    if standard_deviations is not None:
-                        term["standard_deviations"] = jsonify_lists(
-                            standard_deviations.tolist()
-                        )
-            if 2 <= level:
-                if bagged_scores_all is not None:
-                    bagged_scores = bagged_scores_all[term_idx]
-                    if bagged_scores is not None:
-                        term["bagged_scores"] = jsonify_lists(bagged_scores.tolist())
-            if 1 <= level:
-                term["bin_weights"] = jsonify_lists(
-                    self.bin_weights_[term_idx].tolist()
-                )
-
-            terms.append(term)
-        j["terms"] = terms
-
-        return j
-
     def to_jsonable(self, detail="all"):
         """Converts the model to a JSONable representation.
 
@@ -1450,64 +1195,7 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        warn(
-            "JSON formats are in beta. The JSON format may change in a future version without compatibility between releases."
-        )
-
-        # NOTES: When recording edits to the EBM within a single file, we should:
-        #        1) Have the final EBM section first.  This allows people to diff two models and the diffs for
-        #           the current model (the most important information) will be at the top. If people are comparing a
-        #           non-edited model to an edited model then they will be comparing the non-edited model to the
-        #           current model, which is what we want. When people open the file they'll see the current model,
-        #           which will confuse people less.
-        #        2) Have the initial model LAST.  This will help separate the final and inital model spacially.
-        #           Someone examining the models won't accidentlly stray as easily from the current model into the
-        #           initial model while examining them. This also helps prevent the diffing tool from getting
-        #           confused and diffing parts of the final model with parts of the initial model if there are
-        #           substantial changes. Two final models that have the same initial model should then have a large
-        #           unmodified section at the bottom, which the diffing tool should easily identify and keep
-        #           together as one block since diffing tools look for longest unmodified sections of text
-        #        3) The edits in the MIDDLE, starting from the LAST edit to the FIRST edit chronologically.
-        #           If two models are derrived from the same initial model, then they will share a common initial
-        #           block of text at the bottom of the file. If the two models share a few edits, then the shared edits
-        #           will be at the bottom and will therefore form a larger block of unmodified text along with the
-        #           initial model.  Since diff tools look for longest unmodified blocks, this will gobble up the initial
-        #           model and the initial edits together first, and thus leave the final models for comparison with
-        #           eachother. All edits should have a bi-directional nature so someone could start
-        #           from the final model and work backwards to the initial model, or vice versa. The overall file
-        #           can then be viewed as a reverse chronological ordering from the final model back to its
-        #           original/initial model.
-        # - A non-edited EBM file should be saved with just the single JSON for the model and not an initial and
-        #   final model.  The only section should be marked with the tag "ebm" so that tools that read in EBMs
-        #   Are compatible with both editied and non-edited files.  The tools will always look for the "ebm"
-        #   section, which will be in both non-edited EBMs and edited EBMs at the top.
-        # - The file would look like this for an edited EBMs:
-        #   {
-        #     "version": "1.0"
-        #     "ebm": { FINAL_EBM_JSON }
-        #     "edits": [
-        #       { NEWEST_EDIT_JSON },
-        #       { MID_EDITs_JSON },
-        #       { OLDEST_EDIT_JSON }
-        #     ]
-        #     "initial_ebm": { INITIAL_EBM_JSON }
-        #   }
-        # - The file would look like this for an unedited EBMs:
-        #   {
-        #     "version": "1.0"
-        #     "ebm": { EBM_JSON }
-        #   }
-        # - In python, we could contain these in attributes called "initial_ebm" which would contain a fully formed ebm
-        #   and "edits", which would contain a list of the edits.  These fields wouldn't be present in a scikit-learn
-        #   generated EBM, but would appear if the user edited the EBM, or if they loaded one that had edits.
-
-        inner = self._to_json_inner(detail)
-
-        outer = {}
-        outer["version"] = "1.0"
-        outer["ebm"] = inner
-
-        return outer
+        return to_jsonable(self, detail)
 
     def to_json(self, file, detail="all", indent=2):
         """Exports the model to a JSON text file.
@@ -1529,11 +1217,11 @@ class EBMModel(BaseEstimator):
         if isinstance(file, (str, os.PathLike)):
             # file is a path-like object (str or os.PathLike)
             with open(file, "w") as fp:
-                outer = self.to_jsonable(detail)
+                outer = to_jsonable(self, detail)
                 json.dump(outer, fp, allow_nan=False, indent=indent)
         else:
             # file is a file-like object implementing .write()
-            outer = self.to_jsonable(detail)
+            outer = to_jsonable(self, detail)
             json.dump(outer, file, allow_nan=False, indent=indent)
 
     def predict_scores(self, X, init_score=None):
