@@ -13,7 +13,7 @@ struct RmseRegressionObjective : RegressionObjective {
    static constexpr bool k_bApprox = false;
    static constexpr BoolEbm k_bMaximizeMetric = MINIMIZE_METRIC;
    static constexpr LinkEbm k_linkFunction = Link_identity;
-   static constexpr OutputType k_outputType = GetOutputType(k_linkFunction);
+   static constexpr TaskEbm k_task = IdentifyTask(k_linkFunction);
    static constexpr int k_cItemsPerBitPackMax = 64;
    static constexpr int k_cItemsPerBitPackMin = 1;
    static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) {

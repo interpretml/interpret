@@ -604,27 +604,13 @@ class Native:
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "DetermineLinkFunction")
 
-        link_str = self._unsafe.GetLinkFunctionStr(link.value)
+        link_str = self._unsafe.IdentifyLinkFunctionStr(link.value)
         if not link_str:  # pragma: no cover
             msg = "internal error in call to DetermineLinkFunction"
             _log.error(msg)
             raise Exception(msg)
 
         return (link_str.decode("ascii"), link_param.value)
-
-    def get_output_type(self, link):
-        if link is None or len(link.strip()) == 0:
-            msg = "link must be set to a value"
-            _log.error(msg)
-            raise Exception(msg)
-
-        output_str = self._unsafe.GetOutputTypeStr(link.encode("ascii"))
-        if not output_str:  # pragma: no cover
-            msg = f"unrecognized link function type: {link}"
-            _log.error(msg)
-            raise Exception(msg)
-
-        return output_str.decode("ascii")
 
     @staticmethod
     def _get_ebm_lib_path(debug=False):
@@ -1059,17 +1045,11 @@ class Native:
         ]
         self._unsafe.DetermineLinkFunction.restype = ct.c_int32
 
-        self._unsafe.GetLinkFunctionStr.argtypes = [
+        self._unsafe.IdentifyLinkFunctionStr.argtypes = [
             # int32_t link
             ct.c_int32,
         ]
-        self._unsafe.GetLinkFunctionStr.restype = ct.c_char_p
-
-        self._unsafe.GetOutputTypeStr.argtypes = [
-            # const char * link
-            ct.c_char_p,
-        ]
-        self._unsafe.GetOutputTypeStr.restype = ct.c_char_p
+        self._unsafe.IdentifyLinkFunctionStr.restype = ct.c_char_p
 
         self._unsafe.CreateBooster.argtypes = [
             # void * rng

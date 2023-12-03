@@ -11,7 +11,7 @@
 #define ZONE_main
 #include "zones.h"
 
-#include "bridge.hpp" // IsRegressionOutput, IsClassificationOutput, IsRankingOutput
+#include "bridge.hpp" // IdentifyTask
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -129,7 +129,7 @@ static const char g_sInverse[] = "inverse";
 static const char g_sInverseSquare[] = "inverse_square";
 static const char g_sSqrt[] = "sqrt";
 
-EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionStr(LinkEbm link) {
+EBM_API_BODY const char * EBM_CALLING_CONVENTION IdentifyLinkFunctionStr(LinkEbm link) {
    switch(link) {
    case Link_custom_regression:
       return g_sCustomRegression;
@@ -174,7 +174,7 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionStr(LinkEbm link
    }
 }
 
-EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char * link) {
+EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION IdentifyLinkFunctionInt(const char * link) {
    if(nullptr != link) {
       link = SkipWhitespace(link);
       if(IsStringEqualsForgiving(link, g_sCustomRegression))
@@ -219,23 +219,23 @@ EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char * link
    return Link_ERROR;
 }
 
-EBM_API_BODY OutputType EBM_CALLING_CONVENTION GetOutputTypeInt(LinkEbm link) {
-   return GetOutputType(link);
+EBM_API_BODY TaskEbm EBM_CALLING_CONVENTION IdentifyTaskInt(LinkEbm link) {
+   return IdentifyTask(link);
 }
 
 static const char g_sClassification[] = "classification";
 static const char g_sRegression[] = "regression";
 static const char g_sRanking[] = "ranking";
 
-EBM_API_BODY const char * EBM_CALLING_CONVENTION GetOutputTypeStr(const char * link) {
-   const OutputType outputType = GetOutputType(GetLinkFunctionInt(link));
-   if(OutputType_GeneralClassification <= outputType) {
+EBM_API_BODY const char * EBM_CALLING_CONVENTION IdentifyTaskStr(const char * link) {
+   const TaskEbm task = IdentifyTask(IdentifyLinkFunctionInt(link));
+   if(Task_GeneralClassification <= task) {
       return g_sClassification;
    }
-   if(OutputType_Regression == outputType) {
+   if(Task_Regression == task) {
       return g_sRegression;
    }
-   if(OutputType_Ranking == outputType) {
+   if(Task_Ranking == task) {
       return g_sRanking;
    }
    return nullptr;

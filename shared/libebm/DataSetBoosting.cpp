@@ -241,7 +241,7 @@ ErrorEbm DataSetBoosting::InitTargetData(
    EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if aBag is nullptr then we have no validation samples
 
    BagEbm replication = 0;
-   if(IsClassification(cClasses)) {
+   if(ptrdiff_t { Task_GeneralClassification } <= cClasses) {
       const UIntShared * pTargetFrom = static_cast<const UIntShared *>(aTargets);
       UIntShared iData;
       do {

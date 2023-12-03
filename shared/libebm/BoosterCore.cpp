@@ -630,14 +630,14 @@ ErrorEbm BoosterCore::Create(
       }
       LOG_0(Trace_Info, "INFO BoosterCore::Create Objective determined");
 
-      const OutputType outputType = GetOutputType(pBoosterCore->m_objectiveCpu.m_linkFunction);
-      if(IsClassification(cClasses)) {
-         if(outputType < OutputType_GeneralClassification) {
+      const TaskEbm task = IdentifyTask(pBoosterCore->m_objectiveCpu.m_linkFunction);
+      if(ptrdiff_t { Task_GeneralClassification } <= cClasses) {
+         if(task < Task_GeneralClassification) {
             LOG_0(Trace_Error, "ERROR BoosterCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }
       } else {
-         if(OutputType_Regression != outputType) {
+         if(Task_Regression != task) {
             LOG_0(Trace_Error, "ERROR BoosterCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }

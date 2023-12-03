@@ -47,7 +47,7 @@ extern void InitializeRmseGradientsAndHessiansBoosting(
       const FloatShared * pTargetData =
          static_cast<const FloatShared *>(GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses));
       EBM_ASSERT(nullptr != pTargetData); // we previously called GetDataSetSharedTarget and got back non-null result
-      EBM_ASSERT(IsRegression(cRuntimeClasses));
+      EBM_ASSERT(ptrdiff_t { Task_Regression } == cRuntimeClasses);
 
       const BagEbm * pSampleReplication = aBag;
       const double * pInitScore = aInitScores;
@@ -152,7 +152,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(
       const FloatShared * pTargetData =
          static_cast<const FloatShared *>(GetDataSetSharedTarget(pDataSetShared, 0, &cRuntimeClasses));
       EBM_ASSERT(nullptr != pTargetData); // we previously called GetDataSetSharedTarget and got back non-null result
-      EBM_ASSERT(IsRegression(cRuntimeClasses));
+      EBM_ASSERT(ptrdiff_t { Task_Regression } == cRuntimeClasses);
 
       DataSubsetInteraction * pSubset = pDataSet->GetSubsets();
       EBM_ASSERT(nullptr != pSubset);

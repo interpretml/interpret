@@ -29,7 +29,7 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
             }
 
             TestBoost test = TestBoost(
-               OutputType_Regression,
+               Task_Regression,
                { FeatureTest(cBins + 1, true, false) },
                { { 0 } },
                trainingSamples,
@@ -65,7 +65,7 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
             }
 
             TestBoost test = TestBoost(
-               OutputType_BinaryClassification, 
+               Task_BinaryClassification, 
                { FeatureTest(cBins + 1, true, false) },
                { { 0 } },
                trainingSamples,
@@ -108,7 +108,7 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
             }
 
             TestInteraction test = TestInteraction(
-               OutputType_Regression,
+               Task_Regression,
                { FeatureTest(2), FeatureTest(cBins + 1, true, false) },
                samples
             );
@@ -138,7 +138,7 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
             }
 
             TestInteraction test = TestInteraction(
-               OutputType_BinaryClassification, 
+               Task_BinaryClassification, 
                { FeatureTest(2), FeatureTest(cBins + 1, true, false) },
                samples,
                k_testCreateInteractionFlags_Default,

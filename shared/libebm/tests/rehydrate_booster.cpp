@@ -11,7 +11,7 @@ static constexpr TestPriority k_filePriority = TestPriority::Rehydration;
 
 TEST_CASE("Test Rehydration, boosting, regression") {
    TestBoost testContinuous = TestBoost(
-      OutputType_Regression,
+      Task_Regression,
       {},
       { {} },
       { 
@@ -29,7 +29,7 @@ TEST_CASE("Test Rehydration, boosting, regression") {
    double validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestBoost testRestart = TestBoost(
-         OutputType_Regression,
+         Task_Regression,
          {},
          { {} },
          { 
@@ -52,7 +52,7 @@ TEST_CASE("Test Rehydration, boosting, regression") {
 
 TEST_CASE("Test Rehydration, boosting, binary") {
    TestBoost testContinuous = TestBoost(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       {},
       { {} },
       { 
@@ -76,7 +76,7 @@ TEST_CASE("Test Rehydration, boosting, binary") {
    double validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestBoost testRestart = TestBoost(
-         OutputType_BinaryClassification, 
+         Task_BinaryClassification, 
          {},
          { {} },
          { 

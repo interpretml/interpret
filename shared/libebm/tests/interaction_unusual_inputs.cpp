@@ -11,7 +11,7 @@ static constexpr TestPriority k_filePriority = TestPriority::InteractionUnusualI
 
 TEST_CASE("Zero interaction samples, interaction, regression") {
    TestInteraction test = TestInteraction(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2) }, 
       {}
    );
@@ -22,7 +22,7 @@ TEST_CASE("Zero interaction samples, interaction, regression") {
 
 TEST_CASE("Zero interaction samples, interaction, binary") {
    TestInteraction test = TestInteraction(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       { FeatureTest(2) },
       {},
       k_testCreateInteractionFlags_Default,
@@ -59,7 +59,7 @@ TEST_CASE("classification with 0 possible target states, interaction") {
 
 TEST_CASE("classification with 1 possible target, interaction") {
    TestInteraction test = TestInteraction(
-      OutputType_MonoClassification,
+      Task_MonoClassification,
       { FeatureTest(2) },
       { 
          TestSample({ 1 }, 0) 
@@ -72,7 +72,7 @@ TEST_CASE("classification with 1 possible target, interaction") {
 
 TEST_CASE("features with 0 states, interaction") {
    TestInteraction test = TestInteraction(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2, false, false) },
       {}
    );
@@ -83,7 +83,7 @@ TEST_CASE("features with 0 states, interaction") {
 
 TEST_CASE("Term with zero features, interaction, regression") {
    TestInteraction test = TestInteraction(
-      OutputType_Regression, 
+      Task_Regression, 
       {}, 
       { 
          TestSample({}, 10) 
@@ -96,7 +96,7 @@ TEST_CASE("Term with zero features, interaction, regression") {
 
 TEST_CASE("Term with zero features, interaction, binary") {
    TestInteraction test = TestInteraction(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       {},
       { TestSample({}, 0) },
       k_testCreateInteractionFlags_Default,
@@ -122,7 +122,7 @@ TEST_CASE("Term with zero features, interaction, multiclass") {
 
 TEST_CASE("Term with one feature with one state, interaction, regression") {
    TestInteraction test = TestInteraction(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2, true, false) }, 
       { TestSample({ 0 }, 10) }
    );
@@ -133,7 +133,7 @@ TEST_CASE("Term with one feature with one state, interaction, regression") {
 
 TEST_CASE("Term with one feature with one state, interaction, binary") {
    TestInteraction test = TestInteraction(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       { FeatureTest(2, true, false) }, 
       { TestSample({ 0 }, 0) },
       k_testCreateInteractionFlags_Default,
@@ -161,7 +161,7 @@ TEST_CASE("Term with one feature with one state, interaction, multiclass") {
 
 TEST_CASE("weights are proportional, interaction, regression") {
    TestInteraction test1 = TestInteraction(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2), FeatureTest(2) },
       { 
          TestSample({ 0, 0 }, 10.1, FloatTickIncrementTest(0.3)),
@@ -174,7 +174,7 @@ TEST_CASE("weights are proportional, interaction, regression") {
    double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
    TestInteraction test2 = TestInteraction(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, 10.1, FloatTickIncrementTest(2)),
@@ -187,7 +187,7 @@ TEST_CASE("weights are proportional, interaction, regression") {
    double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
 
    TestInteraction test3 = TestInteraction(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, 10.1, 0.125),
@@ -205,7 +205,7 @@ TEST_CASE("weights are proportional, interaction, regression") {
 
 TEST_CASE("weights are proportional, interaction, binary") {
    TestInteraction test1 = TestInteraction(
-      OutputType_BinaryClassification,
+      Task_BinaryClassification,
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, 0, FloatTickIncrementTest(0.3)),
@@ -218,7 +218,7 @@ TEST_CASE("weights are proportional, interaction, binary") {
    double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
    TestInteraction test2 = TestInteraction(
-      OutputType_BinaryClassification,
+      Task_BinaryClassification,
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, 0, FloatTickIncrementTest(2)),
@@ -231,7 +231,7 @@ TEST_CASE("weights are proportional, interaction, binary") {
    double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
 
    TestInteraction test3 = TestInteraction(
-      OutputType_BinaryClassification,
+      Task_BinaryClassification,
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, 0, 0.125),
@@ -293,7 +293,7 @@ TEST_CASE("weights are proportional, interaction, multiclass") {
 
 TEST_CASE("weights totals equivalence, interaction, regression") {
    TestInteraction test1 = TestInteraction(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, 10.1, 0.15),
@@ -307,7 +307,7 @@ TEST_CASE("weights totals equivalence, interaction, regression") {
    double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
    TestInteraction test2 = TestInteraction(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, 10.1, 2),
@@ -325,7 +325,7 @@ TEST_CASE("weights totals equivalence, interaction, regression") {
 
 TEST_CASE("weights totals equivalence, interaction, binary") {
    TestInteraction test1 = TestInteraction(
-      OutputType_BinaryClassification,
+      Task_BinaryClassification,
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, 0, 0.3),
@@ -339,7 +339,7 @@ TEST_CASE("weights totals equivalence, interaction, binary") {
    double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
    TestInteraction test2 = TestInteraction(
-      OutputType_BinaryClassification,
+      Task_BinaryClassification,
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, 0, 2),
@@ -403,7 +403,7 @@ TEST_CASE("purified interaction strength with impure inputs should be zero, inte
    // we can use any random weights for impure inputs, so stress test this!
 
    TestInteraction test1 = TestInteraction(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, (3.0 + 11.0), 24.25),
@@ -433,7 +433,7 @@ TEST_CASE("purified interaction strength same as pre-purified strength, interact
    //  32 -8
 
    TestInteraction test1 = TestInteraction(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, -16.0, 2.5),
@@ -458,7 +458,7 @@ TEST_CASE("purified interaction strength same as pre-purified strength, interact
    // 16  12
 
    TestInteraction test2 = TestInteraction(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, -16.0 + (3.0 + 11.0), 2.5),
@@ -478,7 +478,7 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
    // so we would expect them to generate the same response
 
    TestInteraction test1 = TestInteraction(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, 3, 232.24),
@@ -494,7 +494,7 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
    // so the gain should be from going from a singularity to the 4 quadrants
 
    TestBoost test2 = TestBoost(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2), FeatureTest(2) },
       { { 0, 1 } },
       {
@@ -512,7 +512,7 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
 
 TEST_CASE("tweedie, interaction") {
    TestInteraction test = TestInteraction(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2), FeatureTest(2) },
       {
          TestSample({ 0, 0 }, 10),

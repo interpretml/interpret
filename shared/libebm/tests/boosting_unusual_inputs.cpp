@@ -11,7 +11,7 @@ static constexpr TestPriority k_filePriority = TestPriority::BoostingUnusualInpu
 
 TEST_CASE("zero learning rate, boosting, regression") {
    TestBoost test = TestBoost(
-      OutputType_Regression,
+      Task_Regression,
       {},
       { {} },
       { 
@@ -38,7 +38,7 @@ TEST_CASE("zero learning rate, boosting, regression") {
 }
 
 TEST_CASE("zero learning rate, boosting, binary") {
-   TestBoost test = TestBoost(OutputType_BinaryClassification,
+   TestBoost test = TestBoost(Task_BinaryClassification,
       {},
       { {} },
       { 
@@ -111,7 +111,7 @@ TEST_CASE("zero learning rate, boosting, multiclass") {
 
 TEST_CASE("negative learning rate, boosting, regression") {
    TestBoost test = TestBoost(
-      OutputType_Regression,
+      Task_Regression,
       {}, 
       { {} }, 
       { 
@@ -146,7 +146,7 @@ TEST_CASE("negative learning rate, boosting, regression") {
 
 TEST_CASE("negative learning rate, boosting, binary") {
    TestBoost test = TestBoost(
-      OutputType_BinaryClassification,
+      Task_BinaryClassification,
       {}, 
       { {} }, 
       { 
@@ -240,7 +240,7 @@ TEST_CASE("zero minSamplesLeaf, boosting, regression") {
    // TODO : add classification binary and multiclass versions of this
 
    TestBoost test = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
@@ -262,7 +262,7 @@ TEST_CASE("zero minSamplesLeaf, boosting, regression") {
 
 TEST_CASE("weights are proportional, boosting, regression") {
    TestBoost test1 = TestBoost(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2) },
       { { 0 } }, 
       {
@@ -281,7 +281,8 @@ TEST_CASE("weights are proportional, boosting, regression") {
    CHECK_APPROX(termScore1, test1.GetCurrentTermScore(0, { 1 }, 0));
 
 
-   TestBoost test2 = TestBoost(OutputType_Regression, 
+   TestBoost test2 = TestBoost(
+      Task_Regression, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
@@ -301,7 +302,7 @@ TEST_CASE("weights are proportional, boosting, regression") {
 
 
    TestBoost test3 = TestBoost(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
@@ -328,7 +329,7 @@ TEST_CASE("weights are proportional, boosting, regression") {
 
 TEST_CASE("weights are proportional, boosting, binary") {
    TestBoost test1 = TestBoost(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
@@ -348,7 +349,7 @@ TEST_CASE("weights are proportional, boosting, binary") {
 
 
    TestBoost test2 = TestBoost(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       { FeatureTest(2) },
       { { 0 } }, 
       {
@@ -368,7 +369,7 @@ TEST_CASE("weights are proportional, boosting, binary") {
 
 
    TestBoost test3 = TestBoost(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
@@ -462,7 +463,7 @@ TEST_CASE("weights are proportional, boosting, multiclass") {
 
 TEST_CASE("weights totals equivalence, boosting, regression") {
    TestBoost test1 = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
@@ -482,7 +483,7 @@ TEST_CASE("weights totals equivalence, boosting, regression") {
 
 
    TestBoost test2 = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
@@ -506,7 +507,7 @@ TEST_CASE("weights totals equivalence, boosting, regression") {
 
 TEST_CASE("weights totals equivalence, boosting, binary") {
    TestBoost test1 = TestBoost(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
@@ -526,7 +527,7 @@ TEST_CASE("weights totals equivalence, boosting, binary") {
 
 
    TestBoost test2 = TestBoost(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
@@ -602,7 +603,7 @@ TEST_CASE("one leavesMax, boosting, regression") {
    };
 
    TestBoost test = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
@@ -624,7 +625,7 @@ TEST_CASE("one leavesMax, boosting, regression") {
 
 TEST_CASE("mono-classification") {
    TestBoost test = TestBoost(
-      OutputType_MonoClassification, 
+      Task_MonoClassification, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
@@ -678,7 +679,7 @@ TEST_CASE("mono-classification") {
 
 TEST_CASE("Zero training samples, boosting, regression") {
    TestBoost test = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2) }, 
       { { 0 } },
       {}, 
@@ -699,7 +700,7 @@ TEST_CASE("Zero training samples, boosting, regression") {
 
 TEST_CASE("Zero training samples, boosting, binary") {
    TestBoost test = TestBoost(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       { FeatureTest(2) }, 
       { { 0 } },
       {}, 
@@ -757,7 +758,7 @@ TEST_CASE("Zero training samples, boosting, multiclass") {
 
 TEST_CASE("Zero validation samples, boosting, regression") {
    TestBoost test = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       { 
@@ -789,7 +790,7 @@ TEST_CASE("Zero validation samples, boosting, regression") {
 
 TEST_CASE("Zero validation samples, boosting, binary") {
    TestBoost test = TestBoost(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       { 
@@ -885,7 +886,7 @@ TEST_CASE("Zero validation samples, boosting, multiclass") {
 TEST_CASE("features with 0 states, boosting") {
    // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
    TestBoost test = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2, false, false) }, 
       { { 0 } }, 
       {}, 
@@ -909,7 +910,7 @@ TEST_CASE("features with 0 states, boosting") {
 
 TEST_CASE("features with 1 state in various positions, boosting") {
    TestBoost test0 = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2, true, false), FeatureTest(2), FeatureTest(2) }, 
       { { 0 }, { 1 }, { 2 } }, 
       { 
@@ -921,7 +922,7 @@ TEST_CASE("features with 1 state in various positions, boosting") {
    );
 
    TestBoost test1 = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2), FeatureTest(2, true, false), FeatureTest(2) }, 
       { { 0 }, { 1 }, { 2 } }, 
       { 
@@ -933,7 +934,7 @@ TEST_CASE("features with 1 state in various positions, boosting") {
    );
 
    TestBoost test2 = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2), FeatureTest(2), FeatureTest(2, true, false) }, 
       { { 0 }, { 1 }, { 2 } }, 
       { 
@@ -995,7 +996,7 @@ TEST_CASE("features with 1 state in various positions, boosting") {
 
 TEST_CASE("zero terms, boosting, regression") {
    TestBoost test = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       {}, 
       {}, 
       { 
@@ -1012,7 +1013,7 @@ TEST_CASE("zero terms, boosting, regression") {
 
 TEST_CASE("zero terms, boosting, binary") {
    TestBoost test = TestBoost(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       {}, 
       {}, 
       { 
@@ -1051,7 +1052,7 @@ TEST_CASE("zero terms, boosting, multiclass") {
 
 TEST_CASE("Term with zero features, boosting, regression") {
    TestBoost test = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       {}, 
       { {} }, 
       { 
@@ -1086,7 +1087,7 @@ TEST_CASE("Term with zero features, boosting, regression") {
 
 TEST_CASE("Term with zero features, boosting, binary") {
    TestBoost test = TestBoost(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       {}, 
       { {} }, 
       { 
@@ -1179,7 +1180,7 @@ TEST_CASE("Term with zero features, boosting, multiclass") {
 
 TEST_CASE("Term with one feature with one or two states is the exact same as zero terms, boosting, regression") {
    TestBoost testZeroDimensions = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       {}, 
       { {} }, 
       { 
@@ -1191,7 +1192,7 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
    );
 
    TestBoost testOneState = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2, true, false) }, 
       { { 0 } }, 
       { 
@@ -1203,7 +1204,7 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
    );
 
    TestBoost testTwoStates = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       { 
@@ -1235,7 +1236,7 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
 
 TEST_CASE("Term with one feature with one or two states is the exact same as zero terms, boosting, binary") {
    TestBoost testZeroDimensions = TestBoost(
-      OutputType_BinaryClassification,
+      Task_BinaryClassification,
       {}, 
       { {} }, 
       { 
@@ -1252,7 +1253,7 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
    );
 
    TestBoost testOneState = TestBoost(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       { FeatureTest(2, true, false) }, 
       { { 0 } }, 
       { 
@@ -1269,7 +1270,7 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
    );
 
    TestBoost testTwoStates = TestBoost(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       { 
@@ -1380,7 +1381,7 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
 
 TEST_CASE("3 dimensional term with one dimension reduced in different ways, boosting, regression") {
    TestBoost test0 = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2, true, false), FeatureTest(2), FeatureTest(2) }, 
       { { 0, 1, 2 } }, 
       {
@@ -1395,7 +1396,7 @@ TEST_CASE("3 dimensional term with one dimension reduced in different ways, boos
    );
 
    TestBoost test1 = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2), FeatureTest(2, true, false), FeatureTest(2) }, 
       { { 0, 1, 2 } }, 
       {
@@ -1410,7 +1411,7 @@ TEST_CASE("3 dimensional term with one dimension reduced in different ways, boos
    );
 
    TestBoost test2 = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2), FeatureTest(2), FeatureTest(2, true, false) }, 
       { { 0, 1, 2 } }, 
       {
@@ -1681,7 +1682,7 @@ TEST_CASE("Random splitting, pure tripples, regression") {
    }
 
    TestBoost test = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(cStates), FeatureTest(cStates), FeatureTest(cStates) }, 
       { { 0, 1, 2 } },
       samples,
@@ -1788,7 +1789,7 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
    };
 
    TestBoost test = TestBoost(
-      OutputType_BinaryClassification, 
+      Task_BinaryClassification, 
       { FeatureTest(2, true, false) }, 
       { { 0 } }, 
       {
@@ -1832,7 +1833,7 @@ TEST_CASE("zero gain, boosting, regression") {
    // We can arbitrarily set the gradient totals to 4 and 7, and then calculate what the 
 
    TestBoost test = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
@@ -1852,7 +1853,7 @@ TEST_CASE("pair and main gain identical, boosting, regression") {
    // should be identical to the gain from the main if we were to combine the pairs into mains
 
    TestBoost test1 = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2), FeatureTest(2) }, 
       { { 0, 1 } }, 
       {
@@ -1867,7 +1868,7 @@ TEST_CASE("pair and main gain identical, boosting, regression") {
    const double gainAvg1 = test1.Boost(0).gainAvg;
 
    TestBoost test2 = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2) }, 
       { { 0 } }, 
       {
@@ -1884,7 +1885,7 @@ TEST_CASE("pair and main gain identical, boosting, regression") {
 
 TEST_CASE("tweedie, boosting") {
    TestBoost test = TestBoost(
-      OutputType_Regression, 
+      Task_Regression, 
       { FeatureTest(2, true, false) }, 
       { { 0 } }, 
       { 

@@ -2282,7 +2282,7 @@ extern const void * GetDataSetSharedTarget(
    const UIntShared id = pTargetDataSetShared->m_id;
    EBM_ASSERT(IsTarget(id));
 
-   ptrdiff_t cClasses = ptrdiff_t { OutputType_Regression };
+   ptrdiff_t cClasses = ptrdiff_t { Task_Regression };
    const void * pRet = reinterpret_cast<const void *>(pTargetDataSetShared + 1);
    if(IsClassificationTarget(id)) {
       const ClassificationTargetDataSetShared * const pClassificationTargetDataSetShared =
@@ -2364,7 +2364,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
          const UIntShared id = pTargetDataSetShared->m_id;
          EBM_ASSERT(IsTarget(id));
 
-         IntEbm countClasses = IntEbm { OutputType_Regression };
+         IntEbm countClasses = IntEbm { Task_Regression };
          if(IsClassificationTarget(id)) {
             const ClassificationTargetDataSetShared * const pClassificationTargetDataSetShared =
                reinterpret_cast<const ClassificationTargetDataSetShared *>(pTargetDataSetShared + 1);

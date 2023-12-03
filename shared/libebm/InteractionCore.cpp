@@ -293,14 +293,14 @@ ErrorEbm InteractionCore::Create(
       }
       LOG_0(Trace_Info, "INFO InteractionCore::Create Objective determined");
 
-      const OutputType outputType = GetOutputType(pInteractionCore->m_objectiveCpu.m_linkFunction);
-      if(IsClassification(cClasses)) {
-         if(outputType < OutputType_GeneralClassification) {
+      const TaskEbm task = IdentifyTask(pInteractionCore->m_objectiveCpu.m_linkFunction);
+      if(ptrdiff_t { Task_GeneralClassification } <= cClasses) {
+         if(task < Task_GeneralClassification) {
             LOG_0(Trace_Error, "ERROR InteractionCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }
       } else {
-         if(OutputType_Regression != outputType) {
+         if(Task_Regression != task) {
             LOG_0(Trace_Error, "ERROR InteractionCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
          }
@@ -414,7 +414,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
          cBytesAllScoresMax = EbmMax(cBytesAllScoresMax, cBytesAllScores);
          cBytesTempMax = EbmMax(cBytesTempMax, cBytesTemp);
 
-         if(IsClassification(cClasses)) {
+         if(ptrdiff_t { Task_GeneralClassification } <= cClasses) {
             if(IsMultiplyError(pSubsetInit->GetObjectiveWrapper()->m_cUIntBytes, cSamples)) {
                LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians IsMultiplyError(pSubsetInit->GetObjectiveWrapper()->m_cUIntBytes, cSamples)");
                return Error_OutOfMemory;
@@ -453,7 +453,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(
       memset(aUpdateScores, 0, cBytesScoresMax);
 
       data.m_aMulticlassMidwayTemp = nullptr;
-      if(IsClassification(cClasses)) {
+      if(ptrdiff_t { Task_GeneralClassification } <= cClasses) {
          void * const aTargetTo = AlignedAlloc(cBytesTargetMax);
          if(UNLIKELY(nullptr == aTargetTo)) {
             LOG_0(Trace_Warning, "WARNING InteractionCore::InitializeInteractionGradientsAndHessians nullptr == aTargetTo");

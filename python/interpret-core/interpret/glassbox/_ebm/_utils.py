@@ -385,4 +385,3 @@ def make_bag(y, test_size, rng, is_stratified):
             )
     else:  # pragma: no cover
         raise Exception("test_size must be a positive numeric value.")
-

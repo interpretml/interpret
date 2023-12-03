@@ -28,13 +28,6 @@ namespace DEFINED_ZONE_NAME {
 //      have a maximum of 2^32, which is much lower than the 2^24/128 that we've set for the float considerations.
 static constexpr size_t k_cSubsetSamplesMax = REPRESENTABLE_INT32_AS_FLOAT32_MAX / 128;
 
-inline constexpr static bool IsRegression(const ptrdiff_t cClasses) noexcept {
-   return ptrdiff_t { OutputType_Regression } == cClasses;
-}
-inline constexpr static bool IsClassification(const ptrdiff_t cClasses) noexcept {
-   return ptrdiff_t { OutputType_GeneralClassification } <= cClasses;
-}
-
 static constexpr size_t k_oneScore = 1;
 static constexpr size_t k_dynamicScores = 0;
 
@@ -73,7 +66,7 @@ inline constexpr static size_t GetArrayScores(const size_t cScores) noexcept {
 static constexpr int k_cItemsPerBitPackNone = -1; // this is for when there is only 1 bin
 static constexpr int k_cItemsPerBitPackDynamic = 0;
 
-inline constexpr static bool IsRegressionOutput(const LinkEbm link) noexcept {
+inline constexpr static bool IsRegressionLink(const LinkEbm link) noexcept {
    return 
       Link_custom_regression == link ||
       Link_power == link ||
@@ -83,7 +76,7 @@ inline constexpr static bool IsRegressionOutput(const LinkEbm link) noexcept {
       Link_inverse_square == link ||
       Link_sqrt == link;
 }
-inline constexpr static bool IsClassificationOutput(const LinkEbm link) noexcept {
+inline constexpr static bool IsClassificationLink(const LinkEbm link) noexcept {
    return
       Link_monoclassification == link ||
       Link_custom_binary == link ||
@@ -97,14 +90,14 @@ inline constexpr static bool IsClassificationOutput(const LinkEbm link) noexcept
       Link_loglog == link ||
       Link_cauchit == link;
 }
-inline constexpr static bool IsRankingOutput(const LinkEbm link) noexcept {
+inline constexpr static bool IsRankingLink(const LinkEbm link) noexcept {
    return Link_custom_ranking == link;
 }
-inline constexpr static OutputType GetOutputType(const LinkEbm link) noexcept {
-   return IsRegressionOutput(link) ? OutputType_Regression :
-      IsClassificationOutput(link) ? OutputType_GeneralClassification :
-      IsRankingOutput(link) ? OutputType_Ranking :
-      OutputType_Unknown;
+inline constexpr static TaskEbm IdentifyTask(const LinkEbm link) noexcept {
+   return IsClassificationLink(link) ? Task_GeneralClassification : 
+      IsRegressionLink(link) ? Task_Regression : 
+      IsRankingLink(link) ? Task_Ranking : 
+      Task_Unknown;
 }
 
 } // DEFINED_ZONE_NAME

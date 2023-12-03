@@ -16,7 +16,7 @@
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h" // INLINE_ALWAYS
 
-#include "bridge.hpp" // IsRegressionOutput, etc.
+#include "bridge.hpp" // IdentifyTask
 
 #include "zoned_bridge_cpp_functions.hpp" // FunctionPointersCpp
 #include "compute.hpp" // GPU_GLOBAL
@@ -513,7 +513,7 @@ protected:
       return OptionsApplyUpdate<TObjective>(pData);
    }
 
-   template<typename TObjective, typename std::enable_if<AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone && TObjective::k_outputType == OutputType_Regression, int>::type = 0>
+   template<typename TObjective, typename std::enable_if<AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone && TObjective::k_task == Task_Regression, int>::type = 0>
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void * const aTargets) const noexcept {
       // regression
       EBM_ASSERT(1 <= c);
@@ -528,14 +528,14 @@ protected:
       } while(pTargetEnd != pTarget);
       return EBM_FALSE;
    }
-   template<typename TObjective, typename std::enable_if<AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone && TObjective::k_outputType == OutputType_GeneralClassification, int>::type = 0>
+   template<typename TObjective, typename std::enable_if<AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone && TObjective::k_task == Task_GeneralClassification, int>::type = 0>
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void * const aTargets) const noexcept {
       // classification
       UNUSED(c);
       UNUSED(aTargets);
       return EBM_FALSE;
    }
-   template<typename TObjective, typename std::enable_if<AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone && TObjective::k_outputType == OutputType_Ranking, int>::type = 0>
+   template<typename TObjective, typename std::enable_if<AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone && TObjective::k_task == Task_Ranking, int>::type = 0>
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void * const aTargets) const noexcept {
       // classification
       UNUSED(c);
@@ -822,7 +822,7 @@ protected:
       static constexpr bool k_bApprox = (bApprox); \
       static constexpr BoolEbm k_bMaximizeMetric = (__MAXIMIZE_METRIC); \
       static constexpr LinkEbm k_linkFunction = (__LINK_FUNCTION); \
-      static constexpr OutputType k_outputType = GetOutputType(k_linkFunction); \
+      static constexpr TaskEbm k_task = IdentifyTask(k_linkFunction); \
       static constexpr int k_cItemsPerBitPackMax = (cItemsPerBitPackMax); \
       static constexpr int k_cItemsPerBitPackMin = (cItemsPerBitPackMin); \
       static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) { \

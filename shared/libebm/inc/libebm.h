@@ -120,8 +120,8 @@ typedef uint32_t UAccelerationFlags;
 #define UAccelerationFlagsPrintf PRIx32
 typedef int32_t LinkEbm;
 #define LinkEbmPrintf PRId32
-typedef int64_t OutputType;
-#define OutputTypePrintf PRId64
+typedef int64_t TaskEbm;
+#define TaskEbmPrintf PRId64
 
 typedef struct _BoosterHandle {
    uint32_t handleVerification; // should be 10995 if ok. Do not use size_t since that requires an additional header.
@@ -141,7 +141,7 @@ typedef struct _InteractionHandle {
 #define ACCELERATION_CAST(val)                     (STATIC_CAST(AccelerationFlags, (val)))
 #define TRACE_CAST(val)                            (STATIC_CAST(TraceEbm, (val)))
 #define LINK_CAST(val)                             (STATIC_CAST(LinkEbm, (val)))
-#define OUTPUT_TYPE_CAST(val)                      (STATIC_CAST(OutputType, (val)))
+#define TASK_CAST(val)                             (STATIC_CAST(TaskEbm, (val)))
 
 // TODO: look through our code for places where SAFE_FLOAT64_AS_INT64_MAX or FLOAT64_TO_INT64_MAX would be useful
 
@@ -273,13 +273,13 @@ typedef struct _InteractionHandle {
 #define Link_inverse_square                        (LINK_CAST(103)) // Inverse Gaussian regression
 #define Link_sqrt                                  (LINK_CAST(104)) // Square root regression
 
-#define OutputType_Ranking                         (OUTPUT_TYPE_CAST(-3))
-#define OutputType_Regression                      (OUTPUT_TYPE_CAST(-2))
-#define OutputType_Unknown                         (OUTPUT_TYPE_CAST(-1))
-#define OutputType_GeneralClassification           (OUTPUT_TYPE_CAST(0))  // classification with unspecified # classes
-#define OutputType_MonoClassification              (OUTPUT_TYPE_CAST(1))  // degenerate case of predicting 1 class
-#define OutputType_BinaryClassification            (OUTPUT_TYPE_CAST(2))  // 2 classes
-#define OutputType_MulticlassPlus                  (OUTPUT_TYPE_CAST(3))  // 3+ classes (the value is the # of classes)
+#define Task_Ranking                               (TASK_CAST(-3))
+#define Task_Regression                            (TASK_CAST(-2))
+#define Task_Unknown                               (TASK_CAST(-1))
+#define Task_GeneralClassification                 (TASK_CAST(0))  // classification with unspecified # classes
+#define Task_MonoClassification                    (TASK_CAST(1))  // degenerate case of predicting 1 class
+#define Task_BinaryClassification                  (TASK_CAST(2))  // 2 classes
+#define Task_MulticlassPlus                        (TASK_CAST(3))  // 3+ classes (the value is the # of classes)
 
 // All our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void (EBM_CALLING_CONVENTION * LogCallbackFunction)(TraceEbm traceLevel, const char * message);
@@ -454,16 +454,16 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    LinkEbm * linkOut,
    double * linkParamOut
 );
-EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetLinkFunctionStr(
+EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION IdentifyLinkFunctionStr(
    LinkEbm link
 );
-EBM_API_INCLUDE LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(
+EBM_API_INCLUDE LinkEbm EBM_CALLING_CONVENTION IdentifyLinkFunctionInt(
    const char * link
 );
-EBM_API_INCLUDE OutputType EBM_CALLING_CONVENTION GetOutputTypeInt(
+EBM_API_INCLUDE TaskEbm EBM_CALLING_CONVENTION IdentifyTaskInt(
    LinkEbm link
 );
-EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION GetOutputTypeStr(
+EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION IdentifyTaskStr(
    const char * link
 );
 

@@ -7,6 +7,7 @@ from math import isnan
 import numpy as np
 from itertools import groupby
 
+
 def jsonify_lists(vals):
     if len(vals) != 0:
         if type(vals[0]) is float:
@@ -66,7 +67,7 @@ def _to_json_inner(ebm, detail="all"):
     outputs = []
     output = {}
     task = identify_task(ebm.link_)
-    output["output_type"] = task
+    output["task"] = task
     if task == "classification":
         output["classes"] = ebm.classes_.tolist()
     elif task == "regression":
@@ -283,14 +284,13 @@ def _to_json_inner(ebm, detail="all"):
                 if bagged_scores is not None:
                     term["bagged_scores"] = jsonify_lists(bagged_scores.tolist())
         if 1 <= level:
-            term["bin_weights"] = jsonify_lists(
-                ebm.bin_weights_[term_idx].tolist()
-            )
+            term["bin_weights"] = jsonify_lists(ebm.bin_weights_[term_idx].tolist())
 
         terms.append(term)
     j["terms"] = terms
 
     return j
+
 
 def to_jsonable(ebm, detail="all"):
     """Converts the model to a JSONable representation.

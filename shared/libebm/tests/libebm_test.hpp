@@ -159,17 +159,13 @@ bool IsApproxEqual(const double val, const double expected, const double percent
 
 // EBM/interpret specific stuff below here!!
 
-inline constexpr static bool IsClassification(const OutputType cClasses) {
-   return OutputType_GeneralClassification <= cClasses;
-}
-
 //#define EXPAND_BINARY_LOGITS
 
-inline constexpr static size_t GetCountScores(const OutputType cClasses) {
+inline constexpr static size_t GetCountScores(const TaskEbm cClasses) {
 #ifdef EXPAND_BINARY_LOGITS
-   return OutputType_BinaryClassification <= cClasses ? static_cast<size_t>(cClasses) : (ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses ? size_t { 0 } : size_t { 1 });
+   return Task_BinaryClassification <= cClasses ? static_cast<size_t>(cClasses) : (ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses ? size_t { 0 } : size_t { 1 });
 #else // EXPAND_BINARY_LOGITS
-   return OutputType_BinaryClassification < cClasses ? static_cast<size_t>(cClasses) : (ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses ? size_t { 0 } : size_t { 1 });
+   return Task_BinaryClassification < cClasses ? static_cast<size_t>(cClasses) : (ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses ? size_t { 0 } : size_t { 1 });
 #endif // EXPAND_BINARY_LOGITS
 }
 
@@ -419,7 +415,7 @@ struct BoostRet {
 };
 
 class TestBoost {
-   const OutputType m_cClasses;
+   const TaskEbm m_cClasses;
    const std::vector<FeatureTest> m_features;
    const std::vector<std::vector<IntEbm>> m_termFeatures;
    const ptrdiff_t m_iZeroClassificationLogit;
@@ -443,7 +439,7 @@ class TestBoost {
 public:
 
    TestBoost(
-      const OutputType cClasses,
+      const TaskEbm cClasses,
       const std::vector<FeatureTest> features,
       const std::vector<std::vector<IntEbm>> termFeatures,
       const std::vector<TestSample> train,
@@ -496,7 +492,7 @@ class TestInteraction {
 public:
 
    TestInteraction(
-      const OutputType cClasses,
+      const TaskEbm cClasses,
       const std::vector<FeatureTest> features,
       const std::vector<TestSample> samples,
       const CreateInteractionFlags flags = k_testCreateInteractionFlags_Default,

@@ -34,10 +34,10 @@ EXPORTS
   SampleWithoutReplacement
   SampleWithoutReplacementStratified
   DetermineLinkFunction
-  GetLinkFunctionStr
-  GetLinkFunctionInt
-  GetOutputTypeInt
-  GetOutputTypeStr
+  IdentifyLinkFunctionStr
+  IdentifyLinkFunctionInt
+  IdentifyTaskInt
+  IdentifyTaskStr
   CreateBooster
   CreateBoosterView
   FreeBooster

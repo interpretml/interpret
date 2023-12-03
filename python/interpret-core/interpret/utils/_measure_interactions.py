@@ -28,6 +28,7 @@ from ._clean_simple import (
 from ._preprocessor import construct_bins
 from ._native import Native
 from ._compressed_dataset import bin_native_by_dimension
+from ._link import identify_task
 
 from ._rank_interactions import rank_interactions
 
@@ -92,15 +93,13 @@ def measure_interactions(
 
     native = Native.get_native_singleton()
 
-    output_type = None
+    task = None
     if objective is not None:
         if len(objective.strip()) == 0:
             objective = None
         else:
             # "classification" or "regression"
-            output_type = native.get_output_type(
-                native.determine_link(flags, objective, -1)[0]
-            )
+            task = identify_task(native.determine_link(flags, objective, -1)[0])
 
     classes = None
     link = None
@@ -113,26 +112,26 @@ def measure_interactions(
         invert_classes = dict(zip(classes, count()))
         y = np.array([invert_classes[el] for el in y], dtype=np.int64)
 
-        if output_type is None:
-            output_type = "classification"
+        if task is None:
+            task = "classification"
             link, link_param = native.determine_link(flags, "log_loss", len(classes))
-        elif output_type == "classification":
+        elif task == "classification":
             link, link_param = native.determine_link(flags, objective, len(classes))
         else:
             raise ValueError(
                 f"init_score is a classifier, but the objective is: {objective}"
             )
     elif is_regressor(init_score):
-        if output_type is None:
-            output_type = "regression"
+        if task is None:
+            task = "regression"
             link, link_param = native.determine_link(flags, "rmse", -1)
-        elif output_type == "regression":
+        elif task == "regression":
             link, link_param = native.determine_link(flags, objective, -1)
         else:
             raise ValueError(
                 f"init_score is a regressor, but the objective is: {objective}"
             )
-    elif output_type == "classification":
+    elif task == "classification":
         y = typify_classification(y)
         # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
         classes, y = np.unique(y, return_inverse=True)
@@ -143,14 +142,14 @@ def measure_interactions(
     )
     if init_score is not None and init_score.ndim == 2:
         # it must be multiclass, or mono-classification
-        if output_type is None:
-            output_type = "classification"
-        elif output_type != "classification":
+        if task is None:
+            task = "classification"
+        elif task != "classification":
             raise ValueError(
                 f"init_score has 2 dimensions so it is a multiclass model, but the objective is: {objective}"
             )
 
-    if output_type is None:
+    if task is None:
         # type_of_target does not seem to like np.object_, so convert it to something that works
         try:
             y_discard = y.astype(dtype=np.float64, copy=False)
@@ -159,21 +158,21 @@ def measure_interactions(
 
         target_type = type_of_target(y_discard)
         if target_type == "continuous":
-            output_type = "regression"
+            task = "regression"
         elif target_type == "binary":
-            output_type = "classification"
+            task = "classification"
         elif target_type == "multiclass":
             if init_score is not None:
                 # type_of_target is guessing the model type. if init_score was multiclass then it
                 # should have a 2nd dimension, but it does not, so the guess made by type_of_target was wrong.
                 # The only other option is for it to be regression, so force that.
-                output_type = "regression"
+                task = "regression"
             else:
-                output_type = "classification"
+                task = "classification"
         else:
             raise ValueError("unrecognized target type in y")
 
-    if output_type == "classification":
+    if task == "classification":
         if classes is None:
             y = typify_classification(y)
             # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
@@ -181,7 +180,7 @@ def measure_interactions(
         n_classes = len(classes)
         if objective is None:
             objective = "log_loss"
-    elif output_type == "regression":
+    elif task == "regression":
         y = y.astype(np.float64, copy=False)
         n_classes = -1
         if objective is None:

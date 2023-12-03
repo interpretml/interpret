@@ -174,7 +174,7 @@ double TestBoost::GetTermScore(
       aTermScores,
       perDimensionIndexArrayForBinnedFeatures
    );
-   if(!IsClassification(m_cClasses)) {
+   if(m_cClasses < Task_GeneralClassification) {
       if(0 != iClassOrZero) {
          throw TestException("iClassOrZero cannot be non-zero for regression");
       }
@@ -183,7 +183,7 @@ double TestBoost::GetTermScore(
    if(static_cast<size_t>(m_cClasses) <= iClassOrZero) {
       throw TestException("iClassOrZero beyond the number of classes");
    }
-   if(OutputType_BinaryClassification == m_cClasses) {
+   if(Task_BinaryClassification == m_cClasses) {
       // binary classification
 #ifdef EXPAND_BINARY_LOGITS
       if(m_iZeroClassificationLogit < 0) {
@@ -221,7 +221,7 @@ double TestBoost::GetTermScore(
 }
 
 TestBoost::TestBoost(
-   const OutputType cClasses,
+   const TaskEbm cClasses,
    const std::vector<FeatureTest> features,
    const std::vector<std::vector<IntEbm>> termFeatures,
    const std::vector<TestSample> train,
@@ -240,7 +240,7 @@ TestBoost::TestBoost(
 {
    ErrorEbm error;
 
-   if(IsClassification(cClasses)) {
+   if(Task_GeneralClassification <= cClasses) {
       if(static_cast<ptrdiff_t>(cClasses) <= iZeroClassificationLogit) {
          throw TestException("bad iZeroClassificationLogit value for classification");
       }
@@ -329,7 +329,7 @@ TestBoost::TestBoost(
       size += sizeChange;
    }
 
-   if(IsClassification(cClasses)) {
+   if(Task_GeneralClassification <= cClasses) {
       std::vector<IntEbm> targets;
       for(const TestSample & sample : train) {
          targets.push_back(static_cast<IntEbm>(sample.m_target));
@@ -403,7 +403,7 @@ TestBoost::TestBoost(
       }
    }
 
-   if(IsClassification(cClasses)) {
+   if(Task_GeneralClassification <= cClasses) {
       std::vector<IntEbm> targets;
       for(const TestSample & sample : train) {
          targets.push_back(static_cast<IntEbm>(sample.m_target));
@@ -432,7 +432,7 @@ TestBoost::TestBoost(
    const size_t cScores = GetCountScores(cClasses);
    std::vector<double> initScores;
    if(bInitScores) {
-      if(IsClassification(cClasses)) {
+      if(Task_GeneralClassification <= cClasses) {
          for(const TestSample & sample : train) {
             if(sample.m_bScores) {
                if(static_cast<size_t>(cClasses) != sample.m_initScores.size()) {
@@ -440,7 +440,7 @@ TestBoost::TestBoost(
                }
                ptrdiff_t iLogit = 0;
                for(const double oneLogit : sample.m_initScores) {
-                  if(OutputType_BinaryClassification == cClasses) {
+                  if(Task_BinaryClassification == cClasses) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(iZeroClassificationLogit < 0) {
@@ -480,7 +480,7 @@ TestBoost::TestBoost(
                }
                ptrdiff_t iLogit = 0;
                for(const double oneLogit : sample.m_initScores) {
-                  if(OutputType_BinaryClassification == cClasses) {
+                  if(Task_BinaryClassification == cClasses) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(iZeroClassificationLogit < 0) {
@@ -545,7 +545,7 @@ TestBoost::TestBoost(
       countInnerBags,
       flags,
       acceleration,
-      nullptr == sObjective ? (IsClassification(cClasses) ? "log_loss" : "rmse") : sObjective,
+      nullptr == sObjective ? (Task_GeneralClassification <= cClasses ? "log_loss" : "rmse") : sObjective,
       nullptr,
       &m_boosterHandle
    );
@@ -681,7 +681,7 @@ void TestBoost::GetCurrentTermScoresRaw(const size_t iTerm, double * const aTerm
 
 
 TestInteraction::TestInteraction(
-   const OutputType cClasses,
+   const TaskEbm cClasses,
    const std::vector<FeatureTest> features,
    const std::vector<TestSample> samples,
    const CreateInteractionFlags flags,
@@ -693,7 +693,7 @@ TestInteraction::TestInteraction(
 {
    ErrorEbm error;
 
-   if(IsClassification(cClasses)) {
+   if(Task_GeneralClassification <= cClasses) {
       if(static_cast<ptrdiff_t>(cClasses) <= iZeroClassificationLogit) {
          throw TestException("bad iZeroClassificationLogit value for classification");
       }
@@ -762,7 +762,7 @@ TestInteraction::TestInteraction(
       size += sizeChange;
    }
 
-   if(IsClassification(cClasses)) {
+   if(Task_GeneralClassification <= cClasses) {
       std::vector<IntEbm> targets;
       for(const TestSample & sample : samples) {
          targets.push_back(static_cast<IntEbm>(sample.m_target));
@@ -824,7 +824,7 @@ TestInteraction::TestInteraction(
       }
    }
 
-   if(IsClassification(cClasses)) {
+   if(Task_GeneralClassification <= cClasses) {
       std::vector<IntEbm> targets;
       for(const TestSample & sample : samples) {
          targets.push_back(static_cast<IntEbm>(sample.m_target));
@@ -847,7 +847,7 @@ TestInteraction::TestInteraction(
    const size_t cScores = GetCountScores(cClasses);
    std::vector<double> initScores;
    if(bInitScores) {
-      if(IsClassification(cClasses)) {
+      if(Task_GeneralClassification <= cClasses) {
          for(const TestSample & sample : samples) {
             if(sample.m_bScores) {
                if(static_cast<size_t>(cClasses) != sample.m_initScores.size()) {
@@ -855,7 +855,7 @@ TestInteraction::TestInteraction(
                }
                ptrdiff_t iLogit = 0;
                for(const double oneLogit : sample.m_initScores) {
-                  if(OutputType_BinaryClassification == cClasses) {
+                  if(Task_BinaryClassification == cClasses) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(iZeroClassificationLogit < 0) {
@@ -902,7 +902,7 @@ TestInteraction::TestInteraction(
       0 == initScores.size() ? nullptr : &initScores[0],
       flags,
       acceleration,
-      nullptr == sObjective ? (IsClassification(cClasses) ? "log_loss" : "rmse") : sObjective,
+      nullptr == sObjective ? (Task_GeneralClassification <= cClasses ? "log_loss" : "rmse") : sObjective,
       nullptr,
       &m_interactionHandle
    );

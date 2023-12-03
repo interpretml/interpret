@@ -341,7 +341,7 @@ TEST_CASE("test random number generator equivalency") {
    }
 
    TestBoost test = TestBoost(
-      OutputType_Regression,
+      Task_Regression,
       { FeatureTest(2) },
       { { 0 } },
       samples,
