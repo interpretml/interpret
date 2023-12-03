@@ -565,7 +565,7 @@ class EBMModel(BaseEstimator):
             y = y.astype(np.float64, copy=False)
             min_target = y.min()
             max_target = y.max()
-            n_classes = -1
+            n_classes = Native.Task_Regression
             if objective is None:
                 objective = "rmse"
         else:

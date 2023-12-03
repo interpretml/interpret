@@ -557,7 +557,7 @@ def merge_ebms(models):
             ebm.max_target_ = max(
                 model.max_target_ for model in models if hasattr(model, "max_target_")
             )
-        n_classes = -1
+        n_classes = Native.Task_Regression
     n_scores = Native.get_count_scores_c(n_classes)
 
     bag_weights = []

@@ -50,6 +50,12 @@ class Native:
     AccelerationFlags_GPU = AccelerationFlags_Nvidia
     AccelerationFlags_ALL = 0xFFFFFFFF
 
+    # Tasks
+    Task_Ranking = -3
+    Task_Regression = -2
+    Task_Unknown = -1
+    Task_Classification = 0
+
     # TraceLevel
     _Trace_Off = 0
     _Trace_Error = 1

@@ -181,7 +181,7 @@ def measure_interactions(
             objective = "log_loss"
     elif task == "regression":
         y = y.astype(np.float64, copy=False)
-        n_classes = -1
+        n_classes = Native.Task_Regression
         if objective is None:
             objective = "rmse"
     else:
@@ -190,7 +190,7 @@ def measure_interactions(
         raise ValueError(msg)
 
     if init_score is not None:
-        if n_classes == 2 or n_classes == -1:
+        if n_classes == 2 or n_classes < 0:
             if init_score.ndim != 1:
                 raise ValueError(
                     "diagreement between the number of classes in y and in the init_score shape"

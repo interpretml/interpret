@@ -6,6 +6,7 @@ import logging
 from sklearn.base import is_classifier, is_regressor
 
 from ._clean_simple import clean_dimensions
+from ._native import Native
 
 try:
     import pandas as pd
@@ -52,7 +53,7 @@ def determine_classes(model, data, n_samples):
             _log.error(msg)
             raise ValueError(msg)
     elif is_regressor(model):
-        n_classes = -1
+        n_classes = Native.Task_Regression
         model = model.predict
         preds = clean_dimensions(model(data), "model")
         if preds.ndim != 1:
@@ -77,7 +78,7 @@ def determine_classes(model, data, n_samples):
                 n_classes = preds.shape[0]
             else:
                 # it could be mono-classification, but that's unlikely, so it's regression
-                n_classes = -1
+                n_classes = Native.Task_Regression
         else:
             if preds.shape[0] == 0:
                 # we have at least 2 samples, so this means classes was an empty dimension
@@ -91,7 +92,7 @@ def determine_classes(model, data, n_samples):
             elif preds.ndim == 1:
                 # we have at least 2 samples, so the first dimension must be for samples, and the second held 1 value.
                 # it could be mono-classification, but that's unlikely, so it's regression
-                n_classes = -1
+                n_classes = Native.Task_Regression
             else:
                 # we see a non-1 number of items, so it's probabilities, and therefore classification
                 n_classes = preds.shape[1]
