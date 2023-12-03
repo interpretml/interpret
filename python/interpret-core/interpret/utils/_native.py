@@ -585,35 +585,24 @@ class Native:
         return bag
 
     def determine_task(self, objective):
-        if objective is None or len(objective.strip()) == 0:
-            msg = "objective must be specified"
-            _log.error(msg)
-            raise Exception(msg)
-
         task = ct.c_int64(0)
 
         return_code = self._unsafe.DetermineTask(
             objective.encode("ascii"),
             ct.byref(task),
         )
-
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "DetermineTask")
 
-        task_str = self._unsafe.IdentifyTaskStr(task.value)
-        if not task_str:  # pragma: no cover
-            msg = "internal error in call to DetermineTask"
+        task = self._unsafe.GetTaskStr(task.value)
+        if not task:  # pragma: no cover
+            msg = "internal error in call to GetTaskStr"
             _log.error(msg)
             raise Exception(msg)
 
-        return task_str.decode("ascii")
+        return task.decode("ascii")
 
     def determine_link(self, flags, objective, n_classes):
-        if objective is None or len(objective.strip()) == 0:
-            msg = "objective must be specified"
-            _log.error(msg)
-            raise Exception(msg)
-
         link = ct.c_int32(0)
         link_param = ct.c_double(np.nan)
 
@@ -624,17 +613,16 @@ class Native:
             ct.byref(link),
             ct.byref(link_param),
         )
-
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "DetermineLinkFunction")
 
-        link_str = self._unsafe.IdentifyLinkFunctionStr(link.value)
-        if not link_str:  # pragma: no cover
-            msg = "internal error in call to DetermineLinkFunction"
+        link = self._unsafe.GetLinkFunctionStr(link.value)
+        if not link:  # pragma: no cover
+            msg = "internal error in call to GetLinkFunctionStr"
             _log.error(msg)
             raise Exception(msg)
 
-        return (link_str.decode("ascii"), link_param.value)
+        return (link.decode("ascii"), link_param.value)
 
     @staticmethod
     def _get_ebm_lib_path(debug=False):
@@ -1063,11 +1051,11 @@ class Native:
         ]
         self._unsafe.DetermineTask.restype = ct.c_int32
 
-        self._unsafe.IdentifyTaskStr.argtypes = [
+        self._unsafe.GetTaskStr.argtypes = [
             # int64_t task
             ct.c_int64,
         ]
-        self._unsafe.IdentifyTaskStr.restype = ct.c_char_p
+        self._unsafe.GetTaskStr.restype = ct.c_char_p
 
         self._unsafe.DetermineLinkFunction.argtypes = [
             # LinkFlags flags
@@ -1083,11 +1071,11 @@ class Native:
         ]
         self._unsafe.DetermineLinkFunction.restype = ct.c_int32
 
-        self._unsafe.IdentifyLinkFunctionStr.argtypes = [
+        self._unsafe.GetLinkFunctionStr.argtypes = [
             # int32_t link
             ct.c_int32,
         ]
-        self._unsafe.IdentifyLinkFunctionStr.restype = ct.c_char_p
+        self._unsafe.GetLinkFunctionStr.restype = ct.c_char_p
 
         self._unsafe.CreateBooster.argtypes = [
             # void * rng

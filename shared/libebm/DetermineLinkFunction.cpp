@@ -171,7 +171,7 @@ static const char g_sInverse[] = "inverse";
 static const char g_sInverseSquare[] = "inverse_square";
 static const char g_sSqrt[] = "sqrt";
 
-EBM_API_BODY const char * EBM_CALLING_CONVENTION IdentifyLinkFunctionStr(LinkEbm link) {
+EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionStr(LinkEbm link) {
    switch(link) {
    case Link_custom_regression:
       return g_sCustomRegression;
@@ -216,7 +216,7 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION IdentifyLinkFunctionStr(LinkEbm
    }
 }
 
-EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION IdentifyLinkFunctionInt(const char * link) {
+EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char * link) {
    if(nullptr != link) {
       link = SkipWhitespace(link);
       if(IsStringEqualsForgiving(link, g_sCustomRegression))
@@ -264,7 +264,7 @@ EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION IdentifyLinkFunctionInt(const char *
 static const char g_sClassification[] = "classification";
 static const char g_sRegression[] = "regression";
 static const char g_sRanking[] = "ranking";
-EBM_API_BODY const char * EBM_CALLING_CONVENTION IdentifyTaskStr(TaskEbm task) {
+EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTaskStr(TaskEbm task) {
    if(Task_GeneralClassification <= task) {
       return g_sClassification;
    }
@@ -277,7 +277,7 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION IdentifyTaskStr(TaskEbm task) {
    return nullptr;
 }
 
-EBM_API_BODY TaskEbm EBM_CALLING_CONVENTION IdentifyTaskInt(const char * task) {
+EBM_API_BODY TaskEbm EBM_CALLING_CONVENTION GetTaskInt(const char * task) {
    if(nullptr != task) {
       task = SkipWhitespace(task);
       if(IsStringEqualsForgiving(task, g_sClassification))

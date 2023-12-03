@@ -34,11 +34,11 @@ EXPORTS
   SampleWithoutReplacement
   SampleWithoutReplacementStratified
   DetermineTask
+  GetTaskStr
+  GetTaskInt
   DetermineLinkFunction
-  IdentifyLinkFunctionStr
-  IdentifyLinkFunctionInt
-  IdentifyTaskInt
-  IdentifyTaskStr
+  GetLinkFunctionStr
+  GetLinkFunctionInt
   CreateBooster
   CreateBoosterView
   FreeBooster
