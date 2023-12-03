@@ -447,6 +447,10 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratifi
    BagEbm * bagOut
 );
 
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineTask(
+   const char * objective,
+   TaskEbm * taskOut
+);
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    LinkFlags flags,
    const char * objective,

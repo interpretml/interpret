@@ -28,7 +28,6 @@ from ._clean_simple import (
 from ._preprocessor import construct_bins
 from ._native import Native
 from ._compressed_dataset import bin_native_by_dimension
-from ._link import identify_task
 
 from ._rank_interactions import rank_interactions
 
@@ -99,7 +98,7 @@ def measure_interactions(
             objective = None
         else:
             # "classification" or "regression"
-            task = identify_task(native.determine_link(flags, objective, -1)[0])
+            task = native.determine_task(objective)
 
     classes = None
     link = None

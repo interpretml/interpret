@@ -33,6 +33,7 @@ EXPORTS
   ExtractTargetClasses
   SampleWithoutReplacement
   SampleWithoutReplacementStratified
+  DetermineTask
   DetermineLinkFunction
   IdentifyLinkFunctionStr
   IdentifyLinkFunctionInt

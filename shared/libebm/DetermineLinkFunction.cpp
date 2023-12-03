@@ -26,6 +26,48 @@ extern ErrorEbm GetObjective(
    ObjectiveWrapper * const pSIMDObjectiveWrapperOut
 ) noexcept;
 
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineTask(
+   const char * objective,
+   TaskEbm * taskOut
+) {
+   LOG_N(
+      Trace_Info,
+      "Entered DetermineTask: "
+      "objective=%p, "
+      "taskOut=%p"
+      ,
+      static_cast<const void *>(objective),
+      static_cast<void *>(taskOut)
+   );
+
+   ObjectiveWrapper objectiveWrapper;
+   InitializeObjectiveWrapperUnfailing(&objectiveWrapper);
+
+   Config config;
+   config.cOutputs = 1;
+   config.isDifferentialPrivacy = EBM_FALSE;
+   const ErrorEbm error = GetObjective(&config, objective, AccelerationFlags_NONE, &objectiveWrapper, nullptr);
+   if(Error_None != error) {
+      LOG_0(Trace_Error, "ERROR DetermineTask GetObjective failed");
+
+      if(nullptr != taskOut) {
+         *taskOut = Task_Unknown;
+      }
+      return error;
+   }
+
+   // this leaves the contents that are not pointers
+   FreeObjectiveWrapperInternals(&objectiveWrapper);
+
+   if(nullptr != taskOut) {
+      *taskOut = IdentifyTask(objectiveWrapper.m_linkFunction);
+   }
+
+   LOG_0(Trace_Info, "Exited DetermineTask");
+
+   return Error_None;
+}
+
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    LinkFlags flags,
    const char * objective,

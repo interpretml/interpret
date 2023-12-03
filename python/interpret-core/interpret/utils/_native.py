@@ -584,6 +584,30 @@ class Native:
 
         return bag
 
+    def determine_task(self, objective):
+        if objective is None or len(objective.strip()) == 0:
+            msg = "objective must be specified"
+            _log.error(msg)
+            raise Exception(msg)
+
+        task = ct.c_int32(0)
+
+        return_code = self._unsafe.DetermineTask(
+            objective.encode("ascii"),
+            ct.byref(task),
+        )
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "DetermineTask")
+
+        task_str = self._unsafe.IdentifyTaskStr(task.value)
+        if not task_str:  # pragma: no cover
+            msg = "internal error in call to DetermineTask"
+            _log.error(msg)
+            raise Exception(msg)
+
+        return task_str.decode("ascii")
+
     def determine_link(self, flags, objective, n_classes):
         if objective is None or len(objective.strip()) == 0:
             msg = "objective must be specified"
@@ -1031,6 +1055,14 @@ class Native:
         ]
         self._unsafe.SampleWithoutReplacementStratified.restype = ct.c_int32
 
+        self._unsafe.DetermineTask.argtypes = [
+            # char * objective
+            ct.c_char_p,
+            # int32_t * taskOut
+            ct.c_void_p,
+        ]
+        self._unsafe.DetermineTask.restype = ct.c_int32
+
         self._unsafe.DetermineLinkFunction.argtypes = [
             # LinkFlags flags
             ct.c_int32,
@@ -1044,6 +1076,12 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.DetermineLinkFunction.restype = ct.c_int32
+
+        self._unsafe.IdentifyTaskStr.argtypes = [
+            # int32_t task
+            ct.c_int32,
+        ]
+        self._unsafe.IdentifyTaskStr.restype = ct.c_char_p
 
         self._unsafe.IdentifyLinkFunctionStr.argtypes = [
             # int32_t link
