@@ -54,7 +54,7 @@ class Native:
     Task_Ranking = -3
     Task_Regression = -2
     Task_Unknown = -1
-    Task_Classification = 0
+    # for Task_Classification use the # of classes or 0 if unknown
 
     # TraceLevel
     _Trace_Off = 0

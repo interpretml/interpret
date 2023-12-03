@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 from sklearn.utils.validation import check_is_fitted
-from sklearn.base import is_classifier
 
 
 def compute_group_importance(term_list, ebm, X, contributions=None):
@@ -47,7 +46,7 @@ def compute_group_importance(term_list, ebm, X, contributions=None):
 
     # For multiclass we take the average of contributions per class
     # TODO this is consistent to what Interpret is doing but might be changed
-    if is_classifier(ebm) and 2 < len(ebm.classes_):
+    if hasattr(ebm, "classes_") and 2 < len(ebm.classes_):
         contributions = np.average(np.abs(contributions), axis=-1)
 
     abs_sum_per_row = np.empty(len(contributions), np.float64)

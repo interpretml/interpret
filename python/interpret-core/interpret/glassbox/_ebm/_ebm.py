@@ -608,12 +608,7 @@ class EBMModel(BaseEstimator):
         if is_differential_privacy:
             validate_eps_delta(self.epsilon, self.delta)
 
-            if is_classifier(self):
-                if 2 < n_classes:  # pragma: no cover
-                    raise ValueError(
-                        "Multiclass not supported for Differentially Private EBMs."
-                    )
-            else:
+            if n_classes < 0:
                 is_privacy_warning = False
                 is_clipping = False
 
@@ -642,6 +637,10 @@ class EBMModel(BaseEstimator):
 
                 if is_clipping:
                     y = np.clip(y, min_target, max_target)
+            elif 2 != n_classes:  # pragma: no cover
+                raise ValueError(
+                    "Multiclass not supported for Differentially Private EBMs."
+                )
 
             # Split epsilon, delta budget for binning and learning
             bin_eps = self.epsilon * self.bin_budget_frac
@@ -742,7 +741,7 @@ class EBMModel(BaseEstimator):
                     y,
                     self.validation_size,
                     bagged_rng,
-                    is_classifier(self) and not is_differential_privacy,
+                    0 <= n_classes and not is_differential_privacy,
                 )
             else:
                 bag = bags[idx]
@@ -783,7 +782,7 @@ class EBMModel(BaseEstimator):
 
         if is_differential_privacy:
             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
-            domain_size = 1 if is_classifier(self) else max_target - min_target
+            domain_size = 1 if 0 <= n_classes else max_target - min_target
             max_weight = 1 if sample_weight is None else np.max(sample_weight)
             training_eps = self.epsilon - bin_eps
             training_delta = self.delta - bin_delta
@@ -1467,13 +1466,13 @@ class EBMModel(BaseEstimator):
                         "scores": densities,
                     },
                 }
-                if is_classifier(self):
+                if hasattr(self, "classes_"):
                     # Classes should be numpy array, convert to list.
                     data_dict["meta"] = {"label_names": self.classes_.tolist()}
 
                 data_dicts.append(data_dict)
             elif len(feature_idxs) == 2:
-                if is_classifier(self) and 3 <= len(self.classes_):
+                if hasattr(self, "classes_") and 2 != len(self.classes_):
                     warn(
                         f"Dropping term {term_names[term_idx]} from explanation "
                         "since we can't graph multinomial interactions."
@@ -1615,6 +1614,8 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
+        classes = getattr(self, "classes_", None)
+
         n_samples = None
         if y is not None:
             y = clean_dimensions(y, "y")
@@ -1622,7 +1623,7 @@ class EBMModel(BaseEstimator):
                 raise ValueError("y must be 1 dimensional")
             n_samples = len(y)
 
-            if is_classifier(self):
+            if classes is not None:
                 y = typify_classification(y)
             else:
                 y = y.astype(np.float64, copy=False)
@@ -1647,7 +1648,7 @@ class EBMModel(BaseEstimator):
             )
 
             intercept = self.intercept_
-            if not is_classifier(self) or len(self.classes_) == 2:
+            if classes is None or len(classes) == 2:
                 if isinstance(intercept, np.ndarray) or isinstance(intercept, list):
                     intercept = intercept[0]
 
@@ -1668,9 +1669,7 @@ class EBMModel(BaseEstimator):
                 scores += init_score
             pred = inv_link(scores, self.link_, self.link_param_)
 
-            classes = self.classes_ if is_classifier(self) else None
-
-            perf_dicts = gen_perf_dicts(pred, y, is_classifier(self), classes)
+            perf_dicts = gen_perf_dicts(pred, y, classes is not None, classes)
             for row_idx in range(n_samples):
                 perf = None if perf_dicts is None else perf_dicts[row_idx]
                 perf_list.append(perf)
@@ -1691,12 +1690,12 @@ class EBMModel(BaseEstimator):
                     },
                     "perf": perf,
                 }
-                if is_classifier(self):
+                if classes is not None:
                     # Classes should be numpy array, convert to list.
-                    data_dict["meta"] = {"label_names": self.classes_.tolist()}
+                    data_dict["meta"] = {"label_names": classes.tolist()}
                 data_dicts.append(data_dict)
 
-        selector = gen_local_selector(data_dicts, is_classification=is_classifier(self))
+        selector = gen_local_selector(data_dicts, is_classification=classes is not None)
 
         term_scores = remove_last(self.term_scores_, self.bin_weights_)
         for term_idx, feature_idxs in enumerate(self.term_features_):
@@ -1750,7 +1749,7 @@ class EBMModel(BaseEstimator):
         if importance_type == "avg_weight":
             importances = np.empty(len(self.term_features_), np.float64)
             for i in range(len(self.term_features_)):
-                if is_classifier(self):
+                if hasattr(self, "classes_"):
                     # everything is useless if we're predicting 1 class
                     mean_abs_score = 0
                     if 1 < len(self.classes_):
@@ -1808,7 +1807,7 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        if is_classifier(self) and len(self.classes_) != 2:
+        if hasattr(self, "classes_") and len(self.classes_) != 2:
             msg = "monotonize not supported for multiclass"
             _log.error(msg)
             raise ValueError(msg)
