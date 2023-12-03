@@ -66,7 +66,7 @@ from math import isnan, ceil
 import numpy as np
 from warnings import warn
 
-from sklearn.base import is_classifier  # type: ignore
+from sklearn.base import is_classifier, is_regressor  # type: ignore
 from sklearn.utils.validation import check_is_fitted  # type: ignore
 from sklearn.isotonic import IsotonicRegression
 
@@ -525,23 +525,53 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
+        native = Native.get_native_singleton()
+
         objective = self.objective
+        task = None
+        if objective is not None:
+            if len(objective.strip()) == 0:
+                objective = None
+            else:
+                # "classification" or "regression"
+                task = native.determine_task(objective)
+
         if is_classifier(self):
+            if task is None:
+                task = "classification"
+            elif task != "classification":
+                msg = f"classifier cannot have objective {self.objective}"
+                _log.error(msg)
+                raise ValueError(msg)
+
+        if is_regressor(self):
+            if task is None:
+                task = "regression"
+            elif task != "regression":
+                msg = f"regressor cannot have objective {self.objective}"
+                _log.error(msg)
+                raise ValueError(msg)
+
+        if task == "classification":
             y = typify_classification(y)
             # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
             # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
             # in two separate runs, which would flip the ordering of the classes within our score tensors.
             classes, y = np.unique(y, return_inverse=True)
             n_classes = len(classes)
-            if objective is None or len(objective.strip()) == 0:
+            if objective is None:
                 objective = "log_loss"
-        else:
+        elif task == "regression":
             y = y.astype(np.float64, copy=False)
             min_target = y.min()
             max_target = y.max()
             n_classes = -1
-            if objective is None or len(objective.strip()) == 0:
+            if objective is None:
                 objective = "rmse"
+        else:
+            msg = f"Unrecognized objective {self.objective}"
+            _log.error(msg)
+            raise ValueError(msg)
 
         n_scores = Native.get_count_scores_c(n_classes)
 
@@ -557,7 +587,6 @@ class EBMModel(BaseEstimator):
 
         is_differential_privacy = is_private(self)
 
-        native = Native.get_native_singleton()
         flags = (
             Native.LinkFlags_DifferentialPrivacy
             if is_differential_privacy

@@ -261,16 +261,10 @@ EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION IdentifyLinkFunctionInt(const char *
    return Link_ERROR;
 }
 
-EBM_API_BODY TaskEbm EBM_CALLING_CONVENTION IdentifyTaskInt(LinkEbm link) {
-   return IdentifyTask(link);
-}
-
 static const char g_sClassification[] = "classification";
 static const char g_sRegression[] = "regression";
 static const char g_sRanking[] = "ranking";
-
-EBM_API_BODY const char * EBM_CALLING_CONVENTION IdentifyTaskStr(const char * link) {
-   const TaskEbm task = IdentifyTask(IdentifyLinkFunctionInt(link));
+EBM_API_BODY const char * EBM_CALLING_CONVENTION IdentifyTaskStr(TaskEbm task) {
    if(Task_GeneralClassification <= task) {
       return g_sClassification;
    }
@@ -281,6 +275,19 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION IdentifyTaskStr(const char * li
       return g_sRanking;
    }
    return nullptr;
+}
+
+EBM_API_BODY TaskEbm EBM_CALLING_CONVENTION IdentifyTaskInt(const char * task) {
+   if(nullptr != task) {
+      task = SkipWhitespace(task);
+      if(IsStringEqualsForgiving(task, g_sClassification))
+         return Task_GeneralClassification;
+      if(IsStringEqualsForgiving(task, g_sRegression))
+         return Task_Regression;
+      if(IsStringEqualsForgiving(task, g_sRanking))
+         return Task_Ranking;
+   }
+   return Task_Unknown;
 }
 
 } // DEFINED_ZONE_NAME

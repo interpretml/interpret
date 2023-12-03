@@ -590,7 +590,7 @@ class Native:
             _log.error(msg)
             raise Exception(msg)
 
-        task = ct.c_int32(0)
+        task = ct.c_int64(0)
 
         return_code = self._unsafe.DetermineTask(
             objective.encode("ascii"),
@@ -1058,10 +1058,16 @@ class Native:
         self._unsafe.DetermineTask.argtypes = [
             # char * objective
             ct.c_char_p,
-            # int32_t * taskOut
+            # int64_t * taskOut
             ct.c_void_p,
         ]
         self._unsafe.DetermineTask.restype = ct.c_int32
+
+        self._unsafe.IdentifyTaskStr.argtypes = [
+            # int64_t task
+            ct.c_int64,
+        ]
+        self._unsafe.IdentifyTaskStr.restype = ct.c_char_p
 
         self._unsafe.DetermineLinkFunction.argtypes = [
             # LinkFlags flags
@@ -1076,12 +1082,6 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.DetermineLinkFunction.restype = ct.c_int32
-
-        self._unsafe.IdentifyTaskStr.argtypes = [
-            # int32_t task
-            ct.c_int32,
-        ]
-        self._unsafe.IdentifyTaskStr.restype = ct.c_char_p
 
         self._unsafe.IdentifyLinkFunctionStr.argtypes = [
             # int32_t link

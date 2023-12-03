@@ -451,6 +451,13 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineTask(
    const char * objective,
    TaskEbm * taskOut
 );
+EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION IdentifyTaskStr(
+   TaskEbm task
+);
+EBM_API_INCLUDE TaskEbm EBM_CALLING_CONVENTION IdentifyTaskInt(
+   const char * task
+);
+
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    LinkFlags flags,
    const char * objective,
@@ -462,12 +469,6 @@ EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION IdentifyLinkFunctionStr(
    LinkEbm link
 );
 EBM_API_INCLUDE LinkEbm EBM_CALLING_CONVENTION IdentifyLinkFunctionInt(
-   const char * link
-);
-EBM_API_INCLUDE TaskEbm EBM_CALLING_CONVENTION IdentifyTaskInt(
-   LinkEbm link
-);
-EBM_API_INCLUDE const char * EBM_CALLING_CONVENTION IdentifyTaskStr(
    const char * link
 );
 
