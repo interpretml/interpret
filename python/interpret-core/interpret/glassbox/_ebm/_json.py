@@ -7,6 +7,11 @@ from math import isnan
 import numpy as np
 from itertools import groupby
 
+from ._utils import generate_term_names
+from ...utils._histogram import make_all_histogram_edges
+
+from ...utils._clean_simple import typify_classification
+
 
 def jsonify_lists(vals):
     if len(vals) != 0:
@@ -107,10 +112,12 @@ def _to_json_inner(ebm, detail="all"):
         noise_scale_boosting = getattr(ebm, "noise_scale_boosting_", None)
         if noise_scale_boosting is not None:
             j["noise_scale_boosting"] = jsonify_item(noise_scale_boosting)
+
     if 2 <= level:
         bag_weights = getattr(ebm, "bag_weights_", None)
         if bag_weights is not None:
             j["bag_weights"] = jsonify_lists(bag_weights.tolist())
+
     if 3 <= level:
         breakpoint_iteration = getattr(ebm, "breakpoint_iteration_", None)
         if breakpoint_iteration is not None:
@@ -360,3 +367,242 @@ def to_jsonable(ebm, detail="all"):
     outer["ebm"] = inner
 
     return outer
+
+
+def UNTESTED_dejsonify_lists(vals):
+    for idx, val in enumerate(vals):
+        if isinstance(val, str):
+            if val == "nan":
+                vals[idx] = np.nan
+            elif val == "+inf":
+                vals[idx] = np.inf
+            elif val == "-inf":
+                vals[idx] = -np.inf
+        else:
+            if isinstance(val, list):
+                UNTESTED_dejsonify_lists(val)
+    return vals
+
+
+def UNTESTED_dejsonify_item(val):
+    if val == "nan":
+        return np.nan
+    elif val == "+inf":
+        return np.inf
+    elif val == "-inf":
+        return -np.inf
+    return val
+
+
+def UNTESTED_from_jsonable(ebm, jsonable):
+    """Converts JSON into a model.
+
+    Args:
+        jsonable: the JSONable object
+
+    Returns:
+        An EBM
+    """
+
+    warn(
+        "JSON formats are in beta. The JSON format may change in a future version without compatibility between releases."
+    )
+
+    obj_type = f"{ebm.__class__.__module__}.{ebm.__class__.__name__}"
+
+    if obj_type == "interpret.glassbox._ebm._ebm.EBMModel":
+        is_classification = None
+        is_regression = None
+        is_private = None
+    elif obj_type == "interpret.glassbox._ebm._ebm.ExplainableBoostingClassifier":
+        is_classification = True
+        is_regression = False
+        is_private = False
+    elif obj_type == "interpret.glassbox._ebm._ebm.ExplainableBoostingRegressor":
+        is_classification = False
+        is_regression = True
+        is_private = False
+    elif obj_type == "interpret.glassbox._ebm._ebm.DPExplainableBoostingClassifier":
+        is_classification = True
+        is_regression = False
+        is_private = True
+    elif obj_type == "interpret.glassbox._ebm._ebm.DPExplainableBoostingRegressor":
+        is_classification = False
+        is_regression = True
+        is_private = True
+    else:
+        msg = f"Unrecognized object type {obj_type}"
+        _log.error(msg)
+        raise ValueError(msg)
+
+    jsonable = jsonable["ebm"]
+
+    link = None
+    for output_json in jsonable["outputs"]:
+        if link is not None:
+            msg = "Multiple outputs not supported currently."
+            _log.error(msg)
+            raise ValueError(msg)
+
+        link = output_json["link"]
+        link_param = UNTESTED_dejsonify_item(output_json["link_param"])
+
+        task = identify_task(link)
+        if task == "classification":
+            if is_classification is False:
+                msg = f"{obj_type} cannot have link function {link}."
+                _log.error(msg)
+                raise ValueError(msg)
+            classes = output_json["classes"]
+            classes = np.array(classes, np.object_)
+            classes = typify_classification(classes)
+        elif task == "regression":
+            if is_regression is False:
+                msg = f"{obj_type} cannot have link function {link}."
+                _log.error(msg)
+                raise ValueError(msg)
+            min_target = output_json["min_target"]
+            max_target = output_json["max_target"]
+        else:
+            msg = f"Unrecognized link function {link}"
+            _log.error(msg)
+            raise ValueError(msg)
+
+    # TODO: check these
+    intercept = jsonable["intercept"]
+    bagged_intercept = jsonable.get("bagged_intercept", None)
+    noise_scale_binning = jsonable.get("noise_scale_binning", None)
+    noise_scale_boosting = jsonable.get("noise_scale_boosting", None)
+    bag_weights = jsonable["bag_weights"]
+    breakpoint_iteration = jsonable["breakpoint_iteration"]
+
+    intercept = np.array(intercept, np.float64)
+    if bagged_intercept is not None:
+        bagged_intercept = np.array(bagged_intercept, np.float64)
+    bag_weights = np.array(bag_weights, np.float64)
+    breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
+
+    if jsonable["implementation"] == "python":
+        # TODO: load python parameters
+        pass
+
+    names = {}
+    name_idx = 0
+
+    histogram_weights = []
+    unique_val_counts = []
+    bins = []
+    feature_names = []
+    feature_types = []
+    feature_bounds = []
+    for feature_json in jsonable["features"]:
+        feature_name = feature_json["name"]
+        feature_names.append(feature_name)
+        names[feature_name] = name_idx
+        name_idx += 1
+
+        feature_type = feature_json["type"]
+        feature_types.append(feature_type)
+
+        num_unique_vals = feature_json["num_unique_vals"]
+        unique_val_counts.append(num_unique_vals)
+
+        if feature_type in ["nominal", "ordinal"]:
+            levels = []
+            for level in feature_json["categories"]:
+                idx = 1
+                feature_bins = {}
+                for category in level:
+                    if isinstance(category, list):
+                        for item in category:
+                            feature_bins[item] = idx
+                    else:
+                        feature_bins[category] = idx
+                    idx += 1
+                levels.append(feature_bins)
+
+            min_val = np.nan
+            max_val = np.nan
+            histogram = None
+        elif feature_type in ["continuous"]:
+            levels = []
+            for level in feature_json["cuts"]:
+                level = np.array(level, np.float64)
+                levels.append(level)
+
+            min_val = feature_json["min"]
+            max_val = feature_json["max"]
+            histogram = feature_json["histogram_weights"]
+            histogram = np.array(histogram, np.float64)
+
+        histogram_weights.append(histogram)
+        bins.append(levels)
+        feature_bounds.append((min_val, max_val))
+
+    unique_val_counts = np.array(unique_val_counts, np.int64)
+    feature_bounds = np.array(feature_bounds, np.float64)
+
+    term_features = []
+    bin_weights = []
+    bagged_scores = []
+    term_scores = []
+    standard_deviations = []
+    for term_json in jsonable["terms"]:
+        tf = term_json["term_features"]
+        tf = tuple(names[name] for name in tf)
+        term_features.append(tf)
+
+        scores = term_json["scores"]
+        scores = np.array(scores, np.float64)
+        term_scores.append(scores)
+
+        stddev = term_json["standard_deviations"]
+        stddev = np.array(stddev, np.float64)
+        standard_deviations.append(stddev)
+
+        bs = term_json["bagged_scores"]
+        bs = np.array(bs, np.float64)
+        bagged_scores.append(bs)
+
+        bw = term_json["bin_weights"]
+        bw = np.array(bw, np.float64)
+        bin_weights.append(bw)
+
+    term_names = generate_term_names(feature_names, term_features)
+    histogram_edges = make_all_histogram_edges(feature_bounds, histogram_weights)
+
+    ebm.n_features_in_ = len(bins)
+    ebm.term_names_ = term_names
+    if is_private is not False:
+        ebm.noise_scale_binning_ = noise_scale_binning
+        ebm.noise_scale_boosting_ = noise_scale_boosting
+    if is_private is not True:
+        ebm.histogram_edges_ = histogram_edges
+        ebm.histogram_weights_ = histogram_weights
+        ebm.unique_val_counts_ = unique_val_counts
+
+    if task == "classification":
+        ebm.classes_ = classes
+    elif task == "regression":
+        ebm.min_target_ = min_target
+        ebm.max_target_ = max_target
+
+    ebm.bins_ = bins
+    ebm.feature_names_in_ = feature_names
+    ebm.feature_types_in_ = feature_types
+    ebm.feature_bounds_ = feature_bounds
+
+    ebm.term_features_ = term_features
+    ebm.bin_weights_ = bin_weights
+    ebm.bagged_scores_ = bagged_scores
+    ebm.term_scores_ = term_scores
+    ebm.standard_deviations_ = standard_deviations
+
+    ebm.intercept_ = intercept
+    if bagged_intercept is not None:
+        ebm.bagged_intercept_ = bagged_intercept
+    ebm.link_ = link
+    ebm.link_param_ = link_param
+    ebm.bag_weights_ = bag_weights
+    ebm.breakpoint_iteration_ = breakpoint_iteration
+    ebm.has_fitted_ = True

@@ -19,7 +19,7 @@ from ._utils import (
     generate_term_names,
     generate_term_types,
 )
-from ._json import to_jsonable
+from ._json import to_jsonable, UNTESTED_from_jsonable
 
 from ...utils._misc import clean_index, clean_indexes
 from ...utils._histogram import make_all_histogram_edges
@@ -1244,13 +1244,48 @@ class EBMModel(BaseEstimator):
 
         if isinstance(file, (str, os.PathLike)):
             # file is a path-like object (str or os.PathLike)
+            outer = to_jsonable(self, detail)
             with open(file, "w") as fp:
-                outer = to_jsonable(self, detail)
                 json.dump(outer, fp, allow_nan=False, indent=indent)
         else:
             # file is a file-like object implementing .write()
             outer = to_jsonable(self, detail)
             json.dump(outer, file, allow_nan=False, indent=indent)
+
+    def _from_jsonable(self, jsonable):
+        """Converts a JSONable EBM representation into an EBM.
+
+        Args:
+            jsonable: the JSONable object
+
+        Returns:
+            Itself after de-JSONifying.
+        """
+
+        UNTESTED_from_jsonable(self, jsonable)
+        return self
+
+    def _from_json(self, file):
+        """Loads from a JSON EBM file.
+
+        Args:
+            file: a path-like object (str or os.PathLike),
+                or a file-like object implementing .read().
+
+        Returns:
+            Itself after loading.
+        """
+
+        if isinstance(file, (str, os.PathLike)):
+            # file is a path-like object (str or os.PathLike)
+            with open(file, "r") as fp:
+                jsonable = json.load(fp)
+            UNTESTED_from_jsonable(self, jsonable)
+        else:
+            # file is a file-like object implementing .read()
+            jsonable = json.load(fp)
+            UNTESTED_from_jsonable(self, jsonable)
+        return self
 
     def predict_scores(self, X, init_score=None):
         """Predict scores from model before calling the link function.
