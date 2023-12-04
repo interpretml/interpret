@@ -152,54 +152,57 @@ def _harmonize_tensor(
             lookup.append(len(old_feature_bins) + 1)
 
             percentage = [1.0]
-            for new_idx_minus_one, old_idx in enumerate(lookup):
-                if new_idx_minus_one == 0:
-                    new_low = new_bounds[feature_idx, 0]
-                    # TODO: if nan OR out of bounds from the cuts, estimate it.
-                    # If -inf or +inf, change it to min/max for float
-                else:
-                    new_low = new_feature_bins[new_idx_minus_one - 1]
+            if len(new_feature_bins) == 0:
+                percentage.append(1.0)
+            else:
+                for new_idx_minus_one, old_idx in enumerate(lookup):
+                    if new_idx_minus_one == 0:
+                        new_low = new_bounds[feature_idx, 0]
+                        # TODO: if nan OR out of bounds from the cuts, estimate it.
+                        # If -inf or +inf, change it to min/max for float
+                    else:
+                        new_low = new_feature_bins[new_idx_minus_one - 1]
 
-                if len(new_feature_bins) <= new_idx_minus_one:
-                    new_high = new_bounds[feature_idx, 1]
-                    # TODO: if nan OR out of bounds from the cuts, estimate it.
-                    # If -inf or +inf, change it to min/max for float
-                else:
-                    new_high = new_feature_bins[new_idx_minus_one]
+                    if len(new_feature_bins) <= new_idx_minus_one:
+                        new_high = new_bounds[feature_idx, 1]
+                        # TODO: if nan OR out of bounds from the cuts, estimate it.
+                        # If -inf or +inf, change it to min/max for float
+                    else:
+                        new_high = new_feature_bins[new_idx_minus_one]
 
-                if old_idx == 1:
-                    old_low = old_bounds[feature_idx, 0]
-                    # TODO: if nan OR out of bounds from the cuts, estimate it.
-                    # If -inf or +inf, change it to min/max for float
-                else:
-                    old_low = old_feature_bins[old_idx - 2]
+                    if old_idx == 1:
+                        old_low = old_bounds[feature_idx, 0]
+                        # TODO: if nan OR out of bounds from the cuts, estimate it.
+                        # If -inf or +inf, change it to min/max for float
+                    else:
+                        old_low = old_feature_bins[old_idx - 2]
 
-                if len(old_feature_bins) < old_idx:
-                    old_high = old_bounds[feature_idx, 1]
-                    # TODO: if nan OR out of bounds from the cuts, estimate it.
-                    # If -inf or +inf, change it to min/max for float
-                else:
-                    old_high = old_feature_bins[old_idx - 1]
+                    if len(old_feature_bins) < old_idx:
+                        old_high = old_bounds[feature_idx, 1]
+                        # TODO: if nan OR out of bounds from the cuts, estimate it.
+                        # If -inf or +inf, change it to min/max for float
+                    else:
+                        old_high = old_feature_bins[old_idx - 1]
 
-                if old_high <= new_low or new_high <= old_low:
-                    # if there are bins in the area above where the old data extended, then
-                    # we'll have zero contribution in the old data where these new bins are
-                    # located
-                    percentage.append(0.0)
-                else:
-                    if new_low < old_low:
-                        # this can't happen except at the lowest bin where the new min can be
-                        # lower than the old min.  In that case we know the old data
-                        # had zero contribution between the new min to the old min.
-                        new_low = old_low
+                    if old_high <= new_low or new_high <= old_low:
+                        # if there are bins in the area above where the old data extended, then
+                        # we'll have zero contribution in the old data where these new bins are
+                        # located
+                        percentage.append(0.0)
+                    else:
+                        if new_low < old_low:
+                            # this can't happen except at the lowest bin where the new min can be
+                            # lower than the old min.  In that case we know the old data
+                            # had zero contribution between the new min to the old min.
+                            new_low = old_low
 
-                    if old_high < new_high:
-                        # this can't happen except at the lowest bin where the new max can be
-                        # higher than the old max.  In that case we know the old data
-                        # had zero contribution between the new max to the old max.
-                        new_high = old_high
+                        if old_high < new_high:
+                            # this can't happen except at the lowest bin where the new max can be
+                            # higher than the old max.  In that case we know the old data
+                            # had zero contribution between the new max to the old max.
+                            new_high = old_high
 
-                    percentage.append((new_high - new_low) / (old_high - old_low))
+                        percentage.append((new_high - new_low) / (old_high - old_low))
 
             percentage.append(1.0)
             lookup.insert(0, 0)
@@ -592,7 +595,7 @@ def merge_ebms(models):
 
         bagged_intercept.extend(model_bag_intercept)
         bag_weights.extend(model_bag_weights)
-    ebm.bag_weights_ = bag_weights
+    ebm.bag_weights_ = np.array(bag_weights, np.float64)
     ebm.bagged_intercept_ = np.array(bagged_intercept, np.float64)
 
     fg_dicts = []
