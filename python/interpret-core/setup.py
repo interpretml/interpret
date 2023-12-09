@@ -17,13 +17,12 @@ version = "0.4.4"
 def _copy_native_code_to_setup():
     script_path = os.path.dirname(os.path.abspath(__file__))
     root_path = os.path.join(script_path, "..", "..")
-    sym_path = os.path.join(script_path, "symbolic")
-    source_shared_path = os.path.join(root_path, "shared")
-    target_shared_path = os.path.join(sym_path, "shared")
+    sym_path = os.path.join(script_path, "interpret", "root")
+    source_shared_path = os.path.join(root_path, "shared", "libebm")
+    target_shared_path = os.path.join(sym_path, "shared", "libebm")
 
-    if os.path.exists(
-        source_shared_path
-    ):  # If native code exists two directories up, update setup.py's copy.
+    # If native code exists two directories up, update setup.py's copy.
+    if os.path.exists(source_shared_path):
         if os.path.exists(target_shared_path):
             shutil.rmtree(target_shared_path)
         shutil.copytree(source_shared_path, target_shared_path)
@@ -42,7 +41,7 @@ def _copy_native_code_to_setup():
 
 def build_libebm():
     script_path = os.path.dirname(os.path.abspath(__file__))
-    sym_path = os.path.join(script_path, "symbolic")
+    sym_path = os.path.join(script_path, "interpret", "root")
 
     # Native compile
     if os.name == "nt":
@@ -51,15 +50,6 @@ def build_libebm():
     else:
         build_script = os.path.join(sym_path, "build.sh")
         subprocess.check_call(["/bin/sh", build_script], cwd=sym_path)
-
-    source_dir = os.path.join(sym_path, "python", "interpret-core", "interpret", "lib")
-    target_dir = os.path.join(script_path, "interpret", "lib")
-    os.makedirs(target_dir, exist_ok=True)
-    file_names = os.listdir(source_dir)
-    for file_name in file_names:
-        shutil.move(
-            os.path.join(source_dir, file_name), os.path.join(target_dir, file_name)
-        )
 
 
 def build_vis():
@@ -71,14 +61,19 @@ def build_vis():
 
     js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
     js_bundle_dest = os.path.join(
-        script_path, "interpret", "lib", "interpret-inline.js"
+        script_path, "interpret", "root", "bld", "lib", "interpret-inline.js"
     )
     os.makedirs(os.path.dirname(js_bundle_dest), exist_ok=True)
     shutil.copyfile(js_bundle_src, js_bundle_dest)
 
     js_bundle_src_lic = os.path.join(js_path, "dist", "interpret-inline.js.LICENSE.txt")
     js_bundle_dest_lic = os.path.join(
-        script_path, "interpret", "lib", "interpret-inline.js.LICENSE.txt"
+        script_path,
+        "interpret",
+        "root",
+        "bld",
+        "lib",
+        "interpret-inline.js.LICENSE.txt",
     )
     shutil.copyfile(js_bundle_src_lic, js_bundle_dest_lic)
 
@@ -93,14 +88,14 @@ class BuildCommand(build):
         # check if the symbolic path exists
 
         script_path = os.path.dirname(os.path.abspath(__file__))
-        sym_path = os.path.join(script_path, "symbolic")
+        sym_path = os.path.join(script_path, "interpret", "root", "shared", "libebm")
 
         if os.path.exists(sym_path):
             # this should only be triggered in an sdist
             build_libebm()
 
         js_bundle_dest = os.path.join(
-            script_path, "interpret", "lib", "interpret-inline.js"
+            script_path, "interpret", "root", "bld", "lib", "interpret-inline.js"
         )
         if not os.path.exists(js_bundle_dest):
             # this will trigger from github source or during conda building
@@ -144,17 +139,18 @@ https://github.com/interpretml/interpret
     packages=find_packages(exclude=["tests", "tests.*"]),
     package_data={
         "interpret": [
-            "lib/libebm_win_x64.dll",
-            "lib/libebm_linux_x64.so",
-            "lib/libebm_mac_x64.dylib",
-            "lib/libebm_mac_arm.dylib",
-            "lib/libebm_win_x64_debug.dll",
-            "lib/libebm_linux_x64_debug.so",
-            "lib/libebm_mac_x64_debug.dylib",
-            "lib/libebm_mac_arm_debug.dylib",
-            "lib/libebm_win_x64.pdb",
-            "lib/libebm_win_x64_debug.pdb",
-            "lib/interpret-inline.js",
+            "root/bld/lib/libebm_win_x64.dll",
+            "root/bld/lib/libebm_linux_x64.so",
+            "root/bld/lib/libebm_mac_x64.dylib",
+            "root/bld/lib/libebm_mac_arm.dylib",
+            "root/bld/lib/libebm_win_x64_debug.dll",
+            "root/bld/lib/libebm_linux_x64_debug.so",
+            "root/bld/lib/libebm_mac_x64_debug.dylib",
+            "root/bld/lib/libebm_mac_arm_debug.dylib",
+            "root/bld/lib/libebm_win_x64.pdb",
+            "root/bld/lib/libebm_win_x64_debug.pdb",
+            "root/bld/lib/interpret-inline.js",
+            "root/bld/lib/interpret-inline.js.LICENSE.txt",
             "visual/assets/udash.css",
             "visual/assets/udash.js",
             "visual/assets/favicon.ico",

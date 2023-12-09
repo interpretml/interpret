@@ -211,9 +211,9 @@ if [ -n "${CXX}" ]; then
    os_type=`uname`
    # TODO: change this to accept libebm_local.so or libebm_local.dylib to allow for weird architectures build using sdists
    if [ "$os_type" = "Linux" ]; then
-      final_binary="./python/interpret-core/interpret/lib/libebm_linux_x64.so"
+      final_binary="./python/interpret-core/interpret/root/bld/lib/libebm_linux_x64.so"
    elif [ "$os_type" = "Darwin" ]; then
-      final_binary="./python/interpret-core/interpret/lib/libebm_mac_x64.dylib"
+      final_binary="./python/interpret-core/interpret/root/bld/lib/libebm_mac_x64.dylib"
    else
       printf "%s\n" "OS $os_type not recognized.  We support clang/clang++ on macOS and gcc/g++ on Linux"
       exit 1
@@ -222,7 +222,9 @@ if [ -n "${CXX}" ]; then
    mkdir ./python
    mkdir ./python/interpret-core
    mkdir ./python/interpret-core/interpret
-   mkdir ./python/interpret-core/interpret/lib
+   mkdir ./python/interpret-core/interpret/root
+   mkdir ./python/interpret-core/interpret/root/bld
+   mkdir ./python/interpret-core/interpret/root/bld/lib
 
    extras="-DLIBEBM_EXPORTS -DNDEBUG -I$code_path/inc -I$code_path/unzoned -I$code_path/bridge -I$code_path -I$code_path/compute -I$code_path/compute/objectives -I$code_path/compute/metrics"
 
@@ -371,7 +373,7 @@ staging_path_unsanitized="$bld_path_unsanitized/lib"
 src_path_unsanitized="$root_path_unsanitized/shared/libebm"
 src_path_sanitized=`sanitize "$src_path_unsanitized"`
 
-python_lib_unsanitized="$root_path_unsanitized/python/interpret-core/interpret/lib"
+python_lib_unsanitized="$root_path_unsanitized/python/interpret-core/interpret/root/bld/lib"
 
 # a good referenece on writing shared libraries is at: https://akkadia.org/drepper/dsohowto.pdf
 

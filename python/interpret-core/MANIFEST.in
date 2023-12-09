@@ -1,10 +1,11 @@
-graft symbolic
 graft tests
+graft interpret/root/shared/libebm
+prune interpret/root/bld
+include interpret/root/bld/lib/interpret-inline.js
+include interpret/root/bld/lib/interpret-inline.js.LICENSE.txt
+include interpret/root/build.bat
+include interpret/root/build.sh
+include interpret/root/LICENSE
+include interpret/root/README.md
 
-prune symbolic/bld
-
-prune interpret/lib
-include interpret/lib/interpret-inline.js
-include interpret/lib/interpret-inline.js.LICENSE.txt
-
-global-exclude *.py[cod] __pycache__/* *.so *.dylib node_modules
+global-exclude *.py[cod] __pycache__/* *.dll *.so *.dylib node_modules

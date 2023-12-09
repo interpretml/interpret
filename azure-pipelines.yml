@@ -209,7 +209,7 @@ jobs:
       cd $(System.ArtifactsDirectory)/sdist
       tarball_path=$(echo interpret-core-*.tar.gz)
       python -m pip install --upgrade pip setuptools wheel
-      python -m pip install "$tarball_path"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
+      python -m pip install "$tarball_path"[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
       cd $(Build.SourcesDirectory)/docs/
       pip install -r requirements.txt
       /bin/sh ./build.sh
@@ -241,34 +241,34 @@ jobs:
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/libebm_*_x64*'
-      targetFolder: 'python/interpret-core/interpret/lib'
+      targetFolder: 'python/interpret-core/interpret/root/bld/lib'
       flattenFolders: true
     displayName: 'Copy x64 native library to python lib directory'
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/libebm_*_arm*'
-      targetFolder: 'python/interpret-core/interpret/lib'
+      targetFolder: 'python/interpret-core/interpret/root/bld/lib'
       flattenFolders: true
     displayName: 'Copy arm native library to python lib directory'
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/interpret-inline.js'
-      targetFolder: 'python/interpret-core/interpret/lib'
+      targetFolder: 'python/interpret-core/interpret/root/bld/lib'
       flattenFolders: true
     displayName: 'Copy interpret-inline.js to python lib directory'
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/interpret-inline.js.LICENSE.txt'
-      targetFolder: 'python/interpret-core/interpret/lib'
+      targetFolder: 'python/interpret-core/interpret/root/bld/lib'
       flattenFolders: true
     displayName: 'Copy interpret-inline.js.LICENSE.txt to python lib directory'
   - script: python setup.py bdist_wheel -d ../../bld/bdist
     workingDirectory: 'python/interpret-core'
     displayName: 'interpret-core bld_bdist_package'
-    # TODO: python setup.py bdist_wheel -d ../../bld/lib is rebuilding the native code and the javascript, which is slowing the build
+    # TODO: python setup.py bdist_wheel -d ../../bld/bdist is rebuilding the native code and the javascript, which is slowing the build
   - script: python setup.py bdist_wheel -d ../../bld/bdist
     workingDirectory: 'python/interpret'
     displayName: 'interpret bld_bdist_package'
@@ -453,7 +453,7 @@ jobs:
   - script: |
       python -m pip install --upgrade pip setuptools wheel
       FOR %%A IN ($(System.ArtifactsDirectory)\bdist\interpret_core-*.whl) DO SET "install_file=%%A"
-      python -m pip install "%install_file%"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
+      python -m pip install "%install_file%"[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
       set PATH=%PATH%;%GeckoWebDriver%
       mkdir "$(Agent.TempDirectory)\zqmr"
       mkdir "$(Agent.TempDirectory)\zqmr\t"
@@ -467,7 +467,7 @@ jobs:
       python -m pip install --upgrade pip setuptools wheel
       cd $(System.ArtifactsDirectory)/bdist
       install_file=$(echo interpret_core-*.whl)
-      python -m pip install "$install_file"[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
+      python -m pip install "$install_file"[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
       mkdir -p "$(Agent.TempDirectory)/zqmr/t"
       cp -r "$(Build.SourcesDirectory)/python/interpret-core/tests/" "$(Agent.TempDirectory)/zqmr/t/"
       cd "$(Agent.TempDirectory)/zqmr/t"

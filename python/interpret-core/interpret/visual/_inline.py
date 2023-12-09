@@ -133,7 +133,9 @@ def _build_viz_obj(explanation, detected_envs):
 def _build_javascript(viz_obj, id_str=None, default_key=-1, js_url=None):
     if js_url is None:
         script_path = os.path.dirname(os.path.abspath(__file__))
-        js_path = os.path.join(script_path, "..", "lib", "interpret-inline.js")
+        js_path = os.path.join(
+            script_path, "..", "root", "bld", "lib", "interpret-inline.js"
+        )
         js_last_modified = time.ctime(os.path.getmtime(js_path))
 
         with open(js_path, "r", encoding="utf-8") as f:
