@@ -1,9 +1,7 @@
 graft symbolic
 graft tests
 
-prune symbolic/python
-prune symbolic/staging
-prune symbolic/tmp
+prune symbolic/bld
 
 prune interpret/lib
 include interpret/lib/interpret-inline.js

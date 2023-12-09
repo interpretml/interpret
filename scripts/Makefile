@@ -55,7 +55,7 @@ prepare-docker:
 		--entrypoint /bin/bash $(DOCKER_IMG_NAME) $(DOCKER_MNT_PATH)/scripts/mirror-repo-docker.sh $(DOCKER_CWD)
 
 clean:
-	-$(RMDIR) "$(ROOTDIR)/staging"
+	-$(RMDIR) "$(ROOTDIR)/bld"
 	-$(RMDIR) "$(ROOTDIR)/python/interpret-core/interpret/lib"
 	-$(RMDIR) "$(ROOTDIR)/shared/vis/dist"
 	-$(DOCKER) volume rm $(DOCKER_VOL_NAME)
@@ -74,12 +74,12 @@ install-core: build
 
 build: build-wheel
 build-wheel: build-javascript build-native
-	cd $(ROOTDIR)/python/interpret-core && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/staging
-	cd $(ROOTDIR)/python/interpret && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/staging
+	cd $(ROOTDIR)/python/interpret-core && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/bld/bdist
+	cd $(ROOTDIR)/python/interpret && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/bld/bdist
 
 build-python:
-	cd $(ROOTDIR)/python/interpret-core && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/staging
-	cd $(ROOTDIR)/python/interpret && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/staging
+	cd $(ROOTDIR)/python/interpret-core && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/bld/bdist
+	cd $(ROOTDIR)/python/interpret && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/bld/bdist
 
 build-javascript:
 	cd $(ROOTDIR)/shared/vis && $(NPM) install

@@ -1,6 +1,5 @@
 # compile script output directories
-/staging/
-/tmp/
+/bld/
 
 # Visual Studio
 .vs/

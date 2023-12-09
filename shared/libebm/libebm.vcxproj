@@ -213,29 +213,29 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(ProjectDir)..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\bld\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>libebm_win_x86_debug</TargetName>
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(ProjectDir)..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\bld\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>libebm_win_x86</TargetName>
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(ProjectDir)..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\bld\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>libebm_win_x64_debug</TargetName>
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(ProjectDir)..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\bld\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>libebm_win_x64</TargetName>
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
@@ -274,12 +274,12 @@
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+robocopy /R:2 /NP "$(ProjectDir)..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\bld\lib" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -325,12 +325,12 @@ EXIT /B 0
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
             ECHO robocopy returned error code %ERRORLEVEL%
             IF %ERRORLEVEL% GEQ 2 (
             EXIT /B %ERRORLEVEL%
             )
-            robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+            robocopy /R:2 /NP "$(ProjectDir)..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\bld\lib" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
             ECHO robocopy returned error code %ERRORLEVEL%
             IF %ERRORLEVEL% GEQ 2 (
             EXIT /B %ERRORLEVEL%
@@ -374,12 +374,12 @@ EXIT /B 0
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+robocopy /R:2 /NP "$(ProjectDir)..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\bld\lib" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -425,12 +425,12 @@ EXIT /B 0
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
             ECHO robocopy returned error code %ERRORLEVEL%
             IF %ERRORLEVEL% GEQ 2 (
             EXIT /B %ERRORLEVEL%
             )
-            robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+            robocopy /R:2 /NP "$(ProjectDir)..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\bld\lib" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
             ECHO robocopy returned error code %ERRORLEVEL%
             IF %ERRORLEVEL% GEQ 2 (
             EXIT /B %ERRORLEVEL%

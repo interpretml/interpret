@@ -20,7 +20,13 @@ if(!file.exists(script_file)) {
    q(status=1)
 }
 
-tmp_path <- file.path(root_path, "..", "tmp")
+bld_path <- file.path(root_path, "..", "bld")
+# Create the bld directory
+if(!dir.exists(bld_path)) {
+   dir.create(bld_path)
+}
+
+tmp_path <- file.path(bld_path, "tmp")
 if(!dir.exists(tmp_path)) {
    dir.create(tmp_path)
 }
@@ -69,7 +75,7 @@ copy_code(file.path(native_path, "compute", "objectives"), file.path(cxx_path, "
 copy_code(file.path(native_path, "compute", "metrics"), file.path(cxx_path, "compute", "metrics"))
 copy_code(file.path(native_path, "compute", "cpu_ebm"), file.path(cxx_path, "compute", "cpu_ebm"))
 
-staging_path <- file.path(root_path, "..", "staging")
+staging_path <- file.path(bld_path, "R")
 
 # Create the staging directory
 if(!dir.exists(staging_path)) {

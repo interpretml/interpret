@@ -115,7 +115,6 @@ check_install() {
       printf "%s\n" "Installing $l1_package"
 
       if [ "$g_is_updated" -eq 0 ]; then 
-
          sudo apt-get -y update
          l1_ret_code=$?
          if [ $l1_ret_code -ne 0 ]; then 
@@ -328,8 +327,9 @@ if [ ! -f "$script_path_unsanitized/libebm_test.sh" ] ; then
 fi
 
 root_path_unsanitized="$script_path_unsanitized/../../.."
-tmp_path_unsanitized="$root_path_unsanitized/tmp"
-staging_path_unsanitized="$root_path_unsanitized/staging"
+bld_path_unsanitized="$root_path_unsanitized/bld"
+tmp_path_unsanitized="$bld_path_unsanitized/tmp"
+staging_path_unsanitized="$bld_path_unsanitized/lib"
 staging_path_sanitized=`sanitize "$staging_path_unsanitized"`
 src_path_unsanitized="$script_path_unsanitized"
 src_path_sanitized=`sanitize "$src_path_unsanitized"`

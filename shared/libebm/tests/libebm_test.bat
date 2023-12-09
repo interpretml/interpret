@@ -32,12 +32,12 @@ IF ERRORLEVEL 1 (
    ECHO MSBuild for Release x64 FAILED
    EXIT /B 203
 )
-"%root_path%tmp\vs\bin\Debug\win\x64\libebm_test\libebm_test.exe"
+"%root_path%bld\tmp\vs\bin\Debug\win\x64\libebm_test\libebm_test.exe"
 IF ERRORLEVEL 1 (
    ECHO libebm_test.exe for Debug x64 FAILED
    EXIT /B 204
 )
-"%root_path%tmp\vs\bin\Release\win\x64\libebm_test\libebm_test.exe"
+"%root_path%bld\tmp\vs\bin\Release\win\x64\libebm_test\libebm_test.exe"
 IF ERRORLEVEL 1 (
    ECHO libebm_test.exe for Release x64 FAILED
    EXIT /B 205
@@ -63,12 +63,12 @@ IF ERRORLEVEL 1 (
    ECHO MSBuild for Release x86 FAILED
    EXIT /B 208
 )
-"%root_path%tmp\vs\bin\Debug\win\Win32\libebm_test\libebm_test.exe"
+"%root_path%bld\tmp\vs\bin\Debug\win\Win32\libebm_test\libebm_test.exe"
 IF ERRORLEVEL 1 (
    ECHO libebm_test.exe for Debug x86 FAILED
    EXIT /B 209
 )
-"%root_path%tmp\vs\bin\Release\win\Win32\libebm_test\libebm_test.exe"
+"%root_path%bld\tmp\vs\bin\Release\win\Win32\libebm_test\libebm_test.exe"
 IF ERRORLEVEL 1 (
    ECHO libebm_test.exe for Release x86 FAILED
    EXIT /B 210

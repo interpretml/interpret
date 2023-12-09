@@ -61,21 +61,21 @@ jobs:
     displayName: 'mac bld_native'
   - task: PublishBuildArtifacts@1
     inputs:
-      pathtoPublish: staging
+      pathtoPublish: bld/lib
       artifactName: libebm-$(image.name)
     displayName: 'Publish native shared library'
   - task: PublishBuildArtifacts@1
     condition: or(startsWith(variables['image.name'], 'ubuntu'), startsWith(variables['image.name'], 'macOS'))
     continueOnError: true
     inputs:
-      pathtoPublish: tmp/staging_asm_release_64
+      pathtoPublish: bld/tmp/staging_asm_release_64
       artifactName: asm-x64-$(image.name)
     displayName: 'Publish assembly x64'
   - task: PublishBuildArtifacts@1
     condition: startsWith(variables['image.name'], 'macOS')
     continueOnError: true
     inputs:
-      pathtoPublish: tmp/staging_asm_release_arm
+      pathtoPublish: bld/tmp/staging_asm_release_arm
       artifactName: asm-arm-$(image.name)
     displayName: 'Publish assembly arm'
 
@@ -145,12 +145,12 @@ jobs:
       Rscript build.R
     workingDirectory: 'R'
     displayName: 'Rscript build.R'
-  - script: cat tmp/R/interpret.Rcheck/00install.out
+  - script: cat bld/tmp/R/interpret.Rcheck/00install.out
     condition: failed()
     displayName: 'Display errors'
   - task: CopyFiles@2
     inputs:
-      sourceFolder: staging
+      sourceFolder: bld/R
       contents: 'interpret_*.tar.gz'
       targetFolder: '$(Build.ArtifactStagingDirectory)/R'
     displayName: 'Copy R package'
@@ -172,15 +172,15 @@ jobs:
       architecture: 'x64'
   - script: python -m pip install --upgrade pip setuptools wheel
     displayName: 'Install tools'
-  - script: python setup.py sdist -d ../../staging
+  - script: python setup.py sdist -d ../../bld/sdist
     workingDirectory: 'python/interpret-core'
     displayName: 'interpret-core bld_sdist_package'
-  - script: python setup.py sdist -d ../../staging
+  - script: python setup.py sdist -d ../../bld/sdist
     workingDirectory: 'python/interpret'
     displayName: 'interpret bld_sdist_package'
   - task: CopyFiles@2
     inputs:
-      sourceFolder: staging
+      sourceFolder: bld/sdist
       contents: '*.tar.gz'
       targetFolder: '$(Build.ArtifactStagingDirectory)/sdist'
     displayName: 'Copy sdist python package'
@@ -265,16 +265,16 @@ jobs:
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Copy interpret-inline.js.LICENSE.txt to python lib directory'
-  - script: python setup.py bdist_wheel -d ../../staging
+  - script: python setup.py bdist_wheel -d ../../bld/bdist
     workingDirectory: 'python/interpret-core'
     displayName: 'interpret-core bld_bdist_package'
-    # TODO: python setup.py bdist_wheel -d ../../staging is rebuilding the native code and the javascript, which is slowing the build
-  - script: python setup.py bdist_wheel -d ../../staging
+    # TODO: python setup.py bdist_wheel -d ../../bld/lib is rebuilding the native code and the javascript, which is slowing the build
+  - script: python setup.py bdist_wheel -d ../../bld/bdist
     workingDirectory: 'python/interpret'
     displayName: 'interpret bld_bdist_package'
   - task: CopyFiles@2
     inputs:
-      sourceFolder: staging
+      sourceFolder: bld/bdist
       contents: '*.whl'
       targetFolder: '$(Build.ArtifactStagingDirectory)/bdist'
     displayName: 'Copy bdist python package'
@@ -308,9 +308,9 @@ jobs:
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/libebm_*'
-      targetFolder: 'staging'
+      targetFolder: 'bld/lib'
       flattenFolders: true
-    displayName: 'Copy native library to staging directory'
+    displayName: 'Copy native library to bld/lib directory'
   - task: PythonScript@0
     condition: startsWith(variables['image.name'], 'windows')
     inputs:
@@ -367,8 +367,8 @@ jobs:
 #    condition: startsWith(variables['image.name'], 'windows')
 #    inputs:
 #      InputType: Basic
-#      AnalyzeTarget: 'staging\*.dll'
-#      AnalyzeSymPath: 'staging'
+#      AnalyzeTarget: 'bld\lib\*.dll'
+#      AnalyzeSymPath: 'bld\lib'
 #      AnalyzeVerbose: true
 #  - task: AntiMalware@3
 #    displayName: 'AntiMalware scan'

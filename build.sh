@@ -22,6 +22,16 @@ check_install() {
    if [ ! -f "$l1_tmp_path_unsanitized/$l1_package.chk" ]; then
       printf "%s\n" "Installing $l1_package"
 
+      if [ "$g_is_updated" -eq 0 ]; then 
+         sudo apt-get -y update
+         l1_ret_code=$?
+         if [ $l1_ret_code -ne 0 ]; then 
+            exit $l1_ret_code
+         fi
+
+         g_is_updated=1
+      fi
+
       sudo apt-get -y install "$l1_package"
       l1_ret_code=$?
       if [ $l1_ret_code -ne 0 ]; then 
@@ -196,7 +206,7 @@ copy_asm_files() {
 
 if [ -n "${CXX}" ]; then
    code_path="./shared/libebm"
-   tmp_path="./tmp/mk"
+   tmp_path="./bld/tmp/mk"
 
    os_type=`uname`
    # TODO: change this to accept libebm_local.so or libebm_local.dylib to allow for weird architectures build using sdists
@@ -216,9 +226,10 @@ if [ -n "${CXX}" ]; then
 
    extras="-DLIBEBM_EXPORTS -DNDEBUG -I$code_path/inc -I$code_path/unzoned -I$code_path/bridge -I$code_path -I$code_path/compute -I$code_path/compute/objectives -I$code_path/compute/metrics"
 
-   mkdir ./tmp
-   mkdir ./tmp/mk
-   mkdir ./staging
+   mkdir ./bld
+   mkdir ./bld/tmp
+   mkdir ./bld/tmp/mk
+   mkdir ./bld/lib
 
    printf "Building from environment specified compiler\n"
    printf "%s\n" "CXX=${CXX}"
@@ -305,6 +316,8 @@ if [ -n "${CXX}" ]; then
 fi
 
 
+g_is_updated=0
+
 release_64=1
 debug_64=1
 release_32=0
@@ -352,12 +365,13 @@ if [ ! -f "$script_path_unsanitized/build.sh" ] ; then
 fi
 
 root_path_unsanitized="$script_path_unsanitized"
-tmp_path_unsanitized="$root_path_unsanitized/tmp"
-python_lib_unsanitized="$root_path_unsanitized/python/interpret-core/interpret/lib"
-staging_path_unsanitized="$root_path_unsanitized/staging"
+bld_path_unsanitized="$root_path_unsanitized/bld"
+tmp_path_unsanitized="$bld_path_unsanitized/tmp"
+staging_path_unsanitized="$bld_path_unsanitized/lib"
 src_path_unsanitized="$root_path_unsanitized/shared/libebm"
 src_path_sanitized=`sanitize "$src_path_unsanitized"`
 
+python_lib_unsanitized="$root_path_unsanitized/python/interpret-core/interpret/lib"
 
 # a good referenece on writing shared libraries is at: https://akkadia.org/drepper/dsohowto.pdf
 

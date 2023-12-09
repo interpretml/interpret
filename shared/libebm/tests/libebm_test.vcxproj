@@ -116,24 +116,24 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <GenerateManifest>false</GenerateManifest>
-    <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(ProjectDir)..\..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\bld\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <GenerateManifest>false</GenerateManifest>
-    <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(ProjectDir)..\..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\bld\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <GenerateManifest>false</GenerateManifest>
-    <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(ProjectDir)..\..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\bld\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <GenerateManifest>false</GenerateManifest>
-    <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(ProjectDir)..\..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\bld\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -165,10 +165,10 @@
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <CustomBuildStep>
-      <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\libebm_win_x86_debug.dll</Outputs>
-      <Inputs>$(ProjectDir)..\..\..\staging\libebm_win_x86_debug.dll</Inputs>
+      <Outputs>$(ProjectDir)..\..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\libebm_win_x86_debug.dll</Outputs>
+      <Inputs>$(ProjectDir)..\..\..\bld\lib\libebm_win_x86_debug.dll</Inputs>
       <Message>Copying libebm DLL to libebm_test</Message>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" libebm_win_x86_debug.dll libebm_win_x86_debug.pdb
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\bld\lib" "$(ProjectDir)..\..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" libebm_win_x86_debug.dll libebm_win_x86_debug.pdb
               ECHO robocopy returned error code %ERRORLEVEL%
               IF %ERRORLEVEL% GEQ 2 (
               EXIT /B %ERRORLEVEL%
@@ -211,10 +211,10 @@
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <CustomBuildStep>
-      <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\libebm_win_x86.dll</Outputs>
-      <Inputs>$(ProjectDir)..\..\..\staging\libebm_win_x86.dll</Inputs>
+      <Outputs>$(ProjectDir)..\..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\libebm_win_x86.dll</Outputs>
+      <Inputs>$(ProjectDir)..\..\..\bld\lib\libebm_win_x86.dll</Inputs>
       <Message>Copying libebm DLL to libebm_test</Message>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" libebm_win_x86.dll libebm_win_x86.pdb
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\bld\lib" "$(ProjectDir)..\..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" libebm_win_x86.dll libebm_win_x86.pdb
               ECHO robocopy returned error code %ERRORLEVEL%
               IF %ERRORLEVEL% GEQ 2 (
               EXIT /B %ERRORLEVEL%
@@ -252,10 +252,10 @@
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <CustomBuildStep>
-      <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\libebm_win_x64_debug.dll</Outputs>
-      <Inputs>$(ProjectDir)..\..\..\staging\libebm_win_x64_debug.dll</Inputs>
+      <Outputs>$(ProjectDir)..\..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\libebm_win_x64_debug.dll</Outputs>
+      <Inputs>$(ProjectDir)..\..\..\bld\lib\libebm_win_x64_debug.dll</Inputs>
       <Message>Copying libebm DLL to libebm_test</Message>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" libebm_win_x64_debug.dll libebm_win_x64_debug.pdb
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\bld\lib" "$(ProjectDir)..\..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" libebm_win_x64_debug.dll libebm_win_x64_debug.pdb
               ECHO robocopy returned error code %ERRORLEVEL%
               IF %ERRORLEVEL% GEQ 2 (
               EXIT /B %ERRORLEVEL%
@@ -298,10 +298,10 @@
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <CustomBuildStep>
-      <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\libebm_win_x64.dll</Outputs>
-      <Inputs>$(ProjectDir)..\..\..\staging\libebm_win_x64.dll</Inputs>
+      <Outputs>$(ProjectDir)..\..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\libebm_win_x64.dll</Outputs>
+      <Inputs>$(ProjectDir)..\..\..\bld\lib\libebm_win_x64.dll</Inputs>
       <Message>Copying libebm DLL to libebm_test</Message>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" libebm_win_x64.dll libebm_win_x64.pdb
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\bld\lib" "$(ProjectDir)..\..\..\bld\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" libebm_win_x64.dll libebm_win_x64.pdb
               ECHO robocopy returned error code %ERRORLEVEL%
               IF %ERRORLEVEL% GEQ 2 (
               EXIT /B %ERRORLEVEL%
