@@ -310,27 +310,44 @@ fi
 
 g_is_updated=0
 
-release_64=1
-debug_64=1
+release_default=1
+
+release_64=0
+debug_64=0
 release_32=0
 debug_32=0
+release_arm=0
+debug_arm=0
 
 is_asm=0
 is_extra_debugging=0
 
 for arg in "$@"; do
-   if [ "$arg" = "-no_release_64" ]; then
-      release_64=0
+   if [ "$arg" = "-release_64" ]; then
+      release_64=1
+      release_default=0
    fi
-   if [ "$arg" = "-no_debug_64" ]; then
-      debug_64=0
+   if [ "$arg" = "-debug_64" ]; then
+      debug_64=1
+      release_default=0
    fi
    if [ "$arg" = "-release_32" ]; then
       release_32=1
+      release_default=0
    fi
    if [ "$arg" = "-debug_32" ]; then
       debug_32=1
+      release_default=0
    fi
+   if [ "$arg" = "-release_arm" ]; then
+      release_arm=1
+      release_default=0
+   fi
+   if [ "$arg" = "-debug_arm" ]; then
+      debug_arm=1
+      release_default=0
+   fi
+
    if [ "$arg" = "-asm" ]; then
       is_asm=1
    fi
@@ -412,7 +429,6 @@ if [ "$os_type" = "Linux" ]; then
 
    # try moving some of these g++ specific warnings into the shared all_args if clang eventually supports them
    all_args="$all_args -Wlogical-op"
-   all_args="$all_args -march=core2"
 
    # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
    link_args="$link_args -Wl,--version-script=$src_path_sanitized/libebm_exports.txt"
@@ -431,6 +447,32 @@ if [ "$os_type" = "Linux" ]; then
       exit $ret_code
    fi
 
+   if [ $release_default -eq 1 ]; then
+      ########################## Linux release|default
+
+      printf "%s\n" "Compiling libebm with $cpp_compiler for Linux release|default"
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/default/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/default/libebm"
+      bin_file="libebm.so"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_linux_default_build_log.txt"
+      specific_args="$all_args -DNDEBUG -O3 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=log2,--wrap=pow,--wrap=expf,--wrap=logf"
+      # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
+   
+      g_all_object_files_sanitized=""
+      g_compile_out_full=""
+
+      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "$is_asm"
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" "$is_asm"
+      compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" "$is_asm"
+      compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "$link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
+      copy_asm_files "$obj_path_unsanitized" "$tmp_path_unsanitized" "$staging_path_unsanitized/$bin_file" "asm_release_default" "$is_asm"
+   fi
+
    if [ $release_64 -eq 1 ]; then
       ########################## Linux release|x64
 
@@ -439,7 +481,7 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x64/libebm"
       bin_file="libebm_linux_x64.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_linux_x64_build_log.txt"
-      specific_args="$all_args -m64 -DNDEBUG -O3 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=log2,--wrap=pow,--wrap=expf,--wrap=logf"
+      specific_args="$all_args -march=core2 -m64 -DNDEBUG -O3 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=log2,--wrap=pow,--wrap=expf,--wrap=logf"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
    
       g_all_object_files_sanitized=""
@@ -467,7 +509,7 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x64/libebm"
       bin_file="libebm_linux_x64_debug.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_debug_linux_x64_build_log.txt"
-      specific_args="$all_args -m64 -O1 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=log2,--wrap=pow,--wrap=expf,--wrap=logf"
+      specific_args="$all_args -march=core2 -m64 -O1 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=log2,--wrap=pow,--wrap=expf,--wrap=logf"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
    
       g_all_object_files_sanitized=""
@@ -494,7 +536,7 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x86/libebm"
       bin_file="libebm_linux_x86.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_linux_x86_build_log.txt"
-      specific_args="$all_args -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
+      specific_args="$all_args -march=core2 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
       
       g_all_object_files_sanitized=""
@@ -522,7 +564,7 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x86/libebm"
       bin_file="libebm_linux_x86_debug.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_debug_linux_x86_build_log.txt"
-      specific_args="$all_args -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -msse2 -mfpmath=sse -m32 -O1"
+      specific_args="$all_args -march=core2 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -msse2 -mfpmath=sse -m32 -O1"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
       
       g_all_object_files_sanitized=""
@@ -545,10 +587,6 @@ if [ "$os_type" = "Linux" ]; then
 elif [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
 
-   # TODO: make these real options instead of forcing them to the same as x64
-   release_arm=$release_64
-   debug_arm=$debug_64
-
    # try moving some of these clang specific warnings into the shared all_args if g++ eventually supports them
    cpp_compiler=clang++
    
@@ -563,6 +601,31 @@ elif [ "$os_type" = "Darwin" ]; then
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
+   fi
+
+   if [ $release_default -eq 1 ]; then
+      ########################## macOS release|default
+
+      printf "%s\n" "Compiling libebm with $cpp_compiler for macOS release|default"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/default/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/default/libebm"
+      bin_file="libebm.dylib"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_mac_default_build_log.txt"
+      specific_args="$all_args -DNDEBUG -O3"
+      # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
+   
+      g_all_object_files_sanitized=""
+      g_compile_out_full=""
+
+      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" "$is_asm"
+      compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" "$is_asm"
+      compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "-install_name @rpath/$bin_file $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
+      copy_asm_files "$obj_path_unsanitized" "$tmp_path_unsanitized" "$staging_path_unsanitized/$bin_file" "asm_release_default" "$is_asm"
    fi
 
    if [ $release_64 -eq 1 ]; then

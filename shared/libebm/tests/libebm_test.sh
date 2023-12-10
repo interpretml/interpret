@@ -242,8 +242,8 @@ link_file() {
 
 g_is_updated=0
 
-debug_64=1
-release_64=1
+debug_64=0
+release_64=0
 debug_32=0
 release_32=0
 release_arm=0
@@ -260,11 +260,11 @@ use_valgrind=1
 use_asan=1
 
 for arg in "$@"; do
-   if [ "$arg" = "-no_debug_64" ]; then
-      debug_64=0
+   if [ "$arg" = "-debug_64" ]; then
+      debug_64=1
    fi
-   if [ "$arg" = "-no_release_64" ]; then
-      release_64=0
+   if [ "$arg" = "-release_64" ]; then
+      release_64=1
    fi
    if [ "$arg" = "-debug_32" ]; then
       debug_32=1
@@ -363,7 +363,6 @@ if [ "$os_type" = "Linux" ]; then
    # "readelf -d <lib_filename.so>" should show library rpath:    $ORIGIN/    OR    ${ORIGIN}/    for Linux so that the console app will find the libebm library in the same directory as the app: https://stackoverflow.com/questions/6288206/lookup-failure-when-linking-using-rpath-and-origin
    # the -l<library> parameter for some reason adds a lib at the start and .so at the end
 
-   c_compiler=gcc
    cpp_compiler=g++
 
    # try moving some of these g++ specific warnings into both_args if clang eventually supports them
@@ -383,7 +382,7 @@ if [ "$os_type" = "Linux" ]; then
       ########################## Linux debug|x64
 
       if [ $existing_debug_64 -eq 0 ]; then 
-         /bin/sh "$root_path_unsanitized/build.sh" -no_release_64 -analysis
+         /bin/sh "$root_path_unsanitized/build.sh" -debug_64 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
             # build.sh should write out any messages
@@ -391,7 +390,7 @@ if [ "$os_type" = "Linux" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for Linux debug|x64"
+      printf "%s\n" "Compiling libebm_test with $cpp_compiler for Linux debug|x64"
       obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/x64/libebm_test"
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x64/libebm_test"
       lib_file_body="ebm_linux_x64_debug"
@@ -434,7 +433,7 @@ if [ "$os_type" = "Linux" ]; then
       ########################## Linux release|x64
 
       if [ $existing_release_64 -eq 0 ]; then 
-         /bin/sh "$root_path_unsanitized/build.sh" -no_debug_64 -analysis
+         /bin/sh "$root_path_unsanitized/build.sh" -release_64 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
             # build.sh should write out any messages
@@ -442,7 +441,7 @@ if [ "$os_type" = "Linux" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for Linux release|x64"
+      printf "%s\n" "Compiling libebm_test with $cpp_compiler for Linux release|x64"
       obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/x64/libebm_test"
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x64/libebm_test"
       lib_file_body="ebm_linux_x64"
@@ -485,7 +484,7 @@ if [ "$os_type" = "Linux" ]; then
       ########################## Linux debug|x86
 
       if [ $existing_debug_32 -eq 0 ]; then 
-         /bin/sh "$root_path_unsanitized/build.sh" -no_release_64 -no_debug_64 -debug_32 -analysis
+         /bin/sh "$root_path_unsanitized/build.sh" -debug_32 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
             # build.sh should write out any messages
@@ -493,7 +492,7 @@ if [ "$os_type" = "Linux" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for Linux debug|x86"
+      printf "%s\n" "Compiling libebm_test with $cpp_compiler for Linux debug|x86"
       obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/x86/libebm_test"
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x86/libebm_test"
       lib_file_body="ebm_linux_x86_debug"
@@ -529,7 +528,7 @@ if [ "$os_type" = "Linux" ]; then
       ########################## Linux release|x86
 
       if [ $existing_release_32 -eq 0 ]; then 
-         /bin/sh "$root_path_unsanitized/build.sh" -no_release_64 -no_debug_64 -release_32 -analysis
+         /bin/sh "$root_path_unsanitized/build.sh" -release_32 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
             # build.sh should write out any messages
@@ -537,7 +536,7 @@ if [ "$os_type" = "Linux" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for Linux release|x86"
+      printf "%s\n" "Compiling libebm_test with $cpp_compiler for Linux release|x86"
       obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/x86/libebm_test"
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x86/libebm_test"
       lib_file_body="ebm_linux_x86"
@@ -573,7 +572,6 @@ elif [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
    # the -l<library> parameter for some reason adds a lib at the start and .dylib at the end
 
-   c_compiler=clang
    cpp_compiler=clang++
 
    # try moving some of these clang specific warnings into both_args if g++ eventually supports them
@@ -594,8 +592,7 @@ elif [ "$os_type" = "Darwin" ]; then
       ########################## macOS debug|x64
 
       if [ $existing_debug_64 -eq 0 ]; then 
-         # TODO: add options to build.sh to only build debug x64 (not arm!)
-         /bin/sh "$root_path_unsanitized/build.sh" -no_release_64 -analysis
+         /bin/sh "$root_path_unsanitized/build.sh" -debug_64 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
             # build.sh should write out any messages
@@ -603,7 +600,7 @@ elif [ "$os_type" = "Darwin" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for macOS debug|x64"
+      printf "%s\n" "Compiling libebm_test with $cpp_compiler for macOS debug|x64"
       obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/debug/mac/x64/libebm_test"
       bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/x64/libebm_test"
       lib_file_body="ebm_mac_x64_debug"
@@ -639,8 +636,7 @@ elif [ "$os_type" = "Darwin" ]; then
       ########################## macOS release|x64
 
       if [ $existing_release_64 -eq 0 ]; then 
-         # TODO: add options to build.sh to only build release x64 (not arm!)
-         /bin/sh "$root_path_unsanitized/build.sh" -no_debug_64 -analysis
+         /bin/sh "$root_path_unsanitized/build.sh" -release_64 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
             # build.sh should write out any messages
@@ -648,7 +644,7 @@ elif [ "$os_type" = "Darwin" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for macOS release|x64"
+      printf "%s\n" "Compiling libebm_test with $cpp_compiler for macOS release|x64"
       obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/x64/libebm_test"
       bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/x64/libebm_test"
       lib_file_body="ebm_mac_x64"
@@ -684,8 +680,7 @@ elif [ "$os_type" = "Darwin" ]; then
       ########################## macOS debug|arm
 
       if [ $existing_debug_arm -eq 0 ]; then 
-         # TODO: add options to build.sh to only build release arm
-         /bin/sh "$root_path_unsanitized/build.sh" -analysis
+         /bin/sh "$root_path_unsanitized/build.sh" -debug_arm -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
             # build.sh should write out any messages
@@ -693,7 +688,7 @@ elif [ "$os_type" = "Darwin" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for macOS debug|arm"
+      printf "%s\n" "Compiling libebm_test with $cpp_compiler for macOS debug|arm"
       obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/debug/mac/arm/libebm_test"
       bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/arm/libebm_test"
       lib_file_body="ebm_mac_arm_debug"
@@ -729,8 +724,7 @@ elif [ "$os_type" = "Darwin" ]; then
       ########################## macOS release|arm
 
       if [ $existing_release_arm -eq 0 ]; then 
-         # TODO: add options to build.sh to only build release arm
-         /bin/sh "$root_path_unsanitized/build.sh" -analysis
+         /bin/sh "$root_path_unsanitized/build.sh" -release_arm -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
             # build.sh should write out any messages
@@ -738,7 +732,7 @@ elif [ "$os_type" = "Darwin" ]; then
          fi
       fi
 
-      printf "%s\n" "Compiling libebm_test with $c_compiler/$cpp_compiler for macOS release|arm"
+      printf "%s\n" "Compiling libebm_test with $cpp_compiler for macOS release|arm"
       obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/arm/libebm_test"
       bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/arm/libebm_test"
       lib_file_body="ebm_mac_arm"

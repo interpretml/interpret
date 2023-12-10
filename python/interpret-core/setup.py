@@ -54,7 +54,7 @@ def build_libebm():
 
 
 def build_copy_root_libebm():
-    # this function is unused since we rely on the build pipeline to make 
+    # this function is unused since we rely on the build pipeline to make
     # the multi-OS shared libraries .dll, .so, and .dylib
 
     script_path = os.path.dirname(os.path.abspath(__file__))
@@ -79,6 +79,7 @@ def build_copy_root_libebm():
         shutil.copy(filename, to_path)
     for filename in glob.glob(os.path.join(from_path, "*.dylib")):
         shutil.copy(filename, to_path)
+
 
 def build_vis_if_needed():
     script_path = os.path.dirname(os.path.abspath(__file__))
@@ -127,7 +128,7 @@ class BuildCommand(build):
 
         # IMPORTANT:
         #
-        # When building our bdist, we rely on a build pipeline to make the 
+        # When building our bdist, we rely on a build pipeline to make the
         # .dll, .so, and .dylib since this is a multi-OS process. The build pipeline
         # should put them in ./interpret/python/interpret-core/interpret/root/bld/lib
         # If you want to build a single platform bdist, you must manually build

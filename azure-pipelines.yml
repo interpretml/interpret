@@ -52,11 +52,11 @@ jobs:
       #    exit 201
       # fi
       # nvcc --version
-      /bin/sh ./build.sh -asm
+      /bin/sh ./build.sh -release_64 -debug_64 -asm
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: 'linux bld_native'
   - script: |
-      /bin/sh ./build.sh -asm
+      /bin/sh ./build.sh -release_64 -debug_64 -release_arm -debug_arm -asm
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'mac bld_native'
   - task: PublishBuildArtifacts@1
@@ -317,15 +317,15 @@ jobs:
       script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
     displayName: 'Download CUDA installer'
   - script: |
-      /bin/sh ./shared/libebm/tests/libebm_test.sh -existing_debug_64 -existing_release_64
+      /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_64 -release_64 -existing_debug_64 -existing_release_64
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'mac test_native'
   - script: |
-      /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_32 -release_32 -existing_debug_64 -existing_release_64 -no_valgrind
+      /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_64 -release_64 -debug_32 -release_32 -existing_debug_64 -existing_release_64 -no_valgrind
     condition: and(startsWith(variables['image.name'], 'ubuntu'), ne(variables['Build.Reason'], 'Schedule'))
     displayName: 'linux test_native (CI)'
   - script: |
-      /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_32 -release_32 -existing_debug_64 -existing_release_64
+      /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_64 -release_64 -debug_32 -release_32 -existing_debug_64 -existing_release_64
     condition: and(startsWith(variables['image.name'], 'ubuntu'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: 'linux test_native (Schedule)'
   - script: |

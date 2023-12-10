@@ -659,7 +659,9 @@ class Native:
         bitsize = struct.calcsize("P") * 8
         is_64_bit = bitsize == 64
 
-        _log.info(f"Finding library for {plat}, {machine}, bitsize={bitsize}, debug={debug}")
+        _log.info(
+            f"Finding library for {plat}, {machine}, bitsize={bitsize}, debug={debug}"
+        )
 
         interpret_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
         root_path = os.path.join(interpret_path, "root")
@@ -684,7 +686,7 @@ class Native:
                         lib_file = "libebm_mac_x64"
                     elif plat == "Darwin" and machine == "arm64":
                         lib_file = "libebm_mac_arm"
-                    
+
                     if lib_file is not None:
                         lib_file = os.path.join(lib_path, lib_file + extension)
                         if os.path.isfile(lib_file):
@@ -705,7 +707,7 @@ class Native:
                         if os.path.isfile(lib_file):
                             _log.info(f"Loading EBM library {str(lib_file)}")
                             return lib_file
-            
+
                     # next check for a specific platform
                     lib_file = None
                     if plat == "Linux" and machine == "x86_64" and is_64_bit:
@@ -716,7 +718,7 @@ class Native:
                         lib_file = "libebm_mac_x64"
                     elif plat == "Darwin" and machine == "arm64":
                         lib_file = "libebm_mac_arm"
-                    
+
                     if lib_file is not None:
                         lib_file = os.path.join(lib_path, lib_file + extension)
                         if os.path.isfile(lib_file):
@@ -724,7 +726,7 @@ class Native:
                             return lib_file
 
             # TODO: if the library does not exists, build it using build.sh or build.bat
-        
+
         env_path = sys.base_prefix
         lib_path = None
         if os.path.isdir(env_path):
