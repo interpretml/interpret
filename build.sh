@@ -148,7 +148,7 @@ link_file() {
 copy_bin_files() {
    l6_bin_path_unsanitized="$1"
    l6_bin_file="$2"
-   l6_staging_path_unsanitized="$4"
+   l6_staging_path_unsanitized="$3"
 
    cp "$l6_bin_path_unsanitized/$l6_bin_file" "$l6_staging_path_unsanitized/"
    l6_ret_code=$?
