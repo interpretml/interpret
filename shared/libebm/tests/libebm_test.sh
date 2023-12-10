@@ -242,6 +242,8 @@ link_file() {
 
 g_is_updated=0
 
+release_default=1
+
 debug_64=0
 release_64=0
 debug_32=0
@@ -262,21 +264,27 @@ use_asan=1
 for arg in "$@"; do
    if [ "$arg" = "-debug_64" ]; then
       debug_64=1
+      release_default=0
    fi
    if [ "$arg" = "-release_64" ]; then
       release_64=1
+      release_default=0
    fi
    if [ "$arg" = "-debug_32" ]; then
       debug_32=1
+      release_default=0
    fi
    if [ "$arg" = "-release_32" ]; then
       release_32=1
+      release_default=0
    fi
    if [ "$arg" = "-debug_arm" ]; then
       debug_arm=1
+      release_default=0
    fi
    if [ "$arg" = "-release_arm" ]; then
       release_arm=1
+      release_default=0
    fi
 
    if [ "$arg" = "-existing_debug_64" ]; then
@@ -349,8 +357,6 @@ both_args="$both_args -fno-math-errno -fno-trapping-math"
 both_args="$both_args -I$src_path_sanitized/../inc"
 both_args="$both_args -I$src_path_sanitized"
 
-c_args="-std=c99"
-
 cpp_args="-std=c++11"
 cpp_args="$cpp_args -Wold-style-cast"
 cpp_args="$cpp_args -fvisibility-inlines-hidden"
@@ -367,7 +373,6 @@ if [ "$os_type" = "Linux" ]; then
 
    # try moving some of these g++ specific warnings into both_args if clang eventually supports them
    both_args="$both_args -Wlogical-op"
-   both_args="$both_args -march=core2"
 
    # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
    link_args="$link_args -L$staging_path_sanitized"
@@ -377,6 +382,54 @@ if [ "$os_type" = "Linux" ]; then
    link_args="$link_args -Wl,-z,relro,-z,now"
    link_args="$link_args -static-libgcc"
    link_args="$link_args -static-libstdc++"
+
+   if [ $release_default -eq 1 ]; then
+      ########################## Linux release|default
+
+      /bin/sh "$root_path_unsanitized/build.sh" -analysis
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+      # build.sh should write out any messages
+      exit $ret_code
+      fi
+
+      printf "%s\n" "Compiling libebm_test with $cpp_compiler for Linux release|default"
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/default/libebm_test"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/default/libebm_test"
+      lib_file_body="ebm"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_linux_default_build_log.txt"
+      both_args_extra="-DNDEBUG -O1"
+      specific_args="$cpp_args $both_args $both_args_extra"
+      # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
+      link_args_specific="-l$lib_file_body $link_args $specific_args"
+   
+      g_all_object_files_sanitized=""
+      g_compile_out_full=""
+
+      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      if [ $use_valgrind -ne 0 ]; then 
+         check_install "$tmp_path_unsanitized" "valgrind"
+      fi
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+
+      cp "$staging_path_unsanitized/lib$lib_file_body.so" "$bin_path_unsanitized/"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      if [ $use_valgrind -eq 0 ]; then 
+         "$bin_path_unsanitized/$bin_file"
+      else
+         valgrind --error-exitcode=99 --leak-check=yes "$bin_path_unsanitized/$bin_file"
+      fi
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+   fi
 
    if [ $debug_64 -eq 1 ]; then
       ########################## Linux debug|x64
@@ -395,8 +448,7 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x64/libebm_test"
       lib_file_body="ebm_linux_x64_debug"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_debug_linux_x64_build_log.txt"
-      both_args_extra="-m64 -O1"
-      c_args_specific="$c_args $both_args $both_args_extra"
+      both_args_extra="-march=core2 -m64 -O1"
       specific_args="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
       link_args_specific="-l$lib_file_body $link_args $specific_args"
@@ -446,8 +498,7 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x64/libebm_test"
       lib_file_body="ebm_linux_x64"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_linux_x64_build_log.txt"
-      both_args_extra="-m64 -DNDEBUG -O1"
-      c_args_specific="$c_args $both_args $both_args_extra"
+      both_args_extra="-march=core2 -m64 -DNDEBUG -O1"
       specific_args="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
       link_args_specific="-l$lib_file_body $link_args $specific_args"
@@ -497,8 +548,7 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x86/libebm_test"
       lib_file_body="ebm_linux_x86_debug"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_debug_linux_x86_build_log.txt"
-      both_args_extra="-msse2 -mfpmath=sse -m32 -O1"
-      c_args_specific="$c_args $both_args $both_args_extra"
+      both_args_extra="-march=core2 -msse2 -mfpmath=sse -m32 -O1"
       specific_args="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
       link_args_specific="-l$lib_file_body $link_args $specific_args"
@@ -541,8 +591,7 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x86/libebm_test"
       lib_file_body="ebm_linux_x86"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_linux_x86_build_log.txt"
-      both_args_extra="-msse2 -mfpmath=sse -m32 -DNDEBUG -O1"
-      c_args_specific="$c_args $both_args $both_args_extra"
+      both_args_extra="-march=core2 -msse2 -mfpmath=sse -m32 -DNDEBUG -O1"
       specific_args="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
       link_args_specific="-l$lib_file_body $link_args $specific_args"
@@ -588,6 +637,47 @@ elif [ "$os_type" = "Darwin" ]; then
       ASAN_OPTIONS=detect_leaks=1:detect_stack_use_after_return=1:check_initialization_order=1:alloc_dealloc_mismatch=1:strict_init_order=1:strict_string_checks=1:detect_invalid_pointer_pairs=2
    fi
 
+   if [ $release_default -eq 1 ]; then
+      ########################## macOS release|default
+
+      /bin/sh "$root_path_unsanitized/build.sh" -analysis
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         # build.sh should write out any messages
+         exit $ret_code
+      fi
+
+      printf "%s\n" "Compiling libebm_test with $cpp_compiler for macOS release|default"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/default/libebm_test"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/default/libebm_test"
+      lib_file_body="ebm"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_mac_default_build_log.txt"
+      both_args_extra="-DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
+      specific_args="$cpp_args $both_args $both_args_extra"
+      # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
+      link_args_specific="-l$lib_file_body $link_args $specific_args"
+   
+      g_all_object_files_sanitized=""
+      g_compile_out_full=""
+
+      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+
+      cp "$staging_path_unsanitized/lib$lib_file_body.dylib" "$bin_path_unsanitized/"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      "$bin_path_unsanitized/$bin_file"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+   fi
+
    if [ $debug_64 -eq 1 ]; then
       ########################## macOS debug|x64
 
@@ -606,7 +696,6 @@ elif [ "$os_type" = "Darwin" ]; then
       lib_file_body="ebm_mac_x64_debug"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_debug_mac_x64_build_log.txt"
       both_args_extra="-march=core2 -target x86_64-apple-macos10.12 -m64 -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
-      c_args_specific="$c_args $both_args $both_args_extra"
       specific_args="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
       link_args_specific="-l$lib_file_body $link_args $specific_args"
@@ -650,7 +739,6 @@ elif [ "$os_type" = "Darwin" ]; then
       lib_file_body="ebm_mac_x64"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_mac_x64_build_log.txt"
       both_args_extra="-march=core2 -target x86_64-apple-macos10.12 -m64 -DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
-      c_args_specific="$c_args $both_args $both_args_extra"
       specific_args="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
       link_args_specific="-l$lib_file_body $link_args $specific_args"
@@ -694,7 +782,6 @@ elif [ "$os_type" = "Darwin" ]; then
       lib_file_body="ebm_mac_arm_debug"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_debug_mac_arm_build_log.txt"
       both_args_extra="-target arm64-apple-macos11 -m64 -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
-      c_args_specific="$c_args $both_args $both_args_extra"
       specific_args="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
       link_args_specific="-l$lib_file_body $link_args $specific_args"
@@ -738,7 +825,6 @@ elif [ "$os_type" = "Darwin" ]; then
       lib_file_body="ebm_mac_arm"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_mac_arm_build_log.txt"
       both_args_extra="-target arm64-apple-macos11 -m64 -DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
-      c_args_specific="$c_args $both_args $both_args_extra"
       specific_args="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
       link_args_specific="-l$lib_file_body $link_args $specific_args"
