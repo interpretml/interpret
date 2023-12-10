@@ -161,11 +161,10 @@ compile_file() {
    l3_file_unsanitized="$3"
    l3_obj_path_unsanitized="$4"
    l3_asm="$5"
-   l3_zone="$6"
 
    l3_file_sanitized=`sanitize "$l3_file_unsanitized"`
    l3_file_body_unsanitized=`get_file_body "$l3_file_unsanitized"`
-   l3_object_full_file_unsanitized="$l3_obj_path_unsanitized/${l3_file_body_unsanitized}_$l3_zone.o"
+   l3_object_full_file_unsanitized="$l3_obj_path_unsanitized/${l3_file_body_unsanitized}.o"
    l3_object_full_file_sanitized=`sanitize "$l3_object_full_file_unsanitized"`
    g_all_object_files_sanitized="$g_all_object_files_sanitized $l3_object_full_file_sanitized"
    l3_compile_specific="$l3_compiler $l3_compiler_args_sanitized -c $l3_file_sanitized -o $l3_object_full_file_sanitized 2>&1"
@@ -191,7 +190,7 @@ compile_file() {
       # - https://linux.die.net/man/1/as
 
       # If this fails then ignore the error and we'll just be missing this file.
-      l3_asm_full_file_unsanitized="$l3_obj_path_unsanitized/${l3_file_body_unsanitized}_$l3_zone.s"
+      l3_asm_full_file_unsanitized="$l3_obj_path_unsanitized/${l3_file_body_unsanitized}.s"
       l3_asm_full_file_sanitized=`sanitize "$l3_asm_full_file_unsanitized"`
       l3_compile_specific_asm="$l3_compiler $l3_compiler_args_sanitized -fverbose-asm -S $l3_file_sanitized -o $l3_asm_full_file_sanitized 2>&1"
       l3_compile_out_asm=`eval "$l3_compile_specific_asm"`
@@ -204,7 +203,6 @@ compile_directory() {
    l4_src_path_unsanitized="$3"
    l4_obj_path_unsanitized="$4"
    l4_asm="$5"
-   l4_zone="$6"
 
    # zsh (default shell in macs) terminates if you try to glob expand zero results, so check first
    find "$l4_src_path_unsanitized" -maxdepth 1 -type f -name '*.cpp' 2>/dev/null | grep -q .
@@ -214,7 +212,7 @@ compile_directory() {
       for l4_file_unsanitized in "$l4_src_path_unsanitized"/*.cpp ; do
          # glob expansion returns *.cpp when there are no matches, so we need to check for the existance of the file
          if [ -f "$l4_file_unsanitized" ] ; then
-            compile_file "$l4_compiler" "$l4_compiler_args_sanitized" "$l4_file_unsanitized" "$l4_obj_path_unsanitized" "$l4_asm" "$l4_zone"
+            compile_file "$l4_compiler" "$l4_compiler_args_sanitized" "$l4_file_unsanitized" "$l4_obj_path_unsanitized" "$l4_asm"
          fi
       done
    fi
@@ -345,21 +343,19 @@ src_path_sanitized=`sanitize "$src_path_unsanitized"`
 bin_file="libebm_test"
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
-both_args=""
-both_args="$both_args -Wall -Wextra"
-both_args="$both_args -Wunused-result"
-both_args="$both_args -Wno-parentheses"
-both_args="$both_args -Wdouble-promotion"
-both_args="$both_args -Wshadow"
-both_args="$both_args -Wformat=2"
-both_args="$both_args -fvisibility=hidden"
-both_args="$both_args -fno-math-errno -fno-trapping-math"
-both_args="$both_args -I$src_path_sanitized/../inc"
-both_args="$both_args -I$src_path_sanitized"
-
-cpp_args="-std=c++11"
-cpp_args="$cpp_args -Wold-style-cast"
-cpp_args="$cpp_args -fvisibility-inlines-hidden"
+all_args="-std=c++11"
+all_args="$all_args -Wall -Wextra"
+all_args="$all_args -Wunused-result"
+all_args="$all_args -Wdouble-promotion"
+all_args="$all_args -Wold-style-cast"
+all_args="$all_args -Wshadow"
+all_args="$all_args -Wformat=2"
+all_args="$all_args -Wno-format-nonliteral"
+all_args="$all_args -Wno-parentheses"
+all_args="$all_args -fvisibility=hidden -fvisibility-inlines-hidden"
+all_args="$all_args -fno-math-errno -fno-trapping-math"
+all_args="$all_args -I$src_path_sanitized/../inc"
+all_args="$all_args -I$src_path_sanitized"
 
 link_args=""
 
@@ -371,8 +367,8 @@ if [ "$os_type" = "Linux" ]; then
 
    cpp_compiler=g++
 
-   # try moving some of these g++ specific warnings into both_args if clang eventually supports them
-   both_args="$both_args -Wlogical-op"
+   # try moving some of these g++ specific warnings into all_args if clang eventually supports them
+   all_args="$all_args -Wlogical-op"
 
    # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
    link_args="$link_args -L$staging_path_sanitized"
@@ -398,10 +394,8 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/default/libebm_test"
       lib_file_body="ebm"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_linux_default_build_log.txt"
-      both_args_extra="-DNDEBUG -O1"
-      specific_args="$cpp_args $both_args $both_args_extra"
+      specific_args="$all_args -DNDEBUG -O1"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $link_args $specific_args"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
@@ -410,8 +404,8 @@ if [ "$os_type" = "Linux" ]; then
       if [ $use_valgrind -ne 0 ]; then 
          check_install "$tmp_path_unsanitized" "valgrind"
       fi
-      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
 
@@ -448,10 +442,8 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x64/libebm_test"
       lib_file_body="ebm_linux_x64_debug"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_debug_linux_x64_build_log.txt"
-      both_args_extra="-march=core2 -m64 -O1"
-      specific_args="$cpp_args $both_args $both_args_extra"
+      specific_args="$all_args -march=core2 -m64 -O1"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $link_args $specific_args"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
@@ -460,8 +452,8 @@ if [ "$os_type" = "Linux" ]; then
       if [ $use_valgrind -ne 0 ]; then 
          check_install "$tmp_path_unsanitized" "valgrind"
       fi
-      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
 
@@ -498,10 +490,8 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x64/libebm_test"
       lib_file_body="ebm_linux_x64"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_linux_x64_build_log.txt"
-      both_args_extra="-march=core2 -m64 -DNDEBUG -O1"
-      specific_args="$cpp_args $both_args $both_args_extra"
+      specific_args="$all_args -march=core2 -m64 -DNDEBUG -O1"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $link_args $specific_args"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
@@ -510,8 +500,8 @@ if [ "$os_type" = "Linux" ]; then
       if [ $use_valgrind -ne 0 ]; then 
          check_install "$tmp_path_unsanitized" "valgrind"
       fi
-      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
 
@@ -548,17 +538,15 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x86/libebm_test"
       lib_file_body="ebm_linux_x86_debug"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_debug_linux_x86_build_log.txt"
-      both_args_extra="-march=core2 -msse2 -mfpmath=sse -m32 -O1"
-      specific_args="$cpp_args $both_args $both_args_extra"
+      specific_args="$all_args -march=core2 -msse2 -mfpmath=sse -m32 -O1"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $link_args $specific_args"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
 
@@ -591,17 +579,15 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x86/libebm_test"
       lib_file_body="ebm_linux_x86"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_linux_x86_build_log.txt"
-      both_args_extra="-march=core2 -msse2 -mfpmath=sse -m32 -DNDEBUG -O1"
-      specific_args="$cpp_args $both_args $both_args_extra"
+      specific_args="$all_args -march=core2 -msse2 -mfpmath=sse -m32 -DNDEBUG -O1"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $link_args $specific_args"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
 
@@ -623,9 +609,9 @@ elif [ "$os_type" = "Darwin" ]; then
 
    cpp_compiler=clang++
 
-   # try moving some of these clang specific warnings into both_args if g++ eventually supports them
-   both_args="$both_args -Wnull-dereference"
-   both_args="$both_args -Wgnu-zero-variadic-macro-arguments"
+   # try moving some of these clang specific warnings into all_args if g++ eventually supports them
+   all_args="$all_args -Wnull-dereference"
+   all_args="$all_args -Wgnu-zero-variadic-macro-arguments"
 
    # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
    link_args="$link_args -L$staging_path_sanitized"
@@ -652,17 +638,15 @@ elif [ "$os_type" = "Darwin" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/default/libebm_test"
       lib_file_body="ebm"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_mac_default_build_log.txt"
-      both_args_extra="-DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
-      specific_args="$cpp_args $both_args $both_args_extra"
+      specific_args="$all_args -DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $link_args $specific_args"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
 
@@ -695,17 +679,15 @@ elif [ "$os_type" = "Darwin" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/x64/libebm_test"
       lib_file_body="ebm_mac_x64_debug"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_debug_mac_x64_build_log.txt"
-      both_args_extra="-march=core2 -target x86_64-apple-macos10.12 -m64 -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
-      specific_args="$cpp_args $both_args $both_args_extra"
+      specific_args="$all_args -march=core2 -target x86_64-apple-macos10.12 -m64 -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $link_args $specific_args"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
 
@@ -738,17 +720,15 @@ elif [ "$os_type" = "Darwin" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/x64/libebm_test"
       lib_file_body="ebm_mac_x64"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_mac_x64_build_log.txt"
-      both_args_extra="-march=core2 -target x86_64-apple-macos10.12 -m64 -DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
-      specific_args="$cpp_args $both_args $both_args_extra"
+      specific_args="$all_args -march=core2 -target x86_64-apple-macos10.12 -m64 -DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $link_args $specific_args"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
 
@@ -781,17 +761,15 @@ elif [ "$os_type" = "Darwin" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/arm/libebm_test"
       lib_file_body="ebm_mac_arm_debug"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_debug_mac_arm_build_log.txt"
-      both_args_extra="-target arm64-apple-macos11 -m64 -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
-      specific_args="$cpp_args $both_args $both_args_extra"
+      specific_args="$all_args -target arm64-apple-macos11 -m64 -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $link_args $specific_args"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
 
@@ -824,17 +802,15 @@ elif [ "$os_type" = "Darwin" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/arm/libebm_test"
       lib_file_body="ebm_mac_arm"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_test_release_mac_arm_build_log.txt"
-      both_args_extra="-target arm64-apple-macos11 -m64 -DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
-      specific_args="$cpp_args $both_args $both_args_extra"
+      specific_args="$all_args -target arm64-apple-macos11 -m64 -DNDEBUG -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $link_args $specific_args"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
-      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
 
