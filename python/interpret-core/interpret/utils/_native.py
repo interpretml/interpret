@@ -690,6 +690,40 @@ class Native:
                         if os.path.isfile(lib_file):
                             _log.info(f"Loading EBM library {str(lib_file)}")
                             return lib_file
+        else:
+            # root should at least contain the visualization javascript. If root does
+            # not exist, then we're running from a cloned git repo
+
+            root_path = os.path.join(interpret_path, "..", "..", "..")
+            if os.path.isdir(root_path):
+                bld_path = os.path.join(root_path, "bld")
+                if os.path.isdir(bld_path):
+                    lib_path = os.path.join(bld_path, "lib")
+                    if os.path.isdir(lib_path):
+                        # first check for the general name
+                        lib_file = os.path.join(lib_path, "libebm" + extension)
+                        if os.path.isfile(lib_file):
+                            _log.info(f"Loading EBM library {str(lib_file)}")
+                            return lib_file
+            
+                    # next check for a specific platform
+                    lib_file = None
+                    if plat == "Linux" and machine == "x86_64" and is_64_bit:
+                        lib_file = "libebm_linux_x64"
+                    elif plat == "Windows" and machine == "AMD64" and is_64_bit:
+                        lib_file = "libebm_win_x64"
+                    elif plat == "Darwin" and machine == "x86_64" and is_64_bit:
+                        lib_file = "libebm_mac_x64"
+                    elif plat == "Darwin" and machine == "arm64":
+                        lib_file = "libebm_mac_arm"
+                    
+                    if lib_file is not None:
+                        lib_file = os.path.join(lib_path, lib_file + extension)
+                        if os.path.isfile(lib_file):
+                            _log.info(f"Loading EBM library {str(lib_file)}")
+                            return lib_file
+
+            # TODO: if the library does not exists, build it using build.sh or build.bat
         
         env_path = sys.base_prefix
         lib_path = None
@@ -710,11 +744,6 @@ class Native:
             if os.path.isfile(lib_file):
                 _log.info(f"Loading EBM library {str(lib_file)}")
                 return lib_file
-
-        # TODO: as a fallback consider checking 
-        #       os.path.join(interpret_path, "..", "..", "..", "bld", "lib")
-        #       and if that fails then try invoking build.sh or build.bat 
-        #       and then re-checking if the library exists.
 
         if debug:
             msg = "Could not find DEBUG libebm shared library. Consider setting debug=False"

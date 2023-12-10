@@ -132,9 +132,13 @@ def _build_viz_obj(explanation, detected_envs):
 
 def _build_javascript(viz_obj, id_str=None, default_key=-1, js_url=None):
     if js_url is None:
-        script_path = os.path.dirname(os.path.abspath(__file__))
+        interpret_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+        root_path = os.path.join(interpret_path, "root")
+        if not os.path.isdir(root_path):
+            # if no root directory then fallback to the git source location
+            root_path = os.path.join(interpret_path, "..", "..", "..")
         js_path = os.path.join(
-            script_path, "..", "root", "bld", "lib", "interpret-inline.js"
+            root_path, "bld", "lib", "interpret-inline.js"
         )
         js_last_modified = time.ctime(os.path.getmtime(js_path))
 

@@ -148,14 +148,8 @@ link_file() {
 copy_bin_files() {
    l6_bin_path_unsanitized="$1"
    l6_bin_file="$2"
-   l6_python_lib_unsanitized="$3"
    l6_staging_path_unsanitized="$4"
 
-   cp "$l6_bin_path_unsanitized/$l6_bin_file" "$l6_python_lib_unsanitized/"
-   l6_ret_code=$?
-   if [ $l6_ret_code -ne 0 ]; then 
-      exit $l6_ret_code
-   fi
    cp "$l6_bin_path_unsanitized/$l6_bin_file" "$l6_staging_path_unsanitized/"
    l6_ret_code=$?
    if [ $l6_ret_code -ne 0 ]; then 
@@ -211,20 +205,16 @@ if [ -n "${CXX}" ]; then
    os_type=`uname`
    # TODO: change this to accept libebm_local.so or libebm_local.dylib to allow for weird architectures build using sdists
    if [ "$os_type" = "Linux" ]; then
-      final_binary="./python/interpret-core/interpret/root/bld/lib/libebm_linux_x64.so"
+      final_binary="./bld/lib/libebm.so"
    elif [ "$os_type" = "Darwin" ]; then
-      final_binary="./python/interpret-core/interpret/root/bld/lib/libebm_mac_x64.dylib"
+      final_binary="./bld/lib/libebm.dylib"
    else
       printf "%s\n" "OS $os_type not recognized.  We support clang/clang++ on macOS and gcc/g++ on Linux"
       exit 1
    fi
 
-   mkdir ./python
-   mkdir ./python/interpret-core
-   mkdir ./python/interpret-core/interpret
-   mkdir ./python/interpret-core/interpret/root
-   mkdir ./python/interpret-core/interpret/root/bld
-   mkdir ./python/interpret-core/interpret/root/bld/lib
+   mkdir ./bld
+   mkdir ./bld/lib
 
    extras="-DLIBEBM_EXPORTS -DNDEBUG -I$code_path/inc -I$code_path/unzoned -I$code_path/bridge -I$code_path -I$code_path/compute -I$code_path/compute/objectives -I$code_path/compute/metrics"
 
@@ -373,8 +363,6 @@ staging_path_unsanitized="$bld_path_unsanitized/lib"
 src_path_unsanitized="$root_path_unsanitized/shared/libebm"
 src_path_sanitized=`sanitize "$src_path_unsanitized"`
 
-python_lib_unsanitized="$root_path_unsanitized/python/interpret-core/interpret/root/bld/lib"
-
 # a good referenece on writing shared libraries is at: https://akkadia.org/drepper/dsohowto.pdf
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
@@ -442,11 +430,6 @@ if [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$python_lib_unsanitized" ] || mkdir -p "$python_lib_unsanitized"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
 
    if [ $release_64 -eq 1 ]; then
       ########################## Linux release|x64
@@ -472,7 +455,7 @@ if [ "$os_type" = "Linux" ]; then
       link_file "$cpp_compiler" "$link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
-      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
       copy_asm_files "$obj_path_unsanitized" "$tmp_path_unsanitized" "$staging_path_unsanitized/$bin_file" "asm_release_64" "$is_asm"
    fi
 
@@ -500,7 +483,7 @@ if [ "$os_type" = "Linux" ]; then
       link_file "$cpp_compiler" "$link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
-      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
    fi
 
    if [ $release_32 -eq 1 ]; then
@@ -528,7 +511,7 @@ if [ "$os_type" = "Linux" ]; then
       link_file "$cpp_compiler" "$link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
-      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
    fi
 
    if [ $debug_32 -eq 1 ]; then
@@ -556,7 +539,7 @@ if [ "$os_type" = "Linux" ]; then
       link_file "$cpp_compiler" "$link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
-      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
    fi
 
 elif [ "$os_type" = "Darwin" ]; then
@@ -577,11 +560,6 @@ elif [ "$os_type" = "Darwin" ]; then
 
    printf "%s\n" "Creating initial directories"
    [ -d "$staging_path_unsanitized" ] || mkdir -p "$staging_path_unsanitized"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   [ -d "$python_lib_unsanitized" ] || mkdir -p "$python_lib_unsanitized"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -610,7 +588,7 @@ elif [ "$os_type" = "Darwin" ]; then
       link_file "$cpp_compiler" "-install_name @rpath/$bin_file $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
-      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
       copy_asm_files "$obj_path_unsanitized" "$tmp_path_unsanitized" "$staging_path_unsanitized/$bin_file" "asm_release_64" "$is_asm"
    fi
 
@@ -637,7 +615,7 @@ elif [ "$os_type" = "Darwin" ]; then
       link_file "$cpp_compiler" "-install_name @rpath/$bin_file $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
-      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
    fi
 
    if [ $release_arm -eq 1 ]; then
@@ -661,7 +639,7 @@ elif [ "$os_type" = "Darwin" ]; then
       link_file "$cpp_compiler" "-install_name @rpath/$bin_file $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
-      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
       copy_asm_files "$obj_path_unsanitized" "$tmp_path_unsanitized" "$staging_path_unsanitized/$bin_file" "asm_release_arm" "$is_asm"
    fi
 
@@ -686,7 +664,7 @@ elif [ "$os_type" = "Darwin" ]; then
       link_file "$cpp_compiler" "-install_name @rpath/$bin_file $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
-      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
    fi
 
 else
