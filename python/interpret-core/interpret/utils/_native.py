@@ -10,6 +10,7 @@ import os
 import struct
 import logging
 from contextlib import AbstractContextManager
+import sys
 
 _log = logging.getLogger(__name__)
 
@@ -638,81 +639,89 @@ class Native:
             A string representing filepath.
         """
 
-        conda_path = None
-        if platform.system() == "Windows":  # pragma: no cover
-            conda_path = find_library("libebm.dll")
-        elif platform.system() == "Linux":  # pragma: no cover
-            conda_path = find_library("libebm.so")
-        elif platform.system() == "Darwin":  # pragma: no cover
-            conda_path = find_library("libebm.dylib")
+        plat = platform.system()
+        if plat == "Windows":  # pragma: no cover
+            extension = ".dll"
+        elif plat == "Linux":  # pragma: no cover
+            extension = ".so"
+        elif plat == "Darwin":  # pragma: no cover
+            extension = ".dylib"
+        else:
+            msg = f"Unsupported platform {plat}"
+            _log.error(msg)
+            raise Exception(msg)
 
-        if conda_path is not None:
-            return conda_path
+        if debug:
+            extension = "_debug" + extension
+
+        machine = platform.machine()
 
         bitsize = struct.calcsize("P") * 8
         is_64_bit = bitsize == 64
 
-        script_path = os.path.dirname(os.path.abspath(__file__))
-        package_path = os.path.join(script_path, "..")
+        _log.info(f"Finding library for {plat}, {machine}, bitsize={bitsize}, debug={debug}")
 
-        debug_str = "_debug" if debug else ""
-        _log.info(
-            "Loading native on {0} | debug = {1}".format(platform.system(), debug)
-        )
-        if (
-            platform.system() == "Linux"
-            and platform.machine() == "x86_64"
-            and is_64_bit
-        ):  # pragma: no cover
-            return os.path.join(
-                package_path,
-                "root",
-                "bld",
-                "lib",
-                "libebm_linux_x64{0}.so".format(debug_str),
-            )
-        elif (
-            platform.system() == "Windows"
-            and platform.machine() == "AMD64"
-            and is_64_bit
-        ):  # pragma: no cover
-            return os.path.join(
-                package_path,
-                "root",
-                "bld",
-                "lib",
-                "libebm_win_x64{0}.dll".format(debug_str),
-            )
-        elif (
-            platform.system() == "Darwin"
-            and platform.machine() == "x86_64"
-            and is_64_bit
-        ):  # pragma: no cover
-            return os.path.join(
-                package_path,
-                "root",
-                "bld",
-                "lib",
-                "libebm_mac_x64{0}.dylib".format(debug_str),
-            )
-        elif (
-            platform.system() == "Darwin"
-            and platform.machine() == "arm64"
-            and is_64_bit
-        ):  # pragma: no cover
-            return os.path.join(
-                package_path,
-                "root",
-                "bld",
-                "lib",
-                "libebm_mac_arm{0}.dylib".format(debug_str),
-            )
-        else:  # pragma: no cover
-            msg = "System {0}, platform {1}, bitsize {2} not supported for EBM".format(
-                platform.system(), platform.machine(), bitsize
-            )
-            _log.error(msg)
-            raise Exception(msg)
+        interpret_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+        root_path = os.path.join(interpret_path, "root")
+        if os.path.isdir(root_path):
+            bld_path = os.path.join(root_path, "bld")
+            if os.path.isdir(bld_path):
+                lib_path = os.path.join(bld_path, "lib")
+                if os.path.isdir(lib_path):
+                    # first check for the general name
+                    lib_file = os.path.join(lib_path, "libebm" + extension)
+                    if os.path.isfile(lib_file):
+                        _log.info(f"Loading EBM library {str(lib_file)}")
+                        return lib_file
+
+                    # next check for a specific platform
+                    lib_file = None
+                    if plat == "Linux" and machine == "x86_64" and is_64_bit:
+                        lib_file = "libebm_linux_x64"
+                    elif plat == "Windows" and machine == "AMD64" and is_64_bit:
+                        lib_file = "libebm_win_x64"
+                    elif plat == "Darwin" and machine == "x86_64" and is_64_bit:
+                        lib_file = "libebm_mac_x64"
+                    elif plat == "Darwin" and machine == "arm64":
+                        lib_file = "libebm_mac_arm"
+                    
+                    if lib_file is not None:
+                        lib_file = os.path.join(lib_path, lib_file + extension)
+                        if os.path.isfile(lib_file):
+                            _log.info(f"Loading EBM library {str(lib_file)}")
+                            return lib_file
+        
+        env_path = sys.base_prefix
+        lib_path = None
+        if os.path.isdir(env_path):
+            if plat == "Windows":
+                env_path = os.path.join(env_path, "Library")
+                if os.path.isdir(env_path):
+                    env_path = os.path.join(env_path, "bin")
+                    if os.path.isdir(env_path):
+                        lib_path = env_path
+            else:
+                env_path = os.path.join(env_path, "lib")
+                if os.path.isdir(env_path):
+                    lib_path = env_path
+
+        if lib_path is not None:
+            lib_file = os.path.join(lib_path, "libebm" + extension)
+            if os.path.isfile(lib_file):
+                _log.info(f"Loading EBM library {str(lib_file)}")
+                return lib_file
+
+        # TODO: as a fallback consider checking 
+        #       os.path.join(interpret_path, "..", "..", "..", "bld", "lib")
+        #       and if that fails then try invoking build.sh or build.bat 
+        #       and then re-checking if the library exists.
+
+        if debug:
+            msg = "Could not find DEBUG libebm shared library. Consider setting debug=False"
+        else:
+            msg = "Could not find libebm shared library."
+        _log.error(msg)
+        raise Exception(msg)
 
     def _initialize(self, is_debug, simd):
         self.is_debug = is_debug
