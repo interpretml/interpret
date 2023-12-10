@@ -3,6 +3,7 @@
 
 import subprocess
 import os
+import glob
 import shutil
 from distutils.command.build import build
 from distutils.command.install import install
@@ -52,17 +53,47 @@ def build_libebm():
         subprocess.check_call(["/bin/sh", build_script], cwd=sym_path)
 
 
-def build_vis():
+def build_copy_root_libebm():
+    # this function is unused since we rely on the build pipeline to make 
+    # the multi-OS shared libraries .dll, .so, and .dylib
+
     script_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(script_path, "..", "..")
+
+    # Native compile
+    if os.name == "nt":
+        build_script = os.path.join(root_path, "build.bat")
+        subprocess.check_call([build_script], cwd=root_path)
+    else:
+        build_script = os.path.join(root_path, "build.sh")
+        subprocess.check_call(["/bin/sh", build_script], cwd=root_path)
+
+    from_path = os.path.join(root_path, "bld", "lib")
+    to_path = os.path.join(script_path, "interpret", "root", "bld", "lib")
+
+    for filename in glob.glob(os.path.join(from_path, "*.dll")):
+        shutil.copy(filename, to_path)
+    for filename in glob.glob(os.path.join(from_path, "*.pdb")):
+        shutil.copy(filename, to_path)
+    for filename in glob.glob(os.path.join(from_path, "*.so")):
+        shutil.copy(filename, to_path)
+    for filename in glob.glob(os.path.join(from_path, "*.dylib")):
+        shutil.copy(filename, to_path)
+
+def build_vis_if_needed():
+    script_path = os.path.dirname(os.path.abspath(__file__))
+    js_bundle_dest = os.path.join(
+        script_path, "interpret", "root", "bld", "lib", "interpret-inline.js"
+    )
+    if os.path.exists(js_bundle_dest):
+        # already exists, so we are done
+        return
 
     # JavaScript compile
     js_path = os.path.join(script_path, "..", "..", "shared", "vis")
     subprocess.run("npm install && npm run build-prod", cwd=js_path, shell=True)
 
     js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
-    js_bundle_dest = os.path.join(
-        script_path, "interpret", "root", "bld", "lib", "interpret-inline.js"
-    )
     os.makedirs(os.path.dirname(js_bundle_dest), exist_ok=True)
     shutil.copyfile(js_bundle_src, js_bundle_dest)
 
@@ -94,13 +125,21 @@ class BuildCommand(build):
             # this should only be triggered in an sdist
             build_libebm()
 
-        js_bundle_dest = os.path.join(
-            script_path, "interpret", "root", "bld", "lib", "interpret-inline.js"
-        )
-        if not os.path.exists(js_bundle_dest):
-            # this will trigger from github source or during conda building
-            # but it wil not trigger on bdist or sdist build in azure-pipelines since the js file will exist
-            build_vis()
+        # IMPORTANT:
+        #
+        # When building our bdist, we rely on a build pipeline to make the 
+        # .dll, .so, and .dylib since this is a multi-OS process. The build pipeline
+        # should put them in ./interpret/python/interpret-core/interpret/root/bld/lib
+        # If you want to build a single platform bdist, you must manually build
+        # and copy the shared library artifacts into the directory
+        #
+        # If this behavior were changed to build the shared library for this platform
+        # then you must change how the conda-forge build works since we rely on the fact
+        # that we're not making shared libraries here since otherwise the conda-forge
+        # build process would include them into the package there!
+        #
+
+        build_vis_if_needed()
 
         build.run(self)
 
@@ -115,7 +154,7 @@ class SDistCommand(sdist):
         # This needs to run pre-build to store native code in the sdist.
         _copy_native_code_to_setup()
         # the sdist is just for building on odd platforms, but js should work on any platform
-        build_vis()
+        build_vis_if_needed()
         sdist.run(self)
 
 

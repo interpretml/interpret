@@ -268,7 +268,6 @@ jobs:
   - script: python setup.py bdist_wheel -d ../../bld/bdist
     workingDirectory: 'python/interpret-core'
     displayName: 'interpret-core bld_bdist_package'
-    # TODO: python setup.py bdist_wheel -d ../../bld/bdist is rebuilding the native code and the javascript, which is slowing the build
   - script: python setup.py bdist_wheel -d ../../bld/bdist
     workingDirectory: 'python/interpret'
     displayName: 'interpret bld_bdist_package'
