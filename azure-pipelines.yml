@@ -121,7 +121,7 @@ jobs:
   steps:
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: '3.8'
+      versionSpec: 3.8
   - script: |
       python -m pip install --upgrade pip setuptools wheel
       cd python/interpret-core
@@ -138,15 +138,15 @@ jobs:
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
   steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: 3.8
   - task: DownloadPipelineArtifact@2
     inputs:
       artifact: sdist
       itemPattern: 'sdist/interpret-core-*.tar.gz'
       path: $(System.ArtifactsDirectory)/sdist
     displayName: 'Download sdist'
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '3.8'
   - script: |
       cd $(System.ArtifactsDirectory)/sdist
       tarball_path=$(echo interpret-core-*.tar.gz)
@@ -167,10 +167,10 @@ jobs:
   steps:
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: '3.8'
+      versionSpec: 3.8
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: 'libebm-windows-2022'
+      artifact: 'libebm-$(windows_image)'
       itemPattern: |
         *.dll
         *.pdb
@@ -178,12 +178,12 @@ jobs:
     displayName: 'Copy win shared library to bld/lib directory'
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: 'libebm-ubuntu-20.04'
+      artifact: 'libebm-$(ubuntu_image)'
       path: 'python/interpret-core/interpret/root/bld/lib'
     displayName: 'Copy linux shared library to bld/lib directory'
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: 'libebm-macOS-13'
+      artifact: 'libebm-$(mac_image)'
       path: 'python/interpret-core/interpret/root/bld/lib'
     displayName: 'Copy mac shared library to bld/lib directory'
   - task: DownloadPipelineArtifact@2
@@ -295,14 +295,14 @@ jobs:
   pool:
     vmImage: '$(image.name)'
   steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: $(python.version)
   - task: DownloadPipelineArtifact@2
     inputs:
       artifactName: 'bdist'
       itemPattern: 'interpret_core-*.whl'
       targetPath: '$(System.ArtifactsDirectory)/bdist'
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '$(python.version)'
   # we copy the tests to a new location to test the installed package rather than the source files
   - script: |
       python -m pip install --upgrade pip setuptools wheel
@@ -349,7 +349,7 @@ jobs:
   steps:
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: '3.8'
+      versionSpec: 3.8
   - script: |
       cd python/interpret-core
       python -m pip install --upgrade black
