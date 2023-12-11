@@ -76,17 +76,26 @@ jobs:
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
   steps:
-  - script: cd shared/vis && npm install && npm run build-prod
+  - script: |
+      cd shared/vis
+      npm install
+      npm run build-prod
     displayName: 'bld_vis'
   - publish: shared/vis/dist
-    artifact: interpret-inline-bundle
+    artifact: vis
     displayName: 'Publish interpret-inline.js library'
 
 - job: 'bld_npm_package'
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
   steps:
-  - script: cd shared/vis && npm install && npm run build-prod && npm pack && mkdir pkg && cp *.tgz pkg/
+  - script: |
+      cd shared/vis
+      npm install
+      npm run build-prod
+      npm pack
+      mkdir pkg
+      cp *.tgz pkg/
     displayName: 'bld_npm_package'
   - publish: shared/vis/pkg
     artifact: 'npm'
@@ -188,13 +197,15 @@ jobs:
     displayName: 'Copy mac shared library to bld/lib directory'
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: 'interpret-inline-bundle'
+      artifact: 'vis'
       path: 'python/interpret-core/interpret/root/bld/lib'
     displayName: 'Copy interpret-inline.js to python lib directory'
   - script: |
       python -m pip install --upgrade pip setuptools wheel
-      cd python/interpret-core && python setup.py bdist_wheel -d ../../bld/bdist
-      cd ../interpret && python setup.py bdist_wheel -d ../../bld/bdist
+      cd python/interpret-core
+      python setup.py bdist_wheel -d ../../bld/bdist
+      cd ../interpret
+      python setup.py bdist_wheel -d ../../bld/bdist
     displayName: 'interpret bld_bdist_package'
   - publish: bld/bdist
     artifact: bdist
