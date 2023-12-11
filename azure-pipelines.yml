@@ -12,25 +12,25 @@ variables:
   value: windows-2022
 
 jobs:
-- job: 'bld_native'
+- job: bld_native
   strategy:
     matrix:
       Linux:
-        image.name: '${{ variables.ubuntu_image }}'
+        image.name: ${{ variables.ubuntu_image }}
       Mac:
-        image.name: '${{ variables.mac_image }}'
+        image.name: ${{ variables.mac_image }}
       Windows:
-        image.name: '${{ variables.windows_image }}'
+        image.name: ${{ variables.windows_image }}
     maxParallel: 3
   pool:
-    vmImage: '$(image.name)'
+    vmImage: $(image.name)
   steps:
   - task: PythonScript@0
     inputs:
-      scriptSource: 'inline'
+      scriptSource: inline
       script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
     condition: startsWith(variables['image.name'], 'windows')
-    displayName: 'CUDA download installer'
+    displayName: CUDA download installer
   # CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
   # the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
   - script: |
@@ -43,7 +43,7 @@ jobs:
       )
       .\build.bat
     condition: startsWith(variables['image.name'], 'windows')
-    displayName: 'win bld_native'
+    displayName: win bld_native
   - script: |
       sudo apt --yes update
       if [ $? -ne 0 ]; then 
@@ -55,39 +55,39 @@ jobs:
       fi
       /bin/sh ./build.sh -release_64 -debug_64 -asm
     condition: startsWith(variables['image.name'], 'ubuntu')
-    displayName: 'linux bld_native'
+    displayName: linux bld_native
   - script: |
       /bin/sh ./build.sh -release_64 -debug_64 -release_arm -debug_arm -asm
     condition: startsWith(variables['image.name'], 'macOS')
-    displayName: 'mac bld_native'
+    displayName: mac bld_native
   - publish: bld/lib
     artifact: libebm-$(image.name)
-    displayName: 'Publish native shared library'
+    displayName: Publish native shared library
   - publish: bld/tmp/staging_asm_release_64
     artifact: asm-x64-$(image.name)
     condition: or(startsWith(variables['image.name'], 'ubuntu'), startsWith(variables['image.name'], 'macOS'))
-    displayName: 'Publish assembly x64'
+    displayName: Publish assembly x64
   - publish: bld/tmp/staging_asm_release_arm
     artifact: asm-arm-$(image.name)
     condition: startsWith(variables['image.name'], 'macOS')
-    displayName: 'Publish assembly arm'
+    displayName: Publish assembly arm
 
-- job: 'bld_vis'
+- job: bld_vis
   pool:
-    vmImage: '${{ variables.ubuntu_image }}'
+    vmImage: ${{ variables.ubuntu_image }}
   steps:
   - script: |
       cd shared/vis
       npm install
       npm run build-prod
-    displayName: 'bld_vis'
+    displayName: bld_vis
   - publish: shared/vis/dist
     artifact: vis
-    displayName: 'Publish interpret-inline.js library'
+    displayName: Publish interpret-inline.js library
 
-- job: 'bld_npm_package'
+- job: bld_npm_package
   pool:
-    vmImage: '${{ variables.ubuntu_image }}'
+    vmImage: ${{ variables.ubuntu_image }}
   steps:
   - script: |
       cd shared/vis
@@ -96,14 +96,14 @@ jobs:
       npm pack
       mkdir pkg
       cp *.tgz pkg/
-    displayName: 'bld_npm_package'
+    displayName: bld_npm_package
   - publish: shared/vis/pkg
-    artifact: 'npm'
-    displayName: 'Publish npm package'
+    artifact: npm
+    displayName: Publish npm package
 
-- job: 'bld_R_package'
+- job: bld_R_package
   pool:
-    vmImage: '${{ variables.ubuntu_image }}'
+    vmImage: ${{ variables.ubuntu_image }}
   steps:
   - script: | 
       cd R
@@ -116,17 +116,17 @@ jobs:
         exit 201
       fi
       Rscript build.R
-    displayName: 'Rscript build.R'
+    displayName: Rscript build.R
   - script: cat bld/tmp/R/interpret.Rcheck/00install.out
     condition: failed()
-    displayName: 'Display errors'
+    displayName: Display errors
   - publish: bld/R
-    artifact: 'R'
-    displayName: 'Publish R package'
+    artifact: R
+    displayName: Publish R package
 
-- job: 'bld_sdist_package'
+- job: bld_sdist_package
   pool:
-    vmImage: '${{ variables.ubuntu_image }}'
+    vmImage: ${{ variables.ubuntu_image }}
   steps:
   - task: UsePythonVersion@0
     inputs:
@@ -137,15 +137,15 @@ jobs:
       python setup.py sdist -d ../../bld/sdist
       cd ../interpret
       python setup.py sdist -d ../../bld/sdist
-    displayName: 'interpret bld_sdist_package'
+    displayName: interpret bld_sdist_package
   - publish: bld/sdist
     artifact: sdist
-    displayName: 'Publish sdist python package'
+    displayName: Publish sdist python package
 
-- job: 'docs'
-  dependsOn: 'bld_sdist_package'
+- job: docs
+  dependsOn: bld_sdist_package
   pool:
-    vmImage: '${{ variables.ubuntu_image }}'
+    vmImage: ${{ variables.ubuntu_image }}
   steps:
   - task: UsePythonVersion@0
     inputs:
@@ -153,9 +153,9 @@ jobs:
   - task: DownloadPipelineArtifact@2
     inputs:
       artifact: sdist
-      itemPattern: 'sdist/interpret-core-*.tar.gz'
+      itemPattern: sdist/interpret-core-*.tar.gz
       path: $(System.ArtifactsDirectory)/sdist
-    displayName: 'Download sdist'
+    displayName: Download sdist
   - script: |
       cd $(System.ArtifactsDirectory)/sdist
       tarball_path=$(echo interpret-core-*.tar.gz)
@@ -164,90 +164,90 @@ jobs:
       cd $(Build.SourcesDirectory)/docs/
       pip install -r requirements.txt
       /bin/sh ./build.sh
-    displayName: 'Build docs'
+    displayName: Build docs
   - publish: docs/interpret_docs/_build/html/
     artifact: docs
     displayName: Publish docs
 
-- job: 'bld_bdist_package'
-  dependsOn: ['bld_native', 'bld_vis']
+- job: bld_bdist_package
+  dependsOn: [bld_native, bld_vis]
   pool:
-    vmImage: '${{ variables.ubuntu_image }}'
+    vmImage: ${{ variables.ubuntu_image }}
   steps:
   - task: UsePythonVersion@0
     inputs:
       versionSpec: 3.8
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: 'libebm-$(windows_image)'
+      artifact: libebm-$(windows_image)
       itemPattern: |
         *.dll
         *.pdb
-      path: 'python/interpret-core/interpret/root/bld/lib'
-    displayName: 'Copy win shared library to bld/lib directory'
+      path: python/interpret-core/interpret/root/bld/lib
+    displayName: Copy win shared library to bld/lib directory
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: 'libebm-$(ubuntu_image)'
-      path: 'python/interpret-core/interpret/root/bld/lib'
-    displayName: 'Copy linux shared library to bld/lib directory'
+      artifact: libebm-$(ubuntu_image)
+      path: python/interpret-core/interpret/root/bld/lib
+    displayName: Copy linux shared library to bld/lib directory
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: 'libebm-$(mac_image)'
-      path: 'python/interpret-core/interpret/root/bld/lib'
-    displayName: 'Copy mac shared library to bld/lib directory'
+      artifact: libebm-$(mac_image)
+      path: python/interpret-core/interpret/root/bld/lib
+    displayName: Copy mac shared library to bld/lib directory
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: 'vis'
-      path: 'python/interpret-core/interpret/root/bld/lib'
-    displayName: 'Copy interpret-inline.js to python lib directory'
+      artifact: vis
+      path: python/interpret-core/interpret/root/bld/lib
+    displayName: Copy interpret-inline.js to python lib directory
   - script: |
       python -m pip install --upgrade pip setuptools wheel
       cd python/interpret-core
       python setup.py bdist_wheel -d ../../bld/bdist
       cd ../interpret
       python setup.py bdist_wheel -d ../../bld/bdist
-    displayName: 'interpret bld_bdist_package'
+    displayName: interpret bld_bdist_package
   - publish: bld/bdist
     artifact: bdist
-    displayName: 'Publish bdist python package'
+    displayName: Publish bdist python package
 
-- job: 'test_native'
-  dependsOn: 'bld_native'
+- job: test_native
+  dependsOn: bld_native
   strategy:
     matrix:
       Linux:
-        image.name: '${{ variables.ubuntu_image }}'
+        image.name: ${{ variables.ubuntu_image }}
       Mac:
-        image.name: '${{ variables.mac_image }}'
+        image.name: ${{ variables.mac_image }}
       Windows:
-        image.name: '${{ variables.windows_image }}'
+        image.name: ${{ variables.windows_image }}
     maxParallel: 3
   pool:
-    vmImage: '$(image.name)'
+    vmImage: $(image.name)
   steps:
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: 'libebm-$(image.name)'
-      path: 'bld/lib'
-    displayName: 'Copy native library to bld/lib directory'
+      artifact: libebm-$(image.name)
+      path: bld/lib
+    displayName: Copy native library to bld/lib directory
   - task: PythonScript@0
     inputs:
-      scriptSource: 'inline'
+      scriptSource: inline
       script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
     condition: startsWith(variables['image.name'], 'windows')
-    displayName: 'Download CUDA installer'
+    displayName: Download CUDA installer
   - script: |
       /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_64 -release_64 -existing_debug_64 -existing_release_64
     condition: startsWith(variables['image.name'], 'macOS')
-    displayName: 'mac test_native'
+    displayName: mac test_native
   - script: |
       /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_64 -release_64 -debug_32 -release_32 -existing_debug_64 -existing_release_64 -no_valgrind
     condition: and(startsWith(variables['image.name'], 'ubuntu'), ne(variables['Build.Reason'], 'Schedule'))
-    displayName: 'linux test_native (CI)'
+    displayName: linux test_native (CI)
   - script: |
       /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_64 -release_64 -debug_32 -release_32 -existing_debug_64 -existing_release_64
     condition: and(startsWith(variables['image.name'], 'ubuntu'), eq(variables['Build.Reason'], 'Schedule'))
-    displayName: 'linux test_native (Schedule)'
+    displayName: linux test_native (Schedule)
   - script: |
       SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
       SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
@@ -258,7 +258,7 @@ jobs:
       )
       .\shared\libebm\tests\libebm_test.bat -pipeline
     condition: and(startsWith(variables['image.name'], 'windows'), ne(variables['Build.Reason'], 'Schedule'))
-    displayName: 'win test_native (CI)'
+    displayName: win test_native (CI)
   - script: |
       SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
       SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
@@ -269,51 +269,51 @@ jobs:
       )
       .\shared\libebm\tests\libebm_test.bat -pipeline -analysis
     condition: and(startsWith(variables['image.name'], 'windows'), eq(variables['Build.Reason'], 'Schedule'))
-    displayName: 'win test_native (Schedule)'
+    displayName: win test_native (Schedule)
 
-- job: 'test' # just call this test since we have limited room in the UI to show the OS and python version
-  dependsOn: 'bld_bdist_package'
+- job: test
+  dependsOn: bld_bdist_package
   strategy:
     matrix:
       Linux38Python:
-        python.version: '3.8'
-        image.name: '${{ variables.ubuntu_image }}'
+        python.version: 3.8
+        image.name: ${{ variables.ubuntu_image }}
       Linux39Python:
-        python.version: '3.9'
-        image.name: '${{ variables.ubuntu_image }}'
+        python.version: 3.9
+        image.name: ${{ variables.ubuntu_image }}
       Linux310Python:
-        python.version: '3.10'
-        image.name: '${{ variables.ubuntu_image }}'
+        python.version: 3.10
+        image.name: ${{ variables.ubuntu_image }}
       Win38Python:
-        python.version: '3.8'
-        image.name: '${{ variables.windows_image }}'
+        python.version: 3.8
+        image.name: ${{ variables.windows_image }}
       Win39Python:
-        python.version: '3.9'
-        image.name: '${{ variables.windows_image }}'
+        python.version: 3.9
+        image.name: ${{ variables.windows_image }}
       Win310Python:
-        python.version: '3.10'
-        image.name: '${{ variables.windows_image }}'
+        python.version: 3.10
+        image.name: ${{ variables.windows_image }}
       Mac38Python:
-        python.version: '3.8'
-        image.name: '${{ variables.mac_image }}'
+        python.version: 3.8
+        image.name: ${{ variables.mac_image }}
       Mac39Python:
-        python.version: '3.9'
-        image.name: '${{ variables.mac_image }}'
+        python.version: 3.9
+        image.name: ${{ variables.mac_image }}
       Mac310Python:
-        python.version: '3.10'
-        image.name: '${{ variables.mac_image }}'
+        python.version: 3.10
+        image.name: ${{ variables.mac_image }}
     maxParallel: 9
   pool:
-    vmImage: '$(image.name)'
+    vmImage: $(image.name)
   steps:
   - task: UsePythonVersion@0
     inputs:
       versionSpec: $(python.version)
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifactName: 'bdist'
-      itemPattern: 'interpret_core-*.whl'
-      targetPath: '$(System.ArtifactsDirectory)/bdist'
+      artifactName: bdist
+      itemPattern: interpret_core-*.whl
+      targetPath: $(System.ArtifactsDirectory)/bdist
   # we copy the tests to a new location to test the installed package rather than the source files
   - script: |
       python -m pip install --upgrade pip setuptools wheel
@@ -326,7 +326,7 @@ jobs:
       cd /D "$(Agent.TempDirectory)\zqmr\t"
       python -m pytest -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
     condition: startsWith(variables['image.name'], 'windows')
-    displayName: 'pytest (win)'
+    displayName: pytest (win)
   # we copy the tests to a new location to test the installed package rather than the source files
   - script: |
       python -m pip install --upgrade pip setuptools wheel
@@ -338,25 +338,25 @@ jobs:
       cd "$(Agent.TempDirectory)/zqmr/t"
       python -m pytest -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
     condition: not(startsWith(variables['image.name'], 'windows'))
-    displayName: 'pytest (non-win)'
+    displayName: pytest (non-win)
   - task: PublishTestResults@2
     inputs:
-      testResultsFiles: '$(Agent.TempDirectory)/zqmr/t/junit/test-results.xml'
-      testRunTitle: 'Publish test results for Python $(python.version) at $(image.name)'
+      testResultsFiles: $(Agent.TempDirectory)/zqmr/t/junit/test-results.xml
+      testRunTitle: Publish test results for Python $(python.version) at $(image.name)
     condition: succeededOrFailed()
-    displayName: 'Publish test results'
+    displayName: Publish test results
   - task: PublishCodeCoverageResults@1
     inputs:
       codeCoverageTool: Cobertura
-      summaryFileLocation: '$(Agent.TempDirectory)/zqmr/t/coverage.xml'
-      # reportDirectory: '$(Agent.TempDirectory)/zqmr/t/**/htmlcov'
+      summaryFileLocation: $(Agent.TempDirectory)/zqmr/t/coverage.xml
+      # reportDirectory: $(Agent.TempDirectory)/zqmr/t/**/htmlcov
     condition: startsWith(variables['image.name'], 'windows')
-    displayName: 'Publish test coverage results'
+    displayName: Publish test coverage results
 
-- job: 'publish_source_code'
-  dependsOn: ['test_native', 'test']
+- job: publish_source_code
+  dependsOn: [test_native, test]
   pool:
-    vmImage: '${{ variables.ubuntu_image }}'
+    vmImage: ${{ variables.ubuntu_image }}
   steps:
   - task: UsePythonVersion@0
     inputs:
@@ -365,9 +365,9 @@ jobs:
       cd python/interpret-core
       python -m pip install --upgrade black
       black --check .
-    displayName: 'black formatting check'
-  - publish: '$(System.ArtifactsDirectory)'
-    artifact: 'source_code'
+    displayName: black formatting check
+  - publish: $(System.ArtifactsDirectory)
+    artifact: source_code
 
 schedules:
 - cron: "0 12 * * *"
